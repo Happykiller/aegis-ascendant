@@ -11,11 +11,27 @@ const COLOR_LOW := Color(0.79, 0.23, 0.19)      # red
 @onready var _score_value: Label = %ScoreValue
 @onready var _lives_value: Label = %LivesValue
 @onready var _power_value: Label = %PowerValue
+@onready var _boss_panel: Control = %BossPanel
+@onready var _boss_name: Label = %BossName
+@onready var _boss_fill: ColorRect = %BossBarFill
 
 var _shield_full_width: float = 0.0
+var _boss_full_width: float = 0.0
 
 func _ready() -> void:
 	_shield_full_width = _shield_fill.size.x
+	_boss_full_width = _boss_fill.size.x
+
+func show_boss(display_name: String) -> void:
+	_boss_name.text = display_name.to_upper()
+	_boss_fill.size.x = _boss_full_width
+	_boss_panel.visible = true
+
+func hide_boss() -> void:
+	_boss_panel.visible = false
+
+func set_boss_health(ratio: float) -> void:
+	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
 
 func bind_player(player: PlayerFighterController) -> void:
 	player.shield_changed.connect(_on_shield_changed)
