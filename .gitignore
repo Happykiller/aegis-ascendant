@@ -1,0 +1,11 @@
+# Godot cache (never version)
+.godot/
+
+# Build outputs
+build/
+
+# Temp files
+*.tmp
+
+# Windows zone identifier artifacts (WSL)
+*:Zone.Identifier
