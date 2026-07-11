@@ -31,6 +31,9 @@ godot4 --headless --path . --script res://tests/test_runner.gd   # tests seuls
 - **Zéro allocation dans les boucles critiques** (tableaux Packed préalloués, pooling obligatoire).
 - Fichiers `snake_case.gd`, classes `PascalCase`, constantes `UPPER_SNAKE_CASE`.
 - Les tests ne touchent pas les autoloads (absents en mode `--script`) : unités instanciables à la main.
+- **Jamais d'identifiant global d'autoload dans un script** (`GameState.foo()` casse la compilation
+  en mode `--script`) : câbler par signaux/injection, ou cache typé
+  `const XScript := preload(...)` + `@onready var _x: XScript = get_node("/root/X")`.
 - **Committer les `*.uid`** générés par Godot ; `.godot/` et `build/` sont gitignorés.
 
 ## Délégation créative (voir ADR-0004)
