@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_fighter_controller.gd" id="1_ctrl"]
 [ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/weapons/pulse_shot.tres" id="3_shot"]
 
 [sub_resource type="StandardMaterial3D" id="mat_hull"]
 albedo_color = Color(0.929, 0.918, 0.89, 1)
@@ -16,6 +17,7 @@ size = Vector3(1.2, 1.5, 0.35)
 [node name="PlayerFighter" type="Node3D"]
 script = ExtResource("1_ctrl")
 stats = ExtResource("2_stats")
+primary_projectile = ExtResource("3_shot")
 
 [node name="VisualRoot" type="Node3D" parent="."]
 
