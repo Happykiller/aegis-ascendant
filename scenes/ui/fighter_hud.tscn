@@ -6,6 +6,7 @@
 script = ExtResource("1_hud")
 
 [node name="ShieldLabel" type="Label" parent="."]
+unique_name_in_owner = true
 offset_left = 40.0
 offset_top = 32.0
 offset_right = 200.0
@@ -40,6 +41,7 @@ theme_override_font_sizes/font_size = 20
 text = "100"
 
 [node name="PowerLabel" type="Label" parent="."]
+unique_name_in_owner = true
 offset_left = 40.0
 offset_top = 86.0
 offset_right = 160.0

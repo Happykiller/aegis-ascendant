@@ -58,6 +58,13 @@ func _on_shield_changed(ratio: float, current: float, _maximum: float) -> void:
 	_shield_fill.color = col
 	_shield_value.text = "%d" % roundi(current)
 
+## Fortress phase: reuse the left gauge as fortress integrity (spec §19.2).
+func set_integrity(ratio: float, current: float) -> void:
+	_on_shield_changed(ratio, current, 100.0)
+	%ShieldLabel.text = "INTEGRITY"
+	%PowerLabel.text = "FORTRESS"
+	_power_value.text = "AEGIS"
+
 func _on_score_changed(total: int) -> void:
 	_score_value.text = "%08d" % total
 
