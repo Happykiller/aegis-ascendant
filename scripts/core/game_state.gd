@@ -22,6 +22,8 @@ var score: int = 0
 
 func _ready() -> void:
 	InputBootstrap.register_actions()
+	if "--novsync" in OS.get_cmdline_user_args():
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	print("[GameState] %s" % State.keys()[current])
 
 func transition_to(next: State) -> bool:

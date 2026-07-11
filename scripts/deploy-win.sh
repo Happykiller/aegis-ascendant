@@ -24,6 +24,11 @@ fi
 
 log "copying build to ${DEST_WSL}"
 mkdir -p "$DEST_WSL"
+# Kill any prior instance so it does not hold a lock on the exe (avoids
+# "Permission denied" on copy when a previous run was interrupted).
+powershell.exe -NoProfile -Command \
+  "Get-Process AegisAscendant* -ErrorAction SilentlyContinue | Stop-Process -Force" \
+  >/dev/null 2>&1 || true
 cp "${SRC}/"* "$DEST_WSL/"
 cp "${ROOT}/scripts-win/run.ps1" "$DEST_WSL/"
 

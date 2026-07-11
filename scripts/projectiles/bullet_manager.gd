@@ -35,6 +35,7 @@ var _grid_origin: Vector2
 var _cell_size: Vector2
 var _targets: Array[BulletTarget] = []
 var _multimeshes: Array[MultiMesh] = []
+var _buffers: Array[PackedFloat32Array] = []
 
 func _init() -> void:
 	_positions.resize(MAX_BULLETS)
@@ -63,6 +64,17 @@ func _ready() -> void:
 		multimesh.instance_count = MAX_BULLETS   # once only: reallocates GPU buffers
 		multimesh.visible_instance_count = 0
 		_multimeshes.append(multimesh)
+		# Bulk transform buffer (12 floats/instance): far cheaper than one
+		# set_instance_transform() call per bullet each frame. Pre-fill the
+		# identity basis once; per frame only the origin (x,z) is rewritten.
+		var buffer := PackedFloat32Array()
+		buffer.resize(MAX_BULLETS * 12)
+		for s in MAX_BULLETS:
+			var base := s * 12
+			buffer[base] = 1.0       # basis x.x
+			buffer[base + 5] = 1.0   # basis y.y
+			buffer[base + 10] = 1.0  # basis z.z
+		_buffers.append(buffer)
 
 func _physics_process(delta: float) -> void:
 	step(delta)
@@ -124,12 +136,16 @@ func step(delta: float) -> void:
 		_grid_insert(i, p)
 		var team := _teams[i]
 		if render:
-			_multimeshes[team].set_instance_transform(_visible_counts[team],
-				Transform3D(Basis.IDENTITY, GameplayPlane.to_world(p)))
+			# Write only the origin (world x,z) into this team's transform buffer;
+			# the identity basis floats were set once in _ready.
+			var base := _visible_counts[team] * 12
+			_buffers[team][base + 3] = p.x    # origin.x
+			_buffers[team][base + 11] = -p.y  # origin.z (world -Z = screen up)
 		_visible_counts[team] += 1
 	if render:
-		_multimeshes[Team.PLAYER].visible_instance_count = _visible_counts[Team.PLAYER]
-		_multimeshes[Team.ENEMY].visible_instance_count = _visible_counts[Team.ENEMY]
+		for team in 2:
+			_multimeshes[team].buffer = _buffers[team]
+			_multimeshes[team].visible_instance_count = _visible_counts[team]
 	_resolve_hits()
 
 func _release(i: int) -> void:

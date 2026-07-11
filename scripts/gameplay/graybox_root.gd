@@ -60,6 +60,15 @@ func _ready() -> void:
 		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
 	_demo = "--demo" in args
+	# Perf bisection flags.
+	if "--no-backdrop" in args:
+		var bd := get_node_or_null("SpaceBackdrop") as Node3D
+		if bd != null:
+			bd.visible = false
+	if "--no-glow" in args:
+		var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
+		if we != null and we.environment != null:
+			we.environment.glow_enabled = false
 	if "--no-wave" in args and _wave_spawner != null:
 		_wave_spawner.set_physics_process(false)
 	if "--pickup-demo" in args and _pickups != null:
@@ -78,6 +87,11 @@ func _ready() -> void:
 		if _player != null:
 			_player.stow()
 		_start_fortress_boss()
+	elif "--skip-to-victory" in args:
+		if _wave_spawner != null:
+			_wave_spawner.set_physics_process(false)
+		_game_state.add_score(28450)
+		_start_victory()
 	print("[Level] ready — phase FIGHTER_WAVES")
 
 # --- Fighter waves -----------------------------------------------------------
