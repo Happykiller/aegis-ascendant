@@ -8,6 +8,7 @@ const MiniBossScene := preload("res://scenes/bosses/choir_harvester.tscn")
 const FinalBossScene := preload("res://scenes/bosses/pale_leviathan.tscn")
 const CitadelScene := preload("res://scenes/fortress/aegis_citadel.tscn")
 const FortressBattery := preload("res://resources/weapons/fortress_battery.tres")
+const VictoryScene := preload("res://scenes/ui/victory_screen.tscn")
 
 const _FORTRESS_SPEED := 9.0
 const _FORTRESS_INTEGRITY_MAX := 200.0
@@ -28,6 +29,7 @@ enum Phase { FIGHTER_WAVES, MINI_BOSS, DOCKING, COMMAND_TRANSFER, FORTRESS_BOSS,
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
 @onready var _bullet_manager: BulletManager = get_node_or_null("BulletManager") as BulletManager
+@onready var _audio: Node = get_node_or_null("/root/AudioManager")
 
 var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
@@ -42,6 +44,7 @@ var _demo: bool = false
 var _demo_time: float = 0.0
 
 func _ready() -> void:
+	_game_state.reset_session()
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		(enemy as EnemyController).destroyed.connect(_on_enemy_destroyed)
 	if _wave_spawner != null:
@@ -53,6 +56,8 @@ func _ready() -> void:
 	if _hud != null and _player != null:
 		_hud.bind_player(_player)
 		_hud.bind_score(_game_state)
+	if _pickups != null:
+		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
 	_demo = "--demo" in args
 	if "--no-wave" in args and _wave_spawner != null:
@@ -86,8 +91,12 @@ func _on_wave_cleared() -> void:
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
 	_game_state.add_score(enemy.data.score_value)
 	_boom(enemy.global_position, VfxExplosion.Category.MEDIUM, 0.35)
+	_sfx("small_explosion")
 	if _pickups != null:
 		_pickups.roll_drop(enemy.global_position)
+
+func _on_pickup(_kind: int, _world_position: Vector3) -> void:
+	_sfx("pickup_collect")
 
 # --- Mini-boss ---------------------------------------------------------------
 
@@ -106,7 +115,9 @@ func _on_boss_health(ratio: float) -> void:
 		_hud.set_boss_health(ratio)
 
 func _on_mini_boss_defeated(world_position: Vector3) -> void:
+	_game_state.add_score(5000)
 	_boom(world_position, VfxExplosion.Category.HEAVY, 1.0)
+	_sfx("small_explosion", 6.0)
 	if _hud != null:
 		_hud.hide_boss()
 	if _boss != null:
@@ -135,6 +146,7 @@ func _on_citadel_arrived() -> void:
 
 func _on_player_docked() -> void:
 	_boom(GameplayPlane.to_world(Vector2(0.0, 6.6)), VfxExplosion.Category.MEDIUM, 0.5)
+	_sfx("docking_lock", 4.0)
 	if _player != null:
 		_player.stow()
 	_start_command_transfer()
@@ -209,6 +221,8 @@ func _fire_battery() -> void:
 	_fortress_side = -_fortress_side
 	var origin := _citadel.plane_position + Vector2(2.6 * _fortress_side, 1.4)
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, Vector2(0.0, 1.0), FortressBattery)
+	if _fortress_side > 0: # throttle the rail cue to every other (twin) shot
+		_sfx("rail_battery", -4.0)
 	if _camera_director != null:
 		_camera_director.add_trauma(0.12)
 
@@ -227,6 +241,7 @@ func _on_fortress_hit(damage: float) -> void:
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 
 func _on_final_boss_defeated(world_position: Vector3) -> void:
+	_game_state.add_score(20000)
 	_fortress_control = false
 	if _hud != null:
 		_hud.hide_boss()
@@ -235,6 +250,7 @@ func _on_final_boss_defeated(world_position: Vector3) -> void:
 
 func _fire_helios_lance(target: Vector3) -> void:
 	# Spectacular finish: heavy explosions along the boss + strong shake, then victory.
+	_sfx("helios_lance", 6.0)
 	if _camera_director != null:
 		_camera_director.add_trauma(1.0)
 	for i in 8:
@@ -246,12 +262,14 @@ func _fire_helios_lance(target: Vector3) -> void:
 func _start_victory() -> void:
 	_phase = Phase.VICTORY
 	print("[Level] VICTORY — score %d" % _game_state.score)
-	if _hud != null:
-		_hud.show_banner("VICTORY", _COLOR_GOLD, 3.0)
+	var screen := VictoryScene.instantiate()
+	screen.setup(_game_state.score)
+	add_child(screen)
 
 # --- Player feedback ---------------------------------------------------------
 
 func _on_player_hit(_world_position: Vector3) -> void:
+	_sfx("shield_impact")
 	if _camera_director != null:
 		_camera_director.add_trauma(0.45)
 
@@ -270,3 +288,7 @@ func _boom(world_position: Vector3, category: VfxExplosion.Category, trauma: flo
 		_vfx.spawn_explosion(world_position, category)
 	if _camera_director != null:
 		_camera_director.add_trauma(trauma)
+
+func _sfx(cue: String, volume_db: float = 0.0) -> void:
+	if _audio != null:
+		_audio.play(cue, volume_db)
