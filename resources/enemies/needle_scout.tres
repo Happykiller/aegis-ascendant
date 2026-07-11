@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/weapons/needle_shot.tres" id="2_shot"]
+
+[resource]
+script = ExtResource("1_data")
+display_name = "Needle Scout"
+max_health = 20.0
+move_speed = 3.5
+weave_amplitude = 1.6
+weave_frequency = 0.4
+fire_interval = 1.9
+projectile = ExtResource("2_shot")
+hitbox_radius = 0.45
+score_value = 100
