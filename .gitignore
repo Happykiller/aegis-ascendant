@@ -13,3 +13,7 @@ __pycache__/
 
 # Windows zone identifier artifacts (WSL)
 *:Zone.Identifier
+
+# IP quarantine: contaminated reference images (visible third-party marks) —
+# kept locally for reference only, MUST NEVER be versioned (see ADR-0005).
+/_ip_quarantine/
