@@ -49,9 +49,13 @@ var _muzzle_material: StandardMaterial3D
 var _muzzle_timer: float = 0.0
 
 @onready var _visual_root: Node3D = $VisualRoot
+@onready var _hull: Node3D = $VisualRoot/Hull
 @onready var _bullet_manager: BulletManager = get_node_or_null(bullet_manager_path) as BulletManager
 
 func _ready() -> void:
+	# Lay the top-down ship sprite flat on the play plane, nose toward screen-up
+	# (local +Y -> world -Z), facing the camera (local +Z -> world +Y).
+	_hull.rotation = Vector3(deg_to_rad(-90.0), 0.0, 0.0)
 	assert(stats != null, "PlayerFighterController requires a PlayerStats resource")
 	for error in stats.validate():
 		push_error("[PlayerFighter] invalid stats: %s" % error)
