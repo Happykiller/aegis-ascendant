@@ -34,6 +34,11 @@ var _fire_timer: float = 0.0
 ## and hands-off showcase. Never active in a normal run.
 var _demo: bool = false
 var _demo_time: float = 0.0
+## Autopilot (docking, spec §6.5): control is taken over and the ship flies to a
+## target on the plane; firing is suspended. Emits `autopilot_reached` on arrival.
+var _autopilot: bool = false
+var _autopilot_target: Vector2 = Vector2.ZERO
+signal autopilot_reached
 
 var _shield: PlayerShield = PlayerShield.new()
 var _lives: int = 3
@@ -87,6 +92,16 @@ func _physics_process(delta: float) -> void:
 		_respawn_timer -= delta
 		if _respawn_timer <= 0.0:
 			_respawn()
+		return
+	if _autopilot:
+		_shield.grant_invulnerability(0.3) # safe during the guided approach
+		plane_position = plane_position.move_toward(_autopilot_target, stats.max_speed * 0.6 * delta)
+		position = GameplayPlane.to_world(plane_position)
+		if _target != null:
+			_target.position = plane_position
+		if plane_position.distance_to(_autopilot_target) < 0.1:
+			_autopilot = false
+			autopilot_reached.emit()
 		return
 	_shield.tick(delta)
 	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
@@ -157,6 +172,20 @@ func add_power() -> void:
 func restore_shield(amount: float) -> void:
 	_shield.restore(amount)
 	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+
+## Take over control and fly to a target on the plane (docking, spec §6.5).
+func begin_autopilot(target: Vector2) -> void:
+	_autopilot = true
+	_autopilot_target = target
+	_visual_root.visible = true
+
+## Hide the fighter (after docking, when the player becomes the fortress).
+func stow() -> void:
+	_autopilot = false
+	visible = false
+	set_physics_process(false)
+	if _target != null:
+		_target.enabled = false
 
 ## Unlimited continues for the demo (spec §8.4): restore lives and respawn.
 func continue_run() -> void:

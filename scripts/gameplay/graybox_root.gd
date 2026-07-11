@@ -5,6 +5,10 @@ extends Node3D
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 const MiniBossScene := preload("res://scenes/bosses/choir_harvester.tscn")
+const CitadelScene := preload("res://scenes/fortress/aegis_citadel.tscn")
+
+const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
+const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
 
 enum Phase { FIGHTER_WAVES, MINI_BOSS, DOCKING, COMMAND_TRANSFER, FORTRESS_BOSS, VICTORY }
 
@@ -19,6 +23,7 @@ enum Phase { FIGHTER_WAVES, MINI_BOSS, DOCKING, COMMAND_TRANSFER, FORTRESS_BOSS,
 
 var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
+var _citadel: AegisCitadel
 
 func _ready() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
@@ -41,6 +46,10 @@ func _ready() -> void:
 		_pickups.spawn(Pickup.Kind.SCORE, Vector2(3.0, 0.0))
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
+	elif "--skip-to-dock" in args:
+		if _wave_spawner != null:
+			_wave_spawner.set_physics_process(false)
+		_start_docking()
 	print("[Level] ready — phase FIGHTER_WAVES")
 
 # --- Fighter waves -----------------------------------------------------------
@@ -83,11 +92,44 @@ func _on_mini_boss_defeated(world_position: Vector3) -> void:
 	print("[Level] mini-boss defeated — score %d" % _game_state.score)
 	_start_docking()
 
-# --- Docking (placeholder until G-F) ----------------------------------------
+# --- Docking (spec §6.5) -----------------------------------------------------
 
 func _start_docking() -> void:
 	_phase = Phase.DOCKING
-	print("[Level] DOCKING (to be implemented)")
+	print("[Level] DOCKING")
+	_citadel = CitadelScene.instantiate() as AegisCitadel
+	_citadel.plane_position = Vector2(0.0, 22.0) # off-screen above
+	add_child(_citadel)
+	_citadel.arrived.connect(_on_citadel_arrived, CONNECT_ONE_SHOT)
+	_citadel.slide_to(Vector2(0.0, 11.0), 9.0)
+	if _hud != null:
+		_hud.show_banner("DOCKING", _COLOR_ALLY, 1.4)
+
+func _on_citadel_arrived() -> void:
+	if _player != null:
+		_player.autopilot_reached.connect(_on_player_docked, CONNECT_ONE_SHOT)
+		_player.begin_autopilot(Vector2(0.0, 6.3))
+
+func _on_player_docked() -> void:
+	_boom(GameplayPlane.to_world(Vector2(0.0, 6.6)), VfxExplosion.Category.MEDIUM, 0.5)
+	if _player != null:
+		_player.stow()
+	_start_command_transfer()
+
+# --- Command transfer (spec §6.6) -------------------------------------------
+
+func _start_command_transfer() -> void:
+	_phase = Phase.COMMAND_TRANSFER
+	print("[Level] COMMAND TRANSFER")
+	if _hud != null:
+		_hud.show_banner("COMMAND TRANSFER", _COLOR_GOLD, 1.8)
+	get_tree().create_timer(2.6).timeout.connect(_start_fortress_boss)
+
+# --- Fortress boss (placeholder until G-G) ----------------------------------
+
+func _start_fortress_boss() -> void:
+	_phase = Phase.FORTRESS_BOSS
+	print("[Level] FORTRESS BOSS (to be implemented)")
 
 # --- Player feedback ---------------------------------------------------------
 

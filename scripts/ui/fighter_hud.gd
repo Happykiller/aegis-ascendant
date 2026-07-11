@@ -14,6 +14,7 @@ const COLOR_LOW := Color(0.79, 0.23, 0.19)      # red
 @onready var _boss_panel: Control = %BossPanel
 @onready var _boss_name: Label = %BossName
 @onready var _boss_fill: ColorRect = %BossBarFill
+@onready var _banner: Label = %Banner
 
 var _shield_full_width: float = 0.0
 var _boss_full_width: float = 0.0
@@ -32,6 +33,15 @@ func hide_boss() -> void:
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
+
+## Flash a large centered banner (DOCKING, COMMAND TRANSFER, VICTORY...).
+func show_banner(text: String, color: Color = Color(0.247, 0.851, 0.91), hold: float = 1.6) -> void:
+	_banner.text = text
+	_banner.add_theme_color_override("font_color", color)
+	var tween := create_tween()
+	tween.tween_property(_banner, "modulate:a", 1.0, 0.35)
+	tween.tween_interval(hold)
+	tween.tween_property(_banner, "modulate:a", 0.0, 0.5)
 
 func bind_player(player: PlayerFighterController) -> void:
 	player.shield_changed.connect(_on_shield_changed)
