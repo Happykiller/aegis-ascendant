@@ -1,11 +1,13 @@
 extends Node3D
 ## Graybox scene root: first playable segment sandbox (spec §37 items 12-19).
-## Wires enemy destruction to the score and logs session events.
+## Wires enemy destruction to score, explosions and screen shake.
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
+@onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
+@onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
 
 func _ready() -> void:
 	# Children _ready() ran first: every pooled/placed enemy already exists.
@@ -20,5 +22,7 @@ func _on_wave_cleared() -> void:
 
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
 	_game_state.add_score(enemy.data.score_value)
-	print("[Graybox] %s destroyed (+%d) — score %d" %
-		[enemy.data.display_name, enemy.data.score_value, _game_state.score])
+	if _vfx != null:
+		_vfx.spawn_explosion(enemy.global_position, VfxExplosion.Category.MEDIUM)
+	if _camera_director != null:
+		_camera_director.add_trauma(0.35)

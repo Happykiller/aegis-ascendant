@@ -1,57 +1,56 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_fighter.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/projectiles/bullet_manager.tscn" id="3_bullets"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="4_spawner"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_graybox_01.tres" id="5_wave"]
-
-[sub_resource type="Environment" id="env_space"]
-background_mode = 1
-background_color = Color(0.027, 0.039, 0.071, 1)
-ambient_light_source = 2
-ambient_light_color = Color(1, 1, 1, 1)
-ambient_light_energy = 0.6
-
-[sub_resource type="StandardMaterial3D" id="mat_floor"]
-albedo_color = Color(0.11, 0.169, 0.369, 1)
-
-[sub_resource type="BoxMesh" id="mesh_floor"]
-material = SubResource("mat_floor")
-size = Vector3(24, 0.2, 14)
+[ext_resource type="Environment" path="res://resources/graphics/space_environment.tres" id="6_env"]
+[ext_resource type="PackedScene" path="res://scenes/vfx/space_backdrop.tscn" id="7_backdrop"]
+[ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
+[ext_resource type="Script" path="res://scripts/fx/vfx_manager.gd" id="9_vfx"]
+[ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
 
 [sub_resource type="StandardMaterial3D" id="mat_edge"]
-albedo_color = Color(0.11, 0.169, 0.369, 1)
+transparency = 1
+albedo_color = Color(0.247, 0.851, 0.91, 0.5)
 emission_enabled = true
 emission = Color(0.247, 0.851, 0.91, 1)
-emission_energy_multiplier = 0.3
+emission_energy_multiplier = 0.6
 
 [sub_resource type="BoxMesh" id="mesh_edge_h"]
 material = SubResource("mat_edge")
-size = Vector3(24.6, 0.25, 0.3)
+size = Vector3(24.6, 0.12, 0.14)
 
 [sub_resource type="BoxMesh" id="mesh_edge_v"]
 material = SubResource("mat_edge")
-size = Vector3(0.3, 0.25, 14.6)
+size = Vector3(0.14, 0.12, 14.6)
 
 [node name="Graybox" type="Node3D"]
 script = ExtResource("1_root")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("env_space")
+environment = ExtResource("6_env")
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="SpaceBackdrop" parent="." instance=ExtResource("7_backdrop")]
+
+[node name="CameraDirector" type="Node3D" parent="."]
+script = ExtResource("8_camdir")
+
+[node name="Camera3D" type="Camera3D" parent="CameraDirector"]
 transform = Transform3D(1, 0, 0, 0, 0.342, 0.94, 0, -0.94, 0.342, 0, 14, 5)
 current = true
 
 [node name="KeyLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 10, 0)
-light_energy = 0.8
+light_energy = 0.7
 shadow_enabled = false
 
-[node name="Floor" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6, 0)
-mesh = SubResource("mesh_floor")
+[node name="VFXManager" type="Node3D" parent="."]
+script = ExtResource("9_vfx")
+
+[node name="ScreenCapture" type="Node" parent="."]
+script = ExtResource("10_capture")
 
 [node name="EdgeTop" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.4, -7.15)
