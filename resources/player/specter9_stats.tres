@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="PlayerStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/player_stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+max_speed = 14.0
+accel_time = 0.18
+hitbox_radius = 0.25
+fire_interval = 0.12
+max_bank_deg = 35.0

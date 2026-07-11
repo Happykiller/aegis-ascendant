@@ -1,0 +1,24 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_fighter_controller.gd" id="1_ctrl"]
+[ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="2_stats"]
+
+[sub_resource type="StandardMaterial3D" id="mat_hull"]
+albedo_color = Color(0.929, 0.918, 0.89, 1)
+emission_enabled = true
+emission = Color(0.247, 0.851, 0.91, 1)
+emission_energy_multiplier = 1.2
+
+[sub_resource type="PrismMesh" id="mesh_hull"]
+material = SubResource("mat_hull")
+size = Vector3(1.2, 1.5, 0.35)
+
+[node name="PlayerFighter" type="Node3D"]
+script = ExtResource("1_ctrl")
+stats = ExtResource("2_stats")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Hull" type="MeshInstance3D" parent="VisualRoot"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
+mesh = SubResource("mesh_hull")
