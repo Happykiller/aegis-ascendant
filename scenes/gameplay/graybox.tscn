@@ -1,9 +1,10 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_fighter.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/projectiles/bullet_manager.tscn" id="3_bullets"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout.tscn" id="4_scout"]
+[ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="4_spawner"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_graybox_01.tres" id="5_wave"]
 
 [sub_resource type="Environment" id="env_space"]
 background_mode = 1
@@ -73,7 +74,7 @@ mesh = SubResource("mesh_edge_v")
 [node name="PlayerFighter" parent="." instance=ExtResource("2_player")]
 bullet_manager_path = NodePath("../BulletManager")
 
-[node name="TestScout" parent="." instance=ExtResource("4_scout")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+[node name="WaveSpawner" type="Node" parent="."]
+script = ExtResource("4_spawner")
+wave = ExtResource("5_wave")
 bullet_manager_path = NodePath("../BulletManager")
-auto_activate = true

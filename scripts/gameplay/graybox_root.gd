@@ -5,12 +5,18 @@ extends Node3D
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
+@onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
 
 func _ready() -> void:
 	# Children _ready() ran first: every pooled/placed enemy already exists.
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		(enemy as EnemyController).destroyed.connect(_on_enemy_destroyed)
+	if _wave_spawner != null:
+		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 	print("[Graybox] ready")
+
+func _on_wave_cleared() -> void:
+	print("[Graybox] wave cleared — session score %d" % _game_state.score)
 
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
 	_game_state.add_score(enemy.data.score_value)

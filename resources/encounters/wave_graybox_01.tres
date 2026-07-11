@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout.tscn" id="3_scout"]
+
+[sub_resource type="Resource" id="entry_left"]
+script = ExtResource("2_entry")
+time_offset = 0.5
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(-6, 8.5)
+count = 3
+spacing = 0.7
+
+[sub_resource type="Resource" id="entry_right"]
+script = ExtResource("2_entry")
+time_offset = 3.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(6, 8.5)
+count = 3
+spacing = 0.7
+
+[sub_resource type="Resource" id="entry_center"]
+script = ExtResource("2_entry")
+time_offset = 6.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(0, 8.5)
+count = 2
+spacing = 0.9
+
+[sub_resource type="Resource" id="entry_flanks"]
+script = ExtResource("2_entry")
+time_offset = 8.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(-9, 8.5)
+count = 2
+spacing = 0.6
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("entry_left"), SubResource("entry_right"), SubResource("entry_center"), SubResource("entry_flanks")]
