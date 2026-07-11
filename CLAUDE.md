@@ -47,6 +47,10 @@ créative/lourde (assets, palettes, scripts Blender, lore, SFX…) est délégu�
 3. Review (conformité charte, IP, formats, provenance) puis intégration et commit.
 
 Tout asset livré a sa ligne dans `assets/licenses/ASSET_PROVENANCE.csv` (spec §24.7).
+Les binaires (`*.png`, `*.wav`, `*.ogg`, `*.glb`, `*.blend`) passent par **Git LFS** (spec §24.8) ;
+`assets/source/` est `.gdignore`é (étape source, non importée par le moteur). Toute image
+générée portant un nom/marque de licence est **quarantinée** hors dépôt (voir `docs/decisions/ADR-0005`
+et `docs/forge/REVIEW_NOTES.md`).
 
 ## Interdictions clés (spec §0.2)
 
