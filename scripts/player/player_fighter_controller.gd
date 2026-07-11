@@ -8,6 +8,21 @@ extends Node3D
 const DIR_UP := Vector2(0.0, 1.0)
 const MUZZLE_OFFSET := Vector2(0.0, 0.9)
 
+## Emitted whenever the shield value changes (HUD).
+signal shield_changed(ratio: float, current: float, maximum: float)
+## Emitted when a life is lost; `lives` is the remaining count.
+signal lives_changed(lives: int)
+## Emitted when the player is hit (feedback: shake / sfx), with the world position.
+signal hit_taken(world_position: Vector3)
+## Emitted when a life is lost (explosion at position).
+signal destroyed_at(world_position: Vector3)
+## Emitted when the last life is gone (game over).
+signal game_over
+## Emitted when the fire power level changes (HUD / feedback).
+signal power_changed(level: int)
+
+const MAX_POWER := 5
+
 @export var stats: PlayerStats
 @export var primary_projectile: ProjectileData
 @export var bullet_manager_path: NodePath
@@ -19,6 +34,14 @@ var _fire_timer: float = 0.0
 ## and hands-off showcase. Never active in a normal run.
 var _demo: bool = false
 var _demo_time: float = 0.0
+
+var _shield: PlayerShield = PlayerShield.new()
+var _lives: int = 3
+var _power_level: int = 1
+var _alive: bool = true
+var _respawn_timer: float = 0.0
+var _target: BulletTarget
+var _blink_time: float = 0.0
 
 var _engine_trail: GPUParticles3D
 var _muzzle_flash: MeshInstance3D
@@ -39,8 +62,31 @@ func _ready() -> void:
 	_build_engine_trail()
 	_build_muzzle_flash()
 	_demo = "--demo" in OS.get_cmdline_user_args()
+	_shield.configure(stats.shield_max, stats.shield_regen_delay,
+		stats.shield_regen_rate, stats.invuln_time)
+	_lives = stats.lives
+	if _bullet_manager != null:
+		_target = BulletTarget.make(BulletManager.Team.PLAYER, stats.hitbox_radius,
+			Callable(self, "_take_hit"))
+		_target.position = plane_position
+		_bullet_manager.register_target(_target)
+	# Publish initial HUD state on the next idle frame (listeners connect after _ready).
+	call_deferred("_emit_initial_state")
+
+func _emit_initial_state() -> void:
+	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+	lives_changed.emit(_lives)
+	power_changed.emit(_power_level)
 
 func _physics_process(delta: float) -> void:
+	if not _alive:
+		_respawn_timer -= delta
+		if _respawn_timer <= 0.0:
+			_respawn()
+		return
+	_shield.tick(delta)
+	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+	_update_invuln_blink(delta)
 	var input: Vector2
 	if _demo:
 		_demo_time += delta
@@ -50,8 +96,69 @@ func _physics_process(delta: float) -> void:
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
 	plane_position = GameplayPlane.clamp_to_bounds(plane_position + _velocity * delta)
 	position = GameplayPlane.to_world(plane_position)
+	if _target != null:
+		_target.position = plane_position
 	_apply_visual_bank(delta)
 	_update_fire(delta)
+
+## Bullet hit callback (registered with the BulletManager).
+func _take_hit(damage: float) -> void:
+	if not _alive:
+		return
+	if _shield.take_hit(damage):
+		hit_taken.emit(global_position)
+		shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+		if _shield.is_depleted():
+			_destroy()
+
+func _destroy() -> void:
+	_alive = false
+	_visual_root.visible = false
+	if _target != null:
+		_target.enabled = false
+	destroyed_at.emit(global_position)
+	_lives -= 1
+	lives_changed.emit(_lives)
+	if _lives <= 0:
+		game_over.emit()
+	else:
+		_respawn_timer = 1.2 # brief pause before respawn (spec §5.3: forgiving)
+
+func _respawn() -> void:
+	_alive = true
+	plane_position = Vector2(0.0, -5.0)
+	_velocity = Vector2.ZERO
+	position = GameplayPlane.to_world(plane_position)
+	_visual_root.visible = true
+	_shield.reset()
+	_shield.grant_invulnerability(2.0)
+	if _target != null:
+		_target.position = plane_position
+		_target.enabled = true
+	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+
+func _update_invuln_blink(delta: float) -> void:
+	if _shield.is_invulnerable():
+		_blink_time += delta * 18.0
+		_visual_root.visible = fmod(_blink_time, 1.0) < 0.55
+	elif not _visual_root.visible:
+		_visual_root.visible = true
+
+## Raise the primary fire power level (Power Core pickup, spec §9.1).
+func add_power() -> void:
+	if _power_level < MAX_POWER:
+		_power_level += 1
+		power_changed.emit(_power_level)
+
+func restore_shield(amount: float) -> void:
+	_shield.restore(amount)
+	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
+
+## Unlimited continues for the demo (spec §8.4): restore lives and respawn.
+func continue_run() -> void:
+	_lives = stats.lives
+	lives_changed.emit(_lives)
+	_respawn()
 
 func _update_fire(delta: float) -> void:
 	_fire_timer = maxf(_fire_timer - delta, 0.0)
@@ -62,10 +169,32 @@ func _update_fire(delta: float) -> void:
 	if _bullet_manager == null or primary_projectile == null:
 		return
 	if (_demo or Input.is_action_pressed("fire_primary")) and _fire_timer == 0.0:
-		_fire_timer = stats.fire_interval
-		_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER,
-			plane_position + MUZZLE_OFFSET, DIR_UP, primary_projectile)
+		# Higher power tightens cadence (spec §9.1 level 2 = increased rate).
+		var cadence := stats.fire_interval * (1.0 if _power_level < 2 else 0.8)
+		_fire_timer = cadence
+		_fire_pattern()
 		_muzzle_timer = 0.05
+
+## Pulse Array fire pattern, escalating with power level (spec §9.1).
+func _fire_pattern() -> void:
+	var muzzle := plane_position + MUZZLE_OFFSET
+	# Level 1+: twin frontal shots.
+	_shoot(muzzle + Vector2(-0.18, 0.0), DIR_UP)
+	_shoot(muzzle + Vector2(0.18, 0.0), DIR_UP)
+	if _power_level >= 3:
+		# Level 3+: weak angled side shots.
+		_shoot(muzzle + Vector2(-0.5, 0.0), Vector2(-0.28, 1.0))
+		_shoot(muzzle + Vector2(0.5, 0.0), Vector2(0.28, 1.0))
+	if _power_level >= 4:
+		# Level 4+: reinforced central axis.
+		_shoot(muzzle, DIR_UP)
+	if _power_level >= 5:
+		# Level 5: full lateral spread.
+		_shoot(muzzle + Vector2(-0.7, 0.0), Vector2(-0.6, 1.0))
+		_shoot(muzzle + Vector2(0.7, 0.0), Vector2(0.6, 1.0))
+
+func _shoot(origin: Vector2, direction: Vector2) -> void:
+	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, direction, primary_projectile)
 
 func _build_engine_trail() -> void:
 	_engine_trail = GPUParticles3D.new()

@@ -10,6 +10,7 @@
 [ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
 [ext_resource type="Script" path="res://scripts/fx/vfx_manager.gd" id="9_vfx"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
+[ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 
 [sub_resource type="StandardMaterial3D" id="mat_edge"]
 transparency = 1
@@ -77,3 +78,5 @@ bullet_manager_path = NodePath("../BulletManager")
 script = ExtResource("4_spawner")
 wave = ExtResource("5_wave")
 bullet_manager_path = NodePath("../BulletManager")
+
+[node name="FighterHUD" parent="." instance=ExtResource("11_hud")]

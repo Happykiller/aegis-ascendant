@@ -1,0 +1,115 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/fighter_hud.gd" id="1_hud"]
+
+[node name="FighterHUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="ShieldLabel" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 32.0
+offset_right = 200.0
+offset_bottom = 56.0
+theme_override_colors/font_color = Color(0.247, 0.851, 0.91, 0.85)
+theme_override_font_sizes/font_size = 18
+text = "SHIELD"
+
+[node name="ShieldBarBG" type="ColorRect" parent="."]
+offset_left = 40.0
+offset_top = 58.0
+offset_right = 340.0
+offset_bottom = 78.0
+color = Color(0.05, 0.08, 0.16, 0.65)
+
+[node name="ShieldFill" type="ColorRect" parent="."]
+unique_name_in_owner = true
+offset_left = 42.0
+offset_top = 60.0
+offset_right = 338.0
+offset_bottom = 76.0
+color = Color(0.247, 0.851, 0.91, 1)
+
+[node name="ShieldValue" type="Label" parent="."]
+unique_name_in_owner = true
+offset_left = 350.0
+offset_top = 56.0
+offset_right = 420.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.9)
+theme_override_font_sizes/font_size = 20
+text = "100"
+
+[node name="PowerLabel" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 86.0
+offset_right = 160.0
+offset_bottom = 108.0
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
+theme_override_font_sizes/font_size = 16
+text = "POWER"
+
+[node name="PowerValue" type="Label" parent="."]
+unique_name_in_owner = true
+offset_left = 120.0
+offset_top = 84.0
+offset_right = 240.0
+offset_bottom = 110.0
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 1)
+theme_override_font_sizes/font_size = 20
+text = "LV.1"
+
+[node name="ScoreLabel" type="Label" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 32.0
+offset_right = -40.0
+offset_bottom = 54.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.247, 0.851, 0.91, 0.85)
+theme_override_font_sizes/font_size = 16
+text = "SCORE"
+horizontal_alignment = 2
+
+[node name="ScoreValue" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 54.0
+offset_right = -40.0
+offset_bottom = 86.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
+theme_override_font_sizes/font_size = 28
+text = "00000000"
+horizontal_alignment = 2
+
+[node name="LivesLabel" type="Label" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -60.0
+offset_right = 160.0
+offset_bottom = -38.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.247, 0.851, 0.91, 0.85)
+theme_override_font_sizes/font_size = 16
+text = "FIGHTERS"
+
+[node name="LivesValue" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 160.0
+offset_top = -64.0
+offset_right = 260.0
+offset_bottom = -34.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
+theme_override_font_sizes/font_size = 24
+text = "x3"
