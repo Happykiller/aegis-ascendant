@@ -1,0 +1,3 @@
+asset_id,file_path,asset_type,source_tool,source_url,author,license,generated_date,prompt_file,modified_by,notes
+icon_app,icon.svg,svg_icon,asset-forge (Claude),,asset-forge (Claude),proprietary-internal,2026-07-11,docs/forge/briefs/BRIEF-0001-app-icon.md,,"Icône applicative — motif original Aegis Citadel (prisme axial, deux bras-batteries, noyau cyan), palette Helios Vanguard, aplats+strokes, 808 o"
+graybox_palette,docs/forge/output/graybox_palette.md,color-spec,asset-forge (Claude),,asset-forge (Claude),proprietary-internal,2026-07-11,docs/forge/briefs/BRIEF-0002-graybox-palette.md,,"palette normative graybox ; contrastes WCAG 2.1 + simulation deutéranopie (Machado 2009) vérifiés"
