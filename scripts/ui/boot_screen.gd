@@ -5,10 +5,11 @@ extends Control
 ## compilable in --script mode, where autoload globals do not exist).
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
+const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
-@onready var _scene_router: Node = get_node("/root/SceneRouter")
+@onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
 @onready var _version_label: Label = %VersionLabel
 
 func _ready() -> void:

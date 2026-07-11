@@ -7,5 +7,9 @@ build/
 # Temp files
 *.tmp
 
+# Python bytecode (asset tooling)
+__pycache__/
+*.pyc
+
 # Windows zone identifier artifacts (WSL)
 *:Zone.Identifier

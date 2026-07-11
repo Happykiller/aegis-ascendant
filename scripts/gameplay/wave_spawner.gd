@@ -18,9 +18,14 @@ var _pool: Array[EnemyController] = []
 var _cleared: bool = false
 
 func _ready() -> void:
-	assert(wave != null, "WaveSpawner requires a WaveData resource")
-	for error in wave.validate():
-		push_error("[WaveSpawner] invalid wave: %s" % error)
+	# Safe fallback on invalid data (spec §22.2, §31.2): report every problem,
+	# then disable the spawner instead of crashing on a null enemy_scene.
+	var errors := wave.validate() if wave != null else PackedStringArray(["wave resource is null"])
+	if not errors.is_empty():
+		for error in errors:
+			push_error("[WaveSpawner] invalid wave: %s" % error)
+		set_physics_process(false)
+		return
 	var bullet_manager := get_node(bullet_manager_path) as BulletManager
 	var schedule := build_schedule(wave)
 	_spawn_times = schedule["times"]

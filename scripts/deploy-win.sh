@@ -29,7 +29,8 @@ cp "${ROOT}/scripts-win/run.ps1" "$DEST_WSL/"
 
 log "launching on Windows (${DEST_WIN})"
 # Always -File with an absolute Windows path: never rely on a UNC \\wsl$ CWD.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${DEST_WIN}\\run.ps1" "${GAME_ARGS[@]}"
-EXIT_CODE=$?
+# Capture the exit code without tripping `set -e` on a non-zero game exit.
+EXIT_CODE=0
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${DEST_WIN}\\run.ps1" "${GAME_ARGS[@]}" || EXIT_CODE=$?
 log "game exited with code ${EXIT_CODE}"
 exit "$EXIT_CODE"
