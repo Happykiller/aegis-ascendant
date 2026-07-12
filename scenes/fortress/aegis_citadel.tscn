@@ -1,9 +1,8 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/fortress/aegis_citadel.gd" id="1_citadel"]
-[ext_resource type="Texture2D" path="res://assets/imported/sprites/structures/aegis_citadel.png" id="2_tex"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/structures/aegis_citadel.glb" id="2_hull"]
 
 [node name="AegisCitadel" type="Node3D"]
 script = ExtResource("1_citadel")
-sprite_texture = ExtResource("2_tex")
-sprite_pixel_size = 0.026
+hull_scene = ExtResource("2_hull")
