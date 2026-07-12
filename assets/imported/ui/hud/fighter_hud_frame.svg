@@ -1,6 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080">
-  <path d="M32 42h420l38 38v166l-28 28H32Zm0 996h500l34-34v-92l-30-30H32ZM1888 42h-420l-38 38v112l28 28h430Zm0 996h-500l-34-34v-138l30-30h504Z" fill="#070A12" fill-opacity=".72" stroke="#3FD9E8" stroke-width="4"/>
-  <path d="M58 70h365l30 30v118H58Zm1804 0h-365l-30 30v64h395ZM58 1010h446l24-24v-48H58Zm1804 0h-446l-24-24V892h470Z" fill="none" stroke="#1C2B5E" stroke-width="12"/>
-  <path d="M72 286h220M72 310h150M1848 232h-210M1848 256h-130M72 850h240M1848 804h-260" stroke="#E4B54A" stroke-width="5"/>
-  <path d="M910 32h100l22 22-22 22H910l-22-22Z" fill="#070A12" stroke="#3FD9E8" stroke-width="4"/>
+  <!-- Cadre du HUD chasseur — version ajustée au contenu (12/07/2026).
+       L'original de la forge portait quatre panneaux de ~440x200 px, dont un
+       ENTIEREMENT VIDE en bas à droite, plus une encoche flottant au centre-haut
+       DANS la zone de jeu, le tout tracé en #3FD9E8 au trait de 4 px.
+       Deux défauts : l'emprise (le HUD mangeait les quatre coins pour trois
+       lectures), et la couleur — le cyan #3FD9E8 est RESERVE au tir allié, un
+       cadre qui en trace des centaines de pixels entre en concurrence avec les
+       projectiles dans la hiérarchie de saillance.
+       Ici : trois panneaux serrés sur leur contenu, trait bleu profond #1C2B5E,
+       et le cyan réduit à de brefs accents d'angle. -->
+
+  <!-- Panneaux. Bornes du contenu (scenes/ui/fighter_hud.tscn) :
+       haut gauche  x 58..440  y 70..158   (bouclier + puissance)
+       haut droit   x 1660..1860 y 76..132 (score)
+       bas gauche   x 60..280  y 958..988  (vies) -->
+  <g fill="#070A12" fill-opacity=".55" stroke="#1C2B5E" stroke-width="3">
+    <path d="M32 46h396l36 36v66l-24 24H32Z"/>
+    <path d="M1888 46h-236l-32 32v54l24 24h244Z"/>
+    <path d="M32 1034h250l22-22v-58l-24-24H32Z"/>
+  </g>
+
+  <!-- Accents cyan : de brefs traits d'angle, pas des contours. -->
+  <g fill="none" stroke="#3FD9E8" stroke-width="3" stroke-opacity=".55">
+    <path d="M32 46h54M1888 46h-54M32 1034h54"/>
+  </g>
 </svg>
