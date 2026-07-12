@@ -96,6 +96,7 @@ func _make_spark_mesh() -> QuadMesh:
 	mat.vertex_color_use_as_albedo = true
 	mat.emission_enabled = true
 	mat.emission_energy_multiplier = 3.0
+	mat.albedo_texture = SoftDot.texture()
 	quad.material = mat
 	return quad
 

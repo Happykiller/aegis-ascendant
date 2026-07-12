@@ -268,6 +268,7 @@ func _build_engine_trail() -> void:
 	qmat.vertex_color_use_as_albedo = true
 	qmat.emission_enabled = true
 	qmat.emission_energy_multiplier = 2.5
+	qmat.albedo_texture = SoftDot.texture()
 	quad.material = qmat
 	_engine_trail.draw_pass_1 = quad
 	_engine_trail.emitting = true
@@ -288,6 +289,7 @@ func _build_muzzle_flash() -> void:
 	_muzzle_material.emission_enabled = true
 	_muzzle_material.albedo_color = Color(0.6, 0.95, 1.0, 1.0)
 	_muzzle_material.emission = Color(0.5, 0.9, 1.0)
+	_muzzle_material.albedo_texture = SoftDot.texture()
 	_muzzle_flash.material_override = _muzzle_material
 	_muzzle_flash.visible = false
 	add_child(_muzzle_flash)

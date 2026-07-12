@@ -64,14 +64,14 @@
 - [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé »
   (`graybox_palette.md`) pour ne pas noyer le corail du danger ennemi.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, **planche raster à générer** puis provenancer.
-- [ ] **Sprite Needle Scout** en meilleure résolution (l'actuel est trop petit → mesh gardé) ;
-  intégrer d'autres assets forge non encore utilisés (HUD frames, indicateurs,
+- [ ] Intégrer les assets forge non encore utilisés (HUD frames, indicateurs,
   écrans menu/pause/échec, emblèmes de faction).
 - [ ] **Éléments de décor peints** (optionnel, voir ADR-0006) : planète / croiseurs / station
   dérivant au-dessus du fond procédural, produits via brief forge + imagegen. Les six couches
   de parallaxe SVG de `BRIEF-0015` sont **écartées** (aplats vectoriels, rendu inutilisable).
-- [ ] **Projectiles** : remplacer les box/sphères par les SVG de projectiles de la forge
-  (cœur + halo) pour plus de lisibilité et de style.
+- [x] ~~**Projectiles**~~ : box/sphères remplacées par des quads + shader `bullet_bolt`
+  (cœur + halo procéduraux). Les SVG de projectiles de la forge sont **écartés** (stickers
+  plats, cf. ADR-0006) ; idem pour les SVG d'explosion.
 - [ ] **Passage 3D optionnel** (spec) : modèles glTF via Blender à partir des concepts — gros
   chantier, seulement si une limite visuelle le justifie.
 
