@@ -14,8 +14,10 @@ const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 @onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
 @onready var _audio: AudioManagerScript = get_node("/root/AudioManager")
 @onready var _version_label: Label = %VersionLabel
+@onready var _hint_label: Label = %HintLabel
 
 var _options: Control
+var _pulse_age: float = 0.0
 
 func _ready() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
@@ -28,6 +30,10 @@ func _ready() -> void:
 	# Test hook (args after the `--`/`++` separator): jump straight into gameplay.
 	if "--goto-graybox" in OS.get_cmdline_user_args():
 		_start_graybox.call_deferred()
+
+func _process(delta: float) -> void:
+	_pulse_age += delta
+	_hint_label.modulate.a = 0.72 + sin(_pulse_age * 2.4) * 0.22
 
 func _start_graybox() -> void:
 	if ResourceLoader.exists(GRAYBOX_SCENE, "PackedScene"):
