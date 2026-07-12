@@ -293,3 +293,156 @@ CONTRAINTES DURES :
 
 Rends les durées mesurées par phase dans ton compte-rendu.
 ```
+
+---
+
+# Retours de jeu du 12/07/2026 (opérateur) — tâches H7 à H9
+
+Quatre critiques formulées manette en main. Trois ont une cause **mesurée**, donnée ci-dessous :
+ne pas re-diagnostiquer, corriger.
+
+| | H7 Lumière | H8 Arène | H9 Mouvement |
+|---|---|---|---|
+| conflit avec | — | — | ✗ **H5** (même fichier `enemy_controller.gd`) |
+
+---
+
+## H7 — Les vaisseaux sont trop lumineux (le bloom mange le relief)
+
+**Constat opérateur** : « les vaisseaux sont trop lumineux ». Les captures le confirment : le
+Specter-9, la Citadelle et le Leviathan sont des **masses blanches surexposées** — on a modélisé
+cinq coques en 3D et le bloom en efface le détail.
+
+**Périmètre** : `resources/graphics/space_environment.tres`, les lumières de
+`scenes/gameplay/graybox.tscn`, les matériaux des coques. **Ne touche pas au gameplay.**
+
+```
+Les coques 3D perdent tout leur relief : elles rendent comme des silhouettes blanches surexposées.
+
+CAUSES MESURÉES (ne pas re-diagnostiquer) :
+- scenes/gameplay/graybox.tscn : KeyLight light_energy = 2.8 (très élevé), RimLight = 1.3.
+- resources/graphics/space_environment.tres : glow_hdr_threshold = 0.95 (très bas),
+  glow_hdr_scale = 2.0, glow_bloom = 0.25, tonemap_white = 6.0.
+- Les coques ont un albédo clair. Tout ce qui dépasse le seuil part en halo : le résultat est un
+  aplat blanc, et le travail de modélisation est invisible.
+
+OBJECTIF : rendre le relief des coques lisible — panneaux, arêtes, ombrage — tout en gardant une
+image qui « claque ». Le bloom doit servir les ÉMISSIFS (tirs, réacteurs, noyaux ennemis), pas les
+coques.
+
+PISTES (mesure, ne devine pas) : baisser l'énergie de la lumière clé, REMONTER le seuil HDR du glow
+au-dessus de la luminance des coques, assombrir légèrement l'albédo, et laisser le bloom aux seuls
+matériaux émissifs.
+
+CONTRAINTES :
+- Le vaisseau JOUEUR doit rester l'ancre visuelle : toujours repérable en moins de 200 ms.
+- Les ennemis restent SOMBRES à accent magenta #D93D9C.
+- Les projectiles gardent leur halo (cyan allié #3FD9E8, corail ennemi #FF5A3D) : c'est la
+  hiérarchie de lisibilité du jeu, n'y touche pas.
+- Mesure le temps GPU avant/après (le glow coûte cher) : il est imprimé par la capture.
+
+VÉRIFICATION OBLIGATOIRE : capture d'écran (voir CONTRAT), en phase chasseur ET en phase forteresse
+(--skip-to-fortress si le flag existe, sinon laisse tourner la démo). Sans capture, la tâche n'est
+pas terminée : ce défaut ne se voit QU'À L'IMAGE.
+```
+
+---
+
+## H8 — L'arène est une boîte, et le combat final se joue à bout portant
+
+**Constat opérateur** : « le gameplay donne l'impression d'être enfermé dans une toute petite boîte »
+et « le combat de fin n'a pas de sens, on est collé l'un à l'autre ».
+
+**Les deux sont vrais, et chiffrés.**
+
+**Périmètre** : `scripts/gameplay/gameplay_plane.gd` (BOUNDS), la caméra de
+`scenes/gameplay/graybox.tscn`, les constantes de forteresse et l'entrée du boss dans
+`scripts/gameplay/graybox_root.gd` / `scenes/bosses/pale_leviathan.tscn`.
+⚠️ Tâche **structurante** : la lancer seule, elle touche le cœur spatial du jeu.
+
+```
+Deux défauts d'échelle, mesurés — ne les re-diagnostique pas, corrige-les.
+
+DÉFAUT 1 — « enfermé dans une petite boîte ». Le joueur ne peut atteindre que ~60 % de ce qu'il voit.
+  - scripts/gameplay/gameplay_plane.gd : BOUNDS = Rect2(-12, -7, 24, 14) — soit 24 x 14 unités.
+  - La caméra (scenes/gameplay/graybox.tscn) est à (0, 14, 5), inclinée ~70°, FOV par défaut (75°),
+    en 16:9. Elle cadre environ 40 x 24 unités AU NIVEAU DU PLAN DE JEU (y = 0).
+  - Donc une couronne large de ~8 unités de chaque côté est VISIBLE mais INTERDITE. Le joueur se
+    cogne à un mur invisible bien avant le bord de l'écran. C'est ça, la « boîte ».
+  Corrige en rapprochant la zone jouable du cadre visible : élargir BOUNDS, et/ou resserrer le FOV,
+  et/ou remonter la caméra. Il doit rester une marge (les ennemis entrent hors champ), mais elle doit
+  être ÉTROITE, pas de 40 %.
+
+DÉFAUT 2 — le combat final se joue à bout portant.
+  - La forteresse Aegis est à y = -5.2 (scripts/gameplay/graybox_root.gd, _FORTRESS_Y) et ne se
+    déplace qu'entre x = -8 et +8 (_FORTRESS_X_LIMIT).
+  - Le Pale Leviathan entre à y = +3.5 (scenes/bosses/pale_leviathan.tscn, entry_plane_position).
+  - Écart vertical : 8,7 unités. Or la forteresse fait À ELLE SEULE 8 à 10 unités de haut.
+    Deux vaisseaux capitaux se canardent donc à distance de contact. Aucune manœuvre possible,
+    aucune échelle lisible, aucune tension.
+  Corrige : éloigne les deux protagonistes, donne à la forteresse une vraie latitude de déplacement,
+  et rends la distance LISIBLE (le boss doit paraître un adversaire distant, pas une figurine collée).
+  Réduire l'échelle des deux meshes est une option légitime si l'arène ne peut pas grandir assez.
+
+CONTRAINTES DURES :
+- BOUNDS est le cœur du jeu : les tirs, le culling, le spawn et le clamp du joueur en dépendent.
+  tests/unit/test_gameplay_plane.gd le teste — check.sh DOIT rester vert.
+- Zéro allocation dans les boucles critiques ; le culling des projectiles (CULL_MARGIN dans
+  scripts/projectiles/bullet_manager.gd) doit rester cohérent avec les nouvelles bornes.
+- Après changement, REJOUE l'arc complet EN TEMPS RÉEL et vérifie que rien ne casse :
+      timeout 300 ./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --demo 2>&1 | grep "\[Level\]"
+  (⚠️ n'utilise PAS --capture-after pour ça : il compte des IMAGES, pas des secondes.)
+- Vérifie AUSSI par capture que le cadrage tient en phase chasseur ET en phase forteresse.
+```
+
+---
+
+## H9 — Le mouvement des ennemis est trop linéaire (⚠️ conflit avec H5)
+
+**Constat opérateur** : « le mouvement des ennemis est trop linéaire, on peut pas faire mieux ? »
+
+**Périmètre** : `scripts/enemies/enemy_controller.gd`, `resources/data/enemy_data.gd`,
+`resources/enemies/*.tres`, `tests/unit/`.
+⚠️ **Conflit direct avec H5** (même fichier) : ne pas lancer les deux en parallèle.
+
+```
+Tous les ennemis font EXACTEMENT la même chose, et c'est tout ce qu'ils savent faire
+(scripts/enemies/enemy_controller.gd, _physics_process) :
+
+    plane_position.y -= data.move_speed * delta                      # descente constante
+    plane_position.x = _base_x + sin(_age * freq * TAU) * amplitude   # zigzag sinusoïdal
+
+Une descente à vitesse constante plus une sinusoïde. Aucun piqué, aucune courbe, aucune formation,
+aucune réaction au joueur. D'où l'impression de linéarité — elle est littérale.
+
+OBJECTIF : donner de vrais comportements, DATA-DRIVEN (pilotés par la Resource EnemyData, pas
+codés en dur), pour que chaque famille et chaque vague ait sa personnalité.
+
+PISTES (en choisir plusieurs, pas toutes) :
+- des TRAJECTOIRES : entrée en arc, piqué vers la position du joueur puis dégagement, boucle,
+  passage rasant sur un côté puis demi-tour ;
+- des FORMATIONS : delta, ligne, colonne — les ennemis d'une vague se coordonnent au lieu de
+  tomber chacun dans son couloir ;
+- des PHASES : approche → attaque → retraite, plutôt qu'un défilement uniforme jusqu'au bord ;
+- une PAUSE de tir télégraphiée (l'ennemi se stabilise avant de tirer : le joueur peut lire l'attaque).
+
+ARCHITECTURE — à respecter, ne la refais pas :
+- EnemyController est une base de COMPOSITION (spec §20.3) : ajoute un mode de déplacement comme un
+  composant/stratégie sélectionné par la Resource, PAS par héritage ni par un `if` géant.
+- resources/data/enemy_data.gd est la Resource typée qui porte les paramètres ; elle expose
+  validate(). Aucun paramètre de gameplay en dur dans le contrôleur.
+- Le Needle Scout existant ne doit PAS régresser (son zigzag reste une trajectoire disponible).
+
+CONTRAINTES DURES :
+- ZÉRO allocation par frame : pas de `.new()`, de tableau ni de dictionnaire créé dans
+  _physics_process. Les ennemis sont POOLÉS (activate/deactivate) : tout état de trajectoire doit
+  être REMIS À ZÉRO à l'activation, sinon un ennemi recyclé rejoue la fin de la trajectoire du
+  précédent.
+- La logique de trajectoire doit être PURE et TESTÉE (tests/unit/) : une fonction
+  (temps, paramètres) -> position, instanciable à la main en headless. check.sh doit rester vert.
+- Difficulté cible : « facile mais nerveuse ». Un ennemi imprévisible n'est pas un ennemi injuste :
+  toute attaque doit rester LISIBLE et esquivable.
+
+VÉRIFICATION : joue la démo en temps réel et regarde (capture avec --demo). Un mouvement se juge en
+mouvement, pas sur une image fixe.
+```
