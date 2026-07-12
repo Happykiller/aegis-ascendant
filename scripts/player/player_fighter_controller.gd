@@ -111,7 +111,8 @@ func _physics_process(delta: float) -> void:
 		_demo_time += delta
 		input = Vector2(sin(_demo_time * 0.9) * 0.85, 0.0) # horizontal sweep only
 	else:
-		input = Input.get_vector("move_left", "move_right", "move_up", "move_down")
+		input = GameplayPlane.from_input(
+			Input.get_vector("move_left", "move_right", "move_up", "move_down"))
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
 	plane_position = GameplayPlane.clamp_to_bounds(plane_position + _velocity * delta)
 	position = GameplayPlane.to_world(plane_position)
