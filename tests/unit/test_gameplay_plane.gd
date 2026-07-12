@@ -47,3 +47,9 @@ func test_is_inside_with_margin() -> void:
 	var outside := Vector2(GameplayPlane.BOUNDS.end.x + 1.0, 0.0)
 	assert_false(GameplayPlane.is_inside(outside), "1 unit out is outside")
 	assert_true(GameplayPlane.is_inside(outside, 2.0), "but inside with margin 2")
+
+func test_bounds_fill_widescreen_gameplay_frame() -> void:
+	assert_eq(GameplayPlane.BOUNDS.size, Vector2(28.0, 16.0),
+		"playable area tracks the camera's widescreen footprint")
+	assert_eq(GameplayPlane.BOUNDS.get_center(), Vector2.ZERO,
+		"playable area remains centered for symmetric clamp and culling")

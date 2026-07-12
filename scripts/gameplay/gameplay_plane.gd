@@ -6,8 +6,10 @@ class_name GameplayPlane
 ## Logical positions are authoritative for all gameplay collisions; the 3D
 ## scene is only a projection of them.
 
-## Logical play area in world units (spec/charter: 24 x 14, centered on origin).
-const BOUNDS := Rect2(Vector2(-12.0, -7.0), Vector2(24.0, 14.0))
+## Logical play area in world units. With the gameplay camera's 62-degree FOV,
+## this fills roughly 85-90% of the visible plane while retaining a narrow entry
+## margin for enemies and projectiles.
+const BOUNDS := Rect2(Vector2(-14.0, -8.0), Vector2(28.0, 16.0))
 
 ## Input vectors come in Godot's screen convention (+y = down); the logical
 ## plane is up-positive, so the vertical axis must be flipped on the way in.

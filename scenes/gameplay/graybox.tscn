@@ -27,6 +27,7 @@ script = ExtResource("8_camdir")
 [node name="Camera3D" type="Camera3D" parent="CameraDirector"]
 transform = Transform3D(1, 0, 0, 0, 0.342, 0.94, 0, -0.94, 0.342, 0, 14, 5)
 current = true
+fov = 62.0
 
 [node name="KeyLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.8192, 0.4698, -0.329, 0, 0.5736, 0.8192, 0.5736, -0.671, 0.4698, 0, 12, 0)

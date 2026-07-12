@@ -14,8 +14,12 @@ const VictoryScene := preload("res://scenes/ui/victory_screen.tscn")
 const _FORTRESS_SPEED := 9.0
 const _FORTRESS_INTEGRITY_MAX := 200.0
 const _FORTRESS_FIRE_INTERVAL := 0.16
-const _FORTRESS_X_LIMIT := 8.0
-const _FORTRESS_Y := -5.2
+const _FORTRESS_X_LIMIT := 8.5
+const _FORTRESS_Y := -3.8
+const _FORTRESS_SCALE := 0.38
+const _FINAL_BOSS_SCALE := 0.75
+const _FORTRESS_HITBOX_RADIUS := 1.5
+const _FORTRESS_MUZZLE_X := 1.6
 
 const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
 const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
@@ -268,12 +272,13 @@ func _start_fortress_boss() -> void:
 	if _citadel == null:
 		_citadel = CitadelScene.instantiate() as AegisCitadel
 		add_child(_citadel)
-	_citadel.scale = Vector3(0.62, 0.62, 0.62)
+	_citadel.scale = Vector3.ONE * _FORTRESS_SCALE
 	_citadel.slide_to(Vector2(0.0, _FORTRESS_Y), 12.0)
 	_citadel.arrived.connect(_begin_fortress_control, CONNECT_ONE_SHOT)
 
 func _begin_fortress_control() -> void:
-	_fortress_target = BulletTarget.make(BulletManager.Team.PLAYER, 2.4, Callable(self, "_on_fortress_hit"))
+	_fortress_target = BulletTarget.make(BulletManager.Team.PLAYER, _FORTRESS_HITBOX_RADIUS,
+		Callable(self, "_on_fortress_hit"))
 	_fortress_target.position = _citadel.plane_position
 	_bullet_manager.register_target(_fortress_target)
 	_fortress_integrity = _FORTRESS_INTEGRITY_MAX
@@ -283,6 +288,7 @@ func _begin_fortress_control() -> void:
 	# Summon the final boss.
 	_final_boss = FinalBossScene.instantiate() as BossController
 	_final_boss.plane_position = Vector2(0.0, 12.0)
+	_final_boss.scale = Vector3.ONE * _FINAL_BOSS_SCALE
 	add_child(_final_boss)
 	_final_boss.health_changed.connect(_on_boss_health)
 	_final_boss.phase_changed.connect(_on_final_boss_phase)
@@ -324,7 +330,7 @@ func _physics_process(delta: float) -> void:
 func _fire_battery() -> void:
 	# Twin rail batteries, alternating left/right (spec §12.3).
 	_fortress_side = -_fortress_side
-	var origin := _citadel.plane_position + Vector2(2.6 * _fortress_side, 1.4)
+	var origin := _citadel.plane_position + Vector2(_FORTRESS_MUZZLE_X * _fortress_side, 0.85)
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, Vector2(0.0, 1.0), FortressBattery)
 	if _fortress_side > 0: # twin battery: one cue per pair
 		_sfx(&"rail_battery")
