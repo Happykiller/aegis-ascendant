@@ -20,6 +20,8 @@ signal destroyed_at(world_position: Vector3)
 signal game_over
 ## Emitted when the fire power level changes (HUD / feedback).
 signal power_changed(level: int)
+## Emitted once per salvo, whatever the power level (audio cue).
+signal fired
 
 const MAX_POWER := 5
 
@@ -211,6 +213,7 @@ func _update_fire(delta: float) -> void:
 
 ## Pulse Array fire pattern, escalating with power level (spec §9.1).
 func _fire_pattern() -> void:
+	fired.emit()
 	var muzzle := plane_position + MUZZLE_OFFSET
 	# Level 1+: twin frontal shots.
 	_shoot(muzzle + Vector2(-0.18, 0.0), DIR_UP)

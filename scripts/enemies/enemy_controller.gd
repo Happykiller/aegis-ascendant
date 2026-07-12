@@ -11,6 +11,10 @@ const MUZZLE_OFFSET := Vector2(0.0, -0.6)
 const DESPAWN_MARGIN := 1.5
 
 signal destroyed(enemy: EnemyController)
+## Emitted on each shot (audio cue).
+signal fired
+## Emitted when the enemy takes a hit without dying (audio cue).
+signal hit
 
 @export var data: EnemyData
 ## Optional wiring for enemies placed directly in a scene (spawners inject
@@ -35,6 +39,7 @@ func _ready() -> void:
 		push_error("[Enemy:%s] invalid data: %s" % [data.display_name, error])
 	add_to_group("enemies")
 	_health.died.connect(_on_died)
+	_health.damaged.connect(_on_damaged)
 	_target = BulletTarget.make(BulletManager.Team.ENEMY, data.hitbox_radius,
 		Callable(_health, "apply_damage"))
 	_target.enabled = false
@@ -86,8 +91,14 @@ func _update_fire(delta: float) -> void:
 	_fire_timer -= delta
 	if _fire_timer <= 0.0:
 		_fire_timer = data.fire_interval
+		fired.emit()
 		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
 			plane_position + MUZZLE_OFFSET, DIR_DOWN, data.projectile)
+
+## A non-lethal hit: the killing blow is reported by `destroyed` instead.
+func _on_damaged(_amount: float, remaining: float) -> void:
+	if remaining > 0.0:
+		hit.emit()
 
 func _on_died() -> void:
 	deactivate()
