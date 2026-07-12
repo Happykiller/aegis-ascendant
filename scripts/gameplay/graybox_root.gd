@@ -55,6 +55,8 @@ var _fortress_side: int = 1
 var _demo: bool = false
 var _demo_time: float = 0.0
 var _alarm_armed: bool = true
+## One instance for the whole run: resolving the musical state must not allocate.
+var _music: MusicContext = MusicContext.new()
 var _engine_running: bool = false
 
 func _ready() -> void:
@@ -68,6 +70,7 @@ func _ready() -> void:
 		_bullets.target_hit.connect(_on_bullet_hit)
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
+		_wave_spawner.progress_changed.connect(_on_wave_progress)
 	if _player != null:
 		_player.hit_taken.connect(_on_player_hit)
 		_player.destroyed_at.connect(_on_player_destroyed)
@@ -113,7 +116,27 @@ func _ready() -> void:
 			_wave_spawner.set_physics_process(false)
 		_game_state.add_score(28450)
 		_start_victory()
+	# Start the score. Runs after the --skip-to-* flags, so a skipped run opens on the
+	# state it actually jumped to instead of fading out of Launch.
+	_update_music()
 	print("[Level] ready — phase FIGHTER_WAVES")
+
+# --- Adaptive music (spec §18.2) ---------------------------------------------
+# The level is the only thing that knows how the fight is going; MusicDirector turns
+# that into a state and AudioManager plays it. Nothing here picks a track by name.
+
+func _set_phase(phase: int) -> void:
+	_phase = phase
+	_music.level_phase = phase
+	_update_music()
+
+func _on_wave_progress(ratio: float) -> void:
+	_music.wave_progress = ratio
+	_update_music()
+
+func _update_music() -> void:
+	if _audio != null:
+		_audio.set_music_state(MusicDirector.resolve(_music))
 
 # --- Fighter waves -----------------------------------------------------------
 
@@ -174,7 +197,7 @@ func _on_player_shield_changed(ratio: float, _current: float, _maximum: float) -
 # --- Mini-boss ---------------------------------------------------------------
 
 func _start_mini_boss() -> void:
-	_phase = Phase.MINI_BOSS
+	_set_phase(Phase.MINI_BOSS)
 	_boss = MiniBossScene.instantiate() as BossController
 	add_child(_boss)
 	_boss.health_changed.connect(_on_boss_health)
@@ -187,6 +210,10 @@ func _start_mini_boss() -> void:
 func _on_boss_health(ratio: float) -> void:
 	if _hud != null:
 		_hud.set_boss_health(ratio)
+	# Only the fortress boss drives the music: the mini-boss shares Fleet Battle.
+	if _phase == Phase.FORTRESS_BOSS:
+		_music.boss_health_ratio = ratio
+		_update_music()
 
 func _on_mini_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(5000)
@@ -203,7 +230,7 @@ func _on_mini_boss_defeated(world_position: Vector3) -> void:
 # --- Docking (spec §6.5) -----------------------------------------------------
 
 func _start_docking() -> void:
-	_phase = Phase.DOCKING
+	_set_phase(Phase.DOCKING)
 	print("[Level] DOCKING")
 	_citadel = CitadelScene.instantiate() as AegisCitadel
 	_citadel.plane_position = Vector2(0.0, 22.0) # off-screen above
@@ -227,7 +254,7 @@ func _on_player_docked() -> void:
 # --- Command transfer (spec §6.6) -------------------------------------------
 
 func _start_command_transfer() -> void:
-	_phase = Phase.COMMAND_TRANSFER
+	_set_phase(Phase.COMMAND_TRANSFER)
 	print("[Level] COMMAND TRANSFER")
 	_banner("COMMAND TRANSFER", _COLOR_GOLD, 1.8)
 	get_tree().create_timer(2.6).timeout.connect(_start_fortress_boss)
@@ -235,7 +262,7 @@ func _start_command_transfer() -> void:
 # --- Fortress boss (spec §12) -----------------------------------------------
 
 func _start_fortress_boss() -> void:
-	_phase = Phase.FORTRESS_BOSS
+	_set_phase(Phase.FORTRESS_BOSS)
 	print("[Level] FORTRESS BOSS")
 	# Ensure the fortress exists (direct skip may bypass docking).
 	if _citadel == null:
@@ -270,6 +297,9 @@ func _on_final_boss_phase(index: int, total: int) -> void:
 	if _camera_director != null:
 		_camera_director.add_trauma(0.5)
 	_sfx(&"boss_phase_shift")
+	_music.boss_phase = index
+	_music.boss_phase_count = total
+	_update_music()
 	print("[Level] boss phase %d/%d" % [index + 1, total])
 
 func _physics_process(delta: float) -> void:
@@ -336,11 +366,21 @@ func _fire_helios_lance(target: Vector3) -> void:
 	get_tree().create_timer(1.8).timeout.connect(_start_victory)
 
 func _start_victory() -> void:
-	_phase = Phase.VICTORY
+	_set_phase(Phase.VICTORY)
 	print("[Level] VICTORY — score %d" % _game_state.score)
 	var screen := VictoryScene.instantiate()
 	screen.setup(_game_state.score)
 	add_child(screen)
+
+## The victory theme waits for the last enemy shot to leave the screen, so the resolution
+## does not land over incoming fire (adaptive_music_structure.md §mix). Until then the
+## music stays on Final Charge.
+func _process(_delta: float) -> void:
+	if _phase != Phase.VICTORY or _music.hostiles_clear:
+		return
+	if _bullet_manager == null or _bullet_manager.team_count(BulletManager.Team.ENEMY) == 0:
+		_music.hostiles_clear = true
+		_update_music()
 
 # --- Player feedback ---------------------------------------------------------
 

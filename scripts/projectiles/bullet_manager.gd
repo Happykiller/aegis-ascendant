@@ -40,6 +40,10 @@ var _grid_overflows: int = 0
 var _grid_origin: Vector2
 var _cell_size: Vector2
 var _targets: Array[BulletTarget] = []
+## Set while walking _targets, so a hit callback that unregisters its own target
+## defers the erase instead of mutating the array under the loop.
+var _resolving: bool = false
+var _pending_unregister: Array[BulletTarget] = []
 var _multimeshes: Array[MultiMesh] = []
 var _buffers: Array[PackedFloat32Array] = []
 
@@ -114,7 +118,14 @@ func register_target(target: BulletTarget) -> void:
 	if not _targets.has(target):
 		_targets.append(target)
 
+## Safe to call from a hit callback: the erase is deferred to the end of the pass
+## rather than mutating the array mid-iteration. Bosses unregister exactly this
+## way, from inside their own hit handler.
 func unregister_target(target: BulletTarget) -> void:
+	if _resolving:
+		if not _pending_unregister.has(target):
+			_pending_unregister.append(target)
+		return
 	_targets.erase(target)
 
 func active_count() -> int:
@@ -179,27 +190,46 @@ func _cell_of(p: Vector2) -> int:
 	return row * GRID_COLS + col
 
 func _resolve_hits() -> void:
+	_resolving = true
 	for target in _targets:
-		if not target.enabled:
+		if target.enabled:
+			_resolve_target(target)
+	_resolving = false
+	# Unregistrations requested by a hit callback were held back so the loop above
+	# never mutated the array it was walking.
+	if not _pending_unregister.is_empty():
+		for target in _pending_unregister:
+			_targets.erase(target)
+		_pending_unregister.clear()
+
+## Scan the 3x3 cells around one target.
+##
+## A hit callback can kill its owner, and a dead entity disables its target. We
+## stop the moment that happens: otherwise the rest of the salvo already sitting
+## in these cells keeps landing on a corpse, and an entity that reports its death
+## from the hit path (the bosses do) reports it once per bullet — which paid the
+## boss reward twice and started the docking sequence twice.
+func _resolve_target(target: BulletTarget) -> void:
+	var col := clampi(int((target.position.x - _grid_origin.x) / _cell_size.x), 0, GRID_COLS - 1)
+	var row := clampi(int((target.position.y - _grid_origin.y) / _cell_size.y), 0, GRID_ROWS - 1)
+	for dc in 3:
+		var c := col + dc - 1
+		if c < 0 or c >= GRID_COLS:
 			continue
-		var col := clampi(int((target.position.x - _grid_origin.x) / _cell_size.x), 0, GRID_COLS - 1)
-		var row := clampi(int((target.position.y - _grid_origin.y) / _cell_size.y), 0, GRID_ROWS - 1)
-		for dc in 3:
-			var c := col + dc - 1
-			if c < 0 or c >= GRID_COLS:
+		for dr in 3:
+			var r := row + dr - 1
+			if r < 0 or r >= GRID_ROWS:
 				continue
-			for dr in 3:
-				var r := row + dr - 1
-				if r < 0 or r >= GRID_ROWS:
+			var cell := r * GRID_COLS + c
+			var count := _grid_counts[cell]
+			for k in count:
+				var i := _grid_data[cell * CELL_CAP + k]
+				if _alive[i] == 0 or _teams[i] == target.team:
 					continue
-				var cell := r * GRID_COLS + c
-				var count := _grid_counts[cell]
-				for k in count:
-					var i := _grid_data[cell * CELL_CAP + k]
-					if _alive[i] == 0 or _teams[i] == target.team:
-						continue
-					var reach := _radii[i] + target.radius
-					if _positions[i].distance_squared_to(target.position) <= reach * reach:
-						target.hit_callback.call(_damages[i])
-						target_hit.emit(_positions[i], target.team)
-						_release(i)
+				var reach := _radii[i] + target.radius
+				if _positions[i].distance_squared_to(target.position) <= reach * reach:
+					target.hit_callback.call(_damages[i])
+					target_hit.emit(_positions[i], target.team)
+					_release(i)
+					if not target.enabled:
+						return

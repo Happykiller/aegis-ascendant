@@ -31,6 +31,10 @@ var _target: BulletTarget
 var _health: float
 var _phase: int = 0
 var _entering: bool = true
+## A boss dies once. Two bullets landing on the same frame both used to reach
+## _take_hit with health already at zero, so _defeat() ran twice: the reward was
+## paid twice and the docking sequence started twice.
+var _defeated: bool = false
 var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _sprite: Sprite3D
@@ -52,6 +56,7 @@ func _ready() -> void:
 func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> void:
 	_bullet_manager = bullet_manager
 	_player = player
+	_defeated = false
 	_target = BulletTarget.make(BulletManager.Team.ENEMY, hitbox_radius, Callable(self, "_take_hit"))
 	_target.position = plane_position
 	_target.enabled = false # invulnerable during entry
@@ -62,7 +67,7 @@ func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> vo
 	health_changed.emit(1.0)
 
 func _take_hit(damage: float) -> void:
-	if _entering:
+	if _entering or _defeated:
 		return
 	_health = maxf(_health - damage, 0.0)
 	health_changed.emit(_health / max_health)
@@ -75,6 +80,7 @@ func _take_hit(damage: float) -> void:
 		_defeat()
 
 func _defeat() -> void:
+	_defeated = true
 	set_physics_process(false)
 	if _target != null:
 		_target.enabled = false

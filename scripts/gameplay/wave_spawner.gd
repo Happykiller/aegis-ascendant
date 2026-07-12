@@ -6,6 +6,8 @@ extends Node
 ## enemy remains active (killed or flown out).
 
 signal wave_cleared
+## How far through the wave's spawn schedule we are, 0 to 1 (drives the music).
+signal progress_changed(ratio: float)
 
 @export var wave: WaveData
 @export var bullet_manager_path: NodePath
@@ -59,9 +61,12 @@ static func build_schedule(wave_data: WaveData) -> Dictionary:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
+	var spawned := _next_spawn
 	while _next_spawn < _spawn_times.size() and _clock >= _spawn_times[_next_spawn]:
 		_pool[_next_spawn].activate(_spawn_positions[_next_spawn])
 		_next_spawn += 1
+	if _next_spawn != spawned:
+		progress_changed.emit(float(_next_spawn) / float(_spawn_times.size()))
 	if _cleared or _next_spawn < _spawn_times.size():
 		return
 	for enemy in _pool:

@@ -6,11 +6,14 @@ extends Control
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
+const OptionsMenuScene := preload("res://scenes/ui/options_menu.tscn")
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
 @onready var _version_label: Label = %VersionLabel
+
+var _options: Control
 
 func _ready() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
@@ -26,5 +29,16 @@ func _start_graybox() -> void:
 			_scene_router.goto_scene(GRAYBOX_SCENE)
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept"):
+	if _options != null and _options.visible:
+		return # the overlay owns the input while it is up
+	if event.is_action_pressed("ui_options"):
+		_open_options()
+	elif event.is_action_pressed("ui_accept"):
 		_start_graybox()
+
+func _open_options() -> void:
+	if _options == null:
+		_options = OptionsMenuScene.instantiate()
+		add_child(_options)  # _ready() opens it
+	else:
+		_options.open()

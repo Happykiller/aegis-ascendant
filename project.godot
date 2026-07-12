@@ -15,6 +15,9 @@ config/icon="res://icon.svg"
 
 GameState="*res://scripts/core/game_state.gd"
 SceneRouter="*res://scripts/core/scene_router.gd"
+; SettingsManager applies the saved bus volumes, so it must be up before AudioManager
+; starts feeding those buses.
+SettingsManager="*res://scripts/core/settings_manager.gd"
 AudioManager="*res://scripts/core/audio_manager.gd"
 
 [audio]
