@@ -10,6 +10,7 @@ shader_parameter/nebula_cold = Color(0.09, 0.16, 0.38, 1)
 shader_parameter/nebula_deep = Color(0.22, 0.12, 0.36, 1)
 shader_parameter/nebula_rim = Color(0.3, 0.52, 0.66, 1)
 shader_parameter/star_color = Color(0.82, 0.88, 1, 1)
+shader_parameter/landmark_color = Color(0.21, 0.25, 0.34, 1)
 shader_parameter/scroll_speed = 0.35
 shader_parameter/nebula_strength = 1.0
 shader_parameter/dust_strength = 0.9

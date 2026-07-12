@@ -25,6 +25,7 @@ uniform vec3 nebula_cold : source_color = vec3(0.13, 0.22, 0.50);
 uniform vec3 nebula_deep : source_color = vec3(0.32, 0.16, 0.50);
 uniform vec3 nebula_rim : source_color = vec3(0.36, 0.60, 0.75);
 uniform vec3 star_color : source_color = vec3(0.82, 0.88, 1.0);
+uniform vec3 landmark_color : source_color = vec3(0.24, 0.29, 0.40);
 
 uniform float scroll_speed = 0.35;
 uniform float nebula_strength : hint_range(0.0, 2.0) = 1.0;
@@ -134,6 +135,27 @@ void fragment() {
 	cloud_col = mix(cloud_col, nebula_rim, pow(clamp(near_mass, 0.0, 1.0), 3.0) * 0.55);
 	col = mix(col, cloud_col, clamp(clouds, 0.0, 1.0) * nebula_strength);
 
+	// --- Distant galactic band: a broad diagonal veil with broken, noisy edges.
+	// It crawls independently of the nebula and is darkest through the combat lane.
+	float band_axis = p.y - (0.18 + p.x * 0.46 + t * 0.035);
+	float band_noise = fbm(p * 4.2 + vec2(18.0, t * 0.08));
+	float galaxy = smoothstep(0.24, 0.02, abs(band_axis + (band_noise - 0.5) * 0.16));
+	galaxy *= 0.30 + band_noise * 0.28;
+	col += landmark_color * galaxy * 0.32;
+
+	// --- One slow, desaturated moon. Its wrapped path begins and ends off-screen,
+	// so the infinite traversal never exposes a seam or an on-screen pop.
+	vec2 moon_center = vec2(fract(0.65 + t * 0.018) * 1.75 - 0.38,
+		0.52 + sin(t * 0.11) * 0.06);
+	vec2 moon_delta = (UV - moon_center) * vec2(1.0, 1.78);
+	float moon_dist = length(moon_delta);
+	float moon_disc = smoothstep(0.042, 0.037, moon_dist);
+	float moon_light = smoothstep(-0.08, 0.10, moon_delta.x - moon_delta.y * 0.35);
+	float moon_rim = smoothstep(0.046, 0.041, moon_dist) - smoothstep(0.037, 0.032, moon_dist);
+	vec3 moon_col = mix(deep_color * 1.35, landmark_color, 0.25 + moon_light * 0.55);
+	col = mix(col, moon_col, moon_disc * 0.72);
+	col += vec3(0.28, 0.33, 0.43) * moon_rim * 0.18;
+
 	// --- Stars: four depths, the near ones racing, the far ones crawling.
 	float stars = 0.0;
 	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.972, TIME) * 1.00;
@@ -143,6 +165,19 @@ void fragment() {
 	// Thick cloud occludes the starfield behind it — cheap, and sells the depth.
 	stars *= 1.0 - clamp(clouds, 0.0, 1.0) * 0.65;
 	col += star_color * stars * star_brightness;
+
+	// --- Rare foreground debris. Large cells and a high threshold prevent a
+	// repeating field; stretched chips move faster than every star layer.
+	vec2 debris_uv = p + vec2(0.17, t * 2.8);
+	vec2 debris_grid = debris_uv * vec2(15.0, 11.0);
+	vec2 debris_cell = floor(debris_grid);
+	vec2 debris_f = fract(debris_grid) - 0.5;
+	float debris_seed = hash21(debris_cell + 71.0);
+	vec2 debris_offset = vec2(hash21(debris_cell + 13.0), hash21(debris_cell + 29.0)) - 0.5;
+	float chip = smoothstep(0.12, 0.04,
+		length((debris_f - debris_offset * 0.55) * vec2(0.55, 1.8)));
+	chip *= smoothstep(0.986, 0.998, debris_seed);
+	col += mix(vec3(0.10, 0.12, 0.17), landmark_color, debris_seed) * chip * 0.65;
 
 	// --- Keep the middle third calm: the fight reads there.
 	float from_center = abs(UV.x - 0.5) * 2.0;
