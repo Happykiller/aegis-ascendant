@@ -24,12 +24,26 @@ fi
 
 log "copying build to ${DEST_WSL}"
 mkdir -p "$DEST_WSL"
-# Kill any prior instance so it does not hold a lock on the exe (avoids
-# "Permission denied" on copy when a previous run was interrupted).
+# Kill any prior instance: it holds a lock on the exe.
 powershell.exe -NoProfile -Command \
   "Get-Process AegisAscendant* -ErrorAction SilentlyContinue | Stop-Process -Force" \
   >/dev/null 2>&1 || true
-cp "${SRC}/"* "$DEST_WSL/"
+# Killing is not enough. Windows releases the file handle ASYNCHRONOUSLY, so a copy
+# issued straight after the kill fails with "Permission denied" — which then reads
+# like broken WSL permissions and sends you hunting the wrong bug. It cost five
+# false starts on 2026-07-12. Wait for the handle, and say so if it never comes.
+for attempt in $(seq 1 20); do
+  if cp "${SRC}/"* "$DEST_WSL/" 2>/dev/null; then
+    break
+  fi
+  if [[ $attempt -eq 1 ]]; then
+    log "exe still locked (a prior instance is dying) — waiting for Windows to release it"
+  fi
+  if [[ $attempt -eq 20 ]]; then
+    fail "exe still locked after 10s — a game process is stuck; kill it by hand"
+  fi
+  sleep 0.5
+done
 cp "${ROOT}/scripts-win/run.ps1" "$DEST_WSL/"
 
 log "launching on Windows (${DEST_WIN})"

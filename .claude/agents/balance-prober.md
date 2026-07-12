@@ -31,18 +31,25 @@ besoin que d'un tableau. Tu absorbes le log. Tu rends la chronologie.
 
 ## Protocole
 
-1. Builder : `./scripts/export-win.sh debug` (sauf si l'orchestrateur dit que le build est à jour).
+**La procédure est ENCODÉE. Ne la réinvente pas — c'est en la réinventant qu'on la rate.**
 
-2. Jouer **en temps réel** — c'est le point critique :
+1. Builder si nécessaire : `./scripts/export-win.sh debug`.
+
+2. Jouer l'arc :
    ```bash
-   timeout 300 ./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --demo 2>&1 | grep -E "\[Level\]|\[WaveSpawner\]|ERROR"
+   ./scripts/play-arc.sh 240        # secondes ; défaut 240
    ```
-   ⚠️ **Ne jamais utiliser `--capture-after` pour ça** : il compte des **images**, pas des secondes.
-   À >1000 FPS, 3600 images ≈ 3 secondes de jeu — tu n'atteindrais même pas le mini-boss.
-   Adapter le `timeout` à ce qu'on veut voir (un arc complet ≈ 3-5 min ; plusieurs arcs → 600 s+).
+   Le script porte déjà les trois pièges : le `timeout` (le jeu en démo **boucle sans fin** et
+   bloquerait la session), l'écriture dans un fichier plutôt qu'un pipe (un `| grep` **avale** la
+   sortie), et le temps réel plutôt que `--capture-after` (qui compte des **images**, pas des
+   secondes — à >1000 FPS, 3600 images ≈ 3 s de jeu, on n'atteint même pas le mini-boss).
 
-3. Horodater les jalons. Si le log ne porte pas les temps, mesurer côté shell (`ts`, ou préfixer via
-   `awk '{print systime()"\t"$0}'`) — l'important est de rendre **des durées, pas un ordre**.
+   Il rend les jalons, signale les **doublons** (un boss qui meurt deux fois est une régression
+   connue) et les erreurs Godot. Un code 124 est **normal** : c'est la preuve qu'on a gardé la main.
+
+3. Si l'orchestrateur veut des **durées** et pas seulement un ordre, pilote le jeu depuis Python
+   (`subprocess.Popen`, lecture ligne à ligne, `deadline` explicite, `p.kill()` en `finally`) :
+   c'est le seul montage qui donne à la fois les temps et la certitude de rendre la main.
 
 ## Jalons de l'arc à relever
 
