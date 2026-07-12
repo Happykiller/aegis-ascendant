@@ -16,6 +16,11 @@ func _ready() -> void:
 		return
 	_frames_left = _int_arg(args, "--capture-after", 150)
 	_path = OS.get_executable_path().get_base_dir().path_join("capture.png")
+	# GPU render time, not FPS: an unattended Windows session throttles
+	# presentation (see the vsync note in docs/BACKLOG.md), which makes frame
+	# rate meaningless here. GPU time per frame is measured on the device and
+	# stays honest whether or not the window is actually being displayed.
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 	print("[ScreenCapture] armed: %d frames -> %s" % [_frames_left, _path])
 
 func _process(_delta: float) -> void:
@@ -26,7 +31,9 @@ func _process(_delta: float) -> void:
 		return
 	var image := get_viewport().get_texture().get_image()
 	var err := image.save_png(_path)
-	print("[ScreenCapture] saved (%d): %s" % [err, _path])
+	var gpu_ms := RenderingServer.viewport_get_measured_render_time_gpu(
+		get_viewport().get_viewport_rid())
+	print("[ScreenCapture] saved (%d) — GPU %.3f ms/frame: %s" % [err, gpu_ms, _path])
 	get_tree().quit(0)
 
 static func _int_arg(args: PackedStringArray, key: String, fallback: int) -> int:
