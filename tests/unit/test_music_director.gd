@@ -94,3 +94,20 @@ func test_crossfade_table() -> void:
 	assert_true(MusicDirector.crossfade_seconds(
 		MusicDirector.State.FINAL_CHARGE, MusicDirector.State.VICTORY) > 0.0,
 		"a state change is never a hard cut (spec §18.2)")
+
+func test_the_title_is_never_resolved_from_a_fight() -> void:
+	# TITLE is claimed by the boot screen, not derived from a level phase. If resolve() ever
+	# returned it, the title theme would cut into the middle of a fight.
+	for phase in MusicContext.LevelPhase.values():
+		var ctx := _ctx(phase)
+		for progress in [0.0, 0.5, 1.0]:
+			ctx.wave_progress = progress
+			ctx.boss_health_ratio = progress
+			assert_false(MusicDirector.resolve(ctx) == MusicDirector.State.TITLE,
+				"phase %d never resolves to TITLE" % phase)
+
+func test_the_title_theme_rises_out_of_silence() -> void:
+	# A 140 BPM theme slammed in at full level on launch is a jump-scare, not an opening.
+	assert_almost_eq(MusicDirector.crossfade_seconds(
+		MusicDirector.State.SILENT, MusicDirector.State.TITLE), 1.2, 0.001, "title fades in")
+	assert_eq(MusicDirector.cue(MusicDirector.State.TITLE), &"main_theme", "title cue")

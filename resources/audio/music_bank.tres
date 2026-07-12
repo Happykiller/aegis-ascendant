@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="AudioCueBank" load_steps=21 format=3]
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
 [ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/main_theme.ogg" id="12_main_theme"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/launch.ogg" id="3_launch"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/skirmish.ogg" id="4_skirmish"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/fleet_battle.ogg" id="5_fleet_battle"]
@@ -11,6 +12,17 @@
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/boss_phase_2.ogg" id="9_boss_phase_2"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/final_charge.ogg" id="10_final_charge"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/music/victory.ogg" id="11_victory"]
+
+[sub_resource type="Resource" id="music_main_theme"]
+script = ExtResource("2_cue")
+id = &"main_theme"
+stream = ExtResource("12_main_theme")
+bus = "Music"
+volume_db = -4.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
 
 [sub_resource type="Resource" id="music_launch"]
 script = ExtResource("2_cue")
@@ -113,4 +125,4 @@ looping = true
 
 [resource]
 script = ExtResource("1_bank")
-cues = Array[ExtResource("2_cue")]([SubResource("music_launch"), SubResource("music_skirmish"), SubResource("music_fleet_battle"), SubResource("music_docking"), SubResource("music_fortress_awakening"), SubResource("music_boss_phase_1"), SubResource("music_boss_phase_2"), SubResource("music_final_charge"), SubResource("music_victory")])
+cues = Array[ExtResource("2_cue")]([SubResource("music_main_theme"), SubResource("music_launch"), SubResource("music_skirmish"), SubResource("music_fleet_battle"), SubResource("music_docking"), SubResource("music_fortress_awakening"), SubResource("music_boss_phase_1"), SubResource("music_boss_phase_2"), SubResource("music_final_charge"), SubResource("music_victory")])

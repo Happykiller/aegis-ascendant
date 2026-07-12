@@ -6,11 +6,13 @@ extends Control
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
+const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const OptionsMenuScene := preload("res://scenes/ui/options_menu.tscn")
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
+@onready var _audio: AudioManagerScript = get_node("/root/AudioManager")
 @onready var _version_label: Label = %VersionLabel
 
 var _options: Control
@@ -19,6 +21,10 @@ func _ready() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
 	_version_label.text = "v%s — prototype" % version
 	print("[BootScreen] ready (v%s)" % version)
+	# The title theme. Leaving for the graybox does not stop it: the level claims Launch on
+	# its own _ready(), and AudioManager crossfades the two — cutting to silence first would
+	# only put a hole where the handover should be.
+	_audio.set_music_state(MusicDirector.State.TITLE)
 	# Test hook (args after the `--`/`++` separator): jump straight into gameplay.
 	if "--goto-graybox" in OS.get_cmdline_user_args():
 		_start_graybox.call_deferred()

@@ -8,6 +8,10 @@ extends RefCounted
 
 enum State {
 	SILENT,
+	## The title theme. Not a state of the fight: nothing resolves into it, the boot screen
+	## claims it directly. It is the piece the nine others are derived from — same signature
+	## cell, same D minor (docs/forge/output/main_theme_spec.md).
+	TITLE,
 	LAUNCH,
 	SKIRMISH,
 	FLEET_BATTLE,
@@ -21,6 +25,7 @@ enum State {
 
 ## Cue ids in resources/audio/music_bank.tres.
 const CUES: Dictionary = {
+	State.TITLE: &"main_theme",
 	State.LAUNCH: &"launch",
 	State.SKIRMISH: &"skirmish",
 	State.FLEET_BATTLE: &"fleet_battle",
@@ -43,6 +48,7 @@ const _FINAL_CHARGE_AT := 0.15
 ## the exceptions come from the structure's own transition column.
 const _DEFAULT_CROSSFADE := 6.0
 const _CROSSFADE_INTO: Dictionary = {
+	State.TITLE: 1.2,           # the theme rises out of silence; it does not hit on launch
 	State.BOSS_PHASE_2: 1.2,    # "coupe contrôlée puis impact"
 	State.FINAL_CHARGE: 2.5,    # "crescendo verrouillé sur la charge"
 	State.VICTORY: 3.5,         # "résolution après le tir final"
@@ -55,7 +61,9 @@ static func cue(state: int) -> StringName:
 static func crossfade_seconds(_from_state: int, to_state: int) -> float:
 	return _CROSSFADE_INTO.get(to_state, _DEFAULT_CROSSFADE)
 
-## The only place that decides what plays. Pure function of the context.
+## The only place that decides what plays **during a fight**. Pure function of the context.
+## Never returns TITLE: the title is not a phase of the level, it is what plays before there
+## is a level at all. The boot screen sets it directly.
 static func resolve(ctx: MusicContext) -> int:
 	match ctx.level_phase:
 		MusicContext.LevelPhase.FIGHTER_WAVES:
