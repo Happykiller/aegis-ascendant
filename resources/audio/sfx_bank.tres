@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioCueBank" load_steps=23 format=3]
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
 [ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
@@ -7,11 +7,21 @@
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/hull_impact.wav" id="5_hull_impact"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/shield_impact.wav" id="6_shield_impact"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/small_explosion.wav" id="7_small_explosion"]
-[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/pickup_collect.wav" id="8_pickup_collect"]
-[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/danger_alarm.wav" id="9_danger_alarm"]
-[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/docking_lock.wav" id="10_docking_lock"]
-[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/rail_battery.wav" id="11_rail_battery"]
-[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/helios_lance.wav" id="12_helios_lance"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/medium_explosion.wav" id="8_medium_explosion"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/heavy_explosion.wav" id="9_heavy_explosion"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/pickup_power.wav" id="10_pickup_power"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/pickup_shield.wav" id="11_pickup_shield"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/pickup_score.wav" id="12_pickup_score"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/danger_alarm.wav" id="13_danger_alarm"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/docking_lock.wav" id="14_docking_lock"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/rail_battery.wav" id="15_rail_battery"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/helios_lance.wav" id="16_helios_lance"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/player_death.wav" id="17_player_death"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/boss_phase_shift.wav" id="18_boss_phase_shift"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/ui_banner.wav" id="19_ui_banner"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/ui_select.wav" id="20_ui_select"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/ui_confirm.wav" id="21_ui_confirm"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/engine_loop.wav" id="22_engine_loop"]
 
 [sub_resource type="Resource" id="cue_player_pulse"]
 script = ExtResource("2_cue")
@@ -62,18 +72,62 @@ script = ExtResource("2_cue")
 id = &"small_explosion"
 stream = ExtResource("7_small_explosion")
 bus = "SFX"
-volume_db = 0.0
+volume_db = -3.0
 pitch_min = 0.9
 pitch_max = 1.12
 min_interval = 0.0
 looping = false
 
-[sub_resource type="Resource" id="cue_pickup_collect"]
+[sub_resource type="Resource" id="cue_medium_explosion"]
 script = ExtResource("2_cue")
-id = &"pickup_collect"
-stream = ExtResource("8_pickup_collect")
+id = &"medium_explosion"
+stream = ExtResource("8_medium_explosion")
 bus = "SFX"
 volume_db = 0.0
+pitch_min = 0.92
+pitch_max = 1.08
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_heavy_explosion"]
+script = ExtResource("2_cue")
+id = &"heavy_explosion"
+stream = ExtResource("9_heavy_explosion")
+bus = "SFX"
+volume_db = 2.0
+pitch_min = 0.95
+pitch_max = 1.05
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_pickup_power"]
+script = ExtResource("2_cue")
+id = &"pickup_power"
+stream = ExtResource("10_pickup_power")
+bus = "SFX"
+volume_db = -1.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_pickup_shield"]
+script = ExtResource("2_cue")
+id = &"pickup_shield"
+stream = ExtResource("11_pickup_shield")
+bus = "SFX"
+volume_db = -1.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_pickup_score"]
+script = ExtResource("2_cue")
+id = &"pickup_score"
+stream = ExtResource("12_pickup_score")
+bus = "SFX"
+volume_db = -2.0
 pitch_min = 1.0
 pitch_max = 1.0
 min_interval = 0.0
@@ -82,7 +136,7 @@ looping = false
 [sub_resource type="Resource" id="cue_danger_alarm"]
 script = ExtResource("2_cue")
 id = &"danger_alarm"
-stream = ExtResource("9_danger_alarm")
+stream = ExtResource("13_danger_alarm")
 bus = "SFX"
 volume_db = -2.0
 pitch_min = 1.0
@@ -93,7 +147,7 @@ looping = false
 [sub_resource type="Resource" id="cue_docking_lock"]
 script = ExtResource("2_cue")
 id = &"docking_lock"
-stream = ExtResource("10_docking_lock")
+stream = ExtResource("14_docking_lock")
 bus = "SFX"
 volume_db = 4.0
 pitch_min = 1.0
@@ -104,7 +158,7 @@ looping = false
 [sub_resource type="Resource" id="cue_rail_battery"]
 script = ExtResource("2_cue")
 id = &"rail_battery"
-stream = ExtResource("11_rail_battery")
+stream = ExtResource("15_rail_battery")
 bus = "SFX"
 volume_db = -4.0
 pitch_min = 0.94
@@ -115,7 +169,7 @@ looping = false
 [sub_resource type="Resource" id="cue_helios_lance"]
 script = ExtResource("2_cue")
 id = &"helios_lance"
-stream = ExtResource("12_helios_lance")
+stream = ExtResource("16_helios_lance")
 bus = "SFX"
 volume_db = 6.0
 pitch_min = 1.0
@@ -123,6 +177,72 @@ pitch_max = 1.0
 min_interval = 0.0
 looping = false
 
+[sub_resource type="Resource" id="cue_player_death"]
+script = ExtResource("2_cue")
+id = &"player_death"
+stream = ExtResource("17_player_death")
+bus = "SFX"
+volume_db = 2.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_boss_phase_shift"]
+script = ExtResource("2_cue")
+id = &"boss_phase_shift"
+stream = ExtResource("18_boss_phase_shift")
+bus = "SFX"
+volume_db = 1.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_ui_banner"]
+script = ExtResource("2_cue")
+id = &"ui_banner"
+stream = ExtResource("19_ui_banner")
+bus = "SFX"
+volume_db = -6.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_ui_select"]
+script = ExtResource("2_cue")
+id = &"ui_select"
+stream = ExtResource("20_ui_select")
+bus = "SFX"
+volume_db = -8.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_ui_confirm"]
+script = ExtResource("2_cue")
+id = &"ui_confirm"
+stream = ExtResource("21_ui_confirm")
+bus = "SFX"
+volume_db = -5.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_engine_loop"]
+script = ExtResource("2_cue")
+id = &"engine_loop"
+stream = ExtResource("22_engine_loop")
+bus = "SFX"
+volume_db = -18.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
 [resource]
 script = ExtResource("1_bank")
-cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_pickup_collect"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance")])
+cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop")])

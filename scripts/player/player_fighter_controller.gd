@@ -176,6 +176,11 @@ func restore_shield(amount: float) -> void:
 	_shield.restore(amount)
 	shield_changed.emit(_shield.ratio(), _shield.current, _shield.maximum)
 
+## Current speed as a fraction of the ship's maximum (0 = drifting, 1 = full tilt).
+## Drives the engine hum; also true while the autopilot is flying the docking approach.
+func speed_ratio() -> float:
+	return clampf(_velocity.length() / stats.max_speed, 0.0, 1.0)
+
 ## Take over control and fly to a target on the plane (docking, spec §6.5).
 func begin_autopilot(target: Vector2) -> void:
 	_autopilot = true

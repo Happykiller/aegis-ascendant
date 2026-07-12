@@ -9,8 +9,10 @@ const BUS_LAYOUT_PATH := "res://resources/audio/default_bus_layout.tres"
 ## Every cue graybox_root.gd triggers. Keep in sync when a call site is added.
 const EXPECTED_CUES: Array[StringName] = [
 	&"player_pulse", &"enemy_pulse", &"hull_impact", &"shield_impact",
-	&"small_explosion", &"pickup_collect", &"danger_alarm", &"docking_lock",
-	&"rail_battery", &"helios_lance",
+	&"small_explosion", &"medium_explosion", &"heavy_explosion",
+	&"pickup_power", &"pickup_shield", &"pickup_score",
+	&"danger_alarm", &"docking_lock", &"rail_battery", &"helios_lance",
+	&"player_death", &"boss_phase_shift", &"ui_banner", &"engine_loop",
 ]
 
 func _bank() -> AudioCueBank:
@@ -45,6 +47,14 @@ func test_cues_target_a_declared_bus() -> void:
 	for cue in _bank().cues:
 		assert_true(cue.bus == "Master" or buses.has(cue.bus),
 			"cue %s targets an existing bus (%s)" % [cue.id, cue.bus])
+
+func test_engine_bed_is_the_only_looping_cue() -> void:
+	# Any other looping one-shot would never stop: it would jam a pool voice forever.
+	var looping := PackedStringArray()
+	for cue in _bank().cues:
+		if cue.looping:
+			looping.append(String(cue.id))
+	assert_eq(looping, PackedStringArray(["engine_loop"]), "only the engine bed loops")
 
 func test_rate_limited_cues_have_a_pitch_range() -> void:
 	# A cue that can fire many times a second and always at the same pitch is what

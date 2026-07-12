@@ -55,6 +55,7 @@ var _fortress_side: int = 1
 var _demo: bool = false
 var _demo_time: float = 0.0
 var _alarm_armed: bool = true
+var _engine_running: bool = false
 
 func _ready() -> void:
 	_game_state.reset_session()
@@ -125,12 +126,20 @@ func _on_wave_cleared() -> void:
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
 	_game_state.add_score(enemy.data.score_value)
 	_boom(enemy.global_position, VfxExplosion.Category.MEDIUM, 0.35)
-	_sfx(&"small_explosion")
+	_sfx(&"medium_explosion")
 	if _pickups != null:
 		_pickups.roll_drop(enemy.global_position)
 
-func _on_pickup(_kind: int, _world_position: Vector3) -> void:
-	_sfx(&"pickup_collect")
+## One cue per kind: a bonus has to be identifiable without looking straight at it
+## (docs/forge/CHARTE_CREATIVE.md — never colour alone).
+func _on_pickup(kind: int, _world_position: Vector3) -> void:
+	match kind:
+		Pickup.Kind.POWER:
+			_sfx(&"pickup_power")
+		Pickup.Kind.SHIELD:
+			_sfx(&"pickup_shield")
+		Pickup.Kind.SCORE:
+			_sfx(&"pickup_score")
 
 # --- Combat chatter (rate-limited by the cue bank) ---------------------------
 
@@ -182,7 +191,7 @@ func _on_boss_health(ratio: float) -> void:
 func _on_mini_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(5000)
 	_boom(world_position, VfxExplosion.Category.HEAVY, 1.0)
-	_sfx(&"small_explosion", 6.0)
+	_sfx(&"heavy_explosion")
 	if _hud != null:
 		_hud.hide_boss()
 	if _boss != null:
@@ -201,8 +210,7 @@ func _start_docking() -> void:
 	add_child(_citadel)
 	_citadel.arrived.connect(_on_citadel_arrived, CONNECT_ONE_SHOT)
 	_citadel.slide_to(Vector2(0.0, 11.0), 9.0)
-	if _hud != null:
-		_hud.show_banner("DOCKING", _COLOR_ALLY, 1.4)
+	_banner("DOCKING", _COLOR_ALLY, 1.4)
 
 func _on_citadel_arrived() -> void:
 	if _player != null:
@@ -221,8 +229,7 @@ func _on_player_docked() -> void:
 func _start_command_transfer() -> void:
 	_phase = Phase.COMMAND_TRANSFER
 	print("[Level] COMMAND TRANSFER")
-	if _hud != null:
-		_hud.show_banner("COMMAND TRANSFER", _COLOR_GOLD, 1.8)
+	_banner("COMMAND TRANSFER", _COLOR_GOLD, 1.8)
 	get_tree().create_timer(2.6).timeout.connect(_start_fortress_boss)
 
 # --- Fortress boss (spec §12) -----------------------------------------------
@@ -257,15 +264,16 @@ func _begin_fortress_control() -> void:
 	_sfx(&"danger_alarm")
 	if _hud != null:
 		_hud.show_boss(_final_boss.display_name)
-		_hud.show_banner("DEFEND THE CORE", _COLOR_GOLD, 1.6)
+	_banner("DEFEND THE CORE", _COLOR_GOLD, 1.6)
 
 func _on_final_boss_phase(index: int, total: int) -> void:
 	if _camera_director != null:
 		_camera_director.add_trauma(0.5)
-	_sfx(&"danger_alarm")
+	_sfx(&"boss_phase_shift")
 	print("[Level] boss phase %d/%d" % [index + 1, total])
 
 func _physics_process(delta: float) -> void:
+	_update_engine_hum()
 	if not _fortress_control:
 		return
 	var move_x: float
@@ -313,7 +321,7 @@ func _on_final_boss_defeated(world_position: Vector3) -> void:
 	_fortress_control = false
 	if _hud != null:
 		_hud.hide_boss()
-		_hud.show_banner("HELIOS LANCE", _COLOR_ALLY, 1.4)
+	_banner("HELIOS LANCE", _COLOR_ALLY, 1.4)
 	_fire_helios_lance(world_position)
 
 func _fire_helios_lance(target: Vector3) -> void:
@@ -343,7 +351,7 @@ func _on_player_hit(_world_position: Vector3) -> void:
 
 func _on_player_destroyed(world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.HEAVY, 0.9)
-	_sfx(&"small_explosion", 4.0)
+	_sfx(&"player_death")
 
 func _on_game_over() -> void:
 	print("[Level] all fighters lost — continue")
@@ -352,12 +360,31 @@ func _on_game_over() -> void:
 
 # --- Helpers -----------------------------------------------------------------
 
+## The fighter's engine bed follows its speed. Once the fighter is stowed (docking),
+## the player *is* the fortress and the hum has no source: it stops for good.
+func _update_engine_hum() -> void:
+	if _audio == null:
+		return
+	var flying := _player != null and _player.visible
+	if flying:
+		_audio.set_engine_intensity(_player.speed_ratio())
+		_engine_running = true
+	elif _engine_running:
+		_engine_running = false
+		_audio.stop_engine()
+
+## A banner is a beat, not just a label: it gets a swell so it reads without being read.
+func _banner(text: String, color: Color, duration: float) -> void:
+	if _hud != null:
+		_hud.show_banner(text, color, duration)
+	_sfx(&"ui_banner")
+
 func _boom(world_position: Vector3, category: VfxExplosion.Category, trauma: float) -> void:
 	if _vfx != null:
 		_vfx.spawn_explosion(world_position, category)
 	if _camera_director != null:
 		_camera_director.add_trauma(trauma)
 
-func _sfx(cue: String, volume_db: float = 0.0) -> void:
+func _sfx(cue: StringName, volume_db: float = 0.0) -> void:
 	if _audio != null:
 		_audio.play(cue, volume_db)
