@@ -43,7 +43,28 @@ Et **sauvegarder son propre travail en patch** tant qu'on ne peut pas committer 
 git diff HEAD -- <mes fichiers> > /tmp/…/mon-correctif.patch   # réapplicable par git apply
 ```
 
+## Le piège suivant : `C:\tmp` n'est pas cloisonné par les worktrees
+
+Un worktree isole le **dépôt**, pas les **ressources externes**. `deploy-win.sh` fait deux choses
+globales, partagées par tous les agents :
+
+1. il **tue tous les processus `AegisAscendant`** avant de copier ;
+2. il écrase `/mnt/c/tmp/aegis-ascendant/`.
+
+Donc un agent qui déploie **tue le jeu d'un autre**. Symptômes observés le 12/07/2026, et leur
+vraie cause :
+
+| Symptôme | Ce qu'on croit | Ce que c'est |
+|---|---|---|
+| `game exited with code 255` juste après le boot | le jeu crashe | un autre agent a déployé et l'a tué |
+| `cp: Permission denied` sur `AegisAscendant.exe` | droits WSL cassés | le processus de l'autre agent verrouille l'exe |
+
+**Avant de conclure au crash**, relancer une fois : si l'arc se déroule et sort en **code 0**, il n'y
+avait pas de bug. Et avant de déployer quand un autre worktree est actif, le dire à l'opérateur —
+on va couper sa fenêtre de jeu.
+
 ## Ne jamais faire
 
 - `git add -A` quand l'arbre contient du travail dont on n'est pas l'auteur.
 - « Réparer » le test rouge d'un autre agent : c'est son chantier en cours, pas un bug.
+- Diagnostiquer un crash sur un seul lancement raté quand un autre agent déploie en parallèle.
