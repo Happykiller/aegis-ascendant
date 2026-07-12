@@ -1,41 +1,140 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout.tscn" id="3_scout"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_arc.tscn" id="4_arc"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_diver.tscn" id="5_diver"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_lancer.tscn" id="6_lancer"]
 
-[sub_resource type="Resource" id="entry_left"]
+[sub_resource type="Resource" id="w1_left"]
 script = ExtResource("2_entry")
 time_offset = 0.5
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(-6, 8.5)
+spawn_plane_position = Vector2(-6, 9.5)
 count = 3
 spacing = 0.7
 
-[sub_resource type="Resource" id="entry_right"]
+[sub_resource type="Resource" id="w1_right"]
 script = ExtResource("2_entry")
-time_offset = 3.0
+time_offset = 3.5
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(6, 8.5)
+spawn_plane_position = Vector2(6, 9.5)
 count = 3
 spacing = 0.7
 
-[sub_resource type="Resource" id="entry_center"]
+[sub_resource type="Resource" id="w1_center"]
 script = ExtResource("2_entry")
-time_offset = 6.0
+time_offset = 7.0
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(0, 8.5)
+spawn_plane_position = Vector2(0, 9.5)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="w2_arc_left"]
+script = ExtResource("2_entry")
+time_offset = 16.0
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(-10, 9.5)
+count = 3
+spacing = 1.0
+
+[sub_resource type="Resource" id="w2_arc_right"]
+script = ExtResource("2_entry")
+time_offset = 19.0
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(10, 9.5)
+count = 3
+spacing = 1.0
+
+[sub_resource type="Resource" id="w2_weave"]
+script = ExtResource("2_entry")
+time_offset = 23.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(-3, 9.5)
+count = 3
+spacing = 0.6
+
+[sub_resource type="Resource" id="w2_weave_b"]
+script = ExtResource("2_entry")
+time_offset = 25.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(3, 9.5)
+count = 3
+spacing = 0.6
+
+[sub_resource type="Resource" id="w3_dive_a"]
+script = ExtResource("2_entry")
+time_offset = 36.0
+enemy_scene = ExtResource("5_diver")
+spawn_plane_position = Vector2(-5, 9.5)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="w3_dive_b"]
+script = ExtResource("2_entry")
+time_offset = 39.0
+enemy_scene = ExtResource("5_diver")
+spawn_plane_position = Vector2(5, 9.5)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="w3_arc"]
+script = ExtResource("2_entry")
+time_offset = 43.0
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(-9, 9.5)
+count = 3
+spacing = 1.0
+
+[sub_resource type="Resource" id="w3_weave"]
+script = ExtResource("2_entry")
+time_offset = 47.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(8, 9.5)
+count = 3
+spacing = 0.7
+
+[sub_resource type="Resource" id="w4_lancer"]
+script = ExtResource("2_entry")
+time_offset = 60.0
+enemy_scene = ExtResource("6_lancer")
+spawn_plane_position = Vector2(-7, 9.5)
 count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="w4_lancer_b"]
+script = ExtResource("2_entry")
+time_offset = 62.0
+enemy_scene = ExtResource("6_lancer")
+spawn_plane_position = Vector2(7, 9.5)
+count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="w4_dive"]
+script = ExtResource("2_entry")
+time_offset = 66.0
+enemy_scene = ExtResource("5_diver")
+spawn_plane_position = Vector2(0, 9.5)
+count = 4
+spacing = 0.6
+
+[sub_resource type="Resource" id="w4_arc"]
+script = ExtResource("2_entry")
+time_offset = 70.0
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(-10, 9.5)
+count = 3
 spacing = 0.9
 
-[sub_resource type="Resource" id="entry_flanks"]
+[sub_resource type="Resource" id="w4_weave"]
 script = ExtResource("2_entry")
-time_offset = 8.0
+time_offset = 73.0
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(-9, 8.5)
-count = 2
-spacing = 0.6
+spawn_plane_position = Vector2(4, 9.5)
+count = 4
+spacing = 0.5
 
 [resource]
 script = ExtResource("1_wave")
-entries = [SubResource("entry_left"), SubResource("entry_right"), SubResource("entry_center"), SubResource("entry_flanks")]
+entries = [SubResource("w1_left"), SubResource("w1_right"), SubResource("w1_center"), SubResource("w2_arc_left"), SubResource("w2_arc_right"), SubResource("w2_weave"), SubResource("w2_weave_b"), SubResource("w3_dive_a"), SubResource("w3_dive_b"), SubResource("w3_arc"), SubResource("w3_weave"), SubResource("w4_lancer"), SubResource("w4_lancer_b"), SubResource("w4_dive"), SubResource("w4_arc"), SubResource("w4_weave")]

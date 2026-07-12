@@ -34,7 +34,8 @@ const MAX_BANK_DEG := 26.0
 
 var _bullet_manager: BulletManager
 var _target: BulletTarget
-var _base_x: float = 0.0
+## Point de spawn : les trajectoires sont des fonctions de l'âge ET de ce point.
+var _spawn: Vector2 = Vector2.ZERO
 var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _hit_flash: float = 0.0
@@ -77,7 +78,7 @@ func setup(bullet_manager: BulletManager) -> void:
 
 func activate(spawn_plane_position: Vector2) -> void:
 	plane_position = spawn_plane_position
-	_base_x = spawn_plane_position.x
+	_spawn = spawn_plane_position
 	_age = 0.0
 	_fire_timer = data.fire_interval
 	_health.max_health = data.max_health
@@ -103,18 +104,22 @@ func _set_active(value: bool) -> void:
 
 func _physics_process(delta: float) -> void:
 	_age += delta
-	plane_position.y -= data.move_speed * delta
-	var weave := _age * data.weave_frequency * TAU
-	plane_position.x = _base_x + sin(weave) * data.weave_amplitude
+	var previous_x := plane_position.x
+	# La trajectoire est une fonction pure de l'âge (EnemyPath) : le contrôleur
+	# l'échantillonne, il ne décide de rien. Ajouter un comportement, c'est ajouter
+	# une trajectoire là-bas et la choisir dans la Resource — pas toucher ici.
+	plane_position = EnemyPath.position_at(data, _age, _spawn)
 	position = GameplayPlane.to_world(plane_position)
 	_target.position = plane_position
 	if plane_position.y < GameplayPlane.BOUNDS.position.y - DESPAWN_MARGIN:
 		deactivate()
 		return
-	# Bank into the weave. Lateral speed is the analytic derivative of the sine
-	# above, normalised by its own peak, so the roll is exact rather than sampled.
-	var lateral := cos(weave) # d/dt sin(weave), normalised: peaks at 1
-	_visual_root.rotation.z = deg_to_rad(-MAX_BANK_DEG) * lateral
+	# Le roulis se déduit du déplacement latéral RÉELLEMENT parcouru, pas de la
+	# dérivée d'une sinusoïde : il vaut donc pour toutes les trajectoires, y compris
+	# celles qu'on ajoutera.
+	var lateral_speed := (plane_position.x - previous_x) / maxf(delta, 0.0001)
+	var bank := clampf(lateral_speed / EnemyPath.BANK_REFERENCE_SPEED, -1.0, 1.0)
+	_visual_root.rotation.z = deg_to_rad(-MAX_BANK_DEG) * bank
 	_update_hit_flash(delta)
 	_update_fire(delta)
 

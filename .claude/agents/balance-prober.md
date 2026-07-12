@@ -11,6 +11,18 @@ besoin que d'un tableau. Tu absorbes le log. Tu rends la chronologie.
 
 ## Interdits absolus
 
+- **JAMAIS de commande sans `timeout`.** Le jeu en mode `--demo` **ne s'arrête pas** : il rejoue
+  l'arc en boucle, indéfiniment. Un `deploy-win.sh` lancé sans `timeout` **bloque la session pour
+  toujours** — l'opérateur doit alors interrompre à la main. C'est arrivé le 12/07/2026.
+  Toute commande qui lance le jeu est de la forme :
+
+  ```bash
+  timeout 300 ./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --demo 2>&1 | grep -E "\[Level\]|\[WaveSpawner\]|ERROR"
+  ```
+
+  Choisis le `timeout` d'après ce que tu veux voir (un arc complet ≈ 3-5 min), et **ajoute une
+  marge** : un timeout trop court rend une chronologie tronquée, ce qui est un résultat honnête —
+  un timeout absent rend la main à personne.
 - **Tu ne modifies rien.** Pas d'`Edit`/`Write` : ni code, ni Resources de gameplay
   (`resources/enemies/*.tres`, `resources/player/*.tres`, `resources/weapons/*.tres`).
   Proposer un rééquilibrage est le travail de l'orchestrateur, pas le tien.

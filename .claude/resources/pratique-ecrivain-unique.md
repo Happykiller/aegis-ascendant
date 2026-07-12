@@ -68,3 +68,25 @@ on va couper sa fenêtre de jeu.
 - `git add -A` quand l'arbre contient du travail dont on n'est pas l'auteur.
 - « Réparer » le test rouge d'un autre agent : c'est son chantier en cours, pas un bug.
 - Diagnostiquer un crash sur un seul lancement raté quand un autre agent déploie en parallèle.
+
+## Toujours un `timeout` sur une commande qui lance le jeu
+
+Le jeu en `--demo` **ne s'arrête jamais** : il rejoue l'arc en boucle. Un `deploy-win.sh` lancé sans
+`timeout` **bloque la session indéfiniment** — l'opérateur doit interrompre à la main (vécu le
+12/07/2026, y compris via un sous-agent, qui a hérité du blocage).
+
+```bash
+timeout 240 ./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --demo > /tmp/arc.log 2>&1
+echo "exit=$?"   # 124 = timeout atteint : NORMAL, c'est la garantie qu'on garde la main
+```
+
+Deux pièges de plomberie qui font perdre la sortie :
+
+- **Ne pas mettre `timeout … | grep …` en pipe** : le tampon avale les lignes et on ne voit rien.
+  **Rediriger vers un fichier**, puis lire le fichier.
+- Pour horodater les jalons, piloter le processus **depuis Python** (`subprocess.Popen`, lecture
+  ligne à ligne, `deadline` explicite, `p.kill()` en `finally`) : c'est le seul montage qui donne à
+  la fois les temps et la certitude de rendre la main.
+
+Et si un lancement précédent a été interrompu, **l'exe reste verrouillé** (`cp: Permission denied`) :
+tuer le processus et laisser Windows relâcher le handle avant de redéployer.

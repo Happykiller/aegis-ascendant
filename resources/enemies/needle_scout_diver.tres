@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/weapons/needle_shot.tres" id="2_shot"]
+
+[resource]
+script = ExtResource("1_data")
+path = 1
+display_name = "needle_scout_diver"
+max_health = 16.0
+move_speed = 5.2
+weave_amplitude = 2.0
+weave_frequency = 0.4
+fire_interval = 2.6
+projectile = ExtResource("2_shot")
+hitbox_radius = 0.45
+score_value = 130
+dive_delay = 1.1
