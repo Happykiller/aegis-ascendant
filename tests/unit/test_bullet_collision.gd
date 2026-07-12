@@ -77,6 +77,33 @@ func test_miss_reports_no_impact() -> void:
 	assert_eq(_impacts.size(), 0, "a miss draws nothing")
 	bm.free()
 
+## Regression: a boss died twice. Two bullets landing on the same frame both
+## reached the hit callback — the first killed it, the second found health already
+## at zero and ran the defeat path again, paying the reward and starting the
+## docking sequence twice. A target that goes cold mid-pass must stop absorbing.
+var _lethal_target: BulletTarget
+var _lethal_hits: int = 0
+var _lethal_bm: BulletManager
+
+func _on_lethal_hit(_damage: float) -> void:
+	_lethal_hits += 1
+	# What a dying entity does: disable, then unregister from inside the callback.
+	_lethal_target.enabled = false
+	_lethal_bm.unregister_target(_lethal_target)
+
+func test_dead_target_absorbs_no_further_bullets_this_frame() -> void:
+	_lethal_bm = BulletManager.new()
+	_lethal_target = BulletTarget.make(BulletManager.Team.ENEMY, 0.8, Callable(self, "_on_lethal_hit"))
+	_lethal_target.position = Vector2.ZERO
+	_lethal_bm.register_target(_lethal_target)
+	for i in 4: # a whole salvo arriving together
+		_lethal_bm.spawn_bullet(BulletManager.Team.PLAYER,
+			Vector2(-0.3 + 0.2 * i, 0.0), Vector2.ZERO, 0.1, 10.0, 5.0)
+	_lethal_bm.step(1.0 / 60.0)
+	assert_eq(_lethal_hits, 1, "the killing blow lands once, not once per bullet")
+	assert_eq(_lethal_bm.active_count(), 3, "the rest of the salvo flies on through")
+	_lethal_bm.free()
+
 func test_ttl_expiry_releases_bullet() -> void:
 	var bm := BulletManager.new()
 	bm.spawn_bullet(BulletManager.Team.ENEMY, Vector2.ZERO, Vector2.ZERO, 0.1, 10.0, 0.05)
