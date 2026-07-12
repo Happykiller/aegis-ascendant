@@ -45,3 +45,17 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 
 - [Sous-agent ou skill ?](process-etendre-le-ghost.md) — le critère de décision, hérité du cluster
   FitDesk, et les contraintes techniques (placement, pas de hot-reload).
+- **`/capitalize`** (`.claude/skills/capitalize/`) — verser les leçons d'une session dans le ghost :
+  quel réceptacle pour quelle leçon, écrire la règle **avec son coût**, indexer, corriger ce qui est
+  faux. ⚠️ Une procédure déterministe s'**encode dans un script**, pas en prose.
+
+## Outillage encodé — ne pas réinventer ces procédures
+
+Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : les appeler, pas les récrire.
+
+| Commande | Ce qu'elle évite |
+|---|---|
+| `./scripts/play-arc.sh [s]` | l'arc en temps réel, horodaté, **avec reprise de main garantie** (la démo boucle sans fin) |
+| `./scripts/check.sh` | la porte de qualité — import + parse + tests |
+| `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
+| sous-agent `godot-verifier` | ~50 lignes de bruit de build/deploy dans le contexte, pour 3 faits |
