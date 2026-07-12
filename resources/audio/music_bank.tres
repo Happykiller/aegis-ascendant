@@ -1,0 +1,116 @@
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=21 format=3]
+
+[ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/launch.ogg" id="3_launch"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/skirmish.ogg" id="4_skirmish"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/fleet_battle.ogg" id="5_fleet_battle"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/docking.ogg" id="6_docking"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/fortress_awakening.ogg" id="7_fortress_awakening"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/boss_phase_1.ogg" id="8_boss_phase_1"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/boss_phase_2.ogg" id="9_boss_phase_2"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/final_charge.ogg" id="10_final_charge"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/music/victory.ogg" id="11_victory"]
+
+[sub_resource type="Resource" id="music_launch"]
+script = ExtResource("2_cue")
+id = &"launch"
+stream = ExtResource("3_launch")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_skirmish"]
+script = ExtResource("2_cue")
+id = &"skirmish"
+stream = ExtResource("4_skirmish")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_fleet_battle"]
+script = ExtResource("2_cue")
+id = &"fleet_battle"
+stream = ExtResource("5_fleet_battle")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_docking"]
+script = ExtResource("2_cue")
+id = &"docking"
+stream = ExtResource("6_docking")
+bus = "Music"
+volume_db = -1.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_fortress_awakening"]
+script = ExtResource("2_cue")
+id = &"fortress_awakening"
+stream = ExtResource("7_fortress_awakening")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_boss_phase_1"]
+script = ExtResource("2_cue")
+id = &"boss_phase_1"
+stream = ExtResource("8_boss_phase_1")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_boss_phase_2"]
+script = ExtResource("2_cue")
+id = &"boss_phase_2"
+stream = ExtResource("9_boss_phase_2")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_final_charge"]
+script = ExtResource("2_cue")
+id = &"final_charge"
+stream = ExtResource("10_final_charge")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[sub_resource type="Resource" id="music_victory"]
+script = ExtResource("2_cue")
+id = &"victory"
+stream = ExtResource("11_victory")
+bus = "Music"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = true
+
+[resource]
+script = ExtResource("1_bank")
+cues = Array[ExtResource("2_cue")]([SubResource("music_launch"), SubResource("music_skirmish"), SubResource("music_fleet_battle"), SubResource("music_docking"), SubResource("music_fortress_awakening"), SubResource("music_boss_phase_1"), SubResource("music_boss_phase_2"), SubResource("music_final_charge"), SubResource("music_victory")])
