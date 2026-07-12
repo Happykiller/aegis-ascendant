@@ -15,7 +15,22 @@ Le projet embarque un helper de capture (`scripts/debug/screen_capture.gd`) : il
 
 Puis lire l'image (outil `Read`) depuis `/mnt/c/tmp/aegis-ascendant/capture.png`.
 
-## Les deux pièges qui coûtent une itération chacun
+## Les trois pièges qui coûtent une itération chacun
+
+**0. Le PNG périmé — le plus vicieux, parce qu'il déguise les deux autres.** `capture.png` **reste
+sur le disque** entre deux lancements. Si la capture ne s'arme pas (piège n°1) ou si le jeu quitte
+avant l'image visée, le fichier de la fois d'avant est toujours là : on le lit, et on croit
+regarder son propre changement. On peut ainsi « analyser » longuement un rendu qui date d'une autre
+session — et en tirer des conclusions fausses sur du code qu'on vient d'écrire.
+
+Deux réflexes, systématiques :
+
+```bash
+rm -f /mnt/c/tmp/aegis-ascendant/capture.png     # avant de lancer
+./scripts/deploy-win.sh -- ++ … --capture | grep -i saved   # la ligne DOIT apparaître
+```
+
+Pas de ligne `[ScreenCapture] saved` = pas de capture. Ne rien lire, ne rien conclure.
 
 **1. Le séparateur `++` est obligatoire.** Les flags de jeu sont lus par
 `OS.get_cmdline_user_args()`, qui ne renvoie que ce qui suit `++`. Sans lui, les flags sont avalés

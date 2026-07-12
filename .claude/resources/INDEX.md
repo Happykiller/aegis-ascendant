@@ -25,8 +25,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 ## Howtos — outillage vérifié
 
 - [Vérifier un rendu visuel depuis WSL](howto-verifier-un-rendu.md) — capture PNG autonome, sans
-  solliciter l'opérateur. ⚠️ Les flags de jeu passent **après `++`**, et `--capture-after` compte
-  des **images**, pas des secondes.
+  solliciter l'opérateur. ⚠️ Effacer `capture.png` **avant** chaque lancement et exiger la ligne
+  `saved` (sinon on juge un PNG périmé) ; les flags de jeu passent **après `++`** ; et
+  `--capture-after` compte des **images**, pas des secondes.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans.
