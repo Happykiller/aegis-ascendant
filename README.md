@@ -13,6 +13,7 @@ forteresse de guerre → boss final multi-phase.
 
 ```bash
 ./scripts/bootstrap.sh     # installe Godot 4.7 + export templates (vérification SHA512)
+./scripts/bootstrap-blender.sh   # installe Blender 4.5 LTS (coques 3D, ADR-0008 — vérification SHA256)
 ./scripts/check.sh         # import headless + tests
 ./scripts/export-win.sh    # export Windows (debug par défaut)
 ./scripts/deploy-win.sh    # copie vers C:\tmp\aegis-ascendant et lance le jeu sous Windows

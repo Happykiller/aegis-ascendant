@@ -92,8 +92,10 @@ C'est le point central d'orchestration ; il porte aussi les **flags de debug** (
 | `scripts/player/player_shield.gd` (`PlayerShield`, `RefCounted`) | Modèle de bouclier pur (dégâts, invuln post-impact, régénération après délai). **Testé** (`tests/unit/test_player_shield.gd`). |
 | `resources/data/player_stats.gd` (`PlayerStats`) + `resources/player/specter9_stats.tres` | Stats : vitesse, accel, hitbox, cadence, bouclier, régen, invuln, vies. `validate()`. |
 
-Le visuel (`scenes/player/player_fighter.tscn`) est un **Sprite3D** (concept Specter-9) posé à
-plat sur le plan (rotation X = -90° en code), inclinaison visuelle (banking) sur `VisualRoot`.
+Le visuel (`scenes/player/player_fighter.tscn`) est une **coque 3D** (`specter_9.glb`, ADR-0008)
+instanciée sous `VisualRoot`, qui porte l'inclinaison visuelle (banking). Les traînées de réacteur
+et les flashs de bouche sont placés sur les **points d'attache** du mesh (`Engine_L/R`,
+`Muzzle_L/R`), et l'origine des tirs en dérive : plus aucun offset codé en dur.
 Le joueur s'enregistre comme `BulletTarget` (équipe PLAYER) auprès du BulletManager.
 
 ## 6. Système de projectiles (`BulletManager`)
@@ -135,7 +137,9 @@ par `time_offset`, émet `wave_cleared`. Ordonnancement pur `build_schedule()` *
 ## 9. Boss (`BossController`)
 
 `scripts/bosses/boss_controller.gd` — **réutilisable** (mini-boss ET boss final).
-- Corps = Sprite3D (concept), `HealthComponent` implicite via `_health`, `BulletTarget` (grand rayon).
+- Corps = coque 3D reçue en `hull_scene` (`PackedScene`), retournée face au joueur ; l'origine des
+  tirs est lue sur les bouches que la coque porte. `HealthComponent` implicite via `_health`,
+  `BulletTarget` (grand rayon).
 - Cycle : entrée (invulnérable) → drift horizontal → attaques cyclées.
 - **Patterns** (`Pattern` enum) : `RADIAL` (burst circulaire), `AIMED_SPREAD` (vers le joueur),
   `FAN` (éventail descendant). Intensité ↑ par phase (nombre de projectiles, cadence).
@@ -145,8 +149,9 @@ par `time_offset`, émet `wave_cleared`. Ordonnancement pur `build_schedule()` *
 
 ## 10. Forteresse (`AegisCitadel` + contrôle dans le director)
 
-- `scripts/fortress/aegis_citadel.gd` (`AegisCitadel`) : grand Sprite3D concept. `slide_to(target, speed)`
-  (appontage + repositionnement en bas), `bay_position()`, signal `arrived`. Scène `aegis_citadel.tscn`.
+- `scripts/fortress/aegis_citadel.gd` (`AegisCitadel`) : coque 3D reçue en `hull_scene`.
+  `slide_to(target, speed)` (appontage + repositionnement en bas), `bay_position()` — dérivée du
+  point d'attache `Dock_Entry` du mesh —, signal `arrived`. Scène `aegis_citadel.tscn`.
 - **Le contrôle de la forteresse est dans `graybox_root._physics_process`** (phase FORTRESS_BOSS) :
   déplacement sur l'axe X (clamp), **Twin Rail Batteries** (projectiles `fortress_battery`,
   alternance gauche/droite), `BulletTarget` PLAYER, **intégrité** (jauge, reset au lieu d'un
@@ -200,4 +205,10 @@ par `time_offset`, émet `wave_cleared`. Ordonnancement pur `build_schedule()` *
 - Le contrôle forteresse vit dans le director (pas encore extrait en `FortressController` dédié).
 - Warnings « ObjectDB leaked » à la sortie **forcée** (`--quit-after` pendant tweens/timers) — sans
   impact en jeu normal (le changement de scène libère tout).
-- Le Needle Scout reste un mesh (sprite forge trop basse résolution).
+- Les cinq coques sont des meshes 3D (ADR-0008). Les sprites restent la bonne réponse pour les
+  projectiles, impacts, halos, pickups et HUD (spec §24.5).
+- `export_hull()` du kit Blender ne prend qu'**une** coque maillée ; les boss livrent leurs pièces
+  séparées en contournant par la liste des points d'attache. À faire évoluer (`parts: list`) avant
+  toute animation de pièce (ouverture des pétales, destruction d'une batterie).
+- L'émissif des tuyères du Specter-9 est posé sur des faces arrière, donc **invisible** depuis la
+  caméra de jeu (quasi verticale) : voir `BRIEF-0026`.
