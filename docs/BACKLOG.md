@@ -1,126 +1,102 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
-> Point de reprise au 2026-07-11. Le jeu a un **arc complet jouable** (chasseur → bonus →
-> mini-boss → appontage → forteresse → boss final 4 phases → victoire), 39 tests verts,
-> perf réelle > 1000 FPS. Ce document liste ce qui reste, par priorité, pour reprendre sereinement.
+> Point de reprise au **2026-07-12** (fin de journée). Arc complet jouable (chasseur → bonus →
+> mini-boss → appontage → forteresse → boss final 4 phases → victoire), **80 tests verts**,
+> **0,78 ms de GPU par image** (4,7 % du budget 60 Hz).
 
-## Comment reprendre demain (checklist)
+## Comment reprendre
+
 1. `cd ~/sandbox/macross`
-2. `./scripts/check.sh` → doit être **ALL GREEN** (39 tests).
+2. `./scripts/check.sh` → doit être **ALL GREEN** (80 tests).
 3. `./scripts/export-win.sh debug && ./scripts/deploy-win.sh` → jouer (Entrée).
-4. Lire `docs/architecture/ARCHITECTURE_TECHNIQUE.md` et `..._FONCTIONNELLE.md`.
-5. ⚠️ Perf en test autonome : toujours ajouter `--novsync` (sinon 4 FPS = session Windows inactive, pas un bug).
+4. Lire **`.claude/resources/INDEX.md`** — le *ghost* : comment vérifier un rendu, mesurer une perf,
+   réviser un asset. C'est là que vit le savoir de méthode.
+5. Lire `docs/architecture/` et les **ADR** (`ADR-0001` à `ADR-0008`), qui priment sur la spec.
 
 ---
 
-## P0 — Rendre la démo irréprochable (rapide, fort impact)
+## Livré le 12/07/2026 — ne plus le proposer
 
-- [x] **Musique adaptative** — fait (2026-07-12). Les neuf états de
-  `docs/forge/output/adaptive_music_structure.md` sont générés par `tools/audio/generate_music.py`
-  et pilotés par `MusicDirector` (logique pure, testée) via des fondus croisés. Reste ouvert :
-  le *layering vertical* de l'Overdrive (§10.2 : « musique enrichie » sans changer de tempo) et
-  le ducking sidechain Voice → Music.
-- [ ] **Pacing de l'appontage** — la séquence est un peu rapide ; ajouter de petits temps de
-  pause (holds) entre l'arrivée de la Citadelle, l'autopilote et le transfert pour que le
-  « moment » respire. *(director `_start_docking`/`_on_citadel_arrived`.)*
+| Chantier | État |
+|---|---|
+| Axe vertical inversé (flèche bas = monter) | ✅ corrigé + 4 tests |
+| Fond spatial | ✅ nébuleuse procédurale volumétrique (domain warping) — **ADR-0006** ; le carré cyan graybox a disparu |
+| Sprites & projectiles | ✅ plus aucune primitive : bolts cœur+halo, traînées douces (`SoftDot`) |
+| Retour d'impact | ✅ gerbe teintée par camp (blanc froid sur coque ennemie, cyan sur notre bouclier) + flash de coque |
+| Vie des ennemis | ✅ réacteur, roulis dans le virage, flash à l'impact |
+| Boss qui mourait deux fois | ✅ corrigé aux deux niveaux (garde `_defeated` + cible qui cesse d'absorber) + test |
+| Audio | ✅ banque de cues typée, 20 SFX, **musique adaptative 9 états** + thème de titre, bus, réglages persistants, menu d'options — **ADR-0007** |
+| Mix audio | ✅ musique normalisée en **loudness** (−16 dB RMS) ; compresseur déplacé du Master vers SFX (le tir du joueur écrasait la partition) |
+| Passage 3D | ✅ **5 coques en meshes glTF** (Specter-9, Needle Scout, Citadelle, Choir Harvester, Pale Leviathan) + éclairage clé/contour avec ombres — **ADR-0008** |
+| Ghost | ✅ `.claude/resources/` (index de process) + roster de **5 sous-agents** |
+
+---
+
+## P0 — Rendre la démo irréprochable
+
 - [ ] **Contenu de la phase chasseur** — une seule vague de ~10 Needle Scouts puis mini-boss.
-  Ajouter 1-2 vagues et une **2ᵉ famille d'ennemis** (voir P1) pour ~2-3 min de jeu et laisser
-  la puissance monter à 5.
-- [ ] **Équilibrage démo** — vérifier en jeu réel (écran allumé) que la difficulté est bien
-  « facile mais nerveuse » : dégâts ennemis, cadence des patterns boss, temps de kill du boss final.
-- [ ] **Écran titre** — utiliser le `title_backdrop.svg` de la forge en fond ; ajouter un vrai
-  logo (SVG d'identité forge) au lieu du texte simple.
+  Ajouter 1-2 vagues et une **2ᵉ famille d'ennemis** pour 2-3 min de jeu et laisser la puissance
+  monter à 5. → tâches **H5** / **H6** de `docs/TASKS_HORIZONTAL.md`.
+- [ ] **Écran titre** — texte nu. Le `title_backdrop.svg` et les emblèmes de faction de la forge
+  **ne sont pas utilisés**. → tâche **H3**.
+- [ ] **Écrans & HUD** — les cadres livrés par la forge (pause, résultats, échec, HUD chasseur et
+  forteresse) **ne sont pas intégrés**. → tâche **H4**.
+- [ ] **Pacing de l'appontage** — trop rapide ; ajouter des temps de pause entre l'arrivée de la
+  Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
+- [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».
+  Outil : sous-agent `balance-prober` (rend la chronologie de l'arc).
 
 ## P1 — Systèmes de gameplay manquants (spec, valeur forte)
 
-- [ ] **Vulnérabilité en mode démo/attract** propre ; **missiles secondaires** (verrouillage
-  doux, salves, recharge par bonus — `Missile Rack` déjà en asset).
-- [ ] **Overdrive** (jauge, boost cadence/puissance/bouclier temporaire ; devient « Citadel Burst »
-  en forteresse) — `Overdrive Shard` déjà en asset.
-- [ ] **Configurations de tir** : Spread / Lance / Orbit (touche E) — assets projectiles prêts.
+- [ ] **Missiles secondaires** (verrouillage doux, salves, recharge par bonus — `Missile Rack` en asset).
+- [ ] **Overdrive** (jauge, boost temporaire ; devient « Citadel Burst » en forteresse).
+- [ ] **Configurations de tir** : Spread / Lance / Orbit (touche E).
 - [ ] **Familles d'ennemis** : Crescent Interceptor, Choir Mine, Leech Drone, Null Bomber,
-  Shield Carrier, Frigate Turret. Le `EnemyController` est une base de composition prête à étendre.
+  Shield Carrier, Frigate Turret. `EnemyController` est une base de composition prête à étendre.
 - [ ] **EncounterDirector** formel (remplacer le pilotage en dur dans `graybox_root`) : timeline
-  data-driven avec conditions, checkpoints, synchro musique/caméra, déclenchement mini-boss.
-- [ ] **Objectifs de défense** (segment « Citadel Under Siege ») : batteries à protéger.
-- [ ] **Scoring avancé** : multiplicateur, combos, précision, esquive proche, batteries sauvées ;
-  **résumé de fin détaillé** (spec §14.3) au lieu du seul score+rang.
-- [ ] **Manette** (glyphes adaptatifs) + **remapping** des touches.
+  data-driven, checkpoints, synchro musique/caméra.
+- [ ] **Objectifs de défense** (« Citadel Under Siege ») : batteries à protéger.
+- [ ] **Scoring avancé** : multiplicateur, combos, précision ; **résumé de fin détaillé** (spec §14.3).
+- [ ] **Manette** + **remapping** des touches.
 
-## P2 — Accessibilité, options, méta (spec §13, §19)
+## P2 — Accessibilité & méta (spec §13, §19)
 
-- [ ] **Menu d'options** : ~~Audio~~ (fait, touche `O` au titre) ; reste Display / Graphics /
-  Controls / Accessibility, et un vrai menu principal (Play / Options / Credits / Quit, spec §19.4)
-  — aujourd'hui l'overlay audio s'ouvre depuis l'écran de boot.
-- [ ] **Presets graphiques** (Low/Medium/High/Ultra), option FPS/VSync exposée à l'utilisateur.
-- [ ] **Accessibilité** : réduction shake, réduction flash, désactivation aberration chromatique,
-  intensité bloom, contraste renforcé, ~~volumes séparés (musique/SFX/voix)~~ (fait), sous-titres, pause.
-- [ ] **Voix radio** (commandante / opérateur / IA) — concepts personnages produits par la forge
-  (`radio_characters_concept_sheet.png`), à sonoriser + sous-titrer. Le bus `Voice` et son slider
-  existent déjà et n'attendent que les lignes. **Seul manque audio restant de la spec §18.**
-- [ ] **Checkpoints** formels (avant appontage / avant boss). ~~**SettingsManager** persistant~~ (fait).
+- [ ] **Accessibilité** : réduction shake/flash, intensité bloom, contraste renforcé, sous-titres, pause.
+- [ ] **Presets graphiques** (Low/Medium/High/Ultra) + option FPS/VSync exposée.
+- [ ] **Voix radio** (concepts personnages produits par la forge) — à sonoriser + sous-titrer.
+- [ ] **Checkpoints** formels (avant appontage / avant boss).
 
 ## P3 — Art & finition
 
-- [ ] **Note de modélisation Aegis Citadel** : la silhouette « lit » légèrement comme un buste ;
-  casser cette lecture si passage en 3D (voir `docs/forge/REVIEW_NOTES.md`).
-- [ ] **Note Pale Leviathan** : décentrer davantage le noyau.
-- [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé »
-  (`graybox_palette.md`) pour ne pas noyer le corail du danger ennemi.
-- [ ] **BRIEF-0019 (frégates)** : prompt prêt, **planche raster à générer** puis provenancer.
-- [ ] Intégrer les assets forge non encore utilisés (HUD frames, indicateurs,
-  écrans menu/pause/échec, emblèmes de faction).
-- [ ] **Éléments de décor peints** (optionnel, voir ADR-0006) : planète / croiseurs / station
-  dérivant au-dessus du fond procédural, produits via brief forge + imagegen. Les six couches
-  de parallaxe SVG de `BRIEF-0015` sont **écartées** (aplats vectoriels, rendu inutilisable).
-- [x] ~~**Projectiles**~~ : box/sphères remplacées par des quads + shader `bullet_bolt`
-  (cœur + halo procéduraux). Les SVG de projectiles de la forge sont **écartés** (stickers
-  plats, cf. ADR-0006) ; idem pour les SVG d'explosion.
-- [ ] **Passage 3D optionnel** (spec) : modèles glTF via Blender à partir des concepts — gros
-  chantier, seulement si une limite visuelle le justifie.
+- [ ] **Enrichir les coques 3D** — les meshes existent mais restent sobres. → tâche **H1**.
+- [ ] **Enrichir le fond** — la nébuleuse est belle mais uniforme : aucun élément remarquable
+  (planète, bande galactique, débris qui dérivent). → tâche **H2**.
+- [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé ».
+- [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
+- [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
+  vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.
 
-## P4 — Dette technique & robustesse
+## P4 — Dette technique
 
-- [ ] **Extraire un `FortressController`** dédié (le contrôle est aujourd'hui dans `graybox_root`).
-- [ ] **Swept collision** pour projectiles rapides (spec §21.2) — nécessaire avant d'introduire
-  des projectiles très véloces.
-- [ ] **Nettoyage à la sortie** : les warnings « ObjectDB leaked » apparaissent sur `--quit-after`
-  forcé (tweens/timers) ; libérer proprement si on veut un arrêt net (sans impact en jeu normal).
-- [ ] **Couverture de test** : le bench headless ne mesure pas le rendu MultiMesh ; ajouter des
-  tests d'intégration (spawn vague, mort ennemi, collecte bonus, transition de phase) via un
-  harnais headless piloté.
-- [ ] **Retirer/ranger les flags de debug** avant une build « release » (`--skip-*`, `--pickup-demo`,
-  `--no-backdrop/glow`), ou les garder derrière une macro debug.
-- [ ] **Export release** (`build-release.ps1` équivalent bash) + icône/console off + manifeste/hash.
-- [ ] **Nettoyer les captures** dans `build/` (gitignoré, mais volumineux localement).
-
-## P5 — Pipeline & production (spec §24, §30)
-
-- [ ] **Sous-agents & hooks** (`.claude/agents/*` gameplay-architect, godot-reviewer, etc.) et
-  hooks de contrôle léger après édition GDScript.
-- [ ] **CI locale** : formaliser le Quality Gate (spec §28.6) et le soak test (30 min, mémoire/FPS).
-- [ ] **Provenance** : maintenir `ASSET_PROVENANCE.csv` à chaque nouvel asset ; générer la planche
-  frégates manquante.
-- [ ] **Musique/voix** : décider de l'outil de génération et enregistrer la provenance.
+- [ ] **Flag `--no-shadow`** pour bissecter le coût de l'éclairage (le projet a déjà `--no-backdrop`
+  et `--no-glow`). Demandé par `godot-verifier`, qui ne peut pas isoler le coût des ombres sans lui.
+- [ ] **Extraire un `FortressController`** (le contrôle est aujourd'hui dans `graybox_root`).
+- [ ] **Swept collision** pour projectiles rapides (spec §21.2).
+- [ ] **Tests d'intégration** (spawn vague, mort ennemi, transition de phase) via harnais headless.
+- [ ] **Export release** + icône/console off + manifeste/hash.
+- [ ] **Fuite à la sortie** : 8 ObjectDB leaked / 4 resources still in use (tweens/timers non libérés).
 
 ---
 
 ## Notes de reprise importantes
-- **Perf** : le jeu tourne à > 1000 FPS ; ne jamais re-diagnostiquer le « 4 FPS » comme un bug
-  (V-Sync + session inactive). Mémoire : `aegis-vsync-throttle`.
-- **Mesurer la perf sans écran** : le FPS d'un lancement automatisé est **inexploitable**
-  (relevés de 2 à 17 FPS, non monotones). Utiliser le **temps GPU par image**, imprimé par le
-  helper de capture :
-  `./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --capture --capture-after=400`
-  → `[ScreenCapture] saved (0) — GPU 0.755 ms/frame`. Comparer avec `--no-backdrop` pour
-  isoler le coût d'un effet. Budget : 16,7 ms à 60 Hz.
-- **Vérifier un rendu depuis WSL** : `--capture` écrit `capture.png` à côté de l'exe (lisible
-  sous `/mnt/c/tmp/aegis-ascendant/`) puis quitte — inutile de solliciter l'utilisateur pour
-  juger un visuel. ⚠️ Les flags de jeu passent **après `++`** (`OS.get_cmdline_user_args()`).
-- **Convention autoloads** : jamais d'identifiant global d'autoload dans un script (casse `--script`).
-- **assets/source/** est `.gdignore`é ; pour utiliser un asset en jeu, le copier dans
-  `assets/imported/` (il sera importé par Godot).
-- **Quarantaine IP** : `/_ip_quarantine/` (gitignoré) contient des références contaminées à
-  ne JAMAIS versionner ni utiliser (ADR-0005).
-- Toute production créative/lourde passe par un **brief `docs/forge/briefs/` + sous-agent
-  asset-forge** (ADR-0004), pas par la session principale.
+
+- **Perf** : ne jamais mesurer en FPS depuis un lancement automatisé (Windows bride la présentation ;
+  relevés absurdes de 2 à 17 FPS, non monotones). Utiliser le **temps GPU par image**.
+  → `.claude/resources/howto-mesurer-la-perf.md`
+- **Vérifier un rendu** : `--capture` écrit un PNG lisible depuis WSL. ⚠️ effacer le PNG **avant**,
+  et les flags passent **après `++`**. → `.claude/resources/howto-verifier-un-rendu.md`
+- **Un asset de la forge n'est pas validé tant qu'il n'a pas été rendu et regardé** (ADR-0006).
+- **Plusieurs agents en parallèle** : `C:\tmp` et le processus Windows ne sont **pas** cloisonnés par
+  les worktrees — un déploiement tue le jeu d'un autre agent.
+  → `.claude/resources/pratique-ecrivain-unique.md`
+- **Quarantaine IP** : `/_ip_quarantine/` (gitignoré) — ne jamais versionner ni utiliser (ADR-0005).
