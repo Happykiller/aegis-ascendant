@@ -43,12 +43,20 @@ stable ; les menaces ennemies, le registre instable et descendant.
 
 ## Critères d'acceptation
 
-- [ ] Dix WAV valides et distincts
-- [ ] Aucun clipping, DC offset excessif ou fichier vide
-- [ ] Script reproductible avec graine fixe pour le bruit
-- [ ] Neuf états musicaux documentés avec tempo, tonalité, couches et transitions
-- [ ] Provenance complète
+- [x] Dix WAV valides et distincts
+- [x] Aucun clipping, DC offset excessif ou fichier vide
+- [x] Script reproductible avec graine fixe pour le bruit
+- [x] Neuf états musicaux documentés avec tempo, tonalité, couches et transitions
+- [x] Provenance complète
 
 ## Hors périmètre
 
 Pas d'OGG, voix, doublage, musique finale, import Godot, bus audio ou mixage en jeu.
+
+## Suite (2026-07-12)
+
+Le hors-périmètre ci-dessus a depuis été levé, hors voix : OGG, musique finale (les neuf
+états sont composés), import Godot, bus audio et mixage en jeu sont livrés par la passe
+audio E1→E6 (voir `docs/decisions/ADR-0007-pipeline-audio.md`). Les dix WAV d'origine sont
+passés à vingt, et `pickup_collect` a été remplacé par un son par type de bonus.
+**Seules les voix radio restent à produire** (spec §18.4).

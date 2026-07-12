@@ -26,7 +26,27 @@ autoritaire ; **zéro allocation dans les boucles critiques**.
 |---|---|---|
 | `GameState` | `scripts/core/game_state.gd` | Machine à états globale (`BOOT, LOADING, FIGHTER_COMBAT, GAME_OVER, VICTORY`), transitions validées + journalisées, `score`, signaux `state_changed`/`score_changed`. Enregistre les actions d'input au boot (via `InputBootstrap`) et gère le flag `--novsync`. |
 | `SceneRouter` | `scripts/core/scene_router.gd` | `goto_scene(path)` avec vérification d'erreur. |
-| `AudioManager` | `scripts/core/audio_manager.gd` | Pool de 12 `AudioStreamPlayer`, `play(cue, volume_db)`, 10 SFX préchargés (round-robin). |
+| `SettingsManager` | `scripts/core/settings_manager.gd` | Volumes par bus, persistés dans `user://settings.cfg`, appliqués à `AudioServer` au boot. Chargé **avant** `AudioManager`. La donnée elle-même est dans `SettingsData` (pure, testée). |
+| `AudioManager` | `scripts/core/audio_manager.gd` | Pool de 16 `AudioStreamPlayer` sur le bus `SFX` + lit de moteur + **deux decks musique** avec crossfade par `Tween`. `play(cue, volume_db)`, `set_music_state(state)`, `set_engine_intensity(v)`. Aucun chemin d'asset en dur : tout vient des banques. |
+
+### Audio (spec §18, ADR-0007)
+
+- **Bus** (`resources/audio/default_bus_layout.tres`, généré par `tools/audio/make_bus_layout.gd`) :
+  `Master` (compresseur léger + `AudioEffectHardLimiter` à −0,5 dB, donc aucun clipping),
+  et `Music` / `SFX` / `Voice` qui y sont envoyés. Le bus `Voice` existe, les voix pas encore.
+- **Banques** : `resources/audio/sfx_bank.tres` (20 cues) et `music_bank.tres` (9 pistes), toutes
+  deux des `AudioCueBank` d'`AudioCueData` (stream, bus, niveau, plage de pitch, anti-spam,
+  bouclage) — c'est la ressource typée demandée par la spec §22.1. Un cue inconnu déclenche un
+  `push_warning`, il n'échoue plus en silence.
+- **Musique adaptative** : `MusicDirector.resolve(MusicContext)` est une **fonction pure** — aucun
+  nœud, aucun `AudioServer` — donc entièrement testable en headless. Le level director met à jour
+  le contexte (progression de vague, phase, PV du boss, écran nettoyé) ; `AudioManager` exécute.
+  Aucune coupure sèche : chaque changement d'état est un fondu (6 s par défaut, 1,2 s vers Boss
+  Phase 2).
+- **Pipeline d'assets** : `tools/audio/generate_prototype_sfx.py` (stdlib, seed fixe) et
+  `generate_music.py` (numpy, un RNG par état) écrivent dans `assets/source/audio/` ;
+  `build_audio.py` masterise (DC retiré, −1 dBFS, anti-clic) et livre dans `assets/imported/audio/`
+  — WAV pour les SFX (importés en QOA), OGG pour la musique. Toute la chaîne est **idempotente**.
 
 `InputBootstrap` (`scripts/core/input_bootstrap.gd`, `class_name`, **pas** un autoload) enregistre
 les actions `move_left/right/up/down` (WASD + flèches, `physical_keycode`) et `fire_primary` (Espace).

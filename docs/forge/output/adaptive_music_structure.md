@@ -1,7 +1,9 @@
 # Structure musicale adaptative — prototype
 
 - **Brief** : `docs/forge/briefs/BRIEF-0011-audio-prototype.md`
-- **Statut** : direction musicale, aucune composition finale livrée
+- **Statut** : **implémenté** (2026-07-12). Ce document reste normatif : `tools/audio/generate_music.py`
+  en lit les tempos, centres tonaux et couches, et `scripts/audio/music_director.gd` en applique les
+  transitions. Toute modification ici doit être reportée dans les deux.
 
 ## Socle commun
 
@@ -24,6 +26,18 @@
 | Boss Phase 2 | 148 BPM | E♭ mineur | contre-rythme, basse distordue, nappes tendues | accélération masquée sur 8 mesures |
 | Final Charge | 156 BPM | D mineur | toutes couches alliées, montée harmonique, pulse Helios | crescendo verrouillé sur la charge |
 | Victory | 96 BPM | D majeur add6 | motif principal élargi, accords ouverts, percussion réduite | résolution après le tir final |
+
+## Implémentation (2026-07-12)
+
+Pistes rendues : 16 mesures (8 pour Docking), 29 à 36 s chacune, stéréo 44,1 kHz, Vorbis,
+2,9 Mo au total. Bouclées **par construction** : une queue de 2 s est rendue au-delà de la
+dernière mesure puis repliée sur le début, si bien qu'une résonance longue retombe sur
+elle-même au lieu d'être tranchée. Écart de soudure mesuré : ≤ 9 % du RMS, quasi nul sur
+la plupart des pistes.
+
+Fondus appliqués (`MusicDirector.crossfade_seconds`) : 6 s par défaut, **1,2 s vers Boss
+Phase 2** (la « coupe contrôlée puis impact » ci-dessous), 2,5 s vers Final Charge, 3,5 s
+vers Victory.
 
 ## Règles de mix adaptatif
 

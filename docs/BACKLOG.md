@@ -15,10 +15,11 @@
 
 ## P0 — Rendre la démo irréprochable (rapide, fort impact)
 
-- [ ] **Musique adaptative** — le plus gros manque ressenti. La forge a produit la *structure*
-  (`docs/forge/output/adaptive_music_structure.md`) mais **aucune piste**. Options : générer des
-  pistes (outil musique) puis les intégrer dans `AudioManager` avec transitions par phase, ou
-  au minimum une boucle d'ambiance + un thème de boss.
+- [x] **Musique adaptative** — fait (2026-07-12). Les neuf états de
+  `docs/forge/output/adaptive_music_structure.md` sont générés par `tools/audio/generate_music.py`
+  et pilotés par `MusicDirector` (logique pure, testée) via des fondus croisés. Reste ouvert :
+  le *layering vertical* de l'Overdrive (§10.2 : « musique enrichie » sans changer de tempo) et
+  le ducking sidechain Voice → Music.
 - [ ] **Pacing de l'appontage** — la séquence est un peu rapide ; ajouter de petits temps de
   pause (holds) entre l'arrivée de la Citadelle, l'autopilote et le transfert pour que le
   « moment » respire. *(director `_start_docking`/`_on_citadel_arrived`.)*
@@ -48,13 +49,16 @@
 
 ## P2 — Accessibilité, options, méta (spec §13, §19)
 
-- [ ] **Menu d'options** : Display / Graphics / Audio / Controls / Accessibility.
+- [ ] **Menu d'options** : ~~Audio~~ (fait, touche `O` au titre) ; reste Display / Graphics /
+  Controls / Accessibility, et un vrai menu principal (Play / Options / Credits / Quit, spec §19.4)
+  — aujourd'hui l'overlay audio s'ouvre depuis l'écran de boot.
 - [ ] **Presets graphiques** (Low/Medium/High/Ultra), option FPS/VSync exposée à l'utilisateur.
 - [ ] **Accessibilité** : réduction shake, réduction flash, désactivation aberration chromatique,
-  intensité bloom, contraste renforcé, volumes séparés (musique/SFX/voix), sous-titres, pause.
+  intensité bloom, contraste renforcé, ~~volumes séparés (musique/SFX/voix)~~ (fait), sous-titres, pause.
 - [ ] **Voix radio** (commandante / opérateur / IA) — concepts personnages produits par la forge
-  (`radio_characters_concept_sheet.png`), à sonoriser + sous-titrer.
-- [ ] **Checkpoints** formels (avant appontage / avant boss) et **SettingsManager** persistant.
+  (`radio_characters_concept_sheet.png`), à sonoriser + sous-titrer. Le bus `Voice` et son slider
+  existent déjà et n'attendent que les lignes. **Seul manque audio restant de la spec §18.**
+- [ ] **Checkpoints** formels (avant appontage / avant boss). ~~**SettingsManager** persistant~~ (fait).
 
 ## P3 — Art & finition
 

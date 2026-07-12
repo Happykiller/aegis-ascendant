@@ -18,6 +18,14 @@ forteresse de guerre → boss final multi-phase.
 ./scripts/deploy-win.sh    # copie vers C:\tmp\aegis-ascendant et lance le jeu sous Windows
 ```
 
+Régénération des assets audio (déterministe — relancer ne doit produire aucun diff) :
+
+```bash
+python3 tools/audio/generate_prototype_sfx.py   # 20 SFX -> assets/source/audio/sfx/
+python3 tools/audio/generate_music.py           # 9 pistes -> assets/source/audio/music/ (gitignoré)
+python3 tools/audio/build_audio.py              # mastering -> assets/imported/ (WAV + OGG, ffmpeg requis)
+```
+
 Le développement et les contrôles tournent **headless dans WSL** ; le rendu réel s'exécute
 **nativement sous Windows** (voir `docs/decisions/ADR-0002`).
 
@@ -28,13 +36,13 @@ chasseur → montée en puissance → mini-boss → **appontage sur l'Aegis Cita
 prise de contrôle de la forteresse → **boss final Pale Leviathan (4 phases)** →
 Helios Lance → écran de victoire.
 
-Contrôles : **← →** pour se déplacer, **Espace** pour tirer.
+Contrôles : **← →** pour se déplacer, **Espace** pour tirer, **O** pour les options audio.
 
 - [x] Phase 0 — Bootstrap (dépôt, projet Godot, scripts, tests, export Windows)
 - [x] Phase 1-3 — Boucle complète : combat, bonus/puissance, VFX GPU, appontage, forteresse, boss
 - [x] Art — sprites issus des concepts IA (Specter-9, Aegis Citadel, Pale Leviathan, Choir Harvester)
-- [x] Audio — SFX prototype sur les événements clés
-- [ ] Polish — équilibrage, musique adaptative, options, tutoriel
+- [x] Audio — 20 SFX, musique adaptative (9 états, fondus croisés), bus + limiteur, options de volume
+- [ ] Polish — équilibrage, voix radio + sous-titres, menu principal, tutoriel
 - [ ] Phase 3 — Niveau complet
 - [ ] Phase 4 — Art pass
 - [ ] Phase 5 — Polish
