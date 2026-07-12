@@ -33,10 +33,14 @@ les sous-agents qu'à deux niveaux : `~/.claude/agents/` (user) et `.claude/agen
 répertoire de lancement de la session**. Il n'y a **pas de scan récursif**. Un agent rangé dans un
 sous-dossier est invisible, quel que soit son contenu.
 
-**2. Pas de hot-reload.** Un sous-agent créé pendant une session **n'est pas invocable dans cette
-même session** — le registre est résolu au démarrage. Ne pas boucler à essayer de l'invoquer :
-soit exécuter sa méthode à la main via Bash en attendant, soit prévenir l'opérateur qu'une nouvelle
-session sera nécessaire pour l'essayer.
+**2. Hot-reload : vérifier, ne pas supposer.** La mémoire du cluster FitDesk affirme qu'un
+sous-agent créé en session n'est invocable qu'après redémarrage (registre résolu au démarrage,
+constaté le 04/07/2026 sur `android-artifact-forge`). **Ce n'est pas vrai ici** : les 4 agents
+créés le 12/07/2026 sur macross ont été **chargés à chaud**, invocables dans la session même.
+
+Le comportement dépend donc du harness/de la version. **Ne pas annoncer à l'opérateur qu'il faut
+redémarrer** : essayer d'abord, et ne se rabattre sur l'exécution manuelle via Bash que si l'appel
+échoue par `Agent type '<nom>' not found`.
 
 ## Roster actuel d'Aegis Ascendant — 5 agents (1 write-capable)
 
