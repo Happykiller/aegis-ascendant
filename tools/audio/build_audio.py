@@ -102,9 +102,11 @@ def build_music() -> int:
         staged = MUSIC_OUTPUT / (source.stem + ".staged.wav")
         write_wav(staged, master(samples, channels, rate, fade=False), channels, rate)
         target = MUSIC_OUTPUT / (source.stem + ".ogg")
+        # -bitexact : sans lui, ffmpeg tire un numéro de série de flux Ogg au hasard et
+        # chaque encodage produit un fichier différent — le build ne serait pas reproductible.
         result = subprocess.run(
             ["ffmpeg", "-y", "-loglevel", "error", "-i", str(staged),
-             "-c:a", "libvorbis", "-q:a", VORBIS_QUALITY, str(target)],
+             "-c:a", "libvorbis", "-q:a", VORBIS_QUALITY, "-bitexact", str(target)],
             check=False,
         )
         staged.unlink()

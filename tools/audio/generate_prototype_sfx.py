@@ -79,10 +79,9 @@ def main() -> None:
               (0.68 * rng.uniform(-1, 1) * (1 - 0.55 * t / d) +
                0.32 * sine((105 - 55 * t / d) * t)))
 
-    write_wav("pickup_collect.wav", 0.42, lambda t, d:
-              envelope(t, d, 0.006, 0.12) *
-              (0.45 * sine((520 + 820 * t / d) * t) +
-               0.35 * sine((780 + 1_140 * t / d) * t) + 0.20 * sine(2_080 * t)))
+    # (pickup_collect a été retiré : remplacé par pickup_power/shield/score, un son par
+    # bonus. Son échantillonneur n'appelait pas le rng, sa suppression ne décale donc
+    # aucun des sons suivants — voir ADR-0007.)
 
     write_wav("danger_alarm.wav", 0.82, lambda t, d:
               envelope(t, d, 0.008, 0.08) *

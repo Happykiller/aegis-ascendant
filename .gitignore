@@ -17,3 +17,7 @@ __pycache__/
 # IP quarantine: contaminated reference images (visible third-party marks) —
 # kept locally for reference only, MUST NEVER be versioned (see ADR-0005).
 /_ip_quarantine/
+
+# Sources WAV de musique : ~50 Mo, régénérables par tools/audio/generate_music.py.
+# Seuls les OGG masterisés (assets/imported/audio/music/) sont versionnés — ADR-0007.
+assets/source/audio/music/
