@@ -11,6 +11,7 @@ static func register_actions() -> void:
 	_add_key_action("move_up", [KEY_W, KEY_UP], MOVE_DEADZONE)
 	_add_key_action("move_down", [KEY_S, KEY_DOWN], MOVE_DEADZONE)
 	_add_key_action("fire_primary", [KEY_SPACE], 0.5)
+	_add_key_action("ui_options", [KEY_O], 0.5)
 
 static func _add_key_action(action: StringName, physical_keys: Array, deadzone: float) -> void:
 	if InputMap.has_action(action):
