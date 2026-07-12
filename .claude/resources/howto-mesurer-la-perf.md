@@ -42,3 +42,20 @@ Verdict : soutenable. Sans cette isolation, on n'aurait eu qu'un chiffre absolu 
 
 Un effet visuel n'est « terminé » que si son **coût GPU est mesuré et énoncé**, pas seulement
 « ça a l'air de tourner ».
+
+## Jeter le premier relevé après un `deploy` (caches Vulkan froids)
+
+Le **premier lancement qui suit un déploiement** rend un temps GPU **surévalué** : les caches de
+pipeline Vulkan sont froids. Relevé le 12/07/2026 sur un build inchangé :
+
+| Run | GPU |
+|---|---|
+| 1ᵉʳ après deploy | **1,161 ms** ← artefact |
+| 2ᵉ … 5ᵉ | 0,836 / 0,840 / 0,840 / 0,863 ms |
+
+Le nominal est ~0,838 ms. Rendre le premier chiffre aurait fait chasser une régression de +0,38 ms
+**qui n'existe pas**.
+
+**Règle** : après un `deploy`, lancer **deux fois** et ne garder que le second. Un écart isolé de
++0,3 ms sur un build qui « ne devrait rien changer » est un cache froid, pas une régression —
+vérifier avant d'enquêter.
