@@ -65,8 +65,11 @@
   (`graybox_palette.md`) pour ne pas noyer le corail du danger ennemi.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, **planche raster à générer** puis provenancer.
 - [ ] **Sprite Needle Scout** en meilleure résolution (l'actuel est trop petit → mesh gardé) ;
-  intégrer d'autres assets forge non encore utilisés (HUD frames, indicateurs, backgrounds parallax,
+  intégrer d'autres assets forge non encore utilisés (HUD frames, indicateurs,
   écrans menu/pause/échec, emblèmes de faction).
+- [ ] **Éléments de décor peints** (optionnel, voir ADR-0006) : planète / croiseurs / station
+  dérivant au-dessus du fond procédural, produits via brief forge + imagegen. Les six couches
+  de parallaxe SVG de `BRIEF-0015` sont **écartées** (aplats vectoriels, rendu inutilisable).
 - [ ] **Projectiles** : remplacer les box/sphères par les SVG de projectiles de la forge
   (cœur + halo) pour plus de lisibilité et de style.
 - [ ] **Passage 3D optionnel** (spec) : modèles glTF via Blender à partir des concepts — gros
@@ -101,6 +104,15 @@
 ## Notes de reprise importantes
 - **Perf** : le jeu tourne à > 1000 FPS ; ne jamais re-diagnostiquer le « 4 FPS » comme un bug
   (V-Sync + session inactive). Mémoire : `aegis-vsync-throttle`.
+- **Mesurer la perf sans écran** : le FPS d'un lancement automatisé est **inexploitable**
+  (relevés de 2 à 17 FPS, non monotones). Utiliser le **temps GPU par image**, imprimé par le
+  helper de capture :
+  `./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --capture --capture-after=400`
+  → `[ScreenCapture] saved (0) — GPU 0.755 ms/frame`. Comparer avec `--no-backdrop` pour
+  isoler le coût d'un effet. Budget : 16,7 ms à 60 Hz.
+- **Vérifier un rendu depuis WSL** : `--capture` écrit `capture.png` à côté de l'exe (lisible
+  sous `/mnt/c/tmp/aegis-ascendant/`) puis quitte — inutile de solliciter l'utilisateur pour
+  juger un visuel. ⚠️ Les flags de jeu passent **après `++`** (`OS.get_cmdline_user_args()`).
 - **Convention autoloads** : jamais d'identifiant global d'autoload dans un script (casse `--script`).
 - **assets/source/** est `.gdignore`é ; pour utiliser un asset en jeu, le copier dans
   `assets/imported/` (il sera importé par Godot).
