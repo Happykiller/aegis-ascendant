@@ -1,0 +1,67 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/pause_screen.gd" id="1_pause"]
+[ext_resource type="Texture2D" path="res://assets/imported/ui/screens/pause_frame.svg" id="2_frame"]
+
+[node name="PauseScreen" type="CanvasLayer"]
+process_mode = 3
+layer = 20
+script = ExtResource("1_pause")
+
+[node name="Frame" type="TextureRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_frame")
+expand_mode = 1
+
+[node name="Center" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Menu" type="VBoxContainer" parent="Center"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+theme_override_constants/separation = 26
+
+[node name="Title" type="Label" parent="Center/Menu"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
+theme_override_font_sizes/font_size = 64
+text = "PAUSE"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="Center/Menu"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
+theme_override_font_sizes/font_size = 18
+text = "SIMULATION SUSPENDUE"
+horizontal_alignment = 1
+
+[node name="Resume" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(520, 62)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "REPRENDRE"
+
+[node name="TitleButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(520, 62)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "RETOUR AU TITRE"
+
+[node name="Hint" type="Label" parent="Center/Menu"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
+theme_override_font_sizes/font_size = 17
+text = "ÉCHAP  ·  REPRENDRE"
+horizontal_alignment = 1
+
+[connection signal="pressed" from="Center/Menu/Resume" to="." method="_resume"]
+[connection signal="pressed" from="Center/Menu/TitleButton" to="." method="_return_to_title"]

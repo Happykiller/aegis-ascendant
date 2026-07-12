@@ -1,25 +1,26 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/victory_screen.gd" id="1_victory"]
+[ext_resource type="Texture2D" path="res://assets/imported/ui/screens/victory_frame.svg" id="2_frame"]
 
-[node name="VictoryScreen" type="Control"]
-layout_mode = 3
+[node name="VictoryScreen" type="CanvasLayer"]
+layer = 30
+script = ExtResource("1_victory")
+
+[node name="Frame" type="TextureRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-script = ExtResource("1_victory")
-
-[node name="Dim" type="ColorRect" parent="."]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0.02, 0.03, 0.06, 0.72)
+texture = ExtResource("2_frame")
+expand_mode = 1
 
 [node name="Center" type="CenterContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 310.0
+offset_bottom = -10.0
 
 [node name="VBox" type="VBoxContainer" parent="Center"]
 layout_mode = 2

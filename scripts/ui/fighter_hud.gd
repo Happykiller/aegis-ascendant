@@ -5,6 +5,7 @@ extends CanvasLayer
 const COLOR_FULL := Color(0.247, 0.851, 0.91)   # cyan
 const COLOR_MID := Color(0.894, 0.71, 0.29)     # gold
 const COLOR_LOW := Color(0.79, 0.23, 0.19)      # red
+const FORTRESS_FRAME := preload("res://assets/imported/ui/hud/fortress_hud_frame.svg")
 
 @onready var _shield_fill: ColorRect = %ShieldFill
 @onready var _shield_value: Label = %ShieldValue
@@ -15,6 +16,8 @@ const COLOR_LOW := Color(0.79, 0.23, 0.19)      # red
 @onready var _boss_name: Label = %BossName
 @onready var _boss_fill: ColorRect = %BossBarFill
 @onready var _banner: Label = %Banner
+@onready var _hud_frame: TextureRect = %HUDFrame
+@onready var _mode_transition: TextureRect = %ModeTransition
 
 var _shield_full_width: float = 0.0
 var _boss_full_width: float = 0.0
@@ -42,6 +45,13 @@ func show_banner(text: String, color: Color = Color(0.247, 0.851, 0.91), hold: f
 	tween.tween_property(_banner, "modulate:a", 1.0, 0.35)
 	tween.tween_interval(hold)
 	tween.tween_property(_banner, "modulate:a", 0.0, 0.5)
+	if text == "COMMAND TRANSFER":
+		_mode_transition.visible = true
+		var mode_tween := create_tween()
+		mode_tween.tween_property(_mode_transition, "modulate:a", 1.0, 0.3)
+		mode_tween.tween_interval(hold)
+		mode_tween.tween_property(_mode_transition, "modulate:a", 0.0, 0.45)
+		mode_tween.tween_callback(_mode_transition.hide)
 
 func bind_player(player: PlayerFighterController) -> void:
 	player.shield_changed.connect(_on_shield_changed)
@@ -61,6 +71,7 @@ func _on_shield_changed(ratio: float, current: float, _maximum: float) -> void:
 ## Fortress phase: reuse the left gauge as fortress integrity (spec §19.2).
 func set_integrity(ratio: float, current: float) -> void:
 	_on_shield_changed(ratio, current, 100.0)
+	_hud_frame.texture = FORTRESS_FRAME
 	%ShieldLabel.text = "INTEGRITY"
 	%PowerLabel.text = "FORTRESS"
 	_power_value.text = "AEGIS"

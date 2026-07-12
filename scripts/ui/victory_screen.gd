@@ -1,4 +1,4 @@
-extends Control
+extends CanvasLayer
 ## Victory / results overlay (spec §14.3). Shows the final score and a rank,
 ## then replays on accept.
 
@@ -7,9 +7,7 @@ func setup(score: int) -> void:
 	%RankValue.text = _rank(score)
 
 func _ready() -> void:
-	modulate.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(self, "modulate:a", 1.0, 0.8)
+	pass
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):
