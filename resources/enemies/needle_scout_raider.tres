@@ -5,15 +5,14 @@
 
 [resource]
 script = ExtResource("1_data")
-path = 2
-display_name = "needle_scout_arc"
-max_health = 22.0
-move_speed = 3.2
-weave_amplitude = 1.6
+path = 6
+display_name = "needle_scout_raider"
+max_health = 14.0
+move_speed = 5.0
+weave_amplitude = 1.8
 weave_frequency = 0.5
-fire_interval = 2.2
+fire_interval = 2.4
 projectile = ExtResource("2_shot")
 hitbox_radius = 0.45
-score_value = 120
-
-arc_radius = 8.0
+score_value = 220
+hold_y = 1.0

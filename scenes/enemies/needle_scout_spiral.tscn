@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_ctrl"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_spiral.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/health_component.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/needle_scout.glb" id="4_hull"]
+
+[node name="needle_scout_spiral" type="Node3D"]
+script = ExtResource("1_ctrl")
+data = ExtResource("2_data")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Hull" parent="VisualRoot" instance=ExtResource("4_hull")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)

@@ -9,6 +9,8 @@ extends Node3D
 const DIR_DOWN := Vector2(0.0, -1.0)
 const MUZZLE_OFFSET := Vector2(0.0, -0.6)
 const DESPAWN_MARGIN := 1.5
+## Marge de sortie par le HAUT : au-delà, un ennemi qui bat en retraite est perdu.
+const ESCAPE_MARGIN := 3.0
 
 signal destroyed(enemy: EnemyController)
 ## Emitted on each shot (audio cue).
@@ -111,7 +113,11 @@ func _physics_process(delta: float) -> void:
 	plane_position = EnemyPath.position_at(data, _age, _spawn)
 	position = GameplayPlane.to_world(plane_position)
 	_target.position = plane_position
-	if plane_position.y < GameplayPlane.BOUNDS.position.y - DESPAWN_MARGIN:
+	# Sortie par le bas OU par le haut : le BOOMERANG s'échappe en remontant, et sans
+	# cette seconde borne il resterait vivant à jamais, hors du champ, à consommer une
+	# entrée du pool.
+	if plane_position.y < GameplayPlane.BOUNDS.position.y - DESPAWN_MARGIN \
+			or plane_position.y > GameplayPlane.BOUNDS.end.y + ESCAPE_MARGIN:
 		deactivate()
 		return
 	# Le roulis se déduit du déplacement latéral RÉELLEMENT parcouru, pas de la

@@ -4,7 +4,9 @@ extends Resource
 
 ## Trajectoire suivie. Le mouvement est DATA-DRIVEN : le contrôleur échantillonne
 ## EnemyPath, il ne décide de rien. Ajouter une famille, c'est choisir ici.
-enum Path { WEAVE, DIVE, ARC_SWEEP, HOVER_STRAFE }
+## L'ordre est celui de la variété perçue, pas une hiérarchie. Chaque valeur a une
+## signature de mouvement qu'aucune autre n'imite (voir EnemyPath).
+enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG }
 @export var path: Path = Path.WEAVE
 
 @export var display_name: String = "enemy"
@@ -24,8 +26,11 @@ enum Path { WEAVE, DIVE, ARC_SWEEP, HOVER_STRAFE }
 ## DIVE : secondes d'approche lente avant que l'ennemi ne fonde.
 @export var dive_delay: float = 1.2
 ## HOVER_STRAFE : ligne où l'ennemi se stabilise, et durée du vol stationnaire.
+## BOOMERANG : même ligne — c'est là qu'il fait demi-tour.
 @export var hold_y: float = 3.0
 @export var hold_time: float = 2.2
+## ARC_CROSS / SPIRAL : rayon du cercle parcouru (unités).
+@export var arc_radius: float = 7.0
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -43,6 +48,8 @@ func validate() -> PackedStringArray:
 		errors.append("dive_delay must be >= 0")
 	if path == Path.HOVER_STRAFE and hold_time <= 0.0:
 		errors.append("hold_time must be > 0 for HOVER_STRAFE")
+	if (path == Path.ARC_CROSS or path == Path.SPIRAL) and arc_radius <= 0.0:
+		errors.append("arc_radius must be > 0 for ARC_CROSS/SPIRAL")
 	if projectile == null:
 		errors.append("projectile is required")
 	else:
