@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/player/player_fighter_controller.gd" id="1_ctrl"]
 [ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="2_stats"]
 [ext_resource type="Resource" path="res://resources/weapons/pulse_shot.tres" id="3_shot"]
-[ext_resource type="Texture2D" path="res://assets/imported/sprites/ships/specter_9.png" id="4_sprite"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9.glb" id="4_hull"]
 
 [node name="PlayerFighter" type="Node3D"]
 script = ExtResource("1_ctrl")
@@ -12,9 +12,4 @@ primary_projectile = ExtResource("3_shot")
 
 [node name="VisualRoot" type="Node3D" parent="."]
 
-[node name="Hull" type="Sprite3D" parent="VisualRoot"]
-pixel_size = 0.0032
-shaded = false
-double_sided = true
-texture_filter = 5
-texture = ExtResource("4_sprite")
+[node name="Hull" parent="VisualRoot" instance=ExtResource("4_hull")]

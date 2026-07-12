@@ -6,7 +6,6 @@ extends Node3D
 
 ## Logical "up the screen" direction (+y logical = -Z world).
 const DIR_UP := Vector2(0.0, 1.0)
-const MUZZLE_OFFSET := Vector2(0.0, 0.9)
 
 ## Emitted whenever the shield value changes (HUD).
 signal shield_changed(ratio: float, current: float, maximum: float)
@@ -50,19 +49,20 @@ var _respawn_timer: float = 0.0
 var _target: BulletTarget
 var _blink_time: float = 0.0
 
-var _engine_trail: GPUParticles3D
-var _muzzle_flash: MeshInstance3D
+## Engine trails and muzzle flashes are placed on the hull's attach points
+## (ADR-0008), one per nozzle / per gun — never on hard-coded offsets.
+var _engine_trails: Array[GPUParticles3D] = []
+var _muzzle_flashes: Array[MeshInstance3D] = []
 var _muzzle_material: StandardMaterial3D
 var _muzzle_timer: float = 0.0
+## Distance from the ship's origin to its guns, read from the hull.
+var _muzzle_offset: Vector2 = Vector2(0.0, 0.9)
 
 @onready var _visual_root: Node3D = $VisualRoot
 @onready var _hull: Node3D = $VisualRoot/Hull
 @onready var _bullet_manager: BulletManager = get_node_or_null(bullet_manager_path) as BulletManager
 
 func _ready() -> void:
-	# Lay the top-down ship sprite flat on the play plane, nose toward screen-up
-	# (local +Y -> world -Z), facing the camera (local +Z -> world +Y).
-	_hull.rotation = Vector3(deg_to_rad(-90.0), 0.0, 0.0)
 	assert(stats != null, "PlayerFighterController requires a PlayerStats resource")
 	for error in stats.validate():
 		push_error("[PlayerFighter] invalid stats: %s" % error)
@@ -70,8 +70,10 @@ func _ready() -> void:
 		for error in primary_projectile.validate():
 			push_error("[PlayerFighter] invalid projectile: %s" % error)
 	position = GameplayPlane.to_world(plane_position)
-	_build_engine_trail()
-	_build_muzzle_flash()
+	var guns := (_attach_point("Muzzle_L").z + _attach_point("Muzzle_R").z) * 0.5
+	_muzzle_offset = Vector2(0.0, -guns) # world -Z is logical +y
+	_build_engine_trails()
+	_build_muzzle_flashes()
 	_demo = "--demo" in OS.get_cmdline_user_args()
 	_shield.configure(stats.shield_max, stats.shield_regen_delay,
 		stats.shield_regen_rate, stats.invuln_time)
@@ -206,7 +208,8 @@ func _update_fire(delta: float) -> void:
 	if _muzzle_timer > 0.0:
 		_muzzle_timer = maxf(_muzzle_timer - delta, 0.0)
 		_muzzle_material.emission_energy_multiplier = 6.0 * (_muzzle_timer / 0.05)
-		_muzzle_flash.visible = _muzzle_timer > 0.0
+		for flash in _muzzle_flashes:
+			flash.visible = _muzzle_timer > 0.0
 	if _bullet_manager == null or primary_projectile == null:
 		return
 	if (_demo or Input.is_action_pressed("fire_primary")) and _fire_timer == 0.0:
@@ -219,7 +222,7 @@ func _update_fire(delta: float) -> void:
 ## Pulse Array fire pattern, escalating with power level (spec §9.1).
 func _fire_pattern() -> void:
 	fired.emit()
-	var muzzle := plane_position + MUZZLE_OFFSET
+	var muzzle := plane_position + _muzzle_offset
 	# Level 1+: twin frontal shots.
 	_shoot(muzzle + Vector2(-0.18, 0.0), DIR_UP)
 	_shoot(muzzle + Vector2(0.18, 0.0), DIR_UP)
@@ -238,13 +241,29 @@ func _fire_pattern() -> void:
 func _shoot(origin: Vector2, direction: Vector2) -> void:
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, direction, primary_projectile)
 
-func _build_engine_trail() -> void:
-	_engine_trail = GPUParticles3D.new()
-	_engine_trail.amount = 40
-	_engine_trail.lifetime = 0.45
-	_engine_trail.local_coords = false
-	_engine_trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_engine_trail.position = Vector3(0.0, 0.0, 0.9) # behind the ship (world +Z)
+## Local position of an attach point baked into the hull mesh (ADR-0008).
+## A hull missing one is an asset bug: report it and degrade to the origin
+## rather than crash the run.
+func _attach_point(point_name: String) -> Vector3:
+	var node := _hull.get_node_or_null(NodePath(point_name)) as Node3D
+	if node == null:
+		push_error("[PlayerFighter] hull has no attach point '%s'" % point_name)
+		return Vector3.ZERO
+	return node.position
+
+func _build_engine_trails() -> void:
+	for point_name in ["Engine_L", "Engine_R"]:
+		var trail := _make_engine_trail()
+		trail.position = _attach_point(point_name)
+		_visual_root.add_child(trail)
+		_engine_trails.append(trail)
+
+func _make_engine_trail() -> GPUParticles3D:
+	var trail := GPUParticles3D.new()
+	trail.amount = 24
+	trail.lifetime = 0.45
+	trail.local_coords = false
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mat := ParticleProcessMaterial.new()
 	mat.direction = Vector3(0.0, 0.0, 1.0)
 	mat.spread = 8.0
@@ -265,9 +284,9 @@ func _build_engine_trail() -> void:
 	var ramp_tex := GradientTexture1D.new()
 	ramp_tex.gradient = ramp
 	mat.color_ramp = ramp_tex
-	_engine_trail.process_material = mat
+	trail.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.35, 0.35)
+	quad.size = Vector2(0.3, 0.3)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -278,17 +297,13 @@ func _build_engine_trail() -> void:
 	qmat.emission_energy_multiplier = 2.5
 	qmat.albedo_texture = SoftDot.texture()
 	quad.material = qmat
-	_engine_trail.draw_pass_1 = quad
-	_engine_trail.emitting = true
-	add_child(_engine_trail)
+	trail.draw_pass_1 = quad
+	trail.emitting = true
+	return trail
 
-func _build_muzzle_flash() -> void:
-	_muzzle_flash = MeshInstance3D.new()
+func _build_muzzle_flashes() -> void:
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.7, 0.7)
-	_muzzle_flash.mesh = quad
-	_muzzle_flash.position = Vector3(0.0, 0.0, -0.9) # nose (world -Z = up screen)
-	_muzzle_flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	quad.size = Vector2(0.5, 0.5)
 	_muzzle_material = StandardMaterial3D.new()
 	_muzzle_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_muzzle_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -298,9 +313,15 @@ func _build_muzzle_flash() -> void:
 	_muzzle_material.albedo_color = Color(0.6, 0.95, 1.0, 1.0)
 	_muzzle_material.emission = Color(0.5, 0.9, 1.0)
 	_muzzle_material.albedo_texture = SoftDot.texture()
-	_muzzle_flash.material_override = _muzzle_material
-	_muzzle_flash.visible = false
-	add_child(_muzzle_flash)
+	for point_name in ["Muzzle_L", "Muzzle_R"]:
+		var flash := MeshInstance3D.new()
+		flash.mesh = quad
+		flash.position = _attach_point(point_name)
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flash.material_override = _muzzle_material
+		flash.visible = false
+		_visual_root.add_child(flash)
+		_muzzle_flashes.append(flash)
 
 ## Pure movement math, testable headless: accelerate toward input * max_speed,
 ## reaching it in accel_time seconds (spec §7.3: max speed in < 250 ms).

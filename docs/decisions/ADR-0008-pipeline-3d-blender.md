@@ -52,10 +52,21 @@ cohérentes entre elles et avec le gameplay.
 ### Échelle et orientation
 
 - 1 unité Blender = **1 mètre** Godot. Export avec `export_yup=True`.
-- **Orientation d'auteur** (dans Blender, Z-up) : nez vers **-Y**, dessus vers **+Z**. Après export
-  yup, cela donne dans Godot : nez vers **-Z** (le haut de l'écran), dessus vers **+Y**.
+- **Orientation d'auteur** (dans Blender, Z-up) : nez vers **-Y**, dessus vers **+Z**.
+- **Orientation cible** (dans Godot) : nez vers **-Z** (le haut de l'écran), dessus vers **+Y**.
+- Ces deux règles ne s'enchaînent **pas** naïvement, et c'est un piège coûteux. L'exporteur glTF de
+  Blender 4.5 applique `(x, y, z) → (x, z, -y)` : un nez modelé en `-Y` ressort en **`+Z`** côté
+  Godot, c'est-à-dire **à reculons**. La réconciliation (une rotation de 180° autour de Z) est faite
+  **une seule fois, dans `export_hull()` du kit**. Un script de coque n'a donc jamais à y penser :
+  il modélise nez vers `-Y`, il obtient nez vers `-Z` en jeu.
+- **Corollaire contre-intuitif** : dans le repère d'auteur, **bâbord (la gauche à l'écran) est `+X`**.
+  Utiliser `attach_pair()` du kit, qui prend une distance positive et pose les signes lui-même.
 - Cette orientation vaut pour **toutes** les unités, y compris les ennemis. Le fait qu'un ennemi
   descende à l'écran est une rotation du nœud en jeu, **jamais** une orientation figée dans le mesh.
+- **La bounding box ne peut pas détecter une coque retournée** (elle est symétrique en Z : `min`/`max`
+  sont identiques dans les deux sens). La validation d'orientation doit donc s'appuyer sur des
+  témoins **asymétriques** — typiquement les points d'attache : une bouche de tir est à l'avant, une
+  tuyère à l'arrière. C'est ce que fait le kit.
 - **Pivot = origine = centre de la coque**, au niveau du plan de jeu. Le roulis (`bank`) du joueur
   et les rotations des boss passent par ce point : un pivot décalé se voit immédiatement.
 
