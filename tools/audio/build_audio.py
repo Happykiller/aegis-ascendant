@@ -48,7 +48,10 @@ FADE_OUT_SECONDS = 0.005
 ##
 ## Résultat en jeu : la musique disparaissait sous le tir du joueur, curseur à fond — et
 ## aucun réglage ne pouvait la rattraper, les curseurs plafonnant à 0 dB.
-TARGET_RMS = 10.0 ** (-14.0 / 20.0)
+##
+## -16 dBFS : réglé à l'oreille par l'opérateur (12/07/2026). -14 portait bien mais passait
+## devant l'action ; -16 laisse la partition sous les SFX sans la faire disparaître.
+TARGET_RMS = 10.0 ** (-16.0 / 20.0)
 
 ## Remonter le RMS de ~3 dB ferait écrêter une musique dont la crête est déjà à -1 dBFS.
 ## Au-dessus du genou, les crêtes sont donc ARRONDIES (tanh) au lieu d'être tranchées :
