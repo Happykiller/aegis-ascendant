@@ -6,8 +6,15 @@
 
 `source/` est le rendu brut du synthé ; `imported/` est la version masterisée — c'est
 ce qui justifie que les deux existent (voir ADR-0007). Traitement (spec §18.5) :
-DC retiré, normalisation à -1 dBFS, fondu de sortie anti-clic, et une assertion qui
-échoue plutôt que de livrer un fichier qui clippe.
+DC retiré, fondu de sortie anti-clic, et une assertion qui échoue plutôt que de livrer
+un fichier qui clippe.
+
+La normalisation, elle, DIFFÈRE selon la nature du signal — et c'est le point :
+    SFX     -> normalisation en CRÊTE (-1 dBFS) : des transitoires courtes ont besoin
+               de leur marge dynamique.
+    Musique -> normalisation en LOUDNESS (RMS) + arrondi des crêtes : normalisée au
+               pic, une musique dynamique est perçue ~9 dB sous les SFX et disparaît
+               sous le tir du joueur.
 
 Idempotent : relancer le script sur les mêmes sources laisse `git status` propre.
 Usage : python3 tools/audio/build_audio.py
@@ -31,6 +38,22 @@ MUSIC_OUTPUT = Path("assets/imported/audio/music")
 ## Master fait le reste.
 TARGET_PEAK = 10.0 ** (-1.0 / 20.0)
 FADE_OUT_SECONDS = 0.005
+
+## La musique est normalisée en LOUDNESS (RMS), les SFX en CRÊTE. Les traiter à
+## l'identique était le bug : une musique dynamique normalisée au pic reste perçue très
+## faible. Mesuré le 12/07/2026 sur les pistes livrées — même crête, loudness opposée :
+##
+##     musique  : crête -1 dBFS, RMS -17 dBFS   (facteur de crête 16 dB)
+##     SFX tir  : crête -1 dBFS, RMS  -8 dBFS   (dense, écrasé vers le haut)
+##
+## Résultat en jeu : la musique disparaissait sous le tir du joueur, curseur à fond — et
+## aucun réglage ne pouvait la rattraper, les curseurs plafonnant à 0 dB.
+TARGET_RMS = 10.0 ** (-14.0 / 20.0)
+
+## Remonter le RMS de ~3 dB ferait écrêter une musique dont la crête est déjà à -1 dBFS.
+## Au-dessus du genou, les crêtes sont donc ARRONDIES (tanh) au lieu d'être tranchées :
+## la sortie tend vers TARGET_PEAK sans jamais l'atteindre, donc sans clipping.
+LIMITER_KNEE = 0.55
 ## Qualité Vorbis : ~5 Mo pour les neuf pistes, transparent sur du synthé.
 VORBIS_QUALITY = "4"
 
@@ -61,13 +84,32 @@ def write_wav(path: Path, samples: list[float], channels: int, rate: int) -> Non
         target.writeframes(pcm)
 
 
-def master(samples: list[float], channels: int, rate: int, fade: bool) -> list[float]:
+def soft_limit(value: float) -> float:
+    """Arrondit une crête au-dessus du genou au lieu de la trancher (waveshaper tanh)."""
+    magnitude = abs(value)
+    if magnitude <= LIMITER_KNEE:
+        return value
+    over = (magnitude - LIMITER_KNEE) / (1.0 - LIMITER_KNEE)
+    shaped = LIMITER_KNEE + (TARGET_PEAK - LIMITER_KNEE) * math.tanh(over)
+    return shaped if value >= 0.0 else -shaped
+
+
+def master(samples: list[float], channels: int, rate: int, fade: bool,
+           loudness: bool = False) -> list[float]:
     mean = sum(samples) / max(1, len(samples))
     samples = [value - mean for value in samples]
     peak = max((abs(value) for value in samples), default=0.0)
     if peak <= 0.0:
         raise SystemExit("signal muet")
-    samples = [value * (TARGET_PEAK / peak) for value in samples]
+    if loudness:
+        # Viser une loudness, pas une crête — puis arrondir ce qui dépasse.
+        rms = math.sqrt(sum(value * value for value in samples) / len(samples))
+        if rms <= 0.0:
+            raise SystemExit("signal muet")
+        gain = TARGET_RMS / rms
+        samples = [soft_limit(value * gain) for value in samples]
+    else:
+        samples = [value * (TARGET_PEAK / peak) for value in samples]
     if fade:
         fade_frames = min(int(FADE_OUT_SECONDS * rate), len(samples) // channels)
         for frame in range(fade_frames):
@@ -97,10 +139,11 @@ def build_music() -> int:
     built = 0
     for source in sorted(MUSIC_SOURCE.glob("*.wav")):
         # La musique est masterisée en WAV puis encodée : ffmpeg ne fait que l'encodage,
-        # pour que le traitement soit identique à celui des SFX.
+        # pour que le mastering reste sous notre contrôle et reproductible.
         samples, channels, rate = read_wav(source)
         staged = MUSIC_OUTPUT / (source.stem + ".staged.wav")
-        write_wav(staged, master(samples, channels, rate, fade=False), channels, rate)
+        write_wav(staged, master(samples, channels, rate, fade=False, loudness=True),
+                  channels, rate)
         target = MUSIC_OUTPUT / (source.stem + ".ogg")
         # -bitexact : sans lui, ffmpeg tire un numéro de série de flux Ogg au hasard et
         # chaque encodage produit un fichier différent — le build ne serait pas reproductible.

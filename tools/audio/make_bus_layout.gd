@@ -8,26 +8,35 @@ extends SceneTree
 const OUTPUT := "res://resources/audio/default_bus_layout.tres"
 
 func _init() -> void:
-	# Master keeps a gentle compressor then a hard limiter: no clipping, ever.
 	AudioServer.set_bus_count(4)
 
+	# Master carries ONLY a hard limiter — a safety net, never a mix tool.
+	#
+	# The compressor used to live here. With a -18 dB threshold and the player holding
+	# fire, every shot pushed the master over the threshold and the resulting gain
+	# reduction was applied to the whole bus — music included. The score was being
+	# ducked by the player's own guns, permanently, and no volume slider could undo it
+	# (the sliders cap at 0 dB). The compressor now sits on SFX, where it belongs:
+	# it glues the gunfire without ever touching the music.
 	AudioServer.set_bus_name(0, "Master")
 	AudioServer.set_bus_volume_db(0, 0.0)
 	for i in range(AudioServer.get_bus_effect_count(0) - 1, -1, -1):
 		AudioServer.remove_bus_effect(0, i)
+	var limiter := AudioEffectHardLimiter.new()
+	limiter.ceiling_db = -0.5
+	AudioServer.add_bus_effect(0, limiter)
+
+	_make_bus(1, "Music", 0.0)
+	_make_bus(2, "SFX", 0.0)
+	_make_bus(3, "Voice", 0.0)
+
+	# Compression on the SFX bus: tames a dense salvo without reaching the score.
 	var compressor := AudioEffectCompressor.new()
 	compressor.threshold = -18.0
 	compressor.ratio = 3.0
 	compressor.attack_us = 20.0
 	compressor.release_ms = 250.0
-	AudioServer.add_bus_effect(0, compressor)
-	var limiter := AudioEffectHardLimiter.new()
-	limiter.ceiling_db = -0.5
-	AudioServer.add_bus_effect(0, limiter)
-
-	_make_bus(1, "Music", -4.0)
-	_make_bus(2, "SFX", 0.0)
-	_make_bus(3, "Voice", 0.0)
+	AudioServer.add_bus_effect(2, compressor)
 
 	var layout := AudioServer.generate_bus_layout()
 	var error := ResourceSaver.save(layout, OUTPUT)
