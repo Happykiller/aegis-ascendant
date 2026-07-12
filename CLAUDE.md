@@ -8,6 +8,19 @@ Prototype de vertical shooter 2.5D/3D sous **Godot 4.7-stable** (Forward+, GDScr
 - **`docs/decisions/ADR-*.md`** — décisions actées qui priment sur la spec en cas d'écart (ex. : Godot 4.7 au lieu de 4.6).
 - Ne jamais inventer une API/option CLI Godot : vérifier dans la doc officielle **4.7** (https://docs.godotengine.org/en/4.7/).
 
+## Le ghost — comment travailler ici (chargé à la demande)
+
+**`.claude/resources/INDEX.md`** indexe les process, workflows, bonnes pratiques et howtos du projet.
+**Le lire avant** : de juger un rendu visuel, de mesurer une perf, d'intégrer un asset de la forge,
+ou d'étendre le ghost (sous-agent/skill). Trois réflexes qui évitent des itérations perdues :
+
+- Claude **juge son propre rendu** par capture PNG depuis WSL — inutile de solliciter l'opérateur.
+- Le **FPS d'un lancement automatisé ne mesure rien** (Windows bride la présentation) : mesurer le **temps GPU par image**.
+- Un asset de la forge **n'est pas validé tant qu'il n'a pas été rendu et regardé** (cf. ADR-0006).
+
+Tout nouvel apprentissage de session va dans `.claude/resources/` **avec sa ligne dans l'INDEX** —
+jamais ici : ce fichier se charge en entier à chaque session.
+
 ## Environnement (voir ADR-0002)
 
 - Dev dans **WSL2 Debian** ; **jamais de commande Godot sans `--headless`** dans WSL (pas de GPU fiable).

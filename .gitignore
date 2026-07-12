@@ -21,3 +21,6 @@ __pycache__/
 # Sources WAV de musique : ~50 Mo, régénérables par tools/audio/generate_music.py.
 # Seuls les OGG masterisés (assets/imported/audio/music/) sont versionnés — ADR-0007.
 assets/source/audio/music/
+
+# Worktrees temporaires des sous-agents (isolation)
+.claude/worktrees/
