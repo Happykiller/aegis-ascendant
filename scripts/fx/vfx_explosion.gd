@@ -6,26 +6,50 @@ extends Node3D
 
 signal finished(effect: VfxExplosion)
 
-enum Category { SMALL, MEDIUM, HEAVY }
+## IMPACT is the bullet-on-hull hit, not a death: tiny, brief, and tinted by the
+## caller (cold white on an enemy hull, shield cyan on ours) so the player can
+## tell "I connected" from "I got hit" without reading the HUD.
+enum Category { IMPACT, SMALL, MEDIUM, HEAVY }
 
-const _FLASH_DURATION := 0.28
 const _SIZE: Dictionary = {
+	Category.IMPACT: 0.5,
 	Category.SMALL: 0.9,
 	Category.MEDIUM: 1.8,
 	Category.HEAVY: 3.6,
 }
 const _TINT: Dictionary = {
+	Category.IMPACT: Color(0.85, 0.90, 0.95),
 	Category.SMALL: Color(1.0, 0.75, 0.45),
 	Category.MEDIUM: Color(1.0, 0.6, 0.35),
 	Category.HEAVY: Color(1.0, 0.5, 0.3),
+}
+const _SPARKS: Dictionary = {
+	Category.IMPACT: 8,
+	Category.SMALL: 16,
+	Category.MEDIUM: 30,
+	Category.HEAVY: 44,
+}
+const _FLASH_DURATION: Dictionary = {
+	Category.IMPACT: 0.10,
+	Category.SMALL: 0.28,
+	Category.MEDIUM: 0.28,
+	Category.HEAVY: 0.34,
+}
+const _SPARK_LIFE: Dictionary = {
+	Category.IMPACT: 0.26,
+	Category.SMALL: 0.55,
+	Category.MEDIUM: 0.55,
+	Category.HEAVY: 0.70,
 }
 
 var _flash: MeshInstance3D
 var _flash_material: StandardMaterial3D
 var _sparks: GPUParticles3D
+var _spark_material: ParticleProcessMaterial
 var _active: bool = false
 var _elapsed: float = 0.0
 var _size: float = 1.0
+var _flash_time: float = 0.28
 
 func _ready() -> void:
 	_flash = MeshInstance3D.new()
@@ -51,7 +75,8 @@ func _ready() -> void:
 	_sparks.lifetime = 0.55
 	_sparks.local_coords = false
 	_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_sparks.process_material = _make_spark_process_material()
+	_spark_material = _make_spark_process_material()
+	_sparks.process_material = _spark_material
 	_sparks.draw_pass_1 = _make_spark_mesh()
 	add_child(_sparks)
 
@@ -77,9 +102,12 @@ func _make_spark_process_material() -> ParticleProcessMaterial:
 	var scale_tex := CurveTexture.new()
 	scale_tex.curve = curve
 	mat.scale_curve = scale_tex
+	# The ramp only shapes brightness and fade; the hue comes from mat.color, set
+	# per play(). That keeps a tinted burst allocation-free in the hot path — the
+	# alternative, rebuilding the gradient on every hit, would allocate per bullet.
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1.0, 0.9, 0.6, 1.0))
-	ramp.set_color(1, Color(1.0, 0.35, 0.2, 0.0))
+	ramp.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	ramp.set_color(1, Color(0.75, 0.75, 0.75, 0.0))
 	var ramp_tex := GradientTexture1D.new()
 	ramp_tex.gradient = ramp
 	mat.color_ramp = ramp_tex
@@ -100,13 +128,18 @@ func _make_spark_mesh() -> QuadMesh:
 	quad.material = mat
 	return quad
 
-func play(category: Category) -> void:
+## `tint` overrides the category default (used for impacts, which are coloured by
+## whose hull was hit). Leave it transparent to keep the category's own tint.
+func play(category: Category, tint: Color = Color.TRANSPARENT) -> void:
 	_size = _SIZE[category]
-	var tint: Color = _TINT[category]
-	_flash_material.albedo_color = Color(tint.r, tint.g, tint.b, 1.0)
-	_flash_material.emission = tint
+	_flash_time = _FLASH_DURATION[category]
+	var colour: Color = tint if tint.a > 0.0 else _TINT[category]
+	_flash_material.albedo_color = Color(colour.r, colour.g, colour.b, 1.0)
+	_flash_material.emission = colour
 	_flash_material.emission_energy_multiplier = 4.0
-	_sparks.amount = 16 + int(category) * 14
+	_spark_material.color = colour
+	_sparks.amount = _SPARKS[category]
+	_sparks.lifetime = _SPARK_LIFE[category]
 	_sparks.restart()
 	_sparks.emitting = true
 	_elapsed = 0.0
@@ -118,7 +151,7 @@ func _process(delta: float) -> void:
 	if not _active:
 		return
 	_elapsed += delta
-	var t := _elapsed / _FLASH_DURATION
+	var t := _elapsed / _flash_time
 	if t >= 1.0:
 		_flash.visible = false
 		if _elapsed >= _sparks.lifetime:

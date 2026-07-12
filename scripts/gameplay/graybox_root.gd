@@ -20,6 +20,11 @@ const _FORTRESS_Y := -5.2
 const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
 const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
 
+## Impact tints: the palette's cold impact flash when we strike an enemy hull, the
+## shield's own cyan when something strikes us.
+const _HULL_IMPACT_TINT := Color(0.851, 0.902, 0.949)
+const _SHIELD_IMPACT_TINT := Color(0.247, 0.851, 0.91)
+
 ## Shield alarm thresholds (spec §8.3: audible warning under 25%). The alarm re-arms
 ## only above 35% so a shield hovering around the threshold does not stutter.
 const _ALARM_TRIGGER_RATIO := 0.25
@@ -34,6 +39,7 @@ enum Phase { FIGHTER_WAVES, MINI_BOSS, DOCKING, COMMAND_TRANSFER, FORTRESS_BOSS,
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
+@onready var _bullets: BulletManager = get_node_or_null("BulletManager") as BulletManager
 @onready var _bullet_manager: BulletManager = get_node_or_null("BulletManager") as BulletManager
 @onready var _audio: AudioManagerScript = get_node_or_null("/root/AudioManager") as AudioManagerScript
 
@@ -57,6 +63,8 @@ func _ready() -> void:
 		enemy.destroyed.connect(_on_enemy_destroyed)
 		enemy.fired.connect(_on_enemy_fired)
 		enemy.hit.connect(_on_enemy_hit)
+	if _bullets != null:
+		_bullets.target_hit.connect(_on_bullet_hit)
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 	if _player != null:
@@ -134,6 +142,17 @@ func _on_enemy_fired() -> void:
 
 func _on_enemy_hit() -> void:
 	_sfx(&"hull_impact")
+
+## Every connecting bullet, from either side. Coloured by who was hit, so a glance
+## tells you whether you landed a shot or took one: cold white on an enemy hull,
+## shield cyan on ours (docs/forge/output/graybox_palette.md).
+func _on_bullet_hit(plane_position: Vector2, victim_team: int) -> void:
+	if _vfx == null:
+		return
+	var tint := _SHIELD_IMPACT_TINT if victim_team == BulletManager.Team.PLAYER \
+		else _HULL_IMPACT_TINT
+	_vfx.spawn_explosion(GameplayPlane.to_world(plane_position),
+		VfxExplosion.Category.IMPACT, tint)
 
 ## Audible warning when the shield drops under 25% (spec §8.3).
 func _on_player_shield_changed(ratio: float, _current: float, _maximum: float) -> void:

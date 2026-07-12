@@ -8,6 +8,12 @@ extends Node3D
 
 enum Team { PLAYER = 0, ENEMY = 1 }
 
+## A bullet connected. `victim_team` is the team that was *hit*, so a listener can
+## colour the impact by side. The hit callback only carries damage, which is all
+## the victim needs — but nothing else knew where the hit landed, so there was no
+## way to draw it.
+signal target_hit(plane_position: Vector2, victim_team: int)
+
 const MAX_BULLETS := 600                       # spec §21.3 hard budget
 const TEAM_BUDGETS: PackedInt32Array = [150, 450]  # player / enemy sub-budgets
 const CULL_MARGIN := 2.0                       # units beyond BOUNDS before culling
@@ -195,4 +201,5 @@ func _resolve_hits() -> void:
 					var reach := _radii[i] + target.radius
 					if _positions[i].distance_squared_to(target.position) <= reach * reach:
 						target.hit_callback.call(_damages[i])
+						target_hit.emit(_positions[i], target.team)
 						_release(i)
