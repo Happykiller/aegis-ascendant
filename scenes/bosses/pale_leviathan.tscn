@@ -1,14 +1,13 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/bosses/boss_controller.gd" id="1_boss"]
-[ext_resource type="Texture2D" path="res://assets/imported/sprites/bosses/pale_leviathan.png" id="2_tex"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/bosses/pale_leviathan.glb" id="2_hull"]
 [ext_resource type="Resource" path="res://resources/weapons/boss_shot.tres" id="3_shot"]
 
 [node name="PaleLeviathan" type="Node3D"]
 script = ExtResource("1_boss")
 display_name = "The Pale Leviathan"
-sprite_texture = ExtResource("2_tex")
-sprite_pixel_size = 0.011
+hull_scene = ExtResource("2_hull")
 max_health = 950.0
 hitbox_radius = 3.6
 phase_count = 4

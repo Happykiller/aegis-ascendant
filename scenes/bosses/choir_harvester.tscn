@@ -1,14 +1,13 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/bosses/boss_controller.gd" id="1_boss"]
-[ext_resource type="Texture2D" path="res://assets/imported/sprites/bosses/choir_harvester.png" id="2_tex"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/bosses/choir_harvester.glb" id="2_hull"]
 [ext_resource type="Resource" path="res://resources/weapons/boss_shot.tres" id="3_shot"]
 
 [node name="ChoirHarvester" type="Node3D"]
 script = ExtResource("1_boss")
 display_name = "Choir Harvester"
-sprite_texture = ExtResource("2_tex")
-sprite_pixel_size = 0.0075
+hull_scene = ExtResource("2_hull")
 max_health = 420.0
 hitbox_radius = 2.0
 phase_count = 1

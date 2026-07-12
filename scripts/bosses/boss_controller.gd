@@ -1,6 +1,6 @@
 class_name BossController
 extends Node3D
-## Reusable boss (spec §12): sprite body, health, multi-phase attack patterns.
+## Reusable boss (spec §12): 3D hull, health, multi-phase attack patterns.
 ## Used for the Choir Harvester mini-boss (1 phase) and the Pale Leviathan final
 ## boss (several phases). Patterns intensify per phase. Fires through the shared
 ## BulletManager; killed via its registered BulletTarget.
@@ -12,8 +12,7 @@ signal defeated(world_position: Vector3)
 enum Pattern { RADIAL, AIMED_SPREAD, FAN }
 
 @export var display_name: String = "boss"
-@export var sprite_texture: Texture2D
-@export var sprite_pixel_size: float = 0.008
+@export var hull_scene: PackedScene
 @export var max_health: float = 600.0
 @export var hitbox_radius: float = 2.2
 @export var phase_count: int = 1
@@ -37,21 +36,40 @@ var _entering: bool = true
 var _defeated: bool = false
 var _age: float = 0.0
 var _fire_timer: float = 0.0
-var _sprite: Sprite3D
+var _hull: Node3D
 var _base_x: float = 0.0
+## Where the boss's shots leave its body, read from the hull's own muzzles.
+var _muzzle_offset: Vector2 = Vector2(0.0, -1.0)
+
+## Hulls are modelled nose-forward like every unit (ADR-0008); a boss faces the
+## player, so the scene turns it around rather than the mesh being built backwards.
+const FACING_PLAYER := Vector3(0.0, PI, 0.0)
 
 func _ready() -> void:
 	_health = max_health
-	_sprite = Sprite3D.new()
-	_sprite.texture = sprite_texture
-	_sprite.pixel_size = sprite_pixel_size
-	_sprite.shaded = false
-	_sprite.double_sided = true
-	_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	_sprite.rotation = Vector3(deg_to_rad(-90.0), 0.0, 0.0)
-	add_child(_sprite)
+	if hull_scene != null:
+		_hull = hull_scene.instantiate() as Node3D
+		_hull.rotation = FACING_PLAYER
+		add_child(_hull)
+		_muzzle_offset = _read_muzzle_offset()
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false) # activated on begin()
+
+## Average of whatever muzzles the hull carries (the Leviathan has a central one,
+## the Harvester fires from its two claws). Falls back to a nose offset.
+func _read_muzzle_offset() -> Vector2:
+	var sum := Vector2.ZERO
+	var found := 0
+	for point_name in ["Muzzle_C", "Muzzle_L", "Muzzle_R"]:
+		var node := _hull.get_node_or_null(NodePath(point_name)) as Node3D
+		if node != null:
+			var world := _hull.transform * node.position
+			sum += Vector2(world.x, -world.z)
+			found += 1
+	if found == 0:
+		push_error("[Boss:%s] hull carries no muzzle attach point" % display_name)
+		return Vector2(0.0, -1.0)
+	return sum / float(found)
 
 func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> void:
 	_bullet_manager = bullet_manager
@@ -114,7 +132,7 @@ func _physics_process(delta: float) -> void:
 func _attack() -> void:
 	if _bullet_manager == null or projectile == null:
 		return
-	var muzzle := plane_position + Vector2(0.0, -1.0)
+	var muzzle := plane_position + _muzzle_offset
 	match (_age_pattern()):
 		Pattern.RADIAL:
 			var count := 10 + _phase * 4
