@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_fighter.tscn" id="2_player"]
@@ -13,6 +13,16 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_screen.tscn" id="13_pause"]
+[ext_resource type="Shader" path="res://shaders/retro_post.gdshader" id="14_retro"]
+
+[sub_resource type="ShaderMaterial" id="mat_retro"]
+shader = ExtResource("14_retro")
+shader_parameter/target_res = Vector2(480, 270)
+shader_parameter/levels = 20.0
+shader_parameter/dither_amount = 0.9
+shader_parameter/saturation = 1.18
+shader_parameter/contrast = 1.1
+shader_parameter/warmth = 0.03
 
 [node name="Graybox" type="Node3D"]
 script = ExtResource("1_root")
@@ -64,6 +74,15 @@ bullet_manager_path = NodePath("../BulletManager")
 [node name="PickupManager" type="Node3D" parent="."]
 script = ExtResource("12_pickups")
 player_path = NodePath("../PlayerFighter")
+
+[node name="RetroPost" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Effect" type="ColorRect" parent="RetroPost"]
+material = SubResource("mat_retro")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
 [node name="FighterHUD" parent="." instance=ExtResource("11_hud")]
 
