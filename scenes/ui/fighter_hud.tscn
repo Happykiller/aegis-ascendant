@@ -1,9 +1,12 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/fighter_hud.gd" id="1_hud"]
 [ext_resource type="Texture2D" path="res://assets/imported/ui/hud/fighter_hud_frame.svg" id="2_fighter_frame"]
 [ext_resource type="Texture2D" path="res://assets/imported/ui/hud/fortress_hud_frame.svg" id="3_fortress_frame"]
 [ext_resource type="Texture2D" path="res://assets/imported/ui/hud/mode_transition.svg" id="4_transition"]
+[ext_resource type="Texture2D" path="res://assets/imported/sprites/pickups/power_core.svg" id="5_power"]
+[ext_resource type="Texture2D" path="res://assets/imported/sprites/pickups/shield_cell.svg" id="6_shield"]
+[ext_resource type="Texture2D" path="res://assets/imported/sprites/pickups/score_prism.svg" id="7_score"]
 
 [node name="FighterHUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -86,6 +89,75 @@ offset_bottom = 158.0
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 1)
 theme_override_font_sizes/font_size = 20
 text = "LV.1"
+
+[node name="PickupsLabel" type="Label" parent="."]
+offset_left = 60.0
+offset_top = 170.0
+offset_right = 240.0
+offset_bottom = 190.0
+theme_override_colors/font_color = Color(0.6, 0.7, 0.82, 0.55)
+theme_override_font_sizes/font_size = 13
+text = "PICKUPS"
+
+[node name="PickupPowerIcon" type="TextureRect" parent="."]
+offset_left = 60.0
+offset_top = 194.0
+offset_right = 86.0
+offset_bottom = 220.0
+mouse_filter = 2
+texture = ExtResource("5_power")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PickupPowerName" type="Label" parent="."]
+offset_left = 94.0
+offset_top = 196.0
+offset_right = 340.0
+offset_bottom = 218.0
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.85)
+theme_override_font_sizes/font_size = 15
+text = "POWER UP"
+vertical_alignment = 1
+
+[node name="PickupShieldIcon" type="TextureRect" parent="."]
+offset_left = 60.0
+offset_top = 224.0
+offset_right = 86.0
+offset_bottom = 250.0
+mouse_filter = 2
+texture = ExtResource("6_shield")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PickupShieldName" type="Label" parent="."]
+offset_left = 94.0
+offset_top = 226.0
+offset_right = 340.0
+offset_bottom = 248.0
+theme_override_colors/font_color = Color(0.247, 0.851, 0.91, 0.85)
+theme_override_font_sizes/font_size = 15
+text = "SHIELD +"
+vertical_alignment = 1
+
+[node name="PickupScoreIcon" type="TextureRect" parent="."]
+offset_left = 60.0
+offset_top = 254.0
+offset_right = 86.0
+offset_bottom = 280.0
+mouse_filter = 2
+texture = ExtResource("7_score")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PickupScoreName" type="Label" parent="."]
+offset_left = 94.0
+offset_top = 256.0
+offset_right = 340.0
+offset_bottom = 278.0
+theme_override_colors/font_color = Color(0.9, 0.9, 0.85, 0.85)
+theme_override_font_sizes/font_size = 15
+text = "SCORE +500"
+vertical_alignment = 1
 
 [node name="ScoreLabel" type="Label" parent="."]
 anchors_preset = 1
