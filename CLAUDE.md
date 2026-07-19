@@ -67,6 +67,10 @@ et `docs/forge/REVIEW_NOTES.md`).
 
 ## Interdictions clés (spec §0.2)
 
+> **Assoupli par ADR-0009** (projet personnel non commercial) : `_ip_quarantine/` est réinstauré
+> comme référence d'inspiration du rendu ; les assets produits restent originaux, les PNG restent
+> gitignorés. La ligne « Macross » ci-dessous ne bloque plus l'inspiration — voir l'ADR.
+
 - Aucun nom/silhouette/élément identifiable de Macross, Robotech ou d'une autre licence.
 - Aucun asset sans licence enregistrée ; aucun asset temporaire non signalé.
 - Ne pas contourner un test, ne pas cacher une erreur d'import/export.
