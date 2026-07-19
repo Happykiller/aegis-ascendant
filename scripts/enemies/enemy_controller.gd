@@ -195,7 +195,7 @@ func _build_thruster() -> void:
 	_thruster.position = _attach_point("Engine_C")
 	var mat := ParticleProcessMaterial.new()
 	mat.direction = Vector3(0.0, 0.0, -1.0)
-	mat.spread = 10.0
+	mat.spread = 7.0
 	mat.gravity = Vector3.ZERO
 	mat.initial_velocity_min = 3.0
 	mat.initial_velocity_max = 5.0
@@ -217,7 +217,7 @@ func _build_thruster() -> void:
 	mat.color_ramp = ramp_tex
 	_thruster.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.26, 0.26)
+	quad.size = Vector2(0.15, 0.48)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -226,7 +226,7 @@ func _build_thruster() -> void:
 	qmat.vertex_color_use_as_albedo = true
 	qmat.emission_enabled = true
 	qmat.emission_energy_multiplier = 2.0
-	qmat.albedo_texture = SoftDot.texture()
+	qmat.albedo_texture = FlameStreak.texture()
 	quad.material = qmat
 	_thruster.draw_pass_1 = quad
 	add_child(_thruster)

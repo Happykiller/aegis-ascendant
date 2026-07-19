@@ -298,7 +298,7 @@ func _make_engine_trail() -> GPUParticles3D:
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mat := ParticleProcessMaterial.new()
 	mat.direction = Vector3(0.0, 0.0, 1.0)
-	mat.spread = 8.0
+	mat.spread = 6.0
 	mat.gravity = Vector3.ZERO
 	mat.initial_velocity_min = 6.0
 	mat.initial_velocity_max = 9.0
@@ -318,7 +318,7 @@ func _make_engine_trail() -> GPUParticles3D:
 	mat.color_ramp = ramp_tex
 	trail.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.3, 0.3)
+	quad.size = Vector2(0.17, 0.58)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -327,7 +327,7 @@ func _make_engine_trail() -> GPUParticles3D:
 	qmat.vertex_color_use_as_albedo = true
 	qmat.emission_enabled = true
 	qmat.emission_energy_multiplier = 2.5
-	qmat.albedo_texture = SoftDot.texture()
+	qmat.albedo_texture = FlameStreak.texture()
 	quad.material = qmat
 	trail.draw_pass_1 = quad
 	trail.emitting = true

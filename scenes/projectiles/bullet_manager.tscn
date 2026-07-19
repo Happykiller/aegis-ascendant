@@ -5,15 +5,16 @@
 
 [sub_resource type="ShaderMaterial" id="mat_player_bullet"]
 shader = ExtResource("2_bolt")
-shader_parameter/core_color = Color(0.78, 1, 1, 1)
+shader_parameter/core_color = Color(0.82, 1, 1, 1)
 shader_parameter/halo_color = Color(0.247, 0.851, 0.91, 1)
-shader_parameter/core_size = 0.3
-shader_parameter/halo_opacity = 0.55
-shader_parameter/energy = 2.6
+shader_parameter/core_size = 0.22
+shader_parameter/halo_opacity = 0.5
+shader_parameter/energy = 2.9
+shader_parameter/dart = 1.0
 
 [sub_resource type="PlaneMesh" id="mesh_player_bullet"]
 material = SubResource("mat_player_bullet")
-size = Vector2(0.44, 1.12)
+size = Vector2(0.34, 1.5)
 
 [sub_resource type="MultiMesh" id="mm_player"]
 transform_format = 1
@@ -27,6 +28,7 @@ shader_parameter/halo_color = Color(1, 0.353, 0.239, 1)
 shader_parameter/core_size = 0.36
 shader_parameter/halo_opacity = 0.6
 shader_parameter/energy = 3.0
+shader_parameter/dart = 0.0
 
 [sub_resource type="PlaneMesh" id="mesh_enemy_bullet"]
 material = SubResource("mat_enemy_bullet")
