@@ -84,3 +84,25 @@ func _on_lives_changed(lives: int) -> void:
 
 func _on_power_changed(level: int) -> void:
 	_power_value.text = "LV.%d" % level
+
+## Briefly punch the HUD value a pickup just changed, so the gain is noticed
+## (spec §10 feedback). Scales from the label's centre, then settles back.
+func pulse_pickup(kind: int) -> void:
+	var label := _pickup_label(kind)
+	if label == null:
+		return
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2(1.4, 1.4)
+	var tween := create_tween()
+	tween.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(label, "scale", Vector2.ONE, 0.35)
+
+func _pickup_label(kind: int) -> Label:
+	match kind:
+		Pickup.Kind.POWER:
+			return _power_value
+		Pickup.Kind.SHIELD:
+			return _shield_value
+		Pickup.Kind.SCORE:
+			return _score_value
+	return null

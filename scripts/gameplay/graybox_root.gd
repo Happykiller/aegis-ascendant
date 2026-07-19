@@ -143,6 +143,8 @@ func _on_enemy_destroyed(enemy: EnemyController) -> void:
 ## One cue per kind: a bonus has to be identifiable without looking straight at it
 ## (docs/forge/CHARTE_CREATIVE.md — never colour alone).
 func _on_pickup(kind: int, _world_position: Vector3) -> void:
+	if _hud != null:
+		_hud.pulse_pickup(kind)
 	match kind:
 		Pickup.Kind.POWER:
 			_sfx(&"pickup_power")
@@ -272,6 +274,11 @@ func _on_final_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(20000)
 	if _hud != null:
 		_hud.hide_boss()
+	# The boss is destroyed: remove its hull so it does not linger through the
+	# finale and the docking close (it was staying visible before — ADR-0010).
+	if _final_boss != null:
+		_final_boss.queue_free()
+		_final_boss = null
 	_banner("HELIOS LANCE", _COLOR_ALLY, 1.4)
 	_fire_helios_lance(world_position)
 
