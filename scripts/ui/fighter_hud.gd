@@ -21,6 +21,9 @@ const MAX_LIVES_ICONS := 5
 
 const _LABEL_FONT := preload("res://assets/fonts/PressStart2P.ttf")
 const _VALUE_FONT := preload("res://assets/fonts/VT323.ttf")
+const _PICKUP_POWER := preload("res://assets/imported/sprites/pickups/power_core.svg")
+const _PICKUP_SHIELD := preload("res://assets/imported/sprites/pickups/shield_cell.svg")
+const _PICKUP_SCORE := preload("res://assets/imported/sprites/pickups/score_prism.svg")
 
 # --- Runtime nodes ------------------------------------------------------------
 var _shield_style: StyleBoxFlat
@@ -46,11 +49,36 @@ var _banner: Label
 
 func _ready() -> void:
 	_build_shield_power_panel()
+	_build_pickup_legend()
 	_build_score_panel()
 	_build_lives_panel()
 	_build_boss_panel()
 	_build_banner()
 	set_process(true)
+
+## Persistent pickup reminder under the shield/power panel: the actual pickup icon
+## + what it does, so the player recalls each bonus at a glance.
+func _build_pickup_legend() -> void:
+	var lx := MARGIN
+	var y0 := MARGIN + 150.0 + 14.0
+	var rows := [
+		[_PICKUP_POWER, "POWER UP", POWER_ORANGE],
+		[_PICKUP_SHIELD, "SHIELD +", ACCENT],
+		[_PICKUP_SCORE, "SCORE +500", TEXT_LIGHT],
+	]
+	for i in rows.size():
+		var yy := y0 + float(i) * 30.0
+		var icon := TextureRect.new()
+		icon.texture = rows[i][0]
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.offset_left = lx
+		icon.offset_top = yy
+		icon.offset_right = lx + 22.0
+		icon.offset_bottom = yy + 22.0
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(icon)
+		_label(self, rows[i][1], _LABEL_FONT, 12, rows[i][2], Vector2(lx + 30, yy - 1), 320)
 
 # --- Builders -----------------------------------------------------------------
 

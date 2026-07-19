@@ -226,7 +226,6 @@ func _start_docking() -> void:
 	add_child(_citadel)
 	_citadel.arrived.connect(_on_citadel_arrived, CONNECT_ONE_SHOT)
 	_citadel.slide_to(Vector2(0.0, 11.0), 9.0)
-	_banner("DOCKING", _COLOR_ALLY, 1.4)
 
 func _on_citadel_arrived() -> void:
 	if _player != null:
@@ -279,7 +278,6 @@ func _on_final_boss_defeated(world_position: Vector3) -> void:
 	if _final_boss != null:
 		_final_boss.queue_free()
 		_final_boss = null
-	_banner("HELIOS LANCE", _COLOR_ALLY, 1.4)
 	_fire_helios_lance(world_position)
 
 func _fire_helios_lance(target: Vector3) -> void:
