@@ -43,8 +43,13 @@ CONTRACT = ak.HullContract(
     tri_budget=15_000,
     required_materials=ak.MATERIAL_ORDER,  # les 7 : la planche les utilise tous
     required_attach_points=(
-        "Muzzle_L",
-        "Muzzle_R",
+        "Muzzle_L",       # twin de nez, babord   (power 1+)
+        "Muzzle_R",       # twin de nez, tribord
+        "Muzzle_Wing_L",  # canon d'aile, babord  (power 3)
+        "Muzzle_Wing_R",  # canon d'aile, tribord
+        "Muzzle_C",       # canon d'axe central   (power 4)
+        "Muzzle_Tip_L",   # pod de bout d'aile, babord (power 5)
+        "Muzzle_Tip_R",   # pod de bout d'aile, tribord
         "Engine_L",
         "Engine_R",
         "Cockpit",
@@ -245,10 +250,25 @@ STRAKE: list[tuple[float, float, float]] = [
     (0.5200, 0.076, 0.040),
 ]
 
-BARREL_X = 0.026        # ecartement des deux tubes du canon ventral
+# Ecartement (a l'axe) des deux tubes du canon ventral. Derive de la coque :
+# la culasse des tubes (breech, y ~= -0.89) doit rester SOUS la coque, or la
+# demi-envergure du planform y vaut ~0.104 ; on retranche le rayon de levre du
+# tube (BARREL_R*1.22 ~= 0.021) -> ~0.083, arrondi a 0.080. La culasse reste
+# ainsi ancree sous le nez, les tubes projettent vers l'avant en un twin
+# nettement lisible (ecartement 0.160 m, contre 0.052 auparavant, ou les deux
+# tirs sortaient superposes). Le brief evoquait ~0.12, mais a cette valeur les
+# tubes flottent hors coque au droit de la bouche (demi-largeur du nez ~0.05) ;
+# 0.080 reste sous la largeur maximale du longeron ventral STRAKE (0.104).
+# Deplacer BARREL_X deplace ENSEMBLE la geometrie des tubes (build_details) et
+# les muzzles (build_attach_points) : flash, tube et balle restent alignes.
+BARREL_X = 0.080        # ecartement des deux tubes du canon ventral
 BARREL_R = 0.017
 BARREL_TIP = -1.0550    # pointe des tubes
 MUZZLE_Y = -1.0700      # bouche de tir : juste devant les tubes
+
+# Canons additionnels montes sur l'aile (positions laterales, a l'axe).
+WING_MUZZLE_X = 0.500   # canon d'aile (power 3) : sur le bord d'attaque, a mi-aile
+TIP_MUZZLE_X = 0.800    # pod de bout d'aile (power 5) : sous la largeur max 0.875
 
 
 # ==========================================================================
@@ -673,22 +693,70 @@ def _barrel_z() -> float:
 # ==========================================================================
 
 
+def _leading_edge_station(half_span: float) -> float:
+    """Station `y` du **bord d'attaque** ou la demi-envergure vaut `half_span`.
+
+    On ne parcourt que la branche avant du planform : du nez (`y = -1.230`) au
+    coin avant du bout d'aile (`y = 0.418`, largeur maximale). Sur cette branche
+    la demi-envergure croit de facon monotone, donc l'inversion est unique.
+    Au-dela (branche arriere, bord de fuite) la meme demi-largeur se retrouve :
+    on s'arrete avant pour ne pas y basculer.
+    """
+    tip_y = _tip_front_station()
+    for i in range(len(PLANFORM) - 1):
+        y0, w0 = PLANFORM[i]
+        y1, w1 = PLANFORM[i + 1]
+        if y1 > tip_y:  # on a atteint le coin avant : au-dela c'est le culot
+            break
+        if w0 <= half_span <= w1:
+            t = (half_span - w0) / (w1 - w0)
+            return y0 + (y1 - y0) * t
+    raise ak.ContractError(
+        f"demi-envergure {half_span} hors du bord d'attaque du planform"
+    )
+
+
+def _tip_front_station() -> float:
+    """Station `y` du coin avant du bout d'aile (premiere largeur maximale)."""
+    return max(PLANFORM, key=lambda p: p[1])[0]
+
+
 def build_attach_points() -> list:
     """Positions **derivees de la geometrie**, jamais devinees.
 
     Les offsets de tir et de trainee du controleur joueur seront lus ici : une
-    approximation se verrait a l'ecran.
+    approximation se verrait a l'ecran. Les sept muzzles mappent l'echelle de
+    puissance (spec 9.1) : twin de nez (Muzzle_L/R) des le power 1, canons
+    d'aile (Muzzle_Wing_L/R) au power 3, canon d'axe (Muzzle_C) au power 4,
+    pods de bout d'aile (Muzzle_Tip_L/R) au power 5.
     """
     points: list = []
 
-    # bouches de tir : dans l'axe des tubes, juste devant leur pointe.
+    # --- twin de nez : dans l'axe des tubes, juste devant leur pointe. --------
     points += list(ak.attach_pair("Muzzle", BARREL_X, MUZZLE_Y, _barrel_z()))
 
-    # tuyeres : centre du plan de sortie (origine de la trainee).
+    # --- canon d'axe central : entre les deux tubes, meme plan de tir. --------
+    points.append(ak.attach_point("Muzzle_C", (0.0, MUZZLE_Y, _barrel_z())))
+
+    # --- canons d'aile : sur le bord d'attaque, a la station ou la demi-
+    #     envergure vaut WING_MUZZLE_X ; z pris sur la surface superieure d'aile
+    #     a cette station (anhedral compris via z_top).
+    y_wing = _leading_edge_station(WING_MUZZLE_X)
+    z_wing = z_top(WING_MUZZLE_X, *section_params(y_wing))
+    points += list(ak.attach_pair("Muzzle_Wing", WING_MUZZLE_X, y_wing, z_wing))
+
+    # --- pods de bout d'aile : au coin avant du bout d'aile (largeur max
+    #     0.875), en retrait a x = TIP_MUZZLE_X pour rester sur la coque ; z sur
+    #     la surface d'aile a cette station (anhedral marque en bout d'aile).
+    y_tip = _tip_front_station()
+    z_tip = z_top(TIP_MUZZLE_X, *section_params(y_tip))
+    points += list(ak.attach_pair("Muzzle_Tip", TIP_MUZZLE_X, y_tip, z_tip))
+
+    # --- tuyeres : centre du plan de sortie (origine de la trainee). ----------
     exit_y = max(y for y, _, _ in NACELLE_PROFILE)
     points += list(ak.attach_pair("Engine", NACELLE_X, exit_y - 0.010, NACELLE_Z))
 
-    # cockpit : centre du volume de verriere.
+    # --- cockpit : centre du volume de verriere. ------------------------------
     y_mid = (CANOPY[0][0] + CANOPY[-1][0]) * 0.5
     peak = max(CANOPY, key=lambda s: s[2])
     z_mid = lerp_table(CROWN, y_mid) - CANOPY_SINK + peak[2] * 0.45
