@@ -84,6 +84,11 @@ func _ready() -> void:
 	_build_engine_trails()
 	_build_muzzle_flashes()
 	_demo = "--demo" in OS.get_cmdline_user_args()
+	# Debug/capture only: `++ --power=N` starts at power N to inspect the fuller
+	# fire pattern (wing and wingtip guns) without collecting pickups first.
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--power="):
+			_power_level = clampi(int(arg.trim_prefix("--power=")), 1, MAX_POWER)
 	_shield.configure(stats.shield_max, stats.shield_regen_delay,
 		stats.shield_regen_rate, stats.invuln_time)
 	_lives = stats.lives
