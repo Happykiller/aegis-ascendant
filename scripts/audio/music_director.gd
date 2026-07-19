@@ -74,11 +74,7 @@ static func resolve(ctx: MusicContext) -> int:
 			return State.FLEET_BATTLE
 		MusicContext.LevelPhase.MINI_BOSS:
 			return State.FLEET_BATTLE
-		MusicContext.LevelPhase.DOCKING:
-			return State.DOCKING
-		MusicContext.LevelPhase.COMMAND_TRANSFER:
-			return State.FORTRESS_AWAKENING
-		MusicContext.LevelPhase.FORTRESS_BOSS:
+		MusicContext.LevelPhase.FINAL_BOSS:
 			if ctx.boss_health_ratio <= _FINAL_CHARGE_AT:
 				return State.FINAL_CHARGE
 			# Either the boss announced its later phase, or it is simply hurt enough.
@@ -87,7 +83,10 @@ static func resolve(ctx: MusicContext) -> int:
 			if late_phase or ctx.boss_health_ratio <= _BOSS_PHASE_2_AT:
 				return State.BOSS_PHASE_2
 			return State.BOSS_PHASE_1
+		MusicContext.LevelPhase.DOCKING:
+			# The closing sequence (ADR-0010): the calm docking bed after the boss.
+			return State.DOCKING
 		MusicContext.LevelPhase.VICTORY:
-			# Hold the previous cue until the screen is clear, then resolve.
-			return State.VICTORY if ctx.hostiles_clear else State.FINAL_CHARGE
+			# Hold the calm docking cue until the screen is clear, then resolve.
+			return State.VICTORY if ctx.hostiles_clear else State.DOCKING
 	return State.SILENT

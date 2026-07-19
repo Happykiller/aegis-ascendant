@@ -15,9 +15,8 @@ func test_level_phases_stay_aligned_with_the_director() -> void:
 	# every state resolution silently shifts — catch it here instead of in the mix.
 	assert_eq(MusicContext.LevelPhase.FIGHTER_WAVES, GrayboxRoot.Phase.FIGHTER_WAVES, "FIGHTER_WAVES")
 	assert_eq(MusicContext.LevelPhase.MINI_BOSS, GrayboxRoot.Phase.MINI_BOSS, "MINI_BOSS")
+	assert_eq(MusicContext.LevelPhase.FINAL_BOSS, GrayboxRoot.Phase.FINAL_BOSS, "FINAL_BOSS")
 	assert_eq(MusicContext.LevelPhase.DOCKING, GrayboxRoot.Phase.DOCKING, "DOCKING")
-	assert_eq(MusicContext.LevelPhase.COMMAND_TRANSFER, GrayboxRoot.Phase.COMMAND_TRANSFER, "COMMAND_TRANSFER")
-	assert_eq(MusicContext.LevelPhase.FORTRESS_BOSS, GrayboxRoot.Phase.FORTRESS_BOSS, "FORTRESS_BOSS")
 	assert_eq(MusicContext.LevelPhase.VICTORY, GrayboxRoot.Phase.VICTORY, "VICTORY")
 
 func test_fighter_waves_escalate_with_progress() -> void:
@@ -33,14 +32,12 @@ func test_mini_boss_keeps_fleet_battle() -> void:
 	assert_eq(MusicDirector.resolve(_ctx(MusicContext.LevelPhase.MINI_BOSS)),
 		MusicDirector.State.FLEET_BATTLE, "mini-boss shares the Fleet Battle bed")
 
-func test_docking_and_command_transfer() -> void:
+func test_docking_is_the_closing_bed() -> void:
 	assert_eq(MusicDirector.resolve(_ctx(MusicContext.LevelPhase.DOCKING)),
-		MusicDirector.State.DOCKING, "docking")
-	assert_eq(MusicDirector.resolve(_ctx(MusicContext.LevelPhase.COMMAND_TRANSFER)),
-		MusicDirector.State.FORTRESS_AWAKENING, "command transfer wakes the fortress")
+		MusicDirector.State.DOCKING, "docking is the calm closing sequence (ADR-0010)")
 
-func test_fortress_boss_follows_health() -> void:
-	var ctx := _ctx(MusicContext.LevelPhase.FORTRESS_BOSS)
+func test_final_boss_follows_health() -> void:
+	var ctx := _ctx(MusicContext.LevelPhase.FINAL_BOSS)
 	ctx.boss_health_ratio = 1.0
 	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.BOSS_PHASE_1, "healthy = phase 1")
 	ctx.boss_health_ratio = 0.4
@@ -50,14 +47,14 @@ func test_fortress_boss_follows_health() -> void:
 
 func test_boss_phase_announcement_also_escalates() -> void:
 	# The boss can declare its later phase before its health says so.
-	var ctx := _ctx(MusicContext.LevelPhase.FORTRESS_BOSS)
+	var ctx := _ctx(MusicContext.LevelPhase.FINAL_BOSS)
 	ctx.boss_health_ratio = 0.9
 	ctx.boss_phase = 1
 	ctx.boss_phase_count = 2
 	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.BOSS_PHASE_2, "second half = phase 2")
 
 func test_escalation_never_goes_backwards_as_the_boss_dies() -> void:
-	var ctx := _ctx(MusicContext.LevelPhase.FORTRESS_BOSS)
+	var ctx := _ctx(MusicContext.LevelPhase.FINAL_BOSS)
 	var seen: Array[int] = []
 	for step in 21:
 		ctx.boss_health_ratio = 1.0 - float(step) / 20.0
@@ -70,8 +67,8 @@ func test_escalation_never_goes_backwards_as_the_boss_dies() -> void:
 func test_victory_waits_for_the_screen_to_clear() -> void:
 	var ctx := _ctx(MusicContext.LevelPhase.VICTORY)
 	ctx.hostiles_clear = false
-	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.FINAL_CHARGE,
-		"enemy fire still in flight: hold the charge")
+	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.DOCKING,
+		"enemy fire still in flight: hold the calm docking cue")
 	ctx.hostiles_clear = true
 	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.VICTORY, "screen clear: resolve")
 

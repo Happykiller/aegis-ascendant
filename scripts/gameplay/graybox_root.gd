@@ -1,24 +1,18 @@
 extends Node3D
 ## Level director: sequences the level's phases (spec §5, §6, §37) and wires the
 ## player, HUD, VFX, camera, pickups and encounters together.
-##   FIGHTER_WAVES -> MINI_BOSS -> DOCKING -> COMMAND_TRANSFER -> FORTRESS_BOSS -> VICTORY
+##   FIGHTER_WAVES -> MINI_BOSS -> FINAL_BOSS -> DOCKING -> VICTORY
+## Le joueur reste le chasseur de bout en bout (ADR-0010) : plus de transformation en
+## forteresse ; le docking clot le niveau apres la defaite du boss final.
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
 const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const MiniBossScene := preload("res://scenes/bosses/choir_harvester.tscn")
 const FinalBossScene := preload("res://scenes/bosses/pale_leviathan.tscn")
 const CitadelScene := preload("res://scenes/fortress/aegis_citadel.tscn")
-const FortressBattery := preload("res://resources/weapons/fortress_battery.tres")
 const VictoryScene := preload("res://scenes/ui/victory_screen.tscn")
 
-const _FORTRESS_SPEED := 9.0
-const _FORTRESS_INTEGRITY_MAX := 200.0
-const _FORTRESS_FIRE_INTERVAL := 0.16
-const _FORTRESS_X_LIMIT := 8.5
-const _FORTRESS_Y := -3.8
-const _FORTRESS_SCALE := 0.38
 const _FINAL_BOSS_SCALE := 0.75
-const _FORTRESS_HITBOX_RADIUS := 1.5
 
 const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
 const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
@@ -33,7 +27,7 @@ const _SHIELD_IMPACT_TINT := Color(0.247, 0.851, 0.91)
 const _ALARM_TRIGGER_RATIO := 0.25
 const _ALARM_REARM_RATIO := 0.35
 
-enum Phase { FIGHTER_WAVES, MINI_BOSS, DOCKING, COMMAND_TRANSFER, FORTRESS_BOSS, VICTORY }
+enum Phase { FIGHTER_WAVES, MINI_BOSS, FINAL_BOSS, DOCKING, VICTORY }
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
@@ -50,13 +44,6 @@ var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
 var _citadel: AegisCitadel
 var _final_boss: BossController
-var _fortress_control: bool = false
-var _fortress_target: BulletTarget
-var _fortress_integrity: float = _FORTRESS_INTEGRITY_MAX
-var _fortress_fire_timer: float = 0.0
-var _fortress_side: int = 1
-var _demo: bool = false
-var _demo_time: float = 0.0
 var _alarm_armed: bool = true
 ## One instance for the whole run: resolving the musical state must not allocate.
 var _music: MusicContext = MusicContext.new()
@@ -86,7 +73,6 @@ func _ready() -> void:
 	if _pickups != null:
 		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
-	_demo = "--demo" in args
 	# Perf bisection flags.
 	if "--no-backdrop" in args:
 		var bd := get_node_or_null("SpaceBackdrop") as Node3D
@@ -104,16 +90,14 @@ func _ready() -> void:
 		_pickups.spawn(Pickup.Kind.SCORE, Vector2(3.0, 0.0))
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
+	elif "--skip-to-final" in args:
+		if _wave_spawner != null:
+			_wave_spawner.set_physics_process(false)
+		_start_final_boss()
 	elif "--skip-to-dock" in args:
 		if _wave_spawner != null:
 			_wave_spawner.set_physics_process(false)
 		_start_docking()
-	elif "--skip-to-fortress" in args:
-		if _wave_spawner != null:
-			_wave_spawner.set_physics_process(false)
-		if _player != null:
-			_player.stow()
-		_start_fortress_boss()
 	elif "--skip-to-victory" in args:
 		if _wave_spawner != null:
 			_wave_spawner.set_physics_process(false)
@@ -213,8 +197,8 @@ func _start_mini_boss() -> void:
 func _on_boss_health(ratio: float) -> void:
 	if _hud != null:
 		_hud.set_boss_health(ratio)
-	# Only the fortress boss drives the music: the mini-boss shares Fleet Battle.
-	if _phase == Phase.FORTRESS_BOSS:
+	# Only the final boss drives the boss music: the mini-boss shares Fleet Battle.
+	if _phase == Phase.FINAL_BOSS:
 		_music.boss_health_ratio = ratio
 		_update_music()
 
@@ -228,9 +212,9 @@ func _on_mini_boss_defeated(world_position: Vector3) -> void:
 		_boss.queue_free()
 		_boss = null
 	print("[Level] mini-boss defeated — score %d" % _game_state.score)
-	_start_docking()
+	_start_final_boss()
 
-# --- Docking (spec §6.5) -----------------------------------------------------
+# --- Final boss + docking close (ADR-0010; docking was the mid-level §6.5) ----
 
 func _start_docking() -> void:
 	_set_phase(Phase.DOCKING)
@@ -252,39 +236,11 @@ func _on_player_docked() -> void:
 	_sfx(&"docking_lock")
 	if _player != null:
 		_player.stow()
-	_start_command_transfer()
+	_start_victory()
 
-# --- Command transfer (spec §6.6) -------------------------------------------
-
-func _start_command_transfer() -> void:
-	_set_phase(Phase.COMMAND_TRANSFER)
-	print("[Level] COMMAND TRANSFER")
-	_banner("COMMAND TRANSFER", _COLOR_GOLD, 1.8)
-	get_tree().create_timer(2.6).timeout.connect(_start_fortress_boss)
-
-# --- Fortress boss (spec §12) -----------------------------------------------
-
-func _start_fortress_boss() -> void:
-	_set_phase(Phase.FORTRESS_BOSS)
-	print("[Level] FORTRESS BOSS")
-	# Ensure the fortress exists (direct skip may bypass docking).
-	if _citadel == null:
-		_citadel = CitadelScene.instantiate() as AegisCitadel
-		add_child(_citadel)
-	_citadel.scale = Vector3.ONE * _FORTRESS_SCALE
-	_citadel.slide_to(Vector2(0.0, _FORTRESS_Y), 12.0)
-	_citadel.arrived.connect(_begin_fortress_control, CONNECT_ONE_SHOT)
-
-func _begin_fortress_control() -> void:
-	_fortress_target = BulletTarget.make(BulletManager.Team.PLAYER, _FORTRESS_HITBOX_RADIUS,
-		Callable(self, "_on_fortress_hit"))
-	_fortress_target.position = _citadel.plane_position
-	_bullet_manager.register_target(_fortress_target)
-	_fortress_integrity = _FORTRESS_INTEGRITY_MAX
-	_fortress_control = true
-	if _hud != null:
-		_hud.set_integrity(1.0, _fortress_integrity)
-	# Summon the final boss.
+func _start_final_boss() -> void:
+	_set_phase(Phase.FINAL_BOSS)
+	print("[Level] FINAL BOSS")
 	_final_boss = FinalBossScene.instantiate() as BossController
 	_final_boss.plane_position = Vector2(0.0, 12.0)
 	_final_boss.scale = Vector3.ONE * _FINAL_BOSS_SCALE
@@ -296,7 +252,7 @@ func _begin_fortress_control() -> void:
 	_sfx(&"danger_alarm")
 	if _hud != null:
 		_hud.show_boss(_final_boss.display_name)
-	_banner("DEFEND THE CORE", _COLOR_GOLD, 1.6)
+	_banner(_final_boss.display_name, _COLOR_GOLD, 1.6)
 
 func _on_final_boss_phase(index: int, total: int) -> void:
 	if _camera_director != null:
@@ -307,54 +263,13 @@ func _on_final_boss_phase(index: int, total: int) -> void:
 	_update_music()
 	print("[Level] boss phase %d/%d" % [index + 1, total])
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	_update_engine_hum()
-	if not _fortress_control:
-		return
-	var move_x: float
-	if _demo:
-		_demo_time += delta
-		move_x = sin(_demo_time * 0.8)
-	else:
-		move_x = Input.get_axis("move_left", "move_right")
-	_citadel.plane_position.x = clampf(_citadel.plane_position.x + move_x * _FORTRESS_SPEED * delta,
-		-_FORTRESS_X_LIMIT, _FORTRESS_X_LIMIT)
-	_citadel.position = GameplayPlane.to_world(_citadel.plane_position)
-	_fortress_target.position = _citadel.plane_position
-	_fortress_fire_timer -= delta
-	if (_demo or Input.is_action_pressed("fire_primary")) and _fortress_fire_timer <= 0.0:
-		_fortress_fire_timer = _FORTRESS_FIRE_INTERVAL
-		_fire_battery()
-
-func _fire_battery() -> void:
-	# Twin rail batteries, alternating left/right (spec §12.3), each leaving its own
-	# muzzle baked into the citadel hull (ADR-0008) rather than a hard-coded offset.
-	_fortress_side = -_fortress_side
-	var origin := _citadel.battery_origin(0 if _fortress_side > 0 else 1)
-	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, Vector2(0.0, 1.0), FortressBattery)
-	if _fortress_side > 0: # twin battery: one cue per pair
-		_sfx(&"rail_battery")
-	if _camera_director != null:
-		_camera_director.add_trauma(0.12)
-
-func _on_fortress_hit(damage: float) -> void:
-	_fortress_integrity = maxf(_fortress_integrity - damage, 0.0)
-	if _hud != null:
-		_hud.set_integrity(_fortress_integrity / _FORTRESS_INTEGRITY_MAX, _fortress_integrity)
-	_sfx(&"hull_impact")
-	if _camera_director != null:
-		_camera_director.add_trauma(0.3)
-	if _fortress_integrity <= 0.0:
-		# Forgiving demo (spec §12.8): reset integrity instead of a hard fail.
-		_fortress_integrity = _FORTRESS_INTEGRITY_MAX
-		if _hud != null:
-			_hud.set_integrity(1.0, _fortress_integrity)
 
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 
 func _on_final_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(20000)
-	_fortress_control = false
 	if _hud != null:
 		_hud.hide_boss()
 	_banner("HELIOS LANCE", _COLOR_ALLY, 1.4)
@@ -369,7 +284,7 @@ func _fire_helios_lance(target: Vector3) -> void:
 		var offset := Vector3(randf_range(-4.0, 4.0), 0.0, randf_range(-3.0, 3.0))
 		get_tree().create_timer(0.12 * i).timeout.connect(
 			_boom.bind(target + offset, VfxExplosion.Category.HEAVY, 0.7))
-	get_tree().create_timer(1.8).timeout.connect(_start_victory)
+	get_tree().create_timer(1.8).timeout.connect(_start_docking)
 
 func _start_victory() -> void:
 	_set_phase(Phase.VICTORY)
@@ -406,8 +321,8 @@ func _on_game_over() -> void:
 
 # --- Helpers -----------------------------------------------------------------
 
-## The fighter's engine bed follows its speed. Once the fighter is stowed (docking),
-## the player *is* the fortress and the hum has no source: it stops for good.
+## The fighter's engine bed follows its speed. Once the fighter is stowed at the
+## closing docking sequence, the hum has no source: it stops for good.
 func _update_engine_hum() -> void:
 	if _audio == null:
 		return
