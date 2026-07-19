@@ -187,7 +187,7 @@ func _update_fire(delta: float) -> void:
 func _build_thruster() -> void:
 	_thruster = GPUParticles3D.new()
 	_thruster.amount = 14
-	_thruster.lifetime = 0.32
+	_thruster.lifetime = 0.24
 	_thruster.local_coords = false
 	_thruster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# The scout dives toward the player (world +Z), so its exhaust trails behind
@@ -217,7 +217,7 @@ func _build_thruster() -> void:
 	mat.color_ramp = ramp_tex
 	_thruster.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.15, 0.48)
+	quad.size = Vector2(0.16, 0.36)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

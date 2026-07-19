@@ -293,7 +293,7 @@ func _build_engine_trails() -> void:
 func _make_engine_trail() -> GPUParticles3D:
 	var trail := GPUParticles3D.new()
 	trail.amount = 24
-	trail.lifetime = 0.45
+	trail.lifetime = 0.32
 	trail.local_coords = false
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var mat := ParticleProcessMaterial.new()
@@ -318,7 +318,7 @@ func _make_engine_trail() -> GPUParticles3D:
 	mat.color_ramp = ramp_tex
 	trail.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.17, 0.58)
+	quad.size = Vector2(0.19, 0.42)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
