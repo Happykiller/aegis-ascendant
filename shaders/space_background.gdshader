@@ -192,10 +192,10 @@ void fragment() {
 
 	// --- Stars: four depths, the near ones racing, the far ones crawling.
 	float stars = 0.0;
-	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.972, TIME) * 1.00;
-	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.978, TIME) * 0.70;
-	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.982, TIME) * 0.45;
-	stars += star_layer(p + vec2(0.0, t * 1.70), 140.0, 37.0, 0.986, TIME) * 0.28;
+	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.958, TIME) * 1.00;
+	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.966, TIME) * 0.72;
+	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.972, TIME) * 0.48;
+	stars += star_layer(p + vec2(0.0, t * 1.70), 140.0, 37.0, 0.978, TIME) * 0.30;
 	// Thick cloud occludes the starfield behind it — cheap, and sells the depth.
 	stars *= 1.0 - clamp(clouds, 0.0, 1.0) * 0.65;
 	col += star_color * stars * star_brightness;
