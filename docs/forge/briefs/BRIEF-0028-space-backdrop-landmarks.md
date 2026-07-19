@@ -1,6 +1,6 @@
 # BRIEF-0028 — Landmarks image du fond spatial (planète + nébuleuses)
 
-- **Statut** : livré (vague 2 partielle — planète + nébuleuse A intégrées)
+- **Statut** : livré (vague 2 complète — planète + nébuleuses A/B + galaxie intégrées)
 - **Assigné à** : opérateur (génération ChatGPT) + session principale (détourage + intégration)
 - **Date** : 2026-07-19
 
@@ -38,10 +38,10 @@ peints comme points d'accroche, sans surcharger le couloir de combat central.
 - `assets/source/nebula_monument_a.png` — source ChatGPT (nébuleuse, fond damier noir). **Livré.**
 - `assets/imported/backgrounds/planet_hero.png` — texture in-game (alpha détouré). **Livré.**
 - `assets/imported/backgrounds/nebula_a.png` — texture in-game (alpha par clé saturation). **Livré.**
-- `assets/source/nebula_monument_b.png` — source (nébuleuse violette). **À régénérer sur fond
-  NOIR PUR** (la version livrée est sur damier blanc → cœur clair non récupérable).
-- `assets/source/galaxy_distant.png` — optionnel. **À régénérer sur fond noir pur** (halo gris
-  opaque sur la version livrée).
+- `assets/source/nebula_monument_b.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
+- `assets/imported/backgrounds/nebula_b.png` — texture in-game (alpha par luminance). **Livré.**
+- `assets/source/galaxy_distant.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
+- `assets/imported/backgrounds/galaxy_distant.png` — texture in-game (alpha par luminance). **Livré.**
 
 ## Prompts de génération (ChatGPT, optimisés)
 
