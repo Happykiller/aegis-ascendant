@@ -43,11 +43,20 @@ const _SPARK_LIFE: Dictionary = {
 	Category.MEDIUM: 0.55,
 	Category.HEAVY: 0.70,
 }
+## Tumbling hull chunks on a ship death (the reference's "debris burst") — a mere
+## bullet IMPACT gets none, so hits and deaths stay distinct.
+const _DEBRIS: Dictionary = {
+	Category.IMPACT: 0,
+	Category.SMALL: 7,
+	Category.MEDIUM: 13,
+	Category.HEAVY: 22,
+}
 
 var _flash: MeshInstance3D
 var _flash_material: StandardMaterial3D
 var _sparks: GPUParticles3D
 var _spark_material: ParticleProcessMaterial
+var _debris: GPUParticles3D
 var _active: bool = false
 var _elapsed: float = 0.0
 var _size: float = 1.0
@@ -81,6 +90,17 @@ func _ready() -> void:
 	_sparks.process_material = _spark_material
 	_sparks.draw_pass_1 = _make_spark_mesh()
 	add_child(_sparks)
+
+	_debris = GPUParticles3D.new()
+	_debris.one_shot = true
+	_debris.explosiveness = 1.0
+	_debris.amount = 12
+	_debris.lifetime = 0.7
+	_debris.local_coords = false
+	_debris.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_debris.process_material = _make_debris_process_material()
+	_debris.draw_pass_1 = _make_debris_mesh()
+	add_child(_debris)
 
 	visible = false
 	set_process(false)
@@ -130,6 +150,48 @@ func _make_spark_mesh() -> QuadMesh:
 	quad.material = mat
 	return quad
 
+func _make_debris_process_material() -> ParticleProcessMaterial:
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	mat.emission_sphere_radius = 0.2
+	mat.spread = 180.0
+	mat.gravity = Vector3.ZERO
+	mat.initial_velocity_min = 3.5
+	mat.initial_velocity_max = 9.0
+	mat.damping_min = 3.0
+	mat.damping_max = 7.0
+	mat.angular_velocity_min = -540.0
+	mat.angular_velocity_max = 540.0
+	mat.scale_min = 0.6
+	mat.scale_max = 1.3
+	var curve := Curve.new()
+	curve.add_point(Vector2(0.0, 1.0))
+	curve.add_point(Vector2(0.8, 0.9))
+	curve.add_point(Vector2(1.0, 0.0))
+	var scale_tex := CurveTexture.new()
+	scale_tex.curve = curve
+	mat.scale_curve = scale_tex
+	# A hot fragment cooling to dark hull metal, then fading out.
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 0.62, 0.28, 1.0))
+	ramp.set_color(1, Color(0.12, 0.12, 0.16, 0.0))
+	ramp.add_point(0.35, Color(0.35, 0.30, 0.30, 1.0))
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	mat.color_ramp = ramp_tex
+	return mat
+
+func _make_debris_mesh() -> QuadMesh:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.16, 0.16)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.vertex_color_use_as_albedo = true
+	quad.material = mat
+	return quad
+
 ## `tint` overrides the category default (used for impacts, which are coloured by
 ## whose hull was hit). Leave it transparent to keep the category's own tint.
 func play(category: Category, tint: Color = Color.TRANSPARENT) -> void:
@@ -144,6 +206,14 @@ func play(category: Category, tint: Color = Color.TRANSPARENT) -> void:
 	_sparks.lifetime = _SPARK_LIFE[category]
 	_sparks.restart()
 	_sparks.emitting = true
+	var debris_count: int = _DEBRIS[category]
+	if debris_count > 0:
+		_debris.amount = debris_count
+		_debris.lifetime = _SPARK_LIFE[category]
+		_debris.restart()
+		_debris.emitting = true
+	else:
+		_debris.emitting = false
 	_elapsed = 0.0
 	_active = true
 	visible = true
