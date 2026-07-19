@@ -17,7 +17,7 @@
 
 [sub_resource type="ShaderMaterial" id="mat_retro"]
 shader = ExtResource("14_retro")
-shader_parameter/target_res = Vector2(640, 360)
+shader_parameter/target_res = Vector2(440, 248)
 shader_parameter/levels = 20.0
 shader_parameter/dither_amount = 0.9
 shader_parameter/saturation = 1.3

@@ -30,8 +30,8 @@ uniform vec3 landmark_color : source_color = vec3(0.24, 0.29, 0.40);
 // Distant planet (ADR-0009 target: the reference frames a planet + atmosphere at
 // the edge). Steel-blue, deliberately NOT the allied cyan #3FD9E8, and dim enough
 // to stay a backdrop landmark.
-uniform vec3 planet_deep : source_color = vec3(0.05, 0.08, 0.14);
-uniform vec3 planet_land : source_color = vec3(0.20, 0.26, 0.34);
+uniform vec3 planet_deep : source_color = vec3(0.07, 0.11, 0.18);
+uniform vec3 planet_land : source_color = vec3(0.34, 0.42, 0.53);
 uniform vec3 atmosphere_color : source_color = vec3(0.30, 0.45, 0.62);
 uniform float planet_amount : hint_range(0.0, 1.0) = 1.0;
 
@@ -178,7 +178,7 @@ void fragment() {
 	vec2 sun_dir = normalize(vec2(-0.55, -0.84));
 	float lambert = clamp(dot(planet_delta / max(planet_dist, 1e-4), sun_dir) * 0.5 + 0.5, 0.0, 1.0);
 	float planet_bands = fbm(planet_delta * 7.0 + vec2(3.0, t * 0.015));
-	vec3 planet_col = mix(planet_deep, planet_land, planet_bands) * (0.32 + lambert);
+	vec3 planet_col = mix(planet_deep, planet_land, planet_bands) * (0.45 + 0.85 * lambert);
 	col = mix(col, planet_col, planet_disc * planet_amount);
 	// A bright inner limb where the atmosphere catches the light: defines the disc
 	// edge against the nebula so it reads as a planet, not just a corner glow.
