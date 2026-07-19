@@ -17,17 +17,19 @@ const _SIZE: Dictionary = {
 	Category.MEDIUM: 1.8,
 	Category.HEAVY: 3.6,
 }
+# Warm, saturated orange bursts (ADR-0009 target: la référence explose en orange
+# chaud). IMPACT stays cold — it is the allied hit marker, not a death.
 const _TINT: Dictionary = {
 	Category.IMPACT: Color(0.85, 0.90, 0.95),
-	Category.SMALL: Color(1.0, 0.75, 0.45),
-	Category.MEDIUM: Color(1.0, 0.6, 0.35),
-	Category.HEAVY: Color(1.0, 0.5, 0.3),
+	Category.SMALL: Color(1.0, 0.70, 0.30),
+	Category.MEDIUM: Color(1.0, 0.56, 0.22),
+	Category.HEAVY: Color(1.0, 0.46, 0.16),
 }
 const _SPARKS: Dictionary = {
 	Category.IMPACT: 8,
-	Category.SMALL: 16,
-	Category.MEDIUM: 30,
-	Category.HEAVY: 44,
+	Category.SMALL: 20,
+	Category.MEDIUM: 38,
+	Category.HEAVY: 54,
 }
 const _FLASH_DURATION: Dictionary = {
 	Category.IMPACT: 0.10,
@@ -123,7 +125,7 @@ func _make_spark_mesh() -> QuadMesh:
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mat.vertex_color_use_as_albedo = true
 	mat.emission_enabled = true
-	mat.emission_energy_multiplier = 3.0
+	mat.emission_energy_multiplier = 3.5
 	mat.albedo_texture = SoftDot.texture()
 	quad.material = mat
 	return quad
@@ -136,7 +138,7 @@ func play(category: Category, tint: Color = Color.TRANSPARENT) -> void:
 	var colour: Color = tint if tint.a > 0.0 else _TINT[category]
 	_flash_material.albedo_color = Color(colour.r, colour.g, colour.b, 1.0)
 	_flash_material.emission = colour
-	_flash_material.emission_energy_multiplier = 4.0
+	_flash_material.emission_energy_multiplier = 5.0
 	_spark_material.color = colour
 	_sparks.amount = _SPARKS[category]
 	_sparks.lifetime = _SPARK_LIFE[category]
@@ -165,4 +167,4 @@ func _process(delta: float) -> void:
 	var s := lerpf(0.2, _size, eased)
 	_flash.scale = Vector3(s, s, s)
 	_flash_material.albedo_color.a = 1.0 - t
-	_flash_material.emission_energy_multiplier = 4.0 * (1.0 - t)
+	_flash_material.emission_energy_multiplier = 5.0 * (1.0 - t)
