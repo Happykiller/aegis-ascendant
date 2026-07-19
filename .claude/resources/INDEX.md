@@ -31,6 +31,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans.
+- [Intégrer un asset image généré par ChatGPT](howto-assets-image-genere.md) — ChatGPT **peint le
+  damier** au lieu d'une vraie transparence (RGB opaque). Exiger un **fond noir pur** pour les objets
+  lumineux ; reconstruire l'alpha avec `tools/bg-key-alpha.py` (ne pas refaire le keying à la main).
 
 ## Bonnes pratiques — apprises à nos dépens
 
@@ -58,4 +61,5 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | `./scripts/play-arc.sh [s]` | l'arc en temps réel, horodaté, **avec reprise de main garantie** (la démo boucle sans fin) |
 | `./scripts/check.sh` | la porte de qualité — import + parse + tests |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
+| `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |
 | sous-agent `godot-verifier` | ~50 lignes de bruit de build/deploy dans le contexte, pour 3 faits |
