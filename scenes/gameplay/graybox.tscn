@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_fighter.tscn" id="2_player"]
@@ -14,6 +14,7 @@
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_screen.tscn" id="13_pause"]
 [ext_resource type="Shader" path="res://shaders/retro_post.gdshader" id="14_retro"]
+[ext_resource type="Shader" path="res://shaders/scanlines.gdshader" id="15_scan"]
 
 [sub_resource type="ShaderMaterial" id="mat_retro"]
 shader = ExtResource("14_retro")
@@ -23,6 +24,11 @@ shader_parameter/dither_amount = 0.9
 shader_parameter/saturation = 1.3
 shader_parameter/contrast = 1.18
 shader_parameter/warmth = 0.055
+
+[sub_resource type="ShaderMaterial" id="mat_scan"]
+shader = ExtResource("15_scan")
+shader_parameter/line_alpha = 0.18
+shader_parameter/period = 4.0
 
 [node name="Graybox" type="Node3D"]
 script = ExtResource("1_root")
@@ -87,3 +93,12 @@ mouse_filter = 2
 [node name="FighterHUD" parent="." instance=ExtResource("11_hud")]
 
 [node name="PauseScreen" parent="." instance=ExtResource("13_pause")]
+
+[node name="Scanlines" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="Effect" type="ColorRect" parent="Scanlines"]
+material = SubResource("mat_scan")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
