@@ -152,9 +152,13 @@ func _physics_process(delta: float) -> void:
 	_combat_age += delta
 	var previous := plane_position
 	var pattern := BossMovement.pattern_for_phase(_phase, phase_count)
-	plane_position = BossMovement.position_at(pattern, _combat_age, _base_position,
+	var target := BossMovement.position_at(pattern, _combat_age, _base_position,
 		drift_amplitude, _AMP_Y, drift_frequency)
-	plane_position.y = clampf(plane_position.y, _MIN_Y, _MAX_Y)
+	target.y = clampf(target.y, _MIN_Y, _MAX_Y)
+	# Chase the target smoothly, never snap to it: a phase change swaps the movement
+	# shape, and snapping would teleport the boss to the new shape's point for one
+	# frame (read as a blink) plus a velocity spike that snaps the bank hard.
+	plane_position = plane_position.lerp(target, minf(1.0, delta * 6.0))
 	position = GameplayPlane.to_world(plane_position)
 	if _target != null:
 		_target.position = plane_position
