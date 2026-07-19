@@ -70,9 +70,20 @@ func _ready() -> void:
 		_hull = hull_scene.instantiate() as Node3D
 		_hull.rotation = FACING_PLAYER
 		add_child(_hull)
+		_pad_cull_margin(_hull)
 		_muzzles = _read_muzzles()
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false) # activated on begin()
+
+## A large boss hull can be frustum-culled for a frame while it banks and drifts near
+## the top of the view: its computed AABB is tighter than the rotated/animated
+## silhouette, so Godot decides it is off-screen and it blinks out. Padding the cull
+## margin on every mesh keeps it drawn. (The space backdrop uses the same trick.)
+func _pad_cull_margin(node: Node) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).extra_cull_margin = 12.0
+	for child in node.get_children():
+		_pad_cull_margin(child)
 
 ## The plane-space offset of every muzzle the hull carries (the Leviathan has a
 ## central one plus two pods, the Harvester its two claws). Falls back to a single
