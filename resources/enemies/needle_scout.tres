@@ -7,7 +7,7 @@
 script = ExtResource("1_data")
 display_name = "Needle Scout"
 max_health = 20.0
-move_speed = 3.5
+move_speed = 2.45
 weave_amplitude = 1.6
 weave_frequency = 0.4
 fire_interval = 1.9
