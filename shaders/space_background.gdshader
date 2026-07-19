@@ -27,6 +27,14 @@ uniform vec3 nebula_rim : source_color = vec3(0.36, 0.60, 0.75);
 uniform vec3 star_color : source_color = vec3(0.82, 0.88, 1.0);
 uniform vec3 landmark_color : source_color = vec3(0.24, 0.29, 0.40);
 
+// Distant planet (ADR-0009 target: the reference frames a planet + atmosphere at
+// the edge). Steel-blue, deliberately NOT the allied cyan #3FD9E8, and dim enough
+// to stay a backdrop landmark.
+uniform vec3 planet_deep : source_color = vec3(0.05, 0.08, 0.14);
+uniform vec3 planet_land : source_color = vec3(0.20, 0.26, 0.34);
+uniform vec3 atmosphere_color : source_color = vec3(0.30, 0.45, 0.62);
+uniform float planet_amount : hint_range(0.0, 1.0) = 1.0;
+
 uniform float scroll_speed = 0.35;
 uniform float nebula_strength : hint_range(0.0, 2.0) = 1.0;
 uniform float dust_strength : hint_range(0.0, 2.0) = 0.9;
@@ -155,6 +163,32 @@ void fragment() {
 	vec3 moon_col = mix(deep_color * 1.35, landmark_color, 0.25 + moon_light * 0.55);
 	col = mix(col, moon_col, moon_disc * 0.72);
 	col += vec3(0.28, 0.33, 0.43) * moon_rim * 0.18;
+
+	// --- A distant planet arcs through the lower corner: the level's landmark and
+	// the reference's key depth cue. Mostly off-frame — only its lit limb and the
+	// atmospheric halo curve into view, so it never crowds the combat lane. Stars
+	// (below) draw over it, which sells the distance. It barely drifts: a far body.
+	vec2 planet_center = vec2(1.04, 1.08 + t * 0.004);
+	float planet_radius = 0.55;
+	vec2 planet_delta = (UV - planet_center) * vec2(1.286, 1.0);
+	float planet_dist = length(planet_delta);
+	float planet_disc = smoothstep(planet_radius + 0.004, planet_radius - 0.004, planet_dist);
+	// Key light toward the visible upper-left limb (UV.y runs down-screen here),
+	// like the scene's KeyLight: a soft terminator across the poking-in arc.
+	vec2 sun_dir = normalize(vec2(-0.55, -0.84));
+	float lambert = clamp(dot(planet_delta / max(planet_dist, 1e-4), sun_dir) * 0.5 + 0.5, 0.0, 1.0);
+	float planet_bands = fbm(planet_delta * 7.0 + vec2(3.0, t * 0.015));
+	vec3 planet_col = mix(planet_deep, planet_land, planet_bands) * (0.32 + lambert);
+	col = mix(col, planet_col, planet_disc * planet_amount);
+	// A bright inner limb where the atmosphere catches the light: defines the disc
+	// edge against the nebula so it reads as a planet, not just a corner glow.
+	float inner_limb = (smoothstep(planet_radius, planet_radius - 0.05, planet_dist)
+		- smoothstep(planet_radius - 0.05, planet_radius - 0.11, planet_dist)) * planet_disc;
+	col += atmosphere_color * inner_limb * lambert * planet_amount * 0.9;
+	// Atmosphere: a soft halo hugging the disc, brightest along the lit limb.
+	float atmo = smoothstep(planet_radius + 0.14, planet_radius, planet_dist) * (1.0 - planet_disc);
+	atmo *= 0.30 + 0.70 * lambert;
+	col += atmosphere_color * atmo * planet_amount * 1.25;
 
 	// --- Stars: four depths, the near ones racing, the far ones crawling.
 	float stars = 0.0;
