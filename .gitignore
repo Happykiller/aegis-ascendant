@@ -14,9 +14,8 @@ __pycache__/
 # Windows zone identifier artifacts (WSL)
 *:Zone.Identifier
 
-# IP quarantine: contaminated reference images (visible third-party marks) —
-# kept locally for reference only, MUST NEVER be versioned (see ADR-0005).
-/_ip_quarantine/
+# (Les planches de référence, jadis quarantinées ici sous /_ip_quarantine/, sont
+# désormais versionnées dans assets/source/references/ — ADR-0009 supersede ADR-0005.)
 
 # Sources WAV de musique : ~50 Mo, régénérables par tools/audio/generate_music.py.
 # Seuls les OGG masterisés (assets/imported/audio/music/) sont versionnés — ADR-0007.

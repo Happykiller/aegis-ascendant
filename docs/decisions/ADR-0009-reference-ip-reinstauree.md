@@ -12,21 +12,24 @@ L'ADR-0005 avait quarantiné les 7 planches `reference_*.png` (marques « Macros
 interne. Cette posture supposait un risque IP à écarter systématiquement.
 
 Le propriétaire acte que **Aegis Ascendant est un projet personnel, non commercial, non distribué**,
-dont il assume le risque IP. Il souhaite que `_ip_quarantine/reference_fortress_battle_scene.png` (et
-la bible `reference_gameplay_vfx_environment_board.png`) redeviennent **la cible visuelle** du rendu :
+dont il assume le risque IP. Il souhaite que `reference_fortress_battle_scene.png` (et la bible
+`reference_gameplay_vfx_environment_board.png`) redeviennent **la cible visuelle** du rendu :
 shmup vertical dense — flux de tir bleus serrés, explosions/flashs orange chauds, missiles à traînée,
 planète + atmosphère au bord de cadre, forteresse massive.
 
 ## Décision
 
-- Les planches de `/_ip_quarantine/` sont **réinstaurées comme référence d'inspiration** pour la
-  direction artistique du rendu (composition, densité, chaleur, profondeur, codes couleur).
+- Les planches sont **sorties de quarantaine et versionnées** comme références visuelles légitimes
+  du projet, dans **`assets/source/references/`** (étape source, `.gdignore`é : jamais importées par
+  Godot). Le répertoire `/_ip_quarantine/` et son exclusion `.gitignore` sont **supprimés**.
+- Elles sont la **cible d'inspiration** du rendu (composition, densité, chaleur, profondeur, codes
+  couleur) et sont provenancées dans `assets/licenses/ASSET_PROVENANCE.csv`.
 - Les assets **produits restent des créations originales** informées par cette cible (mêmes coques,
   palettes et silhouettes divergentes qu'aujourd'hui) : on transpose l'intention, on ne décalque pas
   une silhouette sous licence ni un logo/texte de marque.
-- **Inchangé depuis ADR-0005** : les PNG contaminés restent **gitignorés**, conservés en local pour
-  consultation ; aucune marque tierce n'entre dans l'historique git/LFS. La règle « ne jamais
-  `git add -f` sous `/_ip_quarantine/` » **tient**.
+- **Conséquence assumée** (revirement d'ADR-0005) : des images portant des marques tierces visibles
+  entrent désormais dans l'historique git/LFS. Acceptable pour ce dépôt **local, personnel, non
+  distribué** ; ce serait à revoir en cas de distribution.
 
 ## Conséquences
 
@@ -36,4 +39,5 @@ planète + atmosphère au bord de cadre, forteresse massive.
   et `CHARTE_CREATIVE.md §5`.
 - `asset-forge` peut s'appuyer sur ces références pour les briefs de rendu, en produisant de l'original.
 - Si le projet devait un jour être distribué ou commercialisé, **cet ADR serait à réviser** (le risque
-  IP redeviendrait réel) — la quarantaine gitignorée facilite ce retour en arrière.
+  IP redeviendrait réel) : il faudrait alors purger `assets/source/references/` de l'arbre **et** de
+  l'historique git/LFS (`git filter-repo` / purge LFS), pas un simple `git rm`.

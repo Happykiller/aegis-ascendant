@@ -1,7 +1,10 @@
 # ADR-0005 — Quarantaine des planches de référence IP-contaminées
 
 - **Date** : 2026-07-11
-- **Statut** : accepté (revue du concepteur, audit forge)
+- **Statut** : **superseded par [ADR-0009](ADR-0009-reference-ip-reinstauree.md)** (2026-07-19) —
+  décision du propriétaire pour ce projet personnel non commercial : les planches sont sorties de
+  quarantaine, versionnées dans `assets/source/references/` et réinstaurées comme référence visuelle.
+  Le texte ci-dessous reste l'archive de la décision d'origine.
 
 ## Contexte
 

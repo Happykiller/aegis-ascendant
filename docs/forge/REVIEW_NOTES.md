@@ -5,8 +5,9 @@ La production est globalement solide (prompts IP-propres, provenance sans trou r
 audio déterministe et sans téléchargement, SVG propres et conformes). Points de suivi :
 
 ## IP — traité
-- 7 planches `reference_*.png` contaminées (marques visibles) → **quarantinées** hors dépôt
-  (voir `docs/decisions/ADR-0005`). Les 8 planches de concept originales sont conservées.
+- 7 planches `reference_*.png` (marques visibles) → d'abord quarantinées hors dépôt (ADR-0005), puis
+  **réinstaurées comme références visuelles légitimes** dans `assets/source/references/` et versionnées
+  (**ADR-0009**, projet personnel non commercial). Les 8 planches de concept originales sont conservées.
 
 ## À corriger avant modélisation 3D (briefs futurs)
 - **Aegis Citadel** : la vue de face lit légèrement comme un buste torse+épaules (noyau = tête,

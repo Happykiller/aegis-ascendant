@@ -99,4 +99,5 @@
 - **Plusieurs agents en parallèle** : `C:\tmp` et le processus Windows ne sont **pas** cloisonnés par
   les worktrees — un déploiement tue le jeu d'un autre agent.
   → `.claude/resources/pratique-ecrivain-unique.md`
-- **Quarantaine IP** : `/_ip_quarantine/` (gitignoré) — ne jamais versionner ni utiliser (ADR-0005).
+- **Références visuelles** : `assets/source/references/` (`REFERENCE_INDEX.md`) — cible d'inspiration
+  du rendu, versionnées (ADR-0009 supersede la quarantaine d'ADR-0005). Production toujours originale.

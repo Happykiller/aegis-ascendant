@@ -68,9 +68,9 @@ cohérent, spectaculaire.
 
 ## 5. Interdits absolus (spec §0.2, §3)
 
-> **Assoupli par ADR-0009** (projet personnel non commercial) : la référence `_ip_quarantine/` peut
-> servir d'inspiration au rendu ; la production reste originale (on transpose l'intention, on ne
-> décalque pas). Voir l'ADR.
+> **Assoupli par ADR-0009** (projet personnel non commercial) : les références de
+> `assets/source/references/` (voir leur `REFERENCE_INDEX.md`) peuvent servir d'inspiration au rendu ;
+> la production reste originale (on transpose l'intention, on ne décalque pas). Voir l'ADR.
 
 - Aucun nom/design dérivé de : Macross, SDF-1, Valkyrie, Zentradi, Robotech, ou toute licence.
 - Prompts de génération : décrire fonctions, matériaux, proportions, époque graphique,
