@@ -49,36 +49,11 @@ var _banner: Label
 
 func _ready() -> void:
 	_build_shield_power_panel()
-	_build_pickup_legend()
 	_build_score_panel()
 	_build_lives_panel()
 	_build_boss_panel()
 	_build_banner()
 	set_process(true)
-
-## Persistent pickup reminder under the shield/power panel: the actual pickup icon
-## + what it does, so the player recalls each bonus at a glance.
-func _build_pickup_legend() -> void:
-	var lx := MARGIN
-	var y0 := MARGIN + 150.0 + 14.0
-	var rows := [
-		[_PICKUP_POWER, "POWER UP", POWER_ORANGE],
-		[_PICKUP_SHIELD, "SHIELD +", ACCENT],
-		[_PICKUP_SCORE, "SCORE +500", TEXT_LIGHT],
-	]
-	for i in rows.size():
-		var yy := y0 + float(i) * 30.0
-		var icon := TextureRect.new()
-		icon.texture = rows[i][0]
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.offset_left = lx
-		icon.offset_top = yy
-		icon.offset_right = lx + 22.0
-		icon.offset_bottom = yy + 22.0
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(icon)
-		_label(self, rows[i][1], _LABEL_FONT, 12, rows[i][2], Vector2(lx + 30, yy - 1), 320)
 
 # --- Builders -----------------------------------------------------------------
 
@@ -122,23 +97,28 @@ func _label(parent: Node, text: String, font: FontFile, size: int, color: Color,
 	parent.add_child(label)
 	return label
 
-## Small pixel diamond (the pickup-guide marker for a stat: cyan = shield/score,
-## orange = power). Drawn, so its size is exact — the SVG pickup icons rendered
-## far too large in the panel.
-func _diamond(parent: Node, color: Color, center: Vector2, r: float) -> Polygon2D:
-	var d := Polygon2D.new()
-	d.polygon = PackedVector2Array([Vector2(0, -r), Vector2(r * 0.7, 0), Vector2(0, r), Vector2(-r * 0.7, 0)])
-	d.color = color
-	d.position = center
-	parent.add_child(d)
-	return d
+## The actual pickup icon, placed in front of the stat it fills — the guide/reminder
+## the player recalls at a glance. Offset-based sizing so the SVG renders at the
+## intended size in the panel (setting .size directly rendered it far too large).
+func _pickup_icon(parent: Node, tex: Texture2D, pos: Vector2, side: float) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = tex
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.offset_left = pos.x
+	rect.offset_top = pos.y
+	rect.offset_right = pos.x + side
+	rect.offset_bottom = pos.y + side
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rect)
+	return rect
 
 func _build_shield_power_panel() -> void:
 	var panel := _panel(Vector2(0, 0), Vector2(MARGIN, MARGIN), Vector2(430, 150))
 	_shield_style = panel.get_meta("style") as StyleBoxFlat
-	# SHIELD row
-	_diamond(panel, ACCENT, Vector2(24, 24), 9)
-	_label(panel, "SHIELD", _LABEL_FONT, 16, ACCENT, Vector2(44, 14))
+	# SHIELD row — the shield pickup icon leads the indicator (guide).
+	_pickup_icon(panel, _PICKUP_SHIELD, Vector2(12, 10), 28)
+	_label(panel, "SHIELD", _LABEL_FONT, 16, ACCENT, Vector2(48, 14))
 	# segmented bar
 	var bar_x := 16.0
 	var bar_y := 48.0
@@ -160,9 +140,9 @@ func _build_shield_power_panel() -> void:
 		panel.add_child(block)
 		_blocks.append(block)
 	_shield_value = _label(panel, "100", _VALUE_FONT, 30, ACCENT, Vector2(bar_x + bar_w + 12, bar_y - 8), 90)
-	# POWER row
-	_diamond(panel, POWER_ORANGE, Vector2(24, 112), 9)
-	_label(panel, "POWER", _LABEL_FONT, 15, POWER_ORANGE, Vector2(44, 102))
+	# POWER row — the power pickup icon leads the indicator.
+	_pickup_icon(panel, _PICKUP_POWER, Vector2(12, 96), 28)
+	_label(panel, "POWER", _LABEL_FONT, 15, POWER_ORANGE, Vector2(48, 102))
 	_power_value = _label(panel, "LV.1", _VALUE_FONT, 26, POWER_ORANGE, Vector2(190, 98), 120)
 	_pickup_targets[Pickup.Kind.SHIELD] = _shield_value
 	_pickup_targets[Pickup.Kind.POWER] = _power_value
@@ -170,6 +150,8 @@ func _build_shield_power_panel() -> void:
 func _build_score_panel() -> void:
 	var panel := _panel(Vector2(1, 0), Vector2(-MARGIN, MARGIN), Vector2(430, 130))
 	_label(panel, "SCORE", _LABEL_FONT, 15, TEXT_LIGHT, Vector2(16, 18), 398, HORIZONTAL_ALIGNMENT_RIGHT)
+	# The score pickup icon sits to the left of the score value (guide).
+	_pickup_icon(panel, _PICKUP_SCORE, Vector2(16, 50), 40)
 	_score_value = _label(panel, "00000000", _VALUE_FONT, 58, SCORE_WHITE, Vector2(16, 48), 398,
 		HORIZONTAL_ALIGNMENT_RIGHT)
 	_score_value.add_theme_constant_override("outline_size", 0)
