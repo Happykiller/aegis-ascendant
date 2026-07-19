@@ -27,13 +27,13 @@ uniform vec3 nebula_rim : source_color = vec3(0.36, 0.60, 0.75);
 uniform vec3 star_color : source_color = vec3(0.82, 0.88, 1.0);
 uniform vec3 landmark_color : source_color = vec3(0.24, 0.29, 0.40);
 
-// Distant planet (ADR-0009 target: the reference frames a planet + atmosphere at
-// the edge). Steel-blue, deliberately NOT the allied cyan #3FD9E8, and dim enough
-// to stay a backdrop landmark.
-uniform vec3 planet_deep : source_color = vec3(0.07, 0.11, 0.18);
-uniform vec3 planet_land : source_color = vec3(0.34, 0.42, 0.53);
-uniform vec3 atmosphere_color : source_color = vec3(0.30, 0.45, 0.62);
-uniform float planet_amount : hint_range(0.0, 1.0) = 1.0;
+// Magenta accent painted onto the brightest cloud ridges, per ADR-0009 (richer,
+// more colourful field). Kept off the centre lane and far from the coral #FF5A3D
+// reserved for enemy fire. The planet and moon are now real drifting sprites
+// (scenes/vfx/space_backdrop.tscn), not procedural — this shader owns only the
+// infinite, seamless stars + nebula.
+uniform vec3 nebula_accent : source_color = vec3(0.55, 0.20, 0.42);
+uniform float accent_strength : hint_range(0.0, 1.0) = 0.45;
 
 uniform float scroll_speed = 0.35;
 uniform float nebula_strength : hint_range(0.0, 2.0) = 1.0;
@@ -96,15 +96,20 @@ float star_layer(vec2 uv, float density, float seed, float threshold, float time
 		return 0.0;
 	}
 	vec2 star_pos = vec2(hash21(cell + seed + 1.7), hash21(cell + seed + 3.1));
-	float d = length(f - star_pos);
-	float core = smoothstep(0.10, 0.0, d);
-	// The rarest stars burn brighter and flare, so the field has a few anchors
-	// instead of reading as uniform noise.
-	float rare = smoothstep(0.992, 1.0, rnd);
-	float flare = smoothstep(0.30, 0.0, abs(f.x - star_pos.x))
-		* smoothstep(0.10, 0.0, abs(f.y - star_pos.y));
-	float twinkle = 0.65 + 0.35 * sin(time * 2.4 + rnd * 40.0);
-	return (core + rare * flare * 0.5) * twinkle * mix(0.45, 1.6, rare);
+	vec2 delta = f - star_pos;
+	float d = length(delta);
+	// Crisp point: a tight halo plus a hot pinpoint core, instead of a soft blob.
+	// This is the fix for the "blurry stars" — the light is concentrated, so the
+	// retro pixelation resolves a sharp pixel instead of a smear.
+	float core = smoothstep(0.045, 0.0, d) + smoothstep(0.016, 0.0, d) * 1.4;
+	// The rarest stars are bright anchors carrying a 4-point diffraction cross, so
+	// the field has a few landmarks instead of reading as uniform noise.
+	float rare = smoothstep(0.988, 1.0, rnd);
+	float spike_h = smoothstep(0.34, 0.0, abs(delta.x)) * smoothstep(0.020, 0.0, abs(delta.y));
+	float spike_v = smoothstep(0.34, 0.0, abs(delta.y)) * smoothstep(0.020, 0.0, abs(delta.x));
+	float cross = (spike_h + spike_v) * rare;
+	float twinkle = 0.70 + 0.30 * sin(time * 2.4 + rnd * 40.0);
+	return (core + cross * 0.7) * twinkle * mix(0.55, 1.8, rare);
 }
 
 void fragment() {
@@ -137,10 +142,13 @@ void fragment() {
 	clouds *= 1.0 - dust * dust_strength * 0.65;
 
 	// Colour follows the warp: cold indigo in the body, violet where the cloud
-	// is dense, a cool rim where it thins out into the void.
+	// is dense, a cool rim where it thins out into the void, and a parcimonious
+	// magenta accent burning on the densest ridges (ADR-0009: richer field).
 	vec3 col = deep_color;
 	vec3 cloud_col = mix(nebula_cold, nebula_deep, clamp(flow_far * 1.2, 0.0, 1.0));
 	cloud_col = mix(cloud_col, nebula_rim, pow(clamp(near_mass, 0.0, 1.0), 3.0) * 0.55);
+	float ridge = smoothstep(0.62, 0.95, base_mass) * pow(clamp(flow_near, 0.0, 1.0), 1.5);
+	cloud_col = mix(cloud_col, nebula_accent, ridge * accent_strength);
 	col = mix(col, cloud_col, clamp(clouds, 0.0, 1.0) * nebula_strength);
 
 	// --- Distant galactic band: a broad diagonal veil with broken, noisy edges.
@@ -151,50 +159,18 @@ void fragment() {
 	galaxy *= 0.30 + band_noise * 0.28;
 	col += landmark_color * galaxy * 0.32;
 
-	// --- One slow, desaturated moon. Its wrapped path begins and ends off-screen,
-	// so the infinite traversal never exposes a seam or an on-screen pop.
-	vec2 moon_center = vec2(fract(0.65 + t * 0.018) * 1.75 - 0.38,
-		0.52 + sin(t * 0.11) * 0.06);
-	vec2 moon_delta = (UV - moon_center) * vec2(1.0, 1.78);
-	float moon_dist = length(moon_delta);
-	float moon_disc = smoothstep(0.042, 0.037, moon_dist);
-	float moon_light = smoothstep(-0.08, 0.10, moon_delta.x - moon_delta.y * 0.35);
-	float moon_rim = smoothstep(0.046, 0.041, moon_dist) - smoothstep(0.037, 0.032, moon_dist);
-	vec3 moon_col = mix(deep_color * 1.35, landmark_color, 0.25 + moon_light * 0.55);
-	col = mix(col, moon_col, moon_disc * 0.72);
-	col += vec3(0.28, 0.33, 0.43) * moon_rim * 0.18;
+	// The moon and the distant planet that used to live here are now real drifting
+	// sprites (scenes/vfx/space_backdrop.tscn) — hand-authored art instead of the
+	// procedural corner-glow / ghost-ring that read poorly. This shader keeps only
+	// the infinite, seamless nebula + stars behind them.
 
-	// --- A distant planet arcs through the lower corner: the level's landmark and
-	// the reference's key depth cue. Mostly off-frame — only its lit limb and the
-	// atmospheric halo curve into view, so it never crowds the combat lane. Stars
-	// (below) draw over it, which sells the distance. It barely drifts: a far body.
-	vec2 planet_center = vec2(1.04, 1.08 + t * 0.004);
-	float planet_radius = 0.55;
-	vec2 planet_delta = (UV - planet_center) * vec2(1.286, 1.0);
-	float planet_dist = length(planet_delta);
-	float planet_disc = smoothstep(planet_radius + 0.004, planet_radius - 0.004, planet_dist);
-	// Key light toward the visible upper-left limb (UV.y runs down-screen here),
-	// like the scene's KeyLight: a soft terminator across the poking-in arc.
-	vec2 sun_dir = normalize(vec2(-0.55, -0.84));
-	float lambert = clamp(dot(planet_delta / max(planet_dist, 1e-4), sun_dir) * 0.5 + 0.5, 0.0, 1.0);
-	float planet_bands = fbm(planet_delta * 7.0 + vec2(3.0, t * 0.015));
-	vec3 planet_col = mix(planet_deep, planet_land, planet_bands) * (0.45 + 0.85 * lambert);
-	col = mix(col, planet_col, planet_disc * planet_amount);
-	// A bright inner limb where the atmosphere catches the light: defines the disc
-	// edge against the nebula so it reads as a planet, not just a corner glow.
-	float inner_limb = (smoothstep(planet_radius, planet_radius - 0.05, planet_dist)
-		- smoothstep(planet_radius - 0.05, planet_radius - 0.11, planet_dist)) * planet_disc;
-	col += atmosphere_color * inner_limb * lambert * planet_amount * 0.9;
-	// Atmosphere: a soft halo hugging the disc, brightest along the lit limb.
-	float atmo = smoothstep(planet_radius + 0.14, planet_radius, planet_dist) * (1.0 - planet_disc);
-	atmo *= 0.30 + 0.70 * lambert;
-	col += atmosphere_color * atmo * planet_amount * 1.25;
-
-	// --- Stars: four depths, the near ones racing, the far ones crawling.
+	// --- Stars: five depths, the near ones racing, the far ones crawling. The far
+	// dense layer fills the void so the field never reads as empty.
 	float stars = 0.0;
-	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.958, TIME) * 1.00;
-	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.966, TIME) * 0.72;
-	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.972, TIME) * 0.48;
+	stars += star_layer(p + vec2(0.0, t * 0.22), 26.0, 47.0, 0.940, TIME) * 0.55;
+	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.948, TIME) * 1.00;
+	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.958, TIME) * 0.72;
+	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.966, TIME) * 0.48;
 	stars += star_layer(p + vec2(0.0, t * 1.70), 140.0, 37.0, 0.978, TIME) * 0.30;
 	// Thick cloud occludes the starfield behind it — cheap, and sells the depth.
 	stars *= 1.0 - clamp(clouds, 0.0, 1.0) * 0.65;
