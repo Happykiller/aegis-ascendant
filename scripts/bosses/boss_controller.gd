@@ -37,7 +37,8 @@ var _defeated: bool = false
 var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _hull: Node3D
-var _base_x: float = 0.0
+var _base_position: Vector2 = Vector2.ZERO
+var _combat_age: float = 0.0
 ## Where the boss's shots leave its body: one plane-space offset per gun the hull
 ## carries (Leviathan: central + two pods; Harvester: its two claws). A volley is
 ## dealt round-robin across them, so it visibly sprays from the guns, not the core.
@@ -46,6 +47,17 @@ var _muzzles: Array[Vector2] = [Vector2(0.0, -1.0)]
 ## Hulls are modelled nose-forward like every unit (ADR-0008); a boss faces the
 ## player, so the scene turns it around rather than the mesh being built backwards.
 const FACING_PLAYER := Vector3(0.0, PI, 0.0)
+
+## Vertical amplitude of the movement shapes, and the band the boss keeps to (it
+## never dives onto the player, never leaves the top).
+const _AMP_Y := 1.8
+const _MIN_Y := 2.5
+const _MAX_Y := 9.0
+## The 3D hull banks into its turns and pitches into its dives — where depth reads.
+const _MAX_BANK_DEG := 30.0
+const _MAX_PITCH_DEG := 20.0
+const _BANK_REFERENCE := 6.0
+const _PITCH_REFERENCE := 5.0
 
 func _ready() -> void:
 	_health = max_health
@@ -113,22 +125,44 @@ func _physics_process(delta: float) -> void:
 		position = GameplayPlane.to_world(plane_position)
 		if plane_position.distance_to(entry_plane_position) < 0.05:
 			_entering = false
-			_base_x = entry_plane_position.x
+			_base_position = entry_plane_position
+			_combat_age = 0.0
 			if _target != null:
 				_target.enabled = true
 		if _target != null:
 			_target.position = plane_position
 		return
-	# Horizontal drift.
-	plane_position.x = _base_x + sin(_age * drift_frequency * TAU) * drift_amplitude
+	# Move in an escalating shape (BossMovement) and bank the 3D hull into it.
+	_combat_age += delta
+	var previous := plane_position
+	var pattern := BossMovement.pattern_for_phase(_phase, phase_count)
+	plane_position = BossMovement.position_at(pattern, _combat_age, _base_position,
+		drift_amplitude, _AMP_Y, drift_frequency)
+	plane_position.y = clampf(plane_position.y, _MIN_Y, _MAX_Y)
 	position = GameplayPlane.to_world(plane_position)
 	if _target != null:
 		_target.position = plane_position
+	_apply_bank(previous, delta)
 	# Attacks intensify per phase.
 	_fire_timer -= delta
 	if _fire_timer <= 0.0:
 		_fire_timer = fire_interval * (1.0 - 0.12 * _phase)
 		_attack()
+
+## Roll from lateral speed, pitch from vertical speed: the hull leans into turns and
+## tips into dives, so a boss that used to slide flat now reads in three dimensions.
+func _apply_bank(previous: Vector2, delta: float) -> void:
+	if _hull == null:
+		return
+	var velocity := (plane_position - previous) / maxf(delta, 0.0001)
+	var bank := clampf(-velocity.x / _BANK_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_BANK_DEG)
+	# Diving toward the player (down, -y) tips the nose down toward them.
+	var pitch := clampf(-velocity.y / _PITCH_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_PITCH_DEG)
+	var blend := minf(1.0, delta * 8.0)
+	_hull.rotation = Vector3(
+		lerp_angle(_hull.rotation.x, pitch, blend),
+		PI,
+		lerp_angle(_hull.rotation.z, bank, blend))
 
 func _attack() -> void:
 	if _bullet_manager == null or projectile == null:
