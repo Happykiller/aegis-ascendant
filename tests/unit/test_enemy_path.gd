@@ -5,7 +5,7 @@ const SPAWN := Vector2(-4.0, 9.0)
 const ALL_PATHS: Array[int] = [
 	EnemyData.Path.WEAVE, EnemyData.Path.DIVE, EnemyData.Path.ARC_CROSS,
 	EnemyData.Path.HOVER_STRAFE, EnemyData.Path.SERPENTINE, EnemyData.Path.SPIRAL,
-	EnemyData.Path.BOOMERANG,
+	EnemyData.Path.BOOMERANG, EnemyData.Path.STRAFE_RUN,
 ]
 
 func _data(path: int) -> EnemyData:

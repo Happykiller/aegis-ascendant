@@ -118,7 +118,8 @@ func _physics_process(delta: float) -> void:
 	# cette seconde borne il resterait vivant à jamais, hors du champ, à consommer une
 	# entrée du pool.
 	if plane_position.y < GameplayPlane.BOUNDS.position.y - DESPAWN_MARGIN \
-			or plane_position.y > GameplayPlane.BOUNDS.end.y + ESCAPE_MARGIN:
+			or plane_position.y > GameplayPlane.BOUNDS.end.y + ESCAPE_MARGIN \
+			or absf(plane_position.x) > GameplayPlane.BOUNDS.end.x + DESPAWN_MARGIN:
 		deactivate()
 		return
 	# Le roulis se déduit du déplacement latéral RÉELLEMENT parcouru, pas de la

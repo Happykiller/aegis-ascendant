@@ -6,7 +6,7 @@ extends Resource
 ## EnemyPath, il ne décide de rien. Ajouter une famille, c'est choisir ici.
 ## L'ordre est celui de la variété perçue, pas une hiérarchie. Chaque valeur a une
 ## signature de mouvement qu'aucune autre n'imite (voir EnemyPath).
-enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG }
+enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG, STRAFE_RUN }
 @export var path: Path = Path.WEAVE
 
 @export var display_name: String = "enemy"

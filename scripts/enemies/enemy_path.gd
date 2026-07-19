@@ -23,6 +23,7 @@ class_name EnemyPath
 ##   DIVE        accélération           — approche lente, puis il fond
 ##   HOVER_STRAFE  arrêt + strafe       — tient sa ligne et arrose : attaque télégraphiée
 ##   BOOMERANG   entrée puis RETRAITE   — repart vers le haut : à tuer avant qu'il file
+##   STRAFE_RUN  entrée LATÉRALE        — balaie l'horizontale depuis un bord : autre apparition
 
 ## Vitesse latérale (unités/s) à laquelle le roulis visuel est à fond.
 const BANK_REFERENCE_SPEED := 6.0
@@ -49,6 +50,8 @@ static func position_at(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 			return _hover_strafe(data, age, spawn)
 		EnemyData.Path.BOOMERANG:
 			return _boomerang(data, age, spawn)
+		EnemyData.Path.STRAFE_RUN:
+			return _strafe_run(data, age, spawn)
 		_:
 			return _weave(data, age, spawn)
 
@@ -155,3 +158,14 @@ static func _boomerang(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 		# Retraite : il remonte, et il repassera au-dessus de son point d'entrée.
 		y = data.hold_y + data.move_speed * RETREAT_FACTOR * (age - descent_time)
 	return Vector2(spawn.x + lateral, y)
+
+
+## Il ENTRE par un côté et TRAVERSE le champ à l'horizontale, en descendant à peine.
+## Là où tous les autres tombent depuis le haut, celui-ci balaie latéralement : c'est
+## une autre lecture d'apparition (spawn sur un bord, pas en haut). Le sens est déduit
+## du spawn — apparu à gauche, il file vers la droite, donc vers le champ.
+static func _strafe_run(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
+	var inward := 1.0 if spawn.x < 0.0 else -1.0
+	return Vector2(
+		spawn.x + inward * data.move_speed * age,
+		spawn.y - data.move_speed * 0.25 * age)

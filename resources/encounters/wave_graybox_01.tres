@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=26 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
@@ -9,183 +9,197 @@
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_serpent.tscn" id="7_serp"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_spiral.tscn" id="8_spiral"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_raider.tscn" id="9_raid"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_strafe.tscn" id="10_strafe"]
 
-[sub_resource type="Resource" id="a1"]
+; --- Intro : V par le haut, puis premiers balayages latéraux -------------------
+[sub_resource type="Resource" id="w1"]
 script = ExtResource("2_entry")
-time_offset = 0.28
+time_offset = 0.3
 enemy_scene = ExtResource("3_weave")
 spawn_plane_position = Vector2(-6, 9.5)
-count = 8
+count = 4
+spacing = 0.7
+
+[sub_resource type="Resource" id="w2"]
+script = ExtResource("2_entry")
+time_offset = 0.6
+enemy_scene = ExtResource("3_weave")
+spawn_plane_position = Vector2(6, 9.5)
+count = 4
+spacing = 0.7
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_entry")
+time_offset = 3.5
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(-16, 7.0)
+count = 4
+spacing = 0.6
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_entry")
+time_offset = 6.0
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(16, 5.5)
+count = 4
+spacing = 0.6
+
+; --- Montée : arcs depuis les coins + serpent central -------------------------
+[sub_resource type="Resource" id="a1"]
+script = ExtResource("2_entry")
+time_offset = 8.5
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(-11, 9.5)
+count = 4
 spacing = 0.7
 
 [sub_resource type="Resource" id="a2"]
 script = ExtResource("2_entry")
-time_offset = 1.93
-enemy_scene = ExtResource("3_weave")
-spawn_plane_position = Vector2(6, 9.5)
-count = 8
-spacing = 0.7
-
-[sub_resource type="Resource" id="a3"]
-script = ExtResource("2_entry")
-time_offset = 3.85
-enemy_scene = ExtResource("3_weave")
-spawn_plane_position = Vector2(0, 9.5)
-count = 8
-spacing = 0.8
-
-[sub_resource type="Resource" id="b1"]
-script = ExtResource("2_entry")
-time_offset = 8.25
-enemy_scene = ExtResource("7_serp")
-spawn_plane_position = Vector2(-8, 9.5)
-count = 8
-spacing = 0.6
-
-[sub_resource type="Resource" id="b2"]
-script = ExtResource("2_entry")
-time_offset = 9.62
-enemy_scene = ExtResource("7_serp")
-spawn_plane_position = Vector2(8, 9.5)
-count = 8
-spacing = 0.6
-
-[sub_resource type="Resource" id="b3"]
-script = ExtResource("2_entry")
-time_offset = 11.28
-enemy_scene = ExtResource("3_weave")
-spawn_plane_position = Vector2(2, 9.5)
-count = 8
-spacing = 0.7
-
-[sub_resource type="Resource" id="c1"]
-script = ExtResource("2_entry")
-time_offset = 15.40
-enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-11, 9.5)
-count = 8
-spacing = 0.7
-
-[sub_resource type="Resource" id="c2"]
-script = ExtResource("2_entry")
-time_offset = 17.05
+time_offset = 10.5
 enemy_scene = ExtResource("4_arc")
 spawn_plane_position = Vector2(11, 9.5)
-count = 8
+count = 4
 spacing = 0.7
 
-[sub_resource type="Resource" id="c3"]
+[sub_resource type="Resource" id="z1"]
 script = ExtResource("2_entry")
-time_offset = 18.98
+time_offset = 13.0
 enemy_scene = ExtResource("7_serp")
-spawn_plane_position = Vector2(-2, 9.5)
-count = 8
-spacing = 0.6
+spawn_plane_position = Vector2(0, 9.5)
+count = 5
+spacing = 0.55
 
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_entry")
+time_offset = 15.5
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(16, 6.5)
+count = 5
+spacing = 0.5
+
+; --- Piqués + spirales --------------------------------------------------------
 [sub_resource type="Resource" id="d1"]
 script = ExtResource("2_entry")
-time_offset = 23.10
+time_offset = 18.0
 enemy_scene = ExtResource("5_dive")
 spawn_plane_position = Vector2(-5, 9.5)
-count = 8
+count = 3
 spacing = 0.8
 
 [sub_resource type="Resource" id="d2"]
 script = ExtResource("2_entry")
-time_offset = 24.75
+time_offset = 18.6
 enemy_scene = ExtResource("5_dive")
 spawn_plane_position = Vector2(5, 9.5)
-count = 8
+count = 3
 spacing = 0.8
+
+[sub_resource type="Resource" id="sp1"]
+script = ExtResource("2_entry")
+time_offset = 21.5
+enemy_scene = ExtResource("8_spiral")
+spawn_plane_position = Vector2(-8, 9.5)
+count = 4
+spacing = 0.8
+
+[sub_resource type="Resource" id="sp2"]
+script = ExtResource("2_entry")
+time_offset = 23.8
+enemy_scene = ExtResource("8_spiral")
+spawn_plane_position = Vector2(8, 9.5)
+count = 4
+spacing = 0.8
+
+[sub_resource type="Resource" id="s4"]
+script = ExtResource("2_entry")
+time_offset = 26.5
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(-16, 6.0)
+count = 6
+spacing = 0.45
+
+; --- Lanciers + pression -------------------------------------------------------
+[sub_resource type="Resource" id="l1"]
+script = ExtResource("2_entry")
+time_offset = 29.5
+enemy_scene = ExtResource("6_hover")
+spawn_plane_position = Vector2(-7, 9.5)
+count = 3
+spacing = 0.9
+
+[sub_resource type="Resource" id="l2"]
+script = ExtResource("2_entry")
+time_offset = 31.0
+enemy_scene = ExtResource("6_hover")
+spawn_plane_position = Vector2(7, 9.5)
+count = 3
+spacing = 0.9
+
+[sub_resource type="Resource" id="a3"]
+script = ExtResource("2_entry")
+time_offset = 33.5
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(11, 9.5)
+count = 5
+spacing = 0.65
+
+[sub_resource type="Resource" id="s5"]
+script = ExtResource("2_entry")
+time_offset = 36.0
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(-16, 7.0)
+count = 5
+spacing = 0.5
+
+[sub_resource type="Resource" id="z2"]
+script = ExtResource("2_entry")
+time_offset = 38.5
+enemy_scene = ExtResource("7_serp")
+spawn_plane_position = Vector2(-3, 9.5)
+count = 5
+spacing = 0.55
+
+; --- Finale : tenaille des deux côtés + raiders + piqué central ---------------
+[sub_resource type="Resource" id="r1"]
+script = ExtResource("2_entry")
+time_offset = 41.0
+enemy_scene = ExtResource("9_raid")
+spawn_plane_position = Vector2(-9, 9.5)
+count = 4
+spacing = 0.7
+
+[sub_resource type="Resource" id="r2"]
+script = ExtResource("2_entry")
+time_offset = 41.5
+enemy_scene = ExtResource("9_raid")
+spawn_plane_position = Vector2(9, 9.5)
+count = 4
+spacing = 0.7
+
+[sub_resource type="Resource" id="s6"]
+script = ExtResource("2_entry")
+time_offset = 44.0
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(-16, 6.0)
+count = 6
+spacing = 0.45
+
+[sub_resource type="Resource" id="s7"]
+script = ExtResource("2_entry")
+time_offset = 44.3
+enemy_scene = ExtResource("10_strafe")
+spawn_plane_position = Vector2(16, 5.0)
+count = 6
+spacing = 0.45
 
 [sub_resource type="Resource" id="d3"]
 script = ExtResource("2_entry")
-time_offset = 26.68
-enemy_scene = ExtResource("8_spiral")
-spawn_plane_position = Vector2(-7, 9.5)
-count = 6
-spacing = 0.8
-
-[sub_resource type="Resource" id="d4"]
-script = ExtResource("2_entry")
-time_offset = 27.78
-enemy_scene = ExtResource("8_spiral")
-spawn_plane_position = Vector2(7, 9.5)
-count = 6
-spacing = 0.8
-
-[sub_resource type="Resource" id="e1"]
-script = ExtResource("2_entry")
-time_offset = 31.90
-enemy_scene = ExtResource("9_raid")
-spawn_plane_position = Vector2(-9, 9.5)
-count = 6
-spacing = 0.7
-
-[sub_resource type="Resource" id="e2"]
-script = ExtResource("2_entry")
-time_offset = 33.00
-enemy_scene = ExtResource("9_raid")
-spawn_plane_position = Vector2(9, 9.5)
-count = 6
-spacing = 0.7
-
-[sub_resource type="Resource" id="e3"]
-script = ExtResource("2_entry")
-time_offset = 34.65
-enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-10, 9.5)
-count = 8
-spacing = 0.9
-
-[sub_resource type="Resource" id="f1"]
-script = ExtResource("2_entry")
-time_offset = 39.60
-enemy_scene = ExtResource("6_hover")
-spawn_plane_position = Vector2(-7, 9.5)
-count = 6
-spacing = 0.9
-
-[sub_resource type="Resource" id="f2"]
-script = ExtResource("2_entry")
-time_offset = 40.70
-enemy_scene = ExtResource("6_hover")
-spawn_plane_position = Vector2(7, 9.5)
-count = 6
-spacing = 0.9
-
-[sub_resource type="Resource" id="f3"]
-script = ExtResource("2_entry")
-time_offset = 42.90
+time_offset = 47.0
 enemy_scene = ExtResource("5_dive")
 spawn_plane_position = Vector2(0, 9.5)
-count = 10
-spacing = 0.6
-
-[sub_resource type="Resource" id="f4"]
-script = ExtResource("2_entry")
-time_offset = 44.55
-enemy_scene = ExtResource("8_spiral")
-spawn_plane_position = Vector2(-4, 9.5)
 count = 6
-spacing = 0.7
-
-[sub_resource type="Resource" id="f5"]
-script = ExtResource("2_entry")
-time_offset = 45.65
-enemy_scene = ExtResource("7_serp")
-spawn_plane_position = Vector2(4, 9.5)
-count = 8
-spacing = 0.6
-
-[sub_resource type="Resource" id="f6"]
-script = ExtResource("2_entry")
-time_offset = 47.30
-enemy_scene = ExtResource("3_weave")
-spawn_plane_position = Vector2(-2, 9.5)
-count = 10
 spacing = 0.5
 
 [resource]
 script = ExtResource("1_wave")
-entries = [SubResource("a1"), SubResource("a2"), SubResource("a3"), SubResource("b1"), SubResource("b2"), SubResource("b3"), SubResource("c1"), SubResource("c2"), SubResource("c3"), SubResource("d1"), SubResource("d2"), SubResource("d3"), SubResource("d4"), SubResource("e1"), SubResource("e2"), SubResource("e3"), SubResource("f1"), SubResource("f2"), SubResource("f3"), SubResource("f4"), SubResource("f5"), SubResource("f6")]
+entries = [SubResource("w1"), SubResource("w2"), SubResource("s1"), SubResource("s2"), SubResource("a1"), SubResource("a2"), SubResource("z1"), SubResource("s3"), SubResource("d1"), SubResource("d2"), SubResource("sp1"), SubResource("sp2"), SubResource("s4"), SubResource("l1"), SubResource("l2"), SubResource("a3"), SubResource("s5"), SubResource("z2"), SubResource("r1"), SubResource("r2"), SubResource("s6"), SubResource("s7"), SubResource("d3")]
