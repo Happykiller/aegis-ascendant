@@ -39,6 +39,11 @@ var _fire_timer: float = 0.0
 var _hull: Node3D
 var _base_position: Vector2 = Vector2.ZERO
 var _combat_age: float = 0.0
+## Smoothed roll/pitch of the 3D hull, kept as members. They must NOT be read back
+## from `_hull.rotation` each frame: near the 180° facing yaw the euler decomposition
+## is ambiguous and the read-back flips, which made the boss blink out for a frame.
+var _bank: float = 0.0
+var _pitch: float = 0.0
 ## Where the boss's shots leave its body: one plane-space offset per gun the hull
 ## carries (Leviathan: central + two pods; Harvester: its two claws). A volley is
 ## dealt round-robin across them, so it visibly sprays from the guns, not the core.
@@ -155,14 +160,13 @@ func _apply_bank(previous: Vector2, delta: float) -> void:
 	if _hull == null:
 		return
 	var velocity := (plane_position - previous) / maxf(delta, 0.0001)
-	var bank := clampf(-velocity.x / _BANK_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_BANK_DEG)
+	var target_bank := clampf(-velocity.x / _BANK_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_BANK_DEG)
 	# Diving toward the player (down, -y) tips the nose down toward them.
-	var pitch := clampf(-velocity.y / _PITCH_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_PITCH_DEG)
+	var target_pitch := clampf(-velocity.y / _PITCH_REFERENCE, -1.0, 1.0) * deg_to_rad(_MAX_PITCH_DEG)
 	var blend := minf(1.0, delta * 8.0)
-	_hull.rotation = Vector3(
-		lerp_angle(_hull.rotation.x, pitch, blend),
-		PI,
-		lerp_angle(_hull.rotation.z, bank, blend))
+	_bank = lerp_angle(_bank, target_bank, blend)
+	_pitch = lerp_angle(_pitch, target_pitch, blend)
+	_hull.rotation = Vector3(_pitch, PI, _bank)
 
 func _attack() -> void:
 	if _bullet_manager == null or projectile == null:
