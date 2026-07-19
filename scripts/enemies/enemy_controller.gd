@@ -64,7 +64,8 @@ func _ready() -> void:
 		Callable(_health, "apply_damage"))
 	_target.enabled = false
 	if _hull != null:
-		_muzzle_offset = Vector2(0.0, -_attach_point("Muzzle_C").z)
+		var muzzle := _attach_point("Muzzle_C")
+		_muzzle_offset = Vector2(muzzle.x, -muzzle.z)
 		_build_flash_overlay()
 		_build_thruster()
 	if _bullet_manager == null and not bullet_manager_path.is_empty():

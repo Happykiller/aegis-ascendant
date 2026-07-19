@@ -49,14 +49,24 @@ var _respawn_timer: float = 0.0
 var _target: BulletTarget
 var _blink_time: float = 0.0
 
-## Engine trails and muzzle flashes are placed on the hull's attach points
-## (ADR-0008), one per nozzle / per gun — never on hard-coded offsets.
+## Guns baked into the hull (ADR-0008), one per fire stream; the power level
+## decides which of them fire. Every bolt leaves one of these — never a hard-coded
+## offset (spec §9.1 ; cf. la référence, où le chasseur crache plusieurs flux
+## parallèles depuis le nez, les ailes et les bouts d'aile).
+const MUZZLE_NAMES: Array[String] = [
+	"Muzzle_L", "Muzzle_R", "Muzzle_Wing_L", "Muzzle_Wing_R",
+	"Muzzle_C", "Muzzle_Tip_L", "Muzzle_Tip_R",
+]
+
+## Engine trails and muzzle flashes sit on the hull's attach points (ADR-0008),
+## one per nozzle / per gun — never on hard-coded offsets.
 var _engine_trails: Array[GPUParticles3D] = []
-var _muzzle_flashes: Array[MeshInstance3D] = []
+## Plane-space offset of each gun from the ship origin, read once from the hull.
+var _muzzles: Dictionary[String, Vector2] = {}
+## One flash quad per gun, shown only for the guns that fired this salvo.
+var _muzzle_flashes: Dictionary[String, MeshInstance3D] = {}
 var _muzzle_material: StandardMaterial3D
 var _muzzle_timer: float = 0.0
-## Distance from the ship's origin to its guns, read from the hull.
-var _muzzle_offset: Vector2 = Vector2(0.0, 0.9)
 
 @onready var _visual_root: Node3D = $VisualRoot
 @onready var _hull: Node3D = $VisualRoot/Hull
@@ -70,8 +80,7 @@ func _ready() -> void:
 		for error in primary_projectile.validate():
 			push_error("[PlayerFighter] invalid projectile: %s" % error)
 	position = GameplayPlane.to_world(plane_position)
-	var guns := (_attach_point("Muzzle_L").z + _attach_point("Muzzle_R").z) * 0.5
-	_muzzle_offset = Vector2(0.0, -guns) # world -Z is logical +y
+	_cache_muzzles()
 	_build_engine_trails()
 	_build_muzzle_flashes()
 	_demo = "--demo" in OS.get_cmdline_user_args()
@@ -208,8 +217,11 @@ func _update_fire(delta: float) -> void:
 	if _muzzle_timer > 0.0:
 		_muzzle_timer = maxf(_muzzle_timer - delta, 0.0)
 		_muzzle_material.emission_energy_multiplier = 6.0 * (_muzzle_timer / 0.05)
-		for flash in _muzzle_flashes:
-			flash.visible = _muzzle_timer > 0.0
+		if _muzzle_timer == 0.0:
+			# Iterate the constant name list, not `.values()` — the latter allocates
+			# a fresh Array every salvo, in a per-frame loop (godot-reviewer).
+			for muzzle_name in MUZZLE_NAMES:
+				_muzzle_flashes[muzzle_name].visible = false
 	if _bullet_manager == null or primary_projectile == null:
 		return
 	if (_demo or Input.is_action_pressed("fire_primary")) and _fire_timer == 0.0:
@@ -219,27 +231,34 @@ func _update_fire(delta: float) -> void:
 		_fire_pattern()
 		_muzzle_timer = 0.05
 
-## Pulse Array fire pattern, escalating with power level (spec §9.1).
+## Pulse Array fire pattern, escalating with power level (spec §9.1). Every stream
+## leaves a real gun baked into the hull (ADR-0008): the nose twin, then the wings,
+## the central axis, and finally the wingtips.
 func _fire_pattern() -> void:
 	fired.emit()
-	var muzzle := plane_position + _muzzle_offset
-	# Level 1+: twin frontal shots.
-	_shoot(muzzle + Vector2(-0.18, 0.0), DIR_UP)
-	_shoot(muzzle + Vector2(0.18, 0.0), DIR_UP)
+	# Level 1+: twin frontal shots from the nose cannon.
+	_shoot("Muzzle_L", DIR_UP)
+	_shoot("Muzzle_R", DIR_UP)
 	if _power_level >= 3:
-		# Level 3+: weak angled side shots.
-		_shoot(muzzle + Vector2(-0.5, 0.0), Vector2(-0.28, 1.0))
-		_shoot(muzzle + Vector2(0.5, 0.0), Vector2(0.28, 1.0))
+		# Level 3+: angled side shots from the wing guns.
+		_shoot("Muzzle_Wing_L", Vector2(-0.28, 1.0))
+		_shoot("Muzzle_Wing_R", Vector2(0.28, 1.0))
 	if _power_level >= 4:
 		# Level 4+: reinforced central axis.
-		_shoot(muzzle, DIR_UP)
+		_shoot("Muzzle_C", DIR_UP)
 	if _power_level >= 5:
-		# Level 5: full lateral spread.
-		_shoot(muzzle + Vector2(-0.7, 0.0), Vector2(-0.6, 1.0))
-		_shoot(muzzle + Vector2(0.7, 0.0), Vector2(0.6, 1.0))
+		# Level 5: full lateral spread from the wingtip pods.
+		_shoot("Muzzle_Tip_L", Vector2(-0.6, 1.0))
+		_shoot("Muzzle_Tip_R", Vector2(0.6, 1.0))
 
-func _shoot(origin: Vector2, direction: Vector2) -> void:
+## Fire one bolt from the named gun and light that gun's muzzle flash. A gun the
+## hull does not carry (old asset) degrades to the ship centre (cached as zero).
+func _shoot(muzzle_name: String, direction: Vector2) -> void:
+	var origin: Vector2 = plane_position + _muzzles.get(muzzle_name, Vector2.ZERO)
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, direction, primary_projectile)
+	var flash: MeshInstance3D = _muzzle_flashes.get(muzzle_name)
+	if flash != null:
+		flash.visible = true
 
 ## Local position of an attach point baked into the hull mesh (ADR-0008).
 ## A hull missing one is an asset bug: report it and degrade to the origin
@@ -250,6 +269,14 @@ func _attach_point(point_name: String) -> Vector3:
 		push_error("[PlayerFighter] hull has no attach point '%s'" % point_name)
 		return Vector3.ZERO
 	return node.position
+
+## Read each gun's plane-space offset from the ship origin, once. The hull is
+## modelled nose-forward (-Z, no yaw on the player instance) so we project through
+## its transform for good measure; a missing gun falls back to the centre.
+func _cache_muzzles() -> void:
+	for muzzle_name in MUZZLE_NAMES:
+		var world: Vector3 = _hull.transform * _attach_point(muzzle_name)
+		_muzzles[muzzle_name] = Vector2(world.x, -world.z)
 
 func _build_engine_trails() -> void:
 	for point_name in ["Engine_L", "Engine_R"]:
@@ -313,15 +340,15 @@ func _build_muzzle_flashes() -> void:
 	_muzzle_material.albedo_color = Color(0.6, 0.95, 1.0, 1.0)
 	_muzzle_material.emission = Color(0.5, 0.9, 1.0)
 	_muzzle_material.albedo_texture = SoftDot.texture()
-	for point_name in ["Muzzle_L", "Muzzle_R"]:
+	for muzzle_name in MUZZLE_NAMES:
 		var flash := MeshInstance3D.new()
 		flash.mesh = quad
-		flash.position = _attach_point(point_name)
+		flash.position = _attach_point(muzzle_name)
 		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		flash.material_override = _muzzle_material
 		flash.visible = false
 		_visual_root.add_child(flash)
-		_muzzle_flashes.append(flash)
+		_muzzle_flashes[muzzle_name] = flash
 
 ## Pure movement math, testable headless: accelerate toward input * max_speed,
 ## reaching it in accel_time seconds (spec §7.3: max speed in < 250 ms).

@@ -38,8 +38,10 @@ var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _hull: Node3D
 var _base_x: float = 0.0
-## Where the boss's shots leave its body, read from the hull's own muzzles.
-var _muzzle_offset: Vector2 = Vector2(0.0, -1.0)
+## Where the boss's shots leave its body: one plane-space offset per gun the hull
+## carries (Leviathan: central + two pods; Harvester: its two claws). A volley is
+## dealt round-robin across them, so it visibly sprays from the guns, not the core.
+var _muzzles: Array[Vector2] = [Vector2(0.0, -1.0)]
 
 ## Hulls are modelled nose-forward like every unit (ADR-0008); a boss faces the
 ## player, so the scene turns it around rather than the mesh being built backwards.
@@ -51,25 +53,24 @@ func _ready() -> void:
 		_hull = hull_scene.instantiate() as Node3D
 		_hull.rotation = FACING_PLAYER
 		add_child(_hull)
-		_muzzle_offset = _read_muzzle_offset()
+		_muzzles = _read_muzzles()
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false) # activated on begin()
 
-## Average of whatever muzzles the hull carries (the Leviathan has a central one,
-## the Harvester fires from its two claws). Falls back to a nose offset.
-func _read_muzzle_offset() -> Vector2:
-	var sum := Vector2.ZERO
-	var found := 0
+## The plane-space offset of every muzzle the hull carries (the Leviathan has a
+## central one plus two pods, the Harvester its two claws). Falls back to a single
+## nose offset so a hull without muzzles still fires.
+func _read_muzzles() -> Array[Vector2]:
+	var out: Array[Vector2] = []
 	for point_name in ["Muzzle_C", "Muzzle_L", "Muzzle_R"]:
 		var node := _hull.get_node_or_null(NodePath(point_name)) as Node3D
 		if node != null:
-			var world := _hull.transform * node.position
-			sum += Vector2(world.x, -world.z)
-			found += 1
-	if found == 0:
+			var world: Vector3 = _hull.transform * node.position
+			out.append(Vector2(world.x, -world.z))
+	if out.is_empty():
 		push_error("[Boss:%s] hull carries no muzzle attach point" % display_name)
-		return Vector2(0.0, -1.0)
-	return sum / float(found)
+		out.append(Vector2(0.0, -1.0))
+	return out
 
 func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> void:
 	_bullet_manager = bullet_manager
@@ -132,26 +133,31 @@ func _physics_process(delta: float) -> void:
 func _attack() -> void:
 	if _bullet_manager == null or projectile == null:
 		return
-	var muzzle := plane_position + _muzzle_offset
+	# Each shot leaves one of the hull's guns (round-robin): same shot counts as
+	# before, but the volley visibly sprays from the muzzles rather than the centre.
+	var guns := _muzzles.size()
 	match (_age_pattern()):
 		Pattern.RADIAL:
 			var count := 10 + _phase * 4
 			for i in count:
 				var a := TAU * i / count
-				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
+				var origin: Vector2 = plane_position + _muzzles[i % guns]
+				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
 					Vector2(cos(a), sin(a)), projectile)
 		Pattern.AIMED_SPREAD:
-			var dir := (_player.plane_position - muzzle).normalized() if _player != null else Vector2(0.0, -1.0)
 			var count := 3 + _phase
 			for i in count:
+				var origin: Vector2 = plane_position + _muzzles[i % guns]
+				var dir := (_player.plane_position - origin).normalized() if _player != null else Vector2(0.0, -1.0)
 				var spread := deg_to_rad(14.0 * (i - (count - 1) * 0.5))
-				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
+				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
 					dir.rotated(spread), projectile)
 		Pattern.FAN:
 			var count := 7 + _phase * 2
 			for i in count:
+				var origin: Vector2 = plane_position + _muzzles[i % guns]
 				var t := float(i) / (count - 1) - 0.5
-				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
+				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
 					Vector2(t * 1.4, -1.0).normalized(), projectile)
 
 func _age_pattern() -> Pattern:

@@ -15,6 +15,8 @@ var _sliding: bool = false
 var _hull: Node3D
 ## Mouth of the docking bay, in plane coordinates relative to the hull's origin.
 var _bay_offset: Vector2 = Vector2(0.0, -3.0)
+## Plane-space offset (model units) of each heavy rail battery, read from the hull.
+var _battery_offsets: Array[Vector2] = []
 
 func _ready() -> void:
 	if hull_scene != null:
@@ -25,12 +27,26 @@ func _ready() -> void:
 			_bay_offset = Vector2(entry.position.x, -entry.position.z)
 		else:
 			push_error("[AegisCitadel] hull has no 'Dock_Entry' attach point")
+		for battery_name in ["Muzzle_Battery_L", "Muzzle_Battery_R"]:
+			var node := _hull.get_node_or_null(battery_name) as Node3D
+			if node != null:
+				_battery_offsets.append(Vector2(node.position.x, -node.position.z))
+			else:
+				push_error("[AegisCitadel] hull has no '%s' attach point" % battery_name)
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false)
 
 ## Docking bay mouth in plane coordinates, taken from the hull's own attach point.
 func bay_position() -> Vector2:
 	return plane_position + _bay_offset
+
+## Firing point of a heavy rail battery (0 = port, 1 = starboard), in plane
+## coordinates, taken from the hull's own muzzle and scaled with the fortress
+## (it shrinks for the fortress phase). Falls back to the origin if unbaked.
+func battery_origin(index: int) -> Vector2:
+	if _battery_offsets.is_empty():
+		return plane_position
+	return plane_position + _battery_offsets[index % _battery_offsets.size()] * scale.x
 
 func slide_to(target: Vector2, speed: float) -> void:
 	_slide_target = target

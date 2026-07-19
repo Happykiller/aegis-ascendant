@@ -19,7 +19,6 @@ const _FORTRESS_Y := -3.8
 const _FORTRESS_SCALE := 0.38
 const _FINAL_BOSS_SCALE := 0.75
 const _FORTRESS_HITBOX_RADIUS := 1.5
-const _FORTRESS_MUZZLE_X := 1.6
 
 const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
 const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
@@ -328,9 +327,10 @@ func _physics_process(delta: float) -> void:
 		_fire_battery()
 
 func _fire_battery() -> void:
-	# Twin rail batteries, alternating left/right (spec §12.3).
+	# Twin rail batteries, alternating left/right (spec §12.3), each leaving its own
+	# muzzle baked into the citadel hull (ADR-0008) rather than a hard-coded offset.
 	_fortress_side = -_fortress_side
-	var origin := _citadel.plane_position + Vector2(_FORTRESS_MUZZLE_X * _fortress_side, 0.85)
+	var origin := _citadel.battery_origin(0 if _fortress_side > 0 else 1)
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, Vector2(0.0, 1.0), FortressBattery)
 	if _fortress_side > 0: # twin battery: one cue per pair
 		_sfx(&"rail_battery")
