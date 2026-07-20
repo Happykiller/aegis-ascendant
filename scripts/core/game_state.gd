@@ -12,7 +12,12 @@ signal score_changed(total: int)
 const _ALLOWED: Dictionary = {
 	State.BOOT: [State.LOADING, State.FIGHTER_COMBAT],
 	State.LOADING: [State.FIGHTER_COMBAT],
-	State.FIGHTER_COMBAT: [State.GAME_OVER, State.VICTORY],
+	# BOOT est autorisé depuis le combat : abandonner une partie en cours pour
+	# revenir au titre est un chemin légitime (menu pause -> titre). Sans lui,
+	# l'écran de pause laissait `current` sur FIGHTER_COMBAT en revenant au
+	# titre, et le lancement SUIVANT était refusé — en silence, puisque
+	# _start_graybox ne teste pas le retour de transition_to.
+	State.FIGHTER_COMBAT: [State.GAME_OVER, State.VICTORY, State.BOOT],
 	State.GAME_OVER: [State.FIGHTER_COMBAT, State.BOOT],
 	State.VICTORY: [State.BOOT],
 }

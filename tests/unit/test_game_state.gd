@@ -34,6 +34,18 @@ func test_full_run_path() -> void:
 	assert_true(gs.transition_to(GameStateScript.State.BOOT), "VICTORY -> BOOT")
 	gs.free()
 
+## Abandonner une partie pour revenir au titre, puis EN RELANCER UNE. C'est le
+## second pas qui comptait : le retour au titre laissait `current` sur
+## FIGHTER_COMBAT, et le lancement suivant était refusé — sans rien à l'écran,
+## puisque personne ne teste le retour de transition_to.
+func test_abandoning_a_run_lets_the_next_one_start() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT), "BOOT -> FIGHTER_COMBAT")
+	assert_true(gs.transition_to(GameStateScript.State.BOOT), "pause -> titre en pleine partie")
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT),
+		"et on peut relancer une partie derrière")
+	gs.free()
+
 func test_score_accumulates() -> void:
 	var gs := _make_state()
 	gs.add_score(100)
