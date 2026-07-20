@@ -427,31 +427,52 @@ def add_lathe(
     segments: int,
     center_x: float = 0.0,
     center_z: float = 0.0,
+    axis: str = "Y",
 ) -> list[list[bmesh.types.BMFace]]:
-    """Solide de revolution autour de l'axe Y (l'axe longitudinal du vaisseau).
+    """Solide de revolution autour de X, Y ou Z.
 
-    `contour` : liste ordonnee de `(y, radius, material)` decrivant le profil.
+    `contour` : liste ordonnee de `(position_sur_l_axe, radius, material)`.
     Le `material` d'un point s'applique au segment qui part de ce point vers le
     suivant (celui du dernier point est ignore). Un point de rayon 0 est un
     pole : il est ferme par un eventail.
 
-    Sert aux tuyeres, aux canons, aux noyaux : c'est la primitive ronde
-    commune a toutes les coques.
+    `center_x` / `center_z` decalent le solide dans les DEUX directions
+    perpendiculaires a l'axe, dans l'ordre des axes restants :
+      axis="Y" -> (X, Z)   axis="X" -> (Y, Z)   axis="Z" -> (X, Y)
+
+    Sert aux tuyeres, aux canons, aux futs de tourelle, aux noyaux : c'est la
+    primitive ronde commune a toutes les coques.
+
+    Le parametre `axis` a ete ajoute apres coup : le kit ne tournait qu'autour
+    de Y, et TROIS scripts avaient fini par reimplementer la rotation localement
+    (`_z_drum` et `_x_tube` dans la citadelle, `_disc_stack` dans le Needle
+    Scout puis dans le Crescent). La suggestion figurait dans deux rapports de
+    forge avant d'etre faite.
     """
     if segments < 3:
         raise ContractError("add_lathe : segments >= 3")
+    if axis not in ("X", "Y", "Z"):
+        raise ContractError("add_lathe : axis doit valoir 'X', 'Y' ou 'Z' (recu %r)" % axis)
+
+    def _point(along: float, u: float, v: float) -> tuple[float, float, float]:
+        if axis == "Y":
+            return (u, along, v)
+        if axis == "X":
+            return (along, u, v)
+        return (u, v, along)
+
     rings: list[list[bmesh.types.BMVert] | bmesh.types.BMVert] = []
-    for y, radius, _ in contour:
+    for along, radius, _ in contour:
         if radius <= 1e-6:
-            rings.append(bm.verts.new((center_x, y, center_z)))
+            rings.append(bm.verts.new(_point(along, center_x, center_z)))
             continue
         pts = []
         for s in range(segments):
             a = 2.0 * math.pi * s / segments
             pts.append(
-                (
+                _point(
+                    along,
                     center_x + radius * math.cos(a),
-                    y,
                     center_z + radius * math.sin(a),
                 )
             )
@@ -778,6 +799,46 @@ def _primitive_triangles(gltf: dict, prim: dict) -> int:
     return gltf["accessors"][prim["attributes"]["POSITION"]]["count"] // 3
 
 
+def box_project_uv(obj: bpy.types.Object, texels_per_meter: float = 1.0) -> None:
+    """Deplie les UV par PROJECTION EN BOITE, sur place.
+
+    Chaque face est projetee sur celui des trois plans du monde dont sa normale
+    est la plus proche, a l'echelle donnee. C'est un depliage grossier — les
+    ilots se recouvrent, les faces obliques sont legerement etirees — et c'est
+    exactement ce qu'il faut ici : les feuilles de detail sont REPETABLES et en
+    niveaux de gris (ADR-0011), donc leur position exacte sur la coque n'a aucune
+    importance. Seules comptent l'echelle et la continuite.
+
+    Pourquoi pas `bpy.ops.uv.smart_project()` : il faut passer en mode edition,
+    il depend de la selection, et son resultat bouge d'une version de Blender a
+    l'autre. Ici tout est calcule a la main, donc DETERMINISTE — exigence
+    ADR-0008, verifiee par la byte-identite de deux exports successifs.
+
+    `texels_per_meter` : combien de fois la feuille se repete par metre. Une
+    valeur trop haute transforme le detail mecanique en bruit ; trop basse, les
+    plaques deviennent enormes. A juger au rendu, pas au chiffre.
+    """
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    uv_layer = bm.loops.layers.uv.verify()
+    for face in bm.faces:
+        n = face.normal
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for loop in face.loops:
+            co = loop.vert.co
+            if ax >= ay and ax >= az:
+                u, v = co.y, co.z
+            elif ay >= az:
+                u, v = co.x, co.z
+            else:
+                u, v = co.x, co.y
+            loop[uv_layer].uv = (u * texels_per_meter, v * texels_per_meter)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+
 def export_hull(
     hull: bpy.types.Object,
     attach_points: list[bpy.types.Object],
@@ -841,9 +902,14 @@ def export_hull(
             export_animations=False,
             export_skins=False,
             export_extras=False,
-            export_tangents=False,
+            # UV et tangentes exportees depuis ADR-0011 : les feuilles de detail
+            # repetables (lignes de panneau, greebles, usure) sont appliquees
+            # cote Godot et n'ont aucun support sans coordonnees de texture.
+            # Elles etaient explicitement supprimees jusqu'ici — c'etait LE
+            # verrou qui rendait toute texture impossible.
+            export_tangents=True,
             export_normals=True,
-            export_texcoords=False,
+            export_texcoords=True,
         )
         report = _validate_glb(staged, contract, author_y, author_attach)
         shutil.move(staged, filepath)
