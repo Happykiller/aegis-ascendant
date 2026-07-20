@@ -46,6 +46,7 @@ func _ready() -> void:
 	_hero_rest = _hero.position
 	_audio.set_music_state(MusicDirector.State.TITLE)
 	_tune_backdrop()
+	_detail_hulls()
 	_attach_engine_trails()
 	_apply_bisect_flags()
 	print("[TitleStage] ready")
@@ -97,6 +98,17 @@ const HERO_TRAIL_SCALE := 0.42
 const HERO_TRAIL_ENERGY := 1.5
 const ESCORT_TRAIL_SCALE := 0.8
 const ESCORT_TRAIL_ENERGY := 2.4
+
+## Feuille de detail sur toutes les coques de la scene (accueil = gros plan, c'est
+## la que ca compte le plus). Le joueur en combat sera traite separement, une fois
+## la methode validee ici.
+## Seuls les Specter-9 sont traites : ils portent des UV (box_project_uv, ADR-0011).
+## La citadelle n'est pas encore reforgee et n'en a pas — elle suivra avec sa
+## propre passe. Sans UV, la carte s'echantillonnerait sur un seul texel.
+func _detail_hulls() -> void:
+	HullDetail.apply(_hero)
+	for escort in _escorts.get_children():
+		HullDetail.apply(escort)
 
 func _attach_engine_trails() -> void:
 	_attach_trail_to(_hero, HERO_TRAIL_SCALE, 18, HERO_TRAIL_ENERGY)
