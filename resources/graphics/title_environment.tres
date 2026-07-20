@@ -1,0 +1,38 @@
+[gd_resource type="Environment" format=3]
+
+; Environnement de l'écran d'accueil. COPIE de space_environment.tres, pas une
+; modification : le gameplay a ses propres arbitrages, déjà mesurés (tâche H7), et
+; les toucher pour embellir un écran titre serait un mauvais échange.
+;
+; Deux écarts assumés par rapport au jeu :
+;
+; 1. ambient_light_energy 0.55 -> 0.90. docs/BACKLOG.md acte que les coques lisent
+;    BEAUCOUP plus sombre en jeu qu'en rendu studio, au point que seuls les filets
+;    émissifs portent la silhouette. Un accueil n'a aucune contrainte de lisibilité
+;    gameplay : c'est exactement l'endroit où relever l'ambiante.
+; 2. glow_intensity 0.82 -> 1.00 et glow_bloom 0.08 -> 0.12.
+;
+; glow_hdr_threshold reste à 1.6. C'est délibéré : le seuil avait été REMONTÉ à cette
+; valeur pour passer au-dessus de la luminance des coques, afin que le bloom serve les
+; ÉMISSIFS (tuyères, noyaux) et pas les coques. Le baisser ferait baver les fuselages
+; et mangerait le relief — l'erreur que H7 a corrigée.
+
+[resource]
+background_mode = 1
+background_color = Color(0.012, 0.016, 0.035, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.62, 0.78, 1)
+ambient_light_energy = 0.9
+tonemap_mode = 4
+tonemap_white = 6.0
+glow_enabled = true
+glow_intensity = 1.0
+glow_strength = 0.9
+glow_bloom = 0.12
+glow_blend_mode = 1
+glow_hdr_threshold = 1.6
+glow_hdr_scale = 1.15
+adjustment_enabled = true
+adjustment_brightness = 1.02
+adjustment_contrast = 1.08
+adjustment_saturation = 1.15

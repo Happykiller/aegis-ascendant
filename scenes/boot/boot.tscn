@@ -1,118 +1,337 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=13 format=3]
 
-[ext_resource type="Script" path="res://scripts/ui/boot_screen.gd" id="1_boot"]
-[ext_resource type="Texture2D" path="res://assets/imported/ui/title_backdrop.svg" id="2_backdrop"]
-[ext_resource type="Texture2D" path="res://assets/imported/ui/helios_vanguard_emblem.svg" id="3_emblem"]
-[ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="4_capture"]
+[ext_resource type="Script" path="res://scripts/ui/title_stage.gd" id="1_stage"]
+[ext_resource type="Script" path="res://scripts/ui/title_menu.gd" id="2_menu"]
+[ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="3_capture"]
+[ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="4_camdir"]
+[ext_resource type="Environment" path="res://resources/graphics/title_environment.tres" id="5_env"]
+[ext_resource type="PackedScene" path="res://scenes/vfx/space_backdrop.tscn" id="6_backdrop"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9.glb" id="7_specter"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/structures/aegis_citadel.glb" id="8_citadel"]
+[ext_resource type="Texture2D" path="res://assets/imported/ui/helios_vanguard_emblem.svg" id="9_emblem"]
+[ext_resource type="Theme" path="res://resources/ui/aegis_theme.tres" id="10_theme"]
+[ext_resource type="Shader" path="res://shaders/retro_post.gdshader" id="11_retro"]
+[ext_resource type="Shader" path="res://shaders/scanlines.gdshader" id="12_scan"]
 
-[node name="BootScreen" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_boot")
+[sub_resource type="ShaderMaterial" id="mat_retro"]
+shader = ExtResource("11_retro")
+shader_parameter/target_res = Vector2(960, 540)
+shader_parameter/levels = 20.0
+shader_parameter/dither_amount = 0.9
+shader_parameter/saturation = 1.3
+shader_parameter/contrast = 1.18
+shader_parameter/warmth = 0.055
+
+[sub_resource type="ShaderMaterial" id="mat_scan"]
+shader = ExtResource("12_scan")
+shader_parameter/line_alpha = 0.18
+shader_parameter/period = 4.0
+
+[sub_resource type="StyleBoxFlat" id="frame"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.161, 0.902, 1, 0.3)
+
+[node name="TitleStage" type="Node3D"]
+script = ExtResource("1_stage")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("5_env")
+
+; Les réglages de shader propres au titre (center_calm, scroll_speed) sont posés en
+; CODE par title_stage.gd : le matériau vit sur le PlaneMesh de la scène instanciée,
+; pas en material_override, et il est PARTAGÉ avec le fond du jeu. Le retoucher ici
+; le retoucherait aussi en combat.
+[node name="SpaceBackdrop" parent="." instance=ExtResource("6_backdrop")]
+
+[node name="CameraDirector" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 6)
+script = ExtResource("4_camdir")
+
+[node name="Camera3D" type="Camera3D" parent="CameraDirector"]
+transform = Transform3D(1, 0, 0, 0, 0.9848, 0.1736, 0, -0.1736, 0.9848, 0, 0, 0)
+current = true
+fov = 62.0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8192, 0.4698, -0.329, 0, 0.5736, 0.8192, 0.5736, -0.671, 0.4698, 0, 12, 0)
+light_color = Color(1, 0.976, 0.925, 1)
+light_energy = 1.55
+shadow_enabled = true
+directional_shadow_mode = 0
+directional_shadow_max_distance = 60.0
+
+[node name="RimLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.9962, -0.0298, 0.0819, 0, 0.9397, 0.342, -0.0872, 0.3407, -0.9361, 0, 10, -6)
+light_color = Color(0.596, 0.855, 1, 1)
+light_energy = 0.7
+shadow_enabled = false
+
+; Troisième lumière, absente du jeu. Elle vient de face-haut-droite, du côté de la
+; caméra, et relève les fuselages que l'éclairage de combat laisse dans le noir
+; (docs/BACKLOG.md : « les coques lisent beaucoup plus sombre en jeu qu'en rendu
+; studio »). C'est le remplissage de l'éclairage trois points de render-hull.py.
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.895, -0.2012, 0.4, 0, 0.8943, 0.449, -0.448, -0.4019, 0.799, 0, 6, 8)
+light_color = Color(0.85, 0.91, 1, 1)
+light_energy = 0.55
+shadow_enabled = false
+
+[node name="Citadel" type="Node3D" parent="."]
+transform = Transform3D(0.8829, 0, 0.4695, 0, 1, 0, -0.4695, 0, 0.8829, -11, 7.0, -34)
+
+[node name="Hull" parent="Citadel" instance=ExtResource("8_citadel")]
+
+[node name="Escorts" type="Node3D" parent="."]
+
+[node name="EscortA" type="Node3D" parent="Escorts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 3.4, -16)
+
+[node name="Hull" parent="Escorts/EscortA" instance=ExtResource("7_specter")]
+
+[node name="EscortB" type="Node3D" parent="Escorts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 4.1, -18.5)
+
+[node name="Hull" parent="Escorts/EscortB" instance=ExtResource("7_specter")]
+
+[node name="EscortC" type="Node3D" parent="Escorts"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 3.7, -17)
+
+[node name="Hull" parent="Escorts/EscortC" instance=ExtResource("7_specter")]
+
+[node name="Hero" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 3.1)
+
+[node name="Hull" parent="Hero" instance=ExtResource("7_specter")]
 
 [node name="ScreenCapture" type="Node" parent="."]
-script = ExtResource("4_capture")
+script = ExtResource("3_capture")
 
-[node name="Background" type="TextureRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
+[node name="RetroPost" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Effect" type="ColorRect" parent="RetroPost"]
+material = SubResource("mat_retro")
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 mouse_filter = 2
-texture = ExtResource("2_backdrop")
-expand_mode = 1
-stretch_mode = 6
 
-[node name="Veil" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
+[node name="TitleUI" type="CanvasLayer" parent="."]
+script = ExtResource("2_menu")
+
+[node name="Frame" type="Panel" parent="TitleUI"]
+theme_override_styles/panel = SubResource("frame")
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_left = 22.0
+offset_top = 22.0
+offset_right = -22.0
+offset_bottom = -22.0
 mouse_filter = 2
-color = Color(0.027, 0.039, 0.071, 0.28)
 
-[node name="MainLayout" type="MarginContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 300.0
-offset_top = 92.0
-offset_right = -300.0
-offset_bottom = -70.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Content" type="VBoxContainer" parent="MainLayout"]
-layout_mode = 2
-theme_override_constants/separation = 14
-alignment = 1
-
-[node name="Emblem" type="TextureRect" parent="MainLayout/Content"]
-custom_minimum_size = Vector2(132, 132)
-layout_mode = 2
-size_flags_horizontal = 4
+[node name="Identity" type="VBoxContainer" parent="TitleUI"]
+offset_left = 52.0
+offset_top = 48.0
+offset_right = 620.0
+offset_bottom = 140.0
+theme_override_constants/separation = 8
 mouse_filter = 2
-texture = ExtResource("3_emblem")
+
+[node name="Emblem" type="TextureRect" parent="TitleUI/Identity"]
+custom_minimum_size = Vector2(46, 46)
+size_flags_horizontal = 0
+mouse_filter = 2
+texture = ExtResource("9_emblem")
 expand_mode = 3
 stretch_mode = 5
 
-[node name="FactionLabel" type="Label" parent="MainLayout/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
-theme_override_font_sizes/font_size = 19
+[node name="Faction" type="Label" parent="TitleUI/Identity"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.92)
+theme_override_font_sizes/font_size = 13
+text = "HELIOS VANGUARD"
+
+[node name="Program" type="Label" parent="TitleUI/Identity"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.62)
+theme_override_font_sizes/font_size = 10
+text = "ASCENDANT PROGRAM"
+
+[node name="Unit" type="Label" parent="TitleUI/Identity"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.75)
+theme_override_font_sizes/font_size = 10
+text = "HV-09  //  SPECTER-9"
+
+[node name="Center" type="VBoxContainer" parent="TitleUI"]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -540.0
+offset_top = 236.0
+offset_right = 540.0
+offset_bottom = 700.0
+theme_override_constants/separation = 16
+alignment = 1
+mouse_filter = 2
+
+[node name="Kicker" type="Label" parent="TitleUI/Center"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.85)
+theme_override_font_sizes/font_size = 14
 text = "HELIOS VANGUARD  //  ASCENDANT PROGRAM"
 horizontal_alignment = 1
 
-[node name="TitleLabel" type="Label" parent="MainLayout/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
-theme_override_colors/font_shadow_color = Color(0.027, 0.039, 0.071, 0.9)
-theme_override_constants/shadow_offset_x = 4
-theme_override_constants/shadow_offset_y = 5
-theme_override_font_sizes/font_size = 86
+[node name="Title" type="Label" parent="TitleUI/Center"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.161, 0.902, 1, 0.45)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 10
+theme_override_font_sizes/font_size = 54
 text = "AEGIS ASCENDANT"
 horizontal_alignment = 1
 
-[node name="CallsignLabel" type="Label" parent="MainLayout/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.184, 0.612, 0.667, 1)
-theme_override_font_sizes/font_size = 24
+[node name="Tagline" type="Label" parent="TitleUI/Center"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.9)
+theme_override_font_sizes/font_size = 15
 text = "TAKE THE SKY  ·  HOLD THE LINE  ·  ASCEND"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="MainLayout/Content"]
-custom_minimum_size = Vector2(0, 60)
-layout_mode = 2
+[node name="Spacer" type="Control" parent="TitleUI/Center"]
+custom_minimum_size = Vector2(0, 28)
 mouse_filter = 2
 
-[node name="HintLabel" type="Label" parent="MainLayout/Content"]
+[node name="Menu" type="VBoxContainer" parent="TitleUI/Center"]
 unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
-theme_override_font_sizes/font_size = 27
-text = "[  APPUYEZ SUR ENTRÉE  ]"
-horizontal_alignment = 1
+custom_minimum_size = Vector2(0, 0)
+theme_override_constants/separation = 10
+alignment = 1
 
-[node name="ControlsLabel" type="Label" parent="MainLayout/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.78)
-theme_override_font_sizes/font_size = 17
+[node name="PlayButton" type="Button" parent="TitleUI/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("10_theme")
+text = "NOUVELLE PARTIE"
+
+[node name="OptionsButton" type="Button" parent="TitleUI/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("10_theme")
+text = "OPTIONS"
+
+[node name="QuitButton" type="Button" parent="TitleUI/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("10_theme")
+text = "QUITTER"
+
+[node name="Comms" type="VBoxContainer" parent="TitleUI"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 52.0
+offset_top = -132.0
+offset_right = 340.0
+offset_bottom = -46.0
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="Status" type="Label" parent="TitleUI/Comms"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.35, 0.85, 0.6, 0.9)
+theme_override_font_sizes/font_size = 10
+text = "● COMMS SECURE"
+
+[node name="Channel" type="Label" parent="TitleUI/Comms"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.55)
+theme_override_font_sizes/font_size = 10
+text = "CHANNEL 09"
+
+[node name="TraceHost" type="Control" parent="TitleUI/Comms"]
+custom_minimum_size = Vector2(232, 34)
+mouse_filter = 2
+
+[node name="CommsTrace" type="Line2D" parent="TitleUI/Comms/TraceHost"]
+unique_name_in_owner = true
+position = Vector2(0, 17)
+width = 1.5
+default_color = Color(0.161, 0.902, 1, 0.7)
+
+[node name="Motto" type="VBoxContainer" parent="TitleUI"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -520.0
+offset_top = -104.0
+offset_right = -52.0
+offset_bottom = -46.0
+theme_override_constants/separation = 6
+alignment = 2
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="TitleUI/Motto"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.92)
+theme_override_font_sizes/font_size = 12
+text = "HELIOS VANGUARD"
+horizontal_alignment = 2
+
+[node name="Creed" type="Label" parent="TitleUI/Motto"]
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.55)
+theme_override_font_sizes/font_size = 9
+text = "FORGE THE SKY.  DEFEND THE LIGHT."
+horizontal_alignment = 2
+
+[node name="Controls" type="Label" parent="TitleUI"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -78.0
+offset_bottom = -54.0
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.7)
+theme_override_font_sizes/font_size = 10
 text = "OPTIONS  O     ·     DÉPLACEMENT  ← →     ·     TIR  ESPACE"
 horizontal_alignment = 1
+mouse_filter = 2
 
-[node name="VersionLabel" type="Label" parent="MainLayout/Content"]
+[node name="VersionLabel" type="Label" parent="TitleUI"]
 unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.42)
-theme_override_font_sizes/font_size = 15
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -48.0
+offset_bottom = -28.0
+theme = ExtResource("10_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.4)
+theme_override_font_sizes/font_size = 9
 text = "v0.1.0 — prototype"
 horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="Fade" type="ColorRect" parent="TitleUI"]
+unique_name_in_owner = true
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 1)
+mouse_filter = 2
+
+[node name="Scanlines" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="Effect" type="ColorRect" parent="Scanlines"]
+material = SubResource("mat_scan")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[connection signal="pressed" from="TitleUI/Center/Menu/PlayButton" to="TitleUI" method="_on_play_pressed"]
+[connection signal="pressed" from="TitleUI/Center/Menu/OptionsButton" to="TitleUI" method="_on_options_pressed"]
+[connection signal="pressed" from="TitleUI/Center/Menu/QuitButton" to="TitleUI" method="_on_quit_pressed"]
