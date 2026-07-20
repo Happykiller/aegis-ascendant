@@ -10,11 +10,14 @@ audio déterministe et sans téléchargement, SVG propres et conformes). Points 
   (**ADR-0009**, projet personnel non commercial). Les 8 planches de concept originales sont conservées.
 
 ## À corriger avant modélisation 3D (briefs futurs)
-- **Aegis Citadel** : la vue de face lit légèrement comme un buste torse+épaules (noyau = tête,
-  bras-batteries = épaules). Abaisser/écarter les bras pour casser cette lecture humanoïde
-  (charte §4, §15.4). Déjà noté dans la provenance de la planche.
+- ~~**Aegis Citadel** : la vue de face lit comme un buste torse+épaules — abaisser/écarter les bras
+  pour casser cette lecture humanoïde.~~ **RETIRÉ le 20/07/2026 par ADR-0011.** Le propriétaire
+  arbitre en faveur de la fidélité à la planche de concept, laquelle présente elle-même cette
+  lecture. La consigne est supprimée plutôt que contournée : la laisser coexister avec « aussi
+  proche de la planche que possible » aurait produit des arbitrages opposés d'une session à l'autre.
 - **Pale Leviathan** : le noyau magenta est presque centré alors que le canon exige un noyau
   **décentré** (silhouette asymétrique, §15.5). Décentrer réellement à la modélisation.
+  ⚠️ Cette dette-ci **tient toujours** : elle vient du canon, pas d'une lecture de planche.
 
 ## À arbitrer en Phase 1 (test capture)
 - **VFX explosions** : `small/medium/heavy_explosion`, `debris_burst`, `sparks` emploient un

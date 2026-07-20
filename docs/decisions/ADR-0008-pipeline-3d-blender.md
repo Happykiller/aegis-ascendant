@@ -119,7 +119,17 @@ n'apporterait presque rien pour un coût de production et de LFS très supérieu
 textures (albedo/roughness/normal) reste possible **plus tard**, par unité, si un plan rapproché
 (menu, cinématique) l'exige.
 
+> ⚠️ **AMENDÉ PAR ADR-0011 (20/07/2026).** Cette porte a été ouverte : les **feuilles de détail
+> répétables en niveaux de gris** (lignes de panneau, greebles, usure), multipliées sur les couleurs
+> de palette, sont désormais autorisées pour toutes les coques. Le plan rapproché existe — le
+> Specter-9 est affiché en gros plan sur l'écran d'accueil. Restent interdites les textures peintes
+> par vaisseau et toute texture porteuse de couleur.
+
 ### Budgets
+
+> ⚠️ **CES PLAFONDS SONT PÉRIMÉS — voir ADR-0011** (héros 60 000, ennemi léger 12 000, boss 90 000,
+> structure 120 000). Ils bridaient le détail : un biseau à 2 segments consommait à lui seul 97 %
+> de la marge du héros.
 
 | Classe | Triangles max |
 |---|---|
