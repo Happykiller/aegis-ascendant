@@ -79,6 +79,7 @@ télégraphes et la lisibilité changent silencieusement. Tolérance **±3 %** s
 |---|---|---|---|
 | Specter-9 (joueur) | 1,75 m | 2,46 m | 0,25 |
 | Needle Scout | 0,65 m | 1,90 m | 0,45 |
+| Crescent Interceptor | 1,10 m | 1,60 m | 0,55 |
 | Choir Harvester (boss) | 4,55 m | 7,00 m | 2,0 |
 | Pale Leviathan (boss) | 7,02 m | 8,77 m | 3,6 |
 | Aegis Citadel (structure) | 19,6 m | 16,6 m | — |
