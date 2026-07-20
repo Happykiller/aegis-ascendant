@@ -72,6 +72,14 @@
 - [ ] **Enrichir le fond** — la nébuleuse est belle mais uniforme : aucun élément remarquable
   (planète, bande galactique, débris qui dérivent). → tâche **H2**.
 - [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé ».
+- [ ] ⚠️ **Les coques lisent BEAUCOUP plus sombre en jeu qu'en rendu studio.** Constaté le
+  20/07/2026 en comparant `tools/render-hull.py` (éclairage trois points) et une capture de
+  `graybox.tscn` : sur le Crescent Interceptor, l'ivoire et l'anthracite disparaissent contre la
+  nébuleuse, et seuls les filets magenta émissifs portent la silhouette. Vaut pour **toutes** les
+  coques, pas seulement la nouvelle — c'est l'éclairage de scène, pas les meshes. ADR-0008 prévenait
+  que « sans éclairage travaillé les meshes paraîtront pires que les sprites » : c'est exactement ça.
+  Attention : juger une coque au seul rendu studio la flatte. Toujours confirmer par une capture en
+  jeu (`--capture-at=<s>` vise le bon instant de vague).
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
 - [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
   vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.
