@@ -37,3 +37,30 @@ aplats à bords francs ne tiennent pas face au bloom.
 
 Pour le pictural, deux voies : **imagegen** (dépend de l'opérateur) ou **procédural en shader**
 (autonome, sans couture, réglable par uniformes). Voir `docs/decisions/ADR-0006`.
+
+## Le rendu studio flatte ; le post-process rétro écrase le détail fin (20/07/2026)
+
+Deux réalités de rendu, à ne pas confondre — un asset se juge dans **les deux**, et c'est la seconde
+qui décide :
+
+1. **`tools/render-hull.py` (Cycles, studio) flatte les coques** : éclairage trois points, pleine
+   résolution, pas de post-process. C'est le bon outil pour vérifier la géométrie et l'orientation,
+   mais il **survend** le rendu final. (Déjà noté ailleurs : les coques lisent plus sombre en jeu.)
+2. **Le jeu passe tout par le post-process rétro** — `retro_post.gdshader` réduit à **960×540** puis
+   `scanlines.gdshader`. Ce pipeline **plafonne le détail fin** : sur une petite coque, une texture
+   de lignes de panneau se noie en bruit rayé, indiscernable des scanlines.
+
+**Ce que ça a coûté** : reforge du Specter-9 avec feuille de détail. La v2 « plus visible » (rainures
+à 0.22, plaques ×2,5) rendait la coque **grise et boueuse** en jeu alors qu'elle semblait correcte en
+studio ; trois cycles export+deploy+capture pour retomber sur un réglage propre (rainures 0.45,
+`uv1_scale` 0.6). Le studio ne montrait aucun de ces défauts.
+
+**Conséquences à énoncer dans tout brief de coque** :
+
+- **La géométrie porte l'essentiel de la lecture**, la texture n'est qu'une finition. Placer le
+  budget de détail dans les volumes et les insets, pas dans une texture fine qui ne survivra pas au
+  downsampling.
+- **Juger en jeu, pas au studio** : `deploy-win.sh -- ++ --novsync --capture --capture-at=<s>`, puis
+  recadrer le sujet et regarder. Ne pas valider une texture sur le seul rendu Cycles.
+- Un détail qui n'est visible qu'à pleine résolution studio **n'existe pas** pour le joueur — même
+  logique que la règle des 20° de BRIEF-0026, appliquée à la finesse au lieu de l'angle.

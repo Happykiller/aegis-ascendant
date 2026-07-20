@@ -63,6 +63,42 @@ vraie cause :
 avait pas de bug. Et avant de déployer quand un autre worktree est actif, le dire à l'opérateur —
 on va couper sa fenêtre de jeu.
 
+## L'autre écrivain n'est pas forcément un agent Claude (20/07/2026)
+
+Le second écrivain peut être un **outil tiers sous un autre compte Unix**. Sur ce poste, un agent
+**Codex** et **GitKraken** tournent sous l'utilisateur **`faro`** (le dépôt est partagé). Ils ne
+font pas de `git add` concurrents comme un autre Claude : ils bloquent par les **droits** et par des
+**fichiers fantômes**. Quatre blocages distincts, tous vécus dans la même session, tous d'aspect
+« bug de mon travail » alors qu'aucun ne l'était :
+
+| Symptôme | Ce qu'on croit | Ce que c'est | Correctif (opérateur, sudo) |
+|---|---|---|---|
+| `git … : impossible d'accéder à '.git/config'` | dépôt corrompu | GitKraken a `chown`é `.git/config` vers `faro` | `sudo chown happykiller:happykiller .git/config` |
+| `droits insuffisants pour ajouter un objet à .git/objects` | index cassé | des shards `.git/objects/xx` appartiennent à `faro` ; l'échec est **aléatoire** selon le hash du blob | `sudo chown -R happykiller:happykiller .git` |
+| `check.sh` rouge : `ERROR: Cannot go into subdir 'NUL'` | assets corrompus | un script Codex redirige vers `NUL` (convention Windows) ; sous WSL ça **crée un vrai répertoire** que Godot refuse de scanner | `sudo rm -rf NUL` (il **revient** tant que Codex tourne) |
+| remote `git@github-happykiller/…` sans `:` ni propriétaire | clé SSH cassée | l'URL avait été réécrite invalide | `git remote set-url origin git@…:Owner/repo.git` |
+
+**Le fichier `NUL` est le piège le plus coûteux** : il réapparaît à chaque exécution d'un script
+Codex, donc le supprimer ne suffit pas — il faut **tarir la source** (fermer Codex, ou corriger sa
+redirection `> NUL` en `> /dev/null`). Diagnostic : `stat -c '%y %U' NUL` montre l'horodatage et le
+propriétaire `faro`.
+
+**Réflexes** :
+
+- Quand un échec git/porte est un problème de **droits ou de fichier fantôme**, ne pas chercher le
+  bug dans son propre code : vérifier `find .git -user faro | wc -l` et la présence de `NUL`.
+- **Prouver que l'échec n'est pas le sien** avant d'accuser son travail :
+  `godot4 --headless --import 2>&1 | grep ERROR | grep -v NUL` — si c'est vide, seul `NUL` bloque.
+- **Voir le rendu malgré une porte rouge irréductible** : exporter depuis une **copie** du dépôt
+  dans le scratch, sans le fichier fantôme.
+  `tar -c --exclude=NUL --exclude=.git --exclude=.godot --exclude=build … | tar -x -C <scratch>`,
+  puis `godot4 --path <scratch> --import` et `--export-debug`. Ne touche ni au dépôt ni au fantôme.
+- **Un `.git` partiellement possédé par `faro` casse les commits de façon intermittente** : un
+  `chown -R .git` d'un coup vaut mieux que fichier par fichier.
+- Le correctif durable n'est pas à moi : **manipuler ce dépôt sous un seul compte** (git en CLI sous
+  `happykiller`, ou GitKraken sous `happykiller`). Le signaler à l'opérateur plutôt que de rejouer
+  le blocage à chaque commit.
+
 ## Ne jamais faire
 
 - `git add -A` quand l'arbre contient du travail dont on n'est pas l'auteur.

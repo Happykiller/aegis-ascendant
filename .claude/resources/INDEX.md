@@ -40,10 +40,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
+  ⚠️ Le rendu **studio flatte**, le **post-process rétro (960×540 + scanlines) écrase le détail
+  fin** : juger en jeu, mettre le détail dans la géométrie, pas dans une texture fine.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
-  parallèle produisent des commits mélangés et une porte de qualité rouge sans coupable.
+  parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
+  peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et
+  fichier fantôme `NUL` — ce n'est pas ton code.
 
 ## Process — étendre le ghost
 
