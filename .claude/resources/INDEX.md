@@ -30,7 +30,8 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   `--capture-after` compte des **images**, pas des secondes.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
-  effet en comparant avec/sans.
+  effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend
+  0,84 ms sur RTX 4080 et 12,0 ms sur Quadro T1000 — ×14 à code identique.
 - [Intégrer un asset image généré par ChatGPT](howto-assets-image-genere.md) — ChatGPT **peint le
   damier** au lieu d'une vraie transparence (RGB opaque). Exiger un **fond noir pur** pour les objets
   lumineux ; reconstruire l'alpha avec `tools/bg-key-alpha.py` (ne pas refaire le keying à la main).
@@ -59,7 +60,8 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | Commande | Ce qu'elle évite |
 |---|---|
 | `./scripts/play-arc.sh [s]` | l'arc en temps réel, horodaté, **avec reprise de main garantie** (la démo boucle sans fin) |
-| `./scripts/check.sh` | la porte de qualité — import + parse + tests |
+| `./scripts/check.sh` | la porte de qualité — import + parse + tests ; **détecte un LFS non tiré** (sinon Godot importe les pointeurs comme des textures et l'erreur ment) |
+| `./scripts/deploy-win.sh` | le déploiement Windows ; **résout `powershell.exe` par chemin absolu** si le PATH interop de WSL ne l'expose pas |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
 | `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |
 | sous-agent `godot-verifier` | ~50 lignes de bruit de build/deploy dans le contexte, pour 3 faits |

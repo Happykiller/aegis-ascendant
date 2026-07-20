@@ -43,19 +43,43 @@ Verdict : soutenable. Sans cette isolation, on n'aurait eu qu'un chiffre absolu 
 Un effet visuel n'est « terminé » que si son **coût GPU est mesuré et énoncé**, pas seulement
 « ça a l'air de tourner ».
 
-## Jeter le premier relevé après un `deploy` (caches Vulkan froids)
+## Ne jamais conclure sur un seul relevé — mais le bruit n'a pas la même forme partout
 
-Le **premier lancement qui suit un déploiement** rend un temps GPU **surévalué** : les caches de
-pipeline Vulkan sont froids. Relevé le 12/07/2026 sur un build inchangé :
+**Règle** : lancer **au moins deux fois**, et regarder la **dispersion** avant de conclure. Un écart
+isolé sur un build qui « ne devrait rien changer » n'est pas une régression tant qu'il n'est pas
+reproduit. La *cause* du bruit, elle, dépend de la machine — ne pas appliquer mécaniquement une
+recette prise sur un autre poste.
+
+**RTX 4080 — caches Vulkan froids.** Le premier lancement après un `deploy` est surévalué, puis ça
+se stabilise. Relevé le 12/07/2026, build inchangé :
 
 | Run | GPU |
 |---|---|
-| 1ᵉʳ après deploy | **1,161 ms** ← artefact |
+| 1ᵉʳ après deploy | **1,161 ms** ← artefact de cache froid |
 | 2ᵉ … 5ᵉ | 0,836 / 0,840 / 0,840 / 0,863 ms |
 
-Le nominal est ~0,838 ms. Rendre le premier chiffre aurait fait chasser une régression de +0,38 ms
-**qui n'existe pas**.
+Nominal ~0,838 ms. Garder le premier chiffre aurait fait chasser une régression de +0,38 ms
+**qui n'existe pas**. Ici, « jeter le premier relevé » est la bonne recette.
 
-**Règle** : après un `deploy`, lancer **deux fois** et ne garder que le second. Un écart isolé de
-+0,3 ms sur un build qui « ne devrait rien changer » est un cache froid, pas une régression —
-vérifier avant d'enquêter.
+**Quadro T1000 Max-Q — bruit apériodique, pas de cache froid.** Sur le poste portable, le 20/07/2026,
+le 2ᵉ relevé est **plus haut** que le 1ᵉʳ : 11,404 / 12,450 / 11,458 / 12,724 / 13,266 ms. Pas de
+décroissance, donc rien à « jeter » — c'est la modulation de fréquence d'un châssis Max-Q (contrainte
+thermique et enveloppe de puissance). Sur ce type de machine, prendre **plusieurs relevés et retenir
+la plage**, jamais un point : ici **11,4–13,3 ms**, soit ~1,9 ms d'amplitude sur un build strictement
+identique. Une différence de cet ordre n'y signifie **rien**. À noter : les 5ᵉ et dernier relevés sont
+les plus hauts — sur un portable, la dérive va plutôt vers le **réchauffement** que vers le cache froid,
+donc une longue série de mesures monte au lieu de descendre.
+
+## Un budget GPU n'existe pas sans sa machine
+
+Un chiffre de perf n'est comparable qu'à un chiffre **du même poste**. Le même build, inchangé, rend :
+
+| Machine | GPU / image |
+|---|---|
+| RTX 4080 (poste de référence de la spec) | ~0,84 ms |
+| Quadro T1000 Max-Q (portable) | ~12,0 ms |
+
+**×14 d'écart pour un code identique.** Toujours énoncer la machine avec le chiffre — sans quoi le
+prochain relevé se lit comme un effondrement, et on part chasser une régression matérielle.
+Corollaire : le budget 60 Hz (16,7 ms) est tenu sur le portable avec ~28 % de marge, mais le
+**144 Hz (6,9 ms) y est hors d'atteinte** — ne pas y valider une cible de framerate haute.

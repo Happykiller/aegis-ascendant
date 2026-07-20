@@ -92,7 +92,13 @@
 
 - **Perf** : ne jamais mesurer en FPS depuis un lancement automatisé (Windows bride la présentation ;
   relevés absurdes de 2 à 17 FPS, non monotones). Utiliser le **temps GPU par image**.
+  ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le poste de dev depuis le 20/07/2026 est un
+  portable **Quadro T1000**, où le même build rend ~12 ms contre ~0,84 ms sur la RTX 4080 de la spec.
   → `.claude/resources/howto-mesurer-la-perf.md`
+- **À trancher — statut du poste Quadro T1000** : machine de référence, ou poste d'appoint ? Tant que
+  ce n'est pas décidé, la spec (§ machine de référence RTX 4080) et le poste réel divergent. Si ce
+  poste devient la référence, réviser `docs/SPEC_AEGIS_ASCENDANT.md:9`, `ADR-0002`, et la cible
+  « 120 FPS à 1440p » (§2526) — hors d'atteinte sur ce GPU.
 - **Vérifier un rendu** : `--capture` écrit un PNG lisible depuis WSL. ⚠️ effacer le PNG **avant**,
   et les flags passent **après `++`**. → `.claude/resources/howto-verifier-un-rendu.md`
 - **Un asset de la forge n'est pas validé tant qu'il n'a pas été rendu et regardé** (ADR-0006).
