@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=27 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_spiral.tscn" id="8_spiral"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_raider.tscn" id="9_raid"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_strafe.tscn" id="10_strafe"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/crescent_interceptor.tscn" id="11_crescent"]
 
 ; --- Intro : V par le haut, puis premiers balayages latéraux -------------------
 [sub_resource type="Resource" id="w1"]
@@ -159,6 +160,29 @@ spawn_plane_position = Vector2(-3, 9.5)
 count = 5
 spacing = 0.55
 
+; --- Crescent Interceptor : la feinte se lit en paire -------------------------
+; Deux nuées symétriques, largement espacées, pour que le joueur voie chacune
+; s'écarter VERS L'EXTÉRIEUR avant de crocheter vers le centre — c'est toute la
+; signature de cette trajectoire, et elle est illisible sur un appareil isolé.
+; Ils entrent sur la queue de la vague de serpents (z2, 38,5 s) : le contraste
+; entre le zigzag central et les deux crochets latéraux est voulu. La vague est
+; dense de bout en bout, il n'y a pas de créneau vide à cet endroit.
+[sub_resource type="Resource" id="c1"]
+script = ExtResource("2_entry")
+time_offset = 39.5
+enemy_scene = ExtResource("11_crescent")
+spawn_plane_position = Vector2(-7, 9.5)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="c2"]
+script = ExtResource("2_entry")
+time_offset = 40.0
+enemy_scene = ExtResource("11_crescent")
+spawn_plane_position = Vector2(7, 9.5)
+count = 3
+spacing = 0.8
+
 ; --- Finale : tenaille des deux côtés + raiders + piqué central ---------------
 [sub_resource type="Resource" id="r1"]
 script = ExtResource("2_entry")
@@ -202,4 +226,4 @@ spacing = 0.5
 
 [resource]
 script = ExtResource("1_wave")
-entries = [SubResource("w1"), SubResource("w2"), SubResource("s1"), SubResource("s2"), SubResource("a1"), SubResource("a2"), SubResource("z1"), SubResource("s3"), SubResource("d1"), SubResource("d2"), SubResource("sp1"), SubResource("sp2"), SubResource("s4"), SubResource("l1"), SubResource("l2"), SubResource("a3"), SubResource("s5"), SubResource("z2"), SubResource("r1"), SubResource("r2"), SubResource("s6"), SubResource("s7"), SubResource("d3")]
+entries = [SubResource("w1"), SubResource("w2"), SubResource("s1"), SubResource("s2"), SubResource("a1"), SubResource("a2"), SubResource("z1"), SubResource("s3"), SubResource("d1"), SubResource("d2"), SubResource("sp1"), SubResource("sp2"), SubResource("s4"), SubResource("l1"), SubResource("l2"), SubResource("a3"), SubResource("s5"), SubResource("z2"), SubResource("c1"), SubResource("c2"), SubResource("r1"), SubResource("r2"), SubResource("s6"), SubResource("s7"), SubResource("d3")]

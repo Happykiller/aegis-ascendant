@@ -6,7 +6,11 @@ extends Resource
 ## EnemyPath, il ne décide de rien. Ajouter une famille, c'est choisir ici.
 ## L'ordre est celui de la variété perçue, pas une hiérarchie. Chaque valeur a une
 ## signature de mouvement qu'aucune autre n'imite (voir EnemyPath).
-enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG, STRAFE_RUN }
+## ⚠️ APPENDRE en fin de liste, jamais insérer : les .tres sérialisent l'INDICE
+## numérique, donc une insertion au milieu réaffecterait silencieusement la
+## trajectoire de tous les ennemis existants.
+enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG, STRAFE_RUN,
+	CRESCENT_HOOK }
 @export var path: Path = Path.WEAVE
 
 @export var display_name: String = "enemy"
@@ -30,7 +34,10 @@ enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG,
 @export var hold_y: float = 3.0
 @export var hold_time: float = 2.2
 ## ARC_CROSS / SPIRAL : rayon du cercle parcouru (unités).
+## CRESCENT_HOOK : règle l'ampleur de la feinte vers l'extérieur.
 @export var arc_radius: float = 7.0
+## CRESCENT_HOOK : instant (s) du sommet de la feinte, avant que la coupe ne l'emporte.
+@export var hook_delay: float = 1.0
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -50,6 +57,13 @@ func validate() -> PackedStringArray:
 		errors.append("hold_time must be > 0 for HOVER_STRAFE")
 	if (path == Path.ARC_CROSS or path == Path.SPIRAL) and arc_radius <= 0.0:
 		errors.append("arc_radius must be > 0 for ARC_CROSS/SPIRAL")
+	if path == Path.CRESCENT_HOOK:
+		if arc_radius <= 0.0:
+			errors.append("arc_radius must be > 0 for CRESCENT_HOOK")
+		if hook_delay <= 0.0:
+			# Division par hook_delay dans la trajectoire : zéro n'est pas seulement
+			# absurde, c'est une NaN qui se propagerait dans la position.
+			errors.append("hook_delay must be > 0 for CRESCENT_HOOK")
 	if projectile == null:
 		errors.append("projectile is required")
 	else:

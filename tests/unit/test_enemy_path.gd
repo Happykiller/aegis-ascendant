@@ -6,6 +6,7 @@ const ALL_PATHS: Array[int] = [
 	EnemyData.Path.WEAVE, EnemyData.Path.DIVE, EnemyData.Path.ARC_CROSS,
 	EnemyData.Path.HOVER_STRAFE, EnemyData.Path.SERPENTINE, EnemyData.Path.SPIRAL,
 	EnemyData.Path.BOOMERANG, EnemyData.Path.STRAFE_RUN,
+	EnemyData.Path.CRESCENT_HOOK,
 ]
 
 func _data(path: int) -> EnemyData:
@@ -18,6 +19,7 @@ func _data(path: int) -> EnemyData:
 	data.hold_time = 2.0
 	data.dive_delay = 1.0
 	data.arc_radius = 7.0
+	data.hook_delay = 1.0
 	return data
 
 ## Contrat commun : quelle que soit la trajectoire, on part du point de spawn.
@@ -170,3 +172,30 @@ func test_boomerang_retreats_back_off_the_top() -> void:
 	var far := EnemyPath.position_at(data, descent + 6.0, SPAWN).y
 	assert_true(far > SPAWN.y,
 		"puis il remonte au-delà de son point d'entrée (y=%f vs spawn %f)" % [far, SPAWN.y])
+
+## Le crochet FEINTE : c'est sa raison d'être, et c'est ce qu'aucune autre ne fait.
+## Il s'écarte d'abord du centre, puis inverse UNE SEULE FOIS et coupe. L'arc, lui,
+## vire vers le centre dès la première image — d'où la vérification du signe.
+func test_crescent_hook_feints_outward_before_cutting_in() -> void:
+	var data := _data(EnemyData.Path.CRESCENT_HOOK)
+	var inward := EnemyPath.turn_direction(SPAWN)
+	var peak := (EnemyPath.position_at(data, data.hook_delay, SPAWN).x - SPAWN.x) * inward
+	assert_true(peak < -1.0,
+		"au sommet de la feinte il s'est écarté du centre (déport signé %f)" % peak)
+	var late := (EnemyPath.position_at(data, 4.0, SPAWN).x - SPAWN.x) * inward
+	assert_true(late > 1.0, "puis il a coupé de l'autre côté, vers le centre (%f)" % late)
+
+## Une seule inversion. Deux ou plus, ce serait une oscillation — donc un weave
+## déguisé, et la règle de variété tomberait.
+func test_crescent_hook_reverses_its_lateral_direction_exactly_once() -> void:
+	var data := _data(EnemyData.Path.CRESCENT_HOOK)
+	var reversals := 0
+	var previous := 0.0
+	for i in range(1, 40):
+		var t := i * 0.1
+		var velocity := EnemyPath.position_at(data, t, SPAWN).x \
+			- EnemyPath.position_at(data, t - 0.1, SPAWN).x
+		if previous != 0.0 and signf(velocity) != signf(previous):
+			reversals += 1
+		previous = velocity
+	assert_true(reversals == 1, "exactement une inversion latérale (obtenu %d)" % reversals)

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/weapons/needle_shot.tres" id="2_shot"]
+
+[resource]
+script = ExtResource("1_data")
+path = 8
+display_name = "crescent_interceptor"
+max_health = 18.0
+move_speed = 4.0
+weave_amplitude = 1.5
+weave_frequency = 0.4
+fire_interval = 2.1
+projectile = ExtResource("2_shot")
+hitbox_radius = 0.55
+score_value = 180
+
+arc_radius = 7.0
+hook_delay = 1.0

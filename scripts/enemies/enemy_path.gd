@@ -24,6 +24,7 @@ class_name EnemyPath
 ##   HOVER_STRAFE  arrêt + strafe       — tient sa ligne et arrose : attaque télégraphiée
 ##   BOOMERANG   entrée puis RETRAITE   — repart vers le haut : à tuer avant qu'il file
 ##   STRAFE_RUN  entrée LATÉRALE        — balaie l'horizontale depuis un bord : autre apparition
+##   CRESCENT_HOOK  FEINTE puis coupe   — s'écarte vers l'extérieur, puis crochète vers le centre
 
 ## Vitesse latérale (unités/s) à laquelle le roulis visuel est à fond.
 const BANK_REFERENCE_SPEED := 6.0
@@ -34,6 +35,10 @@ const STRAFE_RATE := 1.5
 const STRAFE_WIDTH := 1.8
 const DEPARTURE_FACTOR := 1.6
 const RETREAT_FACTOR := 1.35
+## CRESCENT_HOOK : ampleur de la feinte, en fraction de arc_radius.
+const HOOK_FLARE := 0.5
+## CRESCENT_HOOK : vitesse de la coupe finale, en fraction de move_speed.
+const HOOK_CUT_RATE := 0.45
 
 
 static func position_at(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
@@ -52,6 +57,8 @@ static func position_at(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 			return _boomerang(data, age, spawn)
 		EnemyData.Path.STRAFE_RUN:
 			return _strafe_run(data, age, spawn)
+		EnemyData.Path.CRESCENT_HOOK:
+			return _crescent_hook(data, age, spawn)
 		_:
 			return _weave(data, age, spawn)
 
@@ -169,3 +176,25 @@ static func _strafe_run(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 	return Vector2(
 		spawn.x + inward * data.move_speed * age,
 		spawn.y - data.move_speed * 0.25 * age)
+
+
+## Il FEINTE. Tous les autres partent là où ils vont ; celui-ci s'écarte d'abord
+## vers l'EXTÉRIEUR, puis crochète et coupe vers le centre — une seule inversion
+## latérale, nette. L'arc traverse vers le centre dès l'origine ; le crochet, lui,
+## ouvre d'abord une fausse piste : le joueur qui esquive sur la feinte se replace
+## du mauvais côté.
+##
+## Le déport est la somme d'une COUPE linéaire vers le centre et d'une IMPULSION
+## vers l'extérieur qui culmine à hook_delay puis s'éteint : t/d · e^(1-t/d) vaut 0
+## en 0, 1 en t=d, et retombe ensuite. Somme lisse (C∞) — pas de cassure de vitesse
+## au moment du crochet, donc pas de téléportation visuelle.
+static func _crescent_hook(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
+	var turn := turn_direction(spawn)
+	var delay := maxf(data.hook_delay, 0.01)
+	var flare := maxf(data.arc_radius, 0.5) * HOOK_FLARE
+	var ramp := age / delay
+	var feint := flare * ramp * exp(1.0 - ramp)
+	var cut := data.move_speed * HOOK_CUT_RATE * age
+	return Vector2(
+		spawn.x + turn * (cut - feint),
+		spawn.y - data.move_speed * age)
