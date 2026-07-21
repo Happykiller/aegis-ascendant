@@ -85,6 +85,9 @@ ne pas les intégrer par réflexe parce qu'ils existent.
 > — voir l'ADR.
 
 - Aucun nom/silhouette/élément identifiable de Macross, Robotech ou d'une autre licence.
+  **Exception unique et actée : le Specter-9** reprend le plan de sa planche de référence,
+  dérives comprises (`ADR-0014`). Elle ne s'étend à aucune autre coque, et les marquages,
+  livrées et noms restent exclus partout.
 - Aucun asset sans licence enregistrée ; aucun asset temporaire non signalé.
 - Ne pas contourner un test, ne pas cacher une erreur d'import/export.
 - Pas de multijoueur, monde ouvert, backend, dépendance native non justifiée par profilage.
