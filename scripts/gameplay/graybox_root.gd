@@ -70,6 +70,13 @@ func _ready() -> void:
 	if _hud != null and _player != null:
 		_hud.bind_player(_player)
 		_hud.bind_score(_game_state)
+	# L'écran de pause reprend l'interface entière (bloc d'identité en haut à gauche,
+	# COMMS en bas à gauche, comme l'accueil) : ces places sont celles du HUD, et deux
+	# blocs de texte superposés ne se lisent ni l'un ni l'autre. Le HUD s'efface donc
+	# le temps de la pause. Il n'en sait rien — c'est le niveau qui les raccorde.
+	var pause := get_node_or_null("PauseScreen") as PauseScreen
+	if pause != null and _hud != null:
+		pause.pause_toggled.connect(_on_pause_toggled)
 	if _pickups != null:
 		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
@@ -124,6 +131,12 @@ func _on_wave_progress(ratio: float) -> void:
 func _update_music() -> void:
 	if _audio != null:
 		_audio.set_music_state(MusicDirector.resolve(_music))
+
+## Le HUD s'efface pendant la pause et revient à la reprise. Coupure franche
+## assumée : elle se produit sous un voile qui monte en 0.16 s, donc invisible.
+func _on_pause_toggled(is_paused: bool) -> void:
+	if _hud != null:
+		_hud.visible = not is_paused
 
 # --- Fighter waves -----------------------------------------------------------
 

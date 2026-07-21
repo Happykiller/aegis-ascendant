@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/title_stage.gd" id="1_stage"]
 [ext_resource type="Script" path="res://scripts/ui/title_menu.gd" id="2_menu"]
@@ -12,6 +12,7 @@
 [ext_resource type="Theme" path="res://resources/ui/aegis_theme.tres" id="10_theme"]
 [ext_resource type="Shader" path="res://shaders/retro_post.gdshader" id="11_retro"]
 [ext_resource type="Shader" path="res://shaders/scanlines.gdshader" id="12_scan"]
+[ext_resource type="Script" path="res://scripts/ui/comms_trace.gd" id="13_trace"]
 
 [sub_resource type="ShaderMaterial" id="mat_retro"]
 shader = ExtResource("11_retro")
@@ -256,11 +257,13 @@ text = "CHANNEL 09"
 custom_minimum_size = Vector2(232, 34)
 mouse_filter = 2
 
+; L'oscillogramme s'anime seul depuis qu'il est partagé avec l'écran de pause
+; (scripts/ui/comms_trace.gd) : mode LIVE ici, HOLD là-bas, même appareil.
 [node name="CommsTrace" type="Line2D" parent="TitleUI/Comms/TraceHost"]
-unique_name_in_owner = true
 position = Vector2(0, 17)
 width = 1.5
 default_color = Color(0.161, 0.902, 1, 0.7)
+script = ExtResource("13_trace")
 
 [node name="Motto" type="VBoxContainer" parent="TitleUI"]
 anchor_left = 1.0

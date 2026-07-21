@@ -1,7 +1,8 @@
 extends CanvasLayer
-## Interface de l'écran d'accueil : identité, menu navigable, oscillogramme COMMS.
-## Le diorama 3D sous-jacent est piloté par title_stage.gd — ce script ne touche
-## à rien de la mise en scène.
+## Interface de l'écran d'accueil : identité et menu navigable.
+## Le diorama 3D sous-jacent est piloté par title_stage.gd et l'oscillogramme COMMS
+## s'anime seul (scripts/ui/comms_trace.gd, partagé avec l'écran de pause) — ce
+## script ne touche ni à la mise en scène ni à la télémétrie.
 ##
 ## Autoloads résolus par chemin (convention projet) : garde le script compilable en
 ## mode --script, où les globales d'autoload n'existent pas.
@@ -18,23 +19,13 @@ const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 @onready var _version_label: Label = %VersionLabel
 @onready var _menu: VBoxContainer = %Menu
 @onready var _fade: ColorRect = %Fade
-@onready var _comms_trace: Line2D = %CommsTrace
 
 var _options: Control
 var _leaving: bool = false
-var _age: float = 0.0
-
-## Points de l'oscillogramme, PRÉALLOUÉS une fois : la courbe est réécrite en place
-## à chaque image, jamais reconstruite (spec §31, zéro allocation en boucle).
-const TRACE_POINTS := 48
-const TRACE_WIDTH := 232.0
-const TRACE_HEIGHT := 26.0
-var _trace: PackedVector2Array = PackedVector2Array()
 
 func _ready() -> void:
 	var version: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
 	_version_label.text = "v%s — prototype" % version
-	_trace.resize(TRACE_POINTS)
 	_build_menu_focus()
 	_fade.color.a = 1.0
 	# Ouverture en fondu : l'accueil se lève du noir au lieu d'apparaître d'un coup.
@@ -45,8 +36,6 @@ func _ready() -> void:
 	if "--goto-graybox" in OS.get_cmdline_user_args():
 		_start_game.call_deferred()
 
-## Le menu pause du jeu n'appelle jamais grab_focus() : au clavier comme au pad, il
-## faut d'abord cliquer pour que la navigation réponde. On ne reproduit pas ça ici.
 func _build_menu_focus() -> void:
 	var buttons := _buttons()
 	if buttons.is_empty():
@@ -65,21 +54,6 @@ func _buttons() -> Array[Button]:
 
 func _on_focus_changed() -> void:
 	_audio.play(&"ui_select")
-
-func _process(delta: float) -> void:
-	_age += delta
-	_update_comms_trace()
-
-## Fausse télémétrie animée du bloc COMMS. Trois sinusoïdes de périodes premières
-## entre elles, plus une dent de scie : assez irrégulier pour lire comme un signal,
-## assez bon marché pour être gratuit.
-func _update_comms_trace() -> void:
-	for i in TRACE_POINTS:
-		var t := float(i) / float(TRACE_POINTS - 1)
-		var phase := _age * 2.1 + t * 9.0
-		var value := sin(phase) * 0.5 + sin(phase * 2.7) * 0.28 + sin(phase * 6.1) * 0.12
-		_trace[i] = Vector2(t * TRACE_WIDTH, -value * TRACE_HEIGHT * 0.5)
-	_comms_trace.points = _trace
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _leaving:

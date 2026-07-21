@@ -1,67 +1,271 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=8 format=3]
+
+; Écran de pause — reforgé dans le langage de l'accueil (scenes/boot/boot.tscn).
+;
+; L'ancienne version posait un unique SVG plein cadre (pause_frame.svg) : une boîte
+; bleue opaque qui masquait le champ de bataille, deux rectangles or non
+; identifiables, et des labels en police Godot PAR DÉFAUT — le thème n'était même
+; pas appliqué. Rien de tout ça n'appartenait au jeu.
+;
+; La pause n'est plus une boîte posée par-dessus le jeu : c'est la MÊME interface
+; Helios que l'accueil, rabattue sur un champ de bataille figé. D'où le même mobilier,
+; aux mêmes places : filet fin, bloc d'identité en haut à gauche, oscillogramme COMMS
+; en bas à gauche, devise en bas à droite, rappel de touches en bas au centre.
 
 [ext_resource type="Script" path="res://scripts/ui/pause_screen.gd" id="1_pause"]
-[ext_resource type="Texture2D" path="res://assets/imported/ui/screens/pause_frame.svg" id="2_frame"]
+[ext_resource type="Theme" path="res://resources/ui/aegis_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/imported/ui/helios_vanguard_emblem.svg" id="3_emblem"]
+[ext_resource type="Script" path="res://scripts/ui/comms_trace.gd" id="4_trace"]
+[ext_resource type="Shader" path="res://shaders/scanlines.gdshader" id="5_scan"]
+
+; La pause vit au-dessus des scanlines globales (layer 5) : sans cette passe locale,
+; elle serait le SEUL élément de l'écran à échapper au grain CRT et lirait comme une
+; capture d'écran collée sur le jeu. Même période, même phase que la passe globale —
+; les deux trames se superposent exactement, aucun moiré.
+[sub_resource type="ShaderMaterial" id="mat_scan"]
+shader = ExtResource("5_scan")
+shader_parameter/line_alpha = 0.18
+shader_parameter/period = 4.0
+
+; Filet périphérique, recette de boot.tscn : 2 px, cyan à 30 %, angles vifs.
+[sub_resource type="StyleBoxFlat" id="frame"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.161, 0.902, 1, 0.3)
 
 [node name="PauseScreen" type="CanvasLayer"]
 process_mode = 3
 layer = 20
 script = ExtResource("1_pause")
 
-[node name="Frame" type="TextureRect" parent="."]
-anchors_preset = 15
+; Voile, pas couvercle. Le champ de bataille reste lisible dessous, figé : c'est ce
+; qui distingue une simulation SUSPENDUE d'une simulation quittée. Teinte #070A12,
+; le plancher de luminance de la DA (§6).
+[node name="Scrim" type="ColorRect" parent="."]
+unique_name_in_owner = true
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+color = Color(0.027, 0.039, 0.071, 0.74)
 mouse_filter = 2
-texture = ExtResource("2_frame")
-expand_mode = 1
 
-[node name="Center" type="CenterContainer" parent="."]
-anchors_preset = 15
+; Tout le mobilier sous un seul Control, pour le faire apparaître d'un seul tween.
+; mouse_filter = 2 (IGNORE) sur le parent : les boutons enfants restent cliquables.
+[node name="Overlay" type="Control" parent="."]
+unique_name_in_owner = true
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+mouse_filter = 2
 
-[node name="Menu" type="VBoxContainer" parent="Center"]
-custom_minimum_size = Vector2(520, 0)
-layout_mode = 2
-theme_override_constants/separation = 26
+[node name="Frame" type="Panel" parent="Overlay"]
+theme_override_styles/panel = SubResource("frame")
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 22.0
+offset_top = 22.0
+offset_right = -22.0
+offset_bottom = -22.0
+mouse_filter = 2
 
-[node name="Title" type="Label" parent="Center/Menu"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 1)
-theme_override_font_sizes/font_size = 64
+[node name="Identity" type="VBoxContainer" parent="Overlay"]
+offset_left = 52.0
+offset_top = 48.0
+offset_right = 620.0
+offset_bottom = 140.0
+theme_override_constants/separation = 8
+mouse_filter = 2
+
+[node name="Emblem" type="TextureRect" parent="Overlay/Identity"]
+custom_minimum_size = Vector2(46, 46)
+size_flags_horizontal = 0
+mouse_filter = 2
+texture = ExtResource("3_emblem")
+expand_mode = 3
+stretch_mode = 5
+
+[node name="Faction" type="Label" parent="Overlay/Identity"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.92)
+theme_override_font_sizes/font_size = 13
+text = "HELIOS VANGUARD"
+
+[node name="Program" type="Label" parent="Overlay/Identity"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.62)
+theme_override_font_sizes/font_size = 10
+text = "ASCENDANT PROGRAM"
+
+[node name="Unit" type="Label" parent="Overlay/Identity"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.75)
+theme_override_font_sizes/font_size = 10
+text = "HV-09  //  SPECTER-9"
+
+; Même bande verticale que le bloc central de l'accueil : en ouvrant la pause, le
+; titre tombe à la hauteur où AEGIS ASCENDANT se tenait. C'est la même interface qui
+; se rabat, pas une autre qui s'ouvre.
+[node name="Center" type="VBoxContainer" parent="Overlay"]
+unique_name_in_owner = true
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -540.0
+offset_top = 236.0
+offset_right = 540.0
+offset_bottom = 700.0
+theme_override_constants/separation = 16
+alignment = 1
+mouse_filter = 2
+
+[node name="Kicker" type="Label" parent="Overlay/Center"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.85)
+theme_override_font_sizes/font_size = 14
+text = "HELIOS VANGUARD  //  ASCENDANT PROGRAM"
+horizontal_alignment = 1
+
+[node name="Title" type="Label" parent="Overlay/Center"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.161, 0.902, 1, 0.45)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 10
+theme_override_font_sizes/font_size = 54
 text = "PAUSE"
 horizontal_alignment = 1
 
-[node name="Status" type="Label" parent="Center/Menu"]
-layout_mode = 2
+; Or, pas cyan : la DA (§10) réserve l'ambre aux états tenus ou dégradés. Le cyan
+; dirait « tout va bien », or la simulation est arrêtée.
+[node name="Tagline" type="Label" parent="Overlay/Center"]
+theme = ExtResource("2_theme")
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
-theme_override_font_sizes/font_size = 18
-text = "SIMULATION SUSPENDUE"
+theme_override_font_sizes/font_size = 15
+text = "SIMULATION SUSPENDUE  ·  LA LIGNE TIENT"
 horizontal_alignment = 1
 
-[node name="Resume" type="Button" parent="Center/Menu"]
-custom_minimum_size = Vector2(520, 62)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+[node name="Spacer" type="Control" parent="Overlay/Center"]
+custom_minimum_size = Vector2(0, 28)
+mouse_filter = 2
+
+[node name="Menu" type="VBoxContainer" parent="Overlay/Center"]
+unique_name_in_owner = true
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="ResumeButton" type="Button" parent="Overlay/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("2_theme")
 text = "REPRENDRE"
 
-[node name="TitleButton" type="Button" parent="Center/Menu"]
-custom_minimum_size = Vector2(520, 62)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
+[node name="OptionsButton" type="Button" parent="Overlay/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("2_theme")
+text = "OPTIONS"
+
+[node name="TitleButton" type="Button" parent="Overlay/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("2_theme")
 text = "RETOUR AU TITRE"
 
-[node name="Hint" type="Label" parent="Center/Menu"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
-theme_override_font_sizes/font_size = 17
-text = "ÉCHAP  ·  REPRENDRE"
-horizontal_alignment = 1
+; Le bloc COMMS de l'accueil, passé en régime tenu : la pastille verte devient
+; ambre et la trace s'aplatit. Deux écrans, un seul appareil (scripts/ui/comms_trace.gd).
+[node name="Comms" type="VBoxContainer" parent="Overlay"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 52.0
+offset_top = -132.0
+offset_right = 340.0
+offset_bottom = -46.0
+theme_override_constants/separation = 4
+mouse_filter = 2
 
-[connection signal="pressed" from="Center/Menu/Resume" to="." method="_resume"]
-[connection signal="pressed" from="Center/Menu/TitleButton" to="." method="_return_to_title"]
+[node name="Status" type="Label" parent="Overlay/Comms"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
+theme_override_font_sizes/font_size = 10
+text = "● SIGNAL HOLD"
+
+[node name="Channel" type="Label" parent="Overlay/Comms"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.55)
+theme_override_font_sizes/font_size = 10
+text = "CHANNEL 09  //  TENU"
+
+[node name="TraceHost" type="Control" parent="Overlay/Comms"]
+custom_minimum_size = Vector2(232, 34)
+mouse_filter = 2
+
+[node name="CommsTrace" type="Line2D" parent="Overlay/Comms/TraceHost"]
+position = Vector2(0, 17)
+width = 1.5
+default_color = Color(0.894, 0.71, 0.29, 0.7)
+script = ExtResource("4_trace")
+mode = 1
+
+[node name="Motto" type="VBoxContainer" parent="Overlay"]
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -520.0
+offset_top = -104.0
+offset_right = -52.0
+offset_bottom = -46.0
+theme_override_constants/separation = 6
+alignment = 2
+mouse_filter = 2
+
+[node name="Name" type="Label" parent="Overlay/Motto"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.92)
+theme_override_font_sizes/font_size = 12
+text = "HELIOS VANGUARD"
+horizontal_alignment = 2
+
+[node name="Creed" type="Label" parent="Overlay/Motto"]
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.55)
+theme_override_font_sizes/font_size = 9
+text = "FORGE THE SKY.  DEFEND THE LIGHT."
+horizontal_alignment = 2
+
+[node name="Controls" type="Label" parent="Overlay"]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -78.0
+offset_bottom = -54.0
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.7)
+theme_override_font_sizes/font_size = 10
+; « ÉCHAP » sans accent : PressStart2P n'a pas de É capital et retombe sur un glyphe
+; de secours minuscule, qui casse la ligne tout en capitales (visible sur la ligne
+; équivalente de l'accueil, « DÉPLACEMENT »).
+text = "REPRENDRE  ECHAP     ·     OPTIONS  O"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="Scanlines" type="ColorRect" parent="."]
+material = SubResource("mat_scan")
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+; Fondu de sortie vers le titre. SceneRouter fait une coupe sèche : sans lui, on
+; passait du combat au menu d'une image à l'autre (même défaut que l'accueil
+; corrigeait déjà de son côté, title_menu.gd:117).
+[node name="Fade" type="ColorRect" parent="."]
+unique_name_in_owner = true
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0)
+mouse_filter = 2
+
+[connection signal="pressed" from="Overlay/Center/Menu/ResumeButton" to="." method="_on_resume_pressed"]
+[connection signal="pressed" from="Overlay/Center/Menu/OptionsButton" to="." method="_on_options_pressed"]
+[connection signal="pressed" from="Overlay/Center/Menu/TitleButton" to="." method="_on_title_pressed"]
