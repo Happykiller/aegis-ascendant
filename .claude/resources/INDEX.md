@@ -56,6 +56,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - **`/capitalize`** (`.claude/skills/capitalize/`) — verser les leçons d'une session dans le ghost :
   quel réceptacle pour quelle leçon, écrire la règle **avec son coût**, indexer, corriger ce qui est
   faux. ⚠️ Une procédure déterministe s'**encode dans un script**, pas en prose.
+- **`/asset-image`** (`.claude/skills/asset-image/`) — rendre un prompt d'image **autosuffisant** :
+  le texte à coller, le nom du fichier, son chemin de dépôt, la commande suivante et la ligne de
+  provenance. L'opérateur génère hors du dépôt : un prompt qui suppose du contexte est un prompt
+  raté. ⚠️ Ne jamais demander une **normal map** ni une **transparence** à un générateur — il rend
+  une image *qui y ressemble*, et le défaut a l'air correct.
 
 ## Outillage encodé — ne pas réinventer ces procédures
 
@@ -68,4 +73,6 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | `./scripts/deploy-win.sh` | le déploiement Windows ; **résout `powershell.exe` par chemin absolu** si le PATH interop de WSL ne l'expose pas |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
 | `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |
+| `python3 tools/derive-maps.py <hauteur>` | demander une **normal map** à un générateur (gradients faux, relief éclairé à l'envers) ; mesure aussi la **couture** de tuilage, qu'un « seamless » demandé ne garantit pas |
+| `blender45 -b -P tools/render-hull.py -- <glb>` | intégrer une coque 3D **sans l'avoir regardée** (planche 4 vues, dont l'angle réel de la caméra de jeu) |
 | sous-agent `godot-verifier` | ~50 lignes de bruit de build/deploy dans le contexte, pour 3 faits |
