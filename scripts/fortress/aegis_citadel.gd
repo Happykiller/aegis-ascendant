@@ -7,6 +7,15 @@ extends Node3D
 signal arrived
 
 @export var hull_scene: PackedScene
+## Pièces mobiles, instanciées sur les marqueurs de la coque (BRIEF-0032). Elles
+## sont des modèles SÉPARÉS et non des nœuds du `.glb` : le kit Blender n'exporte
+## qu'un seul objet maillé, et le rendre multi-parties toucherait la validation de
+## contrat et les six scripts de coque existants. Les marqueurs, eux, existaient
+## déjà. Laisser ces champs vides dégrade proprement : la citadelle reste figée.
+## L'animation elle-même vit dans `CitadelLife` — l'écran d'accueil instancie le
+## `.glb` nu et n'a pas de contrôleur, il lui faut la même fabrique.
+@export var turret_scene: PackedScene
+@export var beacon_scene: PackedScene
 
 var plane_position: Vector2 = Vector2(0.0, 20.0)
 var _slide_target: Vector2 = Vector2(0.0, 20.0)
@@ -33,6 +42,7 @@ func _ready() -> void:
 				_battery_offsets.append(Vector2(node.position.x, -node.position.z))
 			else:
 				push_error("[AegisCitadel] hull has no '%s' attach point" % battery_name)
+		CitadelLife.apply(_hull, turret_scene, beacon_scene)
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false)
 
