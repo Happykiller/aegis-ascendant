@@ -65,14 +65,20 @@ def build() -> None:
         bp = bmesh.new()
         ak.add_box(bp, (side * 1.1, 0.5, 0.0), (0.6, 0.5, 0.06), "AA_Panel")
         parts.append(ak.moving_part(f"Flap_{tag}", bp, (side * HINGE[0], HINGE[1], HINGE[2])))
+        # Piece ENFANT : un petit aileron porte par le volet. Sert a verifier le
+        # parentage — sans lui, une articulation en chaine (volet porte par une aile
+        # a fleche variable) resterait en l'air des que le parent bouge.
+        bt = bmesh.new()
+        ak.add_box(bt, (side * 1.35, 0.5, 0.0), (0.14, 0.30, 0.04), "AA_Trim")
+        parts.append(ak.moving_part(f"Tab_{tag}", bt, (side * 1.25, 0.5, 0.0), parent=f"Flap_{tag}"))
 
     contract = ak.HullContract(
         name="MovingPartsTest",
-        width_x=2.80,      # coque 2,0 + les deux volets qui debordent de 0,4 de chaque cote
+        width_x=2.84,      # coque 2,0 + volets + les deux ailerons enfants
         length_z=3.00,
         max_height_y=1.00,
         tri_budget=2000,
-        required_materials=("AA_Hull", "AA_Panel"),
+        required_materials=("AA_Hull", "AA_Panel", "AA_Trim"),
         required_attach_points=("Nose",),
     )
     ak.export_hull(hull, [ak.attach_point("Nose", (0.0, -1.5, 0.0))], OUT, contract, parts=parts)
@@ -98,17 +104,40 @@ def verify() -> None:
     # La bbox doit inclure les pieces mobiles MALGRE leur origine deportee.
     lo = [9e9] * 3
     hi = [-9e9] * 3
-    for node in gltf["nodes"]:
+    world: dict[int, list[float]] = {}
+
+    def walk(index: int, base: list[float]) -> None:
+        t = gltf["nodes"][index].get("translation", [0.0, 0.0, 0.0])
+        here = [base[a] + t[a] for a in range(3)]
+        world[index] = here
+        for child in gltf["nodes"][index].get("children", []):
+            walk(child, here)
+
+    for root in gltf["scenes"][0]["nodes"]:
+        walk(root, [0.0, 0.0, 0.0])
+
+    for index, node in enumerate(gltf["nodes"]):
         if "mesh" not in node:
             continue
-        off = node.get("translation", [0.0, 0.0, 0.0])
+        off = world[index]
         for prim in gltf["meshes"][node["mesh"]]["primitives"]:
             acc = gltf["accessors"][prim["attributes"]["POSITION"]]
             for a in range(3):
                 lo[a] = min(lo[a], acc["min"][a] + off[a])
                 hi[a] = max(hi[a], acc["max"][a] + off[a])
     width = hi[0] - lo[0]
-    check(abs(width - 2.80) < 1e-3, f"la bbox englobe les volets : largeur {width:.3f} m")
+    check(abs(width - 2.84) < 1e-3, f"la bbox englobe volets ET enfants : largeur {width:.3f} m")
+
+    # --- parentage : l'articulation en chaine ---------------------------------
+    names = [n["name"] for n in gltf["nodes"]]
+    flap = gltf["nodes"][names.index("Flap_L")]
+    kids = [names[c] for c in flap.get("children", [])]
+    check("Tab_L" in kids, f"Tab_L est un ENFANT de Flap_L dans le graphe glTF (enfants : {kids})")
+
+    tab = nodes.get("Tab_L", {})
+    got = tab.get("translation", [0.0, 0.0, 0.0])
+    check(abs(got[0] + 0.45) < 1e-4,
+        f"la position de Tab_L est relative a son parent : X={got[0]:.3f} (attendu -0.450)")
 
 
 def main() -> int:

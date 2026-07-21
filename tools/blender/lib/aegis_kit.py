@@ -712,17 +712,27 @@ class MovingPart:
     de la coque, puis son origine est ramenee sur ce point. Une piece dont
     l'origine reste a zero decrira un arc de cercle autour du nez du vaisseau au
     lieu de pivoter sur sa charniere — et le defaut ne se voit qu'une fois animee.
+
+    `parent` : nom d'une AUTRE piece mobile dont celle-ci devient l'enfant. Sert aux
+    articulations en chaine — un volet porte par une aile a fleche variable doit
+    suivre l'aile, sinon il reste en l'air des que celle-ci bouge. Le pivot de
+    l'enfant reste exprime dans le repere d'auteur : `export_hull()` le rend relatif
+    au parent, ce qui evite de calculer une difference a la main dans chaque script.
     """
 
     obj: bpy.types.Object
     pivot: tuple[float, float, float]
+    parent: str | None = None
 
 
 def moving_part(
-    name: str, bm: bmesh.types.BMesh, pivot: tuple[float, float, float]
+    name: str,
+    bm: bmesh.types.BMesh,
+    pivot: tuple[float, float, float],
+    parent: str | None = None,
 ) -> MovingPart:
     """Cree une piece mobile depuis un bmesh bati en coordonnees ABSOLUES."""
-    return MovingPart(new_object(name, bm), pivot)
+    return MovingPart(new_object(name, bm), pivot, parent)
 
 
 def attach_pair(
@@ -914,6 +924,7 @@ def export_hull(
     #    a l'identite : aucune transformation cachee cote Godot).
     hull.data.transform(_AXIS_FIX)
     hull.data.update()
+    by_name = {p.obj.name: p for p in parts}
     for part in parts:
         # L'ordre compte : on ramene D'ABORD l'origine sur la charniere dans le
         # repere d'auteur, ensuite seulement on tourne. L'inverse ferait pivoter
@@ -923,6 +934,19 @@ def export_hull(
         part.obj.data.transform(_AXIS_FIX)
         part.obj.data.update()
         part.obj.location = _AXIS_FIX @ pivot
+        if part.parent is not None:
+            owner = by_name.get(part.parent)
+            if owner is None:
+                raise ContractError(
+                    f"piece '{part.obj.name}' : parent '{part.parent}' introuvable"
+                )
+            # Le parentage de Blender applique l'inverse de la matrice du parent :
+            # sans `matrix_parent_inverse` a l'identite, l'enfant serait deplace deux
+            # fois. On pose donc la position RELATIVE a la main, ce qui donne aussi
+            # exactement ce que Godot lira dans le noeud glTF.
+            part.obj.parent = owner.obj
+            part.obj.matrix_parent_inverse = Matrix.Identity(4)
+            part.obj.location = (_AXIS_FIX @ pivot) - (_AXIS_FIX @ Vector(owner.pivot))
     for empty in attach_points:
         empty.location = _AXIS_FIX @ empty.location
 
@@ -1008,10 +1032,28 @@ def _validate_glb(
     # reelle vit dans la translation du nœud. Ignorer celle-ci — ce que faisait la
     # version maillage — sortait la piece de la bounding box : un volet pouvait
     # depasser de 40 cm sans que le contrat s'en apercoive.
-    for node in gltf.get("nodes", []):
+    # Position MONDE de chaque nœud : on descend le graphe en cumulant les
+    # translations. Une piece enfant (volet porte par une aile) est positionnee
+    # RELATIVEMENT a son parent — ne lire que sa propre translation la placerait a
+    # 45 cm du nez au lieu de 1,25 m, et elle sortirait du controle de dimensions.
+    world: dict[int, list[float]] = {}
+
+    def _walk(index: int, base: list[float]) -> None:
+        node = gltf["nodes"][index]
+        t = node.get("translation", [0.0, 0.0, 0.0])
+        here = [base[a] + t[a] for a in range(3)]
+        world[index] = here
+        for child in node.get("children", []):
+            _walk(child, here)
+
+    roots = gltf.get("scenes", [{}])[0].get("nodes", list(range(len(gltf.get("nodes", [])))))
+    for root in roots:
+        _walk(root, [0.0, 0.0, 0.0])
+
+    for index, node in enumerate(gltf.get("nodes", [])):
         if "mesh" not in node:
             continue
-        offset = node.get("translation", [0.0, 0.0, 0.0])
+        offset = world.get(index, node.get("translation", [0.0, 0.0, 0.0]))
         for prim in gltf["meshes"][node["mesh"]]["primitives"]:
             ntri = _primitive_triangles(gltf, prim)
             triangles += ntri
@@ -1031,10 +1073,10 @@ def _validate_glb(
 
     # --- points d'attache ------------------------------------------------
     attach: dict[str, tuple[float, float, float]] = {}
-    for node in gltf.get("nodes", []):
+    for index, node in enumerate(gltf.get("nodes", [])):
         if "mesh" in node:
             continue
-        t = node.get("translation", [0.0, 0.0, 0.0])
+        t = world.get(index, node.get("translation", [0.0, 0.0, 0.0]))
         attach[node.get("name", "?")] = (t[0], t[1], t[2])
 
     report = HullReport(
