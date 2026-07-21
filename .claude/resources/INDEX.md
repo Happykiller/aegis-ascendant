@@ -47,6 +47,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
   ⚠️ Le rendu **studio flatte**, le **post-process rétro (960×540 + scanlines) écrase le détail
   fin** : juger en jeu, mettre le détail dans la géométrie, pas dans une texture fine.
+- [Poser le détail en fraction, jamais en coordonnée absolue](pratique-detail-en-fraction-de-corde.md)
+  — deux reforges de plan, deux fois le même dégât : les bandeaux posés à des abscisses absolues se
+  retrouvent **hors de la coque** quand la silhouette bouge, et rien ne le signale. ⚠️ Cas vicieux :
+  un marquage à cheval sur une charnière a fait tomber le dégagement d'un volet de 18,5° à **2,8°** —
+  sous la valeur du jeu, donc un volet qui traverse la coque. **Le contrat a validé sans un mot** :
+  la bbox au repos était parfaite, et un défaut d'animation ne se voit pas sur une pose fixe.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
