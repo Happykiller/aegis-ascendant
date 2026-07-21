@@ -17,8 +17,43 @@ du contrat.
 Repere d'auteur (ADR-0008) : nez -Y, dessus +Z, **babord +X** (cf. aegis_kit).
 
 
-PASSE DE TOPOLOGIE — BRIEF-0035 (la seule qui compte ici)
-=========================================================
+PASSE DE JONCTION — BRIEF-0036 (la seule qui compte ici)
+========================================================
+BRIEF-0035 a bien casse le monobloc, mais il a casse AUSSI la jonction
+aile/coque, que personne n'avait distinguee du reste :
+
+    « les ailes ne font pas integre au vaisseau, style F-14 »
+
+L'aile pendait a cote du fuseau, tenue par une chape visible au-dessus d'une
+fente de 58 mm. Ce brief la rattache par une EMPLANTURE FIXE (« glove ») :
+
+1. **`_glove()` est dans le maillage principal.** Un karman large et en fleche
+   (56 deg) qui nait du flanc de nacelle vers l'avant, s'etend jusqu'a
+   x = 0,648 et vient border la corde de racine de l'aile. C'est de la coque,
+   il ne bouge jamais.
+2. **Le pivot est dedans.** La CHAPE de nacelle et la FERRURE de l'aile — les
+   deux moities du « bras » visible — sont supprimees. Il ne reste, sur le dos
+   de l'emplanture, qu'un carter qui dit ou est l'articulation sans la montrer.
+3. **La frontiere externe est definie en POLAIRE autour du pivot** (corde de
+   racine decalee, puis arc de logement). C'est ce qui rend la couverture de la
+   racine demontrable a TOUTE fleche au lieu d'etre verifiee pose par pose :
+   replier ajoute un angle et conserve un rayon.
+4. **La lame passe SOUS l'emplanture.** Une piece fixe coplanaire serait
+   traversee des le premier degre de fleche, la racine balayant un secteur
+   entier. `_glove_clearance()` remesure ce jeu vertical a chaque build,
+   sommet par sommet, fleche x braquage de volet — et le build ECHOUE en deca
+   de 3 mm.
+5. **Les normales de l'aile sont recalculees AVANT le plaquage.** Defaut trouve
+   par la mesure ci-dessus : `bridge_rings` orientait les faces vers l'interieur
+   de la lame, donc `inset_panel(depth < 0)` sortait les rainures et les aplats
+   EN RELIEF de 9 mm au lieu de les creuser.
+
+Ce qui n'a PAS bouge : les echancrures fuselage/nacelle de BRIEF-0035, le plan
+de l'aile, les 6 pieces mobiles et leur imbrication, les 10 points d'attache.
+
+
+PASSE DE TOPOLOGIE — BRIEF-0035
+===============================
 BRIEF-0033 a corrige le profil, BRIEF-0034 la repartition des masses. Aucun des
 deux n'a touche au defaut reel, nomme par le proprietaire :
 
@@ -687,6 +722,97 @@ BRIDGE: list[tuple[float, float, float, float, float]] = [
 ]
 #: Nervures transversales du caisson (meme raison que `SPINE_FRAMES`).
 BRIDGE_FRAMES: tuple[float, ...] = (0.055, 0.170, 0.290)
+
+# ==========================================================================
+# EMPLANTURE FIXE (« glove ») — BRIEF-0036
+# ==========================================================================
+# BRIEF-0035 avait separe les volumes, mais avait separe AUSSI la jonction
+# aile/coque : l'aile pendait a cote du vaisseau, tenue par une chape visible
+# au-dessus d'une fente de 58 mm. Vu en jeu, elle ne faisait pas partie de
+# l'appareil.
+#
+# La reponse est mecanique, pas decorative. Sur un appareil a geometrie
+# variable, une EMPLANTURE FIXE prolonge le fuselage vers l'exterieur et vers
+# l'avant, le pivot est ENFOUI dedans, et le panneau mobile sort de son bord
+# externe en glissant SOUS elle. La racine du panneau n'est jamais a l'air
+# libre — a aucune fleche.
+#
+# LA PROPRIETE QUI REND CELA DEMONTRABLE, et non espere : la frontiere externe
+# de l'emplanture est exprimee **en polaire autour du pivot d'aile**, comme le
+# `min` de deux courbes (voir `_glove_rho()`) :
+#
+#     rho(psi) = min( corde de racine decalee de GLOVE_MARGIN perpendiculairement,
+#                     |coin arriere de racine| + GLOVE_ARC_MARGIN )
+#
+# Une rotation de fleche ajoute theta a l'angle polaire de chaque point de la
+# racine et CONSERVE son rayon. Il suffit donc que
+# `rho(psi) >= rayon_de_racine(min(psi, 60 deg))` pour que la racine soit
+# couverte a TOUTE fleche : la premiere courbe le garantit parce qu'elle est en
+# dehors de la corde, la seconde — l'arc de LOGEMENT — parce qu'elle est en
+# dehors du cercle que decrit le coin arriere en balayant. Cela ne se verifie
+# pas pose par pose, cela se demontre.
+#
+# ⚠️ L'emplanture est AU-DESSUS du plan d'aile : la lame passe dessous. C'est la
+# seule disposition possible — la racine balaye un secteur entier, une piece
+# fixe coplanaire serait traversee des le premier degre de fleche.
+# `_glove_clearance()` remesure ce jeu vertical a chaque build, sur le maillage
+# livre, aile ET volet, fleche x braquage.
+
+#: Recouvrement PERPENDICULAIRE a la corde de racine (m). Premiere version :
+#: un offset RADIAL de 18 mm — mesure faite, il ne valait plus que **0,9 mm**
+#: mesure a l'horizontale vers l'arriere de la corde, parce que le rayon y est
+#: presque parallele a la corde elle-meme. Sous le chanfrein de 3,5 mm, donc
+#: nul. L'offset perpendiculaire, lui, vaut la meme chose partout.
+GLOVE_MARGIN = 0.014
+#: Recouvrement RADIAL au coin arriere de racine — la, c'est bien un rayon qui
+#: compte, puisque ce coin balaye un arc de cercle centre sur le pivot.
+GLOVE_ARC_MARGIN = 0.018
+#: Pointe avant de l'emplanture, noyee dans la nacelle.
+GLOVE_NOSE_Y = -0.260
+#: Plafond de la SOUS-FACE. C'est elle qui plafonne le jeu vertical avec l'aile
+#: (dont le point le plus haut est a z = 0,042 a l'emplanture).
+GLOVE_FLOOR_MAX = 0.048
+#: Enfoncement de la sous-face sous la couronne de nacelle. Il fait DEUX choses :
+#: il colle l'emplanture au fuseau vers l'avant (ou la couronne descend) et il
+#: garantit que le bord interne reste noye — une emplanture posee au-dessus du
+#: fuseau aurait montre une fente longitudinale de plus.
+GLOVE_SINK = 0.006
+#: Fin de l'arc de logement, en degres. Le coin arriere de racine y arrive a
+#: 60 + 26 = 86 deg : 91 laisse 5 deg de reserve si la fleche est relevee.
+GLOVE_ARC_END_DEG = 91.0
+#: Angles polaires d'echantillonnage de la frontiere, en degres. Resserres vers
+#: 58 deg : c'est la que la corde de racine devient presque radiale et que la
+#: frontiere file vers l'exterieur — deux echantillons espaces y sauteraient
+#: 13 cm de station.
+GLOVE_PSI_DEG: tuple[float, ...] = (
+    8.0, 16.0, 24.0, 32.0, 39.0, 45.0, 50.0, 53.5, 56.0, 57.2, 58.0,
+    58.6, 61.0, 64.0, 68.0, 73.0, 79.0, 85.0, GLOVE_ARC_END_DEG,
+)
+#: Queue : (y, x du bord externe). Elle ramene l'emplanture dans le fuseau en
+#: arriere du logement, avant le pied de derive (y = 0,600).
+GLOVE_TAIL: tuple[tuple[float, float], ...] = (
+    (0.545, 0.344), (0.578, 0.298), (0.606, 0.271),
+)
+#: Epaisseur (y, valeur) : mince au nez, pleine au droit du pivot, effacee en
+#: queue. Elle se lit comme une nervure de voilure, pas comme une plaque.
+GLOVE_THICK: list[tuple[float, float]] = [
+    (-0.260, 0.0040),
+    (-0.150, 0.0150),
+    (0.000, 0.0250),
+    (0.180, 0.0300),
+    (0.340, 0.0290),
+    (0.470, 0.0220),
+    (0.545, 0.0140),
+    (0.606, 0.0030),
+]
+#: Profil transversal : fractions de la largeur locale, et facteur d'epaisseur.
+#: Le bord externe reste EPAIS (0,34) : c'est la levre sous laquelle la lame
+#: rentre, un bord effile y aurait lu comme une decoupe de papier.
+GLOVE_V: tuple[float, ...] = (0.00, 0.18, 0.42, 0.72, 0.90, 1.00)
+GLOVE_PROFILE: tuple[float, ...] = (0.30, 0.72, 1.00, 0.92, 0.62, 0.34)
+#: Jeu vertical minimal admis entre la lame et la sous-face. En dessous, le
+#: build ECHOUE : c'est le seul chiffre qui dise si la mecanique tient.
+GLOVE_MIN_CLEARANCE = 0.003
 
 # --- Derives inclinees (ADR-0014) -----------------------------------------
 # BRIEF-0033 se les interdisait et les remplacait par des rails verticaux de
@@ -1511,6 +1637,161 @@ def _wing_edges(s: float) -> tuple[tuple[float, float], tuple[float, float]]:
     return le, te
 
 
+# --------------------------------------------------------------------------
+# Emplanture fixe : frontiere, plancher, epaisseur (BRIEF-0036)
+# --------------------------------------------------------------------------
+
+
+def _nacelle_radius(y: float) -> float:
+    """Rayon NU du fuseau (sans carenage) a la station `y`.
+
+    Distinct de `nacelle_half_width()`, qui rend le maximum tout compris : ici
+    on veut la couronne du solide de revolution, celle sous laquelle
+    l'emplanture doit rester noyee.
+    """
+    return lerp_table([(p[0], p[1]) for p in NACELLE_PROFILE], y)
+
+
+def _glove_floor(y: float) -> float:
+    """Cote de la SOUS-FACE de l'emplanture. Plate en x, variable en y.
+
+    Plate en x parce que c'est elle qui donne son jeu a la lame : une sous-face
+    galbee aurait un point bas quelque part, et ce point bas serait le seul
+    chiffre qui compte. Variable en y parce qu'elle suit la couronne du fuseau
+    tant que celui-ci est plus bas que le plafond — sans quoi l'emplanture
+    flotterait au-dessus du nez de nacelle, ou elle est censee naitre.
+    """
+    return min(GLOVE_FLOOR_MAX, NACELLE_Z + _nacelle_radius(y) - GLOVE_SINK)
+
+
+def _glove_x_in(y: float) -> float:
+    """Bord INTERNE de l'emplanture : la corde du fuseau au niveau du plancher.
+
+    Derive du cercle de nacelle, jamais ecrit en dur : le bord interne doit
+    rester a l'interieur du fuseau a toute station, y compris la ou il maigrit.
+    Une constante y aurait fini par depasser vers l'avant et ouvert une couture
+    la ou le brief demande justement qu'il n'y en ait aucune.
+    """
+    r = _nacelle_radius(y)
+    dz = _glove_floor(y) - NACELLE_Z
+    return NACELLE_X - math.sqrt(max(r * r - dz * dz, 0.0)) + 0.006
+
+
+def _root_chord_rel() -> tuple[tuple[float, float], tuple[float, float]]:
+    """Corde de racine de l'aile AU REPOS, en coordonnees RELATIVES au pivot."""
+    a = (
+        WING_LE_ROOT[0] * math.cos(math.radians(WING_LE_ROOT[1])),
+        WING_LE_ROOT[0] * math.sin(math.radians(WING_LE_ROOT[1])),
+    )
+    b = (
+        WING_TE_ROOT[0] * math.cos(math.radians(WING_TE_ROOT[1])),
+        WING_TE_ROOT[0] * math.sin(math.radians(WING_TE_ROOT[1])),
+    )
+    return a, b
+
+
+def _glove_rho(phi_deg: float) -> float:
+    """Rayon de la frontiere externe de l'emplanture, a l'angle polaire `phi`.
+
+    C'EST la fonction du brief, et elle tient en un `min` de deux courbes :
+
+      * la corde de racine DECALEE PERPENDICULAIREMENT de `GLOVE_MARGIN`
+        — une droite, donc un recouvrement lateral constant ;
+      * un ARC de rayon `|coin arriere| + GLOVE_ARC_MARGIN` centre sur le pivot
+        — le logement dans lequel ce coin balaye.
+
+    La correction de fleche se demontre au lieu de se verifier : replier l'aile
+    de theta ajoute theta a l'angle polaire de chaque point de la racine et
+    conserve son rayon. Il suffit donc que la frontiere verifie
+    `rho(psi) >= rayon_de_racine(min(psi, 60 deg))` pour que la racine soit
+    couverte a TOUTE fleche — ce que les deux courbes ci-dessus font par
+    construction, la premiere parce qu'elle est en dehors de la corde, la
+    seconde parce qu'elle est en dehors du cercle du coin.
+    """
+    a, b = _root_chord_rel()
+    ab = (b[0] - a[0], b[1] - a[1])
+    length = math.hypot(ab[0], ab[1])
+    # Normale sortante de la corde (le pivot est du cote rentrant).
+    nx, ny = ab[1] / length, -ab[0] / length
+    p0 = a[0] * nx + a[1] * ny
+    arc = WING_TE_ROOT[0] + GLOVE_ARC_MARGIN
+    cos_t = math.cos(math.radians(phi_deg) - math.atan2(ny, nx))
+    if cos_t <= 1e-4:
+        return arc
+    return min((p0 + GLOVE_MARGIN) / cos_t, arc)
+
+
+#: Cache des stations : `_glove_x_out()` est appele des dizaines de milliers de
+#: fois par la mesure de jeu, et recalculer la frontiere a chaque appel faisait
+#: passer le build de 20 s a plusieurs minutes.
+_GLOVE_STATIONS: list[tuple[float, float]] | None = None
+
+
+def _glove_stations() -> list[tuple[float, float]]:
+    """Frontiere externe, du nez a la queue : liste de (y, x du bord externe).
+
+    Monotone en y — c'est ce qui permet de lofter l'emplanture par sections
+    transversales, comme le caisson de liaison.
+    """
+    global _GLOVE_STATIONS
+    if _GLOVE_STATIONS is not None:
+        return _GLOVE_STATIONS
+    out: list[tuple[float, float]] = []
+
+    # 1. Bord d'attaque : droite du nez (noye dans le fuseau) jusqu'au premier
+    #    point de la frontiere, a l'angle de l'emplanture du bord d'attaque.
+    apex = _polar(_glove_rho(GLOVE_PSI_DEG[0]), GLOVE_PSI_DEG[0])
+    nose = (_glove_x_in(GLOVE_NOSE_Y), GLOVE_NOSE_Y)
+    for t in (0.0, 0.16, 0.34, 0.54, 0.76):
+        out.append(
+            (nose[1] + (apex[1] - nose[1]) * t, nose[0] + (apex[0] - nose[0]) * t)
+        )
+
+    # 2. Corde de racine decalee, puis arc de logement : une seule boucle, le
+    #    `min` de `_glove_rho()` fait la bascule entre les deux regimes.
+    for phi in GLOVE_PSI_DEG:
+        x, y = _polar(_glove_rho(phi), phi)
+        out.append((y, x))
+
+    # 3. Queue, qui rentre dans le fuseau.
+    for y, x in GLOVE_TAIL:
+        out.append((y, x))
+
+    # Garde-fou : le loft suppose des stations strictement croissantes en y.
+    for i in range(len(out) - 1):
+        if out[i + 1][0] <= out[i][0] + 1e-6:
+            raise ak.ContractError(
+                f"emplanture : stations non monotones en y "
+                f"({out[i][0]:.4f} -> {out[i + 1][0]:.4f})"
+            )
+    _GLOVE_STATIONS = out
+    return out
+
+
+def _glove_x_out(y: float) -> float:
+    """Bord externe de l'emplanture a la station `y`, ou -1 hors emplanture."""
+    stations = _glove_stations()
+    if y < stations[0][0] or y > stations[-1][0]:
+        return -1.0
+    return lerp_table(stations, y)
+
+
+def _glove_top(x: float, y: float) -> float:
+    """Cote de la surface SUPERIEURE de l'emplanture au point (x, y)."""
+    x_in, x_out = _glove_x_in(y), _glove_x_out(y)
+    if x_out < 0.0 or x_out <= x_in:
+        return _glove_floor(y)
+    v = min(max((abs(x) - x_in) / (x_out - x_in), 0.0), 1.0)
+    prof = lerp_table(list(zip(GLOVE_V, GLOVE_PROFILE)), v)
+    return _glove_floor(y) + lerp_table(GLOVE_THICK, y) * prof
+
+
+def _in_glove(x: float, y: float) -> bool:
+    """Le point (x, y) est-il sous l'emplanture, vu de dessus ?"""
+    x_out = _glove_x_out(y)
+    return x_out > 0.0 and _glove_x_in(y) <= abs(x) <= x_out
+
+
 def _wing_thickness(s: float, t: float) -> float:
     """Demi-epaisseur de la lame a l'envergure `s`, fraction de corde `t`."""
     th = WING_THICK_ROOT + (WING_THICK_TIP - WING_THICK_ROOT) * s
@@ -1688,6 +1969,101 @@ def _bridge(bm, sx: float) -> None:
         "AA_Emissive_Engine",
         center_x=sx * 0.200,
     )
+
+
+def _glove(bm, sx: float) -> None:
+    """Emplanture fixe : le karman en fleche d'ou sort l'aile (BRIEF-0036).
+
+    Elle appartient au MAILLAGE PRINCIPAL — c'est la moitie du sujet : une aile
+    integree est une aile qui sort d'une piece qui ne bouge pas. Le pivot est
+    dedans, il n'y a ni axe ni bras a voir, et le bord externe est la levre sous
+    laquelle la lame rentre.
+
+    Loft par sections transversales (comme `_bridge`) : chaque section va du
+    bord interne — noye dans le fuseau — au bord externe, plancher plat en
+    dessous, galbe au-dessus.
+    """
+    stations = _glove_stations()
+    rings: list = []
+    for y, x_out in stations:
+        x_in = min(_glove_x_in(y), x_out - 0.002)
+        floor = _glove_floor(y)
+        th = lerp_table(GLOVE_THICK, y)
+        xs = [x_in + (x_out - x_in) * v for v in GLOVE_V]
+        top = [
+            (sx * x, y, floor + th * p) for x, p in zip(xs, GLOVE_PROFILE)
+        ]
+        bot = [(sx * x, y, floor) for x in xs]
+        rings.append(ak.add_ring(bm, top + list(reversed(bot))))
+
+    n = len(GLOVE_V)
+    bands: list[list] = []
+    for i in range(len(rings) - 1):
+        band = ak.bridge_rings(bm, rings[i], rings[i + 1], "AA_Hull")
+        bands.append(band)
+        y_mid = (stations[i][0] + stations[i + 1][0]) * 0.5
+        # index n-1 = LEVRE EXTERNE (le bord d'ou sort l'aile), 2n-1 = bord
+        # interne (noye). La levre est doree en avant du pivot — elle prolonge
+        # la tranche doree du bord d'attaque de l'aile — et sombre en arriere,
+        # ou elle borde le logement.
+        ak.set_material(
+            [band[n - 1]],
+            "AA_Trim" if y_mid < WING_PIVOT_Y + 0.030 else "AA_Greeble",
+        )
+        ak.set_material([band[2 * n - 1]], "AA_Greeble")
+    # Pointe avant : un eventail vers un sommet unique, sinon la section
+    # degenere et `bridge_rings` rend des faces nulles en silence.
+    nose_y = stations[0][0]
+    apex = bm.verts.new(
+        (
+            sx * _glove_x_in(nose_y),
+            nose_y - 0.026,
+            _glove_floor(nose_y) + lerp_table(GLOVE_THICK, nose_y) * 0.5,
+        )
+    )
+    nose_faces = ak.fan_to_point(bm, list(reversed(rings[0])), apex, "AA_Hull")
+    tail_face = ak.cap_ring(bm, rings[-1], "AA_Greeble")
+
+    # ⚠️ Meme piege que sur l'aile, avec une aggravation : le cote TRIBORD est
+    # bati en miroir (x negatif), ce qui inverse l'orientation de toutes ses
+    # faces. Sans ce recalcul, la rainure et l'aplat bleu seraient CREUSES a
+    # babord et EN RELIEF a tribord — une dissymetrie qu'aucune mesure du
+    # contrat ne verrait. On ne recalcule que les faces de l'emplanture : le
+    # bmesh de detail contient d'autres solides qui s'interpenetrent.
+    glove_faces = [f for band in bands for f in band if f is not None]
+    glove_faces += [f for f in nose_faces if f is not None]
+    if tail_face is not None:
+        glove_faces.append(tail_face)
+    bmesh.ops.recalc_face_normals(bm, faces=glove_faces)
+
+    # --- plaquage : aplat bleu et rainure, en FRACTION de la largeur locale --
+    # (`.claude/resources/pratique-detail-en-fraction-de-corde.md` : la largeur
+    #  de l'emplanture varie de 40 a 390 mm d'une station a l'autre, une
+    #  abscisse absolue ne designerait pas la meme surface deux fois.)
+    seam = [b[1] for b in bands if b[1] is not None and b[1].is_valid]
+    ak.inset_panel(bm, _insettable(seam, SEAM_T), "AA_Hull",
+                   thickness=SEAM_T, depth=SEAM_D)
+    plate_faces = []
+    for i, band in enumerate(bands):
+        y_mid = (stations[i][0] + stations[i + 1][0]) * 0.5
+        if -0.020 <= y_mid <= 0.420:
+            plate_faces += [band[j] for j in (2, 3) if band[j] is not None]
+    plate_faces = _insettable(plate_faces, 0.006)
+    if plate_faces:
+        ak.inset_panel(bm, plate_faces, "AA_Hull", thickness=0.005, depth=-0.004)
+        ak.inset_panel(bm, plate_faces, "AA_Panel", thickness=0.006, depth=-0.005)
+
+    # --- carter de pivot : il dit ou est l'articulation SANS la montrer -----
+    # Pose sur le dos de l'emplanture, au droit du pivot, et entierement
+    # contenu dans sa largeur locale : c'est le contraire de la chape de
+    # BRIEF-0035, qui sortait de la nacelle pour aller chercher l'aile.
+    y_hub = WING_PIVOT_Y + 0.058
+    x_hub = WING_PIVOT_X - 0.034
+    z_hub = _glove_top(x_hub, y_hub)
+    ak.add_box(bm, (sx * x_hub, y_hub, z_hub - 0.002), (0.092, 0.156, 0.022),
+               "AA_Greeble")
+    ak.add_box(bm, (sx * x_hub, y_hub, z_hub + 0.008), (0.056, 0.106, 0.014),
+               "AA_Trim")
 
 
 def _deck_greebles(bm, x: float, y0: float, y1: float, count: int, seed: int,
@@ -1904,27 +2280,19 @@ def build_details() -> object:
             (0.052, 0.028, 0.014),
             "AA_Emissive_Engine",
         )
-        # CHAPE DE CHARNIERE : le tenon fixe qui recoit l'aile. Il sort de la
-        # peau du fuseau (0,451) et s'arrete a 8 mm du pivot (0,472) — la ferrure
-        # de l'aile vient s'y emboiter. C'est le seul endroit ou les deux corps
-        # se touchent presque : partout ailleurs la fente 2 reste ouverte, ce que
-        # le critere d'acceptation du brief exige.
-        ak.add_box(
-            bm,
-            (sign * (NACELLE_X + 0.078), WING_PIVOT_Y, WING_PIVOT_Z - 0.004),
-            (0.058, 0.130, 0.058),
-            "AA_Greeble",
-        )
-        ak.add_box(
-            bm,
-            (sign * (NACELLE_X + 0.086), WING_PIVOT_Y, WING_PIVOT_Z + 0.024),
-            (0.040, 0.086, 0.014),
-            "AA_Trim",
-        )
+        # (BRIEF-0036 : la CHAPE DE CHARNIERE a disparu. C'etait un tenon qui
+        #  sortait de la peau du fuseau pour aller chercher l'aile par-dessus la
+        #  fente — le « bras de pivot visible au-dessus d'un trou » que le
+        #  proprietaire a nomme. L'emplanture fixe la remplace et enfouit le
+        #  pivot : il n'y a plus rien a montrer a cet endroit.)
 
     # ------------------------------------- caissons de liaison (BRIEF-0035)
     for sx in (ak.PORT, ak.STARBOARD):
         _bridge(bm, sx)
+
+    # --------------------------------------- emplantures fixes (BRIEF-0036)
+    for sx in (ak.PORT, ak.STARBOARD):
+        _glove(bm, sx)
 
     # ---------------------------------------------- derives inclinees (ADR-0014)
     for sx in (ak.PORT, ak.STARBOARD):
@@ -2137,6 +2505,18 @@ def build_wing(side: float) -> ak.MovingPart:
     ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
     ak.cap_ring(bm, rings[-1], "AA_Greeble")
 
+    # ⚠️ NORMALES AVANT LE PLAQUAGE — defaut trouve par la mesure de jeu de
+    # BRIEF-0036, pas par la relecture. `bridge_rings` produit ici des faces dont
+    # la normale rentre DANS la lame (l'ordre du quad est chorde x envergure, et
+    # leur produit vectoriel pointe vers le bas sur l'extrados). `inset_panel`
+    # enfonce le long de la normale : avec `depth = -0,004`, les rainures et les
+    # aplats bleus de l'aile sortaient donc EN RELIEF de 9 mm au lieu d'etre
+    # creuses — contre l'intention ecrite trois lignes plus bas, et surtout
+    # 4 mm au-dessus du point le plus haut du profil. C'est ce depassement qui a
+    # fait echouer la mesure de jeu sous l'emplanture, et c'est ainsi qu'on l'a
+    # su. `ak.cleanup()` recalcule bien les normales, mais APRES : trop tard.
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+
     # --- plaquage de la lame ---------------------------------------------
     # L'aile porte desormais l'essentiel de la surface plate du vaisseau : c'est
     # ici que le detail rend, pas sur un fuselage de 0,30 m. Les indices sont des
@@ -2175,19 +2555,17 @@ def build_wing(side: float) -> ak.MovingPart:
                 "AA_Marking_Red" if 0.34 <= mid <= 0.46 else "AA_Trim",
             )
 
-    # --- ferrure de charniere : elle plonge vers la chape de la nacelle ----
-    # ⚠️ C'est la piece la plus CONTRAIGNANTE de toute l'aile pour la fleche :
-    # son coin arriere-interne est le point dont l'angle polaire est le plus
-    # grand, donc le premier a passer derriere le pivot en se repliant. Une
-    # premiere version, centree 4 mm plus en dedans et 18 mm plus en arriere,
-    # faisait tomber la fleche admissible de 32 a 28 deg — mesure faite, pas
-    # devinee, exactement comme pour le volet de BRIEF-0034.
-    ak.add_box(
-        bm,
-        (WING_PIVOT_X + 0.040, WING_PIVOT_Y - 0.008, WING_PIVOT_Z),
-        (0.052, 0.100, 0.046),
-        "AA_Greeble",
-    )
+    # --- (BRIEF-0036 : la FERRURE DE CHARNIERE a disparu.) ------------------
+    # Elle debordait de 26 mm au-dela de la corde de racine pour aller
+    # s'emboiter dans la chape de la nacelle : c'etait la moitie visible du
+    # « bras de pivot ». Le pivot est desormais enfoui dans l'emplanture, il n'y
+    # a plus rien a rejoindre. Trois effets, tous acquis :
+    #   * plus aucune piece de l'aile ne sort du recouvrement de l'emplanture ;
+    #   * la piece la plus contraignante pour la fleche disparait (elle avait
+    #     coute 4 deg sous BRIEF-0035) ;
+    #   * une boite alignee sur les axes ne pouvait de toute facon PAS tenir
+    #     dans un recouvrement defini en polaire : ses quatre coins ont quatre
+    #     rayons differents, et le coin avant-externe sortait toujours.
 
     # --- lisse et feu de bout d'aile --------------------------------------
     (x_le, y_le), (x_te, y_te) = _wing_edges(1.0)
@@ -2539,13 +2917,72 @@ def _wing_sweep_limit(wing: ak.MovingPart, flap: ak.MovingPart) -> tuple[float, 
     return limit, reason
 
 
-def _wing_inboard_x(y: float) -> float:
+def _glove_clearance(wing: ak.MovingPart, flap: ak.MovingPart) -> tuple[float, str]:
+    """Jeu VERTICAL minimal entre la piece mobile et la sous-face d'emplanture.
+
+    L'emplanture couvre la racine parce qu'elle passe AU-DESSUS d'elle : le
+    chiffre qui dit si la mecanique tient n'est donc pas un jeu en plan (il est
+    nul par construction, les deux corps se recouvrent) mais ce jeu vertical.
+    Il est mesure ici sur le maillage LIVRE, sommet par sommet, sur toute la
+    plage de fleche ET tout le braquage de volet — la meme lecon que
+    `_flap_travel_limit()` : une pose fixe ne prouve rien sur une piece mobile.
+
+    Retourne (jeu minimal en metres, description du point le plus serre).
+    """
+    px, py, _ = wing.pivot
+    travel = _flap_travel_limit(flap)
+
+    samples: list[tuple[float, float, float]] = [
+        (abs(v.co.x), v.co.y, v.co.z) for v in wing.obj.data.vertices
+    ]
+    # Le volet est un ENFANT : il subit d'abord son propre braquage autour de sa
+    # charniere (axe parallele a X), puis la fleche de l'aile.
+    _, hy, hz = flap.pivot
+    for delta in (-travel, -travel * 0.5, 0.0, travel * 0.5, travel):
+        rad = math.radians(delta)
+        cos_d, sin_d = math.cos(rad), math.sin(rad)
+        for v in flap.obj.data.vertices:
+            dy, dz = v.co.y - hy, v.co.z - hz
+            samples.append(
+                (abs(v.co.x), hy + dy * cos_d - dz * sin_d,
+                 hz + dy * sin_d + dz * cos_d)
+            )
+
+    polar = [
+        (math.hypot(ax - abs(px), y - py), math.atan2(y - py, ax - abs(px)), z)
+        for ax, y, z in samples
+    ]
+
+    best = 1e9
+    where = "aucun sommet sous l'emplanture"
+    theta = 0.0
+    while theta <= WING_SWEEP_TARGET + 1e-9:
+        rad = math.radians(theta)
+        for r, phi, z in polar:
+            x = abs(px) + r * math.cos(phi + rad)
+            y = py + r * math.sin(phi + rad)
+            if not _in_glove(x, y):
+                continue
+            gap = _glove_floor(y) - z
+            if gap < best:
+                best = gap
+                where = (
+                    f"fleche {theta:.0f} deg, "
+                    f"(x = {x:.4f}, y = {y:+.4f}, z = {z:+.4f}) "
+                    f"sous plancher {_glove_floor(y):.4f}"
+                )
+        theta += 1.0
+    return best, where
+
+
+def _wing_inboard_x(y: float, sweep_deg: float = 0.0) -> float:
     """|x| minimal de la LAME a la station `y`, ou -1 si l'aile n'y est pas.
 
     Echantillonne le plan de l'aile (envergure x corde) plutot que de resoudre
     analytiquement : le bord de fuite est tronque par le logement du volet, et
     une formule fermee mentirait des qu'on bougera `FLAP_HINGE_Y`.
     """
+    rad = math.radians(sweep_deg)
     best = -1.0
     for k in range(81):
         s = k / 80.0
@@ -2554,9 +2991,48 @@ def _wing_inboard_x(y: float) -> float:
             t = m / 40.0
             x = lx + (tx - lx) * t
             yy = ly + (ty - ly) * t
+            if sweep_deg:
+                dx, dy = x - WING_PIVOT_X, yy - WING_PIVOT_Y
+                r, phi = math.hypot(dx, dy), math.atan2(dy, dx) + rad
+                x = WING_PIVOT_X + r * math.cos(phi)
+                yy = WING_PIVOT_Y + r * math.sin(phi)
             if abs(yy - y) <= 0.006:
                 best = x if best < 0.0 else min(best, x)
     return best
+
+
+def _print_root_coverage() -> None:
+    """Le critere n°1 de BRIEF-0036, en chiffres, AUX DEUX EXTREMES de fleche.
+
+    Une fente a la racine se lit comme un ecart POSITIF entre le bord externe de
+    l'emplanture et le point le plus interne de la lame a la meme station. Un
+    ecart negatif est un recouvrement : il n'y a alors rien a voir entre les deux
+    corps, quelle que soit la lumiere.
+    """
+    for sweep in (0.0, WING_SWEEP_TARGET):
+        # La fenetre a examiner est la RACINE, c'est-a-dire la coupe d'emplanture
+        # de la lame — pas tout le vaisseau. En arriere du coin arriere de
+        # racine, ce qui borde l'aile est son bord de fuite : l'espace qui s'y
+        # ouvre est le derriere de l'aile, il a toujours existe et le brief ne
+        # demande pas de le boucher. Confondre les deux ferait crier au trou la
+        # ou il n'y a que du ciel.
+        y0 = _polar(WING_LE_ROOT[0], WING_LE_ROOT[1] + sweep)[1]
+        y1 = _polar(WING_TE_ROOT[0], WING_TE_ROOT[1] + sweep)[1]
+        worst, worst_y = -1e9, y0
+        for k in range(121):
+            y = y0 + (y1 - y0) * k / 120.0
+            inboard = _wing_inboard_x(y, sweep)
+            x_out = _glove_x_out(y)
+            if inboard < 0.0 or x_out < 0.0:
+                continue
+            gap = inboard - x_out
+            if gap > worst:
+                worst, worst_y = gap, y
+        verdict = "RECOUVREMENT" if worst < 0.0 else "FENTE"
+        print(
+            f"  racine a {sweep:4.1f} deg de fleche (y {y0:+.3f} -> {y1:+.3f}) : "
+            f"pire ecart {worst * 1000:+7.1f} mm a y = {worst_y:+.3f}  [{verdict}]"
+        )
 
 
 def _print_silhouette_gaps() -> None:
@@ -2581,13 +3057,16 @@ def _print_silhouette_gaps() -> None:
         nac_hi = NACELLE_X + nacelle_half_width(y)
         bridged = BRIDGE[0][0] <= y <= BRIDGE[-1][0]
         gap1 = 0.0 if bridged else max(nac_lo - fus, 0.0)
-        # fente 2 : de la peau du fuseau au point le plus interne de la lame.
-        inboard = _wing_inboard_x(y)
-        g2 = "aile absente" if inboard < 0.0 else f"{(inboard - nac_hi) * 1000:5.0f} mm"
-        print(
-            f"    y = {y:+.3f}  {label} : "
-            f"fente 1 = {gap1 * 1000:5.0f} mm | fente 2 = {g2}"
+        # BRIEF-0036 : la « fente 2 » n'existe plus en tant que telle — c'etait
+        # elle, le trou sous l'aile. Ce qui se mesure ici est ce qu'il en reste :
+        # l'ecart entre la peau du fuseau et le bord externe de l'EMPLANTURE,
+        # c'est-a-dire la matiere fixe qui a remplace le vide.
+        x_out = _glove_x_out(y)
+        g2 = (
+            "emplanture absente" if x_out < 0.0
+            else f"emplanture jusqu'a x = {x_out:.3f} ({(x_out - nac_hi) * 1000:+4.0f} mm)"
         )
+        print(f"    y = {y:+.3f}  {label} : fente 1 = {gap1 * 1000:5.0f} mm | {g2}")
 
 
 def main() -> None:
@@ -2605,6 +3084,7 @@ def main() -> None:
 
     travel = min(_flap_travel_limit(p) for p in flaps)
     sweep, reason = _wing_sweep_limit(wings[0], flaps[0])
+    gap, gap_where = _glove_clearance(wings[0], flaps[0])
 
     report = ak.export_hull(
         ship, build_attach_points(), OUTPUT, CONTRACT, parts=parts
@@ -2626,6 +3106,14 @@ def main() -> None:
             f"{WING_SWEEP_TARGET:.1f} deg — butee : {reason}\n"
             "  (BRIEF-0035 : la bbox est mesuree AU REPOS, elle ne voit pas ce defaut)"
         )
+    # BRIEF-0036 : l'emplanture couvre la racine en passant AU-DESSUS d'elle. Si
+    # ce jeu vertical tombe a zero, la lame traverse la coque en se repliant —
+    # et, comme toujours, la bounding box au repos n'en dirait pas un mot.
+    if gap < GLOVE_MIN_CLEARANCE:
+        raise ak.ContractError(
+            f"jeu emplanture/aile mesure = {gap * 1000:.1f} mm < "
+            f"{GLOVE_MIN_CLEARANCE * 1000:.0f} mm — {gap_where}"
+        )
     print(
         f"  hauteur/longueur : {report.size[1] / report.size[2]:.1%} "
         f"(cible BRIEF-0034 : 25-29 %)"
@@ -2635,6 +3123,8 @@ def main() -> None:
         f"  ailes  : fleche admissible mesuree {sweep:.2f} deg "
         f"(cible {WING_SWEEP_TARGET:.0f}) — premiere butee : {reason}"
     )
+    print(f"  emplanture : jeu vertical minimal {gap * 1000:.1f} mm — {gap_where}")
+    _print_root_coverage()
     _print_silhouette_gaps()
 
 
