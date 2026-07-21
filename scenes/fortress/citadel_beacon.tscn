@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+; Balise flottante de la citadelle — instanciée par `CitadelLife` sur chaque
+; marqueur `Beacon_NN` de la coque (BRIEF-0032).
+;
+; Elle dérive autour de son ancrage et tourne sur son axe. L'origine du `.glb` est
+; le centre de la nacelle (`Beacon_Center` à (0,0,0)), et `Ring_Axis` désigne son Y
+; local — c'est autour de lui que la balise tourne.
+
+[ext_resource type="Script" path="res://scripts/fortress/citadel_beacon.gd" id="1_beacon"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/structures/citadel_beacon.glb" id="2_hull"]
+
+[node name="CitadelBeacon" type="Node3D"]
+script = ExtResource("1_beacon")
+
+[node name="Hull" parent="." instance=ExtResource("2_hull")]

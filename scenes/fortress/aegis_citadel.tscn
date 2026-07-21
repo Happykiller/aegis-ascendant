@@ -1,8 +1,12 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/fortress/aegis_citadel.gd" id="1_citadel"]
 [ext_resource type="PackedScene" path="res://assets/imported/models/structures/aegis_citadel.glb" id="2_hull"]
+[ext_resource type="PackedScene" path="res://scenes/fortress/citadel_turret.tscn" id="3_turret"]
+[ext_resource type="PackedScene" path="res://scenes/fortress/citadel_beacon.tscn" id="4_beacon"]
 
 [node name="AegisCitadel" type="Node3D"]
 script = ExtResource("1_citadel")
 hull_scene = ExtResource("2_hull")
+turret_scene = ExtResource("3_turret")
+beacon_scene = ExtResource("4_beacon")

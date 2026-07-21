@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3]
+
+; Tourelle de la citadelle — pièce mobile, instanciée par `CitadelLife` sur chaque
+; marqueur `Turret_NN` de la coque (BRIEF-0032).
+;
+; Le script est sur le Node3D racine et non sur la coque importée : c'est LUI qui
+; pivote, et l'origine du `.glb` est déjà son axe de rotation (marqueur
+; `Turret_Pivot` à (0,0,0)).
+
+[ext_resource type="Script" path="res://scripts/fortress/citadel_turret.gd" id="1_turret"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/structures/citadel_turret.glb" id="2_hull"]
+
+[node name="CitadelTurret" type="Node3D"]
+script = ExtResource("1_turret")
+
+[node name="Hull" parent="." instance=ExtResource("2_hull")]

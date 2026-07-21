@@ -47,6 +47,7 @@ func _ready() -> void:
 	_audio.set_music_state(MusicDirector.State.TITLE)
 	_tune_backdrop()
 	_detail_hulls()
+	_animate_citadel()
 	_attach_engine_trails()
 	_apply_bisect_flags()
 	print("[TitleStage] ready")
@@ -99,16 +100,34 @@ const HERO_TRAIL_ENERGY := 1.5
 const ESCORT_TRAIL_SCALE := 0.8
 const ESCORT_TRAIL_ENERGY := 2.4
 
+const CitadelTurretScene := preload("res://scenes/fortress/citadel_turret.tscn")
+const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
+
 ## Feuille de detail sur toutes les coques de la scene (accueil = gros plan, c'est
 ## la que ca compte le plus). Le joueur en combat sera traite separement, une fois
 ## la methode validee ici.
-## Seuls les Specter-9 sont traites : ils portent des UV (box_project_uv, ADR-0011).
-## La citadelle n'est pas encore reforgee et n'en a pas — elle suivra avec sa
-## propre passe. Sans UV, la carte s'echantillonnerait sur un seul texel.
+##
+## La citadelle rejoint enfin la liste : elle porte des UV depuis sa reforge
+## (BRIEF-0032). Elle etait jusqu'ici la SEULE coque du jeu sans coordonnees de
+## texture, donc la seule qu'aucune feuille de detail ne pouvait atteindre.
 func _detail_hulls() -> void:
 	HullDetail.apply(_hero)
 	for escort in _escorts.get_children():
 		HullDetail.apply(escort)
+	HullDetail.apply(_citadel)
+
+## Tourelles, balises et respiration des emissifs.
+##
+## L'accueil instancie le `.glb` NU, pas `aegis_citadel.tscn` : sans cet appel, la
+## forteresse resterait figee precisement la ou on la met en vedette. C'est pour ce
+## cas que l'animation vit dans une fabrique statique (`CitadelLife`) et non dans le
+## controleur de gameplay.
+func _animate_citadel() -> void:
+	var hull := _citadel.get_node_or_null("Hull") as Node3D
+	if hull == null:
+		push_error("[TitleStage] Citadel sans nœud 'Hull'")
+		return
+	CitadelLife.apply(hull, CitadelTurretScene, CitadelBeaconScene)
 
 func _attach_engine_trails() -> void:
 	_attach_trail_to(_hero, HERO_TRAIL_SCALE, 18, HERO_TRAIL_ENERGY)

@@ -32,6 +32,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend
   0,84 ms sur RTX 4080 et 12,0 ms sur Quadro T1000 — ×14 à code identique.
+- [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
+  exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
+  tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par
+  `./scripts/build-hull.sh` (force `-t 1`). ⚠️ Trois fausses pistes coûteuses écartées au passage —
+  le Specter-9 a **plus** d'UV dégénérées que la citadelle et reste pourtant stable.
 - [Intégrer un asset image généré par ChatGPT](howto-assets-image-genere.md) — ChatGPT **peint le
   damier** au lieu d'une vraie transparence (RGB opaque). Exiger un **fond noir pur** pour les objets
   lumineux ; reconstruire l'alpha avec `tools/bg-key-alpha.py` (ne pas refaire le keying à la main).
@@ -74,5 +79,6 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
 | `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |
 | `python3 tools/derive-maps.py <hauteur>` | demander une **normal map** à un générateur (gradients faux, relief éclairé à l'envers) ; mesure aussi la **couture** de tuilage, qu'un « seamless » demandé ne garantit pas |
+| `./scripts/build-hull.sh [--check\|--all] <coque>` | régénérer une coque **sans** `-t 1` — le `.glb` sera valide et pourtant non reproductible ; `--check` mesure le déterminisme, que le contrat d'`export_hull()` ne vérifie pas |
 | `blender45 -b -P tools/render-hull.py -- <glb>` | intégrer une coque 3D **sans l'avoir regardée** (planche 4 vues, dont l'angle réel de la caméra de jeu) |
 | sous-agent `godot-verifier` | ~50 lignes de bruit de build/deploy dans le contexte, pour 3 faits |
