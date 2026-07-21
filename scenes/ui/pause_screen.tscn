@@ -184,11 +184,22 @@ offset_bottom = -46.0
 theme_override_constants/separation = 4
 mouse_filter = 2
 
-[node name="Status" type="Label" parent="Overlay/Comms"]
+; Pastille en ColorRect : PressStart2P n'a pas de ● et retombait sur un point de
+; 2 px sur la ligne de base (même correction qu'à l'accueil).
+[node name="Status" type="HBoxContainer" parent="Overlay/Comms"]
+theme_override_constants/separation = 8
+mouse_filter = 2
+
+[node name="Pip" type="ColorRect" parent="Overlay/Comms/Status"]
+custom_minimum_size = Vector2(9, 9)
+size_flags_vertical = 4
+color = Color(0.894, 0.71, 0.29, 0.9)
+
+[node name="Text" type="Label" parent="Overlay/Comms/Status"]
 theme = ExtResource("2_theme")
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
 theme_override_font_sizes/font_size = 10
-text = "● SIGNAL HOLD"
+text = "SIGNAL HOLD"
 
 [node name="Channel" type="Label" parent="Overlay/Comms"]
 theme = ExtResource("2_theme")
@@ -242,6 +253,10 @@ offset_top = -78.0
 offset_bottom = -54.0
 theme = ExtResource("2_theme")
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.7)
+; Contour noir : cette ligne se pose sur un champ de bataille FIGÉ dont on ne sait
+; rien — une explosion arrêtée juste dessous et l'or ne se lit plus (DA §6).
+theme_override_colors/font_outline_color = Color(0.008, 0.012, 0.027, 0.9)
+theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 10
 ; « ÉCHAP » sans accent : PressStart2P n'a pas de É capital et retombe sur un glyphe
 ; de secours minuscule, qui casse la ligne tout en capitales (visible sur la ligne

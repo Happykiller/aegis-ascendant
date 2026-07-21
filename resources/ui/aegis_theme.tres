@@ -65,3 +65,7 @@ Button/styles/normal = SubResource("btn_normal")
 Button/styles/pressed = SubResource("btn_pressed")
 Label/colors/font_color = Color(0.875, 0.965, 1, 1)
 Panel/styles/panel = SubResource("panel")
+; PanelContainer cherche son style sous SON type, pas sous « Panel » : sans cette
+; ligne, un encadré qui met son contenu en page retombait sur le thème par défaut
+; de Godot — gris arrondi, hors charte — alors qu'un Panel nu le rendait bien.
+PanelContainer/styles/panel = SubResource("panel")

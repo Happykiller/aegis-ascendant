@@ -39,10 +39,11 @@
   monter à 5. → tâches **H5** / **H6** de `docs/TASKS_HORIZONTAL.md`.
 - [ ] **Écran titre** — texte nu. Le `title_backdrop.svg` et les emblèmes de faction de la forge
   **ne sont pas utilisés**. → tâche **H3**.
-- [ ] **Écrans restants** — la **pause** est reforgée dans le langage d'interface de l'accueil
-  (ADR-0012) ; **victoire, résultats et échec** sont encore sur des cadres SVG plein écran, avec la
-  police Godot par défaut. Décliner sur eux le mobilier de l'accueil. → tâche **H4**, redéfinie par
-  l'ADR-0012 (il ne s'agit plus d'importer les cadres de la forge, mais de les abandonner).
+- [x] **Écrans** — **pause** et **victoire / rapport** reforgés dans le langage d'interface de
+  l'accueil (ADR-0012). Les cadres SVG plein écran de la forge sont abandonnés, pas intégrés.
+- [ ] **Écran d'échec de mission** — il n'en existe **aucun** : perdre tous les chasseurs appelle
+  `continue_run()` et la partie repart, sans écran ni choix offert au joueur. Manque de gameplay
+  autant que d'interface. → ex-tâche **H4**, redéfinie par l'ADR-0012.
 - [ ] **Pacing de l'appontage** — trop rapide ; ajouter des temps de pause entre l'arrivée de la
   Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
 - [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».

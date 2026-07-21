@@ -241,11 +241,23 @@ offset_bottom = -46.0
 theme_override_constants/separation = 4
 mouse_filter = 2
 
-[node name="Status" type="Label" parent="TitleUI/Comms"]
+; Pastille d'état en ColorRect, pas en caractère : PressStart2P n'a NI ● NI ■ (656
+; glyphes, vérifiés dans la table cmap). Le « ● » retombait sur le point de la police
+; de secours et se rendait en 2 px sur la ligne de base — une poussière, pas un voyant.
+[node name="Status" type="HBoxContainer" parent="TitleUI/Comms"]
+theme_override_constants/separation = 8
+mouse_filter = 2
+
+[node name="Pip" type="ColorRect" parent="TitleUI/Comms/Status"]
+custom_minimum_size = Vector2(9, 9)
+size_flags_vertical = 4
+color = Color(0.35, 0.85, 0.6, 0.9)
+
+[node name="Text" type="Label" parent="TitleUI/Comms/Status"]
 theme = ExtResource("10_theme")
 theme_override_colors/font_color = Color(0.35, 0.85, 0.6, 0.9)
 theme_override_font_sizes/font_size = 10
-text = "● COMMS SECURE"
+text = "COMMS SECURE"
 
 [node name="Channel" type="Label" parent="TitleUI/Comms"]
 theme = ExtResource("10_theme")
@@ -292,6 +304,10 @@ theme_override_font_sizes/font_size = 9
 text = "FORGE THE SKY.  DEFEND THE LIGHT."
 horizontal_alignment = 2
 
+; Contour noir OBLIGATOIRE ici : cette ligne traverse la piste blanche du diorama,
+; et l'or sur blanc y devenait illisible sur tout le tiers central (DA §6 : « aucun
+; texte essentiel ne doit reposer sur une image chargée sans fond ou contour de
+; séparation »). Le défaut ne venait pas des glyphes — PressStart2P a bien É et ← →.
 [node name="Controls" type="Label" parent="TitleUI"]
 anchor_top = 1.0
 anchor_right = 1.0
@@ -300,8 +316,10 @@ offset_top = -78.0
 offset_bottom = -54.0
 theme = ExtResource("10_theme")
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.7)
+theme_override_colors/font_outline_color = Color(0.008, 0.012, 0.027, 0.9)
+theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 10
-text = "OPTIONS  O     ·     DÉPLACEMENT  ← →     ·     TIR  ESPACE"
+text = "OPTIONS  O     ·     DEPLACEMENT  ← →     ·     TIR  ESPACE"
 horizontal_alignment = 1
 mouse_filter = 2
 
@@ -313,7 +331,13 @@ anchor_bottom = 1.0
 offset_top = -48.0
 offset_bottom = -28.0
 theme = ExtResource("10_theme")
-theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.4)
+; Le tampon de version tombe lui aussi sur la piste blanche : en blanc pâle, monter
+; l'opacité n'y changeait rien — c'était du blanc sur du blanc, et seul le contour
+; le tenait. Il passe donc à l'or de la ligne de touches juste au-dessus, à une
+; opacité plus basse : même famille, rang inférieur.
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.5)
+theme_override_colors/font_outline_color = Color(0.008, 0.012, 0.027, 0.9)
+theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 9
 text = "v0.1.0 — prototype"
 horizontal_alignment = 1

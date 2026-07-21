@@ -91,6 +91,13 @@ func _ready() -> void:
 			we.environment.glow_enabled = false
 	if "--no-wave" in args and _wave_spawner != null:
 		_wave_spawner.set_physics_process(false)
+	# L'écran de victoire ne s'atteignait qu'en jouant l'arc entier — donc en pratique
+	# il ne se REGARDAIT jamais, et il a vécu longtemps avec la police par défaut sans
+	# que personne le voie (ADR-0006). Le score est semé pour que le rapport s'affiche
+	# avec des chiffres plausibles plutôt qu'un 00000000 de rang C.
+	if "--victory-demo" in args:
+		_game_state.add_score(31500)
+		_start_victory.call_deferred()
 	if "--pickup-demo" in args and _pickups != null:
 		_pickups.spawn(Pickup.Kind.POWER, Vector2(-3.0, 0.0))
 		_pickups.spawn(Pickup.Kind.SHIELD, Vector2(0.0, 0.0))
@@ -310,6 +317,10 @@ func _start_victory() -> void:
 	var screen := VictoryScene.instantiate()
 	screen.setup(_game_state.score)
 	add_child(screen)
+	# Même raison qu'à la pause : le rapport reprend les coins du HUD, et le score
+	# qu'il affiche ferait doublon avec celui du HUD, à deux tailles différentes.
+	if _hud != null:
+		_hud.visible = false
 
 ## The victory theme waits for the last enemy shot to leave the screen, so the resolution
 ## does not land over incoming fire (adaptive_music_structure.md §mix). Until then the

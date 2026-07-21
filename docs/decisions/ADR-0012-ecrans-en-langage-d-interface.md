@@ -46,6 +46,20 @@ plein écran.** Le vocabulaire de référence est celui de `scenes/boot/boot.tsc
 4. Un écran posé au-dessus des scanlines globales (layer > 5) **rejoue la passe localement**, sinon
    il est le seul élément à échapper au grain CRT et lit comme une capture collée sur le jeu.
 
+### Contraintes typographiques de Press Start 2P
+
+Relevées en lisant la table `cmap` de la police et en comparant au rendu réel — pas en devinant :
+
+| Contrainte | Ce qu'il faut faire |
+|---|---|
+| **Aucun `●` ni `■`** (656 glyphes) | une pastille d'état est un `ColorRect`, jamais un caractère. Le `●` retombait sur le point de la police de secours : 2 px sur la ligne de base, une poussière au lieu d'un voyant |
+| **Les capitales accentuées existent mais sont dessinées en hauteur de bas-de-casse** | pas d'accent dans un texte tout en capitales — `DETRUIT`, pas `DÉTRUIT`, sinon un `é` minuscule troue le mot |
+| `É` et `← →` **sont** présents | ne pas incriminer la police à tort : la ligne de touches de l'accueil était illisible **parce qu'elle traversait la piste blanche du diorama**, pas par manque de glyphe |
+
+Corollaire : **tout texte d'interface posé sur la scène 3D porte un contour** (`outline_size = 6`,
+`#020307` à 90 %). Le fond derrière un écran est du décor animé ou un champ de bataille figé — on ne
+sait pas ce qu'il y aura à cet endroit (DA §6).
+
 Les cadres SVG livrés restent en `assets/source/` : ce sont des livrables de forge valides, avec
 leur provenance. Ils ne sont simplement plus **importés**. `assets/imported/ui/screens/pause_frame.svg`
 est supprimé et sa ligne de provenance retirée ; la ligne source porte la mention *superseded*.
@@ -53,10 +67,15 @@ est supprimé et sa ligne de provenance retirée ; la ligne source porte la ment
 ## Conséquences
 
 - La tâche H4 change de nature : elle ne consiste plus à importer des cadres, mais à décliner le
-  mobilier de l'accueil sur les écrans restants — **victoire, résultats, échec de mission**, qui
-  souffrent aujourd'hui exactement du même défaut que la pause.
-- `scenes/ui/victory_screen.tscn` reste sur l'ancien modèle (cadre SVG + police par défaut) et
-  constitue la dette identifiée par cet ADR.
+  mobilier de l'accueil sur les écrans restants.
+- **Écrans traités** : pause, puis victoire / rapport de mission — qui gagne au passage sa version
+  française, deux boutons (l'unique sortie était `PRESS ENTER TO REPLAY`) et un encadré de rapport.
+- **Reste à faire** : il n'existe **aucun écran d'échec de mission** — perdre tous les chasseurs
+  appelle `continue_run()` et la partie reprend, sans écran ni décision offerte au joueur. C'est un
+  manque de gameplay autant que d'interface, et `mission_failed_frame.svg` ne le comblera pas.
+- Un écran qui ne s'atteint qu'en jouant l'arc entier ne se **regarde** jamais : c'est ainsi que
+  l'écran de victoire a vécu avec la police par défaut de Godot sans que personne le voie. Chaque
+  écran doit avoir son **drapeau de démonstration** (`--pause-demo`, `--victory-demo`).
 - L'emblème `helios_vanguard_emblem.svg` gagne un second point d'usage : il est le pivot visuel du
   bloc d'identité, sur l'accueil comme sur la pause.
 - Le seuil de validation ne change pas : un écran n'est pas fini tant qu'il n'a pas été **rendu et
