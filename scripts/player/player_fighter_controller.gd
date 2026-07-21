@@ -70,6 +70,9 @@ var _muzzle_timer: float = 0.0
 
 @onready var _visual_root: Node3D = $VisualRoot
 @onready var _hull: Node3D = $VisualRoot/Hull
+## Volets et petales de tuyere (BRIEF-0033). Nul si la coque n'en a pas : une
+## coque d'avant la reforge continue de voler, immobile.
+var _flight: ShipFlight
 @onready var _bullet_manager: BulletManager = get_node_or_null(bullet_manager_path) as BulletManager
 
 func _ready() -> void:
@@ -82,6 +85,7 @@ func _ready() -> void:
 	position = GameplayPlane.to_world(plane_position)
 	_cache_muzzles()
 	_build_engine_trails()
+	_flight = ShipFlight.apply(_hull)
 	_build_muzzle_flashes()
 	_demo = "--demo" in OS.get_cmdline_user_args()
 	# Debug/capture only: `++ --power=N` starts at power N to inspect the fuller
@@ -364,6 +368,13 @@ static func integrate_velocity(current: Vector2, input: Vector2, max_speed: floa
 	return current.move_toward(target, accel * delta)
 
 func _apply_visual_bank(delta: float) -> void:
-	var bank_target := -_velocity.x / stats.max_speed * deg_to_rad(stats.max_bank_deg)
+	var lateral := -_velocity.x / stats.max_speed
+	var bank_target := lateral * deg_to_rad(stats.max_bank_deg)
 	_visual_root.rotation.z = lerp_angle(_visual_root.rotation.z, bank_target,
 		minf(1.0, delta * 12.0))
+	if _flight != null:
+		# Les gouvernes suivent l'inclinaison, les tuyeres suivent la vitesse : ce
+		# sont deux informations distinctes, et les confondre ferait s'ouvrir les
+		# tuyeres en virage a l'arret.
+		_flight.set_bank(lateral)
+		_flight.set_thrust(speed_ratio())

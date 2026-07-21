@@ -24,6 +24,7 @@ const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 var _camera_rest: Vector3
 var _hero_rest: Vector3
 var _age: float = 0.0
+var _hero_flight: ShipFlight
 
 # --- Chorégraphie -------------------------------------------------------------
 # Des périodes volontairement non harmoniques (11.0 / 7.3 / 17.0 s) : la scène ne
@@ -49,6 +50,7 @@ func _ready() -> void:
 	_detail_hulls()
 	_animate_citadel()
 	_attach_engine_trails()
+	_bind_flight()
 	_apply_bisect_flags()
 	print("[TitleStage] ready")
 
@@ -133,6 +135,18 @@ func _attach_engine_trails() -> void:
 	_attach_trail_to(_hero, HERO_TRAIL_SCALE, 18, HERO_TRAIL_ENERGY)
 	for escort in _escorts.get_children():
 		_attach_trail_to(escort as Node3D, ESCORT_TRAIL_SCALE, 14, ESCORT_TRAIL_ENERGY)
+
+## Volets et tuyeres des quatre Specter-9 du diorama (BRIEF-0033).
+##
+## L'accueil instancie les coques NUES, sans controleur : sans cet appel, les
+## pieces mobiles resteraient figees precisement la ou on les voit en gros plan.
+## Les escortes traversent a vitesse constante — poussee pleine, volets neutres.
+func _bind_flight() -> void:
+	_hero_flight = ShipFlight.apply(_hero.get_node_or_null("Hull") as Node3D)
+	for escort in _escorts.get_children():
+		var flight := ShipFlight.apply(escort.get_node_or_null("Hull") as Node3D)
+		if flight != null:
+			flight.set_thrust(1.0)
 
 func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: float) -> void:
 	var hull := ship.get_node_or_null("Hull")

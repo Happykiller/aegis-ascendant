@@ -107,8 +107,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.5, 3.7, -17)
 
 [node name="Hull" parent="Escorts/EscortC" instance=ExtResource("7_specter")]
 
+; Eloigne de 3,1 a 2,0 depuis BRIEF-0033 (la camera est a z=6 : BAISSER z eloigne) : la coque a desormais de vraies
+; nacelles a petales ANIMES, et a 3,1 m elles tombaient hors du cadre bas. On ne
+; cadre pas un vaisseau sans montrer ce qui bouge dessus.
 [node name="Hero" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.5, 3.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.05, 2.0)
 
 [node name="Hull" parent="Hero" instance=ExtResource("7_specter")]
 
