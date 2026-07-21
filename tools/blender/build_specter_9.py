@@ -4,8 +4,9 @@
     ./scripts/build-hull.sh --check specter_9   le script force `-t 1`, sans quoi les
                                                 tangentes divergent d'un run a l'autre)
 
-Produit `assets/imported/models/ships/specter_9.glb` : une coque + QUATRE pieces
-mobiles exportees en nœuds glTF separes (`Flap_L/R`, `Nozzle_L/R`).
+Produit `assets/imported/models/ships/specter_9.glb` : une coque + SIX pieces
+mobiles exportees en nœuds glTF separes (`Wing_L/R`, `Flap_L/R` — enfants des
+ailes —, `Nozzle_L/R`).
 
 Le script EST la source de l'asset (ADR-0008) : aucun `.blend` n'est versionne.
 Il est deterministe (aucun alea non seede) et s'auto-valide : `ak.export_hull()`
@@ -14,6 +15,47 @@ triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
 Repere d'auteur (ADR-0008) : nez -Y, dessus +Z, **babord +X** (cf. aegis_kit).
+
+
+PASSE DE TOPOLOGIE — BRIEF-0035 (la seule qui compte ici)
+=========================================================
+BRIEF-0033 a corrige le profil, BRIEF-0034 la repartition des masses. Aucun des
+deux n'a touche au defaut reel, nomme par le proprietaire :
+
+    « on a un triangle monobloc, alors que l'artwork reprend le principe du
+      fuselage, et des ailes »
+
+Les deux passes precedentes dessinaient des lignes sur UNE surface continue. Le
+critere de ce brief est binaire et se lit sur un aplat noir vu de dessus : **du
+fond doit passer ENTRE les volumes**. Ce que ce script change :
+
+1. **La coque principale n'est plus que le FUSELAGE.** `PLANFORM` ne decrit plus
+   une aile delta de 1,75 m d'envergure mais un corps de 0,30 m de large, ferme
+   sur lui-meme, avec ses propres flancs verticaux (`EDGE_H` passe de 12 a
+   88 mm : le bord de la section cesse d'etre une tranche d'aile et devient un
+   borde de 0,18 m de haut).
+2. **Chaque nacelle est un corps ferme et separe.** Le fuseau court desormais de
+   y = -0,440 (levre d'entree d'air) a y = 1,230 (levre de tuyere) — c'est un
+   volume autonome, plus un bossage noye dans l'aile. `SHOULDER` et `INTAKE`,
+   qui n'existaient que pour raccorder le fuseau au plan d'aile, disparaissent.
+3. **Deux FENTES traversantes par cote.** Entre le flanc du fuselage (x = 0,150)
+   et le flanc interne de la nacelle (x = 0,209) il y a 59 mm d'air. Un seul
+   element les relie : le caisson `BRIDGE` (y = 0,010 a 0,380). En avant et en
+   arriere de lui, on voit le fond de l'image.
+4. **Les ailes sont des lames distinctes, mobiles.** `Wing_L/R` pivotent autour
+   d'un axe VERTICAL place au flanc externe de la nacelle. Leur emplanture
+   (x = 0,545) est a 94 mm de la peau du fuseau : troisieme fente par cote.
+5. **`Flap_L/R` sont les ENFANTS des ailes** (`ak.moving_part(parent=...)`),
+   sans quoi un volet resterait en l'air des que l'aile bouge.
+6. **Le caniveau (`GUTTER_*`) disparait.** C'etait un ersatz de fente creuse
+   dans une surface continue ; la fente est maintenant reelle.
+
+⚠️ Le contrat de bounding box est mesure AU REPOS. Une aile qui deborde une fois
+repliee le passerait sans un mot — c'est le meme piege qui avait fait tomber le
+debattement d'un volet a 2,8 deg sous BRIEF-0034. `_wing_sweep_limit()` remesure
+donc a chaque build, sur le maillage livre, l'angle de fleche admissible en
+tenant compte des trois contraintes : peau de nacelle, boite englobante, et
+croisement avec le fuselage.
 
 
 PASSE DE PLAN — BRIEF-0034 (lire ADR-0014 d'abord)
@@ -176,78 +218,79 @@ HALF_W = CONTRACT.width_x / 2.0    # 0.875 — bout d'aile
 # Tables de profil
 # ==========================================================================
 
-# Demi-envergure de la coque (planform). BRIEF-0034 : c'est LA table qui change.
+# --------------------------------------------------------------------------
+# Le PARTAGE DE LA DEMI-ENVERGURE (BRIEF-0035) — c'est ici que tout se joue.
+# --------------------------------------------------------------------------
+# La demi-envergure de 0,875 m n'est plus occupee par une seule surface mais par
+# CINQ zones, dont deux sont du vide. Le total est un invariant a verifier a la
+# main a chaque retouche, et `_print_silhouette_gaps()` le remesure a chaque
+# build sur la geometrie reelle :
 #
-#   avant (delta)          apres (lame en fleche)
-#   ------------------     -----------------------------------------------
-#   fleche de 52 deg       fleche de **63,5 deg**, une seule pente de
-#                          y = -0,860 au bout d'aile : le bord d'attaque est
-#                          droit, comme sur la planche
-#   largeur max a 67 %     largeur max a **81 %** (y = 0,760)
-#   puis culot plein       bord de fuite quasi transversal derriere le bout
-#     jusqu'a 85 %           d'aile : la corde s'effondre en 10 cm
+#     0,000 .. 0,130   fuselage (demi-largeur maximale)
+#     0,130 .. 0,172   FENTE 1   —  42 mm d'air
+#     0,172 .. 0,368   nacelle   (axe 0,270, rayon 0,098 ; collier 0,105)
+#     0,368 .. 0,426   FENTE 2   —  58 mm d'air
+#     0,426 .. 0,875   aile      (lame mobile, 449 mm de portee exposee)
 #
-# La correction decisive n'est pas la fleche (28 deg de l'axe avant, 27 apres —
-# la planche est a 27) mais le **placement longitudinal** : la version
-# BRIEF-0033 atteignait sa largeur maximale 0,34 m trop tot et etait donc
-# systematiquement plus large que la planche dans toute la moitie avant. Le
-# nez, lui, passe de 0,136 a 0,068 de demi-envergure a y = -0,86 — il devient
-# l'aiguille que la planche montre, et c'est cette aiguille qui fait lire un
-# fuselage porteur plutot qu'une pointe de triangle.
+# Ce partage a ete revu au RENDU : la premiere version donnait 0,150 / 0,121 au
+# corps et il ne restait que 330 mm d'aile. L'aplat noir montrait bien les
+# trouees demandees, mais le vaisseau lisait « trois tubes », plus « chasseur ».
+# Le groupe central a donc maigri de 13 % au profit de la lame.
 #
-# L'envergure ne bouge pas d'un millimetre — 0,875 — parce que c'est un contrat
-# de gameplay (hitbox, `Muzzle_Tip_L/R`).
-#
-# Le bout d'aile tombe DERRIERE la charniere de volet (0,689), il appartient
-# donc au volet. Ce n'est pas un probleme pour la boite englobante : le volet
-# tourne autour d'un axe parallele a X, transformation qui laisse |x| invariant.
-# La largeur du vaisseau ne peut pas changer en animation.
+# Rien de tout cela ne serait visible si les fentes etaient bouchees sur toute
+# la longueur : ce qui les ouvre, c'est que chaque corps a une ETENDUE EN Y
+# differente. La nacelle court de -0,440 a 1,230, le fuselage de -1,230 a 1,230,
+# l'aile de 0,246 a 0,593 seulement. Le seul point de contact voulu est le
+# caisson `BRIDGE` (y = 0,010 a 0,380) — d'ou deux ouvertures par fente.
+
+#: Demi-largeur du FUSELAGE (la coque principale ne decrit plus rien d'autre).
+#: Cette table s'appelait `PLANFORM` et decrivait une aile delta ; le nom est
+#: conserve parce que c'est toujours le contour en plan de la coque loftee, mais
+#: la coque loftee n'est plus que le corps central.
 PLANFORM: list[tuple[float, float]] = [
     (-1.2300, 0.0000),   # pointe du nez
-    (-1.1500, 0.0147),
-    (-1.0800, 0.0276),
-    (-0.9800, 0.0459),
-    (-0.9000, 0.0607),
-    (-0.8600, 0.0680),   # emplanture du bord d'attaque
-    (-0.6600, 0.1676),
-    (-0.5400, 0.2274),
-    (-0.4000, 0.2971),
-    (-0.2400, 0.3768),
-    (-0.0500, 0.4715),
-    (0.1300, 0.5622),
-    (0.3100, 0.6519),
-    (0.4700, 0.7316),
-    (0.6100, 0.8013),
-    (0.7600, 0.8750),    # BOUT D'AILE — largeur max, a 81 % de la longueur
-    (0.8100, 0.6175),
-    (0.8600, 0.3600),    # culot, entre les deux nacelles
+    (-1.1500, 0.0165),
+    (-1.0800, 0.0269),
+    (-0.9800, 0.0416),
+    (-0.9000, 0.0533),
+    (-0.8000, 0.0672),
+    (-0.6800, 0.0836),
+    (-0.5400, 0.0992),
+    (-0.4000, 0.1114),
+    (-0.2400, 0.1213),
+    (-0.0500, 0.1283),
+    (0.1300, 0.1300),    # maitre-couple : 0,260 m de large
+    (0.3100, 0.1287),
+    (0.4700, 0.1239),
+    (0.6100, 0.1166),
+    (0.7600, 0.1053),
+    (0.9000, 0.0923),
+    (1.0300, 0.0780),    # culot de la poutre arriere, ou se pose la tuyere d'axe
 ]
 
-# Demi-largeur du fuselage central (au-dela : l'aile, mince).
-# BRIEF-0034 : 0,232 -> 0,172, soit **0,344 m de large = 20 % de l'envergure**
-# (le brief demandait 0,32-0,40 m). Retrecir le fuselage peut sembler contraire
-# a « fuselage porteur » ; ce n'est pas la largeur qui le rend porteur mais le
-# fait qu'il ait des FLANCS — cf. `WING_ROOT_FRAC` et `GUTTER_DEPTH`. Un
-# fuselage large et fondu dans l'aile ne lit pas ; un fuselage etroit a marche
-# franche lit de tres loin.
+#: Demi-largeur du NOYAU de pont : au-dela commence la joue, en pente douce
+#: jusqu'au borde vertical. La marche entre les deux (segment `FLANK_SEG`) est
+#: le flanc superieur du fuselage — la seule surface quasi verticale que la
+#: camera de jeu voit du corps central.
 FUSELAGE: list[tuple[float, float]] = [
-    (-1.2300, 0.000),
-    (-1.1500, 0.020),
-    (-1.0800, 0.032),
-    (-0.9800, 0.050),
-    (-0.8800, 0.070),
-    (-0.7800, 0.092),
-    (-0.6600, 0.116),
-    (-0.5400, 0.136),
-    (-0.4000, 0.152),
-    (-0.2400, 0.164),
-    (-0.0500, 0.170),
-    (0.1300, 0.174),
-    (0.3100, 0.176),
-    (0.4700, 0.176),
-    (0.6100, 0.174),
-    (0.7550, 0.170),
-    (0.8600, 0.164),
+    (-1.2300, 0.0000),
+    (-1.1500, 0.0100),
+    (-1.0800, 0.0165),
+    (-0.9800, 0.0256),
+    (-0.9000, 0.0329),
+    (-0.8000, 0.0416),
+    (-0.6800, 0.0520),
+    (-0.5400, 0.0620),
+    (-0.4000, 0.0698),
+    (-0.2400, 0.0758),
+    (-0.0500, 0.0802),
+    (0.1300, 0.0815),
+    (0.3100, 0.0806),
+    (0.4700, 0.0776),
+    (0.6100, 0.0728),
+    (0.7600, 0.0659),
+    (0.9000, 0.0576),
+    (1.0300, 0.0485),
 ]
 
 # Hauteur de l'epine dorsale (z du sommet, sur l'axe).
@@ -256,6 +299,10 @@ FUSELAGE: list[tuple[float, float]] = [
 # abaisse. C'est ce deplacement, plus que le gain de 3 cm, qui allonge le nez.
 #: BRIEF-0034 : le sommet gagne 1 cm (0,195 -> 0,205). Le fuselage ayant perdu
 #: 6 cm de largeur, sans cela il aurait perdu du volume au lieu d'en gagner.
+#: BRIEF-0035 : prolongee jusqu'a y = 1,030. Le fuselage ne s'arrete plus a
+#: 0,860 « entre les deux nacelles » — il a maintenant une poutre arriere propre,
+#: et c'est elle qui, en depassant entre les deux fuseaux, ouvre la fente 1 par
+#: l'arriere au lieu de la refermer.
 CROWN: list[tuple[float, float]] = [
     (-1.2300, 0.000),
     (-1.1500, 0.026),
@@ -272,6 +319,8 @@ CROWN: list[tuple[float, float]] = [
     (0.5730, 0.196),
     (0.7450, 0.186),
     (0.8600, 0.178),
+    (0.9600, 0.170),
+    (1.0300, 0.162),
 ]
 
 # Profondeur du ventre (z du bas, sur l'axe ; valeurs negatives).
@@ -291,63 +340,109 @@ BELLY: list[tuple[float, float]] = [
     (0.5730, -0.177),
     (0.7450, -0.168),
     (0.8600, -0.160),
+    (0.9600, -0.152),
+    (1.0300, -0.146),
 ]
 
 # ==========================================================================
-# Volets de bord de fuite (pieces mobiles)
+# Ailes a fleche variable (pieces mobiles) et leurs volets (pieces ENFANTS)
 # ==========================================================================
 #
-# Un volet ne peut pas etre POSE sur l'aile : il faut que l'aile s'arrete la ou
-# il commence, sinon la piece traverse la coque des la premiere image d'anim.
-# La coque est donc **echancree** : en arriere de `FLAP_HINGE_Y`, la section
-# s'arrete a `FLAP_ROOT_X` au lieu d'aller jusqu'au bord d'attaque. Au repos le
-# volet remplit exactement l'echancrure — la silhouette vue de dessus est donc
-# celle d'avant, au jeu de charniere pres.
+# TOUTE la geometrie de l'aile est exprimee en POLAIRE autour du pivot, et c'est
+# la seule chose qui rend le degagement demontrable au lieu d'espere :
+#
+#   * une rotation autour du pivot conserve le rayon `r` et ajoute `theta` a
+#     l'angle `phi` ;
+#   * si TOUS les points de l'aile ont `phi >= 0` au repos et `phi + theta <= 90`
+#     en fleche maximale, alors `x = x_pivot + r cos(phi)` ne fait que DECROITRE
+#     quand on replie. L'aile ne peut donc ni sortir de la boite englobante en
+#     largeur, ni traverser une nacelle situee en deca de `x_pivot`.
+#
+# Le pivot est pose 21 mm en dehors de la peau du fuseau (0,451) : l'aile est
+# bien « greffee au flanc externe de la nacelle » comme le demande le brief, et
+# la fente reste ouverte entre les deux.
+#
+# ⚠️ La demonstration ci-dessus vaut pour un plan ; le maillage a une epaisseur
+# et des details. `_wing_sweep_limit()` la REMESURE sommet par sommet a chaque
+# build. Sans cela on retombe exactement sur le piege de BRIEF-0034, ou le
+# contrat — qui ne connait que la pose de repos — a valide un volet dont le
+# debattement reel etait tombe a 2,8 deg.
 
-FLAP_HINGE_Y = 0.7600     # station de l'echancrure (deja une station de base)
-FLAP_WALL_Y = 0.7570      # station juste devant : les deux forment la cloison
-#: BRIEF-0034 : l'emplanture recule de 0,600 a 0,530. Elle doit rester en
-#: dehors de la nacelle, dont le bord externe est desormais a 0,502 — 28 mm de
-#: garde. Au-dela, le volet traverserait le fuseau des la premiere image.
-FLAP_ROOT_X = 0.5300      # abscisse d'emplanture de l'echancrure
-FLAP_SIDE_GAP = 0.0020    # jeu lateral volet / cloison d'emplanture
+WING_PIVOT_X = 0.3980     # flanc externe de la nacelle (peau a 0,368)
+WING_PIVOT_Y = 0.0300
+WING_PIVOT_Z = 0.0120
 
-#: Jeu de charniere, en Y. Il n'est pas decoratif : le point du volet le plus
-#: eloigne de l'axe de charniere avance de `d * sin(theta)` quand on braque.
-#: En deca de ce jeu, le volet mange la cloison. `_flap_travel_limit()` mesure
-#: le plafond reel sur le maillage et l'imprime a chaque build — BRIEF-0034 le
-#: demande explicitement, `ShipFlight` etant regle dessus.
-FLAP_GAP = 0.0130
-#: Cote de l'axe de charniere. Compromis : sur la nouvelle lame la mi-epaisseur
-#: du volet varie de -0.018 (emplanture) a -0.030 (bout d'aile).
-FLAP_HINGE_Z = -0.0240
-#: Stations du volet, du bord d'attaque (charniere) au bord de fuite. Elles
-#: s'arretent la ou le bord de fuite rake rejoint l'emplanture (y ~ 0,773) :
-#: au-dela le volet n'aurait plus de matiere.
-FLAP_STATIONS: tuple[float, ...] = (
-    0.7730, 0.7850, 0.7980, 0.8110, 0.8240,
+#: Bord d'attaque et bord de fuite, en (rayon, angle au pivot en degres), de
+#: l'emplanture au bout d'aile. Les rayons du bout sont calcules pour que
+#: `x = WING_PIVOT_X + r cos(phi)` tombe EXACTEMENT sur 0,875 : l'envergure est
+#: un contrat de gameplay (hitbox), elle ne se laisse pas approcher.
+#: L'angle de l'emplanture du bord de fuite (60 deg) est la valeur CRITIQUE : la
+#: garantie de degagement demande `phi + fleche <= 90`, il ne reste donc que
+#: 30 deg de marge, dont 26 sont consommes par la fleche visee. C'est aussi lui
+#: qui fixe la corde d'emplanture (0,44 m) : la premiere version, a 56 deg et
+#: r = 0,34, donnait une lame de 0,32 m de corde qui lisait « aileron » et non
+#: « aile » — vu au rendu d'aplat, pas devine.
+WING_TIP_X = HALF_W
+WING_LE_ROOT = (0.0280, 8.0)
+WING_LE_TIP_ANGLE = 28.0
+WING_TE_ROOT = (0.4600, 60.0)
+WING_TE_TIP_ANGLE = 44.0
+
+#: Fleche visee (deg). Le brief demande 20 a 30 ; la valeur reellement admissible
+#: est REMESUREE a chaque build et le script echoue si elle passe sous ce seuil.
+WING_SWEEP_TARGET = 26.0
+#: Garde minimale entre l'aile repliee et la peau de la nacelle.
+WING_CLEARANCE = 0.012
+
+#: Nombre de nervures (stations d'envergure) et fractions de corde.
+#: Les paires serrees (0.300/0.345 et 0.700/0.745) portent les deux rainures
+#: longitudinales de l'aile — en FRACTION DE CORDE, jamais en metres
+#: (`.claude/resources/pratique-detail-en-fraction-de-corde.md`).
+WING_RIBS: tuple[float, ...] = (0.000, 0.180, 0.360, 0.540, 0.720, 0.880, 1.000)
+WING_CHORD_T: tuple[float, ...] = (
+    0.000, 0.070, 0.170, 0.300, 0.345, 0.500, 0.700, 0.745, 0.880, 1.000,
 )
-#: Abscisses echantillonnees en travers du volet (fraction emplanture -> bord).
-FLAP_T: tuple[float, ...] = (0.000, 0.180, 0.380, 0.580, 0.780, 1.000)
+#: Demi-epaisseur maximale de la lame, a l'emplanture puis au bout d'aile.
+WING_THICK_ROOT = 0.0300
+WING_THICK_TIP = 0.0130
+#: Affaissement du bout d'aile (lu sur la vue arriere de la planche).
+WING_ANHEDRAL = 0.0260
+
+#: Charniere du volet : une DROITE parallele a X, comme avant BRIEF-0035.
+#: Ce n'est pas de la paresse — le volet est un ENFANT de l'aile, et `moving_part`
+#: n'exporte qu'une translation (jamais de rotation) : les axes locaux du volet
+#: sont ceux de l'aile. Une charniere parallele a l'axe X de l'aile est donc la
+#: seule qui reste un axe de nœud une fois l'aile en fleche.
+FLAP_HINGE_Y = 0.3820
+FLAP_GAP = 0.0110         # jeu de charniere (l'aile s'arrete a HINGE_Y - GAP)
+#: Cloison : la coupe du bord de fuite de l'aile. C'est elle que le volet mord
+#: quand on le braque trop, et c'est elle que `_flap_travel_limit()` interroge.
+FLAP_WALL_Y = FLAP_HINGE_Y - FLAP_GAP
+FLAP_HINGE_Z = 0.0060
+#: Corde minimale du volet a son emplanture. En deca, l'aile garde son bord de
+#: fuite plein : un logement creuse la ou il n'y a pas de volet pour le remplir
+#: est un trou, pas une articulation.
+FLAP_MIN_CHORD = 0.026
+#: Stations du volet, de la charniere vers le bord de fuite.
+FLAP_STATIONS: tuple[float, ...] = (0.4700, 0.4960, 0.5220, 0.5480, 0.5740, 0.5930)
 
 # ==========================================================================
 # Stations longitudinales
 # ==========================================================================
 
 #: Stations longitudinales de base (la premiere est la pointe du nez).
-#: BRIEF-0034 : la trame arriere est refaite pour poser une station SUR le bout
-#: d'aile (0,5800) et suivre le bord de fuite rake (0,6890 / 0,7550 / 0,8000).
+#: BRIEF-0035 : la trame arriere est prolongee jusqu'a 1,030 — le fuselage ne
+#: s'arrete plus a 0,860 mais porte une poutre qui sort entre les deux nacelles.
 BASE_STATIONS: tuple[float, ...] = (
     -1.2300, -1.1900, -1.1400, -1.0800, -1.0200, -0.9600, -0.9000, -0.8400,
     -0.7800, -0.7200, -0.6600, -0.6000, -0.5400, -0.4700, -0.4000, -0.3300,
     -0.2600, -0.2000, -0.1300, -0.0500, 0.0400, 0.1300, 0.2200, 0.3100,
     0.4000, 0.4700, 0.5400, 0.6100, 0.6890, 0.7600, 0.8100, 0.8600,
+    0.9200, 0.9800, 1.0300,
 )
 
-#: Stations ajoutees hors trame reguliere. `FLAP_WALL_Y` est indispensable :
-#: sans elle, l'echancrure du volet s'etalerait sur les 7 cm qui separent
-#: 0.5400 de 0.6100 et donnerait une rampe au lieu d'une cloison.
-EXTRA_STATIONS: tuple[float, ...] = (FLAP_WALL_Y,)
+#: Stations ajoutees hors trame reguliere.
+EXTRA_STATIONS: tuple[float, ...] = ()
 
 #: Rainures TRANSVERSALES : centre de la bande, et etendue laterale.
 #: "fus" = coeur du fuselage seul (l'aile y est trop mince pour porter une
@@ -361,8 +456,8 @@ EXTRA_STATIONS: tuple[float, ...] = (FLAP_WALL_Y,)
 #: passent elles aussi sous le seuil de detection (17,5 mm) et sont prises pour
 #: des rainures. Le piege est silencieux : le build reussit, et la coque sort
 #: avec trois rainures collees la ou on en voulait une.
-#: BRIEF-0033 : 11 -> 19 rainures. BRIEF-0034 : 19, redistribuees sur la
-#: nouvelle trame (l'arriere s'est resserre, deux centres ont bouge).
+#: BRIEF-0033 : 11 -> 19 rainures. BRIEF-0034 : 19, redistribuees. BRIEF-0035 :
+#: 21, la trame courant desormais jusqu'a la poutre arriere (0,890 / 0,950).
 LATERAL_SEAMS: tuple[tuple[float, str], ...] = (
     (-0.9900, "fus"),
     (-0.8700, "fus"),
@@ -383,6 +478,8 @@ LATERAL_SEAMS: tuple[tuple[float, str], ...] = (
     (0.5750, "all"),
     (0.6495, "all"),
     (0.7245, "all"),
+    (0.8900, "all"),
+    (0.9500, "all"),
 )
 
 #: Demi-largeur d'une bande de rainure transversale : la bande fait 14 mm.
@@ -402,9 +499,12 @@ SEAM_T, SEAM_D = 0.0018, -0.0050
 # la grandeur a controler est donc la largeur d'un TRONCON CONTIGU de cellules,
 # jamais celle d'une cellule isolee. `cells()` groupe et filtre pour cela.
 #: Rainures (retrait 1,8 mm).
-MIN_RUN_SEAM, MIN_EDGE_SEAM, MIN_BAND_SEAM = 0.0060, 0.0060, 0.0100
-#: Panneaux (retrait cumule 15 mm).
-MIN_RUN_PLATE, MIN_EDGE_PLATE, MIN_BAND_PLATE = 0.0500, 0.0200, 0.0240
+MIN_RUN_SEAM, MIN_EDGE_SEAM, MIN_BAND_SEAM = 0.0050, 0.0040, 0.0100
+#: Panneaux. BRIEF-0035 : le fuselage ne fait plus que 0,30 m de large et la
+#: joue 56 mm ; les seuils de BRIEF-0034 (50 mm de troncon) auraient eteint
+#: SILENCIEUSEMENT tous les panneaux du corps central. Le retrait cumule tombe
+#: donc de 15 a 9 mm (`plate()`) et les seuils suivent.
+MIN_RUN_PLATE, MIN_EDGE_PLATE, MIN_BAND_PLATE = 0.0220, 0.0090, 0.0240
 
 
 def _stations() -> list[float]:
@@ -423,44 +523,41 @@ def _stations() -> list[float]:
 
 STATIONS: list[float] = _stations()
 
-EDGE_H = 0.012      # demi-epaisseur du bord d'aile (tranche de 24 mm)
-ANHEDRAL = 0.030    # affaissement du bout d'aile (lu sur la vue arriere)
-SPINE_HW = 0.072    # demi-largeur du sillon dorsal de nez
+# --- Le borde : ce qui fait qu'un fuselage n'est pas une aile -------------
+# BRIEF-0035. `EDGE_H` etait la demi-epaisseur du BORD D'AILE : 12 mm, une
+# tranche de couteau. Le bord de la section n'est plus un bord d'aile mais le
+# FLANC du fuselage : 88 mm au-dessus du plan, ~98 mm en dessous, soit un borde
+# vertical de 0,186 m. C'est ce borde qui rend le corps central lisible comme un
+# volume ferme une fois qu'il n'y a plus d'aile pour le prolonger.
+EDGE_H = 0.088
+ANHEDRAL = 0.010    # tres leger tombant de la joue vers le borde
+SPINE_HW = 0.044    # demi-largeur du sillon dorsal
 
-# --- Marche de flanc de fuselage et caniveau (BRIEF-0034) -----------------
-# C'est ici que se joue « fuselage porteur » plutot que « bande posee sur un
-# delta ». Avant, le plan d'aile partait de 0,65 fois la hauteur d'epine, soit
-# exactement la cote du fuselage a son bord : les deux surfaces se raccordaient
-# sans marche et la vue de dessus ne montrait qu'une lentille continue.
-#: Cote du plan d'aile a l'emplanture, en fraction de l'epine. 0,34 laisse une
-#: marche de ~9 cm au maitre-couple, franchie sur 4 % de la corde (WING_T[13]) :
-#: un flanc a ~75 deg, qui accroche une ombre nette a 20 deg de la verticale.
-WING_ROOT_FRAC = 0.34
-#: Caniveau creuse au pied de la marche : c'est LUI la « rainure visible » que
-#: le brief demande entre le fuselage et les nacelles. Sans lui, la marche seule
-#: laissait les deux volumes se toucher.
-GUTTER_DEPTH = 0.030
-#: Etendue du caniveau, en fraction de corde. Il s'eteint a `GUTTER_T`, soit
-#: juste sous la seconde rainure longitudinale (WING_T[12] = 0.194).
-GUTTER_T = 0.200
+#: Cote de la JOUE a son raccord au pont, en fraction de l'epine. La branche
+#: interne rend 0,65 x epine au meme x : la marche entre les deux vaut donc
+#: (0,65 - 0,42) x epine ~ 47 mm au maitre-couple, franchie sur `CHEEK_T[3]`
+#: (18 % de la joue, 10 mm) — un flanc a ~78 deg.
+#: (Le caniveau `GUTTER_*` de BRIEF-0034 a disparu : c'etait un ersatz de fente
+#: creuse dans une surface continue. La fente est maintenant reelle.)
+CHEEK_FRAC = 0.42
 
 # Verriere : (y, demi-largeur, hauteur au-dessus de son assise).
-# BRIEF-0033 : reculee de 0,13 m (le nez lit plus long), enfoncee plus
-# profond dans le pont (CANOPY_SINK 18 -> 26 mm, « verriere en retrait ») et
-# nettement plus bombee — c'est elle qui donne le point haut de la silhouette.
+# BRIEF-0035 : retrecie de 0,104 a 0,076 de demi-largeur. Le pont ne fait plus
+# que 0,094 de demi-largeur a cette station ; a 0,104 la verriere debordait sur
+# la joue et le puits vitre se serait ouvert dans le flanc.
 CANOPY: list[tuple[float, float, float]] = [
-    (-0.6600, 0.000, 0.000),
-    (-0.6300, 0.034, 0.040),
-    (-0.5900, 0.062, 0.076),
-    (-0.5400, 0.084, 0.108),
-    (-0.4800, 0.098, 0.132),
-    (-0.4150, 0.104, 0.142),
-    (-0.3500, 0.103, 0.140),
-    (-0.2850, 0.098, 0.128),
-    (-0.2200, 0.088, 0.104),
-    (-0.1700, 0.074, 0.074),
-    (-0.1300, 0.054, 0.040),
-    (-0.1000, 0.000, 0.000),
+    (-0.6600, 0.0000, 0.000),
+    (-0.6300, 0.0225, 0.040),
+    (-0.5900, 0.0399, 0.076),
+    (-0.5400, 0.0537, 0.108),
+    (-0.4800, 0.0624, 0.132),
+    (-0.4150, 0.0659, 0.142),
+    (-0.3500, 0.0659, 0.140),
+    (-0.2850, 0.0624, 0.128),
+    (-0.2200, 0.0563, 0.104),
+    (-0.1700, 0.0468, 0.074),
+    (-0.1300, 0.0347, 0.040),
+    (-0.1000, 0.0000, 0.000),
 ]
 CANOPY_SINK = 0.026  # assise de la verriere, sous la ligne d'epine
 
@@ -468,56 +565,73 @@ CANOPY_SINK = 0.026  # assise de la verriere, sous la ligne d'epine
 # Nacelles
 # ==========================================================================
 
-# BRIEF-0033 : ecartees et descendues pour devenir des VOLUMES PROPRES.
-# BRIEF-0034 : ecartees davantage (0.268 -> 0.352) et affinees de 8,5 % (rayon
-# maximal 0.164 -> 0.150). L'ecart n'est pas cosmetique : le fuselage a
-# desormais des flancs a 0.176 et un caniveau, et le fuseau doit tomber EN
-# DEHORS de ce caniveau, sinon les deux masses refusionnent en vue de dessus.
-# Bord interne du fuseau (carenage compris) : 0.208 — soit 32 mm d'air.
-NACELLE_X = 0.352      # ecartement des axes
-NACELLE_Z = -0.062     # axes nettement sous le plan de vol
+# BRIEF-0033 : ecartees et descendues. BRIEF-0034 : ecartees davantage.
+# BRIEF-0035 : la nacelle devient un **corps ferme et autonome**, du nez a la
+# tuyere. Ce n'est plus un bossage pose sur une aile : le profil de revolution
+# court de y = -0,440 (levre d'entree d'air) a y = 1,048 (col), soit 1,49 m —
+# 60 % de la longueur — et se ferme sur lui-meme aux deux bouts.
+#
+# Les deux abscisses qui comptent, et qu'on ne touche pas sans refaire tout le
+# partage de la demi-envergure documente plus haut :
+#   * bord INTERNE  = 0,270 - 0,098 = 0,172  ->  42 mm d'air jusqu'au fuselage ;
+#   * bord EXTERNE  = 0,270 + 0,098 = 0,368  ->  30 mm jusqu'au pivot d'aile.
+NACELLE_X = 0.270      # ecartement des axes
+NACELLE_Z = -0.040     # axes sous le plan du pont
 NACELLE_SEGMENTS = 24  # les tuyeres sont le point focal arriere : on les paie rondes
+
+#: Rayon courant du fuseau (hors collier) — sert aux mesures de degagement.
+NACELLE_R = 0.098
 
 # Profil de revolution de la nacelle : (y, rayon, materiau du segment sortant).
 # Le profil s'arrete au COL (y = 1.048) : au-dela c'est la couronne de petales,
 # qui est une piece mobile exportee a part.
-# ⚠️ Le dernier rayon (0.095) est repris a l'identique par `NOZZLE_BORE[0]` et
+# ⚠️ Le dernier rayon (0.077) est repris a l'identique par `NOZZLE_BORE[0]` et
 # par `PETAL_SECTIONS[0]` : les trois doivent bouger ENSEMBLE, sinon la vasque
 # emissive decroche du col et on voit au travers.
 NACELLE_PROFILE: list[tuple[float, float, str]] = [
-    (0.470, 0.000, "AA_Hull"),     # pole avant, noye dans l'aile
-    (0.510, 0.071, "AA_Hull"),
-    (0.570, 0.108, "AA_Hull"),
-    (0.650, 0.128, "AA_Hull"),
-    (0.730, 0.137, "AA_Hull"),
-    (0.780, 0.139, "AA_Panel"),    # bandeau bleu marine du fuseau
-    (0.850, 0.140, "AA_Panel"),
-    (0.890, 0.141, "AA_Hull"),
-    (0.905, 0.141, "AA_Hull"),
-    (0.915, 0.147, "AA_Greeble"),  # 1er anneau concentrique
-    (0.940, 0.147, "AA_Greeble"),
-    (0.948, 0.141, "AA_Hull"),
-    (0.962, 0.141, "AA_Greeble"),
-    (0.972, 0.150, "AA_Greeble"),  # collier mecanique
-    (1.005, 0.150, "AA_Greeble"),
-    (1.012, 0.139, "AA_Greeble"),
-    (1.018, 0.139, "AA_Trim"),
-    (1.023, 0.145, "AA_Trim"),     # jonc dore
-    (1.040, 0.145, "AA_Trim"),
-    (1.045, 0.137, "AA_Greeble"),
-    (1.048, 0.095, "AA_Greeble"),  # levre du COL — raccord des petales
+    (-0.440, 0.0000, "AA_Greeble"),  # pointe avant du cone d'entree
+    (-0.412, 0.0275, "AA_Greeble"),
+    (-0.386, 0.0421, "AA_Trim"),     # levre d'entree d'air, doree
+    (-0.360, 0.0502, "AA_Hull"),
+    (-0.300, 0.0599, "AA_Hull"),
+    (-0.200, 0.0713, "AA_Panel"),    # bandeau bleu marine avant
+    (-0.080, 0.0802, "AA_Panel"),
+    (0.040, 0.0867, "AA_Hull"),
+    (0.170, 0.0915, "AA_Hull"),
+    (0.300, 0.0948, "AA_Greeble"),
+    (0.330, 0.0948, "AA_Greeble"),   # ceinture technique (charniere d'aile)
+    (0.360, 0.0948, "AA_Hull"),
+    (0.480, 0.0972, "AA_Hull"),
+    (0.640, 0.0980, "AA_Panel"),
+    (0.780, 0.0980, "AA_Panel"),     # bandeau bleu marine du fuseau
+    (0.850, 0.0980, "AA_Hull"),
+    (0.890, 0.0980, "AA_Hull"),
+    (0.905, 0.0980, "AA_Hull"),
+    (0.915, 0.1029, "AA_Greeble"),   # 1er anneau concentrique
+    (0.940, 0.1029, "AA_Greeble"),
+    (0.948, 0.0980, "AA_Hull"),
+    (0.962, 0.0980, "AA_Greeble"),
+    (0.972, 0.1053, "AA_Greeble"),   # collier mecanique
+    (1.005, 0.1053, "AA_Greeble"),
+    (1.012, 0.0964, "AA_Greeble"),
+    (1.018, 0.0964, "AA_Trim"),
+    (1.023, 0.1013, "AA_Trim"),      # jonc dore
+    (1.040, 0.1013, "AA_Trim"),
+    (1.045, 0.0948, "AA_Greeble"),
+    (1.048, 0.0770, "AA_Greeble"),   # levre du COL — raccord des petales
 ]
+
 
 #: Buse emissive, EN AVANT du col : (y, rayon, decalage vertical de l'axe).
 #: L'axe remonte, de sorte que la vasque lumineuse s'incline VERS LE HAUT.
 #: Reponse directe a BRIEF-0026 : a 20 deg de la verticale, une buse purement
 #: axiale ne montre rien de son interieur.
 NOZZLE_BORE: tuple[tuple[float, float, float], ...] = (
-    (1.0480, 0.095, 0.000),   # doit coincider EXACTEMENT avec la fin du lathe
-    (1.0300, 0.088, 0.020),
-    (1.0000, 0.079, 0.034),
-    (0.9700, 0.064, 0.040),
-    (0.9550, 0.044, 0.042),
+    (1.0480, 0.077, 0.000),   # doit coincider EXACTEMENT avec la fin du lathe
+    (1.0300, 0.071, 0.016),
+    (1.0000, 0.064, 0.027),
+    (0.9700, 0.052, 0.032),
+    (0.9550, 0.036, 0.034),
 )
 NOZZLE_FLOOR_Y = 0.9450  # fond lumineux
 
@@ -533,51 +647,46 @@ PETAL_ARC = 3             # echantillons d'arc par petale
 PETAL_SCARF = 0.070
 #: (y, rayon interieur, rayon exterieur) — au repos, couronne FERMEE.
 PETAL_SECTIONS: tuple[tuple[float, float, float], ...] = (
-    (1.0480, 0.095, 0.115),   # col — c'est le PIVOT
-    (1.0900, 0.092, 0.121),
-    (1.1400, 0.092, 0.126),
-    (1.1900, 0.096, 0.131),
-    (1.2300, 0.102, 0.135),   # levre de sortie — POUPE (fixe la bbox)
+    (1.0480, 0.077, 0.093),   # col — c'est le PIVOT
+    (1.0900, 0.075, 0.098),
+    (1.1400, 0.075, 0.102),
+    (1.1900, 0.078, 0.106),
+    (1.2300, 0.083, 0.109),   # levre de sortie — POUPE (fixe la bbox)
 )
 
-# Carenage dorsal de nacelle : le bossage de coque qui noie l'avant de chaque
-# fuseau dans l'aile. (y, demi-largeur, hauteur au-dessus de l'axe de nacelle).
-# BRIEF-0034 : retreci de 0.176 a 0.144 de demi-largeur. Le carenage etait la
-# piece qui refermait le caniveau par le haut — un fuseau bien ecarte ne sert a
-# rien si son carenage vient recouvrir le flanc du fuselage.
+# Carenage dorsal de nacelle : l'arete technique posee sur le DOS du fuseau, qui
+# porte le pied de derive. (y, demi-largeur, hauteur au-dessus de l'axe).
+# ⚠️ BRIEF-0035 : sa demi-largeur ne doit JAMAIS depasser `NACELLE_R` (0,121).
+# Le carenage etait, avant ce brief, la piece qui refermait par le haut l'espace
+# entre le fuselage et le fuseau ; un carenage plus large que le fuseau
+# reboucherait la fente 1 en vue de dessus et annulerait tout le brief.
 FAIRING: list[tuple[float, float, float]] = [
-    (0.240, 0.000, 0.000),
-    (0.340, 0.074, 0.110),
-    (0.440, 0.108, 0.148),
-    (0.560, 0.132, 0.172),
-    (0.700, 0.142, 0.186),
-    (0.820, 0.144, 0.190),
-    (0.920, 0.138, 0.180),
-    (0.980, 0.122, 0.158),
-    (1.020, 0.000, 0.000),
+    (0.180, 0.0000, 0.0000),
+    (0.300, 0.0502, 0.0583),
+    (0.440, 0.0745, 0.0794),
+    (0.560, 0.0875, 0.0891),
+    (0.700, 0.0940, 0.0940),
+    (0.820, 0.0956, 0.0956),
+    (0.920, 0.0907, 0.0891),
+    (0.980, 0.0778, 0.0745),
+    (1.020, 0.0000, 0.0000),
 ]
 
-# Epaule de nacelle : le PROLONGEMENT AVANT du fuseau, pose sur le pont d'aile.
-# C'est la piece qui manquait pour que le brief soit tenu a la lettre — il
-# demande des nacelles courant sur 60 a 75 % de la longueur, quand fuseau +
-# carenage n'en faisaient que 38 %. Avec l'epaule, l'ensemble court de
-# y = -0,360 a y = 1,230, soit **1,59 m = 65 % de la longueur**.
-# (y, demi-largeur, hauteur au-dessus du pont).
-# Chaque demi-largeur est bornee par le bord d'attaque a sa station : a
-# y = -0,26 l'aile ne fait que 0,423 de demi-envergure et l'epaule, centree sur
-# 0,352, ne peut pas depasser 0,071 sans deborder dans le vide.
-SHOULDER: list[tuple[float, float, float]] = [
-    (-0.260, 0.000, 0.000),
-    (-0.140, 0.052, 0.034),
-    (0.020, 0.086, 0.056),
-    (0.200, 0.106, 0.070),
-    (0.400, 0.120, 0.080),
-    (0.580, 0.126, 0.084),
-    (0.740, 0.120, 0.078),
-    (0.860, 0.000, 0.000),
+# --- Caisson de liaison fuselage <-> nacelle (BRIEF-0035) -----------------
+# LE point de contact voulu, et le seul. Il court de y = 0,010 a 0,380 : c'est
+# lui qui laisse la fente 1 ouverte par l'AVANT (de -0,440 a 0,010) et par
+# l'ARRIERE (de 0,380 a 1,230). Deplacer ses bornes, c'est deplacer les deux
+# echancrures que le critere d'acceptation du brief mesure.
+# (y, x interieur, x exterieur, z haut, z bas).
+BRIDGE: list[tuple[float, float, float, float, float]] = [
+    (0.010, 0.082, 0.270, 0.028, -0.056),
+    (0.090, 0.082, 0.270, 0.054, -0.072),
+    (0.220, 0.082, 0.270, 0.058, -0.076),
+    (0.330, 0.082, 0.270, 0.040, -0.066),
+    (0.380, 0.082, 0.270, 0.012, -0.038),
 ]
-#: Nervures transversales de l'epaule (meme raison que `SPINE_FRAMES`).
-SHOULDER_FRAMES: tuple[float, ...] = (-0.060, 0.140, 0.340, 0.540, 0.700)
+#: Nervures transversales du caisson (meme raison que `SPINE_FRAMES`).
+BRIDGE_FRAMES: tuple[float, ...] = (0.055, 0.170, 0.290)
 
 # --- Derives inclinees (ADR-0014) -----------------------------------------
 # BRIEF-0033 se les interdisait et les remplacait par des rails verticaux de
@@ -588,19 +697,30 @@ SHOULDER_FRAMES: tuple[float, ...] = (-0.060, 0.140, 0.340, 0.540, 0.700)
 #: Inclinaison vers l'exterieur, depuis la verticale. A 30 deg la derive
 #: projette 160 mm en vue de dessus (contre 0 pour une derive droite) : c'est
 #: cette projection qui la rend lisible dans un shmup vertical.
-FIN_CANT_DEG = 34.0
-FIN_HEIGHT = 0.300       # envergure de la derive, mesuree dans son propre plan
+#: BRIEF-0035 : la derive est le seul element du vaisseau qui pouvait REBOUCHER
+#: la fente 2 (nacelle/aile) sans qu'aucun controle s'en apercoive — la bounding
+#: box ne mesure pas les trous. Premiere parade : la coucher a 22 deg. Le rendu
+#: a montre qu'a 22 deg elle ne se voit plus du tout d'en haut, ce qui annule la
+#: raison meme de l'avoir inclinee (BRIEF-0034 §5).
+#: Parade retenue : la RECULER derriere l'aile (y = 0,600 a 1,010, quand la lame
+#: la plus repliee ne depasse pas y = 0,653) et la redresser a 30 deg. Elle
+#: projette alors 145 mm en vue de dessus, dans une zone ou il n'y a rien a
+#: boucher.
+FIN_CANT_DEG = 30.0
+FIN_HEIGHT = 0.290       # envergure de la derive, mesuree dans son propre plan
 #: Pied enfonce dans le carenage — mais de 6 cm seulement. A 3 cm (premier
 #: essai) 45 % de la derive etait NOYEE dans le carenage et il n'en sortait
 #: qu'un moignon : le rendu l'a montre, le calcul ne l'aurait pas dit.
-FIN_ROOT_Z = 0.070
+#: BRIEF-0035 : le carenage a baisse avec la nacelle, le pied suit (0,070 ->
+#: 0,040) — sinon la derive flotte 3 cm au-dessus de son socle.
+FIN_ROOT_Z = 0.040
 #: (fraction d'envergure, y bord d'attaque, y bord de fuite, demi-epaisseur).
 FIN: tuple[tuple[float, float, float, float], ...] = (
-    (0.00, 0.400, 0.880, 0.026),
-    (0.28, 0.492, 0.872, 0.021),
-    (0.58, 0.596, 0.862, 0.016),
-    (0.82, 0.684, 0.852, 0.011),
-    (1.00, 0.756, 0.844, 0.007),
+    (0.00, 0.600, 1.012, 0.024),
+    (0.28, 0.674, 1.000, 0.019),
+    (0.58, 0.762, 0.988, 0.015),
+    (0.82, 0.836, 0.976, 0.010),
+    (1.00, 0.896, 0.966, 0.006),
 )
 
 # --- Tuyere d'axe ---------------------------------------------------------
@@ -621,19 +741,10 @@ TAIL_NOZZLE: list[tuple[float, float, str]] = [
 TAIL_NOZZLE_Z = 0.014    # axe, entre le dessus et le dessous de l'arete
 TAIL_BORE_FLOOR = 1.120  # fond emissif, en avant de la levre
 
-# Ecope ventrale de nacelle : (y, demi-largeur, profondeur SOUS le ventre
-# d'aile). C'est la couche qui manquait le plus au profil — sans elle, l'aile
-# et le fuseau se touchaient sans transition et la lecture restait « plaque ».
-INTAKE: list[tuple[float, float, float]] = [
-    (0.030, 0.000, 0.000),
-    (0.090, 0.072, -0.062),
-    (0.190, 0.098, -0.100),
-    (0.340, 0.110, -0.122),
-    (0.500, 0.114, -0.130),
-    (0.660, 0.112, -0.126),
-    (0.780, 0.104, -0.112),
-    (0.850, 0.000, 0.000),
-]
+# (BRIEF-0035 : `INTAKE`, l'ecope ventrale, a disparu. Elle n'existait que pour
+#  relier le fuseau au plan d'aile par le dessous ; il n'y a plus de plan d'aile
+#  a cet endroit, et la nacelle a desormais sa propre entree d'air a l'avant.
+#  `SHOULDER` a disparu pour la meme raison.)
 
 # ==========================================================================
 # Structures dorsale, ventrale et de bout d'aile
@@ -647,16 +758,19 @@ INTAKE: list[tuple[float, float, float]] = [
 # 5,5 cm au-dessus du pont et n'a aucune surface inclinee.
 #: BRIEF-0034 : la poutre ne se termine plus en lame effilee a y = 1,150 mais
 #: en culot rond a y = 1,030, ou vient se poser `TAIL_NOZZLE`.
+#: BRIEF-0035 : demi-largeurs ramenees sous celles du pont. Le pont ne fait plus
+#: que 0,094 de demi-largeur au maitre-couple : une arete de 0,088 l'aurait
+#: recouvert en entier et le fuselage aurait lu comme une simple poutre.
 SPINE: list[tuple[float, float, float, float]] = [
-    (-0.1450, 0.010, 0.198, 0.150),
-    (-0.0800, 0.060, 0.224, 0.140),
-    (0.0200, 0.078, 0.244, 0.130),
-    (0.1800, 0.086, 0.260, 0.120),
-    (0.3600, 0.088, 0.258, 0.090),
-    (0.5600, 0.086, 0.250, 0.020),
-    (0.7600, 0.082, 0.236, -0.060),
-    (0.9600, 0.076, 0.216, -0.130),
-    (1.0300, 0.070, 0.196, -0.156),
+    (-0.1450, 0.0087, 0.198, 0.150),
+    (-0.0800, 0.0381, 0.224, 0.140),
+    (0.0200, 0.0485, 0.244, 0.130),
+    (0.1800, 0.0537, 0.260, 0.120),
+    (0.3600, 0.0555, 0.258, 0.090),
+    (0.5600, 0.0537, 0.250, 0.020),
+    (0.7600, 0.0503, 0.236, -0.060),
+    (0.9600, 0.0451, 0.216, -0.130),
+    (1.0300, 0.0399, 0.196, -0.156),
 ]
 
 #: Cadres transversaux de l'arete dorsale. Sans eux, l'arete lit — au rendu de
@@ -672,58 +786,40 @@ SPINE_FRAMES: tuple[float, ...] = (0.060, 0.300, 0.520, 0.720, 0.900)
 #: BRIEF-0034 : les trois premieres stations maigrissent. Le nez etant devenu
 #: une aiguille (0,046 de demi-envergure a y = -0,98), une quille de 0,058
 #: aurait deborde LATERALEMENT de la coque qu'elle est censee porter.
+#: BRIEF-0035 : la quille descend a -0,352 et court jusqu'a 0,980. Elle porte a
+#: elle seule plus de la moitie de la hauteur, et elle est invisible a 20 deg de
+#: la verticale, masquee par le pont.
 KEEL: list[tuple[float, float, float, float]] = [
-    (-1.0700, 0.030, -0.026, -0.078),
-    (-0.9800, 0.044, -0.044, -0.116),
-    (-0.8000, 0.062, -0.076, -0.172),
-    (-0.5600, 0.086, -0.120, -0.238),
-    (-0.3000, 0.098, -0.150, -0.296),
-    (-0.0200, 0.106, -0.164, -0.338),
-    (0.2200, 0.108, -0.170, -0.345),
-    (0.4200, 0.100, -0.168, -0.318),
-    (0.6000, 0.088, -0.160, -0.252),
-    (0.7600, 0.072, -0.152, -0.186),
-    (0.8500, 0.012, -0.156, -0.162),
+    (-1.0700, 0.0225, -0.026, -0.078),
+    (-0.9800, 0.0312, -0.044, -0.116),
+    (-0.8000, 0.0451, -0.076, -0.172),
+    (-0.5600, 0.0624, -0.120, -0.238),
+    (-0.3000, 0.0728, -0.150, -0.296),
+    (-0.0200, 0.0797, -0.164, -0.342),
+    (0.2200, 0.0815, -0.170, -0.352),
+    (0.4200, 0.0763, -0.168, -0.330),
+    (0.6000, 0.0676, -0.160, -0.280),
+    (0.7600, 0.0572, -0.152, -0.228),
+    (0.9000, 0.0451, -0.148, -0.190),
+    (0.9800, 0.0104, -0.150, -0.160),
 ]
 
 #: Cadres transversaux de la quille (meme raison que `SPINE_FRAMES`, cote
 #: profil : sans eux la quille est une grande lentille blanche lisse).
-KEEL_FRAMES: tuple[float, ...] = (-0.760, -0.420, -0.100, 0.180, 0.440, 0.660)
+KEEL_FRAMES: tuple[float, ...] = (-0.760, -0.420, -0.100, 0.180, 0.440, 0.660, 0.860)
 
-#: Nervures de l'ecope ventrale, aux memes fins.
-INTAKE_FRAMES: tuple[float, ...] = (0.240, 0.430, 0.620)
-
-#: Stations de la lisse de nez (chine). Elle court a la jonction fuselage/aile
-#: et trace, de profil comme de trois quarts, la ligne horizontale qui separe
-#: le corps superieur du corps inferieur. C'est la couche la moins couteuse de
-#: toute la superposition : deux tubes de 8 sections.
+#: Stations de la lisse de nez (chine). Elle court a la jonction pont/joue et
+#: trace, de profil comme de trois quarts, la ligne horizontale qui separe le
+#: corps superieur du corps inferieur. C'est la couche la moins couteuse de
+#: toute la superposition : deux tubes de 12 sections.
+#: BRIEF-0035 : prolongee jusqu'a la poupe. Le fuselage etant devenu un corps
+#: autonome sur toute la longueur, il n'y a plus de raison d'arreter sa ligne de
+#: flanc au tiers avant.
 CHINE_Y: tuple[float, ...] = (
     -1.0400, -0.9600, -0.8700, -0.7800, -0.6700, -0.5500, -0.4300, -0.3200,
-    -0.2400,
+    -0.2400, -0.1000, 0.0600, 0.2200, 0.3800, 0.5400, 0.7000, 0.8600,
+    0.9800,
 )
-
-# Lisse de bout d'aile. Elle etait, jusqu'a BRIEF-0033, un RAIL de 0,20 m de
-# haut qui tenait lieu de derive. Les derives etant desormais admises
-# (ADR-0014), la lisse retombe a son role utile : epaissir le bord d'attaque
-# externe pour que la lame ne lise pas comme une lame de couteau, et porter le
-# feu de bout d'aile. Hauteur divisee par deux — ce qu'on retire ici, la derive
-# le rend au centre de la silhouette, ou il compte davantage.
-RAIL_X = 0.846        # sous la largeur max (0.875) : ne touche pas la bbox
-RAIL_HW = 0.013       # demi-epaisseur de la lame
-#: Retrait par rapport au bord d'attaque : la lisse le suit tant qu'il est en
-#: deca de `RAIL_X`, puis se redresse. Elle reste ainsi POSEE sur l'aile.
-RAIL_INSET = 0.030
-#: (y, hauteur au-dessus de l'extrados, profondeur sous l'intrados).
-#: Elle s'arrete a y = 0,750, EN AVANT de la charniere de volet (0,760) : au-dela
-#: la coque est echancree et la lisse flotterait au-dessus du vide.
-RAIL: list[tuple[float, float, float]] = [
-    (0.3000, 0.012, 0.006),
-    (0.3700, 0.048, 0.026),
-    (0.4600, 0.060, 0.032),
-    (0.6200, 0.060, 0.032),
-    (0.7000, 0.042, 0.022),
-    (0.7500, 0.012, 0.006),
-]
 
 # Longeron ventral avant : ecartement (a l'axe) des deux tubes du canon.
 # La culasse des tubes doit rester SOUS la coque : la demi-envergure du
@@ -738,9 +834,13 @@ BARREL_R = 0.015
 BARREL_TIP = -1.0550    # pointe des tubes
 MUZZLE_Y = -1.0700      # bouche de tir : juste devant les tubes
 
-# Canons additionnels montes sur l'aile (positions laterales, a l'axe).
-WING_MUZZLE_X = 0.500   # canon d'aile (power 3) : sur le bord d'attaque, a mi-aile
-TIP_MUZZLE_X = 0.800    # pod de bout d'aile (power 5) : sous la largeur max 0.875
+# Canons montes sur l'aile : exprimes en FRACTION D'ENVERGURE de la lame, plus
+# en metres. BRIEF-0035 : l'aile ne commence plus qu'a x = 0,545, si bien que
+# `WING_MUZZLE_X = 0.500` ne designait plus rien — c'est exactement le piege
+# decrit dans `pratique-detail-en-fraction-de-corde.md`, applique cette fois a
+# un point d'attache et non a un bandeau.
+WING_MUZZLE_S = 0.34    # canon d'aile (power 3), au tiers de la lame
+TIP_MUZZLE_S = 0.94     # pod de bout d'aile (power 5), au ras du bout
 
 
 # ==========================================================================
@@ -773,61 +873,46 @@ def lerp_row(table, y: float, column: int) -> float:
 
 
 def section_params(y: float) -> tuple[float, float, float, float]:
-    """(demi-envergure, demi-fuselage, epine, ventre) a la station `y`.
-
-    C'est la GEOMETRIE de la section : elle ignore l'echancrure des volets, qui
-    ne coupe que l'etendue laterale (`section_cut`). Les deux doivent rester
-    separees, sinon le volet et son logement n'auraient pas le meme profil et
-    on verrait une marche au repos.
-    """
+    """(demi-largeur de coque, demi-pont, epine, ventre) a la station `y`."""
     w = lerp_table(PLANFORM, y)
     f = min(lerp_table(FUSELAGE, y), w * 0.94)
     return w, f, lerp_table(CROWN, y), lerp_table(BELLY, y)
 
 
 def section_cut(y: float) -> float:
-    """Demi-largeur REELLE de la coque : `section_params` sauf echancrure volet."""
-    w = lerp_table(PLANFORM, y)
-    if y >= FLAP_HINGE_Y - 1e-9:
-        return min(w, FLAP_ROOT_X)
-    return w
+    """Demi-largeur REELLE de la coque loftee.
+
+    BRIEF-0035 : elle vaut desormais toujours `PLANFORM`. L'echancrure de volet
+    a quitte la coque principale — le volet est un enfant de l'aile, et l'aile
+    est une piece a part entiere. La fonction reste, parce qu'elle est appelee
+    partout et qu'elle documente la distinction entre geometrie et etendue.
+    """
+    return lerp_table(PLANFORM, y)
 
 
 def _edge_h(crown: float) -> float:
-    """Bord d'aile : jamais plus epais que le corps (sinon nez creuse)."""
+    """Demi-hauteur du BORDE lateral, bornee par l'epaisseur locale du corps."""
     return min(EDGE_H, 0.55 * crown) if crown > 1e-6 else 0.0
 
 
-def _wing_shoulder(crown: float, eh: float) -> float:
-    """Cote du plan d'aile a l'emplanture (BRIEF-0034).
+def _cheek_shoulder(crown: float, eh: float) -> float:
+    """Cote de la joue a son raccord au pont.
 
-    Le `max(..., eh)` n'est pas de la coquetterie : vers la pointe du nez,
-    `eh` est lui-meme borne a 0.55 * crown, donc superieur a 0.34 * crown. Sans
-    la garde, l'aile serait plus EPAISSE au bord qu'a l'emplanture sur les
-    quinze premiers centimetres, et le nez sortirait creuse.
+    Le `max(..., eh)` n'est pas de la coquetterie : vers la pointe du nez, `eh`
+    est lui-meme borne a 0.55 x crown, donc superieur a 0.42 x crown. Sans la
+    garde, le bord serait plus HAUT que le pont sur les quinze premiers
+    centimetres, et le nez sortirait creuse.
     """
-    return max(WING_ROOT_FRAC * crown, eh)
-
-
-def _gutter(t: float, crown: float) -> float:
-    """Creux du caniveau d'emplanture a la fraction de corde `t`.
-
-    L'amplitude est plafonnee par l'epine locale : au nez, ou la coque fait
-    4 cm d'epaisseur, un caniveau de 30 mm la traverserait de part en part.
-    """
-    if t >= GUTTER_T:
-        return 0.0
-    amp = min(GUTTER_DEPTH, 0.22 * crown)
-    return amp * (1.0 - t / GUTTER_T)
+    return max(CHEEK_FRAC * crown, eh)
 
 
 def z_top(x: float, w: float, f: float, crown: float, belly: float) -> float:
-    """Surface superieure : bombe de fuselage, MARCHE, caniveau, puis aile mince.
+    """Surface superieure : bombe de pont, MARCHE, puis joue jusqu'au borde.
 
-    La marche est implicite : la branche fuselage rend 0,65 x crown au bord
-    (a = f) tandis que la branche aile part de 0,34 x crown. Les deux sommets
-    voisins de la section sont distants de 4 % de corde seulement, donc le pont
-    de faces qui les relie EST le flanc du fuselage.
+    La marche est implicite : la branche pont rend 0,65 x crown au bord (a = f)
+    tandis que la branche joue part de 0,42 x crown. Les deux sommets voisins de
+    la section sont distants de 18 % de la joue seulement, donc le pont de faces
+    qui les relie EST le flanc superieur du fuselage.
     """
     a = abs(x)
     if f > 1e-6 and a <= f:
@@ -835,9 +920,8 @@ def z_top(x: float, w: float, f: float, crown: float, belly: float) -> float:
     t = (a - f) / max(w - f, 1e-6)
     t = min(max(t, 0.0), 1.0)
     eh = _edge_h(crown)
-    shoulder = _wing_shoulder(crown, eh)
-    plane = -ANHEDRAL * t * t + (shoulder - eh) * (1.0 - t) ** 1.4 + eh
-    return plane - _gutter(t, crown)
+    shoulder = _cheek_shoulder(crown, eh)
+    return -ANHEDRAL * t * t + (shoulder - eh) * (1.0 - t) ** 1.4 + eh
 
 
 def z_bot(x: float, w: float, f: float, crown: float, belly: float) -> float:
@@ -846,66 +930,60 @@ def z_bot(x: float, w: float, f: float, crown: float, belly: float) -> float:
         return belly * (1.0 - 0.35 * (a / f) ** 2)
     t = (a - f) / max(w - f, 1e-6)
     t = min(max(t, 0.0), 1.0)
-    eh = _edge_h(crown)
-    shoulder = 0.65 * (-belly)
-    return -ANHEDRAL * t * t - ((shoulder - eh) * (1.0 - t) ** 1.4 + eh)
+    eh = min(_edge_h(crown), 0.62 * (-belly)) if belly < 0.0 else _edge_h(crown)
+    shoulder = 0.72 * (-belly)
+    return -ANHEDRAL * t * t - (max(shoulder - eh, 0.0) * (1.0 - t) ** 1.4 + eh)
 
 
 # --------------------------------------------------------------------------
-# Section transversale : 39 abscisses
+# Section transversale : 17 abscisses (BRIEF-0035 : elles etaient 39)
 # --------------------------------------------------------------------------
+# Le corps central ne fait plus que 0,300 m de large. Les 15 fractions de corde
+# heritees de l'aile delta y auraient decoupe des cellules de 4 mm : `cells()`
+# les aurait toutes eteintes en silence et la coque serait sortie NUE, sans
+# qu'aucun controle ne le signale. On redimensionne donc la trame avec le corps.
 
-#: Fractions de la corde d'aile (t = 1 au bord d'aile, t = 0 a l'emplanture).
-#: Les PAIRES serrees (0.684/0.652 et 0.226/0.194) delimitent les deux rainures
-#: LONGITUDINALES : elles suivent la fleche de l'aile, comme les lignes de
-#: panneau rayonnantes de la planche, au lieu de couper droit.
-#: BRIEF-0034 : l'avant-derniere fraction passe de 0,100 a 0,040. Le segment 13
-#: est le FLANC du fuselage : plus il est etroit, plus la marche est raide. A
-#: 0,100 elle tombait a 55 deg (un conge) ; a 0,040 elle est a ~75 deg (un
-#: flanc). Le segment 12 (0,194 -> 0,040) porte le caniveau.
-WING_T: tuple[float, ...] = (
-    1.000, 0.955, 0.900, 0.800, 0.700,
-    0.684, 0.652,          # <- bande de rainure longitudinale A (segment 5)
-    0.550, 0.440, 0.330, 0.242,
-    0.226, 0.194,          # <- bande de rainure longitudinale B (segment 11)
-    0.040, 0.000,          # 12 = caniveau, 13 = flanc, 14 = emplanture
+#: Fractions de la JOUE (t = 1 au borde, t = 0 au raccord du pont).
+#: La paire serree 0.760/0.666 porte l'unique rainure longitudinale que la joue
+#: peut loger (5 mm de large) ; le segment 0.180 -> 0.000 est la MARCHE.
+CHEEK_T: tuple[float, ...] = (
+    1.000,
+    0.760, 0.666,   # <- bande de rainure longitudinale (segment 1)
+    0.180,          # 2 = joue plate
+    0.000,          # 3 = MARCHE (flanc superieur du fuselage)
 )
-#: Fractions du trajet emplanture -> sillon dorsal.
-FUS_U: tuple[float, ...] = (0.34, 0.67, 1.00)
+#: Fractions du trajet pont -> sillon dorsal.
+FUS_U: tuple[float, ...] = (0.55, 1.00)
 #: Fractions du sillon dorsal -> axe.
 SPINE_U: tuple[float, ...] = (0.55, 0.00)
 
 
 def section_x(w: float, f: float) -> list[float]:
-    """Les 39 abscisses d'une section, de babord (+W) a tribord (-W).
-
-    `w` est ici l'etendue REELLE (`section_cut`), pas la geometrie : c'est ce
-    qui echancre proprement le logement des volets sans deformer le profil.
-    """
+    """Les 17 abscisses d'une section, de babord (+w) a tribord (-w)."""
     s = min(SPINE_HW, 0.60 * f)
     d = w - f
-    half = [f + t * d for t in WING_T]           # 0..14  (14 = f)
-    half += [f + (s - f) * u for u in FUS_U]     # 15..17 (17 = s)
-    half += [s * u for u in SPINE_U]             # 18..19 (19 = axe)
+    half = [f + t * d for t in CHEEK_T]          # 0..4  (4 = f)
+    half += [f + (s - f) * u for u in FUS_U]     # 5..6  (6 = s)
+    half += [s * u for u in SPINE_U]             # 7..8  (8 = axe)
     return half + [-v for v in reversed(half[:-1])]
 
 
 #: Nombre d'abscisses (= sommets de la surface superieure d'une section).
-N_TOP = len(section_x(1.0, 0.4))          # 39
+N_TOP = len(section_x(1.0, 0.4))          # 17
 #: Nombre de segments par surface (superieure ou inferieure).
-N_SEG = N_TOP - 1                          # 38 sommets -> index 0..37
-RIM_STARBOARD = N_TOP - 1                  # 38
-RIM_PORT = 2 * N_TOP - 1                   # 77
+N_SEG = N_TOP - 1                          # 16 segments -> index 0..15
+RIM_STARBOARD = N_TOP - 1                  # 16
+RIM_PORT = 2 * N_TOP - 1                   # 33
 
-#: Index de segment des deux rainures LONGITUDINALES (cote babord).
-LONG_SEAM_SEGS: tuple[int, ...] = (5, 11)
-#: Segment du caniveau d'emplanture, et segment du flanc de fuselage.
-GUTTER_SEG, FLANK_SEG = 12, 13
+#: Index de segment de la rainure LONGITUDINALE de joue (cote babord).
+LONG_SEAM_SEGS: tuple[int, ...] = (1,)
+#: Segment de la MARCHE (flanc superieur du fuselage).
+FLANK_SEG = 3
 #: Segments du sillon dorsal (creuse en tant que tel).
-SPINE_SEGS: tuple[int, ...] = (17, 18)
+SPINE_SEGS: tuple[int, ...] = (6, 7)
 #: Etendue laterale des rainures transversales (voir `LATERAL_SEAMS`).
-SEG_SPAN_ALL = tuple(range(1, N_SEG))                 # tout sauf les bords d'aile
-SEG_SPAN_FUS = tuple(range(14, N_SEG - 14 + 1))       # coeur du fuselage
+SEG_SPAN_ALL = tuple(range(1, N_SEG))                 # tout sauf les bordes
+SEG_SPAN_FUS = tuple(range(4, N_SEG - 4))             # pont seul (4..11)
 
 
 def top_face(j: int) -> int:
@@ -1061,35 +1139,22 @@ def build_hull() -> object:
         """
         if not faces:
             return
-        ak.inset_panel(bm, faces, "AA_Hull", thickness=0.006, depth=-0.005)
-        ak.inset_panel(bm, faces, material, thickness=0.009, depth=-0.006)
+        ak.inset_panel(bm, faces, "AA_Hull", thickness=0.004, depth=-0.004)
+        ak.inset_panel(bm, faces, material, thickness=0.005, depth=-0.005)
 
     # ---------------------------------------------------------------------
     # 1. Elements identitaires : ils ont priorite sur tout le reste.
     # ---------------------------------------------------------------------
 
-    # --- cloison du logement de volet : la bande 0.6070 -> 0.6100 est la
-    #     seule surface presque verticale de l'aile. On la noircit pour que la
-    #     ligne d'articulation se lise meme volet ferme.
-    wall_segs = both(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-    ak.set_material(pick(0.6075, 0.6095, wall_segs), "AA_Greeble")
-    ak.set_material(pick(0.6075, 0.6095, wall_segs, "bot"), "AA_Greeble")
-
-    # --- caniveau d'emplanture : la « rainure visible » entre le fuselage et
-    #     les nacelles. Elle est sombre sur toute la longueur, et l'epaule de
-    #     nacelle vient en recouvrir la moitie externe : ce qui reste a l'œil
-    #     est une fente de ~22 mm au pied du flanc, sur 1,8 m de long.
-    ak.set_material(pick(-0.420, 0.845, both(GUTTER_SEG)), "AA_Greeble")
-
-    # --- flanc de fuselage : peint, jamais creuse. Il ne fait que 4 % de la
-    #     corde (24 mm au maitre-couple) — un `plate()`, qui retire 15 mm au
-    #     contour, l'effondrerait. C'est la seule surface quasi verticale que
-    #     la camera de jeu voit : le bleu profond y trace la ligne de flanc.
-    ak.set_material(pick(-0.700, 0.845, both(FLANK_SEG)), "AA_Panel")
+    # --- MARCHE de flanc : peinte, jamais creusee. Elle ne fait que 10 mm de
+    #     large — un `plate()` l'effondrerait. C'est la seule surface quasi
+    #     verticale que la camera de jeu voit du corps central : le bleu profond
+    #     y trace la ligne de flanc sur toute la longueur.
+    ak.set_material(pick(-0.860, 1.020, both(FLANK_SEG)), "AA_Panel")
 
     # --- puits de verriere : bordure doree, cuve sombre (cf. planche) -----
-    well = pick(-0.680, -0.085, both(15, 16, 17, 18))
-    border = ak.inset_panel(bm, well, "AA_Greeble", thickness=0.012, depth=-0.016)
+    well = pick(-0.680, -0.085, both(4, 5, 6, 7))
+    border = ak.inset_panel(bm, well, "AA_Greeble", thickness=0.008, depth=-0.014)
     ak.set_material(border, "AA_Trim")
 
     # --- sillon dorsal creuse, du nez a la verriere. En arriere, l'arete
@@ -1097,29 +1162,25 @@ def build_hull() -> object:
     #     serait payer de la geometrie invisible.
     ak.inset_panel(
         bm, pick(-1.100, -0.700, both(*SPINE_SEGS)),
-        "AA_Greeble", thickness=0.005, depth=-0.016,
+        "AA_Greeble", thickness=0.004, depth=-0.014,
     )
-    ak.set_material(pick(-0.085, 0.845, both(*SPINE_SEGS)), "AA_Greeble")
+    ak.set_material(pick(-0.085, 1.020, both(*SPINE_SEGS)), "AA_Greeble")
 
-    # --- bord d'attaque externe : coiffe doree + marquage rouge, en AVANT de
-    #     la lisse de bout d'aile (qui commence a y = 0.260) pour que les deux
-    #     ne se recouvrent pas, puis tranche doree jusqu'au bout d'aile.
-    ak.set_material(pick(0.060, 0.150, both(0)), "AA_Trim")
-    ak.set_material(pick(0.150, 0.230, both(0)), "AA_Marking_Red")
-    ak.set_material(pick(0.230, 0.300, both(0)), "AA_Trim")
-    ak.set_material(pick_rim(0.300, 0.750), "AA_Trim")
+    # --- BORDE : la tranche laterale du fuselage, 0,18 m de haut. C'est la
+    #     nouveaute de BRIEF-0035 et c'est ce qui fait lire un corps ferme :
+    #     on la peint en bleu profond sur toute la partie droite, avec une
+    #     coiffe doree au nez et un marquage rouge court.
+    ak.set_material(pick_rim(-0.860, 1.020), "AA_Panel")
+    ak.set_material(pick_rim(-1.100, -0.900), "AA_Trim")
+    ak.set_material(pick_rim(-0.560, -0.480), "AA_Marking_Red")
 
-    # --- coiffes dorees de bord d'attaque avant (deux marques symetriques).
-    #     Reculees par BRIEF-0034 : en avant de y = -0.66 le nouveau nez est si
-    #     fin que la corde d'aile n'y fait plus 5 mm.
+    # --- arete de joue : tranche doree le long du bord, cote dessus.
     ak.set_material(pick(-0.660, -0.480, both(0)), "AA_Trim")
-    ak.set_material(pick_rim(-0.660, -0.480), "AA_Trim")
+    ak.set_material(pick(0.180, 0.320, both(0)), "AA_Trim")
 
-    # --- flancs de nez : PEINTS, pas creuses. Sur l'aiguille du nez la corde
-    #     d'aile tombe sous 10 cm et `plate()` — qui retire 15 mm au contour —
-    #     s'y effondre. Le bleu y est donc pose a plat, ce qui suffit : a cette
-    #     station la coque est vue presque de chant.
-    ak.set_material(pick(-1.060, -0.560, both(2, 3, 6, 7)), "AA_Panel")
+    # --- flancs de nez : PEINTS, pas creuses. Sur l'aiguille du nez la joue
+    #     tombe sous 20 mm et `plate()` s'y effondre.
+    ak.set_material(pick(-1.060, -0.700, both(2)), "AA_Panel")
 
     # ---------------------------------------------------------------------
     # 2. Rainures LONGITUDINALES. Posees AVANT les panneaux : elles sont la
@@ -1129,7 +1190,7 @@ def build_hull() -> object:
     for seg in sorted(ALL_LONG_SEAMS):
         ak.inset_panel(
             bm,
-            cells(-1.200, 0.845, (seg,), min_run=MIN_RUN_SEAM,
+            cells(-1.200, 1.020, (seg,), min_run=MIN_RUN_SEAM,
                   min_edge=MIN_EDGE_SEAM, min_band=MIN_BAND_SEAM),
             "AA_Hull",
             thickness=SEAM_T,
@@ -1139,21 +1200,18 @@ def build_hull() -> object:
     # ---------------------------------------------------------------------
     # 3. Panneaux bleu profond, a deux niveaux (aplats de la planche).
     # ---------------------------------------------------------------------
-    # BRIEF-0034 : les segments 12 et 13 sortent de cette liste — ils sont
-    # devenus le caniveau et le flanc de fuselage, et ne sont plus du plaquage.
-    # Le flanc, lui, recoit son propre panneau bleu : c'est la seule surface
-    # quasi verticale visible du dessus, elle merite d'etre lue comme telle.
-    # Les bornes tiennent compte de ce que la corde d'aile est devenue : elle
-    # ne passe les 25 cm qu'en arriere de y = -0,15, et `MIN_RUN_PLATE` (50 mm)
-    # eteint tout seul ce qui serait plus etroit. Inutile d'ecrire des zones
-    # avant : elles seraient silencieusement ignorees.
+    # BRIEF-0035 : le corps ne fait plus que 0,300 m de large — les zones sont
+    # donc la JOUE (segment 2, ~26 mm) et le PONT (segments 4-5, ~30 mm). Le
+    # segment 3 (marche) et les segments 6-7 (sillon dorsal) en sont exclus :
+    # ils ont deja leur traitement. `MIN_RUN_PLATE` eteint tout seul ce qui
+    # serait plus etroit vers le nez.
     for y0, y1, js in (
-        (-0.500, 0.100, both(2, 3, 6, 7)),          # glove avant
-        (-0.150, 0.400, both(8, 9)),                # emplanture, mi-corde
-        (0.100, 0.750, both(0, 1, 2)),              # lisere de bord d'attaque
-        (0.000, 0.620, both(3, 4, 6, 7)),           # grand chevron d'aile externe
-        (0.300, 0.740, both(8, 9)),                 # aile interne arriere
-        (0.700, 0.845, both(2, 3, 6, 7)),           # plateau de culot
+        (-0.560, -0.080, both(2)),                  # joue avant
+        (-0.860, -0.700, both(4, 5)),               # pont de nez
+        (0.020, 0.480, both(2)),                    # joue centrale
+        (0.020, 0.400, both(4, 5)),                 # pont, de part et d'autre
+        (0.540, 0.900, both(2)),                    # joue arriere
+        (0.560, 1.020, both(4, 5)),                 # pont de poutre arriere
     ):
         # `skip_seams=True` : un panneau ne mord jamais sur une bande de rainure.
         # Les grandes plaques bleues se retrouvent donc BORDEES de rainures, ce
@@ -1192,9 +1250,9 @@ def build_hull() -> object:
     #    a 20 deg de la verticale le ventre n'existe pas (BRIEF-0026), et
     #    chaque triangle qu'on y depense est un triangle perdu.
     # ---------------------------------------------------------------------
-    ak.set_material(pick(-1.050, 0.845, both(*SPINE_SEGS), "bot"), "AA_Greeble")
+    ak.set_material(pick(-1.050, 1.020, both(*SPINE_SEGS), "bot"), "AA_Greeble")
     plate(
-        cells(0.000, 0.600, both(3, 4, 7, 8), "bot", min_run=MIN_RUN_PLATE,
+        cells(0.000, 0.600, both(2), "bot", min_run=MIN_RUN_PLATE,
               min_edge=MIN_EDGE_PLATE, min_band=MIN_BAND_PLATE, skip_seams=True),
         "AA_Panel",
     )
@@ -1379,25 +1437,142 @@ def _belly_z(x: float, y: float) -> float:
     return z_bot(x, *section_params(y))
 
 
-def _rail_x(y: float) -> float:
-    """Abscisse (positive) du rail de bout d'aile a la station `y`.
-
-    Le rail suit le bord d'attaque tant que celui-ci est en deca de `RAIL_X`,
-    puis se redresse le long du bout d'aile. Il reste ainsi POSE sur l'aile sur
-    toute sa longueur — voir `RAIL_INSET`.
-    """
-    return min(lerp_table(PLANFORM, y) - RAIL_INSET, RAIL_X)
-
-
 def _chord_x(y: float, frac: float) -> float:
-    """Abscisse a la fraction `frac` de la corde d'aile, a la station `y`.
+    """Abscisse a la fraction `frac` de la JOUE, a la station `y`.
 
     Poser un detail a une abscisse ABSOLUE est ce qui a rendu la moitie des
-    bandeaux de BRIEF-0033 caducs des que le bord d'attaque a bouge. Exprime en
-    fraction de corde, un bandeau suit la fleche de l'aile quoi qu'elle devienne.
+    bandeaux de BRIEF-0033 caducs des que le bord d'attaque a bouge, puis quatre
+    des sept de BRIEF-0034. Exprime en fraction, un bandeau suit la coque quoi
+    qu'elle devienne — y compris la reduction de 1,75 m a 0,30 m de large que
+    BRIEF-0035 vient d'infliger a cette table.
     """
     _, f, _, _ = section_params(y)
     return f + frac * (section_cut(y) - f)
+
+
+def nacelle_half_width(y: float) -> float:
+    """Demi-largeur de la nacelle vue de dessus, TOUT compris, a la station `y`.
+
+    Interroge les tables (`NACELLE_PROFILE`, `FAIRING`, `PETAL_SECTIONS`) au lieu
+    de recopier un maximum : c'est cette fonction que consultent la mesure de
+    degagement d'aile et la mesure de fentes, et une constante recopiee y
+    mentirait au premier changement de profil.
+    """
+    if y < NACELLE_PROFILE[0][0] or y > PETAL_SECTIONS[-1][0]:
+        return 0.0
+    if y > NACELLE_PROFILE[-1][0]:
+        return lerp_table([(s[0], s[2]) for s in PETAL_SECTIONS], y)
+    r = lerp_table([(p[0], p[1]) for p in NACELLE_PROFILE], y)
+    if FAIRING[0][0] <= y <= FAIRING[-1][0]:
+        r = max(r, lerp_row(FAIRING, y, 1))
+    return r
+
+
+# --------------------------------------------------------------------------
+# Geometrie en plan de l'aile (polaire autour du pivot)
+# --------------------------------------------------------------------------
+
+
+def _wing_polar() -> tuple[tuple[float, float], tuple[float, float]]:
+    """(rayon, angle) du bord d'attaque et du bord de fuite AU BOUT D'AILE.
+
+    Les rayons sont DERIVES de l'envergure contractuelle : `x = 0,875` est une
+    hitbox, pas une intention. On resout donc `r cos(phi) = 0,875 - x_pivot`
+    plutot que d'ecrire un rayon a la main et de constater l'ecart au build.
+    """
+    reach = WING_TIP_X - WING_PIVOT_X
+    le = (reach / math.cos(math.radians(WING_LE_TIP_ANGLE)), WING_LE_TIP_ANGLE)
+    te = (reach / math.cos(math.radians(WING_TE_TIP_ANGLE)), WING_TE_TIP_ANGLE)
+    return le, te
+
+
+def _polar(r: float, phi_deg: float) -> tuple[float, float]:
+    """Point (x, y) du repere d'auteur, cote BABORD, a (rayon, angle) du pivot."""
+    a = math.radians(phi_deg)
+    return (WING_PIVOT_X + r * math.cos(a), WING_PIVOT_Y + r * math.sin(a))
+
+
+def _wing_edges(s: float) -> tuple[tuple[float, float], tuple[float, float]]:
+    """Points (x, y) du bord d'attaque et du bord de fuite a l'envergure `s`.
+
+    Interpolation en POLAIRE (rayon et angle), pas en cartesien : c'est ce qui
+    garantit qu'aucune nervure intermediaire ne descend sous l'angle de
+    l'emplanture, donc qu'aucune ne peut passer derriere le pivot en fleche.
+    """
+    le_tip, te_tip = _wing_polar()
+    le = _polar(
+        WING_LE_ROOT[0] + (le_tip[0] - WING_LE_ROOT[0]) * s,
+        WING_LE_ROOT[1] + (le_tip[1] - WING_LE_ROOT[1]) * s,
+    )
+    te = _polar(
+        WING_TE_ROOT[0] + (te_tip[0] - WING_TE_ROOT[0]) * s,
+        WING_TE_ROOT[1] + (te_tip[1] - WING_TE_ROOT[1]) * s,
+    )
+    return le, te
+
+
+def _wing_thickness(s: float, t: float) -> float:
+    """Demi-epaisseur de la lame a l'envergure `s`, fraction de corde `t`."""
+    th = WING_THICK_ROOT + (WING_THICK_TIP - WING_THICK_ROOT) * s
+    # Lentille a bords non nuls : un bord d'epaisseur zero degenere au chanfrein.
+    return max(th * (4.0 * t * (1.0 - t)) ** 0.55, 0.0042)
+
+
+def _wing_plane_z(s: float) -> float:
+    """Cote du plan de l'aile a l'envergure `s` (affaissement du bout)."""
+    return WING_PIVOT_Z - WING_ANHEDRAL * s * s
+
+
+def _insettable(faces: list, thickness: float) -> list:
+    """Ecarte les faces trop etroites pour supporter un retrait de `thickness`.
+
+    Meme garde-fou que `cells()` sur la coque, mais exprime sur la face elle-meme
+    plutot que sur une largeur de troncon — l'aile n'a pas de trame reguliere.
+    Sans lui, la PAIRE SERREE de nervures du pied de volet (6 mm d'envergure)
+    passait dans `inset_region(use_even_offset=True)`, qui divise le retrait par
+    le sinus de l'angle au coin : la lame ressortait 0,98 m au large de l'axe et
+    la coque faisait 1,95 m d'envergure au lieu de 1,75.
+    """
+    out = []
+    for face in faces:
+        if face is None or not face.is_valid:
+            continue
+        edges = [e.calc_length() for e in face.edges]
+        if edges and min(edges) > thickness * 2.4:
+            out.append(face)
+    return out
+
+
+def _flap_root_s() -> float:
+    """Envergure a laquelle le volet commence, par bissection sur le bord de fuite.
+
+    Derivee, jamais ecrite : elle depend de `FLAP_HINGE_Y` et du plan de l'aile,
+    et les trois pieces qui s'en servent (logement dans l'aile, nervures du
+    volet, mesure de debattement) doivent partager EXACTEMENT la meme valeur.
+    """
+    lo, hi = 0.0, 1.0
+    for _ in range(40):
+        mid = (lo + hi) * 0.5
+        if _wing_edges(mid)[1][1] < FLAP_HINGE_Y + FLAP_MIN_CHORD:
+            lo = mid
+        else:
+            hi = mid
+    return hi
+
+
+def _wing_rib_stations() -> list[float]:
+    """Stations d'envergure de l'aile, avec la PAIRE serree du pied de volet.
+
+    Sans les deux stations rapprochees a l'emplanture du volet, la marche du
+    logement s'etalerait sur toute une bande et donnerait une rampe au lieu
+    d'une cloison — le meme piege que `FLAP_WALL_Y` corrigeait sur la coque
+    avant BRIEF-0035.
+    """
+    s0 = _flap_root_s()
+    out = set(WING_RIBS)
+    out.add(round(max(s0 - 0.006, 0.0), 6))
+    out.add(round(s0, 6))
+    return sorted(out)
 
 
 def _fin(bm, sx: float) -> None:
@@ -1451,11 +1626,67 @@ def _fin(bm, sx: float) -> None:
         bm,
         (
             sx * (NACELLE_X + 0.86 * FIN_HEIGHT * ax),
-            0.848,
+            0.972,
             FIN_ROOT_Z + 0.86 * FIN_HEIGHT * az,
         ),
         (0.024, 0.014, 0.048),
         "AA_Emissive_Engine",
+    )
+
+
+def _bridge(bm, sx: float) -> None:
+    """Caisson de liaison fuselage <-> nacelle (BRIEF-0035).
+
+    C'est la seule matiere qui traverse la fente 1. Il est deliberement COURT
+    (0,010 a 0,380, soit 15 % de la longueur) : c'est la longueur qu'il n'occupe
+    pas qui produit les deux echancrures du critere d'acceptation.
+
+    Ses deux extremites en x sont enfouies — 0,095 est sous le pont (dont la
+    demi-largeur vaut 0,145 a ces stations) et 0,330 est l'axe meme de la
+    nacelle. Un caisson affleurant laisserait deux coutures visibles au lieu
+    d'une piece qui sort d'un corps et entre dans l'autre.
+    """
+    rings = []
+    for y, x_in, x_out, z_hi, z_lo in BRIDGE:
+        rings.append(
+            ak.add_ring(
+                bm,
+                [
+                    (sx * x_out, y, z_hi),
+                    (sx * x_in, y, z_hi),
+                    (sx * x_in, y, z_lo),
+                    (sx * x_out, y, z_lo),
+                ],
+            )
+        )
+    for i in range(len(rings) - 1):
+        # 0 = dessus, 1 = flanc interne (celui qui borde la fente), 2 = dessous,
+        # 3 = flanc externe. Le dessus est la seule face que la camera de jeu
+        # voit : c'est elle qui porte le bleu.
+        band = ak.bridge_rings(bm, rings[i], rings[i + 1], "AA_Greeble")
+        ak.set_material([band[0]], "AA_Panel")
+    ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
+    ak.cap_ring(bm, rings[-1], "AA_Greeble")
+
+    # Nervures : sans elles le caisson lit, du dessus, comme une simple plaque.
+    for y in BRIDGE_FRAMES:
+        x_in = lerp_row(BRIDGE, y, 1)
+        x_out = lerp_row(BRIDGE, y, 2)
+        z_hi, z_lo = lerp_row(BRIDGE, y, 3), lerp_row(BRIDGE, y, 4)
+        ak.add_box(
+            bm,
+            (sx * (x_in + x_out) * 0.5, y, (z_hi + z_lo) * 0.5),
+            (x_out - x_in, 0.018, (z_hi - z_lo) * 1.10),
+            "AA_Greeble",
+        )
+    # Bandeau cyan sur le dessus du caisson : il souligne la liaison, donc les
+    # deux trouees qui l'encadrent.
+    _strip(
+        bm,
+        [(0.070, 0.046, 0.056), (0.220, 0.050, 0.060), (0.330, 0.034, 0.044)],
+        0.009,
+        "AA_Emissive_Engine",
+        center_x=sx * 0.200,
     )
 
 
@@ -1639,35 +1870,6 @@ def build_details() -> object:
         )
         _nozzle_bore(bm, sign * NACELLE_X, NACELLE_Z)
 
-        # epaule : le prolongement AVANT du fuseau, pose sur le pont. Sans elle
-        # les « nacelles longues » du brief n'auraient couvert que 38 % de la
-        # longueur au lieu des 60-75 % demandes.
-        shoulder_base = (
-            lambda y, s=sign: _deck_z(s * NACELLE_X, y) - 0.008
-        )
-        shoulder = _dome(bm, SHOULDER, sign * NACELLE_X, shoulder_base, "AA_Hull")
-        for b in range(len(shoulder)):
-            # flancs sombres (arcs 0 et DOME_ARC-2) : ils bordent le caniveau
-            # d'un cote et l'aile de l'autre, et c'est ce doublet d'ombres qui
-            # detache le fuseau du fuselage en vue de dessus.
-            ak.set_material(
-                [shoulder[b][k] for k in (0, DOME_ARC - 2) if shoulder[b][k]],
-                "AA_Greeble",
-            )
-            if 2 <= b <= 5:
-                ak.set_material(
-                    [shoulder[b][k] for k in (2, 3) if shoulder[b][k]], "AA_Panel"
-                )
-        for y in SHOULDER_FRAMES:
-            hw = lerp_row(SHOULDER, y, 1)
-            tall = lerp_row(SHOULDER, y, 2)
-            ak.add_box(
-                bm,
-                (sign * NACELLE_X, y, shoulder_base(y) + tall * 0.46),
-                (hw * 2.06, 0.018, tall * 0.94),
-                "AA_Greeble",
-            )
-
         bands = _dome(
             bm, FAIRING, sign * NACELLE_X, lambda _y: NACELLE_Z, "AA_Hull"
         )
@@ -1683,111 +1885,50 @@ def build_details() -> object:
                     [bands[b][k] for k in (1, 6) if bands[b][k]], "AA_Greeble"
                 )
 
-        # ecope ventrale : la couche qui relie l'aile au fuseau par-dessous.
-        intake_base = (
-            lambda y, s=sign: z_bot(s * NACELLE_X, *section_params(min(y, 0.840)))
-        )
-        scoop = _dome(bm, INTAKE, sign * NACELLE_X, intake_base, "AA_Hull")
-        # L'ecope est une piece MECANIQUE : laissee en blanc de coque elle lisait
-        # de profil comme une grosse cloque lisse. Ventre sombre partout, flancs
-        # bleus au milieu, bouche noire — et trois nervures.
-        ak.set_material([f for f in scoop[0] if f], "AA_Greeble")  # bouche sombre
-        for b in range(len(scoop)):
-            ak.set_material(
-                [scoop[b][k] for k in (3, 4, 5) if scoop[b][k]], "AA_Greeble"
-            )
-            if 1 <= b <= 3:
-                ak.set_material(
-                    [scoop[b][k] for k in (2, 6) if scoop[b][k]], "AA_Panel"
-                )
-        for y in INTAKE_FRAMES:
-            hw = lerp_row(INTAKE, y, 1)
-            deep = lerp_row(INTAKE, y, 2)
-            ak.add_box(
-                bm,
-                (sign * NACELLE_X, y, intake_base(y) + deep * 0.42),
-                (hw * 2.10, 0.018, abs(deep) * 0.96),
-                "AA_Greeble",
-            )
-        # levre doree de l'ecope
-        ak.add_box(
-            bm,
-            (sign * NACELLE_X, 0.098, intake_base(0.098) - 0.026),
-            (0.150, 0.026, 0.020),
-            "AA_Trim",
-        )
-
         # bandeau cyan sur le FLANC SUPERIEUR du fuseau : visible du dessus.
-        # L'offset (0.064) est la demi-corde du carenage a la hauteur du
-        # bandeau, pas un nombre choisi : le carenage ayant maigri de 32 mm,
-        # l'ancien 0.104 aurait laisse le bandeau flotter dans le vide.
+        # L'offset (0.052) est la demi-corde du carenage a la hauteur du
+        # bandeau, pas un nombre choisi : le carenage ayant maigri de 26 mm avec
+        # la nacelle, l'ancien 0.064 aurait laisse le bandeau flotter dans le vide.
         _strip(
             bm,
-            [(0.620, 0.108, 0.120), (0.780, 0.118, 0.130), (0.920, 0.110, 0.122)],
-            0.011,
+            [(0.620, 0.044, 0.054), (0.780, 0.050, 0.060), (0.920, 0.044, 0.054)],
+            0.009,
             "AA_Emissive_Engine",
-            center_x=sign * (NACELLE_X + 0.064),
+            center_x=sign * (NACELLE_X + 0.042),
         )
         # couronne emissive posee sur le DOS du collier : deuxieme temoin de
         # poussee lisible a la verticale, independamment de la vasque.
         ak.add_box(
             bm,
-            (sign * NACELLE_X, 0.988, NACELLE_Z + 0.144),
-            (0.070, 0.028, 0.014),
+            (sign * NACELLE_X, 0.988, NACELLE_Z + 0.100),
+            (0.052, 0.028, 0.014),
             "AA_Emissive_Engine",
         )
+        # CHAPE DE CHARNIERE : le tenon fixe qui recoit l'aile. Il sort de la
+        # peau du fuseau (0,451) et s'arrete a 8 mm du pivot (0,472) — la ferrure
+        # de l'aile vient s'y emboiter. C'est le seul endroit ou les deux corps
+        # se touchent presque : partout ailleurs la fente 2 reste ouverte, ce que
+        # le critere d'acceptation du brief exige.
+        ak.add_box(
+            bm,
+            (sign * (NACELLE_X + 0.078), WING_PIVOT_Y, WING_PIVOT_Z - 0.004),
+            (0.058, 0.130, 0.058),
+            "AA_Greeble",
+        )
+        ak.add_box(
+            bm,
+            (sign * (NACELLE_X + 0.086), WING_PIVOT_Y, WING_PIVOT_Z + 0.024),
+            (0.040, 0.086, 0.014),
+            "AA_Trim",
+        )
+
+    # ------------------------------------- caissons de liaison (BRIEF-0035)
+    for sx in (ak.PORT, ak.STARBOARD):
+        _bridge(bm, sx)
 
     # ---------------------------------------------- derives inclinees (ADR-0014)
     for sx in (ak.PORT, ak.STARBOARD):
         _fin(bm, sx)
-
-    # -------------------------------------------- lisses de bout d'aile
-    # Ce qui reste des anciens rails verticaux : une lisse basse, dont le seul
-    # role est d'empecher la lame de lire comme un tranchant et de porter le
-    # feu de bout d'aile.
-    for sx in (ak.PORT, ak.STARBOARD):
-        rings = []
-        for y, up, down in RAIL:
-            x = sx * _rail_x(y)
-            z_hi = _deck_z(x, y) + up
-            z_lo = _belly_z(x, y) - down
-            rings.append(
-                ak.add_ring(
-                    bm,
-                    [
-                        (x + RAIL_HW, y, z_hi - 0.010),
-                        (x + RAIL_HW * 0.35, y, z_hi),
-                        (x - RAIL_HW * 0.35, y, z_hi),
-                        (x - RAIL_HW, y, z_hi - 0.010),
-                        (x - RAIL_HW, y, z_lo),
-                        (x + RAIL_HW, y, z_lo),
-                    ],
-                )
-            )
-        for i in range(len(rings) - 1):
-            # 0/2 = chanfreins d'arete, 1 = arete (jonc dore, vue du dessus),
-            # 3/5 = flancs, 4 = dessous.
-            band = ak.bridge_rings(bm, rings[i], rings[i + 1], "AA_Hull")
-            ak.set_material([band[1]], "AA_Trim")
-            ak.set_material([band[4]], "AA_Greeble")
-            if 1 <= i <= 3:
-                ak.set_material([band[3], band[5]], "AA_Panel")
-        ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
-        ak.cap_ring(bm, rings[-1], "AA_Greeble")
-        # feu de bout d'aile sur l'arete de la lisse (vu de dessus)
-        y_mid = 0.480
-        x_mid = sx * _rail_x(y_mid)
-        z_mid = _deck_z(x_mid, y_mid) + lerp_row(RAIL, y_mid, 1)
-        ak.add_box(
-            bm, (x_mid, y_mid, z_mid - 0.006), (0.016, 0.140, 0.014),
-            "AA_Emissive_Engine",
-        )
-        # ferrure de pied de lisse
-        x_foot = sx * _rail_x(0.350)
-        ak.add_box(
-            bm, (x_foot, 0.350, _deck_z(x_foot, 0.350) + 0.006),
-            (0.044, 0.070, 0.024), "AA_Greeble",
-        )
 
     # ------------------------------------------------ longeron ventral + canon
     # deux tubes debouchant sous le nez, loges dans la quille
@@ -1826,83 +1967,86 @@ def build_details() -> object:
     # sombre, deux joues dorees, hublot cyan. C'est le point de mire de la vue
     # de dessus — on le paie en detail.
     bay_z = lerp_row(SPINE, 0.185, 2)
-    ak.add_box(bm, (0.0, 0.185, bay_z - 0.008), (0.104, 0.280, 0.044), "AA_Greeble")
-    ak.add_box(bm, (0.0, 0.185, bay_z + 0.014), (0.072, 0.236, 0.014), "AA_Greeble")
+    ak.add_box(bm, (0.0, 0.185, bay_z - 0.008), (0.078, 0.280, 0.044), "AA_Greeble")
+    ak.add_box(bm, (0.0, 0.185, bay_z + 0.014), (0.054, 0.236, 0.014), "AA_Greeble")
     for sx in (ak.PORT, ak.STARBOARD):
-        ak.add_box(bm, (sx * 0.062, 0.185, bay_z - 0.004),
-                   (0.016, 0.300, 0.048), "AA_Trim")
-        ak.add_box(bm, (sx * 0.038, 0.072, bay_z + 0.022),
-                   (0.018, 0.070, 0.012), "AA_Emissive_Engine")
-    ak.add_box(bm, (0.0, 0.150, bay_z + 0.022), (0.026, 0.130, 0.012),
+        ak.add_box(bm, (sx * 0.046, 0.185, bay_z - 0.004),
+                   (0.014, 0.300, 0.048), "AA_Trim")
+        ak.add_box(bm, (sx * 0.028, 0.072, bay_z + 0.022),
+                   (0.016, 0.070, 0.012), "AA_Emissive_Engine")
+    ak.add_box(bm, (0.0, 0.150, bay_z + 0.022), (0.022, 0.130, 0.012),
                "AA_Emissive_Engine")
-    ak.add_box(bm, (0.0, 0.300, bay_z + 0.018), (0.056, 0.036, 0.020),
+    ak.add_box(bm, (0.0, 0.300, bay_z + 0.018), (0.042, 0.036, 0.020),
                "AA_Marking_Red")
 
     # --------------------------------------------- petits bandeaux cyan du pont
-    # Reperes d'echelle, tous poses sur des faces VUES DU DESSUS.
-    # Les abscisses sont donnees en FRACTION DE CORDE et non en metres : le
-    # bord d'attaque ayant recule de 10 deg, toute abscisse absolue heritee de
-    # BRIEF-0033 tombait desormais hors de l'aile (a y = -0.15, x = 0.470 est
-    # dans le vide : la demi-envergure n'y vaut plus que 0.463).
+    # Reperes d'echelle, tous poses sur des faces VUES DU DESSUS, et TOUS en
+    # fraction de joue (`_chord_x`). BRIEF-0035 divise la largeur de la coque par
+    # six : une seule abscisse absolue heritee aurait atterri dans le vide.
     for sx in (ak.PORT, ak.STARBOARD):
         for y, frac, length in (
-            (-0.480, 0.62, 0.070),
-            (0.120, 0.86, 0.080),
-            (0.360, 0.84, 0.080),
-            (0.520, 0.80, 0.070),
+            (-0.480, 0.55, 0.070),
+            (0.120, 0.70, 0.090),
+            (0.480, 0.68, 0.090),
+            (0.820, 0.60, 0.080),
         ):
             x = _chord_x(y, frac)
             ak.add_box(
                 bm,
                 (sx * x, y, _deck_z(sx * x, y) + 0.004),
-                (0.016, length, 0.010),
+                (0.014, length, 0.010),
                 "AA_Emissive_Engine",
             )
 
     # ---------------------------------------------------------------- greebles
-    # Tous sur le pont, sur le dos des fuseaux ou sur les flancs de l'arete :
-    # les faces arriere ne sont pas vues par la camera de jeu, y semer des
-    # greebles serait du gaspillage.
+    # Tous sur le pont, sur le dos des fuseaux, sur les caissons ou sur les
+    # flancs de l'arete : les faces arriere ne sont pas vues par la camera de
+    # jeu, y semer des greebles serait du gaspillage.
     ak.greeble_strip(
         bm, (0.0, -0.150, bay_z - 0.030), (0.0, 0.030, bay_z - 0.030),
         count=5, seed=rng_seed,
         size_range=(0.014, 0.030), height_range=(0.006, 0.014),
     )
-    # ⚠️ Toutes les abscisses ci-dessous ont ete REVUES par BRIEF-0034. Le bord
-    # d'attaque a recule de 10 deg et le fuselage a maigri de 6 cm : quatre des
-    # sept bandeaux tombaient hors de la coque, et deux tombaient sous l'epaule
-    # de nacelle, ou ils auraient ete simplement invisibles.
+    # ⚠️ Toutes les abscisses ci-dessous ont ete REVUES par BRIEF-0035, pour la
+    # troisieme fois en trois briefs. La coque loftee ne fait plus que 0,30 m de
+    # large : tout ce qui etait pose au-dela de x = 0,15 tombait dans le vide,
+    # c'est-a-dire cinq des sept bandeaux. Ceux qui decoraient l'aile ont
+    # demenage DANS `build_wing()` — une piece mobile porte ses propres details.
     for k, sx in enumerate((ak.PORT, ak.STARBOARD)):
         base = rng_seed + 17 * (k + 1)
-        # lame externe, en arriere (le plus visible en gros plan d'accueil).
-        # Borne a y = 0.600 : au-dela commence l'echancrure du volet.
-        _deck_greebles(bm, sx * 0.560, 0.440, 0.700, 6, base + 1,
-                       size_range=(0.018, 0.038))
-        # rampe technique le long de l'arete dorsale, sur le pont de fuselage
-        _deck_greebles(bm, sx * 0.128, -0.120, 0.320, 6, base + 2,
-                       size_range=(0.014, 0.028), height_range=(0.005, 0.012))
-        # lame externe, entre les deux rainures longitudinales
-        _deck_greebles(bm, sx * 0.520, 0.080, 0.420, 5, base + 3,
-                       size_range=(0.016, 0.032), height_range=(0.005, 0.011))
-        # glove avant, en avant de l'epaule de nacelle
-        _deck_greebles(bm, sx * 0.155, -0.620, -0.440, 4, base + 4,
-                       size_range=(0.013, 0.026), height_range=(0.005, 0.010))
+        # rampe technique le long de l'arete dorsale, sur le pont
+        _deck_greebles(bm, sx * 0.072, -0.120, 0.320, 6, base + 2,
+                       size_range=(0.014, 0.026), height_range=(0.005, 0.012))
+        # joue centrale
+        _deck_greebles(bm, sx * 0.120, 0.420, 0.700, 5, base + 3,
+                       size_range=(0.014, 0.026), height_range=(0.005, 0.011))
+        # joue avant, en avant de la verriere
+        _deck_greebles(bm, sx * 0.088, -0.700, -0.520, 4, base + 4,
+                       size_range=(0.012, 0.024), height_range=(0.005, 0.010))
         # flancs de nez
-        _deck_greebles(bm, sx * 0.055, -0.880, -0.740, 3, base + 5,
-                       size_range=(0.011, 0.021), height_range=(0.004, 0.009))
-        # dos du carenage de tuyere
+        _deck_greebles(bm, sx * 0.040, -0.980, -0.840, 3, base + 5,
+                       size_range=(0.010, 0.020), height_range=(0.004, 0.009))
+        # dos du carenage de nacelle
         ak.greeble_strip(
             bm,
-            (sx * (NACELLE_X - 0.056), 0.620, 0.118),
-            (sx * (NACELLE_X - 0.056), 0.900, 0.118),
+            (sx * (NACELLE_X - 0.038), 0.560, NACELLE_Z + 0.082),
+            (sx * (NACELLE_X - 0.038), 0.900, NACELLE_Z + 0.082),
             count=5,
             seed=base + 6,
-            size_range=(0.016, 0.030),
+            size_range=(0.014, 0.028),
             height_range=(0.006, 0.014),
         )
-        # bout d'aile, en avant de la lisse
-        _deck_greebles(bm, sx * 0.590, 0.380, 0.540, 4, base + 7,
-                       size_range=(0.014, 0.026), height_range=(0.004, 0.009))
+        # dessus du caisson de liaison : il est PILE dans l'axe du regard entre
+        # les deux fentes, c'est la ou un greeble se voit le mieux.
+        ak.greeble_strip(
+            bm,
+            (sx * 0.150, 0.060, 0.056),
+            (sx * 0.150, 0.330, 0.050),
+            count=4,
+            seed=base + 7,
+            size_range=(0.014, 0.026),
+            height_range=(0.005, 0.011),
+        )
 
     return ak.new_object("Specter9_Details", bm)
 
@@ -1918,63 +2062,238 @@ def _barrel_z() -> float:
 # ==========================================================================
 
 
-def build_flap(side: float) -> ak.MovingPart:
-    """Volet de bord de fuite : l'aft de l'aile externe, echancre dans la coque.
+def _wing_section(s: float, y_clamp: float | None = None):
+    """Nervure de l'aile a l'envergure `s` : (points dessus, points dessous).
 
-    ⚠️ Le PIVOT est toute la primitive. L'origine du nœud est posee sur la ligne
-    de charniere ; sans cela le volet decrirait un arc de cercle autour du nez
-    du vaisseau au lieu de battre sur son axe — et le defaut ne se verrait
-    qu'une fois anime.
+    `y_clamp` tronque la nervure vers l'arriere — c'est ce qui creuse le
+    logement du volet : l'aile s'arrete la ou le volet commence, faute de quoi
+    la piece traverse la lame des la premiere image d'animation.
+
+    ⚠️ La troncature REPARAMETRE la corde (`t * t_max`) au lieu d'ecraser les
+    points au-dela de la coupe sur la coupe. La premiere version faisait
+    l'inverse et produisait 4 a 6 sommets confondus par nervure : Blender
+    signalait « Mesh Wing_L is not valid », `bevel_sharp_edges` projetait ensuite
+    des sommets a 15 cm au-dessus de la lame, et la coque sortait a 1,79 m de
+    large — toujours dans la tolerance de 3 % du contrat, donc SANS ERREUR.
+    """
+    (x_le, y_le), (x_te, y_te) = _wing_edges(s)
+    span = y_te - y_le
+    t_max = 1.0
+    if y_clamp is not None and span > 1e-6 and y_te > y_clamp:
+        t_max = min(max((y_clamp - y_le) / span, 0.06), 1.0)
+    z0 = _wing_plane_z(s)
+    top, bot = [], []
+    for t0 in WING_CHORD_T:
+        t = t0 * t_max
+        x = x_le + (x_te - x_le) * t
+        y = y_le + span * t
+        # L'epaisseur suit la fraction de la corde REELLE : sans cela la lame
+        # tronquee sortirait coupee en pleine masse, epaisse au bord de fuite.
+        h = _wing_thickness(s, t0)
+        top.append((x, y, z0 + h))
+        bot.append((x, y, z0 - h))
+    return top, bot
+
+
+def build_wing(side: float) -> ak.MovingPart:
+    """Aile a fleche variable — lame distincte, greffee au flanc de la nacelle.
+
+    ⚠️ Le PIVOT est toute la primitive : l'origine du nœud est posee sur l'axe
+    de fleche (vertical). Cote Godot, faire varier la rotation autour de l'axe
+    VERTICAL du nœud ouvre et referme la fleche ; les deux cotes tournent en
+    sens opposes.
+
+    Position de REPOS = ailes DEPLOYEES (fleche minimale). C'est l'etat que le
+    `.glb` montre, donc celui que le contrat de bounding box mesure — d'ou
+    `_wing_sweep_limit()`, qui verifie l'AUTRE pose.
     """
     tag = "L" if side > 0 else "R"
     bm = bmesh.new()
-    x_in = FLAP_ROOT_X + FLAP_SIDE_GAP
+    s0 = _flap_root_s()
+    stations = _wing_rib_stations()
 
+    # ⚠️ La lame est TOUJOURS batie cote babord, puis miroitee en fin de
+    # fonction. Multiplier les abscisses par `side` des la construction inverse
+    # l'orientation des faces, et `bmesh.ops.inset_region(use_even_offset=True)`
+    # explose sur une face retournee : l'aile tribord sortait avec un sommet a
+    # y = -3,18 m, ce qui donnait une coque de 4,41 m de long. Le contrat l'a
+    # bien vu — mais seulement parce que le degat etait ENORME.
     rings = []
-    for y in FLAP_STATIONS:
-        w, f, crown, belly = section_params(y)
-        x_out = w
-        if x_out - x_in < 0.004:
-            continue
-        xs = [x_in + (x_out - x_in) * t for t in reversed(FLAP_T)]
-        top = [(side * x, y, z_top(x, w, f, crown, belly)) for x in xs]
-        bot = [(side * x, y, z_bot(x, w, f, crown, belly)) for x in reversed(xs)]
-        rings.append(ak.add_ring(bm, top + bot))
+    for s in stations:
+        # Le logement n'est creuse que la ou le volet existe reellement.
+        top, bot = _wing_section(s, y_clamp=FLAP_WALL_Y if s >= s0 - 1e-9 else None)
+        rings.append(ak.add_ring(bm, top + list(reversed(bot))))
 
-    n = len(FLAP_T)
+    n = len(WING_CHORD_T)
+    bands = []
     for i in range(len(rings) - 1):
         band = ak.bridge_rings(bm, rings[i], rings[i + 1], "AA_Hull")
-        # Le ring vaut `top` (n points, du bord d'aile vers l'emplanture) puis
-        # `bot` (n points, retour) : le segment n-1 est la tranche d'EMPLANTURE
-        # et le segment 2n-1 la tranche de BOUT D'AILE. Les peindre distingue le
-        # volet de l'aile meme ferme, sans toucher aux surfaces portantes.
+        bands.append(band)
+        # segment n-1 = tranche de BORD DE FUITE (la cloison du volet) ;
+        # segment 2n-1 = tranche de BORD D'ATTAQUE.
         ak.set_material([band[n - 1]], "AA_Greeble")
         ak.set_material([band[2 * n - 1]], "AA_Trim")
-    # face de charniere : sombre, elle EST la ligne d'articulation
+    # emplanture : sombre, elle borde la fente et doit se lire comme une coupe.
     ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
     ak.cap_ring(bm, rings[-1], "AA_Greeble")
 
-    # marquage de bord de fuite (or) sur le dessus, visible a la verticale
-    # ⚠️ Ce marquage doit rester EN ARRIERE du pivot. Pose a cheval sur la
-    # charniere, il devient le point le plus contraignant du volet et fait
-    # tomber le plafond de debattement a 2,8 deg — mesure faite, pas devinee.
+    # --- plaquage de la lame ---------------------------------------------
+    # L'aile porte desormais l'essentiel de la surface plate du vaisseau : c'est
+    # ici que le detail rend, pas sur un fuselage de 0,30 m. Les indices sont des
+    # FRACTIONS DE CORDE (`WING_CHORD_T`), donc ils survivent a un changement de
+    # plan — la lecon de BRIEF-0034, appliquee des la construction.
+    for j in (3, 7):        # bandes serrees 0.300/0.345 et 0.700/0.745
+        for jj in (j, 2 * n - 2 - j):
+            ak.inset_panel(
+                bm, _insettable([b[jj] for b in bands], SEAM_T),
+                "AA_Hull", thickness=SEAM_T, depth=SEAM_D,
+            )
+    # Les zones sont donnees en FRACTION d'envergure, pas en index de bande :
+    # `_wing_rib_stations()` insere une paire serree dont la position depend de
+    # `FLAP_HINGE_Y`, et un index de bande ecrit en dur designerait autre chose
+    # au premier reglage de volet.
+    for s0f, s1f, js, mat in (
+        (0.00, 0.38, (1, 2), "AA_Panel"),      # chevron bleu d'emplanture
+        (0.26, 0.72, (5, 6), "AA_Panel"),      # aplat bleu mi-corde
+        (0.60, 1.00, (1, 2), "AA_Panel"),      # bout d'aile
+    ):
+        faces = []
+        for i in range(len(bands)):
+            mid = (stations[i] + stations[i + 1]) * 0.5
+            if s0f <= mid <= s1f:
+                faces += [bands[i][j] for j in js]
+        faces = _insettable(faces, 0.006)
+        if faces:
+            ak.inset_panel(bm, faces, "AA_Hull", thickness=0.005, depth=-0.004)
+            ak.inset_panel(bm, faces, mat, thickness=0.006, depth=-0.005)
+    # tranche doree du bord d'attaque externe + un court marquage rouge
+    for i in range(len(bands)):
+        mid = (stations[i] + stations[i + 1]) * 0.5
+        if 0.20 <= mid <= 0.62:
+            ak.set_material(
+                [bands[i][2 * n - 1]],
+                "AA_Marking_Red" if 0.34 <= mid <= 0.46 else "AA_Trim",
+            )
+
+    # --- ferrure de charniere : elle plonge vers la chape de la nacelle ----
+    # ⚠️ C'est la piece la plus CONTRAIGNANTE de toute l'aile pour la fleche :
+    # son coin arriere-interne est le point dont l'angle polaire est le plus
+    # grand, donc le premier a passer derriere le pivot en se repliant. Une
+    # premiere version, centree 4 mm plus en dedans et 18 mm plus en arriere,
+    # faisait tomber la fleche admissible de 32 a 28 deg — mesure faite, pas
+    # devinee, exactement comme pour le volet de BRIEF-0034.
     ak.add_box(
         bm,
-        (side * 0.640, 0.795, z_top(0.640, *section_params(0.795)) + 0.003),
-        (0.120, 0.020, 0.008),
-        "AA_Trim",
+        (WING_PIVOT_X + 0.040, WING_PIVOT_Y - 0.008, WING_PIVOT_Z),
+        (0.052, 0.100, 0.046),
+        "AA_Greeble",
     )
+
+    # --- lisse et feu de bout d'aile --------------------------------------
+    (x_le, y_le), (x_te, y_te) = _wing_edges(1.0)
+    y_te = min(y_te, FLAP_WALL_Y)
+    z_tip = _wing_plane_z(1.0)
+    ak.add_box(
+        bm,
+        (x_le - 0.014, (y_le + y_te) * 0.5, z_tip + 0.014),
+        (0.030, abs(y_te - y_le) * 0.86, 0.030),
+        "AA_Greeble",
+    )
+    ak.add_box(
+        bm,
+        (x_le - 0.014, (y_le + y_te) * 0.5, z_tip + 0.030),
+        (0.020, abs(y_te - y_le) * 0.52, 0.012),
+        "AA_Emissive_Engine",
+    )
+
+    # --- bandeaux et greebles de l'extrados -------------------------------
+    for s, t, length in ((0.30, 0.42, 0.076), (0.66, 0.38, 0.066)):
+        (lx, ly), (tx, ty) = _wing_edges(s)
+        x = lx + (tx - lx) * t
+        y = min(ly + (ty - ly) * t, FLAP_WALL_Y - 0.030)
+        ak.add_box(
+            bm,
+            (x, y, _wing_plane_z(s) + _wing_thickness(s, t) + 0.002),
+            (0.014, length, 0.010),
+            "AA_Emissive_Engine",
+        )
+    (ax, ay), (bx, by) = _wing_edges(0.28)
+    (cx2, cy2), (dx2, dy2) = _wing_edges(0.82)
+    ak.greeble_strip(
+        bm,
+        (ax + (bx - ax) * 0.55, min(ay + (by - ay) * 0.55, FLAP_WALL_Y - 0.04),
+         _wing_plane_z(0.28) + _wing_thickness(0.28, 0.55)),
+        (cx2 + (dx2 - cx2) * 0.55, min(cy2 + (dy2 - cy2) * 0.55, FLAP_WALL_Y - 0.04),
+         _wing_plane_z(0.82) + _wing_thickness(0.82, 0.55)),
+        count=5,
+        seed=SEED + 31,
+        size_range=(0.014, 0.028),
+        height_range=(0.005, 0.011),
+    )
+
+    # Miroir final (voir l'avertissement en tete de fonction). Les greebles sont
+    # donc STRICTEMENT symetriques d'un cote a l'autre : c'est un gain, la
+    # dissymetrie n'ayant jamais ete voulue sur un chasseur Vanguard.
+    if side < 0:
+        for vert in bm.verts:
+            vert.co.x = -vert.co.x
+        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+
+    return ak.moving_part(
+        f"Wing_{tag}", bm, (side * WING_PIVOT_X, WING_PIVOT_Y, WING_PIVOT_Z)
+    )
+
+
+def build_flap(side: float) -> ak.MovingPart:
+    """Volet de bord de fuite, ENFANT de l'aile (`parent="Wing_L/R"`).
+
+    Sans ce parentage, le volet resterait en l'air des que l'aile se replie —
+    c'est exactement le manque que `ak.moving_part(parent=...)` vient combler.
+
+    ⚠️ Le PIVOT reste exprime dans le repere d'auteur ; `export_hull()` le rend
+    relatif au parent. La charniere est parallele a X : c'est le seul axe qui
+    reste un axe de nœud une fois l'aile en fleche, puisque `moving_part`
+    n'exporte pas de rotation.
+    """
+    tag = "L" if side > 0 else "R"
+    bm = bmesh.new()
+
+    # Le volet occupe la matiere que l'aile a laissee derriere `FLAP_HINGE_Y`.
+    # On balaie l'envergure DEPUIS `_flap_root_s()` — la meme fonction que le
+    # logement de l'aile interroge, de sorte que les deux pieces ne peuvent pas
+    # diverger d'un build a l'autre.
+    s0 = _flap_root_s()
+    ribs = []
+    for k in range(7):
+        s = s0 + (1.0 - s0) * k / 6.0
+        (x_le, y_le), (x_te, y_te) = _wing_edges(s)
+        span = max(y_te - y_le, 1e-6)
+        t0 = min(max((FLAP_HINGE_Y - y_le) / span, 0.0), 1.0)
+        z0 = _wing_plane_z(s)
+        top, bot = [], []
+        for u in (0.0, 0.28, 0.56, 0.80, 1.0):
+            t = t0 + (1.0 - t0) * u
+            x = x_le + (x_te - x_le) * t
+            y = y_le + (y_te - y_le) * t
+            h = max(_wing_thickness(s, t), 0.0042)
+            top.append((side * x, y, z0 + h))
+            bot.append((side * x, y, z0 - h))
+        ribs.append(ak.add_ring(bm, top + list(reversed(bot))))
+
+    n = 5
+    for i in range(len(ribs) - 1):
+        band = ak.bridge_rings(bm, ribs[i], ribs[i + 1], "AA_Hull")
+        ak.set_material([band[n - 1]], "AA_Trim")       # tranche de bord de fuite
+        ak.set_material([band[2 * n - 1]], "AA_Greeble")  # face de charniere
+    ak.cap_ring(bm, list(reversed(ribs[0])), "AA_Greeble")
+    ak.cap_ring(bm, ribs[-1], "AA_Greeble")
 
     # Le x du pivot ne change RIEN au mouvement (une rotation autour d'un axe
     # parallele a X laisse x invariant) — il place seulement le nœud. On le met
-    # au milieu de la section d'emplanture pour qu'il soit dans la piece.
-    y0 = FLAP_STATIONS[0]
-    pivot = (
-        side * (x_in + lerp_table(PLANFORM, y0)) * 0.5,
-        y0,
-        FLAP_HINGE_Z,
-    )
-    return ak.moving_part(f"Flap_{tag}", bm, pivot)
+    # au milieu de la ligne de charniere, pour qu'il soit dans la piece.
+    xs = [v.co.x for v in bm.verts]
+    pivot = ((min(xs) + max(xs)) * 0.5, FLAP_HINGE_Y, FLAP_HINGE_Z)
+    return ak.moving_part(f"Flap_{tag}", bm, pivot, parent=f"Wing_{tag}")
 
 
 def build_nozzle(side: float) -> ak.MovingPart:
@@ -2024,30 +2343,10 @@ def build_nozzle(side: float) -> ak.MovingPart:
 # ==========================================================================
 
 
-def _leading_edge_station(half_span: float) -> float:
-    """Station `y` du **bord d'attaque** ou la demi-envergure vaut `half_span`.
-
-    On ne parcourt que la branche avant du planform : du nez (`y = -1.230`) au
-    coin avant du bout d'aile (`y = 0.418`, largeur maximale). Sur cette branche
-    la demi-envergure croit de facon monotone, donc l'inversion est unique.
-    """
-    tip_y = _tip_front_station()
-    for i in range(len(PLANFORM) - 1):
-        y0, w0 = PLANFORM[i]
-        y1, w1 = PLANFORM[i + 1]
-        if y1 > tip_y:  # on a atteint le coin avant : au-dela c'est le culot
-            break
-        if w0 <= half_span <= w1:
-            t = (half_span - w0) / (w1 - w0)
-            return y0 + (y1 - y0) * t
-    raise ak.ContractError(
-        f"demi-envergure {half_span} hors du bord d'attaque du planform"
-    )
-
-
-def _tip_front_station() -> float:
-    """Station `y` du coin avant du bout d'aile (premiere largeur maximale)."""
-    return max(PLANFORM, key=lambda p: p[1])[0]
+def _wing_le_point(s: float) -> tuple[float, float, float]:
+    """Point du bord d'attaque de l'aile a l'envergure `s`, legerement en avant."""
+    (x_le, y_le), _ = _wing_edges(s)
+    return (x_le, y_le - 0.030, _wing_plane_z(s))
 
 
 def build_attach_points() -> list:
@@ -2058,6 +2357,14 @@ def build_attach_points() -> list:
     puissance (spec 9.1) : twin de nez (Muzzle_L/R) des le power 1, canons
     d'aile (Muzzle_Wing_L/R) au power 3, canon d'axe (Muzzle_C) au power 4,
     pods de bout d'aile (Muzzle_Tip_L/R) au power 5.
+
+    ⚠️ LIMITE CONNUE, signalee au rapport de BRIEF-0035 : `Muzzle_Wing_*` et
+    `Muzzle_Tip_*` sont desormais sur une PIECE MOBILE, mais `ak.attach_point()`
+    ne sait creer qu'un Empty a la racine — le kit n'expose pas de parentage
+    pour les points d'attache. Les deux paires restent donc figees a la position
+    « ailes deployees ». Sans consequence sur le tir (les offsets sont lus une
+    fois), visible seulement si l'on veut faire partir un flash du canon d'aile
+    en fleche maximale.
     """
     points: list = []
 
@@ -2067,22 +2374,17 @@ def build_attach_points() -> list:
     # --- canon d'axe central : entre les deux tubes, meme plan de tir. --------
     points.append(ak.attach_point("Muzzle_C", (0.0, MUZZLE_Y, _barrel_z())))
 
-    # --- canons d'aile : sur le bord d'attaque, a la station ou la demi-
-    #     envergure vaut WING_MUZZLE_X ; z pris sur la surface superieure d'aile
-    #     a cette station (anhedral compris via z_top).
-    y_wing = _leading_edge_station(WING_MUZZLE_X)
-    z_wing = z_top(WING_MUZZLE_X, *section_params(y_wing))
-    points += list(ak.attach_pair("Muzzle_Wing", WING_MUZZLE_X, y_wing, z_wing))
+    # --- canons d'aile et pods de bout d'aile : sur le bord d'attaque de la
+    #     LAME, a une fraction d'envergure. BRIEF-0035 : c'est un changement de
+    #     DERIVATION rendu obligatoire par le plan — l'aile ne commence plus
+    #     qu'a |x| = 0,545, si bien que les abscisses absolues 0,500 et 0,800
+    #     ne designaient plus rien. Les inverser sur `PLANFORM`, qui ne decrit
+    #     plus que le fuselage, aurait leve une `ContractError` a chaque build.
+    x_wing, y_wing, z_wing = _wing_le_point(WING_MUZZLE_S)
+    points += list(ak.attach_pair("Muzzle_Wing", x_wing, y_wing, z_wing))
 
-    # --- pods de bout d'aile : sur le bord d'attaque, a la station ou la
-    #     demi-envergure vaut TIP_MUZZLE_X. BRIEF-0034 : c'est un changement de
-    #     DERIVATION, pas de role — le point reste a |x| = 0.800 comme l'exige
-    #     le brief. On ne peut plus le prendre au coin de largeur maximale :
-    #     celui-ci est desormais a y = 0.580, au ras de la charniere de volet,
-    #     et le muzzle se serait retrouve sur une piece mobile.
-    y_tip = _leading_edge_station(TIP_MUZZLE_X)
-    z_tip = z_top(TIP_MUZZLE_X, *section_params(y_tip))
-    points += list(ak.attach_pair("Muzzle_Tip", TIP_MUZZLE_X, y_tip, z_tip))
+    x_tip, y_tip, z_tip = _wing_le_point(TIP_MUZZLE_S)
+    points += list(ak.attach_pair("Muzzle_Tip", x_tip, y_tip, z_tip))
 
     # --- tuyeres : DERRIERE la couronne de petales, sinon la plume de trainee
     #     sortirait du milieu de la tuyere et traverserait les petales. Le z
@@ -2147,11 +2449,11 @@ def _flap_travel_limit(part: ak.MovingPart) -> float:
     Le volet tourne autour d'un axe parallele a X passant par son pivot. Un
     sommet (y, z) va en
         y' = y_p + (y - y_p) cos t - (z - z_p) sin t
-    et mord la cloison des que `y' < FLAP_HINGE_Y`. Le plafond est le plus
+    et mord la cloison des que `y' < FLAP_WALL_Y`. Le plafond est le plus
     petit angle qui fait mordre UN sommet, dans l'un ou l'autre sens.
 
     Pourquoi le mesurer plutot que le calculer : la valeur depend de la forme
-    du volet, donc de la corde de l'aile a l'emplanture, donc du planform. Elle
+    du volet, donc de la corde de l'aile au bord de fuite, donc du plan. Elle
     change des qu'on touche a la silhouette — et `ShipFlight` est regle dessus.
     """
     _, y_p, z_p = part.pivot
@@ -2160,9 +2462,9 @@ def _flap_travel_limit(part: ak.MovingPart) -> float:
         # repere d'auteur : le maillage n'a pas encore ete transporte en Godot
         dy, dz = vert.co.y - y_p, vert.co.z - z_p
         for sign in (1.0, -1.0):
-            # resout dy*cos(t) - sign*dz*sin(t) = -(y_p - FLAP_HINGE_Y)
+            # resout dy*cos(t) - sign*dz*sin(t) = -(y_p - FLAP_WALL_Y)
             a, b = dy, -sign * dz
-            target = FLAP_HINGE_Y - y_p          # negatif (= -FLAP_GAP)
+            target = FLAP_WALL_Y - y_p           # negatif (= -FLAP_GAP)
             radius = math.hypot(a, b)
             if radius < 1e-9 or abs(target) > radius:
                 continue                          # ce sommet ne mord jamais
@@ -2176,6 +2478,118 @@ def _flap_travel_limit(part: ak.MovingPart) -> float:
     return math.degrees(limit)
 
 
+def _wing_sweep_limit(wing: ak.MovingPart, flap: ak.MovingPart) -> tuple[float, str]:
+    """Fleche maximale admissible, en degres, MESUREE sur le maillage livre.
+
+    C'est la reponse directe au piege que le brief demande de traiter : le
+    contrat de `export_hull()` ne connait QUE la pose de repos. Une aile qui
+    deborde une fois repliee, ou qui entre dans la nacelle, le passerait sans un
+    mot — exactement comme le volet de BRIEF-0034 dont le debattement reel etait
+    tombe a 2,8 deg sous un contrat parfaitement vert.
+
+    On balaie donc l'angle par pas de 0,25 deg et on teste, sommet par sommet et
+    pour l'aile ET son volet (qui la suit, etant son enfant), trois choses :
+
+      1. |x| <= |x| AU REPOS                    — la boite englobante en largeur
+      2. |y| <= HALF_L                          — la boite englobante en longueur
+      3. |x| >= nacelle_half_width(y) + garde   — la peau du fuseau
+
+    La reference du test 1 est l'etendue REELLE de la piece au repos, chanfrein
+    compris, et non `HALF_W` : la lame touche l'envergure contractuelle par
+    construction, et un demi-millimetre de chanfrein aurait suffi a faire echouer
+    la mesure a l'angle zero.
+
+    Retourne (angle, motif de l'arret).
+    """
+    px, py, _ = wing.pivot
+    pts = [(abs(v.co.x), v.co.y) for v in wing.obj.data.vertices]
+    pts += [(abs(v.co.x), v.co.y) for v in flap.obj.data.vertices]
+    # En polaire autour du pivot, cote babord (|x| : les deux ailes sont
+    # symetriques, une seule mesure suffit et vaut pour l'autre).
+    polar = []
+    for ax, y in pts:
+        dx, dy = ax - abs(px), y - py
+        polar.append((math.hypot(dx, dy), math.atan2(dy, dx)))
+    x_rest = max(abs(px) + r * math.cos(phi) for r, phi in polar)
+
+    reason = "aucune butee sous 45 deg"
+    limit = 45.0
+    step = 0.25
+    theta = 0.0
+    while theta <= 45.0:
+        rad = math.radians(theta)
+        for r, phi in polar:
+            x = abs(px) + r * math.cos(phi + rad)
+            y = py + r * math.sin(phi + rad)
+            if x > x_rest + 1e-4:
+                return theta - step, f"largeur ({x:.4f} > {x_rest:.4f} au repos)"
+            if abs(y) > HALF_L + 1e-4:
+                return theta - step, f"longueur ({y:+.4f} hors +/-{HALF_L:.3f})"
+            half = nacelle_half_width(y)
+            # ⚠️ `nacelle_half_width` rend un RAYON : la peau est a
+            # `NACELLE_X + rayon`. Comparer x au rayon seul faisait passer
+            # 45 deg de fleche pour admissibles alors que l'aile traversait le
+            # fuseau des 33 — le genre d'erreur qu'une mesure « verte » cache.
+            if half > 0.0 and x < NACELLE_X + half + WING_CLEARANCE:
+                return theta - step, (
+                    f"peau de nacelle a y = {y:+.3f} "
+                    f"(x = {x:.4f}, peau {NACELLE_X + half:.4f})"
+                )
+        theta += step
+    return limit, reason
+
+
+def _wing_inboard_x(y: float) -> float:
+    """|x| minimal de la LAME a la station `y`, ou -1 si l'aile n'y est pas.
+
+    Echantillonne le plan de l'aile (envergure x corde) plutot que de resoudre
+    analytiquement : le bord de fuite est tronque par le logement du volet, et
+    une formule fermee mentirait des qu'on bougera `FLAP_HINGE_Y`.
+    """
+    best = -1.0
+    for k in range(81):
+        s = k / 80.0
+        (lx, ly), (tx, ty) = _wing_edges(s)
+        for m in range(41):
+            t = m / 40.0
+            x = lx + (tx - lx) * t
+            yy = ly + (ty - ly) * t
+            if abs(yy - y) <= 0.006:
+                best = x if best < 0.0 else min(best, x)
+    return best
+
+
+def _print_silhouette_gaps() -> None:
+    """Mesure, station par station, la LARGEUR DES FENTES vues de dessus.
+
+    C'est le critere d'acceptation de BRIEF-0035 exprime en chiffres. L'aplat
+    noir reste le juge ; cette mesure sert a savoir POURQUOI une fente s'est
+    refermee quand elle se referme — la bounding box, elle, ne mesure pas les
+    trous, et c'est precisement ce qui a laissé passer deux briefs.
+    """
+    print("  fentes vues de dessus (demi-envergure, cote babord) :")
+    for label, y in (
+        ("nez de nacelle   ", -0.360),
+        ("avant du caisson ", -0.100),
+        ("caisson (fermee) ", 0.200),
+        ("arriere caisson  ", 0.560),
+        ("emplanture d'aile", 0.300),
+        ("poupe            ", 0.960),
+    ):
+        fus = section_cut(y)
+        nac_lo = NACELLE_X - nacelle_half_width(y)
+        nac_hi = NACELLE_X + nacelle_half_width(y)
+        bridged = BRIDGE[0][0] <= y <= BRIDGE[-1][0]
+        gap1 = 0.0 if bridged else max(nac_lo - fus, 0.0)
+        # fente 2 : de la peau du fuseau au point le plus interne de la lame.
+        inboard = _wing_inboard_x(y)
+        g2 = "aile absente" if inboard < 0.0 else f"{(inboard - nac_hi) * 1000:5.0f} mm"
+        print(
+            f"    y = {y:+.3f}  {label} : "
+            f"fente 1 = {gap1 * 1000:5.0f} mm | fente 2 = {g2}"
+        )
+
+
 def main() -> None:
     ak.reset_scene()
     ak.set_faction(ak.FACTION_VANGUARD)
@@ -2183,16 +2597,14 @@ def main() -> None:
     ship = ak.join_objects([build_hull(), build_details()], "Specter9")
     _finish(ship, bevel=0.0035)
 
-    parts = [
-        build_flap(ak.PORT),
-        build_flap(ak.STARBOARD),
-        build_nozzle(ak.PORT),
-        build_nozzle(ak.STARBOARD),
-    ]
+    wings = [build_wing(ak.PORT), build_wing(ak.STARBOARD)]
+    flaps = [build_flap(ak.PORT), build_flap(ak.STARBOARD)]
+    parts = wings + flaps + [build_nozzle(ak.PORT), build_nozzle(ak.STARBOARD)]
     for part in parts:
         _finish(part.obj, bevel=0.0022)
 
-    travel = min(_flap_travel_limit(p) for p in parts if p.obj.name.startswith("Flap"))
+    travel = min(_flap_travel_limit(p) for p in flaps)
+    sweep, reason = _wing_sweep_limit(wings[0], flaps[0])
 
     report = ak.export_hull(
         ship, build_attach_points(), OUTPUT, CONTRACT, parts=parts
@@ -2206,35 +2618,24 @@ def main() -> None:
             f"hauteur Y = {report.size[1]:.4f} m < plancher {MIN_HEIGHT_Y:.2f} m "
             "(BRIEF-0033 : la coque doit cesser de lire comme une plaque)"
         )
+    # ... et il ne borne QUE la pose de repos. Le debattement de fleche est donc
+    # verifie ici, sur le maillage livre, et il est bloquant.
+    if sweep < WING_SWEEP_TARGET:
+        raise ak.ContractError(
+            f"fleche admissible mesuree = {sweep:.2f} deg < cible "
+            f"{WING_SWEEP_TARGET:.1f} deg — butee : {reason}\n"
+            "  (BRIEF-0035 : la bbox est mesuree AU REPOS, elle ne voit pas ce defaut)"
+        )
     print(
         f"  hauteur/longueur : {report.size[1] / report.size[2]:.1%} "
         f"(cible BRIEF-0034 : 25-29 %)"
     )
     print(f"  volets : plafond de debattement mesure {travel:.1f} deg")
-    _print_plan_share()
-
-
-def _print_plan_share() -> None:
-    """Repartition de la surface en PLAN entre corps et aile (ADR-0014).
-
-    ADR-0014 interdit de conclure sur une repartition de formes a partir d'un
-    rapport de boite englobante. Voici la mesure qui aurait du etre faite :
-    l'aire du plan, integree station par station, et la part qu'y prend l'aile
-    au-dela du groupe fuselage + nacelles.
-    """
-    body_edge = NACELLE_X + max(hw for _, hw, _ in FAIRING)
-    step = 0.002
-    total = wing = 0.0
-    y = -HALF_L
-    while y <= 0.860:
-        w = section_cut(y)
-        total += 2.0 * w * step
-        wing += 2.0 * max(w - body_edge, 0.0) * step
-        y += step
     print(
-        f"  plan : aile hors groupe fuselage+nacelles = {wing / total:.0%} "
-        f"de la surface vue de dessus (bord du groupe a |x| = {body_edge:.3f})"
+        f"  ailes  : fleche admissible mesuree {sweep:.2f} deg "
+        f"(cible {WING_SWEEP_TARGET:.0f}) — premiere butee : {reason}"
     )
+    _print_silhouette_gaps()
 
 
 if __name__ == "__main__":

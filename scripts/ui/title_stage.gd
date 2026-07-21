@@ -38,6 +38,9 @@ const HERO_BOB_PERIOD := 7.3
 const HERO_BOB := 0.14
 const HERO_ROLL_PERIOD := 11.0
 const HERO_ROLL_DEG := 4.5
+## Periode de respiration de la poussee du heros. Non harmonique avec le roulis
+## (11,0 s) et le tangage (7,3 s) : les trois ne doivent jamais se resynchroniser.
+const HERO_SWEEP_PERIOD := 19.0
 const CITADEL_YAW_RATE := 0.035    # rad/s — à peine perceptible, mais jamais figé
 const ESCORT_SPAN := 34.0          # largeur du couloir traversé avant rebouclage
 const ESCORT_SPEED := 2.6
@@ -97,9 +100,9 @@ func _apply_bisect_flags() -> void:
 ## Le héros est à 3 m de la caméra, les escortes à une quinzaine : à réglage égal,
 ## les plumes du héros écrasent l'image pendant que celles des escortes disparaissent.
 ## D'où deux calibrages distincts — c'est une question de cadrage, pas de physique.
-const HERO_TRAIL_SCALE := 0.42
+const HERO_TRAIL_SCALE := 0.34
 const HERO_TRAIL_ENERGY := 1.5
-const ESCORT_TRAIL_SCALE := 0.8
+const ESCORT_TRAIL_SCALE := 0.65
 const ESCORT_TRAIL_ENERGY := 2.4
 
 const CitadelTurretScene := preload("res://scenes/fortress/citadel_turret.tscn")

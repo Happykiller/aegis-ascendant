@@ -19,6 +19,14 @@ extends Node
 ## le lissage, qui dépasse légèrement la cible avant de s'y poser.
 const FLAP_DEG := 11.0
 
+## Flèche des ailes à pleine poussée. Le plafond MÉCANIQUE mesuré par la forge est de
+## **32,25°** — au-delà l'aile traverse la peau de nacelle — et il est remesuré à chaque
+## build, le build échouant en dessous de la cible. On reste à 26 : la marge absorbe le
+## lissage, qui dépasse légèrement sa cible avant de s'y poser.
+##
+## Sens : l'aile se REPLIE quand la poussée monte, elle s'ouvre au ralenti.
+const SWEEP_DEG := 26.0
+
 ## Ouverture des pétales à pleine poussée. Modélisés FERMÉS au repos : on ne fait que
 ## grandir. 1,45 est la valeur que la forge a utilisée pour son rendu de contrôle.
 const NOZZLE_OPEN := 1.45
@@ -29,6 +37,8 @@ const NOZZLE_OPEN := 1.45
 const FLAP_RESPONSE := 9.0
 const NOZZLE_RESPONSE := 3.0
 
+var _wing_l: Node3D
+var _wing_r: Node3D
 var _flap_l: Node3D
 var _flap_r: Node3D
 var _nozzles: Array[Node3D] = []
@@ -41,7 +51,7 @@ var _thrust: float = 0.0
 ## `hull` : le Node3D instancié du `.glb`. Retourne `null` si la coque n'a aucune
 ## pièce mobile — une coque d'avant BRIEF-0033 continue de fonctionner, immobile.
 static func apply(hull: Node3D) -> ShipFlight:
-	if hull == null or hull.get_node_or_null("Flap_L") == null:
+	if hull == null or hull.get_node_or_null("Wing_L") == null:
 		return null
 	var flight := ShipFlight.new()
 	flight.name = "ShipFlight"
@@ -50,8 +60,14 @@ static func apply(hull: Node3D) -> ShipFlight:
 
 func _ready() -> void:
 	var hull := get_parent() as Node3D
-	_flap_l = hull.get_node_or_null("Flap_L") as Node3D
-	_flap_r = hull.get_node_or_null("Flap_R") as Node3D
+	_wing_l = hull.get_node_or_null("Wing_L") as Node3D
+	_wing_r = hull.get_node_or_null("Wing_R") as Node3D
+	# Les volets sont des ENFANTS des ailes (le kit sait imbriquer depuis BRIEF-0035) :
+	# ils suivent donc la fleche sans qu'on ait a la leur repercuter.
+	if _wing_l != null:
+		_flap_l = _wing_l.get_node_or_null("Flap_L") as Node3D
+	if _wing_r != null:
+		_flap_r = _wing_r.get_node_or_null("Flap_R") as Node3D
 	for side in ["Nozzle_L", "Nozzle_R"]:
 		var nozzle := hull.get_node_or_null(side) as Node3D
 		if nozzle != null:
@@ -81,6 +97,15 @@ func _process(delta: float) -> void:
 		_flap_l.rotation.x = deflection
 	if _flap_r != null:
 		_flap_r.rotation.x = -deflection
+
+	# Fleche : babord et tribord en MIROIR. Une rotation de meme signe des deux cotes
+	# enverrait l'aile tribord vers le NEZ — Godot tourne autour de +Y, et les deux
+	# ailes sont de part et d'autre de l'axe.
+	var sweep := deg_to_rad(SWEEP_DEG * _thrust)
+	if _wing_l != null:
+		_wing_l.rotation.y = sweep
+	if _wing_r != null:
+		_wing_r.rotation.y = -sweep
 
 	var open := 1.0 + (NOZZLE_OPEN - 1.0) * _thrust
 	for nozzle in _nozzles:
