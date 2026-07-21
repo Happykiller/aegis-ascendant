@@ -696,6 +696,35 @@ def attach_point(
     return empty
 
 
+@dataclass
+class MovingPart:
+    """Piece EXPORTEE A PART, destinee a etre animee cote Godot.
+
+    Pourquoi cette primitive existe : `export_hull()` n'exportait qu'UN objet
+    maille, si bien qu'aucun sous-ensemble d'une coque ne pouvait bouger. La
+    limite a mordu deux fois — mantelet de tourelle et anneau de balise
+    (BRIEF-0032-report §9), puis volets et tuyeres du Specter-9. Le repli
+    (un `.glb` separe par piece) marche mais impose un fichier, une scene et une
+    ligne de provenance pour trois centimetres de geometrie.
+
+    ⚠️ `pivot` est le point d'ARTICULATION, dans le repere d'auteur. C'est LA
+    donnee qui compte : la piece est batie en coordonnees absolues comme le reste
+    de la coque, puis son origine est ramenee sur ce point. Une piece dont
+    l'origine reste a zero decrira un arc de cercle autour du nez du vaisseau au
+    lieu de pivoter sur sa charniere — et le defaut ne se voit qu'une fois animee.
+    """
+
+    obj: bpy.types.Object
+    pivot: tuple[float, float, float]
+
+
+def moving_part(
+    name: str, bm: bmesh.types.BMesh, pivot: tuple[float, float, float]
+) -> MovingPart:
+    """Cree une piece mobile depuis un bmesh bati en coordonnees ABSOLUES."""
+    return MovingPart(new_object(name, bm), pivot)
+
+
 def attach_pair(
     base_name: str, x: float, y: float, z: float
 ) -> tuple[bpy.types.Object, bpy.types.Object]:
@@ -844,6 +873,7 @@ def export_hull(
     attach_points: list[bpy.types.Object],
     filepath: str,
     contract: HullContract,
+    parts: list[MovingPart] | None = None,
 ) -> HullReport:
     """Exporte la coque en `.glb`, puis **valide le fichier produit**.
 
@@ -854,10 +884,18 @@ def export_hull(
          orientation, bounding box (+/- `tolerance`), centrage du pivot,
          budget de triangles, presence des materiaux et des points d'attache.
 
+    `parts` : pieces mobiles exportees en noeuds glTF SEPARES, chacune avec son
+    origine sur son point d'articulation (voir `MovingPart`). Elles comptent dans
+    le budget de triangles et dans la bounding box — ce sont des morceaux de la
+    coque, pas des accessoires. Parametre optionnel : les scripts qui l'ignorent
+    se comportent exactement comme avant.
+
     Leve `ContractError` au moindre ecart : jamais d'export silencieux hors
     contrat.
     """
-    objects = [hull, *attach_points]
+    parts = parts or []
+    _assert_unique_names(hull, parts, attach_points)
+    objects = [hull, *[p.obj for p in parts], *attach_points]
 
     # Garde-fou analytique : la chaine d'axes est-elle encore la bonne ?
     _assert_axis_chain()
@@ -868,12 +906,23 @@ def export_hull(
     # l'arriere). On note leur position d'auteur, on la reverifie sur le .glb.
     author_attach = {e.name: Vector(e.location) for e in attach_points}
     ys = [v.co.y for v in hull.data.vertices]
+    for part in parts:
+        ys += [v.co.y for v in part.obj.data.vertices]
     author_y = (min(ys), max(ys))
 
     # 1. correction d'axe, cuite dans les donnees (les noeuds glTF restent
     #    a l'identite : aucune transformation cachee cote Godot).
     hull.data.transform(_AXIS_FIX)
     hull.data.update()
+    for part in parts:
+        # L'ordre compte : on ramene D'ABORD l'origine sur la charniere dans le
+        # repere d'auteur, ensuite seulement on tourne. L'inverse ferait pivoter
+        # un decalage deja pose et la piece atterrirait ailleurs.
+        pivot = Vector(part.pivot)
+        part.obj.data.transform(Matrix.Translation(-pivot))
+        part.obj.data.transform(_AXIS_FIX)
+        part.obj.data.update()
+        part.obj.location = _AXIS_FIX @ pivot
     for empty in attach_points:
         empty.location = _AXIS_FIX @ empty.location
 
@@ -920,6 +969,24 @@ def export_hull(
     return report
 
 
+def _assert_unique_names(
+    hull: bpy.types.Object,
+    parts: list[MovingPart],
+    attach_points: list[bpy.types.Object],
+) -> None:
+    """Un nom en double cote Blender devient un `Node3D` renomme cote Godot.
+
+    Godot suffixe silencieusement les doublons (`Flap`, `Flap2`...), et le code
+    qui adresse la piece par son nom ne trouve alors plus rien — sans la moindre
+    erreur au chargement. On refuse ici plutot que de le decouvrir en jeu.
+    """
+    names = [hull.name] + [p.obj.name for p in parts] + [e.name for e in attach_points]
+    seen: set[str] = set()
+    dupes = sorted({n for n in names if n in seen or seen.add(n)})
+    if dupes:
+        raise ContractError(f"noms en double a l'export : {', '.join(dupes)}")
+
+
 def _validate_glb(
     filepath: str,
     contract: HullContract,
@@ -936,8 +1003,16 @@ def _validate_glb(
     vertices = 0
     lo = [math.inf] * 3
     hi = [-math.inf] * 3
-    for mesh in gltf.get("meshes", []):
-        for prim in mesh["primitives"]:
+    # On parcourt les NŒUDS et non les maillages : une piece mobile a son origine
+    # sur sa charniere, donc ses sommets sont en coordonnees LOCALES et sa position
+    # reelle vit dans la translation du nœud. Ignorer celle-ci — ce que faisait la
+    # version maillage — sortait la piece de la bounding box : un volet pouvait
+    # depasser de 40 cm sans que le contrat s'en apercoive.
+    for node in gltf.get("nodes", []):
+        if "mesh" not in node:
+            continue
+        offset = node.get("translation", [0.0, 0.0, 0.0])
+        for prim in gltf["meshes"][node["mesh"]]["primitives"]:
             ntri = _primitive_triangles(gltf, prim)
             triangles += ntri
             acc = gltf["accessors"][prim["attributes"]["POSITION"]]
@@ -945,8 +1020,8 @@ def _validate_glb(
             name = mats[prim["material"]] if "material" in prim else "<none>"
             tris_by_mat[name] = tris_by_mat.get(name, 0) + ntri
             for axis in range(3):
-                lo[axis] = min(lo[axis], acc["min"][axis])
-                hi[axis] = max(hi[axis], acc["max"][axis])
+                lo[axis] = min(lo[axis], acc["min"][axis] + offset[axis])
+                hi[axis] = max(hi[axis], acc["max"][axis] + offset[axis])
 
     if not math.isfinite(lo[0]):
         raise ContractError(f"{filepath} : aucune geometrie exportee")
