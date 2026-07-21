@@ -52,7 +52,7 @@ numéro d'immatriculation.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/docking_environments_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/docking_environments_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/docking_environments_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

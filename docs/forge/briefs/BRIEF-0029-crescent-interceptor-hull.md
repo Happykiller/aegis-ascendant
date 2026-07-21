@@ -23,7 +23,7 @@ qui compte.
 réutiliser sans le modifier**. Prendre `tools/blender/build_needle_scout.py` comme modèle de
 structure (même classe d'unité, même budget, mêmes attaches).
 
-Référence de design : **`assets/source/references/reference_asset_overview_board.png`**, panneau
+Référence de design : **`assets/reference/inspiration/reference_asset_overview_board.png`**, panneau
 `ENNEMIS`, **rangée du haut, deuxième vignette** (« CRESCENT INTERCEPTOR »). Regarde-la avec Read.
 
 Traits à respecter :

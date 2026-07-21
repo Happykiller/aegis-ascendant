@@ -9,7 +9,7 @@
 Ajouter au fond spatial procédural (`shaders/space_background.gdshader`, refonte vague 1)
 des **landmarks « héros » peints** qui dérivent lentement derrière le plan de jeu : une
 planète et des amas de nébuleuse, pour atteindre le niveau du board de référence
-`assets/source/references/reference_gameplay_vfx_environment_board.png` (couches 2 nébuleuse /
+`assets/reference/inspiration/reference_gameplay_vfx_environment_board.png` (couches 2 nébuleuse /
 3 planète). Motivation : le fond, même après la vague 1, gagne en identité avec de vrais objets
 peints comme points d'accroche, sans surcharger le couloir de combat central.
 
@@ -34,13 +34,13 @@ peints comme points d'accroche, sans surcharger le couloir de combat central.
 
 ## Livrables
 
-- `assets/source/planet_hero.png` — source ChatGPT (planète, fond damier blanc). **Livré.**
-- `assets/source/nebula_monument_a.png` — source ChatGPT (nébuleuse, fond damier noir). **Livré.**
+- `assets/source/backgrounds/raster/planet_hero.png` — source ChatGPT (planète, fond damier blanc). **Livré.**
+- `assets/source/backgrounds/raster/nebula_monument_a.png` — source ChatGPT (nébuleuse, fond damier noir). **Livré.**
 - `assets/imported/backgrounds/planet_hero.png` — texture in-game (alpha détouré). **Livré.**
 - `assets/imported/backgrounds/nebula_a.png` — texture in-game (alpha par clé saturation). **Livré.**
-- `assets/source/nebula_monument_b.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
+- `assets/source/backgrounds/raster/nebula_monument_b.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
 - `assets/imported/backgrounds/nebula_b.png` — texture in-game (alpha par luminance). **Livré.**
-- `assets/source/galaxy_distant.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
+- `assets/source/backgrounds/raster/galaxy_distant.png` — source ChatGPT **sur fond noir pur** (2e essai). **Livré.**
 - `assets/imported/backgrounds/galaxy_distant.png` — texture in-game (alpha par luminance). **Livré.**
 
 ## Prompts de génération (ChatGPT, optimisés)

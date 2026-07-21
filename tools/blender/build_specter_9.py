@@ -10,7 +10,7 @@ relit le `.glb` produit et echoue bruyamment si la bounding box, le budget de
 triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
-Reference de design : `assets/source/concepts/specter_9_concept_sheet.png`.
+Reference de design : `assets/reference/concepts/specter_9_concept_sheet.png`.
 Les tables de profil ci-dessous sont relevees sur la vue de dessus de cette
 planche (normalisees puis mises a l'echelle des cotes imposees par l'ADR-0008).
 

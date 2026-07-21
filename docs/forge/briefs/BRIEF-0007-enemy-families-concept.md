@@ -45,7 +45,7 @@ parfaite sur plus d'une famille.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/null_choir_enemy_families_sheet.png` | planche concept raster |
+| `assets/reference/concepts/null_choir_enemy_families_sheet.png` | planche concept raster |
 | `docs/forge/output/null_choir_enemy_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

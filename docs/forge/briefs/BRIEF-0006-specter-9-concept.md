@@ -47,7 +47,7 @@ humanoïde.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/specter_9_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/specter_9_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/specter_9_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

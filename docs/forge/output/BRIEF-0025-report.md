@@ -4,7 +4,7 @@
 - **Date** : 2026-07-12
 - **Brief** : `docs/forge/briefs/BRIEF-0025-aegis-citadel-hull.md`
 - **Normes** : `docs/decisions/ADR-0008-pipeline-3d-blender.md`, `docs/forge/CHARTE_CREATIVE.md`
-- **Référence de design** : `assets/source/concepts/aegis_citadel_concept_sheet.png`
+- **Référence de design** : `assets/reference/concepts/aegis_citadel_concept_sheet.png`
 - **Outil** : Blender 4.5.11 LTS, headless (`blender45 -b -P …`)
 
 ## 1. Livrables

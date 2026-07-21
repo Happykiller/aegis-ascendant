@@ -62,7 +62,7 @@ jambes, tête, transformation ou silhouette de navire maritime.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/aegis_citadel_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/aegis_citadel_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/aegis_citadel_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

@@ -1,5 +1,5 @@
 extends Node3D
-## Écran d'accueil — diorama 3D animé (maquette : assets/source/references/ref_home.png).
+## Écran d'accueil — diorama 3D animé (maquette : assets/reference/inspiration/ref_home.png).
 ##
 ## Remplace l'ancien écran titre, qui était un Control 2D : un SVG plat, des labels en
 ## police Godot par défaut, et pour toute animation un sin() sur l'alpha du hint. Le jeu

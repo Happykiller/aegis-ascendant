@@ -21,7 +21,7 @@ mérite du volume et un noyau qui pulse.
 par le BRIEF-0021 : **le réutiliser, ne pas le réécrire**). Prendre `tools/blender/build_specter_9.py`
 comme modèle de structure de script.
 
-Référence de design : **`assets/source/concepts/choir_harvester_concept_sheet.png`**. Regarde-la
+Référence de design : **`assets/reference/concepts/choir_harvester_concept_sheet.png`**. Regarde-la
 avec Read : elle contient la vue principale, plusieurs 3/4, et des gros plans des pétales et du bras.
 
 Traits à respecter (la charte le résume par « trois bras, noyau central protégé ») :

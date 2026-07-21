@@ -20,7 +20,7 @@ il est souvent présent en nombre, donc **il doit rester lisible tout petit et c
 par le BRIEF-0021 : **le réutiliser, ne pas le réécrire**). Prendre `tools/blender/build_specter_9.py`
 comme modèle de structure de script.
 
-Référence de design : **`assets/source/concepts/null_choir_enemy_families_sheet.png`**, **première
+Référence de design : **`assets/reference/concepts/null_choir_enemy_families_sheet.png`**, **première
 famille** (rangée du haut) — la petite silhouette en dard effilé. Regarde-la avec Read.
 
 Traits à respecter : dard mince et pointu, symétrique, profil très effilé, plaques de carapace

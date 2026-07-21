@@ -34,12 +34,12 @@ parallaxe sans gêner la lecture des projectiles.
 
 | Fichier | Couche |
 |---|---|
-| `assets/source/backgrounds/parallax_01_distant_stars.svg` | base opaque |
-| `assets/source/backgrounds/parallax_02_nebula.svg` | nébuleuse |
-| `assets/source/backgrounds/parallax_03_planet.svg` | planète |
-| `assets/source/backgrounds/parallax_04_distant_fleet.svg` | flotte distante |
-| `assets/source/backgrounds/parallax_05_mid_cruisers.svg` | croiseurs |
-| `assets/source/backgrounds/parallax_06_foreground_debris.svg` | débris |
+| `assets/source/backgrounds/parallax/parallax_01_distant_stars.svg` | base opaque |
+| `assets/source/backgrounds/parallax/parallax_02_nebula.svg` | nébuleuse |
+| `assets/source/backgrounds/parallax/parallax_03_planet.svg` | planète |
+| `assets/source/backgrounds/parallax/parallax_04_distant_fleet.svg` | flotte distante |
+| `assets/source/backgrounds/parallax/parallax_05_mid_cruisers.svg` | croiseurs |
+| `assets/source/backgrounds/parallax/parallax_06_foreground_debris.svg` | débris |
 | `docs/forge/output/space_parallax_layers.md` | ordre et vitesses suggérées |
 
 ## Critères d'acceptation

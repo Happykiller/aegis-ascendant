@@ -25,7 +25,7 @@ déterminisme) et elles ne sont pas négociables.
 Blender est déjà installé : `blender45 -b -P <script>` (via `./scripts/bootstrap-blender.sh`).
 La chaîne Blender → glTF → import Godot est vérifiée et fonctionne en headless.
 
-Référence de design : **`assets/source/concepts/specter_9_concept_sheet.png`**. C'est un vrai model
+Référence de design : **`assets/reference/concepts/specter_9_concept_sheet.png`**. C'est un vrai model
 sheet — vue de dessus (grande), face, profil, arrière, deux vues 3/4, gros plans tuyères et canon,
 silhouettes. Tout ce qu'il faut pour modéliser sans inventer.
 

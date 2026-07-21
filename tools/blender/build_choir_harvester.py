@@ -10,7 +10,7 @@ relit le `.glb` produit et echoue bruyamment si la bounding box, le budget de
 triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
-Reference de design : `assets/source/concepts/choir_harvester_concept_sheet.png`
+Reference de design : `assets/reference/concepts/choir_harvester_concept_sheet.png`
 (corps discoide blinde cercle d'anneaux segmentes, noyau magenta protege par cinq
 petales en iris, grand bras-faux replie au-dessus du corps, deux bras a griffes a
 oeil magenta, module arriere relie par un cou segmente).

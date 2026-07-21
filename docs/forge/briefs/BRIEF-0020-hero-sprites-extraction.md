@@ -1,13 +1,20 @@
 # BRIEF-0020 — Extraction des sprites héros depuis les planches de concept
 
-- **Statut** : assigné
+> ⚠️ **CADUC — ne pas rejouer.** Les sprites livrés par ce brief ont été **supersédés par
+> l'ADR-0008** (passage aux coques 3D glTF) : plus aucune scène ne les chargeait. Ils ont été
+> purgés de `assets/imported/sprites/` le 2026-07-21, avec leurs lignes de provenance. Les chemins
+> cités plus bas ne pointent donc plus sur rien — le brief est conservé comme trace de ce qui a été
+> produit et pourquoi ça n'a pas tenu, pas comme instruction.
+
+- **Statut** : caduc (livré, puis supersédé par ADR-0008)
+- **Ancien statut** : assigné
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-07-11
 
 ## Objectif
 
-Extraire, depuis les planches de concept originales (`assets/source/concepts/*.png`), des **sprites
+Extraire, depuis les planches de concept originales (`assets/reference/concepts/*.png`), des **sprites
 PNG à fond transparent** utilisables directement en `Sprite3D` dans le jeu : le vaisseau du
 joueur et les grandes structures/boss. C'est l'élément qui fera « l'art IA dans le jeu ».
 

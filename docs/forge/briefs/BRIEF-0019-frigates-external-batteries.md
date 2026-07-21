@@ -4,7 +4,7 @@
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur intérimaire (Codex, continuité exceptionnelle)
 - **Date** : 2026-07-11
-- **Manque** : `assets/source/concepts/frigates_and_batteries_concept_sheet.png` (voir `docs/forge/REVIEW_NOTES.md`)
+- **Manque** : `assets/reference/concepts/frigates_and_batteries_concept_sheet.png` (voir `docs/forge/REVIEW_NOTES.md`)
 
 ## Objectif
 
@@ -52,7 +52,7 @@ humanoïde, maritime ou dérivé d'un avion réel.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/frigates_and_batteries_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/frigates_and_batteries_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/frigates_and_batteries_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

@@ -3,14 +3,14 @@
 - **Date** : 2026-07-11
 - **Statut** : **superseded par [ADR-0009](ADR-0009-reference-ip-reinstauree.md)** (2026-07-19) —
   décision du propriétaire pour ce projet personnel non commercial : les planches sont sorties de
-  quarantaine, versionnées dans `assets/source/references/` et réinstaurées comme référence visuelle.
+  quarantaine, versionnées dans `assets/reference/inspiration/` et réinstaurées comme référence visuelle.
   Le texte ci-dessous reste l'archive de la décision d'origine.
 
 ## Contexte
 
 La première grande passe de l'atelier `asset-forge` (session Codex + imagegen) a produit,
 en plus des livrables originaux, **7 planches de « référence » raster** générées via ChatGPT :
-`assets/source/concepts/reference_*.png`. L'index qui les accompagnait
+`assets/reference/inspiration/reference_*.png`. L'index qui les accompagnait
 (`REFERENCE_INDEX.md`) documente honnêtement qu'elles **contiennent des marques déposées
 visibles** — « Macross », « Valkyrie », « Zentradi », « Raiden », « VF-class » — et des
 silhouettes non originales (livrée évoquant le VF-1). L'atelier les avait délibérément

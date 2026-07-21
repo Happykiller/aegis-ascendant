@@ -20,7 +20,7 @@ planète + atmosphère au bord de cadre, forteresse massive.
 ## Décision
 
 - Les planches sont **sorties de quarantaine et versionnées** comme références visuelles légitimes
-  du projet, dans **`assets/source/references/`** (étape source, `.gdignore`é : jamais importées par
+  du projet, dans **`assets/reference/inspiration/`** (étape source, `.gdignore`é : jamais importées par
   Godot). Le répertoire `/_ip_quarantine/` et son exclusion `.gitignore` sont **supprimés**.
 - Elles sont la **cible d'inspiration** du rendu (composition, densité, chaleur, profondeur, codes
   couleur) et sont provenancées dans `assets/licenses/ASSET_PROVENANCE.csv`.
@@ -39,5 +39,5 @@ planète + atmosphère au bord de cadre, forteresse massive.
   et `CHARTE_CREATIVE.md §5`.
 - `asset-forge` peut s'appuyer sur ces références pour les briefs de rendu, en produisant de l'original.
 - Si le projet devait un jour être distribué ou commercialisé, **cet ADR serait à réviser** (le risque
-  IP redeviendrait réel) : il faudrait alors purger `assets/source/references/` de l'arbre **et** de
+  IP redeviendrait réel) : il faudrait alors purger `assets/reference/inspiration/` de l'arbre **et** de
   l'historique git/LFS (`git filter-repo` / purge LFS), pas un simple `git rm`.

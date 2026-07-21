@@ -10,7 +10,7 @@ module `random` global) et s'auto-valide : `ak.export_hull()` relit le `.glb`
 produit et echoue bruyamment si la bounding box, le budget de triangles, les
 materiaux, le centrage du pivot ou les points d'attache sortent du contrat.
 
-Reference de design : `assets/source/concepts/pale_leviathan_concept_sheet.png`.
+Reference de design : `assets/reference/concepts/pale_leviathan_concept_sheet.png`.
 
 Repere d'auteur (ADR-0008) : nez -Y, dessus +Z, **babord +X** (cf. aegis_kit).
 La « face menaçante » (le noyau) regarde donc vers -Y.

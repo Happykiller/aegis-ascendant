@@ -56,7 +56,7 @@ silhouette maritime, robot humanoïde ou canon central disproportionné.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/aurora_spear_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/aurora_spear_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/aurora_spear_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

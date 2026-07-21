@@ -9,7 +9,7 @@ Il est deterministe (aucun alea) et s'auto-valide : `ak.export_hull()` relit le
 `.glb` produit et echoue bruyamment si la bounding box, le budget de triangles,
 les materiaux, le centrage du pivot ou les points d'attache sortent du contrat.
 
-Reference de design : `assets/source/concepts/null_choir_enemy_families_sheet.png`,
+Reference de design : `assets/reference/concepts/null_choir_enemy_families_sheet.png`,
 **premiere famille** (rangee du haut) : un dard biconique, tres effile, symetrique,
 plaques de carapace anthracite/violet, deux plaques ivoire a mi-corps, une fine
 rainure d'energie magenta courant du nez a la poupe et s'ouvrant sur un noyau-oeil

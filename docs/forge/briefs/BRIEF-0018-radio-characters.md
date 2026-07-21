@@ -49,7 +49,7 @@ uniforme, casque, coiffure ou accessoire identifiable d'une licence.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/radio_characters_concept_sheet.png` | planche de portraits raster |
+| `assets/reference/concepts/radio_characters_concept_sheet.png` | planche de portraits raster |
 | `docs/forge/output/radio_characters_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

@@ -20,8 +20,8 @@ géométrie** (jamais devinées, cf. l'entête de `build_attach_points()`).
   `tools/blender/lib/aegis_kit.py` (`ak.attach_pair()`, `ak.attach_point()`).
 - Repère d'auteur : **nez -Y, dessus +Z, babord +X** ; `ak.attach_pair(base, x, y, z)` pose `_L`
   (babord) / `_R` (tribord) avec le bon signe, `x` = distance **positive** à l'axe.
-- Référence de design : `assets/source/concepts/specter_9_concept_sheet.png` (canon ventral + aile
-  delta double flèche) et la cible de rendu `assets/source/references/reference_fortress_battle_scene.png` où le
+- Référence de design : `assets/reference/concepts/specter_9_concept_sheet.png` (canon ventral + aile
+  delta double flèche) et la cible de rendu `assets/reference/inspiration/reference_fortress_battle_scene.png` où le
   chasseur crache **plusieurs flux parallèles** depuis le nez, les ailes et les bouts d'aile.
 - Le pattern de tir (`scripts/player/player_fighter_controller.gd::_fire_pattern`) sera recâblé
   **par le concepteur** pour lire ces points ; ta mission s'arrête au mesh + contrat.

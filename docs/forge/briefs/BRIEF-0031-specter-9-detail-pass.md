@@ -30,13 +30,13 @@ chiffré, pas subjectif :
 budgets et autorise les textures), puis `ADR-0008` pour tout le reste, puis
 `docs/forge/CHARTE_CREATIVE.md`.
 
-**Référence de design — une seule** : `assets/source/concepts/specter_9_concept_sheet.png`.
+**Référence de design — une seule** : `assets/reference/concepts/specter_9_concept_sheet.png`.
 Regarde-la avec Read. Traits porteurs du détail : plaquage ivoire **découpé en dizaines de panneaux
 irréguliers** aux rainures visibles, bandeaux bleu marine structurés, accents or aux bouts d'aile et
 autour des tuyères, verrière sombre allongée **encadrée en relief**, tuyères cylindriques à **buse
 profonde et anneaux concentriques**, bloc mécanique dorsal, petits bandeaux cyan.
 
-⚠️ **Ne PAS utiliser `assets/source/references/specter_9_multi_angle_turnaround.png`.** Ce fichier
+⚠️ **Ne PAS utiliser `assets/reference/inspiration/specter_9_multi_angle_turnaround.png`.** Ce fichier
 montre un appareil différent (aile pivotante, double dérive, livrée tricolore) dont la silhouette est
 trop proche d'une licence tierce. Décision du propriétaire : la planche de concept fait foi.
 

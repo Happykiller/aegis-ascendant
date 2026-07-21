@@ -10,7 +10,7 @@ relit le `.glb` produit et echoue bruyamment si la bounding box, le budget de
 triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
-Reference de design : `assets/source/concepts/aegis_citadel_concept_sheet.png`.
+Reference de design : `assets/reference/concepts/aegis_citadel_concept_sheet.png`.
 Les tables ci-dessous sont relevees sur la grande vue de dessus de cette planche
 (pixels -> metres, echelle 0,01445 m/px calee sur les deux cotes imposees par
 l'ADR-0008 : 19,6 m d'envergure et 16,6 m de long).

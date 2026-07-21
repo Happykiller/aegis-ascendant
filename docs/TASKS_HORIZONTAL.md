@@ -183,7 +183,12 @@ Soigne la hiérarchie visuelle et la lisibilité en 1920x1080. Vérifie par capt
 **Pourquoi** : la forge a livré les cadres de **pause**, **résultats**, **échec de mission**, et les
 **HUD chasseur/forteresse**. Aucun n'est intégré : le HUD est du texte brut.
 
-**Périmètre** : `scenes/ui/` (hors `boot_screen`), `scripts/ui/`, `assets/imported/ui/hud/`.
+> ⚠️ **Tâche redéfinie par l'ADR-0012.** Les cadres SVG plein écran de la forge sont **abandonnés**,
+> pas à intégrer : les écrans se bâtissent en langage d'interface (thème + Control). Pause et
+> victoire sont faits ; il reste l'écran d'échec, qui n'existe pas du tout.
+> `assets/imported/ui/hud/` a été purgé — le HUD est construit en code (`scripts/ui/fighter_hud.gd`).
+
+**Périmètre** : `scenes/ui/` (hors `boot_screen`), `scripts/ui/`.
 **Ne touche pas à l'écran titre (H3).**
 
 ```
@@ -227,7 +232,7 @@ aucune variété.
 
 ```
 Le jeu n'a qu'une famille d'ennemis (Needle Scout). La planche de concept
-assets/source/concepts/null_choir_enemy_families_sheet.png en décrit SEPT — la deuxième est le
+assets/reference/concepts/null_choir_enemy_families_sheet.png en décrit SEPT — la deuxième est le
 CRESCENT INTERCEPTOR (silhouette en croissant, noyau magenta lumineux, deux vues : dessus et 3/4).
 
 L'architecture est PRÊTE À ÉTENDRE, ne la refais pas :

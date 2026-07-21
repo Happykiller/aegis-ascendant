@@ -6,7 +6,7 @@ audio déterministe et sans téléchargement, SVG propres et conformes). Points 
 
 ## IP — traité
 - 7 planches `reference_*.png` (marques visibles) → d'abord quarantinées hors dépôt (ADR-0005), puis
-  **réinstaurées comme références visuelles légitimes** dans `assets/source/references/` et versionnées
+  **réinstaurées comme références visuelles légitimes** dans `assets/reference/inspiration/` et versionnées
   (**ADR-0009**, projet personnel non commercial). Les 8 planches de concept originales sont conservées.
 
 ## À corriger avant modélisation 3D (briefs futurs)
@@ -28,7 +28,7 @@ audio déterministe et sans téléchargement, SVG propres et conformes). Points 
 ## Livrable manquant
 - **BRIEF-0019 (frégates & batteries externes)** : le prompt de génération est produit
   (`docs/forge/output/frigates_and_batteries_generation_prompt.md`) mais la planche raster
-  `assets/source/concepts/frigates_and_batteries_concept_sheet.png` **n'a jamais été générée**.
+  `assets/reference/concepts/frigates_and_batteries_concept_sheet.png` **n'a jamais été générée**.
   Statut : *prompt livré, image à produire*. À régénérer via l'outil imagegen puis provenancer.
 
 ## Cosmétique

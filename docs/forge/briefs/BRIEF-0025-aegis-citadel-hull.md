@@ -21,7 +21,7 @@ qu'elle soit « lisible à très grande distance ».
 par le BRIEF-0021 : **le réutiliser, ne pas le réécrire**). Prendre `tools/blender/build_specter_9.py`
 comme modèle de structure de script.
 
-Référence de design : **`assets/source/concepts/aegis_citadel_concept_sheet.png`**. Regarde-la avec
+Référence de design : **`assets/reference/concepts/aegis_citadel_concept_sheet.png`**. Regarde-la avec
 Read : la grande vue de dessus est la vue de travail ; il y a aussi face, profil, 3/4, et des gros
 plans des tourelles et des canons.
 

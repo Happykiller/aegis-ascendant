@@ -332,7 +332,7 @@ l’époque graphique et l’ambiance. Il ne cite ni licence existante ni artist
 
 ## 13. Références et autorité
 
-Les planches de `assets/source/references/` sont des références d’intention, non des assets à
+Les planches de `assets/reference/inspiration/` sont des références d’intention, non des assets à
 reproduire. Leur autorité est la suivante :
 
 1. `reference_fortress_battle_scene.png` : composition, échelle et intensité du gameplay ;

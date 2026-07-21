@@ -50,7 +50,7 @@ réaliste ou forme humanoïde.
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/choir_harvester_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/choir_harvester_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/choir_harvester_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

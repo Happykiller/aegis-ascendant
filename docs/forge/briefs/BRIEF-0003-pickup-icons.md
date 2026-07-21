@@ -13,7 +13,7 @@ gameplay et directement utilisables pour les prototypes UI et sprites.
 ## Contexte
 
 La charte impose une identification redondante par couleur et silhouette. Les planches de
-`assets/source/concepts/` servent uniquement à inventorier les fonctions : aucune silhouette,
+`assets/reference/concepts/` servent uniquement à inventorier les fonctions : aucune silhouette,
 composition, lueur ou marque ne doit être copiée.
 
 ## Contraintes

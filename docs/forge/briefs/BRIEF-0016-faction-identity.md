@@ -25,7 +25,7 @@ et les marquages de coque.
 - Marquages de coque en `viewBox="0 0 512 128"`.
 - Lisibilité en monochrome obligatoire.
 - Palette exclusivement issue de la charte.
-- Ne jamais reprendre les emblèmes visibles dans `assets/source/concepts/reference_*.png`.
+- Ne jamais reprendre les emblèmes visibles dans `assets/reference/inspiration/reference_*.png`.
 
 ## Livrables
 

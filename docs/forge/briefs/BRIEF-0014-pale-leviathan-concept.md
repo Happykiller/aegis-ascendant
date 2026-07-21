@@ -53,7 +53,7 @@ baleine, animal marin, insecte réaliste, silhouette humanoïde ou transformatio
 
 | Fichier | Description |
 |---|---|
-| `assets/source/concepts/pale_leviathan_concept_sheet.png` | planche concept raster |
+| `assets/reference/concepts/pale_leviathan_concept_sheet.png` | planche concept raster |
 | `docs/forge/output/pale_leviathan_generation_prompt.md` | prompt final traçable |
 
 ## Critères d'acceptation

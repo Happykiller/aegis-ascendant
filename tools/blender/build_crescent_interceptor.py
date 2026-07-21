@@ -10,7 +10,7 @@ relit le `.glb` produit et echoue bruyamment si la bounding box, le budget de
 triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
-Reference de design : `assets/source/references/reference_asset_overview_board.png`,
+Reference de design : `assets/reference/inspiration/reference_asset_overview_board.png`,
 panneau ENNEMIS, rangee du haut, 2e vignette (« CRESCENT INTERCEPTOR ») : fuselage
 central etroit et cranté, deux longerons lateraux termines par des tuyeres, et deux
 lames laterales balayant vers l'avant. On transpose l'intention (ADR-0009), jamais

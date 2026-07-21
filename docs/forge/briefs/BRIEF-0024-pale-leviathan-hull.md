@@ -21,7 +21,7 @@ l'écran, elle a quatre phases, et son noyau doit **respirer**.
 par le BRIEF-0021 : **le réutiliser, ne pas le réécrire**). Prendre `tools/blender/build_specter_9.py`
 comme modèle de structure de script.
 
-Référence de design : **`assets/source/concepts/pale_leviathan_concept_sheet.png`**. Regarde-la
+Référence de design : **`assets/reference/concepts/pale_leviathan_concept_sheet.png`**. Regarde-la
 avec Read : vue principale, 3/4, profil, face, gros plans du noyau (ouvert et fermé).
 
 Traits à respecter (la charte le résume par « organo-mécanique, anneau incomplet, noyau visible ») :
