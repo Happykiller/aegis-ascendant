@@ -81,8 +81,12 @@ light_color = Color(0.85, 0.91, 1, 1)
 light_energy = 0.55
 shadow_enabled = false
 
+; La citadelle passe de FIGURANT a SUJET (reforge BRIEF-0032). Elle etait a -34 m,
+; ou ses 62 712 triangles se resumaient a une tache claire. Rapprochee a -22 m, elle
+; occupe reellement le tiers superieur gauche du cadre, et son detail se voit.
+; Le Specter-9 reste au premier plan : c'est le heros, elle est la promesse.
 [node name="Citadel" type="Node3D" parent="."]
-transform = Transform3D(0.8829, 0, 0.4695, 0, 1, 0, -0.4695, 0, 0.8829, -11, 7.0, -34)
+transform = Transform3D(0.8829, 0, 0.4695, 0, 1, 0, -0.4695, 0, 0.8829, -7.2, 5.9, -22)
 
 [node name="Hull" parent="Citadel" instance=ExtResource("8_citadel")]
 

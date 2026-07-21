@@ -40,10 +40,16 @@ func _ready() -> void:
 	# rapport à elle, jamais une position absolue accumulée — sinon la balise
 	# dérive pour de bon au fil des minutes.
 	_rest = position
+	# Pose appliquée dès l'initialisation, pour la même raison que les tourelles :
+	# sans ça les trois balises sont exactement sur leur ancrage à la première image.
 	_age = _phase * ORBIT_PERIOD / TAU
+	_apply()
 
 func _process(delta: float) -> void:
 	_age += delta
+	_apply()
+
+func _apply() -> void:
 	var orbit := _age * TAU / ORBIT_PERIOD + _phase
 	position = _rest + Vector3(
 		cos(orbit) * ORBIT_RADIUS,

@@ -48,12 +48,18 @@ func setup(index: int) -> void:
 
 func _ready() -> void:
 	_rest_yaw = rotation.y
-	# Départ à un instant quelconque du cycle : sans ça, toutes les tourelles
-	# partent de la même pose au chargement de la scène, et la première seconde
-	# les montre alignées — précisément ce qu'on cherche à éviter.
+	# Départ à un instant quelconque du cycle, ET pose appliquée TOUT DE SUITE.
+	# Avancer `_age` sans écrire la rotation ne suffit pas : `rotation.y` n'est
+	# posé que dans `_process`, donc à la première image les six tourelles seraient
+	# toutes à leur pose de repos — alignées, précisément le défaut visé.
+	# (Défaut réel, attrapé par test_citadel_animation.gd, pas par relecture.)
 	_age = _yaw_phase * _yaw_period / TAU
+	_apply()
 
 func _process(delta: float) -> void:
 	_age += delta
+	_apply()
+
+func _apply() -> void:
 	rotation.y = _rest_yaw + deg_to_rad(
 		SWEEP_DEG * sin(_age * TAU / _yaw_period + _yaw_phase))
