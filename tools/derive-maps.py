@@ -247,8 +247,12 @@ def main() -> int:
         print(f"introuvable : {args.height}", file=sys.stderr)
         return 2
 
+    # On retire le suffixe de RÔLE du nom source : les sorties portent le leur
+    # (`_nrm`, `_rough`, `_mask`…), et sans ça un `citadel_wear_mask.png` produit un
+    # `citadel_wear_mask_mask.png`. `_mask` doit passer AVANT `_height` : une source
+    # peut porter les deux mots, jamais le même deux fois.
     name = args.name or os.path.basename(args.height).rsplit(".", 1)[0]
-    for suffix in ("_height_2048", "_2048", "_height"):
+    for suffix in ("_height_2048", "_mask_2048", "_2048", "_height", "_mask"):
         if name.endswith(suffix):
             name = name[: -len(suffix)]
             break

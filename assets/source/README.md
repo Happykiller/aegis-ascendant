@@ -24,6 +24,9 @@ Deux états, et le second est le plus utile à connaître :
 | `textures/hull/texture_hull_panels_seamless_2048.png` | fusion en carte de multiplication | `imported/textures/hull/hull_detail_mul.png` (ADR-0011) |
 | `textures/hull/texture_greeble_mechanical_seamless_2048.png` | idem | idem |
 | `textures/hull/texture_surface_wear_grime_seamless_2048.png` | idem | idem |
+| `textures/citadel/citadel_panels_height.png` | `tools/derive-maps.py` | `imported/textures/citadel/citadel_panels_{nrm,rough,ao,mul}.png` |
+| `textures/citadel/citadel_greebles_height.png` | `tools/derive-maps.py --strength 9 --fix-tiling 90` | `imported/textures/citadel/citadel_greebles_{nrm,rough,ao}.png` |
+| `textures/citadel/crystal_facets_height.png` | `tools/derive-maps.py --strength 4 --mul-floor 0.7 --fix-tiling 90` | `imported/textures/citadel/crystal_facets_{nrm,rough,ao,mul}.png` |
 | `identity/helios_vanguard_emblem.svg` | copie runtime | `imported/ui/helios_vanguard_emblem.svg` |
 | `pickups/power_core.svg` | copie runtime | `imported/sprites/pickups/power_core.svg` |
 | `pickups/shield_cell.svg` | copie runtime | `imported/sprites/pickups/shield_cell.svg` |
@@ -38,6 +41,8 @@ Deux états, et le second est le plus utile à connaître :
 
 | Source | Pourquoi |
 |---|---|
+| `textures/citadel/citadel_wear_mask.png` | **en attente** : l'encrassement doit être fondu dans la carte de multiplication du blindage — `StandardMaterial3D` n'empile pas deux albedo |
+| `textures/citadel/citadel_deck_markings_mask.png` | **en attente** : le poser sur le seul pont demande un contrôle **par face** que la projection en boîte ne donne pas ; l'appliquer à un matériau entier peindrait des hachures sur toute la coque |
 | `ui/screens/pause_frame.svg` | **écarté — ADR-0012** : la pause est bâtie en langage d'interface |
 | `ui/screens/victory_frame.svg` | **écarté — ADR-0012** : idem pour le rapport de mission |
 | `ui/screens/main_menu_frame.svg` | **écarté — ADR-0012** : l'accueil est un diorama 3D + Control |

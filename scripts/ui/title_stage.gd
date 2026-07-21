@@ -107,14 +107,14 @@ const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
 ## la que ca compte le plus). Le joueur en combat sera traite separement, une fois
 ## la methode validee ici.
 ##
-## La citadelle rejoint enfin la liste : elle porte des UV depuis sa reforge
-## (BRIEF-0032). Elle etait jusqu'ici la SEULE coque du jeu sans coordonnees de
-## texture, donc la seule qu'aucune feuille de detail ne pouvait atteindre.
+## La citadelle a le SIEN (`CitadelDetail`) et non la feuille partagee : la feuille
+## commune est calee sur un chasseur de 2 m et lit comme du bruit raye sur une piece
+## de 19,6 m. Les deux ne se cumulent pas — le dernier applique gagnerait.
 func _detail_hulls() -> void:
 	HullDetail.apply(_hero)
 	for escort in _escorts.get_children():
 		HullDetail.apply(escort)
-	HullDetail.apply(_citadel)
+	CitadelDetail.apply(_citadel)
 
 ## Tourelles, balises et respiration des emissifs.
 ##

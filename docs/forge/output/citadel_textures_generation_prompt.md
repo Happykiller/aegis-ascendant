@@ -4,7 +4,13 @@
 - **Produit par** : skill `/asset-image`
 - **Cadre** : ADR-0013 (textures déverrouillées)
 - **Outil prévu** : ChatGPT imagegen — **cinq images, cinq prompts indépendants**
-- **Statut** : en attente de génération par l'opérateur
+- **Statut** : **livré et intégré** le 2026-07-21 (panneaux, greebles, cristal appliqués ;
+  usure et marquages en attente — voir `assets/source/README.md`)
+
+> ⚠️ Les cinq images ont été rendues en **1254 × 1254**, pas en 2048 : le générateur n'honore pas la
+> taille demandée. Les fichiers ont donc été renommés sans le suffixe `_2048`, qui mentait. Trois des
+> cinq avaient une **couture** malgré la consigne (jusqu'à 12,3 % sur le cristal), rattrapée par
+> `--fix-tiling 90` — la preuve qu'il faut **mesurer** le tuilage et non le croire sur parole.
 
 ---
 
@@ -55,15 +61,15 @@ isolé au centre, fond visible, photographie d'un vaisseau réel, rouille, vég�
 | | |
 |---|---|
 | **Format** | PNG, 2048 × 2048, niveaux de gris |
-| **Déposer** | `assets/source/textures/citadel/citadel_panels_height_2048.png` |
-| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_panels_height_2048.png --out assets/imported/textures/citadel --mul --preview /tmp/citadel_panels.png` |
+| **Déposer** | `assets/source/textures/citadel/citadel_panels_height.png` |
+| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_panels_height.png --out assets/imported/textures/citadel --mul --preview /tmp/citadel_panels.png` |
 | **Vérifier** | ligne `tuilage : … OK` + ouvrir `/tmp/citadel_panels.png` |
 | **Produit** | `citadel_panels_nrm.png`, `_rough.png`, `_ao.png`, `_mul.png` |
 
 **Provenance** (source ; une ligne par dérivée à ajouter ensuite) :
 
 ```csv
-citadel_panels_height_src,assets/source/textures/citadel/citadel_panels_height_2048.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — blindage de coque a l'echelle forteresse (plaques ~1,5 m). ADR-0013."
+citadel_panels_height_src,assets/source/textures/citadel/citadel_panels_height.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — blindage de coque a l'echelle forteresse (plaques ~1,5 m). ADR-0013."
 ```
 
 ---
@@ -100,8 +106,8 @@ au centre, photographie d'un moteur réel, rouille, saleté organique, végétat
 | | |
 |---|---|
 | **Format** | PNG, 2048 × 2048, niveaux de gris |
-| **Déposer** | `assets/source/textures/citadel/citadel_greebles_height_2048.png` |
-| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_greebles_height_2048.png --out assets/imported/textures/citadel --strength 9 --preview /tmp/citadel_greebles.png` |
+| **Déposer** | `assets/source/textures/citadel/citadel_greebles_height.png` |
+| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_greebles_height.png --out assets/imported/textures/citadel --strength 9 --preview /tmp/citadel_greebles.png` |
 | **Vérifier** | ligne `tuilage : … OK` + ouvrir `/tmp/citadel_greebles.png` |
 | **Produit** | `citadel_greebles_nrm.png`, `_rough.png`, `_ao.png` |
 
@@ -111,7 +117,7 @@ au centre, photographie d'un moteur réel, rouille, saleté organique, végétat
 **Provenance :**
 
 ```csv
-citadel_greebles_height_src,assets/source/textures/citadel/citadel_greebles_height_2048.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — encombrement mecanique de pont (tuyaux, trappes, grilles). ADR-0013."
+citadel_greebles_height_src,assets/source/textures/citadel/citadel_greebles_height.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — encombrement mecanique de pont (tuyaux, trappes, grilles). ADR-0013."
 ```
 
 ---
@@ -143,8 +149,8 @@ végétation, aspect abandonné ou épave.
 | | |
 |---|---|
 | **Format** | PNG, 2048 × 2048, niveaux de gris |
-| **Déposer** | `assets/source/textures/citadel/citadel_wear_mask_2048.png` |
-| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_wear_mask_2048.png --out assets/imported/textures/citadel --mask --preview /tmp/citadel_wear.png` |
+| **Déposer** | `assets/source/textures/citadel/citadel_wear_mask.png` |
+| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_wear_mask.png --out assets/imported/textures/citadel --mask --preview /tmp/citadel_wear.png` |
 | **Vérifier** | ligne `tuilage : … OK` + ouvrir `/tmp/citadel_wear.png` |
 | **Produit** | `citadel_wear_mask.png` |
 
@@ -154,7 +160,7 @@ végétation, aspect abandonné ou épave.
 **Provenance :**
 
 ```csv
-citadel_wear_mask_src,assets/source/textures/citadel/citadel_wear_mask_2048.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Masque N&B repetable — encrassement et coulures. Blanc = propre. ADR-0013."
+citadel_wear_mask_src,assets/source/textures/citadel/citadel_wear_mask.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Masque N&B repetable — encrassement et coulures. Blanc = propre. ADR-0013."
 ```
 
 ---
@@ -191,8 +197,8 @@ photographie d'une gemme réelle, monture, bijou.
 | | |
 |---|---|
 | **Format** | PNG, 2048 × 2048, niveaux de gris |
-| **Déposer** | `assets/source/textures/citadel/crystal_facets_height_2048.png` |
-| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/crystal_facets_height_2048.png --out assets/imported/textures/citadel --strength 4 --mul --mul-floor 0.7 --preview /tmp/crystal.png` |
+| **Déposer** | `assets/source/textures/citadel/crystal_facets_height.png` |
+| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/crystal_facets_height.png --out assets/imported/textures/citadel --strength 4 --mul --mul-floor 0.7 --preview /tmp/crystal.png` |
 | **Vérifier** | ligne `tuilage : … OK` + ouvrir `/tmp/crystal.png` |
 | **Produit** | `crystal_facets_nrm.png`, `_rough.png`, `_ao.png`, `_mul.png` |
 
@@ -206,7 +212,7 @@ photographie d'une gemme réelle, monture, bijou.
 **Provenance :**
 
 ```csv
-crystal_facets_height_src,assets/source/textures/citadel/crystal_facets_height_2048.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — facettes du noyau cristallin. Sans couleur : le cyan vient du materiau. ADR-0013."
+crystal_facets_height_src,assets/source/textures/citadel/crystal_facets_height.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Carte de hauteur N&B repetable — facettes du noyau cristallin. Sans couleur : le cyan vient du materiau. ADR-0013."
 ```
 
 ---
@@ -241,8 +247,8 @@ relief, vaisseau, personnage, flèche isolée au centre.
 | | |
 |---|---|
 | **Format** | PNG, 2048 × 2048, niveaux de gris |
-| **Déposer** | `assets/source/textures/citadel/citadel_deck_markings_mask_2048.png` |
-| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_deck_markings_mask_2048.png --out assets/imported/textures/citadel --mask --preview /tmp/citadel_markings.png` |
+| **Déposer** | `assets/source/textures/citadel/citadel_deck_markings_mask.png` |
+| **Ensuite** | `python3 tools/derive-maps.py assets/source/textures/citadel/citadel_deck_markings_mask.png --out assets/imported/textures/citadel --mask --preview /tmp/citadel_markings.png` |
 | **Vérifier** | ligne `tuilage : … OK` + ouvrir `/tmp/citadel_markings.png` |
 | **Produit** | `citadel_deck_markings_mask.png` |
 
@@ -253,7 +259,7 @@ relief, vaisseau, personnage, flèche isolée au centre.
 **Provenance :**
 
 ```csv
-citadel_deck_markings_mask_src,assets/source/textures/citadel/citadel_deck_markings_mask_2048.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Masque N&B repetable — marquages geometriques de pont, sans aucun texte. Blanc = marquage. ADR-0013."
+citadel_deck_markings_mask_src,assets/source/textures/citadel/citadel_deck_markings_mask.png,raster_texture,"ChatGPT imagegen (OpenAI)",,"tiers (genere IA)",proprietary-internal,2026-07-21,docs/forge/output/citadel_textures_generation_prompt.md,,"Masque N&B repetable — marquages geometriques de pont, sans aucun texte. Blanc = marquage. ADR-0013."
 ```
 
 ---
