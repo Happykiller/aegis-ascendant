@@ -14,6 +14,13 @@ const ALERT_RED := Color("ff3b3b")
 const BAR_TRACK := Color("02131a")
 const BLOCK_EMPTY := Color("0a2a33")
 
+const BOSS_MAGENTA := Color("d93d9c")
+## Pastilles d'appendice du Choir Harvester. Trois, comme la planche.
+const LIMB_PIPS := 3
+## Couleur d'une pastille éteinte : sombre mais pas noire, sinon elle disparaît du
+## panneau et l'on ne compte plus que ce qui reste, pas ce qui manque.
+const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
+
 const MARGIN := 28.0
 const SHIELD_BLOCKS := 10
 const ALERT_AT := 30.0                 # shield value at/under which the alert blinks
@@ -45,6 +52,7 @@ var _boss_panel: Panel
 var _boss_name: Label
 var _boss_fill: ColorRect
 var _boss_full_width: float = 0.0
+var _limb_pips: Array[ColorRect] = []
 var _banner: Label
 
 func _ready() -> void:
@@ -203,6 +211,27 @@ func _build_boss_panel() -> void:
 	_boss_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_panel.add_child(_boss_fill)
 	_boss_full_width = 772.0
+	_build_limb_pips()
+
+## Trois pastilles d'appendice, à droite du nom du boss.
+##
+## POURQUOI — le Choir Harvester n'est vulnérable QUE lorsque ses trois appendices
+## sont à terre en même temps. Sans compteur, le joueur ne peut pas savoir s'il lui
+## en reste un ou deux à abattre, et la mécanique du combat devient une devinette.
+## Le temps de repousse, lui, se lit sur le modèle : l'appendice se redéploie à vue.
+##
+## ⚠️ Pas un caractère : Press Start 2P n'a ni `●` ni `■` (ADR-0012). Ce sont des
+## `ColorRect`, comme la pastille COMMS de l'accueil.
+func _build_limb_pips() -> void:
+	_limb_pips.clear()
+	for i in LIMB_PIPS:
+		var pip := ColorRect.new()
+		pip.color = BOSS_MAGENTA
+		pip.position = Vector2(690.0 + float(i) * 26.0, 10.0)
+		pip.size = Vector2(16, 16)
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_boss_panel.add_child(pip)
+		_limb_pips.append(pip)
 
 func _build_banner() -> void:
 	_banner = Label.new()
@@ -232,13 +261,28 @@ func bind_score(gs: Object) -> void:
 	gs.score_changed.connect(_on_score_changed)
 	_on_score_changed(gs.score)
 
+## ⚠️ Cache les pastilles d'appendice : `show_boss` sert TOUS les boss, et seul le
+## Harvester en a. C'est son module qui les rallume, après son montage.
 func show_boss(display_name: String) -> void:
+	for pip in _limb_pips:
+		pip.visible = false
 	_boss_name.text = display_name.to_upper()
 	_boss_fill.size.x = _boss_full_width
 	_boss_panel.visible = true
 
 func hide_boss() -> void:
 	_boss_panel.visible = false
+
+## Allume `up` pastilles sur trois, et les REND VISIBLES : elles sont cachées par
+## défaut, parce qu'un boss générique — le Pale Leviathan — n'a pas d'appendices et
+## afficherait sinon trois pastilles mortes qui ne veulent rien dire.
+## Les appendices n'étant pas distingués visuellement
+## dans le bandeau, on n'affiche qu'un COMPTE : c'est la seule information dont le
+## joueur ait besoin — combien il lui en reste à abattre.
+func set_boss_limbs(up: int) -> void:
+	for i in _limb_pips.size():
+		_limb_pips[i].visible = true
+		_limb_pips[i].color = BOSS_MAGENTA if i < up else LIMB_PIP_DOWN
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)

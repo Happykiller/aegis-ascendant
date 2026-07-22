@@ -1,6 +1,6 @@
-"""build_choir_harvester.py — coque 3D du Choir Harvester, mini-boss (BRIEF-0023).
+"""build_choir_harvester.py — coque 3D du Choir Harvester, mini-boss (BRIEF-0039).
 
-    blender45 -b -P tools/blender/build_choir_harvester.py
+    ./scripts/build-hull.sh choir_harvester        # JAMAIS un `blender45` nu : -t 1
 
 Produit `assets/imported/models/bosses/choir_harvester.glb`.
 
@@ -11,40 +11,68 @@ triangles, les materiaux, le centrage du pivot ou les points d'attache sortent
 du contrat.
 
 Reference de design : `assets/reference/concepts/choir_harvester_concept_sheet.png`
-(corps discoide blinde cercle d'anneaux segmentes, noyau magenta protege par cinq
-petales en iris, grand bras-faux replie au-dessus du corps, deux bras a griffes a
-oeil magenta, module arriere relie par un cou segmente).
+(corps-iris discoide, cinq petales blindes sur un noyau magenta, une faux a bras
+segmente et lame en croissant, une griffe a trois tetes a oeil magenta, un canon a
+fut segmente et bouches multiples).
 
 Repere d'auteur (ADR-0008) : face menacante -Y, dessus +Z, **babord +X**
 (cf. l'en-tete d'aegis_kit : le signe de X est contre-intuitif).
 
 
-COQUE MULTI-OBJETS — pourquoi ce script est different des quatre autres
-======================================================================
-Le gameplay doit pouvoir cibler et animer le noyau, les cinq petales de l'iris,
-les trois bras et le module arriere : ils sont donc livres comme **objets
-distincts et nommes** (`Core`, `Petal_01..05`, `Arm_Scythe`, `Arm_Claw_L`,
-`Arm_Claw_R`, `Pod_Rear`), et non fusionnes dans une coque unique comme le
-Specter-9 ou le Needle Scout.
+CE QUE BRIEF-0039 CHANGE — des pieces qui peuvent enfin BOUGER
+==============================================================
+La version precedente livrait bien des objets distincts, mais tous a la
+transformation identite : leur origine etait celle du modele. Une piece pareille
+tourne autour du centre du boss, pas autour de sa charniere ; les marqueurs
+`Hinge_*` livres a cote ne servaient a rien, Godot ne sachant pas s'en servir sans
+reparenter a la main. Tout ce qui bouge passe desormais par `ak.moving_part()`,
+qui pose l'origine SUR le pivot et accepte un `parent` (chaines articulees).
 
-`ak.export_hull(hull, attach_points, ...)` n'expose aujourd'hui qu'**un** objet
-maille : les pieces sont donc passees dans la liste `attach_points`, qui est en
-pratique « la liste des objets a selectionner en plus de la coque ». Deux
-consequences, assumees et verifiees ici :
+Contrat de noms (le code du combat est ecrit contre lui, `harvester_combat.gd`) :
 
-  1. la correction d'axe (`_AXIS_FIX`) n'est appliquee par `export_hull()` qu'a
-     `hull.data` ; on l'applique donc nous-memes aux pieces, en reutilisant
-     **la constante du kit** (jamais une copie locale : une divergence ferait
-     voler la coque a reculons) ;
-  2. le validateur du kit calcule la bounding box a partir des accesseurs glTF,
-     donc dans l'espace **local** de chaque maillage. Toutes les pieces sont
-     donc laissees a la transformation identite, geometrie exprimee dans le
-     repere global : les chiffres valides par le kit sont alors les vrais
-     chiffres monde. Les pivots d'animation sont livres a cote, sous forme de
-     points d'attache `Hinge_*`.
+    Arm_Scythe -> Scythe_Mid -> Scythe_Blade      (chaine : epaule, coude, poignet)
+    Arm_Claw   -> Claw_Head_1..3                  (epaule, puis le cou de chaque tete)
+    Arm_Cannon -> Cannon_Barrel                   (rotule, puis l'axe de recul)
+    Petal_01..05                                  (leur charniere)
+    Core                                          (statique, mais noeud a part)
 
-Le kit gagnerait un parametre `parts: list[Object]` — signale au compte-rendu,
-pas fait ici (trois autres coques s'appuient dessus en parallele).
+
+LE PLAN VIENT DE LA MECANIQUE, PAS SEULEMENT DE LA PLANCHE
+==========================================================
+`harvester_combat.gd` ne pose pas des angles quelconques : il ecrit, en repere
+Godot, `root.rotation.x` (le repli a -70 deg d'un appendice detruit), la visee en
+`rotation.y`, et le recul du fut en `position.z`. Traduit en repere d'auteur
+(x_Godot = -x_auteur, y_Godot = z_auteur, z_Godot = y_auteur) :
+
+  * le repli et l'estoc tournent autour d'un axe PARALLELE A X passant par le
+    pivot — donc **x est conserve** ;
+  * le recul du fut vaut +0,25 m en Y d'auteur (vers l'arriere) : le canon TIRE
+    donc vers l'avant (-Y), et sa bouche doit se trouver du cote de la face
+    menacante, sinon le faisceau naitrait derriere le boss.
+
+Consequence directe sur le plan, et c'est LA raison pour laquelle le module
+arriere de la version precedente ne pouvait pas devenir un canon a sa place :
+un appendice qui surplombe la carapace traverse le corps des qu'il pique de
+70 deg, puisque la rotation conserve son x. Les trois appendices sont donc
+montes de facon a piquer dans le VIDE :
+
+  * la faux sur le flanc babord, toute sa geometrie a |x| >= 1,74 (au-dela de la
+    carapace) ou, pour le crochet de lame, a un rayon superieur a celui de la
+    carapace vue depuis l'epaule ;
+  * la griffe sur le flanc tribord, tendue vers l'avant : son repli l'emmene
+    devant le bord avant du disque ;
+  * le canon en avant du disque, legerement decale a babord (asymetrie de la
+    charte, et la place qu'il faut a la griffe en fin de balayage) : tout ce qui
+    pique tombe devant y = -2,30, ou il n'y a rien.
+
+La propulsion, elle, ne bouge pas : elle est **dans la coque** (poupe segmentee,
+trois tuyeres magenta, `Engine_C`). Ce n'est pas un quatrieme appendice — elle
+n'a ni pivot, ni nom au contrat, ni vie propre.
+
+Chaque debattement est REMESURE a chaque build sur le maillage livre
+(`_clearance_table()`, plus bas) : la lecon la plus chere du projet est qu'un
+contrat de bounding box valide une pose fixe et ne voit RIEN d'un defaut
+d'animation (`.claude/resources/pratique-detail-en-fraction-de-corde.md`).
 """
 
 from __future__ import annotations
@@ -55,6 +83,7 @@ import sys
 
 import bmesh
 from mathutils import Matrix, Vector
+from mathutils.bvhtree import BVHTree
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "lib"))
@@ -73,196 +102,244 @@ CONTRACT = ak.HullContract(
     max_height_y=1.60,  # Godot Y — plafond de lisibilite en vue de dessus
     tri_budget=25_000,
     required_materials=ak.MATERIAL_ORDER,  # les 7 : la planche les utilise tous
-    required_attach_points=("Core_Center", "Muzzle_L", "Muzzle_R", "Engine_C"),
+    required_attach_points=(
+        "Core_Center",
+        "Muzzle_Claw_1",
+        "Muzzle_Claw_2",
+        "Muzzle_Claw_3",
+        "Muzzle_Cannon",
+        "Engine_C",
+    ),
 )
 
 OUTPUT = os.path.join(_REPO, "assets/imported/models/bosses/choir_harvester.glb")
 
 SEED = 40507  # graine unique du Choir Harvester (determinisme des greebles)
 
-HALF_L = CONTRACT.length_z / 2.0   # 3.500 — prow en -Y, module arriere en +Y
-HALF_W = CONTRACT.width_x / 2.0    # 2.275 — lame de la faux / griffe tribord
+#: 3,500 — la bouche du canon porte le min Y, le culot de poupe le max Y. La
+#: largeur, elle, est portee par le dos de lame (+X) et la serre externe (-X).
+HALF_L = CONTRACT.length_z / 2.0
 
 # ==========================================================================
-# Carapace discoide : ellipse en vue de dessus, puits d'iris circulaire
+# Corps-iris : carapace ovoide, puits d'iris circulaire
 # ==========================================================================
 
-CARA_AX = 1.82      # demi-largeur du disque blinde
-CARA_AY = 2.20      # demi-longueur du disque blinde
-IRIS_R = 0.95       # rayon du puits d'iris (circulaire, il loge noyau + petales)
+CARA_AX = 1.62      # demi-largeur du disque blinde
+CARA_AY = 2.05      # demi-longueur du disque blinde
+IRIS_R = 0.92       # rayon du puits d'iris (il loge noyau + petales)
 N_SEG = 36          # segments angulaires du disque (multiple de 12 : les rings)
 
 #: Stations radiales : t=0 sur la levre du puits, t=1 sur le bord de carapace.
 T_RINGS = (0.00, 0.16, 0.34, 0.55, 0.72, 0.86, 0.95, 1.00)
-Z_TOP = (0.30, 0.36, 0.385, 0.36, 0.30, 0.21, 0.12, 0.03)
-Z_BOT = (-0.30, -0.36, -0.40, -0.38, -0.32, -0.22, -0.12, -0.03)
+Z_TOP = (0.36, 0.44, 0.47, 0.44, 0.36, 0.25, 0.14, 0.04)
+Z_BOT = (-0.34, -0.44, -0.48, -0.45, -0.38, -0.26, -0.14, -0.04)
 
 #: Puits d'iris : (rayon, z) du haut de la levre jusqu'au plancher.
-WELL = ((IRIS_R, 0.30), (0.88, 0.12), (0.84, -0.04), (0.60, -0.09))
+WELL = ((IRIS_R, 0.36), (0.86, 0.15), (0.82, -0.02), (0.58, -0.07))
 WELL_MATS = ("AA_Greeble", "AA_Emissive_Engine", "AA_Greeble")
 
 RIM_BLOCKS = 24     # cerclage exterieur segmente
+#: Blocs arases (indices) : le secteur avant-tribord que la griffe balaie.
+RIM_FLUSH = (15, 16, 17)
 RIM_SPIKES = (38.0, 92.0, 148.0, 214.0, 322.0)  # ergots ivoire (deg, asymetriques)
 
 # ==========================================================================
-# Prow : bec blinde avant. La planche fait definir la pointe avant par les
-# bras ; le contrat du kit exige que la coque porte elle-meme les extremes en Y
-# (temoin d'orientation asymetrique). Le bec resout les deux : il donne au boss
-# une face avant lisible et il ancre y = -3.50.
+# Poupe : bloc propulsif fondu dans la coque (fixe — ce n'est PAS un appendice).
+# Il porte le max Y du modele et le point d'attache `Engine_C`.
 # ==========================================================================
 
-#: (y, demi-largeur, z_haut, z_bas). Volontairement mince et bas : ce bec est
-#: un ajout a la planche, il ancre le contrat — il ne doit pas voler la
-#: silhouette au disque ni aux bras, qui, eux, viennent du concept.
-PROW: tuple[tuple[float, float, float, float], ...] = (
-    (-2.02, 0.52, 0.10, -0.16),
-    (-2.45, 0.46, 0.09, -0.18),
-    (-2.86, 0.37, 0.06, -0.19),
-    (-3.20, 0.24, 0.03, -0.17),
-    (-3.42, 0.13, 0.00, -0.12),
-    (-HALF_L, 0.045, -0.035, -0.085),   # pointe : min Y de la coque
+#: (y, demi-largeur, z_haut, z_bas) — le bloc sort de sous le disque et s'affine.
+STERN: tuple[tuple[float, float, float, float], ...] = (
+    (1.30, 0.76, 0.24, -0.30),
+    (1.86, 0.72, 0.27, -0.33),
+    (2.34, 0.63, 0.25, -0.31),
+    (2.80, 0.52, 0.21, -0.27),
+    (3.18, 0.39, 0.15, -0.21),
+    (HALF_L, 0.25, 0.07, -0.13),   # culot : max Y du modele
 )
+STERN_MATS = ("AA_Hull", "AA_Hull", "AA_Panel", "AA_Greeble", "AA_Greeble")
 
-# ==========================================================================
-# Arriere : cou segmente + berceau (deux longerons qui encadrent le module et
-# ancrent y = +3.50), puis le module lui-meme (objet `Pod_Rear`).
-# ==========================================================================
-
-NECK = ((0.0, 1.98, 0.06), (0.0, 2.18, 0.06), (0.0, 2.38, 0.05), (0.0, 2.56, 0.05))
-NECK_R = (0.30, 0.27, 0.24, 0.22)
-
-#: Longeron de berceau (cote babord ; le cote tribord est son miroir).
-CRADLE = (
-    (0.88, 1.92, 0.03),
-    (0.86, 2.42, 0.01),
-    (0.82, 2.94, -0.01),
-    (0.78, 3.34, -0.02),
-    (0.74, HALF_L, -0.02),   # pointe : max Y de la coque
-)
-
-POD_CENTER_Z = 0.02
-#: Profil de revolution du module arriere : (y, rayon, materiau du segment).
-POD_PROFILE = (
-    (2.42, 0.000, "AA_Greeble"),
-    (2.47, 0.260, "AA_Greeble"),
-    (2.56, 0.400, "AA_Hull"),
-    (2.72, 0.495, "AA_Hull"),
-    (2.94, 0.540, "AA_Panel"),
-    (3.14, 0.535, "AA_Panel"),
-    (3.20, 0.565, "AA_Greeble"),   # collier mecanique
-    (3.28, 0.565, "AA_Trim"),      # jonc ivoire
-    (3.33, 0.520, "AA_Greeble"),
-    (3.42, 0.505, "AA_Greeble"),   # culot
-    (3.40, 0.420, "AA_Emissive_Engine"),
-    (3.33, 0.350, "AA_Emissive_Engine"),
-    (3.28, 0.000, "AA_Emissive_Engine"),  # fond lumineux
-)
-POD_SEG = 20
-POD_NOZZLES = (70.0, 190.0, 310.0)   # tuyeres secondaires (deg autour de l'axe)
-#: `add_lathe` ne sait faire que des sections rondes ; un module rond de 1,08 m
-#: de diametre ferait de ce boss un objet epais, illisible a 20 deg de camera
-#: (ADR-0008). On l'aplatit en fin de construction : fuseau ovale, tuyeres
-#: ovales — exactement la lecture de la planche en vue de dessus.
-POD_FLATTEN_Z = 0.70
-
-ENGINE_Y = 3.395   # plan de sortie du module (origine de la trainee)
+#: Tuyeres : (x, z, rayon). La centrale est la principale.
+STERN_NOZZLES = ((0.0, -0.02, 0.170), (0.40, 0.00, 0.105), (-0.40, 0.00, 0.105))
+NOZZLE_Y0 = 3.02    # fond de chambre
+NOZZLE_Y1 = 3.44    # plan de sortie
+ENGINE_Y = 3.46     # origine de la trainee
 
 # ==========================================================================
 # Noyau et iris (le point faible : ce que le joueur doit viser)
 # ==========================================================================
 
 #: (rayon, z) du noyau, du collier de base jusqu'a l'apex.
-CORE_RINGS = ((0.62, -0.10), (0.58, 0.00), (0.50, 0.10), (0.36, 0.19), (0.18, 0.25))
-CORE_APEX_Z = 0.29
+CORE_RINGS = ((0.60, -0.08), (0.56, 0.04), (0.48, 0.17), (0.34, 0.28), (0.17, 0.36))
+CORE_APEX_Z = 0.42
 CORE_SEG = 24
 CORE_MATS = ("AA_Greeble", "AA_Glass", "AA_Emissive_Engine", "AA_Emissive_Engine")
 
 PETAL_COUNT = 5
 PETAL_ANGLES = tuple(18.0 + 72.0 * i for i in range(PETAL_COUNT))
-PETAL_HINGE_R = 1.02      # charniere : sur la levre du puits
-PETAL_HINGE_Z = 0.26
-PETAL_TILT = 20.0         # deg — iris entrouvert : le magenta fuse dans les jours
-#: Longueur calibree pour que les cinq pointes laissent un oeil magenta ouvert
-#: au centre (rayon ~0,27 m) : c'est par la que le noyau se voit de face, et
-#: c'est ce qui fait du point faible une cible evidente. Un petale plus long
-#: refermait l'iris en dome et masquait le noyau.
+#: Charniere : au-dessus de la levre du puits, sur un berceau ivoire. Elle est
+#: POSEE SUR la carapace et non noyee dedans — un petale dont la racine est
+#: enterree ne peut pas s'ouvrir sans raboter le pont.
+PETAL_HINGE_R = 1.00
+PETAL_HINGE_Z = 0.55
+PETAL_TILT = 12.0         # deg — iris ferme : le magenta ne fuse que par l'oeil
+#: Longueur calibree pour que les cinq pointes laissent un oeil magenta ouvert au
+#: centre (rayon ~0,16 m) : c'est par la que le noyau se voit iris ferme, et c'est
+#: ce qui fait du point faible une cible evidente.
 PETAL_LEN = 0.86
-#: (s le long du petale, demi-largeur, demi-epaisseur). Les largeurs sont
-#: bornees par le pas de 72 deg de l'iris : au-dela, les petales
-#: s'interpenetrent au lieu de se cotoyer.
+#: (s le long du petale, demi-largeur, demi-epaisseur). Les largeurs sont bornees
+#: par le pas de 72 deg de l'iris : au-dela, les petales se mordent au lieu de se
+#: cotoyer. L'ouverture, elle, les ECARTE (le rayon de chaque section croit avec
+#: l'angle) : la pose fermee est donc le cas critique.
 PETAL_SECTIONS = (
-    (0.00, 0.365, 0.052),
-    (0.15, 0.395, 0.048),   # epaulement, le plus large
-    (0.36, 0.345, 0.040),
-    (0.55, 0.270, 0.032),
-    (0.68, 0.175, 0.024),
+    (0.00, 0.355, 0.048),
+    (0.15, 0.385, 0.045),   # epaulement, le plus large
+    (0.36, 0.340, 0.038),
+    (0.55, 0.265, 0.030),
+    (0.68, 0.170, 0.022),
 )
 PETAL_RIDGE = 0.045       # arete centrale bombee sur le dos du petale
 #: Repartition transversale des sommets d'une section (fraction de demi-largeur).
-PETAL_CROSS = (-1.0, -0.60, -0.26, 0.0, 0.26, 0.60, 1.0)
+PETAL_CROSS = (-1.0, -0.88, -0.34, 0.0, 0.34, 0.88, 1.0)
+PETAL_BRACKET_Z = 0.448   # sommet du berceau de charniere (sous le petale)
 
 # ==========================================================================
-# Bras (trois, asymetriques : c'est la signature du Choeur Nul)
+# Faux — flanc babord. Trois maillons, trois pivots (epaule, coude, poignet).
 # ==========================================================================
 
-#: Faux : chaine de vertebres, epaule arriere babord, arc au-dessus du corps.
-SCYTHE_PATH = (
-    (0.98, 1.48, 0.44),
-    (1.30, 1.05, 0.60),
-    (1.58, 0.52, 0.70),
-    (1.76, -0.06, 0.74),
-    (1.86, -0.66, 0.72),
-    (1.88, -1.24, 0.66),
-    (1.80, -1.78, 0.58),
-    (1.62, -2.22, 0.50),
+#: Emplanture : le mat qui sort du flanc et porte la rotule d'epaule. Le pivot est
+#: pousse assez LOIN du bord (|x| = 1,99 contre 1,76 pour le cerclage) pour que le
+#: bras, dont la rotation conserve x, pique de 70 deg sans raboter le mat ni la
+#: jante : c'est la mesure de degagement qui a fixe ce chiffre, pas l'oeil.
+SCYTHE_PIVOT = (1.99, 0.55, 0.32)
+SCYTHE_MAST_Y = 0.55
+SCYTHE_JOINT_R = 0.175
+
+#: Bras superieur : de l'epaule au coude.
+SCYTHE_UPPER = (
+    (1.99, 0.55, 0.32),
+    (2.02, 0.16, 0.41),
+    (2.04, -0.24, 0.48),
 )
-SCYTHE_R = (0.20, 0.19, 0.175, 0.165, 0.155, 0.145, 0.135, 0.125)
+SCYTHE_UPPER_R = (0.175, 0.160, 0.148)
+
+#: Avant-bras : du coude au poignet.
+SCYTHE_MID = (
+    (2.04, -0.24, 0.48),
+    (2.07, -0.66, 0.52),
+    (2.08, -1.08, 0.53),
+    (2.05, -1.44, 0.51),
+)
+SCYTHE_MID_R = (0.148, 0.138, 0.128, 0.120)
 
 #: Lame en croissant : ces points sont l'ame de la lame ; le dos deborde de
 #: `BLADE_BACK` vers l'exterieur (c'est lui qui porte l'extreme +X du modele).
-#: Au crochet de la lame, le dos regarde vers l'avant : c'est lui, et non la
-#: pointe, qui limite la reprise de la lame en Y (il doit rester en retrait du
-#: bec, qui porte le min Y). D'ou le renflement decroissant en fin de tableau.
 SCYTHE_BLADE = (
-    (1.62, -2.22, 0.50),
-    (1.88, -2.58, 0.46),
-    (2.008, -2.94, 0.42),
-    (1.90, -3.20, 0.38),
-    (1.64, -3.30, 0.34),
-    (1.30, -3.28, 0.31),
-    (1.00, -3.14, 0.29),
+    (2.05, -1.44, 0.51),
+    (2.14, -1.86, 0.49),
+    (2.175, -2.28, 0.46),
+    (2.09, -2.66, 0.43),
+    (1.88, -2.96, 0.40),
+    (1.55, -3.14, 0.38),
+    (1.20, -3.14, 0.36),
 )
-BLADE_BACK = (0.10, 0.20, 0.27, 0.22, 0.13, 0.08, 0.03)   # epaisseur du dos
-BLADE_EDGE = (0.14, 0.30, 0.40, 0.42, 0.38, 0.28, 0.09)   # portee du tranchant
-BLADE_TH = (0.130, 0.115, 0.100, 0.090, 0.075, 0.055, 0.028)
+BLADE_BACK = (0.055, 0.085, 0.100, 0.085, 0.060, 0.040, 0.020)
+BLADE_EDGE = (0.150, 0.300, 0.400, 0.420, 0.380, 0.280, 0.090)
+BLADE_TH = (0.120, 0.105, 0.092, 0.082, 0.070, 0.052, 0.026)
 
-#: Griffe tribord : longue, sortante — sa serre externe porte l'extreme -X.
-#: Le montage est sur le FLANC (a demi noye dans la carapace), pas sur le dos.
-CLAW_R_PATH = (
-    (-1.30, -0.78, 0.14),
-    (-1.56, -1.16, 0.02),
-    (-1.74, -1.56, -0.08),
-    (-1.83, -1.96, -0.16),
-    (-1.845, -2.34, -0.20),
+# ==========================================================================
+# Griffe a trois tetes — flanc tribord, tendue vers l'avant.
+# ==========================================================================
+
+#: L'epaule est POUSSEE VERS L'AVANT du flanc, et le bras raccourci : le combat
+#: balaie la racine de +/-32 deg, et 32 deg au bout d'un bras de 2,2 m emmenent la
+#: tete la plus interne en travers du bec, sur le canon. Bras court = balayage
+#: lisible ET degage. C'est la mesure qui a impose ce plan, pas la planche.
+CLAW_PIVOT = (-1.66, -1.45, 0.16)
+CLAW_MAST_Y = -1.45
+CLAW_JOINT_R = 0.165
+
+CLAW_ARM = (
+    (-1.66, -1.45, 0.16),
+    (-1.66, -1.79, 0.11),
+    (-1.62, -2.12, 0.06),
 )
-CLAW_R_R = (0.17, 0.15, 0.135, 0.12, 0.11)
-CLAW_R_SPREAD = (-52.0, -6.0, 34.0)   # deg (dans le plan XY) des trois serres
+CLAW_ARM_R = (0.165, 0.150, 0.138)
 
-#: Griffe babord : plus courte, repliee vers l'axe, sous la faux.
-CLAW_L_PATH = (
-    (1.02, -1.34, 0.16),
-    (1.08, -1.82, 0.04),
-    (0.98, -2.28, -0.08),
-    (0.78, -2.66, -0.16),
+#: Fourche : les trois cous, en triangle (c'est la lecture du panneau de detail —
+#: trois tetes a distances differentes, pas un eventail plat).
+#: ⚠️ ORDRE : la tete 1 est la plus INTERNE. `harvester_combat` fait tourner la
+#: tete `i` de `converge * (i - 1)`, soit -18 deg pour la 1 et +18 deg pour la 3 ;
+#: avec la 1 a l'interieur, ces deux angles ECARTENT les tetes de la coque et du
+#: canon, et leurs lignes de tir se croisent — c'est bien une convergence. L'ordre
+#: inverse envoyait la tete 3 dans le canon des le premier balayage (mesure).
+#: (cou, direction de la tete dans le plan XY)
+#: Les cous sont DERIVES des tetes (position voulue moins la longueur du cou) et
+#: non l'inverse : ce sont les tetes qui doivent s'ecarter entre elles, tenir dans
+#: la largeur et degager le canon.
+CLAW_NECKS = (
+    ((-1.298, -2.319, 0.06), (0.30, -0.954)),   # 1 — interne
+    ((-1.584, -2.640, 0.04), (-0.02, -1.000)),  # 2 — mediane, la plus avancee
+    ((-1.888, -2.302, 0.02), (-0.32, -0.947)),  # 3 — externe : porte le -X
 )
-CLAW_L_R = (0.16, 0.14, 0.125, 0.11)
-CLAW_L_SPREAD = (-40.0, 4.0, 46.0)
+CLAW_STALK = 0.42    # longueur du cou a la tete
+CLAW_HEAD_R = 0.120
+TALON_LEN = 0.21
+TALON_ROOT = 0.62    # facteur d'epaisseur a la base de la serre
+TALON_TIP = 0.30     # ... et a la pointe
+TALON_SPREAD = (-32.0, 0.0, 32.0)
+EYE_R = 0.105        # l'oeil est une bouche de tir : il doit se voir de dessus
 
-TALON_LEN = 0.38
-TALON_ROOT = 0.62   # facteur d'epaisseur a la base de la serre
-TALON_TIP = 0.30    # ... et a la pointe
-EYE_R = 0.140       # l'oeil est une bouche de tir : il doit se voir de dessus
+# ==========================================================================
+# Canon — sous le bec avant, dans l'axe. Il TIRE VERS L'AVANT (-Y) : c'est le
+# signe du recul (`position.z = +0,25` cote Godot) qui l'impose.
+# ==========================================================================
 
+#: Le canon est DECALE A BABORD. Deux raisons, dans cet ordre : la griffe, en fin
+#: de balayage, passe devant le bec et il lui faut la place (mesure) ; et
+#: l'asymetrie est la signature du Choeur Nul (charte §4). Un canon pile dans l'axe
+#: aurait aussi coupe l'iris en deux dans la vue de dessus.
+CANNON_X = 0.22
+CANNON_Z = 0.02
+CANNON_PIVOT = (CANNON_X, -2.30, CANNON_Z)
+#: Rotule spherique : une calotte centree sur le pivot est invariante par
+#: rotation. C'est ce qui permet au canon de piquer de 70 deg sans raboter le col.
+CANNON_BALL_R = 0.20
+CANNON_SOCKET = (0.26, 0.42)     # rayons interne et externe de la calotte
+CANNON_SOCKET_DEG = (45.0, 72.0)  # ouverture angulaire depuis l'axe de tir
+#: Manchon de glissement du fut (solidaire de `Arm_Cannon`).
+SLEEVE_Y = (-2.62, -2.98)
+SLEEVE_R = (0.30, 0.44)
+SLEEVE_STRUTS = (30.0, 150.0, 270.0)
+#: Col fixe (coque) : mince, sinon la calotte le raboterait au repli.
+CANNON_NECK = (
+    (CANNON_X, -1.86, CANNON_Z - 0.04),
+    (CANNON_X, -2.10, CANNON_Z - 0.02),
+    (CANNON_X, -2.28, CANNON_Z),
+)
+CANNON_NECK_R = (0.24, 0.20, 0.185)
+
+#: Fut : (y, rayon, materiau). Le pole arriere ferme la culasse.
+BARREL_PROFILE = (
+    (-2.85, 0.000, "AA_Greeble"),
+    (-2.86, 0.225, "AA_Greeble"),
+    (-2.94, 0.245, "AA_Panel"),
+    (-3.02, 0.228, "AA_Greeble"),
+    (-3.06, 0.248, "AA_Panel"),
+    (-3.16, 0.232, "AA_Greeble"),
+    (-3.20, 0.250, "AA_Trim"),
+    (-3.27, 0.222, "AA_Panel"),
+    (-3.36, 0.212, "AA_Greeble"),
+    (-3.40, 0.236, "AA_Trim"),
+    (-3.475, 0.198, "AA_Greeble"),
+    (-HALF_L, 0.150, "AA_Emissive_Engine"),   # levre de bouche : min Y du modele
+    (-3.47, 0.088, "AA_Emissive_Engine"),
+    (-3.44, 0.000, "AA_Emissive_Engine"),
+)
+BARREL_SEG = 18
+#: Bouches secondaires : (azimut deg) autour du fut.
+BARREL_MOUTHS = (40.0, 160.0, 280.0)
+MUZZLE_Y = -3.56    # point d'attache : juste devant la levre
 
 # ==========================================================================
 # Helpers geometriques locaux (au-dessus du kit, jamais a la place du kit)
@@ -288,8 +365,8 @@ def oriented_box(bm, center, size, rot, material: str) -> list:
 def _align_y(direction: Vector) -> Matrix:
     """Rotation qui amene l'axe local +Y d'une boite sur `direction`.
 
-    `rotation_difference` prend l'arc le plus court : le roulis residuel est
-    donc entierement determine par `direction` — reproductible.
+    `rotation_difference` prend l'arc le plus court : le roulis residuel est donc
+    entierement determine par `direction` — reproductible.
     """
     return Vector((0.0, 1.0, 0.0)).rotation_difference(direction.normalized()).to_matrix()
 
@@ -336,24 +413,30 @@ def limb(
     material: str,
     joint_material: str = "AA_Greeble",
     glow_from: int = 1,
+    joints: bool = True,
+    root_gap: float = 0.0,
 ) -> None:
     """Bras articule : vertebres + articulations + veines magenta.
 
-    Le rendu segmente de la planche vient de la geometrie (une boite par
-    vertebre, une sphere par articulation), pas d'une texture.
+    Le rendu segmente de la planche vient de la geometrie (une boite par vertebre,
+    une sphere par articulation), pas d'une texture.
+
+    `root_gap` : recul supplementaire de la PREMIERE vertebre. Une vertebre qui
+    part du pivot balaie un cylindre autour de lui et rabote le mat qui porte la
+    rotule — mesure a l'appui. La degager de 20 cm rend le repli propre, et lit
+    comme un vrai joint (la planche montre des segments separes, pas un tube).
     """
     for i in range(len(path) - 1):
         a, b = Vector(path[i]), Vector(path[i + 1])
-        r0, r1 = radii[i], radii[i + 1]
-        rad = (r0 + r1) * 0.5
-        # la vertebre est legerement retractee : l'articulation la deborde
-        d = (b - a)
+        rad = (radii[i] + radii[i + 1]) * 0.5
+        d = b - a
         length = d.length
         if length < 1e-6:
             continue
         u = d / length
-        seg_box(bm, a + u * rad * 0.35, b - u * rad * 0.35, rad * 0.86, rad * 0.80, material)
-        # veine lumineuse dans l'interstice, sur le flanc superieur
+        # la vertebre est legerement retractee : l'articulation la deborde
+        gap = rad * 0.35 + (root_gap if i == 0 else 0.0)
+        seg_box(bm, a + u * gap, b - u * rad * 0.35, rad * 0.86, rad * 0.80, material)
         if i >= glow_from:
             side = u.cross(Vector((0.0, 0.0, 1.0)))
             if side.length > 1e-6:
@@ -367,56 +450,21 @@ def limb(
                     rad * 0.34,
                     "AA_Emissive_Engine",
                 )
-    for i, point in enumerate(path):
-        knuckle(bm, point, radii[i] * 0.92, joint_material)
-
-
-def claw_head(bm, wrist, direction: Vector, spread: tuple, radius: float) -> Vector:
-    """Griffe a oeil magenta : trois serres ivoire + un oeil emissif sous verre.
-
-    Retourne la position de l'oeil (elle sert de bouche de tir).
-    """
-    wrist = Vector(wrist)
-    fwd = direction.normalized()
-    # base mecanique de la griffe
-    knuckle(bm, wrist, radius * 1.10, "AA_Panel")
-
-    for angle in spread:
-        rot = Matrix.Rotation(math.radians(angle), 3, "Z")
-        heading = rot @ fwd
-        heading.z -= 0.22          # les serres plongent : elles agrippent
-        heading.normalize()
-        base = wrist + heading * radius * 0.55
-        mid = base + heading * TALON_LEN * 0.52 + Vector((0.0, 0.0, 0.05))
-        tip = mid + heading * TALON_LEN * 0.60 + Vector((0.0, 0.0, -0.10))
-        seg_box(bm, base, mid, radius * TALON_ROOT, radius * TALON_ROOT * 0.90,
-                "AA_Trim")
-        seg_box(bm, mid, tip, radius * TALON_TIP, radius * TALON_TIP * 0.90,
-                "AA_Trim")
-
-    eye = wrist + fwd * radius * 0.28 + Vector((0.0, 0.0, radius * 0.30))
-    knuckle(bm, eye, EYE_R, "AA_Emissive_Engine")
-    knuckle(bm, eye + fwd * 0.030, EYE_R * 0.78, "AA_Glass")
-    return eye
+    if joints:
+        for i, point in enumerate(path):
+            knuckle(bm, point, radii[i] * 0.92, joint_material)
 
 
 def sweep_rect(bm, sections: tuple, materials: tuple, cap: str = "AA_Greeble") -> list:
-    """Longeron : chaine de sections rectangulaires (y, hw, z_hi, z_lo) bridees.
-
-    Sert au bec et aux longerons du berceau, qui sont des volumes tendus, pas
-    des chaines de vertebres.
-    """
-    rings = []
-    for y, hw, z_hi, z_lo in sections:
-        rings.append(
-            ak.add_ring(
-                bm,
-                [(hw, y, z_hi), (-hw, y, z_hi), (-hw, y, z_lo), (hw, y, z_lo)],
-            )
-        )
-    bands = []
-    for i in range(len(rings) - 1):
-        bands.append(ak.bridge_rings(bm, rings[i], rings[i + 1], materials[i]))
+    """Longeron : chaine de sections rectangulaires (y, hw, z_hi, z_lo) bridees."""
+    rings = [
+        ak.add_ring(bm, [(hw, y, z_hi), (-hw, y, z_hi), (-hw, y, z_lo), (hw, y, z_lo)])
+        for y, hw, z_hi, z_lo in sections
+    ]
+    bands = [
+        ak.bridge_rings(bm, rings[i], rings[i + 1], materials[i])
+        for i in range(len(rings) - 1)
+    ]
     ak.cap_ring(bm, list(reversed(rings[0])), cap)
     ak.cap_ring(bm, rings[-1], materials[-1])
     return bands
@@ -443,6 +491,17 @@ def ell_radius(theta: float) -> float:
     return 1.0 / math.sqrt((c / CARA_AX) ** 2 + (s / CARA_AY) ** 2)
 
 
+def ell_x(y: float) -> float:
+    """Demi-largeur de la carapace a la station `y` (0 hors du disque).
+
+    Sert a poser les emplantures EN FRACTION DE LA COQUE et non en coordonnee
+    absolue (`.claude/resources/pratique-detail-en-fraction-de-corde.md`) : le jour
+    ou l'ovoide change, les mats suivent au lieu de flotter.
+    """
+    k = 1.0 - (y / CARA_AY) ** 2
+    return CARA_AX * math.sqrt(k) if k > 0.0 else 0.0
+
+
 def cara_xy(t: float, theta: float) -> tuple[float, float]:
     """Point de la carapace : `t`=0 sur la levre du puits, `t`=1 sur le bord."""
     r = IRIS_R + t * (ell_radius(theta) - IRIS_R)
@@ -459,9 +518,118 @@ def lerp_z(table: tuple, t: float) -> float:
     return table[-1]
 
 
+def spherical_shell(
+    bm,
+    center: Vector,
+    axis: Vector,
+    radii: tuple[float, float],
+    deg: tuple[float, float],
+    segments: int,
+    steps: int,
+    mats: tuple[str, str],
+) -> None:
+    """Calotte spherique creuse, centree sur `center`, ouverte autour de `axis`.
+
+    Sert la rotule du canon. Une calotte centree sur le pivot est INVARIANTE par
+    rotation : c'est ce qui autorise 70 deg de repli sans que la piece mobile
+    rabote le col fixe qu'elle enveloppe. Le detour geometrique est le prix de
+    l'articulation.
+    """
+    axis = axis.normalized()
+    side = axis.orthogonal().normalized()
+    other = axis.cross(side).normalized()
+
+    def ring(radius: float, angle: float) -> list:
+        a = math.radians(angle)
+        along = axis * (radius * math.cos(a))
+        rad = radius * math.sin(a)
+        return ak.add_ring(
+            bm,
+            [
+                tuple(
+                    center
+                    + along
+                    + (side * math.cos(2.0 * math.pi * s / segments)
+                       + other * math.sin(2.0 * math.pi * s / segments)) * rad
+                )
+                for s in range(segments)
+            ],
+        )
+
+    angles = [deg[0] + (deg[1] - deg[0]) * i / steps for i in range(steps + 1)]
+    inner = [ring(radii[0], a) for a in angles]
+    outer = [ring(radii[1], a) for a in angles]
+    for i in range(steps):
+        ak.bridge_rings(bm, inner[i + 1], inner[i], mats[0])
+        ak.bridge_rings(bm, outer[i], outer[i + 1], mats[1])
+    ak.bridge_rings(bm, inner[0], outer[0], mats[1])
+    ak.bridge_rings(bm, outer[-1], inner[-1], mats[1])
+
+
+def tube(
+    bm,
+    a: float,
+    b: float,
+    radii: tuple[float, float],
+    segments: int,
+    mats: tuple[str, str],
+    center: tuple[float, float] = (0.0, 0.0),
+) -> None:
+    """Manchon creux d'axe Y, ouvert aux deux bouts (le fut coulisse dedans)."""
+    rings = {}
+    for y in (a, b):
+        for k, r in enumerate(radii):
+            rings[(y, k)] = ak.add_ring(
+                bm,
+                [
+                    (
+                        center[0] + r * math.cos(2.0 * math.pi * s / segments),
+                        y,
+                        center[1] + r * math.sin(2.0 * math.pi * s / segments),
+                    )
+                    for s in range(segments)
+                ],
+            )
+    ak.bridge_rings(bm, rings[(a, 1)], rings[(b, 1)], mats[1])   # peau externe
+    ak.bridge_rings(bm, rings[(b, 0)], rings[(a, 0)], mats[0])   # alesage
+    ak.bridge_rings(bm, rings[(a, 0)], rings[(a, 1)], mats[1])   # couronne avant
+    ak.bridge_rings(bm, rings[(b, 1)], rings[(b, 0)], mats[1])   # couronne arriere
+
+
 # ==========================================================================
-# Coque principale : carapace, anneaux, bec, cou, berceau
+# Coque : carapace, poupe propulsive, emplantures des trois appendices
 # ==========================================================================
+
+
+def _mast(bm, side: float, y: float, out_x: float, z: float, radius: float) -> None:
+    """Emplanture d'appendice : le mat qui sort du flanc et porte la rotule.
+
+    `out_x` est un ABSOLU signe deja calcule sur `ell_x(y)` par l'appelant : le mat
+    part de la peau du disque, il ne flotte pas a cote.
+
+    ⚠️ Le mat est MINCE sur ses 30 derniers centimetres. Ce n'est pas un choix de
+    style : la piece mobile tourne autour du pivot, donc elle balaie une sphere
+    centree dessus. Tout ce que le mat laisse depasser au-dela du rayon de la
+    rotule se fait raboter au premier repli — et la premiere version, un simple
+    longeron d'epaisseur constante, se faisait mordre par le bras a -70 deg.
+    """
+    # Le mat est HORIZONTAL et son axe passe par le pivot : ainsi la matiere qui
+    # subsiste pres de la rotule est un simple pion centre sur l'axe de rotation,
+    # et non un longeron oblique dont le coin vient croiser le balayage du bras.
+    root = Vector((side * (ell_x(y) - 0.34), y, z))
+    tip = Vector((out_x, y, z))
+    waist = root + (tip - root) * 0.42
+    seg_box(bm, root, waist, radius * 1.25, radius * 1.05, "AA_Panel")
+    seg_box(bm, waist, tip, radius * 0.48, radius * 0.44, "AA_Greeble")
+    seg_box(
+        bm,
+        root + (tip - root) * 0.10 + Vector((0.0, 0.0, radius * 1.05)),
+        waist + Vector((0.0, 0.0, radius * 1.02)),
+        0.030,
+        0.016,
+        "AA_Emissive_Engine",
+    )
+    knuckle(bm, tip, radius * 0.92, "AA_Greeble")
 
 
 def build_hull() -> object:
@@ -489,16 +657,14 @@ def build_hull() -> object:
     ]
 
     # --- puits d'iris : la levre descend vers le plancher, anneau magenta ---
-    well_rings = [top_rings[0]] + [
-        polar_ring(bm, r, z, N_SEG) for r, z in WELL[1:]
-    ]
+    well_rings = [top_rings[0]] + [polar_ring(bm, r, z, N_SEG) for r, z in WELL[1:]]
     for i in range(len(well_rings) - 1):
         ak.bridge_rings(bm, well_rings[i], well_rings[i + 1], WELL_MATS[i])
-    floor = bm.verts.new((0.0, 0.0, -0.11))
+    floor = bm.verts.new((0.0, 0.0, -0.09))
     ak.fan_to_point(bm, well_rings[-1], floor, "AA_Greeble")
 
     # --- ventre ferme -------------------------------------------------------
-    belly = bm.verts.new((0.0, 0.0, -0.36))
+    belly = bm.verts.new((0.0, 0.0, -0.38))
     ak.fan_to_point(bm, bot_rings[0], belly, "AA_Greeble")
 
     # --- plaques de carapace : couronne (6 secteurs) puis anneau externe ----
@@ -544,16 +710,21 @@ def build_hull() -> object:
             seg_box(bm, pts[i], pts[i + 1], 0.016, 0.010, "AA_Emissive_Engine")
 
     # --- cerclage exterieur segmente ---------------------------------------
+    # Les blocs de `RIM_FLUSH` sont ARASES : c'est le secteur que la griffe balaie
+    # en fin de visee. Un cerclage de hauteur constante lui coutait 30 mm de
+    # degagement (mesure) ; arase, il en rend 40 et se lit comme une echancrure de
+    # service — la planche montre justement un anneau irregulier.
     for i in range(RIM_BLOCKS):
         theta = 2.0 * math.pi * i / RIM_BLOCKS
         px, py = CARA_AX * math.cos(theta), CARA_AY * math.sin(theta)
         tx, ty = -CARA_AX * math.sin(theta), CARA_AY * math.cos(theta)
         psi = math.atan2(ty, tx)
         nrm = Vector((math.sin(psi), -math.cos(psi), 0.0))
+        flush = i in RIM_FLUSH
         oriented_box(
             bm,
-            Vector((px, py, 0.0)) + nrm * 0.030,
-            (0.240, 0.400, 0.190),
+            Vector((px, py, 0.0)) + nrm * (-0.060 if flush else 0.024),
+            (0.210, 0.300, 0.150) if flush else (0.230, 0.380, 0.185),
             Matrix.Rotation(psi - math.pi / 2.0, 3, "Z"),
             "AA_Panel" if i % 2 == 0 else "AA_Greeble",
         )
@@ -563,8 +734,8 @@ def build_hull() -> object:
         x, y = cara_xy(0.62, theta)
         oriented_box(
             bm,
-            (x, y, lerp_z(Z_TOP, 0.62) + 0.030),
-            (0.110, 0.190, 0.070),
+            (x, y, lerp_z(Z_TOP, 0.62) + 0.028),
+            (0.105, 0.180, 0.066),
             Matrix.Rotation(theta + math.pi / 2.0, 3, "Z"),
             "AA_Trim",
         )
@@ -574,86 +745,85 @@ def build_hull() -> object:
         px, py = CARA_AX * math.cos(theta), CARA_AY * math.sin(theta)
         nrm = Vector((px / CARA_AX**2, py / CARA_AY**2, 0.0)).normalized()
         base = Vector((px, py, 0.0))
-        seg_box(bm, base - nrm * 0.06, base + nrm * 0.15, 0.105, 0.055, "AA_Trim")
-        seg_box(bm, base + nrm * 0.15, base + nrm * 0.30, 0.040, 0.022, "AA_Trim")
+        seg_box(bm, base - nrm * 0.05, base + nrm * 0.11, 0.100, 0.052, "AA_Trim")
+        seg_box(bm, base + nrm * 0.11, base + nrm * 0.22, 0.038, 0.021, "AA_Trim")
 
-    # --- bec blinde avant (porte le min Y de la coque) ----------------------
-    sweep_rect(
-        bm,
-        PROW,
-        ("AA_Hull", "AA_Hull", "AA_Hull", "AA_Trim", "AA_Trim"),
-        cap="AA_Greeble",
-    )
-    # arete lumineuse sur le dos du bec
-    for i in range(len(PROW) - 2):
-        y0, _, zt0, _ = PROW[i]
-        y1, _, zt1, _ = PROW[i + 1]
-        seg_box(
+    # --- berceaux de charniere des petales ---------------------------------
+    # Ils remplissent le jeu sous la racine du petale SANS le toucher : c'est ce
+    # qui rend l'iris ouvrable (une charniere noyee dans le pont rabote le pont).
+    for deg in PETAL_ANGLES:
+        theta = math.radians(deg)
+        radial = Vector((math.cos(theta), math.sin(theta), 0.0))
+        base = radial * PETAL_HINGE_R
+        oriented_box(
             bm,
-            (0.0, y0, zt0 + 0.012),
-            (0.0, y1, zt1 + 0.012),
-            0.030,
-            0.014,
-            "AA_Emissive_Engine",
-        )
-    # mandibules laterales du bec
-    for sx in (ak.PORT, ak.STARBOARD):
-        seg_box(
-            bm,
-            (sx * 0.62, -2.10, -0.02),
-            (sx * 0.34, -3.02, -0.06),
-            0.080,
-            0.075,
-            "AA_Greeble",
-        )
-        seg_box(
-            bm,
-            (sx * 0.34, -3.02, -0.06),
-            (sx * 0.20, -3.36, -0.08),
-            0.045,
-            0.040,
+            (base.x, base.y, PETAL_BRACKET_Z - 0.075),
+            (0.360, 0.150, 0.150),
+            Matrix.Rotation(theta + math.pi / 2.0, 3, "Z"),
             "AA_Trim",
         )
 
-    # --- cou segmente -------------------------------------------------------
-    limb(bm, NECK, NECK_R, "AA_Panel", glow_from=0)
-
-    # --- berceau : deux longerons qui encadrent le module (portent max Y) ---
+    # --- poupe propulsive (fixe : elle porte le max Y et `Engine_C`) --------
+    stern_bands = sweep_rect(bm, STERN, STERN_MATS, cap="AA_Greeble")
+    # Plaques enfoncees : sans elles la poupe lit comme un bulbe lisse — c'est le
+    # defaut qu'a montre la premiere planche 4 vues.
+    for k, band in enumerate(stern_bands):
+        ak.inset_panel(bm, [band[0]], "AA_Panel" if k % 2 else "AA_Hull",
+                       thickness=0.055, depth=0.016)
+        ak.inset_panel(bm, [band[2]], "AA_Greeble", thickness=0.055, depth=0.014)
+    # Nervures transversales : elles donnent le rythme segmente de la planche.
+    for i, (y0, hw) in enumerate(((1.98, 0.71), (2.44, 0.62), (2.86, 0.50), (3.22, 0.38))):
+        oriented_box(bm, (0.0, y0, 0.02), (2.0 * hw + 0.09, 0.085, 0.42),
+                     None, "AA_Trim" if i % 2 else "AA_Greeble")
+    # Derives laterales : elles rendent la poupe lisible de dessus.
     for sx in (ak.PORT, ak.STARBOARD):
-        sections = tuple(
-            (y, 0.105, z + 0.135, z - 0.135) if i < len(CRADLE) - 1
-            else (y, 0.048, z + 0.055, z - 0.055)
-            for i, (x, y, z) in enumerate(CRADLE)
+        seg_box(bm, (sx * 0.70, 2.16, 0.02), (sx * 1.02, 2.86, 0.02),
+                0.055, 0.115, "AA_Panel")
+        seg_box(bm, (sx * 1.02, 2.86, 0.02), (sx * 0.92, 3.16, 0.02),
+                0.030, 0.075, "AA_Trim")
+    for x, z, r in STERN_NOZZLES:
+        ak.add_lathe(
+            bm,
+            [
+                (NOZZLE_Y0, 0.000, "AA_Greeble"),
+                (NOZZLE_Y0 + 0.05, r * 0.70, "AA_Greeble"),
+                (NOZZLE_Y1 - 0.14, r * 0.86, "AA_Greeble"),
+                (NOZZLE_Y1 - 0.05, r, "AA_Trim"),
+                (NOZZLE_Y1, r * 0.82, "AA_Emissive_Engine"),
+                (NOZZLE_Y1 - 0.06, r * 0.52, "AA_Emissive_Engine"),
+                (NOZZLE_Y1 - 0.09, 0.000, "AA_Emissive_Engine"),
+            ],
+            14,
+            center_x=x,
+            center_z=z,
         )
-        rings = [
-            ak.add_ring(
-                bm,
-                [
-                    (sx * CRADLE[i][0] + hw, y, z_hi),
-                    (sx * CRADLE[i][0] - hw, y, z_hi),
-                    (sx * CRADLE[i][0] - hw, y, z_lo),
-                    (sx * CRADLE[i][0] + hw, y, z_lo),
-                ],
-            )
-            for i, (y, hw, z_hi, z_lo) in enumerate(sections)
-        ]
-        mats = ("AA_Panel", "AA_Panel", "AA_Greeble", "AA_Trim")
-        for i in range(len(rings) - 1):
-            ak.bridge_rings(bm, rings[i], rings[i + 1], mats[i])
-        ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
-        ak.cap_ring(bm, rings[-1], "AA_Trim")
+    # veines magenta le long de la poupe
+    for sx in (ak.PORT, ak.STARBOARD):
+        seg_box(bm, (sx * 0.72, 1.90, 0.24), (sx * 0.52, 2.90, 0.20),
+                0.026, 0.012, "AA_Emissive_Engine")
 
-    # --- greebles : mecanique exposee sur le dos, derriere l'iris -----------
+    # --- greebles : mecanique exposee sur le dos ----------------------------
     for k, sx in enumerate((ak.PORT, ak.STARBOARD)):
         ak.greeble_strip(
             bm,
-            (sx * 0.55, 1.10, lerp_z(Z_TOP, 0.45)),
-            (sx * 1.05, 1.55, lerp_z(Z_TOP, 0.72)),
+            (sx * 0.52, 1.02, lerp_z(Z_TOP, 0.45)),
+            (sx * 0.98, 1.42, lerp_z(Z_TOP, 0.74)),
             count=5,
             seed=SEED + 13 * (k + 1),
-            size_range=(0.050, 0.110),
-            height_range=(0.030, 0.070),
+            size_range=(0.050, 0.105),
+            height_range=(0.028, 0.062),
         )
+
+    # --- emplantures des trois appendices -----------------------------------
+    _mast(bm, ak.PORT, SCYTHE_MAST_Y, SCYTHE_PIVOT[0], SCYTHE_PIVOT[2], SCYTHE_JOINT_R)
+    _mast(bm, ak.STARBOARD, CLAW_MAST_Y, CLAW_PIVOT[0], CLAW_PIVOT[2], CLAW_JOINT_R)
+
+    # col du canon + rotule (la boule appartient a la coque, la calotte au canon)
+    limb(bm, CANNON_NECK, CANNON_NECK_R, "AA_Panel", glow_from=0, joints=False)
+    knuckle(bm, CANNON_PIVOT, CANNON_BALL_R, "AA_Greeble")
+    for sx in (ak.PORT, ak.STARBOARD):
+        seg_box(bm, (CANNON_X + sx * 0.34, -1.72, -0.10),
+                (CANNON_X + sx * 0.16, -2.06, -0.04), 0.060, 0.055, "AA_Greeble")
 
     return ak.new_object("Hull", bm)
 
@@ -663,14 +833,16 @@ def build_hull() -> object:
 # ==========================================================================
 
 
-def build_core() -> object:
+def build_core() -> ak.MovingPart:
+    """Noyau. Statique au contrat, mais noeud a part : le gameplay le cible, et
+    son pivot est son propre centre (une pulsation d'echelle reste centree)."""
     bm = bmesh.new()
     rings = [polar_ring(bm, r, z, CORE_SEG) for r, z in CORE_RINGS]
     for i in range(len(rings) - 1):
         ak.bridge_rings(bm, rings[i], rings[i + 1], CORE_MATS[i])
     apex = bm.verts.new((0.0, 0.0, CORE_APEX_Z))
     ak.fan_to_point(bm, rings[-1], apex, "AA_Emissive_Engine")
-    base = bm.verts.new((0.0, 0.0, -0.12))
+    base = bm.verts.new((0.0, 0.0, -0.10))
     ak.fan_to_point(bm, list(reversed(rings[0])), base, "AA_Greeble")
     # nervures magenta : le noyau irradie, comme sur la planche
     for i in range(8):
@@ -678,13 +850,13 @@ def build_core() -> object:
         d = Vector((math.cos(theta), math.sin(theta), 0.0))
         seg_box(
             bm,
-            d * 0.10 + Vector((0.0, 0.0, 0.255)),
-            d * 0.54 + Vector((0.0, 0.0, 0.075)),
+            d * 0.10 + Vector((0.0, 0.0, 0.365)),
+            d * 0.52 + Vector((0.0, 0.0, 0.115)),
             0.030,
             0.022,
             "AA_Emissive_Engine",
         )
-    return ak.new_object("Core", bm)
+    return ak.moving_part("Core", bm, (0.0, 0.0, 0.05))
 
 
 def _petal_frame(deg: float) -> tuple[Vector, Vector, Vector, Vector]:
@@ -705,8 +877,13 @@ def _petal_frame(deg: float) -> tuple[Vector, Vector, Vector, Vector]:
     return hinge, axis, cross, normal
 
 
-def build_petal(index: int) -> object:
-    """Un petale blinde de l'iris : plaque bombee, bord ivoire, couture magenta."""
+def build_petal(index: int) -> ak.MovingPart:
+    """Un petale blinde de l'iris : plaque bombee, bord ivoire, couture magenta.
+
+    Son pivot EST sa charniere : cote Godot, `Basis(axe_tangent, angle)` suffit a
+    l'ouvrir (c'est ce que fait `harvester_combat._pose_iris()`, qui deduit l'axe
+    tangent de la position du noeud).
+    """
     bm = bmesh.new()
     hinge, axis, cross, normal = _petal_frame(PETAL_ANGLES[index])
 
@@ -746,19 +923,31 @@ def build_petal(index: int) -> object:
         p1 = hinge + axis * s1 + normal * (th1 + PETAL_RIDGE + 0.008)
         seg_box(bm, p0, p1, 0.022, 0.012, "AA_Emissive_Engine")
 
-    return ak.new_object(f"Petal_{index + 1:02d}", bm)
+    return ak.moving_part(f"Petal_{index + 1:02d}", bm, tuple(hinge))
 
 
 # ==========================================================================
-# Bras
+# Faux — trois maillons chaines
 # ==========================================================================
 
 
-def build_scythe() -> object:
+def build_scythe_upper() -> ak.MovingPart:
     bm = bmesh.new()
-    limb(bm, SCYTHE_PATH, SCYTHE_R, "AA_Panel")
+    limb(bm, SCYTHE_UPPER, SCYTHE_UPPER_R, "AA_Panel", glow_from=0, root_gap=0.16)
+    return ak.moving_part("Arm_Scythe", bm, SCYTHE_UPPER[0])
 
-    # lame : sections a 7 sommets — dos epais, tranchant mince et lumineux
+
+def build_scythe_mid() -> ak.MovingPart:
+    bm = bmesh.new()
+    limb(bm, SCYTHE_MID, SCYTHE_MID_R, "AA_Panel", glow_from=0)
+    return ak.moving_part("Scythe_Mid", bm, SCYTHE_MID[0], parent="Arm_Scythe")
+
+
+def build_scythe_blade() -> ak.MovingPart:
+    """Lame en croissant : sections a 9 sommets — dos epais, tranchant lumineux."""
+    bm = bmesh.new()
+    knuckle(bm, SCYTHE_BLADE[0], SCYTHE_MID_R[-1] * 0.96, "AA_Greeble")
+
     rings = []
     for i, point in enumerate(SCYTHE_BLADE):
         p = Vector(point)
@@ -789,18 +978,12 @@ def build_scythe() -> object:
                 ],
             )
         )
-    # Le fil de la lame porte une bande emissive assez LARGE dans le plan de la
-    # lame (et pas seulement sur la tranche) : a 20 deg de camera, une lueur
-    # posee sur la tranche est vue par la tranche, donc invisible.
+    # Le fil porte une bande emissive LARGE dans le plan de la lame (et pas
+    # seulement sur la tranche) : a 20 deg de camera, une lueur posee sur la
+    # tranche est vue par la tranche, donc invisible.
     blade_mats = (
-        "AA_Trim",
-        "AA_Trim",
-        "AA_Emissive_Engine",
-        "AA_Emissive_Engine",
-        "AA_Emissive_Engine",
-        "AA_Emissive_Engine",
-        "AA_Trim",
-        "AA_Trim",
+        "AA_Trim", "AA_Trim", "AA_Emissive_Engine", "AA_Emissive_Engine",
+        "AA_Emissive_Engine", "AA_Emissive_Engine", "AA_Trim", "AA_Trim",
         "AA_Greeble",
     )
     for i in range(len(rings) - 1):
@@ -811,71 +994,185 @@ def build_scythe() -> object:
     ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
     ak.cap_ring(bm, rings[-1], "AA_Trim")
 
-    return ak.new_object("Arm_Scythe", bm)
+    return ak.moving_part("Scythe_Blade", bm, SCYTHE_BLADE[0], parent="Scythe_Mid")
 
 
-def build_claw(name: str, path: tuple, radii: tuple, spread: tuple) -> tuple[object, Vector]:
+# ==========================================================================
+# Griffe a trois tetes
+# ==========================================================================
+
+
+def build_claw_arm() -> ak.MovingPart:
+    """Bras + fourche. Les trois cous partent d'ici ; les tetes sont a part."""
     bm = bmesh.new()
-    limb(bm, path, radii, "AA_Panel")
-    heading = Vector(path[-1]) - Vector(path[-2])
-    eye = claw_head(bm, path[-1], heading, spread, radii[-1] * 1.35)
-    return ak.new_object(name, bm), eye
+    limb(bm, CLAW_ARM, CLAW_ARM_R, "AA_Panel", glow_from=0, root_gap=0.16)
+    fork = Vector(CLAW_ARM[-1])
+    for neck, _ in CLAW_NECKS:
+        target = Vector(neck)
+        seg_box(bm, fork, target, 0.072, 0.062, "AA_Panel")
+        knuckle(bm, target, 0.096, "AA_Greeble")
+    return ak.moving_part("Arm_Claw", bm, CLAW_PIVOT)
 
 
-def build_pod() -> object:
+def build_claw_head(index: int) -> tuple[ak.MovingPart, Vector]:
+    """Tete a oeil magenta : trois serres ivoire, un oeil emissif sous verre.
+
+    Retourne la piece et la position de l'oeil (elle sert de bouche de tir).
+    """
+    neck, flat = CLAW_NECKS[index]
     bm = bmesh.new()
-    ak.add_lathe(bm, list(POD_PROFILE), POD_SEG, center_x=0.0, center_z=POD_CENTER_Z)
+    origin = Vector(neck)
+    fwd = Vector((flat[0], flat[1], -0.10)).normalized()
+    head = origin + fwd * CLAW_STALK
 
-    # tuyeres secondaires magenta
-    for deg in POD_NOZZLES:
+    seg_box(bm, origin, head, 0.062, 0.055, "AA_Panel")
+    seg_box(
+        bm,
+        origin + fwd * CLAW_STALK * 0.30 + Vector((0.0, 0.0, 0.062)),
+        origin + fwd * CLAW_STALK * 0.80 + Vector((0.0, 0.0, 0.055)),
+        0.018,
+        0.014,
+        "AA_Emissive_Engine",
+    )
+    knuckle(bm, head, CLAW_HEAD_R, "AA_Panel")
+
+    for angle in TALON_SPREAD:
+        rot = Matrix.Rotation(math.radians(angle), 3, "Z")
+        heading = rot @ fwd
+        heading.z -= 0.20          # les serres plongent : elles agrippent
+        heading.normalize()
+        base = head + heading * CLAW_HEAD_R * 0.55
+        mid = base + heading * TALON_LEN * 0.52 + Vector((0.0, 0.0, 0.04))
+        tip = mid + heading * TALON_LEN * 0.60 + Vector((0.0, 0.0, -0.08))
+        seg_box(bm, base, mid, CLAW_HEAD_R * TALON_ROOT, CLAW_HEAD_R * TALON_ROOT * 0.9,
+                "AA_Trim")
+        seg_box(bm, mid, tip, CLAW_HEAD_R * TALON_TIP, CLAW_HEAD_R * TALON_TIP * 0.9,
+                "AA_Trim")
+
+    eye = head + fwd * CLAW_HEAD_R * 0.26 + Vector((0.0, 0.0, CLAW_HEAD_R * 0.34))
+    knuckle(bm, eye, EYE_R, "AA_Emissive_Engine")
+    knuckle(bm, eye + fwd * 0.028, EYE_R * 0.78, "AA_Glass")
+
+    part = ak.moving_part(f"Claw_Head_{index + 1}", bm, neck, parent="Arm_Claw")
+    return part, eye + fwd * 0.10
+
+
+# ==========================================================================
+# Canon
+# ==========================================================================
+
+
+def build_cannon_breech() -> ak.MovingPart:
+    """Culasse : calotte de rotule + manchon de glissement + entretoises."""
+    bm = bmesh.new()
+    pivot = Vector(CANNON_PIVOT)
+    spherical_shell(
+        bm,
+        pivot,
+        Vector((0.0, -1.0, 0.0)),
+        CANNON_SOCKET,
+        CANNON_SOCKET_DEG,
+        16,
+        4,
+        ("AA_Greeble", "AA_Panel"),
+    )
+    tube(bm, SLEEVE_Y[0], SLEEVE_Y[1], SLEEVE_R, 18, ("AA_Greeble", "AA_Panel"),
+         center=(CANNON_X, CANNON_Z))
+    # entretoises calotte -> manchon
+    for deg in SLEEVE_STRUTS:
+        a = math.radians(deg)
+        d = Vector((math.cos(a), 0.0, math.sin(a)))
+        socket_mid = pivot + Vector((0.0, -1.0, 0.0)) * (
+            CANNON_SOCKET[1] * math.cos(math.radians(CANNON_SOCKET_DEG[0]))
+        ) + d * (CANNON_SOCKET[1] * math.sin(math.radians(CANNON_SOCKET_DEG[0])))
+        sleeve_pt = Vector((CANNON_X, SLEEVE_Y[0], CANNON_Z)) + d * SLEEVE_R[1] * 0.9
+        seg_box(bm, socket_mid, sleeve_pt, 0.055, 0.050, "AA_Greeble")
+        seg_box(
+            bm,
+            socket_mid + Vector((0.0, 0.0, 0.0)) + d * 0.03,
+            sleeve_pt + d * 0.03,
+            0.016,
+            0.014,
+            "AA_Emissive_Engine",
+        )
+    # ⚠️ Pas de joue laterale sur la culasse a hauteur du fut : la course de recul
+    # de 25 cm y ramene les ailettes du fut, et la mesure l'a refuse. Le manchon,
+    # ses entretoises et son collier suffisent a lui donner du volume.
+    # Collier ivoire du manchon. Aucune de ses trois griffes n'est dans le PLAN
+    # HORIZONTAL : c'est la que passent les ailettes du fut quand il recule.
+    for deg in (90.0, 210.0, 330.0):
+        a = math.radians(deg)
+        d = Vector((math.cos(a), 0.0, math.sin(a)))
+        seg_box(
+            bm,
+            Vector((CANNON_X, SLEEVE_Y[1] + 0.06, CANNON_Z)) + d * SLEEVE_R[1] * 0.92,
+            Vector((CANNON_X, SLEEVE_Y[1] - 0.02, CANNON_Z)) + d * (SLEEVE_R[1] + 0.09),
+            0.070,
+            0.060,
+            "AA_Trim",
+        )
+    return ak.moving_part("Arm_Cannon", bm, CANNON_PIVOT)
+
+
+def build_cannon_barrel() -> ak.MovingPart:
+    """Fut coulissant.
+
+    ⚠️ Son pivot a le MEME Y d'auteur que celui de `Arm_Cannon` : cote Godot le
+    decalage `position.z` du noeud vaut donc 0 au repos, et le combat peut ecrire
+    `position.z = cannon_recoil` sans faire sauter la piece a la premiere image.
+    """
+    bm = bmesh.new()
+    ak.add_lathe(bm, list(BARREL_PROFILE), BARREL_SEG,
+                 center_x=CANNON_X, center_z=CANNON_Z)
+    for deg in BARREL_MOUTHS:
         a = math.radians(deg)
         ak.add_lathe(
             bm,
             [
-                (3.06, 0.000, "AA_Greeble"),
-                (3.10, 0.120, "AA_Greeble"),
-                (3.30, 0.140, "AA_Greeble"),
-                (3.36, 0.155, "AA_Trim"),
-                (3.40, 0.130, "AA_Emissive_Engine"),
-                (3.36, 0.095, "AA_Emissive_Engine"),
-                (3.34, 0.000, "AA_Emissive_Engine"),
+                (-3.24, 0.000, "AA_Greeble"),
+                (-3.28, 0.075, "AA_Greeble"),
+                (-3.42, 0.086, "AA_Greeble"),
+                (-3.46, 0.096, "AA_Trim"),
+                (-3.49, 0.078, "AA_Emissive_Engine"),
+                (-3.47, 0.046, "AA_Emissive_Engine"),
+                (-3.45, 0.000, "AA_Emissive_Engine"),
             ],
             10,
-            center_x=0.34 * math.cos(a),
-            center_z=POD_CENTER_Z + 0.34 * math.sin(a),
+            center_x=CANNON_X + 0.165 * math.cos(a),
+            center_z=CANNON_Z + 0.165 * math.sin(a),
         )
-
-    # blindage segmente du module : huit ecailles posees a plat sur le fuseau.
-    # Rotation autour de Y : R_y(pi/2 - a) amene le +Z local sur la normale
-    # radiale (cos a, 0, sin a) — l'ecaille epouse la surface.
-    for i in range(8):
-        a = 2.0 * math.pi * (i + 0.5) / 8.0
-        nrm = Vector((math.cos(a), 0.0, math.sin(a)))
-        center = Vector((0.0, 2.86, POD_CENTER_Z)) + nrm * 0.50
-        oriented_box(
-            bm,
-            center,
-            (0.150, 0.480, 0.090),
-            Matrix.Rotation(math.pi / 2.0 - a, 3, "Y"),
-            "AA_Panel" if i % 2 == 0 else "AA_Hull",
-        )
-    for sx in (ak.PORT, ak.STARBOARD):
+    # dents ivoire de bouche — en retrait de la levre : c'est le profil du fut,
+    # et lui seul, qui doit porter le min Y du modele (y = -3,50).
+    for deg in (100.0, 220.0, 340.0):
+        a = math.radians(deg)
+        d = Vector((math.cos(a), 0.0, math.sin(a)))
         seg_box(
             bm,
-            (sx * 0.50, 3.24, POD_CENTER_Z + 0.16),
-            (sx * 0.74, 3.34, POD_CENTER_Z + 0.30),
-            0.030,
-            0.075,
+            Vector((CANNON_X, -3.30, CANNON_Z)) + d * 0.212,
+            Vector((CANNON_X, -3.44, CANNON_Z)) + d * 0.152,
+            0.042,
+            0.036,
             "AA_Trim",
         )
-
-    bmesh.ops.scale(
+    # Ailettes HORIZONTALES : a 20 deg de la verticale, un fut pointe vers l'avant
+    # se voit par le cul et ne ressemble a rien. Ce sont elles, et la couronne de
+    # bouche, qui disent « canon » dans la seule vue que le joueur aura.
+    for sx in (ak.PORT, ak.STARBOARD):
+        # ⚠️ Entierement en AVANT de y = -3,23 : au-dela, la course de recul les
+        # ramenerait dans la couronne du manchon (mesure, deux fois de suite).
+        seg_box(bm, (CANNON_X + sx * 0.20, -3.26, CANNON_Z),
+                (CANNON_X + sx * 0.42, -3.38, CANNON_Z), 0.052, 0.034, "AA_Panel")
+        seg_box(bm, (CANNON_X + sx * 0.42, -3.38, CANNON_Z),
+                (CANNON_X + sx * 0.33, -3.50, CANNON_Z), 0.034, 0.024, "AA_Trim")
+        seg_box(bm, (CANNON_X + sx * 0.24, -3.30, CANNON_Z + 0.034),
+                (CANNON_X + sx * 0.38, -3.40, CANNON_Z + 0.034),
+                0.014, 0.010, "AA_Emissive_Engine")
+    return ak.moving_part(
+        "Cannon_Barrel",
         bm,
-        vec=Vector((1.0, 1.0, POD_FLATTEN_Z)),
-        space=Matrix.Translation(Vector((0.0, 0.0, -POD_CENTER_Z))),
-        verts=bm.verts[:],
+        (CANNON_PIVOT[0], CANNON_PIVOT[1], CANNON_PIVOT[2]),
+        parent="Arm_Cannon",
     )
-    return ak.new_object("Pod_Rear", bm)
 
 
 # ==========================================================================
@@ -883,29 +1180,410 @@ def build_pod() -> object:
 # ==========================================================================
 
 
-def build_attach_points(eye_l: Vector, eye_r: Vector) -> list:
+def build_attach_points(eyes: list) -> list:
     """Positions **derivees de la geometrie**, jamais devinees.
 
-    Les `Hinge_*` ne sont pas exiges par le brief : ils portent les pivots
-    d'animation (iris, bras, module) que la transformation identite des pieces
-    ne peut pas porter elle-meme. Godot les recoit en `Node3D`.
+    Les `Hinge_*` de la version precedente ont disparu : le pivot vit desormais
+    dans l'origine de la piece, et laisser des marqueurs concurrents inviterait un
+    futur lecteur a s'en servir.
     """
     points = [
-        ak.attach_point("Core_Center", (0.0, 0.0, 0.10)),
-        # les tirs sortent des yeux de griffe (les bras sont asymetriques : pas
-        # d'`attach_pair` ici, mais les constantes de bord du kit).
-        ak.attach_point("Muzzle_L", (eye_l.x, eye_l.y - 0.16, eye_l.z)),
-        ak.attach_point("Muzzle_R", (eye_r.x, eye_r.y - 0.16, eye_r.z)),
-        ak.attach_point("Engine_C", (0.0, ENGINE_Y, POD_CENTER_Z)),
+        ak.attach_point("Core_Center", (0.0, 0.0, 0.14)),
+        ak.attach_point("Engine_C", (0.0, ENGINE_Y, -0.01)),
+        ak.attach_point("Muzzle_Cannon", (CANNON_X, MUZZLE_Y, CANNON_Z)),
     ]
-    for i in range(PETAL_COUNT):
-        hinge, _, _, _ = _petal_frame(PETAL_ANGLES[i])
-        points.append(ak.attach_point(f"Hinge_Petal_{i + 1:02d}", tuple(hinge)))
-    points.append(ak.attach_point("Hinge_Arm_Scythe", SCYTHE_PATH[0]))
-    points.append(ak.attach_point("Hinge_Arm_Claw_L", CLAW_L_PATH[0]))
-    points.append(ak.attach_point("Hinge_Arm_Claw_R", CLAW_R_PATH[0]))
-    points.append(ak.attach_point("Hinge_Pod_Rear", (0.0, POD_PROFILE[0][0], POD_CENTER_Z)))
+    for i, eye in enumerate(eyes):
+        points.append(ak.attach_point(f"Muzzle_Claw_{i + 1}", tuple(eye)))
     return points
+
+
+# ==========================================================================
+# Mesure de degagement — le livrable central de BRIEF-0039
+#
+# Le contrat d'`export_hull()` ne connait QUE la pose de repos. Un appendice qui
+# traverse la coque des qu'il bouge le passe sans un mot : c'est exactement ce
+# qui a coute quatre briefs au Specter-9 (un marquage a cheval sur une charniere
+# avait fait tomber le debattement d'un volet de 18,5 a 2,8 deg — bounding box
+# parfaite, volet dans la coque). On remesure donc a chaque build, sur le
+# maillage REELLEMENT livre, en rejouant les rotations que le combat ecrit.
+# ==========================================================================
+
+#: Repere d'auteur -> repere Godot : (x, y, z) -> (-x, z, y). Rotation rigide
+#: (determinant +1) : un axe se transporte comme un vecteur, un angle est
+#: conserve. Toute la mesure se fait DANS LE REPERE GODOT, avec exactement les
+#: rotations qu'ecrit `harvester_combat.gd` — un signe faux valide un bras qui
+#: traverse la coque, et personne ne le verrait avant le jeu.
+_TO_GODOT = Matrix(((-1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0)))
+
+#: Amplitudes appliquees par le gameplay (`harvester_combat.gd` + le .tres).
+FOLD_DEG = -70.0          # repli d'un appendice detruit (rotation.x de la racine)
+SCYTHE_SWING_DEG = 55.0   # cumule sur la chaine : 0,45 / 0,35 / 0,20
+CLAW_SWEEP_DEG = 32.0     # balayage de visee (rotation.y de la racine)
+CLAW_CONVERGE_DEG = 18.0  # ecart des tetes 1 et 3 (rotation.y de chaque cou)
+CANNON_RECOIL = 0.25      # translation +Z Godot du fut
+IRIS_OPEN_DEG = 78.0      # exigence du brief (le .tres en applique 72)
+
+#: Rayon d'exclusion de charniere, par appendice. Une articulation reelle
+#: s'interpenetre PAR CONSTRUCTION (boule dans sa calotte, racine de petale dans
+#: son berceau) ; la mesure ecarte donc, des DEUX cotes, la matiere a moins de ce
+#: rayon du pivot. C'est licite : une rotation autour d'un axe passant par le
+#: pivot conserve la distance au pivot, donc rien de ce qui est exclu ne peut
+#: rencontrer ce qui ne l'est pas.
+SCYTHE_SKIP = 0.20
+CLAW_SKIP = 0.20
+CANNON_SKIP = 0.44        # la calotte enveloppe la boule : elle est plus large
+PETAL_SKIP = 0.09
+
+
+def _godot_euler(x: float, y: float, z: float) -> Matrix:
+    """Basis Godot pour `rotation = Vector3(x, y, z)` — ordre YXZ, en radians."""
+    return (
+        Matrix.Rotation(y, 4, "Y")
+        @ Matrix.Rotation(x, 4, "X")
+        @ Matrix.Rotation(z, 4, "Z")
+    )
+
+
+def _clip_sphere(verts: list, tri: list, pivot: Vector, skip: float,
+                 out: list, depth: int = 0) -> None:
+    """Garde de `tri` ce qui est HORS de la sphere (`pivot`, `skip`), en coupant.
+
+    Un simple test « tous les sommets dedans ? » ne suffit pas : un longeron
+    modelise d'un seul tenant produit des triangles de 30 cm qui enjambent la
+    sphere de charniere. Ils etaient donc conserves ENTIERS, avec la matiere du
+    joint dedans — et la mesure criait sur une interpenetration normale. On coupe
+    donc l'arete la plus longue, recursivement : l'exclusion devient geometrique
+    et non plus « par triangle ».
+    """
+    d = [(verts[i] - pivot).length for i in tri]
+    if min(d) >= skip:
+        out.append(list(tri))
+        return
+    if max(d) <= skip or depth >= 4:
+        return
+    k = max(range(3), key=lambda i: (verts[tri[i]] - verts[tri[(i + 1) % 3]]).length)
+    a, b, c = tri[k], tri[(k + 1) % 3], tri[(k + 2) % 3]
+    mid = len(verts)
+    verts.append((verts[a] + verts[b]) * 0.5)
+    _clip_sphere(verts, [a, mid, c], pivot, skip, out, depth + 1)
+    _clip_sphere(verts, [mid, b, c], pivot, skip, out, depth + 1)
+
+
+def _soup(obj, pivot: Vector | None = None, skip: float = 0.0):
+    """(sommets, triangles) d'un objet, en repere GODOT, compactes.
+
+    `skip` : rayon autour de `pivot` dont la geometrie est ecartee. Une charniere
+    reelle s'interpenetre par construction (une boule dans sa calotte, une racine
+    de petale dans son berceau) ; ce qui doit degager, c'est tout le reste. Le
+    rayon retenu est publie piece par piece au compte-rendu.
+    """
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bm.verts.index_update()
+    raw = [_TO_GODOT @ v.co for v in bm.verts]
+    tris: list = []
+    for face in bm.faces:
+        idx = [loop.vert.index for loop in face.loops]
+        if skip > 0.0 and pivot is not None:
+            _clip_sphere(raw, idx, pivot, skip, tris)
+        else:
+            tris.append(idx)
+    bm.free()
+    # compactage : le BVH n'aime pas les sommets orphelins, et les boucles de
+    # `find_nearest` parcourent la liste des sommets telle quelle.
+    keep, remap, out = [], {}, []
+    for tri in tris:
+        row = []
+        for i in tri:
+            if i not in remap:
+                remap[i] = len(keep)
+                keep.append(raw[i])
+            row.append(remap[i])
+        out.append(row)
+    return keep, out
+
+
+class Solid:
+    """Soupe de triangles figee, prete a repondre « a quelle distance ? »."""
+
+    def __init__(self, verts: list, tris: list):
+        self.verts = verts
+        self.tris = tris
+        self.tree = BVHTree.FromPolygons(verts, tris, all_triangles=True, epsilon=0.0)
+
+    def distance_to(self, verts: list, tris: list) -> float:
+        """Distance minimale a une autre soupe ; 0.0 si elles se mordent.
+
+        Deux sens de requete : un sommet mobile pres d'une face fixe, ET un sommet
+        fixe pres d'une face mobile. Un seul sens laisserait passer une lame mince
+        qui traverse une grande face sans qu'aucun de ses sommets n'en approche.
+        """
+        other = BVHTree.FromPolygons(verts, tris, all_triangles=True, epsilon=0.0)
+        if other.overlap(self.tree):
+            return 0.0
+        best = 3.0
+        for v in verts:
+            hit = self.tree.find_nearest(v, best)
+            if hit[3] is not None:
+                best = min(best, hit[3])
+        for v in self.verts:
+            hit = other.find_nearest(v, best)
+            if hit[3] is not None:
+                best = min(best, hit[3])
+        return best
+
+
+class Rig:
+    """Chaine articulee posable : pivots, parentage et maillages en repere Godot.
+
+    Reproduit exactement ce que Godot fera du `.glb` : origine de la piece sur son
+    pivot, position de l'enfant RELATIVE au parent, rotation en euler YXZ.
+    """
+
+    def __init__(self, parts: list, skip: dict):
+        self.names = [p.obj.name for p in parts]
+        self.pivot = {p.obj.name: _TO_GODOT @ Vector(p.pivot) for p in parts}
+        self.parent = {p.obj.name: p.parent for p in parts}
+        self.verts, self.tris = {}, {}
+        for part in parts:
+            name = part.obj.name
+            verts, tris = _soup(part.obj, self.pivot[name], skip.get(name, 0.0))
+            self.verts[name] = [v - self.pivot[name] for v in verts]  # local
+            self.tris[name] = tris
+
+    def pose(self, angles: dict, shift: dict | None = None) -> dict:
+        """Sommets monde de chaque piece, pour un jeu d'angles (radians)."""
+        shift = shift or {}
+        world: dict = {}
+        out: dict = {}
+        for name in self.names:
+            parent = self.parent[name]
+            offset = self.pivot[name] - (
+                Vector((0.0, 0.0, 0.0)) if parent is None else self.pivot[parent]
+            )
+            local = Matrix.Translation(offset + shift.get(name, Vector((0.0,) * 3)))
+            base = Matrix.Identity(4) if parent is None else world[parent]
+            world[name] = base @ local @ _godot_euler(*angles.get(name, (0.0, 0.0, 0.0)))
+            out[name] = [world[name] @ v for v in self.verts[name]]
+        return out
+
+    def clearance(self, poses: list, obstacle: Solid) -> tuple[float, str]:
+        """Marge minimale sur toutes les poses, et la pose ou elle est atteinte."""
+        best, where = 9.9, "aucune pose"
+        for label, angles, shift in poses:
+            for name, verts in self.pose(angles, shift).items():
+                if not self.tris[name]:
+                    continue
+                d = obstacle.distance_to(verts, self.tris[name])
+                if d < best:
+                    best, where = d, f"{label} / {name}"
+        return best, where
+
+
+def _rad(deg: float) -> float:
+    return math.radians(deg)
+
+
+def _scythe_poses() -> list:
+    """Repli x estoc. `root.x = fold + swing*0,45`, `mid.x = swing*0,35`,
+    `blade.x = swing*0,20` — et `swing` est proportionnel au deploiement."""
+    poses = []
+    for d in (0.0, 0.25, 0.5, 0.75, 1.0):
+        fold = _rad(FOLD_DEG) * (1.0 - d)
+        for k in (-1.0, -0.6, -0.3, 0.0, 0.3, 0.6, 1.0):
+            swing = _rad(SCYTHE_SWING_DEG) * k * d
+            poses.append((
+                f"deploi {d:.2f} estoc {k * SCYTHE_SWING_DEG:+.0f} deg",
+                {
+                    "Arm_Scythe": (fold + swing * 0.45, 0.0, 0.0),
+                    "Scythe_Mid": (swing * 0.35, 0.0, 0.0),
+                    "Scythe_Blade": (swing * 0.20, 0.0, 0.0),
+                },
+                {},
+            ))
+    return poses
+
+
+def _claw_poses() -> list:
+    poses = []
+    for d in (0.0, 0.25, 0.5, 0.75, 1.0):
+        fold = _rad(FOLD_DEG) * (1.0 - d)
+        for k in (-1.0, -0.5, 0.0, 0.5, 1.0):
+            sweep = _rad(CLAW_SWEEP_DEG) * k * d
+            converge = _rad(CLAW_CONVERGE_DEG) * d
+            angles = {"Arm_Claw": (fold, sweep, 0.0)}
+            for i in range(3):
+                angles[f"Claw_Head_{i + 1}"] = (0.0, converge * (i - 1), 0.0)
+            poses.append((
+                f"deploi {d:.2f} balayage {k * CLAW_SWEEP_DEG:+.0f} deg", angles, {},
+            ))
+    return poses
+
+
+def _cannon_poses() -> list:
+    poses = []
+    for d in (0.0, 0.25, 0.5, 0.75, 1.0):
+        fold = _rad(FOLD_DEG) * (1.0 - d)
+        for recoil in (0.0, CANNON_RECOIL * 0.5, CANNON_RECOIL):
+            poses.append((
+                f"deploi {d:.2f} recul {recoil:.2f} m",
+                {"Arm_Cannon": (fold, 0.0, 0.0)},
+                {"Cannon_Barrel": Vector((0.0, 0.0, recoil))},
+            ))
+    return poses
+
+
+def _petal_axis(pivot: Vector) -> Vector:
+    """L'axe que `harvester_combat._bind_iris()` calcule : UP x radial."""
+    radial = Vector((pivot.x, 0.0, pivot.z))
+    return Vector((0.0, 1.0, 0.0)).cross(radial.normalized()).normalized()
+
+
+def _iris_clearance(petals: list, hull) -> tuple[float, str, float, str]:
+    """Degagement de l'iris : chaque petale contre la coque ET contre ses voisins.
+
+    Les deux mesures sont distinctes parce que les remedes le sont : mordre le
+    pont se corrige en remontant la charniere, mordre un voisin en amincissant
+    le petale ou en reduisant le pas.
+    """
+    soups = {}
+    hulls = {}
+    for part in petals:
+        pivot = _TO_GODOT @ Vector(part.pivot)
+        verts, tris = _soup(part.obj, pivot, PETAL_SKIP)
+        soups[part.obj.name] = (pivot, [v - pivot for v in verts], tris)
+        hulls[part.obj.name] = Solid(*_soup(hull, pivot, PETAL_SKIP))
+
+    best_hull, where_hull = 9.9, ""
+    best_pair, where_pair = 9.9, ""
+    steps = 14
+    for s in range(steps + 1):
+        angle = _rad(IRIS_OPEN_DEG) * s / steps
+        posed = {}
+        for name, (pivot, verts, tris) in soups.items():
+            basis = Matrix.Rotation(angle, 4, _petal_axis(pivot))
+            mat = Matrix.Translation(pivot) @ basis
+            posed[name] = ([mat @ v for v in verts], tris)
+        for name, (verts, tris) in posed.items():
+            d = hulls[name].distance_to(verts, tris)
+            if d < best_hull:
+                best_hull, where_hull = d, f"{name} a {math.degrees(angle):.0f} deg"
+        names = sorted(posed)
+        for i, name in enumerate(names):
+            other = names[(i + 1) % len(names)]
+            solid = Solid(*posed[other])
+            d = solid.distance_to(*posed[name])
+            if d < best_pair:
+                best_pair = d
+                where_pair = f"{name}/{other} a {math.degrees(angle):.0f} deg"
+    return best_hull, where_hull, best_pair, where_pair
+
+
+def _clearance_table(hull, parts: dict, petals: list) -> list:
+    """Le tableau exige par le brief : piece / debattement / marge minimale."""
+    hull_solid = Solid(*_soup(hull))
+    rows = []
+
+    def hull_around(part: ak.MovingPart, skip: float) -> Solid:
+        """Coque privee de la matiere a moins de `skip` du pivot de `part`.
+
+        L'exclusion doit etre SYMETRIQUE : une rotation autour d'un axe passant
+        par le pivot conserve la distance au pivot, donc un sommet mobile a la
+        distance r ne peut rencontrer que de la matiere fixe a la meme distance r.
+        Ecarter la charniere d'un seul cote (la piece, pas le mat qui la porte)
+        faisait crier la mesure sur l'interpenetration NORMALE d'une rotule dans
+        son logement — et un faux positif finit toujours par etre desactive.
+        """
+        return Solid(*_soup(hull, _TO_GODOT @ Vector(part.pivot), skip))
+
+    scythe = Rig(
+        [parts["Arm_Scythe"], parts["Scythe_Mid"], parts["Scythe_Blade"]],
+        {"Arm_Scythe": SCYTHE_SKIP},
+    )
+    margin, where = scythe.clearance(
+        _scythe_poses(), hull_around(parts["Arm_Scythe"], SCYTHE_SKIP)
+    )
+    rows.append(("Arm_Scythe + Scythe_Mid + Scythe_Blade",
+                 f"estoc +/-{SCYTHE_SWING_DEG:.0f} deg cumules, repli {FOLD_DEG:.0f} deg",
+                 margin, where))
+
+    claw = Rig(
+        [parts["Arm_Claw"]] + [parts[f"Claw_Head_{i + 1}"] for i in range(3)],
+        {"Arm_Claw": CLAW_SKIP},
+    )
+    margin, where = claw.clearance(
+        _claw_poses(), hull_around(parts["Arm_Claw"], CLAW_SKIP)
+    )
+    rows.append(("Arm_Claw + Claw_Head_1..3",
+                 f"balayage +/-{CLAW_SWEEP_DEG:.0f} deg, tetes +/-{CLAW_CONVERGE_DEG:.0f} deg, "
+                 f"repli {FOLD_DEG:.0f} deg",
+                 margin, where))
+
+    # Tetes entre elles : leur ecartement est le vrai risque, pas la coque.
+    head_rig = Rig(
+        [parts["Arm_Claw"]] + [parts[f"Claw_Head_{i + 1}"] for i in range(3)],
+        {"Arm_Claw": 0.0},
+    )
+    worst, worst_where = 9.9, ""
+    for label, angles, shift in _claw_poses():
+        posed = head_rig.pose(angles, shift)
+        for a, b in ((1, 2), (2, 3), (1, 3)):
+            na, nb = f"Claw_Head_{a}", f"Claw_Head_{b}"
+            solid = Solid(posed[na], head_rig.tris[na])
+            d = solid.distance_to(posed[nb], head_rig.tris[nb])
+            if d < worst:
+                worst, worst_where = d, f"{label} / {na}-{nb}"
+    rows.append(("Claw_Head_1..3 entre elles",
+                 f"+/-{CLAW_CONVERGE_DEG:.0f} deg chacune", worst, worst_where))
+
+    # Griffe contre canon : les deux appendices se font face de part et d'autre du
+    # bec. Aucune ligne du brief ne le demande — c'est justement pour ca qu'il faut
+    # le mesurer : la tete 3 balaie vers l'interieur, ou le canon l'attend.
+    cannon_rest = Solid(
+        *(lambda a, b: (a[0] + [v for v in b[0]],
+                        a[1] + [[i + len(a[0]) for i in t] for t in b[1]]))(
+            _soup(parts["Arm_Cannon"].obj), _soup(parts["Cannon_Barrel"].obj)
+        )
+    )
+    margin, where = claw.clearance(_claw_poses(), cannon_rest)
+    rows.append(("Arm_Claw + tetes / canon",
+                 f"balayage +/-{CLAW_SWEEP_DEG:.0f} deg, tetes +/-{CLAW_CONVERGE_DEG:.0f} deg",
+                 margin, where))
+
+    cannon = Rig(
+        [parts["Arm_Cannon"], parts["Cannon_Barrel"]], {"Arm_Cannon": CANNON_SKIP}
+    )
+    margin, where = cannon.clearance(
+        _cannon_poses(), hull_around(parts["Arm_Cannon"], CANNON_SKIP)
+    )
+    rows.append(("Arm_Cannon + Cannon_Barrel / coque",
+                 f"repli {FOLD_DEG:.0f} deg, recul {CANNON_RECOIL:.2f} m",
+                 margin, where))
+
+    # Recul du fut DANS sa culasse : c'est la course, pas la coque, qui borne.
+    breech = Solid(*_soup(parts["Arm_Cannon"].obj))
+    barrel_verts, barrel_tris = _soup(parts["Cannon_Barrel"].obj)
+    worst, worst_where = 9.9, ""
+    for k in range(9):
+        travel = CANNON_RECOIL * k / 8.0
+        # ⚠️ la course est en Z GODOT (3e composante), pas en Y : c'est le meme
+        # `position.z` que le combat ecrit. La confondre avec Y faisait monter le
+        # fut au lieu de le faire rentrer — et la premiere mesure a bel et bien
+        # signale une morsure inexistante.
+        moved = [v + Vector((0.0, 0.0, travel)) for v in barrel_verts]
+        d = breech.distance_to(moved, barrel_tris)
+        if d < worst:
+            worst, worst_where = d, f"recul {travel:.3f} m"
+    rows.append(("Cannon_Barrel dans Arm_Cannon",
+                 f"course {CANNON_RECOIL:.2f} m", worst, worst_where))
+
+    hull_margin, hull_where, pair_margin, pair_where = _iris_clearance(petals, hull)
+    rows.append(("Petal_01..05 / coque", f"ouverture 0 -> {IRIS_OPEN_DEG:.0f} deg",
+                 hull_margin, hull_where))
+    rows.append(("Petal_01..05 entre eux", f"ouverture 0 -> {IRIS_OPEN_DEG:.0f} deg",
+                 pair_margin, pair_where))
+    return rows
 
 
 # ==========================================================================
@@ -935,22 +1613,34 @@ def main() -> None:
     ak.set_faction(ak.FACTION_NULL_CHOIR)
 
     hull = build_hull()
-    parts = [build_core()]
-    parts += [build_petal(i) for i in range(PETAL_COUNT)]
-    parts.append(build_scythe())
-    claw_l, eye_l = build_claw("Arm_Claw_L", CLAW_L_PATH, CLAW_L_R, CLAW_L_SPREAD)
-    claw_r, eye_r = build_claw("Arm_Claw_R", CLAW_R_PATH, CLAW_R_R, CLAW_R_SPREAD)
-    parts += [claw_l, claw_r, build_pod()]
+    petals = [build_petal(i) for i in range(PETAL_COUNT)]
+    heads, eyes = [], []
+    for i in range(3):
+        part, eye = build_claw_head(i)
+        heads.append(part)
+        eyes.append(eye)
+    parts = [
+        build_core(),
+        *petals,
+        build_scythe_upper(),
+        build_scythe_mid(),
+        build_scythe_blade(),
+        build_claw_arm(),
+        *heads,
+        build_cannon_breech(),
+        build_cannon_barrel(),
+    ]
+    by_name = {p.obj.name: p for p in parts}
 
-    for obj in [hull, *parts]:
-        _finish(obj)
+    _finish(hull)
+    for part in parts:
+        _finish(part.obj)
 
-    # Controle en repere d'auteur, avant tout export : la coque doit porter les
-    # extremes en Y (temoin d'orientation du kit), les bras les extremes en X.
-    lo, hi = _bounds([hull, *parts])
-    h_lo, h_hi = _bounds([hull])
+    # --- controle en repere d'auteur, avant tout export --------------------
+    objs = [hull] + [p.obj for p in parts]
+    lo, hi = _bounds(objs)
     print("--- mesures en repere d'auteur (avant correction d'axe) ---")
-    for obj in [hull, *parts]:
+    for obj in objs:
         o_lo, o_hi = _bounds([obj])
         print(
             f"  {obj.name:<14} x[{o_lo.x:+.3f} {o_hi.x:+.3f}] "
@@ -962,21 +1652,22 @@ def main() -> None:
         f"z[{lo.z:+.3f} {hi.z:+.3f}]  ->  {hi.x - lo.x:.3f} x {hi.y - lo.y:.3f} "
         f"x {hi.z - lo.z:.3f} m"
     )
-    if abs(h_lo.y - lo.y) > 1e-3 or abs(h_hi.y - hi.y) > 1e-3:
+
+    # --- degagement a fond de course (BRIEF-0039) --------------------------
+    print("--- degagement des pieces mobiles (maillage livre, poses du combat) ---")
+    failures = []
+    for name, travel, margin, where in _clearance_table(hull, by_name, petals):
+        verdict = "OK " if margin > 0.0 else "MORD"
+        print(f"  [{verdict}] {name:<38} {travel:<52} {margin * 1000:7.1f} mm  ({where})")
+        if margin <= 0.0:
+            failures.append(f"{name} : {where}")
+    if failures:
         raise ak.ContractError(
-            "la coque ne porte pas les extremes en Y : le temoin d'orientation "
-            f"du kit echouera (coque {h_lo.y:+.3f}/{h_hi.y:+.3f}, "
-            f"modele {lo.y:+.3f}/{hi.y:+.3f})."
+            "pieces mobiles qui mordent la coque ou leur voisine :\n"
+            + "\n".join(f"  - {f}" for f in failures)
         )
 
-    # Correction d'axe des pieces : `export_hull()` ne la fait que pour `hull`.
-    # On reutilise la constante du kit (jamais une copie : une divergence ferait
-    # voler la coque a reculons sans qu'aucun controle ne s'en apercoive).
-    for obj in parts:
-        obj.data.transform(ak._AXIS_FIX)
-        obj.data.update()
-
-    ak.export_hull(hull, [*parts, *build_attach_points(eye_l, eye_r)], OUTPUT, CONTRACT)
+    ak.export_hull(hull, build_attach_points(eyes), OUTPUT, CONTRACT, parts=parts)
 
 
 if __name__ == "__main__":

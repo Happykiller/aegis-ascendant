@@ -143,6 +143,13 @@ func _physics_process(delta: float) -> void:
 	_apply_visual_bank(delta)
 	_update_fire(delta)
 
+## Dégâts qui ne viennent PAS d'un projectile : la lame de la faux du Harvester, son
+## faisceau. Ils passent par le même bouclier, donc par la même invulnérabilité de
+## 1,2 s après impact — c'est elle, et non un plafond côté attaquant, qui empêche un
+## faisceau continu de vider l'écu en une image.
+func take_contact_damage(amount: float) -> void:
+	_take_hit(amount)
+
 ## Bullet hit callback (registered with the BulletManager).
 func _take_hit(damage: float) -> void:
 	if not _alive:

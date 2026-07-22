@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="HarvesterTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/harvester_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+limb_health = 90.0
+limb_hitbox_radius = 1.05
+limb_rebuild_time = 9.0
+limb_retract_time = 0.45
+limb_deploy_time = 0.8
+iris_open_deg = 72.0
+iris_open_time = 0.8
+iris_close_time = 0.45
+core_hitbox_radius = 1.1
+claw_fire_interval = 0.85
+claw_sweep_deg = 32.0
+claw_head_converge_deg = 18.0
+scythe_windup_time = 1.0
+scythe_strike_time = 0.35
+scythe_recover_time = 1.4
+scythe_reach_radius = 1.6
+scythe_damage = 34.0
+cannon_charge_time = 2.0
+cannon_beam_time = 1.5
+cannon_recover_time = 2.6
+beam_half_width = 0.55
+beam_damage = 28.0
+cannon_recoil = 0.25

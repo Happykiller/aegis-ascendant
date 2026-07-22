@@ -8,6 +8,15 @@ extends Node3D
 signal phase_changed(index: int, total: int)
 signal health_changed(ratio: float)
 signal defeated(world_position: Vector3)
+## Émis au tout début de `begin()`, AVANT que le boss n'enregistre sa propre cible.
+## L'ordre compte : `BulletManager` consomme une balle sur la première cible qui la
+## réclame, donc un module qui veut des sous-cibles prioritaires (les appendices du
+## Harvester) doit pouvoir s'enregistrer en premier.
+signal began(bullet_manager: BulletManager, player: PlayerFighterController)
+## Un tir a touché le corps alors qu'il était invulnérable. Le niveau s'en sert pour
+## jouer un ricochet : sans ce retour, un joueur qui tire sur une carapace fermée
+## croit à un bug plutôt qu'à une armure.
+signal deflected(world_position: Vector3)
 
 enum Pattern { RADIAL, AIMED_SPREAD, FAN }
 
@@ -22,6 +31,15 @@ enum Pattern { RADIAL, AIMED_SPREAD, FAN }
 @export var fire_interval: float = 1.4
 @export var projectile: ProjectileData
 @export var bullet_manager_path: NodePath
+## Quand vrai, le boss ne tire PAS ses motifs génériques : un module composé lui prend
+## la main sur l'armement (Harvester). Le Pale Leviathan le laisse à faux et ne change
+## pas d'un iota.
+@export var external_attacks: bool = false
+
+## Le corps encaisse-t-il ? Un module peut le fermer — la carapace du Harvester est
+## invulnérable tant que son iris n'est pas ouvert. Les tirs reçus pendant ce temps
+## partent en `deflected` au lieu d'être perdus en silence.
+var vulnerable: bool = true
 
 var plane_position: Vector2 = Vector2(0.0, 10.0)
 var _bullet_manager: BulletManager
@@ -71,7 +89,12 @@ func _ready() -> void:
 		_hull.rotation = FACING_PLAYER
 		add_child(_hull)
 		_pad_cull_margin(_hull)
-		_muzzles = _read_muzzles()
+		# Seulement si le boss tire ses propres motifs. Le Harvester a des bouches
+		# nommées par appendice (`Muzzle_Claw_1..3`, `Muzzle_Cannon`) que son module
+		# lit lui-même : lui réclamer un `Muzzle_C/L/R` générique remontait une erreur
+		# pour un armement qu'il n'utilise pas.
+		if not external_attacks:
+			_muzzles = _read_muzzles()
 	position = GameplayPlane.to_world(plane_position)
 	set_physics_process(false) # activated on begin()
 
@@ -104,6 +127,9 @@ func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> vo
 	_bullet_manager = bullet_manager
 	_player = player
 	_defeated = false
+	# AVANT d'enregistrer la cible de corps : un module composé doit pouvoir placer
+	# ses sous-cibles devant elle (voir le signal `began`).
+	began.emit(bullet_manager, player)
 	_target = BulletTarget.make(BulletManager.Team.ENEMY, hitbox_radius, Callable(self, "_take_hit"))
 	_target.position = plane_position
 	_target.enabled = false # invulnerable during entry
@@ -115,6 +141,16 @@ func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> vo
 
 func _take_hit(damage: float) -> void:
 	if _entering or _defeated:
+		return
+	if not vulnerable:
+		# La balle est déjà consommée par le gestionnaire : on ne peut pas la rendre.
+		# On rend au moins le RETOUR, sinon tirer sur une carapace fermée ne produit
+		# rien du tout à l'écran et se lit comme un défaut.
+		# ⚠️ La position vient du PLAN de jeu, pas de `global_position`. Le plan est la
+		# vérité des collisions (`GameplayPlane`), il ne dépend ni de l'arbre ni du
+		# roulis appliqué à la coque — et il reste lisible en test, où le boss n'est
+		# monté dans aucune scène.
+		deflected.emit(GameplayPlane.to_world(plane_position))
 		return
 	_health = maxf(_health - damage, 0.0)
 	health_changed.emit(_health / max_health)
@@ -164,6 +200,8 @@ func _physics_process(delta: float) -> void:
 		_target.position = plane_position
 	_apply_bank(previous, delta)
 	# Attacks intensify per phase.
+	if external_attacks:
+		return
 	_fire_timer -= delta
 	if _fire_timer <= 0.0:
 		_fire_timer = fire_interval * (1.0 - 0.12 * _phase)
@@ -220,3 +258,8 @@ func _age_pattern() -> Pattern:
 
 func health_ratio() -> float:
 	return _health / max_health
+
+## La coque instanciée, pour un module composé qui doit en animer les pièces. Nulle
+## tant que `_ready()` n'a pas tourné, ou si la scène n'a pas de `hull_scene`.
+func hull() -> Node3D:
+	return _hull

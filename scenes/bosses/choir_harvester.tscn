@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/bosses/boss_controller.gd" id="1_boss"]
 [ext_resource type="PackedScene" path="res://assets/imported/models/bosses/choir_harvester.glb" id="2_hull"]
 [ext_resource type="Resource" path="res://resources/weapons/boss_shot.tres" id="3_shot"]
+[ext_resource type="Script" path="res://scripts/bosses/harvester_combat.gd" id="4_combat"]
+[ext_resource type="Resource" path="res://resources/bosses/choir_harvester_tuning.tres" id="5_tuning"]
 
 [node name="ChoirHarvester" type="Node3D"]
 script = ExtResource("1_boss")
@@ -15,4 +17,23 @@ entry_plane_position = Vector2(0, 4)
 drift_amplitude = 5.0
 drift_frequency = 0.3
 fire_interval = 1.5
+projectile = ExtResource("3_shot")
+; Declare ICI et pas seulement pose par le module : `_ready` des enfants tourne avant
+; celui du parent, et faire dependre le boss de cet ordre pour savoir s'il doit lire
+; ses bouches generiques est un equilibre qu'un refactor casserait sans bruit.
+external_attacks = true
+
+; Le combat propre au Harvester : trois appendices destructibles, iris, noyau.
+;
+; COMPOSITION — `BossController` garde ce qui est generique (entree, deplacement,
+; roulis, PV, signaux HUD, mort) et sert toujours le Pale Leviathan. Ce module ne lui
+; prend que deux choses : l'armement (`external_attacks`, pose par le module au
+; montage) et la vulnerabilite du corps, fermee tant que l'iris ne s'ouvre pas.
+;
+; `projectile` reste renseigne sur le boss ET sur le module : le tir generique est
+; desactive, mais c'est la meme munition que le module donne a la griffe a trois
+; tetes — une seule Resource, deux lecteurs, aucune copie.
+[node name="Combat" type="Node" parent="."]
+script = ExtResource("4_combat")
+tuning = ExtResource("5_tuning")
 projectile = ExtResource("3_shot")
