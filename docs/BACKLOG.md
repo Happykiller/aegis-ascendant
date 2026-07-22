@@ -32,6 +32,16 @@
 
 ---
 
+## Livré le 22/07/2026
+
+| Chantier | État |
+|---|---|
+| **Luminosité** | ✅ le post-traitement rétro pivotait son contraste à 0,5 sur une image entièrement sous 0,25 : il n'était qu'un assombrisseur. `lift` en gamma + troisième lumière ajoutée au combat — **+25,8 %** sur la coque du joueur, mesuré — **ADR-0016** |
+| **Aegis Citadel au bestiaire** | ✅ sixième fiche, famille `FORTRESS` : aucune valeur de combat, donc ses **équipements comptés sur la coque** (6 tourelles, 3 balises, 2 batteries, 1 baie) au lieu de trois lignes de tirets. Tourelles et balises montées et animées (`CitadelLife`) — **BRIEF-0038** |
+| **Bestiaire** (menu d'accueil) | ✅ cinq coques sur présentoir 3D — rotation souris/clavier, zoom, pièces mobiles animées en démonstration, fiche technique HUD qui vire au camp. Dimensions et polygones **mesurés** sur la coque, PV/vitesse/cadence/score **lus** dans les Resources de gameplay (aucune recopie) ; fiction produite par la forge (**BRIEF-0037**) — **ADR-0015** |
+
+---
+
 ## P0 — Rendre la démo irréprochable
 
 - [ ] **Contenu de la phase chasseur** — une seule vague de ~10 Needle Scouts puis mini-boss.
@@ -62,12 +72,6 @@
 - [ ] **Scoring avancé** : multiplicateur, combos, précision ; **résumé de fin détaillé** (spec §14.3).
 - [ ] **Manette** + **remapping** des touches.
 
-## Livré le 22/07/2026
-
-| Chantier | État |
-|---|---|
-| **Bestiaire** (menu d'accueil) | ✅ cinq coques sur présentoir 3D — rotation souris/clavier, zoom, pièces mobiles animées en démonstration, fiche technique HUD qui vire au camp. Dimensions et polygones **mesurés** sur la coque, PV/vitesse/cadence/score **lus** dans les Resources de gameplay (aucune recopie) ; fiction produite par la forge (**BRIEF-0037**) — **ADR-0015** |
-
 ## P2 — Accessibilité & méta (spec §13, §19)
 
 - [ ] **Accessibilité** : réduction shake/flash, intensité bloom, contraste renforcé, sous-titres, pause.
@@ -81,19 +85,21 @@
 - [ ] **Enrichir le fond** — la nébuleuse est belle mais uniforme : aucun élément remarquable
   (planète, bande galactique, débris qui dérivent). → tâche **H2**.
 - [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé ».
-- [ ] ⚠️ **Les coques lisent BEAUCOUP plus sombre en jeu qu'en rendu studio.** Constaté le
-  20/07/2026 en comparant `tools/render-hull.py` (éclairage trois points) et une capture de
-  `graybox.tscn` : sur le Crescent Interceptor, l'ivoire et l'anthracite disparaissent contre la
-  nébuleuse, et seuls les filets magenta émissifs portent la silhouette. Vaut pour **toutes** les
-  coques, pas seulement la nouvelle — c'est l'éclairage de scène, pas les meshes. ADR-0008 prévenait
-  que « sans éclairage travaillé les meshes paraîtront pires que les sprites » : c'est exactement ça.
-  Attention : juger une coque au seul rendu studio la flatte. Toujours confirmer par une capture en
-  jeu (`--capture-at=<s>` vise le bon instant de vague).
-- [ ] **Étendre le bestiaire au-delà des coques** — l'écran existe et sa mécanique est générique
-  (ADR-0015). Restent hors catalogue : les **structures** (citadelle, tourelle, balise), les
-  **bonus** et les **projectiles**. Chacun demande une variante de fiche : une tourelle n'a ni
-  vitesse ni score, un bonus n'a ni dimensions ni structure. Ne pas forcer le gabarit « coque »
-  sur eux — c'est en le forçant qu'on obtient des colonnes de tirets.
+- [x] ~~⚠️ **Les coques lisent BEAUCOUP plus sombre en jeu qu'en rendu studio.**~~ **Résolu le
+  22/07/2026 — ADR-0016.** Le diagnostic du 20/07 (« c'est l'éclairage de scène, pas les meshes »)
+  était juste mais n'expliquait qu'**un cinquième** de l'écart, et son correctif n'avait été
+  appliqué qu'à l'écran titre. Deux causes, mesurées : la **troisième lumière** (remplissage)
+  manquait dans `graybox.tscn`, et surtout le post-traitement rétro pivotait son contraste à **0,5**
+  sur une image dont tous les tons vivent **sous 0,25** — il ne pouvait donc que soustraire
+  (−22 % sur la coque, −90 % sur le fond). Corrigé par un `lift` en gamma dans le shader. Gain
+  final : **+25,8 %** de luminance sur la coque du joueur.
+  ⚠️ Reste vrai : juger une coque au seul rendu studio la flatte. Toujours confirmer par une
+  capture en jeu.
+- [ ] **Étendre le bestiaire au-delà des coques** — l'écran existe, et la famille `FORTRESS`
+  (ADR-0015, addendum) a montré comment lui ajouter une nature de coque sans tordre le gabarit.
+  Restent hors catalogue : les **bonus** et les **projectiles**. Un bonus n'a ni dimensions ni
+  structure : lui donner sa propre famille, comme on l'a fait pour la forteresse, plutôt que de
+  lui servir un gabarit de coque — c'est en le forçant qu'on obtient des colonnes de tirets.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
 - [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
   vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.

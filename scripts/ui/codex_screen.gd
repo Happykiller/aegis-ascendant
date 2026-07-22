@@ -37,11 +37,28 @@ const BOOT_SCENE := "res://scenes/boot/boot.tscn"
 ## passe le parse-check ; l'erreur ne tombe qu'à l'ouverture de l'écran.
 const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/specter_9.tres"),
+	preload("res://resources/codex/aegis_citadel.tres"),
 	preload("res://resources/codex/needle_scout.tres"),
 	preload("res://resources/codex/crescent_interceptor.tres"),
 	preload("res://resources/codex/choir_harvester.tres"),
 	preload("res://resources/codex/pale_leviathan.tres"),
 ]
+
+## Pièces mobiles de la citadelle. Elles sont des scènes SÉPARÉES et non des nœuds du
+## `.glb` (le kit Blender n'exporte qu'un objet maillé) : `CitadelLife` les instancie
+## sur les marqueurs de la coque. Sans elles, le vaisseau mère serait la seule fiche
+## du bestiaire présentée figée.
+const CitadelTurretScene := preload("res://scenes/fortress/citadel_turret.tscn")
+const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
+
+## Préfixes des marqueurs comptés sur la coque pour la fiche d'une forteresse.
+## COMPTÉS, jamais saisis : ajouter une septième tourelle au `.glb` met la fiche à
+## jour toute seule, exactement comme les dimensions.
+const FITTINGS: Dictionary[StringName, String] = {
+	&"turrets": "Turret_",
+	&"beacons": "Beacon_",
+	&"batteries": "Muzzle_Battery",
+}
 
 # --- Présentoir ---------------------------------------------------------------
 ## Pose de présentation : trois quarts avant, légèrement plongeant. Le 180° vient de
@@ -186,17 +203,43 @@ func _mount(entry: CodexEntry) -> void:
 	# dimensions de la COQUE, pas celles de ses effets.
 	var bounds := _hull_bounds(_hull)
 	var triangles := _count_triangles(_hull)
+	var fittings := _count_fittings(_hull)
 	# Le plateau doit tourner autour du centre du volume, pas autour de l'origine du
 	# `.glb` — qui est le nez sur certaines coques, et le ferait balayer le cadre.
 	_hull.position = -bounds.get_center()
 
-	HullDetail.apply(_hull)
-	_flight = ShipFlight.apply(_hull)
+	# ⚠️ Deux feuilles de détail, jamais les deux à la fois. La feuille commune est
+	# calée sur un chasseur de 2 m et lit comme du bruit rayé sur une pièce de 19,6 m
+	# — c'est le constat de `title_stage.gd`, on ne le refait pas.
+	if entry.family == CodexEntry.Family.FORTRESS:
+		CitadelDetail.apply(_hull)
+		# Tourelles, balises et respiration des émissifs. Sans cet appel, la citadelle
+		# serait la seule fiche présentée figée, alors qu'elle est la plus animée du
+		# jeu — et l'opérateur a demandé « animé pour voir ce qui bouge ».
+		CitadelLife.apply(_hull, CitadelTurretScene, CitadelBeaconScene)
+	else:
+		HullDetail.apply(_hull)
+		_flight = ShipFlight.apply(_hull)
 	_attach_trails(bounds)
 
 	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
-	_datasheet.show_entry(entry, _index, bounds, triangles)
+	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
 	_pop()
+
+## Compte les marqueurs d'équipement de la coque, par préfixe.
+##
+## ⚠️ Appelé AVANT `CitadelLife`, qui instancie de vraies tourelles EN ENFANTS de ces
+## mêmes marqueurs : compter après aurait mélangé marqueurs et pièces montées.
+func _count_fittings(hull: Node3D) -> Dictionary[StringName, int]:
+	var counts: Dictionary[StringName, int] = {}
+	for key: StringName in FITTINGS:
+		var prefix: String = FITTINGS[key]
+		var total := 0
+		for child in hull.get_children():
+			if String(child.name).begins_with(prefix):
+				total += 1
+		counts[key] = total
+	return counts
 
 ## Les points d'attache sont de vrais Node3D du `.glb` (ADR-0008). Toutes les coques
 ## n'en ont pas les mêmes — le Leviathan n'en a aucun — et une coque sans réacteur

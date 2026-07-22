@@ -38,10 +38,31 @@ func test_every_entry_has_a_hull_scene() -> void:
 ## Les points de structure viennent de trois sources différentes selon la coque
 ## (PlayerStats, EnemyData, scène de boss). C'est le câblage le plus fragile de la
 ## fiche : s'il lâche, tout le monde affiche zéro.
-func test_hull_points_resolve_for_every_entry() -> void:
+func test_hull_points_resolve_for_every_combat_hull() -> void:
 	for entry in _entries():
+		if entry.family == CodexEntry.Family.FORTRESS:
+			continue
 		assert_true(entry.hull_points() > 0.0,
 			"%s resolves hull points (got %s)" % [entry.display_name, entry.hull_points()])
+
+## Une forteresse n'est PAS un objet de combat : elle n'a ni PV, ni vitesse, ni
+## cadence dans le code, et lui câbler une source de stats la ferait mentir.
+## `validate()` doit refuser dans les deux sens — sans source pour un chasseur, avec
+## source pour une forteresse.
+func test_a_fortress_carries_no_stats_source() -> void:
+	var citadel := _named("Aegis Citadel")
+	assert_true(citadel != null, "the Aegis Citadel is on the roster")
+	assert_eq(citadel.family, CodexEntry.Family.FORTRESS, "the citadel is a fortress")
+	assert_true(citadel.validate().is_empty(), "a fortress validates without any stats source")
+	citadel.enemy_data = load("res://resources/enemies/needle_scout.tres") as EnemyData
+	assert_true(not citadel.validate().is_empty(), "a fortress with a stats source is rejected")
+	citadel.enemy_data = null  # la Resource est partagée : on la rend telle qu'on l'a trouvée
+
+func test_a_fighter_without_a_stats_source_is_rejected() -> void:
+	var entry := CodexEntry.new()
+	entry.display_name = "Test"
+	entry.hull_scene = _named("Specter-9").hull_scene
+	assert_true(not entry.validate().is_empty(), "a fighter with no stats source is rejected")
 
 ## Retrouve une fiche DANS la liste embarquée. La charger par son chemin la
 ## validerait même après son retrait de l'écran — précisément ce qu'on veut éviter.

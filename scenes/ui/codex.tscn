@@ -16,6 +16,7 @@ shader_parameter/dither_amount = 0.9
 shader_parameter/saturation = 1.3
 shader_parameter/contrast = 1.18
 shader_parameter/warmth = 0.055
+shader_parameter/lift = 1.3
 
 [sub_resource type="ShaderMaterial" id="mat_scan"]
 shader = ExtResource("7_scan")

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/structures/aegis_citadel.glb" id="2_hull"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Aegis Citadel"
+camp = 0
+family = 1
+designation = "HV-01"
+hull_class = "CORVETTE-FORTERESSE PILOTABLE"
+builder = "ARSENAL ORBITAL TALVERN"
+status = "EN SERVICE - UNIQUE"
+notice = "Prisme axial habité, plus proche de la corvette que de la station: elle rejoint sa position de combat par ses propres moyens. Sa baie ventrale recueille le chasseur en vol; la passerelle bascule alors sur le pilote entrant, qui prend la coque en main. Les servants restent aux batteries pendant toute la phase."
+mass_t = 690.8
+crew = 18
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0

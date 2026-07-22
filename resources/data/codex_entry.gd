@@ -18,8 +18,20 @@ extends Resource
 ## magenta Null Choir (charte §3).
 enum Camp { HELIOS, NULL_CHOIR }
 
+## Nature de la coque. Elle décide de DEUX choses : les lignes que la fiche affiche,
+## et l'animateur que l'écran monte dessus.
+##
+## ⚠️ Ce n'est pas une coquetterie de classement. L'Aegis Citadel n'a ni points de
+## structure, ni vitesse, ni cadence de tir — elle n'est pas un objet de combat dans
+## le code. Lui servir le gabarit d'un chasseur donnerait trois lignes de tirets, et
+## `docs/BACKLOG.md` met explicitement en garde : « ne pas forcer le gabarit coque sur
+## eux, c'est en le forçant qu'on obtient des colonnes de tirets ». Une FORTRESS
+## affiche donc ses ÉQUIPEMENTS — tourelles, balises, batteries — comptés sur la coque.
+enum Family { FIGHTER, FORTRESS }
+
 @export var display_name: String = ""
 @export var camp: Camp = Camp.NULL_CHOIR
+@export var family: Family = Family.FIGHTER
 
 @export_group("Fiche (fiction — BRIEF-0037)")
 ## Champs COURTS : affichés tout en capitales, donc en ASCII sans accent. Press
@@ -117,10 +129,13 @@ func validate() -> PackedStringArray:
 		sources += 1
 	if boss_scene != null:
 		sources += 1
-	if sources != 1:
-		# Deux sources, ce sont deux vérités concurrentes ; zéro, c'est une fiche
-		# muette. Les deux sont des erreurs de câblage, pas des cas dégradés.
-		errors.append("exactly one stats source expected (player_stats / enemy_data / boss_scene), got %d" % sources)
+	var expected := 1 if family == Family.FIGHTER else 0
+	if sources != expected:
+		# Pour un chasseur : deux sources sont deux vérités concurrentes, zéro est une
+		# fiche muette. Pour une forteresse, c'est l'inverse — elle n'est pas un objet
+		# de combat, et lui coller une source de stats serait la faire mentir.
+		errors.append("family %s expects %d stats source(s) (player_stats / enemy_data / boss_scene), got %d"
+			% [Family.keys()[family], expected, sources])
 	if mass_t < 0.0:
 		errors.append("mass_t must be >= 0")
 	if crew < 0:
@@ -140,6 +155,8 @@ func _validate_stats_source() -> PackedStringArray:
 	# leur propre validate() et leurs propres tests. On vérifie seulement qu'elle en
 	# tire de quoi remplir la ligne principale.
 	var errors := PackedStringArray()
+	if family == Family.FORTRESS:
+		return errors
 	if hull_points() <= 0.0:
 		errors.append("hull_points resolved to %s — stats source is empty or mis-wired" % hull_points())
 	return errors

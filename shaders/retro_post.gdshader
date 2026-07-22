@@ -15,6 +15,18 @@ uniform float dither_amount : hint_range(0.0, 2.0) = 0.9;
 uniform float saturation : hint_range(0.0, 2.0) = 1.18;
 uniform float contrast : hint_range(0.5, 2.0) = 1.10;
 uniform float warmth : hint_range(-0.2, 0.2) = 0.03;
+// Midtone lift, applied BEFORE contrast. 1.0 = off (the historical behaviour).
+//
+// Why this exists, measured on a real frame: `contrast` pivots around 0.5, but this
+// game's whole tonal range sits below 0.25 — deep space, dark hulls. Pivoting at 0.5
+// therefore only ever SUBTRACTS. A hull leaving the 3D render at 0.226 reached the
+// screen at 0.177 (-22 %), and the nebula went from 0.083 to 0.008 (-90 %). That is
+// the measured cause of "the ships look dark", not the meshes and not the lights.
+//
+// A lower pivot would fix the hull and crush the nebula to black. A gamma lift fixes
+// both because it preserves the endpoints: pure black stays black, pure white stays
+// white, and only the midtones — where the ships live — come up.
+uniform float lift : hint_range(0.5, 2.0) = 1.0;
 
 // 4x4 Bayer matrix (values 0..15), the classic ordered-dither kernel.
 const float BAYER[16] = float[16](
@@ -29,7 +41,11 @@ void fragment() {
 	vec2 uv = floor(SCREEN_UV * target_res) / target_res;
 	vec3 col = texture(screen_tex, uv).rgb;
 
-	// 2. Push the cold, flat 3D toward the reference: contrast, a touch of warmth,
+	// 2. Lift the midtones first, so the contrast below works on a frame that is
+	// actually exposed instead of one crushed into the bottom fifth of the range.
+	col = pow(max(col, vec3(0.0)), vec3(1.0 / lift));
+
+	// 3. Push the cold, flat 3D toward the reference: contrast, a touch of warmth,
 	// then saturation around luma.
 	col = (col - 0.5) * contrast + 0.5;
 	col.r += warmth;

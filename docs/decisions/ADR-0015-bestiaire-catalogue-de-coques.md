@@ -113,5 +113,34 @@ plus travaillé du projet (BRIEF-0033 à 0036) ne se voyait jusqu'ici qu'en vol,
   du catalogue.
 - **Un overlay au-dessus du diorama de l'accueil** — le bestiaire monte son propre présentoir, sa
   caméra et ses lumières ; il aurait fallu masquer le diorama et lutter contre sa chorégraphie.
-- **Les structures (citadelle, tourelle, balise)** — hors périmètre pour l'instant : ce sont des
-  décors et des pièces, pas des coques rencontrées.
+- **Les tourelles et les balises seules** — ce sont des pièces de la citadelle, pas des coques.
+  Elles apparaissent dans sa fiche, comptées sur sa coque.
+
+## Addendum du 22/07/2026 — l'Aegis Citadel, et la famille de coque
+
+Le vaisseau mère avait été écarté comme « décor ». C'était une erreur de classement : l'opérateur
+l'a réclamé le jour même, et il a raison — la citadelle est une coque majeure, le joueur finit
+par la piloter, et c'est la plus animée du jeu.
+
+Elle a forcé une distinction que les cinq premières fiches ne rendaient pas nécessaire.
+**L'Aegis Citadel n'a aucune valeur de combat** : ni points de structure, ni vitesse, ni cadence de
+tir n'existent pour elle dans le code. Elle n'est pas un objet destructible.
+
+`CodexEntry` reçoit donc un champ **`family`** :
+
+| Famille | Source de stats | Trois lignes centrales | Animation |
+|---|---|---|---|
+| `FIGHTER` | exactement une (`PlayerStats` / `EnemyData` / scène de boss) | STRUCTURE, VITESSE, CADENCE, avec jauges | `HullDetail` + `ShipFlight` |
+| `FORTRESS` | **aucune**, et `validate()` en refuse une | TOURELLES, BALISES, BATTERIES, **sans jauge** | `CitadelDetail` + `CitadelLife` |
+
+Deux points de méthode, tous deux hérités de la règle centrale de cet ADR :
+
+1. **Les équipements sont COMPTÉS sur la coque**, par préfixe de marqueur (`Turret_`, `Beacon_`,
+   `Muzzle_Battery`), exactement comme les dimensions sont mesurées. Ajouter une septième tourelle
+   au `.glb` met la fiche à jour toute seule.
+2. **Pas de jauge sous un décompte.** Six tourelles ne se lisent pas sur une échelle : une barre y
+   inventerait un maximum qui n'existe pas. `docs/BACKLOG.md` mettait déjà en garde contre le
+   réflexe inverse — « ne pas forcer le gabarit coque sur eux, c'est en le forçant qu'on obtient
+   des colonnes de tirets ».
+
+Fiction livrée par la forge sur **BRIEF-0038**.

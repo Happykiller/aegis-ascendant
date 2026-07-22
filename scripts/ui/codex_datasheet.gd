@@ -86,6 +86,7 @@ var _notice: Label
 
 var _readouts: Dictionary[StringName, Label] = {}
 var _bars: Dictionary[StringName, ColorRect] = {}
+var _bar_tracks: Dictionary[StringName, ColorRect] = {}
 var _bar_widths: Dictionary[StringName, float] = {}
 
 var _variant_panel: Panel
@@ -302,6 +303,7 @@ func _gauge(panel: Panel, key: StringName, caption: String, y: float) -> void:
 	track.size = Vector2(width, 10.0)
 	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(track)
+	_bar_tracks[key] = track
 	var fill := ColorRect.new()
 	fill.color = _accent
 	fill.position = Vector2(18, y + 30.0)
@@ -428,7 +430,8 @@ func fade_out(duration: float, done: Callable) -> void:
 
 ## Pose une fiche complète. `bounds` vient de la coque réellement affichée et
 ## `triangles` de ses maillages : ces deux-là ne sont jamais saisis à la main.
-func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int) -> void:
+func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int,
+		fittings: Dictionary[StringName, int]) -> void:
 	_apply_accent(HELIOS_ACCENT if entry.camp == CodexEntry.Camp.HELIOS else CHOIR_ACCENT)
 	_highlight_roster(index)
 
@@ -453,16 +456,28 @@ func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int) -> 
 	_set_value(&"crew", str(entry.crew) if entry.crew > 0 else "AUCUN")
 	_set_value(&"polys", _thousands(triangles))
 
+	if entry.family == CodexEntry.Family.FORTRESS:
+		_fill_fortress_rows(fittings)
+	else:
+		_fill_combat_rows(entry)
+
+	_fill_variants(entry)
+	_play_scan()
+
+## Les trois jauges du combat, plus la ligne qui dit ce que la coque a de spécifique :
+## des phases pour un boss, un score pour un ennemi, le rayon de touche pour le joueur.
+func _fill_combat_rows(entry: CodexEntry) -> void:
 	var hull_points := entry.hull_points()
+	_set_row_caption(&"hull", "STRUCTURE", "")
 	_set_gauge(&"hull", "%d" % roundi(hull_points), hull_points / HULL_REFERENCE)
 	var speed := entry.speed()
+	_set_row_caption(&"speed", "VITESSE", "")
 	_set_gauge(&"speed", "%.2f u/s" % speed if speed > 0.0 else "DERIVE", speed / SPEED_REFERENCE)
 	var interval := entry.fire_interval()
 	var rate := 1.0 / interval if interval > 0.0 else 0.0
+	_set_row_caption(&"rate", "CADENCE", "")
 	_set_gauge(&"rate", "%.2f /s" % rate if rate > 0.0 else "-", rate / RATE_REFERENCE)
 
-	# La dernière ligne dit ce que la coque a de spécifique : des phases pour un
-	# boss, un score pour un ennemi, le rayon de touche pour le joueur.
 	var phases := entry.phase_count()
 	var score := entry.score_value()
 	if phases > 0:
@@ -472,8 +487,18 @@ func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int) -> 
 	else:
 		_set_row_caption(&"extra", "TOUCHE", "%.2f m" % entry.hitbox_radius())
 
-	_fill_variants(entry)
-	_play_scan()
+## Une forteresse n'a ni structure, ni vitesse, ni cadence — elle n'est pas un objet
+## de combat dans le code. Les trois emplacements de jauge servent donc ses
+## ÉQUIPEMENTS, comptés sur la coque, et sans barre : six tourelles ne se lisent pas
+## sur une échelle.
+func _fill_fortress_rows(fittings: Dictionary[StringName, int]) -> void:
+	_set_row_caption(&"hull", "TOURELLES", "")
+	_set_gauge(&"hull", str(fittings.get(&"turrets", 0)), -1.0)
+	_set_row_caption(&"speed", "BALISES", "")
+	_set_gauge(&"speed", str(fittings.get(&"beacons", 0)), -1.0)
+	_set_row_caption(&"rate", "BATTERIES", "")
+	_set_gauge(&"rate", str(fittings.get(&"batteries", 0)), -1.0)
+	_set_row_caption(&"extra", "APPONTAGE", "1 BAIE")
 
 func _set_value(key: StringName, text: String) -> void:
 	var label := _readouts.get(key) as Label
@@ -492,10 +517,19 @@ func _set_row_caption(key: StringName, caption: String, text: String) -> void:
 	if caption_label != null:
 		caption_label.text = caption
 
+## `ratio` négatif : la ligne n'a pas de jauge du tout — piste comprise. Une forteresse
+## a six tourelles, pas « six sur un maximum de » : une barre sous un décompte
+## inventerait une échelle qui n'existe pas.
 func _set_gauge(key: StringName, text: String, ratio: float) -> void:
 	_set_value(key, text)
 	var fill := _bars.get(key) as ColorRect
-	if fill == null:
+	var track := _bar_tracks.get(key) as ColorRect
+	var gauged := ratio >= 0.0
+	if track != null:
+		track.visible = gauged
+	if fill != null:
+		fill.visible = gauged
+	if not gauged or fill == null:
 		return
 	var width: float = _bar_widths.get(key, 0.0) * clampf(ratio, 0.0, 1.0)
 	# La barre se remplit en glissant : une barre qui saute à sa valeur ne se lit pas

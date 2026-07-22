@@ -1,11 +1,32 @@
 [gd_resource type="Environment" format=3]
 
+; Environnement du combat.
+;
+; ⚠️ ambient_light_energy est passé de 0,55 à 0,80 le 22/07/2026, sur la remarque
+; « on manque de luminosité, les vaisseaux font sombre ». Il ne s'agit PAS d'un
+; embellissement : le backlog actait depuis le 20/07 que « les coques lisent BEAUCOUP
+; plus sombre en jeu qu'en rendu studio, au point que seuls les filets émissifs
+; portent la silhouette ». Le diagnostic était juste — c'est l'éclairage de scène —
+; mais le correctif n'avait été appliqué qu'à l'écran titre, qui monte 0,90 et une
+; TROISIÈME lumière de remplissage. Le combat, lui, était resté à deux lumières et
+; 0,55. Le remplissage manquant est désormais dans graybox.tscn.
+;
+; Pourquoi 0,80 et pas les 0,90 du titre : le titre n'a aucune contrainte de
+; lisibilité de gameplay. Ici il reste un écart délibéré, pour que les coques ne
+; montent pas au niveau de luminance des projectiles ennemis — la lisibilité des
+; tirs prime (spec Pilier B).
+;
+; glow_hdr_threshold reste à 1,6. Ne pas le baisser pour « éclaircir » : il avait été
+; REMONTÉ à cette valeur (tâche H7) pour passer au-dessus de la luminance des coques,
+; afin que le bloom serve les ÉMISSIFS et pas les fuselages. Le baisser ferait baver
+; les coques et mangerait le relief qu'on vient de récupérer.
+
 [resource]
 background_mode = 1
 background_color = Color(0.012, 0.016, 0.035, 1)
 ambient_light_source = 2
 ambient_light_color = Color(0.55, 0.62, 0.78, 1)
-ambient_light_energy = 0.55
+ambient_light_energy = 0.8
 tonemap_mode = 4
 tonemap_white = 6.0
 glow_enabled = true

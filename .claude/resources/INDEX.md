@@ -53,6 +53,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   un marquage à cheval sur une charnière a fait tomber le dégagement d'un volet de 18,5° à **2,8°** —
   sous la valeur du jeu, donc un volet qui traverse la coque. **Le contrat a validé sans un mot** :
   la bbox au repos était parfaite, et un défaut d'animation ne se voit pas sur une pose fixe.
+- [Juger une image en la MESURANT, pas à l'œil](pratique-juger-une-image-en-la-mesurant.md) —
+  dès qu'il s'agit de luminosité ou de contraste, « c'est mieux » n'est pas un résultat. Mesurer la
+  luminance **sur le sujet**, sur le **fond**, et le **rapport des deux** — c'est ce dernier qui dit
+  si la lisibilité en jeu a survécu. ⚠️ Coût de l'oubli : un correctif d'éclairage jugé bon à l'œil
+  ne valait que **+5,7 %**, et la vraie cause (un contraste pivoté à 0,5 sur une image entièrement
+  sombre, ADR-0016) serait passée inaperçue.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
