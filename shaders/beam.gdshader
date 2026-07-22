@@ -11,10 +11,18 @@ render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabl
 // Additif et sans écriture de profondeur : le faisceau passe par-dessus le plan de
 // jeu sans z-fighter avec les coques, qui vivent au même Y.
 
-uniform vec4 core_color : source_color = vec4(1.0, 0.88, 1.0, 1.0);
-// Magenta du Null Choir (charte §3, #D93D9C) : le danger ennemi ne doit jamais
-// emprunter le cyan allié.
-uniform vec4 edge_color : source_color = vec4(0.851, 0.239, 0.612, 1.0);
+// ⚠️ CORAIL, PAS MAGENTA. `graybox_palette.md` (normatif) sépare deux canaux ennemis
+// et pose un contrat de lecture : le joueur doit trancher « en moins de 200 ms si
+// l'objet rose/chaud est une SOURCE (magenta #D93D9C, énergie 1) ou un DANGER DIRECT
+// (corail, énergie 2,5-4) ». Un faisceau qui tue en 1,5 s peint dans la couleur des
+// feux de coque inverse ce contrat : il se lirait comme une pièce du boss.
+//
+// C'est littéralement la recette du projectile ennemi (`bullet_manager.tscn`) —
+// cœur blanc CHAUD #FFE9D2, halo corail #FF5A3D — portée à l'échelle d'un rayon.
+// Le premier jet ne vérifiait que la moitié de la règle (« ne pas emprunter le cyan
+// allié ») et manquait l'autre moitié, qui était la seule qui comptait ici.
+uniform vec4 core_color : source_color = vec4(1.0, 0.914, 0.824, 1.0);
+uniform vec4 edge_color : source_color = vec4(1.0, 0.353, 0.239, 1.0);
 uniform float energy : hint_range(0.0, 4.0) = 1.0;
 // 0 = faisceau plein ; 1 = télégraphe, qui bat pour dire « ça n'a pas encore tiré ».
 uniform float pulse : hint_range(0.0, 1.0) = 0.0;

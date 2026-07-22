@@ -61,8 +61,10 @@ func set_regime(energy: float, pulse: float) -> void:
 	visible = energy > 0.0
 	if _material == null:
 		return
-	_material.set_shader_parameter("energy", energy)
-	_material.set_shader_parameter("pulse", pulse)
+	# `&"…"` et non `"…"` : la conversion String -> StringName se referait à chaque
+	# image de charge et de tir, pour deux uniformes qui ne changent jamais de nom.
+	_material.set_shader_parameter(&"energy", energy)
+	_material.set_shader_parameter(&"pulse", pulse)
 
 func extinguish() -> void:
 	visible = false

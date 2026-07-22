@@ -25,6 +25,10 @@ var max_health: float = 0.0
 var root: Node3D
 ## Sous-pièces articulées, dans l'ordre du contrat de noms (BRIEF-0039).
 var joints: Array[Node3D] = []
+## Tous les maillages de l'appendice, racine comprise. Résolus UNE fois au montage :
+## c'est leur centre visuel qui porte la zone de touche, et le recalculer par nom à
+## chaque image coûterait une recherche d'arbre par frame.
+var meshes: Array[MeshInstance3D] = []
 var target: BulletTarget
 ## Temps écoulé DANS l'état courant. Remis à zéro à chaque bascule.
 var elapsed: float = 0.0
@@ -59,8 +63,45 @@ static func make(p_kind: StringName, hull: Node3D, node_names: PackedStringArray
 				limb.root = node
 			else:
 				limb.joints.append(node)
+	if limb.root != null:
+		_collect_meshes(limb.root, limb.meshes)
 	limb.target = BulletTarget.make(BulletManager.Team.ENEMY, hitbox_radius, hit_callback)
 	return limb
+
+static func _collect_meshes(node: Node, into: Array[MeshInstance3D]) -> void:
+	var mesh := node as MeshInstance3D
+	if mesh != null and mesh.mesh != null:
+		into.append(mesh)
+	for child in node.get_children():
+		_collect_meshes(child, into)
+
+## Centre visuel de l'appendice, en coordonnées MONDE.
+##
+## ⚠️ Le centre des maillages, et surtout pas le pivot ni la moyenne des
+## articulations. Le pivot d'un bras est son épaule, noyée dans la carapace. Et la
+## moyenne des articulations échoue précisément sur le canon : `Cannon_Barrel` est le
+## seul nœud du `.glb` sans translation — il partage la position de son parent, si
+## bien que la moyenne retombait sur le pivot et laissait la bouche, la partie qu'on
+## regarde quand elle s'allume, hors d'atteinte.
+##
+## La boîte englobante d'un maillage est locale ; on la transforme par la matrice
+## globale du nœud, donc le point suit gratuitement le repli, la visée et le recul.
+## `AABB` et `Vector3` sont des types valeur : aucune allocation par image.
+func visual_center() -> Vector3:
+	var sum := Vector3.ZERO
+	var counted := 0
+	for mesh in meshes:
+		if not mesh.is_inside_tree():
+			continue
+		sum += mesh.global_transform * mesh.get_aabb().get_center()
+		counted += 1
+	return sum / float(counted) if counted > 0 else Vector3.ZERO
+
+func has_visual() -> bool:
+	for mesh in meshes:
+		if mesh.is_inside_tree():
+			return true
+	return false
 
 ## Vrai tant que l'appendice attaque et protège le corps. C'est LA question que pose
 ## l'iris — et la réponse ne devient vraie qu'au bout du redéploiement, pas à la fin

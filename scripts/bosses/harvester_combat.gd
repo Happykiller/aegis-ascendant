@@ -23,7 +23,6 @@ extends Node
 const SCYTHE_NODES: PackedStringArray = ["Arm_Scythe", "Scythe_Mid", "Scythe_Blade"]
 const CLAW_NODES: PackedStringArray = ["Arm_Claw", "Claw_Head_1", "Claw_Head_2", "Claw_Head_3"]
 const CANNON_NODES: PackedStringArray = ["Arm_Cannon", "Cannon_Barrel"]
-const CLAW_MUZZLES: PackedStringArray = ["Muzzle_Claw_1", "Muzzle_Claw_2", "Muzzle_Claw_3"]
 const PETAL_COUNT := 5
 
 const KIND_SCYTHE := &"scythe"
@@ -57,6 +56,12 @@ var _petal_axes: Array[Vector3] = []
 var _iris_open: bool = false
 var _iris_ratio: float = 0.0
 
+## Bouche du canon, résolue UNE fois. `NodePath(String)` alloue et reparse à chaque
+## appel : le faire par image pour un nœud qui ne change jamais coûtait 60 recherches
+## d'arbre par seconde. `BossController._read_muzzles()` résout les siennes dans
+## `_ready` — c'est le même précédent, dans le fichier voisin.
+var _cannon_muzzle: Node3D
+
 var _claw_timer: float = 0.0
 var _claw_sweep: float = 0.0
 var _scythe_phase: Attack = Attack.READY
@@ -73,7 +78,15 @@ func _ready() -> void:
 		push_error("[Harvester] le module doit etre enfant d'un BossController")
 		return
 	if tuning == null:
-		push_error("[Harvester] aucun HarvesterTuning : le combat n'a aucun reglage")
+		# ⚠️ On REND l'armement au boss générique. Sans cela le module ne monte pas,
+		# `external_attacks` reste à `true` (il est déclaré dans la scène), le boss ne
+		# tire donc rien du tout, et `vulnerable` garde son défaut `true` : le
+		# mini-boss devient un disque inoffensif tuable en une passe, avec trois
+		# pastilles éteintes au HUD pour parachever le mensonge. Dégrader vers
+		# l'ancien comportement vaut mieux que dégrader vers l'absence de combat.
+		push_error("[Harvester] aucun HarvesterTuning : retour aux motifs generiques")
+		_boss.external_attacks = false
+		set_physics_process(false)
 		return
 	_boss.external_attacks = true
 	_boss.began.connect(_on_boss_began)
@@ -98,6 +111,7 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	_player = player
 	_build_limbs()
 	_bind_iris()
+	_bind_muzzles()
 	_build_beam()
 	_close_iris(true)
 	# Hook de verification : `++ --harvester-window` abat les trois appendices d'entree
@@ -109,12 +123,21 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 			limb.apply_damage(limb.max_health)
 
 func _build_limbs() -> void:
+	# Un remontage laissait les cibles du tour précédent dans le gestionnaire, encore
+	# actives, callback vivant, position figée : le « mur invisible » exact contre
+	# lequel `release()` a été écrit. La protection existait d'un côté du montage,
+	# pas de l'autre.
+	release()
 	_limbs.clear()
-	for entry: Array in [[KIND_SCYTHE, SCYTHE_NODES], [KIND_CLAW, CLAW_NODES],
-			[KIND_CANNON, CANNON_NODES]]:
-		var limb := HarvesterLimb.make(entry[0], _hull, entry[1],
-			tuning.limb_health, tuning.limb_hitbox_radius, Callable(self, "_on_limb_hit").bind(entry[0]))
-		_limbs.append(limb)
+	# ⚠️ Trois appels explicites, et non une boucle sur un tableau de paires. La
+	# version précédente passait des `Variant` à des paramètres `StringName` et
+	# `PackedStringArray` : intervertir les deux colonnes, ou coller `CANNON_NODES`
+	# sous `KIND_CLAW`, compilait sans un mot et ne se manifestait qu'à l'exécution
+	# sous forme de bras inertes — exactement le mode de panne qu'un brief entier
+	# vient de débusquer.
+	_limbs.append(_make_limb(KIND_SCYTHE, SCYTHE_NODES))
+	_limbs.append(_make_limb(KIND_CLAW, CLAW_NODES))
+	_limbs.append(_make_limb(KIND_CANNON, CANNON_NODES))
 	# ⚠️ ORDRE D'ENREGISTREMENT CRITIQUE. `BulletManager._resolve_hits` parcourt les
 	# cibles dans l'ordre où elles ont été enregistrées et CONSOMME la balle sur la
 	# première qui la réclame. Les appendices doivent donc passer AVANT la cible de
@@ -124,6 +147,10 @@ func _build_limbs() -> void:
 	if _bullet_manager != null:
 		for limb in _limbs:
 			_bullet_manager.register_target(limb.target)
+
+func _make_limb(kind: StringName, nodes: PackedStringArray) -> HarvesterLimb:
+	return HarvesterLimb.make(kind, _hull, nodes, tuning.limb_health,
+		tuning.limb_hitbox_radius, Callable(self, "_on_limb_hit").bind(kind))
 
 ## L'axe de charnière de chaque pétale se DÉDUIT de sa position, il n'est pas saisi :
 ## `ak.moving_part()` pose l'origine sur la charnière sans réorienter les axes locaux,
@@ -155,6 +182,14 @@ func _bind_iris() -> void:
 ## null-gardent, et la portée est éprouvée à part par `test_beam_geometry.gd`, sur la
 ## fonction statique. Le construire quand même laisserait des RID de maillage à la
 ## sortie du runner.
+func _bind_muzzles() -> void:
+	_cannon_muzzle = null
+	if _hull == null:
+		return
+	_cannon_muzzle = _hull.get_node_or_null(NodePath("Muzzle_Cannon")) as Node3D
+	if _cannon_muzzle == null:
+		push_error("[Harvester] coque sans 'Muzzle_Cannon' (contrat BRIEF-0039)")
+
 func _build_beam() -> void:
 	if _beam != null or not is_inside_tree():
 		return
@@ -191,35 +226,20 @@ func tick(delta: float) -> void:
 	_run_cannon(delta, origin)
 	_pose_limbs()
 
-## Où se trouve la zone de touche d'un appendice.
+## Où se trouve la zone de touche d'un appendice : sur son CENTRE VISUEL.
 ##
-## ⚠️ SUR SES ARTICULATIONS, PAS SUR SON PIVOT. Le pivot d'un bras est son épaule,
-## posée dans la carapace ; la lame de la faux vit à 2,9 m de là. Une zone de touche
-## centrée sur l'épaule aurait mis le joueur dans la pire des situations : il tire sur
-## ce qu'il voit — la lame, les têtes, le fût — et ne touche rien, sans que rien ne le
-## lui dise. Signalé par la forge au §6 de son rapport (BRIEF-0039).
-##
-## On prend la MOYENNE des articulations : elle suit l'animation gratuitement (les
-## positions sont globales) et couvre le corps utile du bras plutôt qu'un seul point.
+## ⚠️ Pas sur son pivot — l'épaule d'un bras est noyée dans la carapace, la lame de la
+## faux vit à 2,9 m de là, et le joueur tire sur ce qu'il voit. Pas sur la moyenne des
+## articulations non plus : elle retombait sur le pivot pour le canon, dont l'unique
+## articulation partage la position de son parent.
 ##
 ## Hors de l'arbre — donc en test — on retombe sur le centre du boss : c'est
-## exactement la configuration défavorable que `test_a_bullet_reaches_a_limb_before_the_body`
-## veut éprouver.
+## exactement la configuration défavorable que
+## `test_a_bullet_reaches_a_limb_before_the_body` veut éprouver.
 func _limb_plane_position(limb: HarvesterLimb, origin: Vector2) -> Vector2:
-	if limb.joints.is_empty():
-		if limb.root == null or not limb.root.is_inside_tree():
-			return origin
-		return GameplayPlane.to_plane(limb.root.global_position)
-	var sum := Vector3.ZERO
-	var counted := 0
-	for joint in limb.joints:
-		if not joint.is_inside_tree():
-			continue
-		sum += joint.global_position
-		counted += 1
-	if counted == 0:
+	if not limb.has_visual():
 		return origin
-	return GameplayPlane.to_plane(sum / float(counted))
+	return GameplayPlane.to_plane(limb.visual_center())
 
 # --- Iris ---------------------------------------------------------------------
 
@@ -236,7 +256,14 @@ func _update_iris(delta: float) -> void:
 
 	var speed := 1.0 / (tuning.iris_open_time if _iris_open else tuning.iris_close_time)
 	var goal := 1.0 if _iris_open else 0.0
-	_iris_ratio = move_toward(_iris_ratio, goal, speed * delta)
+	var next := move_toward(_iris_ratio, goal, speed * delta)
+	# ⚠️ On ne repose l'iris QUE s'il a bougé. Il est immobile pendant l'essentiel du
+	# combat, et chaque passe coûtait cinq `Basis` et cinq lire-modifier-réécrire sur
+	# `.transform` — des types de 36 et 48 octets, qui débordent le tampon inline d'un
+	# Variant et allouent dans son pool. Soixante fois par seconde, pour rien.
+	if is_equal_approx(next, _iris_ratio):
+		return
+	_iris_ratio = next
 	_pose_iris()
 
 func _open_iris() -> void:
@@ -277,8 +304,15 @@ func _run_claw(delta: float, origin: Vector2) -> void:
 	var aim := _aim_from(origin)
 	# Une salve par tête : trois traits qui convergent, pas une gerbe qui sort du
 	# centre. C'est ce que la planche montre — trois yeux, trois bouches.
-	for i in CLAW_MUZZLES.size():
-		var muzzle := origin + _muzzle_offset(CLAW_MUZZLES[i])
+	#
+	# ⚠️ Les balles partent des TÊTES, pas des marqueurs `Muzzle_Claw_*`. Ceux-ci sont
+	# des nœuds racines du `.glb`, frères du bras et non ses enfants : ils sont donc
+	# immobiles, alors que le bras balaie ±32° en continu. À fond de balayage, les
+	# traits sortaient d'un point situé à côté des têtes qui les crachent.
+	for i in limb.joints.size():
+		var head := limb.joints[i]
+		var muzzle := GameplayPlane.to_plane(head.global_position) if head.is_inside_tree() \
+			else origin
 		var spread := deg_to_rad(9.0 * (i - 1))
 		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
 			aim.rotated(spread), projectile)
@@ -338,7 +372,9 @@ func _run_cannon(delta: float, origin: Vector2) -> void:
 			_beam.extinguish()
 		return
 	_cannon_elapsed += delta
-	var muzzle := origin + _muzzle_offset("Muzzle_Cannon")
+	var muzzle := origin
+	if _cannon_muzzle != null and _cannon_muzzle.is_inside_tree():
+		muzzle = GameplayPlane.to_plane(_cannon_muzzle.global_position)
 	match _cannon_phase:
 		Attack.READY:
 			_cannon_lock = _player.plane_position if _player != null else origin + Vector2(0.0, -6.0)
@@ -464,15 +500,6 @@ func limbs_up() -> int:
 		if limb.is_up():
 			count += 1
 	return count
-
-func _muzzle_offset(point_name: String) -> Vector2:
-	if _hull == null:
-		return Vector2.ZERO
-	var node := _hull.get_node_or_null(NodePath(point_name)) as Node3D
-	if node == null:
-		return Vector2.ZERO
-	var local: Vector3 = _hull.transform * node.position
-	return Vector2(local.x, -local.z)
 
 func _aim_from(origin: Vector2) -> Vector2:
 	if _player == null:
