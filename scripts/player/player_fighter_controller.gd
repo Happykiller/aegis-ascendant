@@ -83,6 +83,11 @@ func _ready() -> void:
 		for error in primary_projectile.validate():
 			push_error("[PlayerFighter] invalid projectile: %s" % error)
 	position = GameplayPlane.to_world(plane_position)
+	# Same detail sheet the title screen puts on its hulls: the .glb ships with no
+	# texture (ADR-0008), so without this the fighter reads as smooth plastic in
+	# combat while looking panelled on the menu. Safe on a shared imported material —
+	# HullDetail duplicates before retexturing.
+	HullDetail.apply(_hull)
 	_cache_muzzles()
 	_build_engine_trails()
 	_flight = ShipFlight.apply(_hull)
