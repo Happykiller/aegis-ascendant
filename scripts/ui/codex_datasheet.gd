@@ -35,6 +35,18 @@ const FRAME_INSET := 22.0
 const LEFT_WIDTH := 660.0
 const RIGHT_WIDTH := 560.0
 
+## ⚠️ Les DEUX panneaux de la colonne droite sont ancrés EN HAUT, et le second se
+## place sous le premier par le calcul. Ancrer les profils de vol en bas les faisait
+## se recouvrir dès que la hauteur du viewport passait sous 1068 px : le panneau des
+## variantes, opaque à 82 %, passait par-dessus la dernière ligne d'instruments —
+## celle-là même qu'on venait d'agrandir le panneau pour ne pas perdre. Le projet ne
+## pose aucun `window/stretch/mode`, et la fenêtre est redimensionnable : une fenêtre
+## maximisée sur un écran 1080p a déjà une zone client d'environ 1040 px.
+const READOUTS_TOP := 150.0
+const READOUTS_HEIGHT := 476.0
+const VARIANTS_GAP := 12.0
+const VARIANTS_HEIGHT := 306.0
+
 ## Maxima de RÉFÉRENCE des jauges. Ce ne sont pas des valeurs de gameplay : ce sont
 ## les bornes d'un instrument, choisies juste au-dessus du plus gros de la flotte
 ## (Leviathan 950 PV, joueur 14 u/s et 8,3 tirs/s) pour qu'aucune barre ne sature.
@@ -57,6 +69,12 @@ var _frame_style: StyleBoxFlat
 var _roster_labels: Array[Label] = []
 var _panel_styles: Array[StyleBoxFlat] = []
 var _accent_labels: Array[Label] = []
+var _rules: Array[ColorRect] = []
+## Tweens en cours, tués avant d'en lancer un autre sur la même propriété : deux
+## bascules de fiche à moins de ROLL_TIME d'intervalle laissaient deux tweens écrire
+## la même largeur de barre, chacun depuis sa propre valeur de départ.
+var _bar_tweens: Dictionary[StringName, Tween] = {}
+var _scan_tween: Tween
 
 var _designation: Label
 var _name: Label
@@ -247,7 +265,8 @@ func _build_readouts() -> void:
 	# 476 et non 430 : la dernière ligne du bloc tombait SOUS le bord du cadre, et
 	# comme elle est la seule à changer de libellé selon la coque, c'est justement
 	# celle qu'on ne peut pas se permettre de perdre.
-	var panel := _panel(Vector2(1, 0), Vector2(-MARGIN, 150.0), Vector2(RIGHT_WIDTH, 476.0))
+	var panel := _panel(Vector2(1, 0), Vector2(-MARGIN, READOUTS_TOP),
+		Vector2(RIGHT_WIDTH, READOUTS_HEIGHT))
 	_label(panel, "FICHE TECHNIQUE", _LABEL_FONT, 11, _accent, Vector2(18, 16),
 		RIGHT_WIDTH - 36.0, HORIZONTAL_ALIGNMENT_LEFT, true)
 
@@ -292,9 +311,13 @@ func _gauge(panel: Panel, key: StringName, caption: String, y: float) -> void:
 	_bars[key] = fill
 	_bar_widths[key] = width
 
+## Les filets sont ENREGISTRÉS, pas seulement dessinés : construits une fois avec
+## l'accent Helios, ils restaient cyan au milieu d'un panneau devenu magenta sur les
+## quatre fiches du Null Choir — deux traits qui trahissaient le camp précédent.
 func _rule(panel: Panel, y: float) -> void:
 	var rule := ColorRect.new()
 	rule.color = Color(_accent.r, _accent.g, _accent.b, 0.22)
+	_rules.append(rule)
 	rule.position = Vector2(18, y)
 	rule.size = Vector2(RIGHT_WIDTH - 36.0, 1.0)
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -304,7 +327,9 @@ func _rule(panel: Panel, y: float) -> void:
 ## défiler comme huit fiches montrerait huit fois le même modèle ; ils sont donc
 ## listés DANS la fiche de leur coque, avec ce qui les distingue vraiment.
 func _build_variants() -> void:
-	_variant_panel = _panel(Vector2(1, 1), Vector2(-MARGIN, -136.0), Vector2(RIGHT_WIDTH, 306.0))
+	_variant_panel = _panel(Vector2(1, 0),
+		Vector2(-MARGIN, READOUTS_TOP + READOUTS_HEIGHT + VARIANTS_GAP),
+		Vector2(RIGHT_WIDTH, VARIANTS_HEIGHT))
 	_variant_title = _label(_variant_panel, "PROFILS DE VOL", _LABEL_FONT, 11, _accent,
 		Vector2(18, 16), RIGHT_WIDTH - 36.0, HORIZONTAL_ALIGNMENT_LEFT, true)
 	# L'en-tête est composé DANS LA MÊME POLICE ET LE MÊME GABARIT que les lignes de
@@ -475,8 +500,12 @@ func _set_gauge(key: StringName, text: String, ratio: float) -> void:
 	var width: float = _bar_widths.get(key, 0.0) * clampf(ratio, 0.0, 1.0)
 	# La barre se remplit en glissant : une barre qui saute à sa valeur ne se lit pas
 	# comme un instrument, elle se lit comme un rafraîchissement d'affichage.
+	var previous := _bar_tweens.get(key) as Tween
+	if previous != null and previous.is_valid():
+		previous.kill()
 	var tween := create_tween()
 	tween.tween_property(fill, "size:x", width, ROLL_TIME).set_trans(Tween.TRANS_CUBIC)
+	_bar_tweens[key] = tween
 
 func _fill_variants(entry: CodexEntry) -> void:
 	var count := mini(entry.variants.size(), VARIANT_ROWS)
@@ -527,18 +556,28 @@ func _apply_accent(accent: Color) -> void:
 		label.add_theme_color_override("font_color", accent)
 	for key: StringName in _bars:
 		(_bars[key] as ColorRect).color = accent
+	for rule in _rules:
+		rule.color = Color(accent.r, accent.g, accent.b, 0.22)
 	_name.add_theme_color_override("font_shadow_color", Color(accent.r, accent.g, accent.b, 0.45))
 	_status_pip.color = Color(accent.r, accent.g, accent.b, 0.9)
 
 func _play_scan() -> void:
+	if _scan_tween != null and _scan_tween.is_valid():
+		# Sans ce kill, une bascule rapide remet la ligne en haut pendant que le tween
+		# précédent continue de l'interpoler vers le bas : le balayage saute.
+		_scan_tween.kill()
 	_scan_line.offset_top = FRAME_INSET
 	_scan_line.offset_bottom = FRAME_INSET + 2.0
 	_scan_line.color = Color(_accent.r, _accent.g, _accent.b, 0.55)
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(_scan_line, "offset_top", 1058.0, SCAN_TIME)
-	tween.tween_property(_scan_line, "offset_bottom", 1060.0, SCAN_TIME)
-	tween.tween_property(_scan_line, "color:a", 0.0, SCAN_TIME).set_delay(SCAN_TIME * 0.5)
+	# Course lue sur le viewport réel, jamais écrite en dur : à 1058 px la ligne
+	# sortait par le bas d'une fenêtre plus haute et s'arrêtait en plein milieu d'une
+	# fenêtre plus courte — le seul endroit du fichier qui trahissait ses propres ancres.
+	var bottom := get_viewport().get_visible_rect().size.y - FRAME_INSET
+	_scan_tween = create_tween()
+	_scan_tween.set_parallel(true)
+	_scan_tween.tween_property(_scan_line, "offset_top", bottom, SCAN_TIME)
+	_scan_tween.tween_property(_scan_line, "offset_bottom", bottom + 2.0, SCAN_TIME)
+	_scan_tween.tween_property(_scan_line, "color:a", 0.0, SCAN_TIME).set_delay(SCAN_TIME * 0.5)
 
 ## Séparateur de milliers. `String.num` n'en pose pas, et un compte de polygones à
 ## six chiffres sans séparateur ne se lit pas d'un coup d'œil.

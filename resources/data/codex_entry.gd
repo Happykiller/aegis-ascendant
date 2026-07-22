@@ -158,13 +158,50 @@ static func _has_non_ascii(value: String) -> bool:
 ## c'est-à-dire du gameplay complet (entrée en scène, tirs, recherche du
 ## BulletManager) dans un écran de menu. `SceneState` donne accès aux valeurs
 ## sérialisées sans rien construire, ce qui est exactement ce qu'on veut.
+##
+## ⚠️⚠️ MAIS un `.tscn` ne sérialise QUE les propriétés surchargées. Une valeur
+## laissée au défaut du script n'y figure pas — et l'absence est indiscernable d'un
+## zéro. Le cas n'est pas théorique : `choir_harvester.tscn` écrit `phase_count = 1`
+## à la main aujourd'hui, mais `boss_controller.gd` a lui aussi 1 pour défaut, si
+## bien qu'une simple sauvegarde depuis l'éditeur ferait disparaître la ligne. La
+## fiche basculerait alors de « PHASES 1 » à « TOUCHE 2.00 m », sans un mot. Pire,
+## un futur boss à 600 PV — le défaut de `max_health` — rendrait `hull_points()` nul
+## et ferait échouer `validate()`, donc `check.sh`, pour une valeur pourtant juste.
+##
+## D'où la retombée sur le défaut DU SCRIPT quand la scène est muette.
 static func _scene_float(scene: PackedScene, property: StringName) -> float:
 	if scene == null:
 		return 0.0
 	var state := scene.get_state()
 	if state == null or state.get_node_count() == 0:
 		return 0.0
+	var script: Script = null
 	for i in state.get_node_property_count(0):
-		if state.get_node_property_name(0, i) == property:
+		var found := state.get_node_property_name(0, i)
+		if found == property:
 			return float(state.get_node_property_value(0, i))
+		if found == &"script":
+			script = state.get_node_property_value(0, i) as Script
+	return _script_default(script, property)
+
+## Valeur par défaut d'un `@export`, lue sur le script lui-même.
+##
+## `script.new()` construit l'objet sans jamais l'insérer dans l'arbre : `_ready()`
+## ne se déclenche pas, et `boss_controller` n'a pas d'`_init()`. On ne fait donc
+## tourner aucun gameplay — c'est la même garantie que pour `SceneState`, obtenue
+## autrement. Le sondage est libéré aussitôt.
+static func _script_default(script: Script, property: StringName) -> float:
+	if script == null:
+		return 0.0
+	var probe: Variant = script.new()
+	if probe == null:
+		return 0.0
+	var value: Variant = probe.get(property)
+	var node := probe as Node
+	if node != null:
+		node.free()
+	# Une propriété inconnue rend `null`, et `float(null)` est une erreur : on ne
+	# convertit que ce qui est effectivement un nombre.
+	if value is float or value is int:
+		return float(value)
 	return 0.0

@@ -1,3 +1,4 @@
+class_name CodexScreen
 extends Node3D
 ## Bestiaire — une coque à la fois, en 3D, manipulable.
 ##
@@ -25,7 +26,16 @@ const BOOT_SCENE := "res://scenes/boot/boot.tscn"
 
 ## L'ordre est celui de la rencontre : le vaisseau du joueur, puis la menace par
 ## gravité croissante. Ce n'est pas l'ordre alphabétique, c'est une progression.
-const _ROSTER: Array = [
+##
+## PUBLIQUE ET TYPÉE, à dessein. Publique : les tests énuméraient les mêmes cinq
+## `.tres` de leur côté, et prétendaient dans leur propre docstring porter « sur les
+## fichiers réellement embarqués » — c'était faux, ils portaient sur leur copie. Une
+## sixième fiche ajoutée ici serait partie en production sans `validate()`, sans
+## contrôle ASCII, sans contrôle de source de stats. C'est exactement la deuxième
+## source de vérité que `CodexEntry` s'interdit.
+## Typée : sans le type d'élément, glisser une `EnemyData` dans la liste compile et
+## passe le parse-check ; l'erreur ne tombe qu'à l'ouverture de l'écran.
+const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/specter_9.tres"),
 	preload("res://resources/codex/needle_scout.tres"),
 	preload("res://resources/codex/crescent_interceptor.tres"),
@@ -104,13 +114,17 @@ func _ready() -> void:
 	_audio.set_music_state(MusicDirector.State.TITLE)
 	_tune_backdrop()
 	_datasheet.back_requested.connect(_leave)
+	# La distance de cadrage dépend du RAPPORT D'IMAGE : calculée une seule fois au
+	# montage, la coque restait cadrée pour l'ancienne fenêtre après un
+	# redimensionnement, jusqu'à ce qu'on change de fiche.
+	get_viewport().size_changed.connect(_reframe)
 	var names := PackedStringArray()
-	for entry: CodexEntry in _ROSTER:
+	for entry: CodexEntry in ROSTER:
 		names.append(entry.display_name)
 	_datasheet.set_roster(names)
 	_show(_requested_index())
 	_datasheet.fade_in(FADE_IN)
-	print("[Codex] ready — %d coques" % _ROSTER.size())
+	print("[Codex] ready — %d coques" % ROSTER.size())
 
 ## Hook de vérification : `++ --codex-entry=3` ouvre directement une coque donnée.
 ## Sans lui, toute capture d'écran du bestiaire montre la première fiche, et les
@@ -149,8 +163,8 @@ func _tune_backdrop() -> void:
 # --- Mise en scène de la coque courante ---------------------------------------
 
 func _show(index: int) -> void:
-	_index = wrapi(index, 0, _ROSTER.size())
-	var entry: CodexEntry = _ROSTER[_index]
+	_index = wrapi(index, 0, ROSTER.size())
+	var entry: CodexEntry = ROSTER[_index]
 	_mount(entry)
 	_reset_view()
 
@@ -210,6 +224,16 @@ func _pop() -> void:
 	var tween := create_tween()
 	tween.tween_property(_yaw, "scale", Vector3.ONE, SWAP_POP).set_trans(Tween.TRANS_BACK) \
 		.set_ease(Tween.EASE_OUT)
+
+## Recalcule le cadrage sans remonter la coque : le zoom et l'orientation choisis par
+## le joueur survivent au redimensionnement — c'est le cadre qui a bougé, pas lui.
+func _reframe() -> void:
+	if _hull == null:
+		return
+	var entry: CodexEntry = ROSTER[_index]
+	if entry.frame_distance > 0.0:
+		return
+	_base_distance = _framing_distance(_hull_bounds(_hull))
 
 func _reset_view() -> void:
 	_yaw_angle = deg_to_rad(DEFAULT_YAW_DEG)
@@ -388,7 +412,11 @@ func _leave() -> void:
 	_leaving = true
 	_audio.play(&"ui_confirm")
 	if not _game_state.transition_to(GameStateScript.State.BOOT):
-		# La transition refusée laisserait l'écran inerte et sans issue : on rentre
-		# quand même, l'état sera corrigé par l'accueil.
+		# On rentre quand même — un écran sans issue est pire qu'un état incohérent.
+		# ⚠️ Mais PERSONNE ne rattrape cet état : `title_menu._ready()` ne touche pas à
+		# `GameState.current`, et NOUVELLE PARTIE deviendrait inerte, en silence, sur le
+		# `return` de `_start_game`. Le chemin est aujourd'hui inatteignable — CODEX ->
+		# BOOT est autorisé, et `test_game_state.gd` le garde. Si un jour il ne l'est
+		# plus, c'est la table de transitions qu'il faut corriger, pas cette ligne.
 		push_error("[Codex] retour au titre refuse par GameState")
 	_datasheet.fade_out(FADE_OUT, func() -> void: _scene_router.goto_scene(BOOT_SCENE))
