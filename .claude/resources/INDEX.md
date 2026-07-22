@@ -73,6 +73,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - **`/capitalize`** (`.claude/skills/capitalize/`) — verser les leçons d'une session dans le ghost :
   quel réceptacle pour quelle leçon, écrire la règle **avec son coût**, indexer, corriger ce qui est
   faux. ⚠️ Une procédure déterministe s'**encode dans un script**, pas en prose.
+- **`/jouer`** (`.claude/skills/jouer/`) — mettre le jeu entre les mains de l'opérateur pour un
+  test réel : lancement **en arrière-plan** (au premier plan, le délai d'expiration fermerait la
+  fenêtre en pleine partie), et **chronologie rendue à la fermeture** — l'opérateur jouait, il n'a
+  pas lu le journal. ⚠️ Ne jamais y passer `--demo` : le pilote automatique prend les commandes.
 - **`/asset-image`** (`.claude/skills/asset-image/`) — rendre un prompt d'image **autosuffisant** :
   le texte à coller, le nom du fichier, son chemin de dépôt, la commande suivante et la ligne de
   provenance. L'opérateur génère hors du dépôt : un prompt qui suppose du contexte est un prompt
@@ -86,6 +90,7 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | Commande | Ce qu'elle évite |
 |---|---|
 | `./scripts/play-arc.sh [s]` | l'arc en temps réel, horodaté, **avec reprise de main garantie** (la démo boucle sans fin) |
+| `./scripts/play.sh [-- flags]` | jouer le **build précédent** sans le savoir — `deploy-win.sh` n'exporte pas ; pose aussi le `++` tout seul |
 | `./scripts/check.sh` | la porte de qualité — import + parse + tests ; **détecte un LFS non tiré** (sinon Godot importe les pointeurs comme des textures et l'erreur ment) |
 | `./scripts/deploy-win.sh` | le déploiement Windows ; **résout `powershell.exe` par chemin absolu** si le PATH interop de WSL ne l'expose pas |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |

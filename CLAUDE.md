@@ -34,6 +34,7 @@ jamais ici : ce fichier se charge en entier à chaque session.
 ./scripts/check.sh        # porte de qualité : import headless + parse + tests — DOIT être vert
 ./scripts/export-win.sh [debug|release]   # export Windows (check d'abord)
 ./scripts/deploy-win.sh [-- args_jeu]     # copie vers C:\tmp\aegis-ascendant + lance sur Windows
+./scripts/play.sh [-- flags_jeu]          # JOUER : exporte si périmé, pose le `++` (skill /jouer)
 godot4 --headless --path . --script res://tests/test_runner.gd   # tests seuls
 ```
 
