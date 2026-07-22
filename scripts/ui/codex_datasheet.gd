@@ -137,11 +137,17 @@ func _panel(anchor: Vector2, offset: Vector2, size: Vector2) -> Panel:
 	panel.anchor_right = anchor.x
 	panel.anchor_top = anchor.y
 	panel.anchor_bottom = anchor.y
-	# Un offset négatif ancre depuis le bord opposé — même convention que le HUD.
-	panel.offset_left = offset.x if anchor.x == 0.0 else offset.x - size.x
-	panel.offset_right = offset.x + size.x if anchor.x == 0.0 else offset.x
-	panel.offset_top = offset.y if anchor.y == 0.0 else offset.y - size.y
-	panel.offset_bottom = offset.y + size.y if anchor.y == 0.0 else offset.y
+	# `offset` est mesuré DEPUIS l'ancre — même convention que le HUD, y compris son
+	# correctif : la condition doit porter sur l'ancre 1,0 et non sur « différent de
+	# 0 », sinon une ancre CENTRALE part vers la gauche (cf. fighter_hud.gd, où le
+	# bandeau de boss se posait sur la jauge de bouclier). Aucun panneau de cette
+	# fiche n'est centré aujourd'hui — on ne laisse pas la copie fautive derrière soi.
+	var from_right := is_equal_approx(anchor.x, 1.0)
+	var from_bottom := is_equal_approx(anchor.y, 1.0)
+	panel.offset_left = offset.x - size.x if from_right else offset.x
+	panel.offset_right = offset.x if from_right else offset.x + size.x
+	panel.offset_top = offset.y - size.y if from_bottom else offset.y
+	panel.offset_bottom = offset.y if from_bottom else offset.y + size.y
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = PANEL_BG

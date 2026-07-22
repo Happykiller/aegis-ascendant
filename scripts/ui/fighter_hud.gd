@@ -63,11 +63,21 @@ func _panel(anchor: Vector2, offset: Vector2, size: Vector2, border: Color = ACC
 	panel.anchor_right = anchor.x
 	panel.anchor_top = anchor.y
 	panel.anchor_bottom = anchor.y
-	# offset.x < 0 anchors from the right edge, offset.y < 0 from the bottom.
-	panel.offset_left = offset.x if anchor.x == 0.0 else offset.x - size.x
-	panel.offset_right = offset.x + size.x if anchor.x == 0.0 else offset.x
-	panel.offset_top = offset.y if anchor.y == 0.0 else offset.y - size.y
-	panel.offset_bottom = offset.y + size.y if anchor.y == 0.0 else offset.y
+	# `offset` is measured FROM the anchor: at anchor 1 it grows leftwards/upwards
+	# (the panel hangs off the far edge), everywhere else it grows the natural way.
+	#
+	# ⚠️ La condition portait sur `anchor.x == 0.0`, donc l'ancre CENTRALE tombait dans
+	# la branche « bord droit ». Le bandeau de boss, seul panneau ancré à 0,5 avec un
+	# offset de -400 pour se centrer sur 800 px de large, s'étalait en fait de
+	# centre-1200 à centre-400 : il sortait du cadre par la gauche et venait se poser
+	# sur la jauge de bouclier. Le défaut ne se voyait qu'une fois le mini-boss atteint,
+	# c'est-à-dire jamais pendant le développement.
+	var from_right := is_equal_approx(anchor.x, 1.0)
+	var from_bottom := is_equal_approx(anchor.y, 1.0)
+	panel.offset_left = offset.x - size.x if from_right else offset.x
+	panel.offset_right = offset.x if from_right else offset.x + size.x
+	panel.offset_top = offset.y - size.y if from_bottom else offset.y
+	panel.offset_bottom = offset.y if from_bottom else offset.y + size.y
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.024, 0.039, 0.078, 0.82) # #060A14 @ 82%

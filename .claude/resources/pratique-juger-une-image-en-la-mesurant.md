@@ -64,3 +64,28 @@ de cause, et écrite dans l'ADR, au lieu d'être subie.
 ⚠️ Corollaire, valable au-delà de ce cas : **un réglage nommé « contraste » n'ajoute du contraste
 que si l'image occupe la plage autour de son pivot.** Sur une image entièrement sombre, un contraste
 pivoté à 0,5 est un assombrisseur, et son nom ment.
+
+## L'outil qui trouve la cause : la DIFFÉRENCE d'images
+
+Mesurer dit *combien*. La différence dit *où*, et c'est elle qui désigne le coupable.
+
+```python
+a = np.asarray(Image.open("avant.png").convert('RGB'), dtype=np.float32)
+b = np.asarray(Image.open("apres.png").convert('RGB'), dtype=np.float32)
+# x4 : l'écart utile est souvent trop faible pour se voir sans amplification
+Image.fromarray(np.clip(np.abs(b - a) * 4, 0, 255).astype(np.uint8)).save("diff.png")
+```
+
+L'image obtenue ne montre **que ce que le changement a ajouté** — le reste est noir. Cadrer les
+deux captures à l'identique est donc la seule contrainte.
+
+Cas réel (22/07/2026) : une atmosphère ajoutée en shader autour de la planète de fond. À l'œil,
+« c'est mieux, mais il reste un liseré ». Impossible de dire si le liseré venait du shader ou de la
+texture — elle en a un, peint dedans. La différence a tranché en une image : un anneau bleu de 2 à
+3 px cerclait **tout** le disque, y compris le côté nuit, là où le fond était noir avant. Donc
+entièrement dû au shader.
+
+La cause, une fois qu'on savait où regarder, se lisait en une ligne : la couleur d'atmosphère était
+peinte à pleine luminance dans la bande de transition du limbe, sans être modulée par le terme
+« côté éclairé » — appliqué, lui, aux deux autres termes. **Le terme qu'on ne soupçonne pas est
+celui qui n'a pas reçu la règle que les autres ont reçue.**

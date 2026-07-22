@@ -1,6 +1,7 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Shader" path="res://shaders/space_background.gdshader" id="1_shader"]
+[ext_resource type="Shader" path="res://shaders/planet_atmosphere.gdshader" id="7_planet_atm"]
 [ext_resource type="Script" path="res://scripts/vfx/backdrop_landmark.gd" id="2_landmark"]
 [ext_resource type="Texture2D" path="res://assets/imported/backgrounds/planet_hero.png" id="3_planet"]
 [ext_resource type="Texture2D" path="res://assets/imported/backgrounds/nebula_a.png" id="4_nebula_a"]
@@ -24,6 +25,33 @@ shader_parameter/dust_strength = 0.5
 shader_parameter/star_brightness = 2.2
 shader_parameter/center_calm = 0.35
 
+; Atmosphere de la planete. Le disque de planet_hero.png a un bord BINAIRE (alpha de
+; 255 a 0 en 4 px sur un rayon de 500, mesure) : sans limbe adouci, sans anneau et
+; surtout sans halo debordant sur le fond, il se lit comme un autocollant colle sur
+; la nebuleuse. Geometrie du disque MESUREE sur le fichier, pas estimee.
+[sub_resource type="ShaderMaterial" id="mat_planet"]
+shader = ExtResource("7_planet_atm")
+shader_parameter/disc_center = Vector2(0.5056, 0.4864)
+shader_parameter/disc_radius = 0.401
+shader_parameter/limb_softness = 0.018
+; Bleu-violet : la teinte de l'atmosphere doit appartenir a la nebuleuse qui
+; l'entoure (nebula_cold #1A2E70 / nebula_deep #471F70), sinon le halo devient a son
+; tour une piece rapportee.
+shader_parameter/atmosphere_color = Color(0.45, 0.6, 1, 1)
+; ⚠️ Anneau LARGE et FAIBLE, pas fin et fort. A 0,11 de large pour 0,7 d'energie, il
+; se rendait comme un trait de contour trace au compas tout autour du disque — on
+; avait remplace une decoupe nette par un cerclage. Une atmosphere est un degrade,
+; pas un liset.
+shader_parameter/rim_width = 0.22
+shader_parameter/rim_energy = 0.3
+; halo_width plafonne a ~0,247 : au-dela, le halo sort du quad du Sprite3D
+; ((0,5 - 0,401) / 0,401) et se ferait couper au carre. L'elargir demanderait une
+; texture avec plus de marge, pas un reglage.
+shader_parameter/halo_width = 0.235
+shader_parameter/halo_energy = 0.38
+shader_parameter/opacity = 0.9
+shader_parameter/disc_tex = ExtResource("3_planet")
+
 [sub_resource type="PlaneMesh" id="mesh_backdrop"]
 size = Vector2(90, 70)
 material = SubResource("mat_backdrop")
@@ -40,9 +68,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 4)
 [node name="Planet" type="Sprite3D" parent="Landmarks"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, -3, -10)
 pixel_size = 0.0072
-billboard = 1
 texture_filter = 1
-modulate = Color(1, 1, 1, 0.9)
+; `billboard` et `modulate` ne servent plus : ils agissent sur le materiau INTERNE du
+; Sprite3D, que material_override remplace. Le billboard est refait en vertex() dans
+; le shader, et l'opacite y est un uniform. Les laisser ici serait un reglage mort qui
+; se lirait comme actif.
+material_override = SubResource("mat_planet")
 texture = ExtResource("3_planet")
 script = ExtResource("2_landmark")
 drift_velocity = Vector3(0, 0, 0.03)
