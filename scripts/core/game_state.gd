@@ -3,14 +3,14 @@ extends Node
 ## Subset of the states defined in the spec §20.4; grows with the project.
 ## All transitions are centralized, validated and logged (spec §20.4).
 
-enum State { BOOT, LOADING, FIGHTER_COMBAT, GAME_OVER, VICTORY }
+enum State { BOOT, LOADING, FIGHTER_COMBAT, GAME_OVER, VICTORY, CODEX }
 
 signal state_changed(previous: State, next: State)
 signal score_changed(total: int)
 
 ## Allowed transitions; a state absent from this table cannot transition at all.
 const _ALLOWED: Dictionary = {
-	State.BOOT: [State.LOADING, State.FIGHTER_COMBAT],
+	State.BOOT: [State.LOADING, State.FIGHTER_COMBAT, State.CODEX],
 	State.LOADING: [State.FIGHTER_COMBAT],
 	# BOOT est autorisé depuis le combat : abandonner une partie en cours pour
 	# revenir au titre est un chemin légitime (menu pause -> titre). Sans lui,
@@ -20,6 +20,10 @@ const _ALLOWED: Dictionary = {
 	State.FIGHTER_COMBAT: [State.GAME_OVER, State.VICTORY, State.BOOT],
 	State.GAME_OVER: [State.FIGHTER_COMBAT, State.BOOT],
 	State.VICTORY: [State.BOOT],
+	# Le bestiaire est une CONSULTATION : on y entre depuis le titre, on n'en sort
+	# que vers le titre. Pas de raccourci vers le combat — un catalogue ne lance
+	# pas de partie, et l'autoriser rendrait l'état de session ambigu.
+	State.CODEX: [State.BOOT],
 }
 
 var current: State = State.BOOT

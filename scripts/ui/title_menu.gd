@@ -12,6 +12,7 @@ const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
 const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const OptionsMenuScene := preload("res://scenes/ui/options_menu.tscn")
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
+const CODEX_SCENE := "res://scenes/ui/codex.tscn"
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
@@ -32,9 +33,12 @@ func _ready() -> void:
 	var tween := create_tween()
 	tween.tween_property(_fade, "color:a", 0.0, 0.8)
 	print("[TitleMenu] ready (v%s)" % version)
-	# Hook de test (args après le séparateur `++`) : sauter droit au gameplay.
-	if "--goto-graybox" in OS.get_cmdline_user_args():
+	# Hooks de test (args après le séparateur `++`) : sauter droit à un écran.
+	var args := OS.get_cmdline_user_args()
+	if "--goto-graybox" in args:
 		_start_game.call_deferred()
+	elif "--goto-codex" in args:
+		_open_codex.call_deferred()
 
 func _build_menu_focus() -> void:
 	var buttons := _buttons()
@@ -70,6 +74,10 @@ func _on_play_pressed() -> void:
 	_audio.play(&"ui_confirm")
 	_start_game()
 
+func _on_codex_pressed() -> void:
+	_audio.play(&"ui_confirm")
+	_open_codex()
+
 func _on_options_pressed() -> void:
 	_audio.play(&"ui_confirm")
 	_open_options()
@@ -96,6 +104,25 @@ func _start_game() -> void:
 	tween.tween_property(_fade, "color:a", 1.0, 0.45)
 	tween.tween_callback(func() -> void: _scene_router.goto_scene(GRAYBOX_SCENE))
 
+## Le bestiaire est une SCÈNE, pas un overlay : il monte son propre présentoir 3D,
+## sa caméra et ses lumières. Le poser au-dessus du diorama de l'accueil obligerait
+## à masquer ce dernier et à se battre contre sa chorégraphie — pour un résultat que
+## SceneRouter obtient d'une ligne.
+func _open_codex() -> void:
+	if _leaving:
+		return
+	if not ResourceLoader.exists(CODEX_SCENE, "PackedScene"):
+		push_error("[TitleMenu] bestiaire introuvable : %s" % CODEX_SCENE)
+		return
+	if not _game_state.transition_to(GameStateScript.State.CODEX):
+		return
+	_leaving = true
+	# Même fondu au noir que le lancement de partie : SceneRouter fait une coupe
+	# sèche, et l'accueil disparaîtrait d'une image à l'autre.
+	var tween := create_tween()
+	tween.tween_property(_fade, "color:a", 1.0, 0.45)
+	tween.tween_callback(func() -> void: _scene_router.goto_scene(CODEX_SCENE))
+
 func _open_options() -> void:
 	if _options == null:
 		_options = OptionsMenuScene.instantiate()
@@ -107,7 +134,10 @@ func _open_options() -> void:
 	else:
 		_options.open()
 
+## Le focus revient sur le bouton PAR SON NOM, pas par son rang : il valait `[1]`
+## quand OPTIONS était le deuxième item, et l'insertion du bestiaire l'aurait
+## silencieusement renvoyé sur ce dernier.
 func _on_options_closed() -> void:
-	var buttons := _buttons()
-	if buttons.size() > 1:
-		buttons[1].grab_focus()
+	var options_button := _menu.get_node_or_null("OptionsButton") as Button
+	if options_button != null:
+		options_button.grab_focus()

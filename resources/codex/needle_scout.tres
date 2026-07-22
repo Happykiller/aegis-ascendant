@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/needle_scout.glb" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout.tres" id="3_data"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_diver.tres" id="4_diver"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_arc.tres" id="5_arc"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_strafe.tres" id="6_strafe"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_serpent.tres" id="7_serpent"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_spiral.tres" id="8_spiral"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_raider.tres" id="9_raider"]
+[ext_resource type="Resource" path="res://resources/enemies/needle_scout_lancer.tres" id="10_lancer"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Needle Scout"
+camp = 1
+designation = "NX-021"
+hull_class = "VECTEUR D'ESSAIM POLYVALENT"
+builder = "INCONNU - PRODUCTION SERIE"
+status = "HOSTILE - EN NOMBRE"
+notice = "Contact le plus fréquent du théâtre, et le seul dont la production semble industrialisée: les épaves recueillies ne montrent aucune variation de coque. Le même fuseau couvre plusieurs profils de vol, qui ne se lisent qu'une fois l'engagement commencé. Aucune cavité habitable relevée."
+mass_t = 0.19
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+enemy_data = ExtResource("3_data")
+variants = Array[Resource]([ExtResource("3_data"), ExtResource("4_diver"), ExtResource("5_arc"), ExtResource("6_strafe"), ExtResource("7_serpent"), ExtResource("8_spiral"), ExtResource("9_raider"), ExtResource("10_lancer")])

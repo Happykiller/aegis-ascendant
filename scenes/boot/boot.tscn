@@ -226,6 +226,12 @@ size_flags_horizontal = 4
 theme = ExtResource("10_theme")
 text = "NOUVELLE PARTIE"
 
+[node name="CodexButton" type="Button" parent="TitleUI/Center/Menu"]
+custom_minimum_size = Vector2(460, 56)
+size_flags_horizontal = 4
+theme = ExtResource("10_theme")
+text = "LE BESTIAIRE"
+
 [node name="OptionsButton" type="Button" parent="TitleUI/Center/Menu"]
 custom_minimum_size = Vector2(460, 56)
 size_flags_horizontal = 4
@@ -367,5 +373,6 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [connection signal="pressed" from="TitleUI/Center/Menu/PlayButton" to="TitleUI" method="_on_play_pressed"]
+[connection signal="pressed" from="TitleUI/Center/Menu/CodexButton" to="TitleUI" method="_on_codex_pressed"]
 [connection signal="pressed" from="TitleUI/Center/Menu/OptionsButton" to="TitleUI" method="_on_options_pressed"]
 [connection signal="pressed" from="TitleUI/Center/Menu/QuitButton" to="TitleUI" method="_on_quit_pressed"]

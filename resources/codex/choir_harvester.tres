@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/bosses/choir_harvester.glb" id="2_hull"]
+[ext_resource type="PackedScene" path="res://scenes/bosses/choir_harvester.tscn" id="3_boss"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Choir Harvester"
+camp = 1
+designation = "NX-208"
+hull_class = "PLATEFORME DE COLLECTE ARMEE"
+builder = "INCONNU - ASSEMBLAGE UNIQUE"
+status = "MENACE MAJEURE"
+notice = "Assemblage isolé, jamais observé deux fois à l'identique: cinq pétales et trois bras articulés refermés sur un noyau. Les bras travaillent en séquence et découvrent le noyau entre deux passes, assez longtemps pour être exploité. Aucune pièce ne paraît usinée."
+mass_t = 12.4
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+boss_scene = ExtResource("3_boss")

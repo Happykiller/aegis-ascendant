@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/crescent_interceptor.glb" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/enemies/crescent_interceptor.tres" id="3_data"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Crescent Interceptor"
+camp = 1
+designation = "NX-034"
+hull_class = "LAME D'INTERCEPTION RAPIDE"
+builder = "INCONNU - VARIANTE SERIE"
+status = "MENACE CONFIRMEE"
+notice = "Lame aplatie, presque sans épaisseur de face: la coque sort du champ visuel dès qu'elle se met sur la tranche. Elle entre en crochet, repasse, et ne tient jamais un cap plus de deux secondes. La vitesse est payée par une structure qui cède au premier impact franc."
+mass_t = 0.16
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+enemy_data = ExtResource("3_data")

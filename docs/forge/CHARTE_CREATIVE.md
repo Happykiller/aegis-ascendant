@@ -22,6 +22,7 @@ cohérent, spectaculaire.
 | Ennemi | **The Null Choir** | intelligence collective biomécanique |
 | Vaisseau-amiral ennemi | **The Pale Leviathan** | organo-mécanique, anneau incomplet, noyau visible |
 | Mini-boss | **Choir Harvester** | trois bras, noyau central protégé |
+| Constructeur du Specter-9 | **Arsenal Orbital Talvern** | chantier Helios ; s'affiche dans le bestiaire (BRIEF-0037) |
 
 ## 3. Palettes
 

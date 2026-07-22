@@ -46,6 +46,28 @@ func test_abandoning_a_run_lets_the_next_one_start() -> void:
 		"et on peut relancer une partie derrière")
 	gs.free()
 
+## Consulter le bestiaire puis LANCER UNE PARTIE. Exactement le piège du retour de
+## pause ci-dessus, et il aurait mordu de la même façon : si CODEX ne savait pas
+## revenir vers BOOT, `current` resterait bloqué et le bouton NOUVELLE PARTIE
+## deviendrait inerte — sans rien à l'écran, puisque `_start_game` teste le retour de
+## `transition_to` mais échoue en silence.
+func test_visiting_the_codex_lets_a_run_start_afterwards() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.CODEX), "BOOT -> CODEX")
+	assert_true(gs.transition_to(GameStateScript.State.BOOT), "CODEX -> BOOT")
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT),
+		"et on peut lancer une partie derriere")
+	gs.free()
+
+## Un catalogue ne lance pas de partie : le seul chemin depuis CODEX est le titre.
+func test_the_codex_has_no_shortcut_into_combat() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.CODEX), "BOOT -> CODEX")
+	print("[test] expected error below (invalid transition):")
+	assert_false(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT),
+		"CODEX -> FIGHTER_COMBAT refuse")
+	gs.free()
+
 func test_score_accumulates() -> void:
 	var gs := _make_state()
 	gs.add_score(100)

@@ -62,6 +62,12 @@
 - [ ] **Scoring avancé** : multiplicateur, combos, précision ; **résumé de fin détaillé** (spec §14.3).
 - [ ] **Manette** + **remapping** des touches.
 
+## Livré le 22/07/2026
+
+| Chantier | État |
+|---|---|
+| **Bestiaire** (menu d'accueil) | ✅ cinq coques sur présentoir 3D — rotation souris/clavier, zoom, pièces mobiles animées en démonstration, fiche technique HUD qui vire au camp. Dimensions et polygones **mesurés** sur la coque, PV/vitesse/cadence/score **lus** dans les Resources de gameplay (aucune recopie) ; fiction produite par la forge (**BRIEF-0037**) — **ADR-0015** |
+
 ## P2 — Accessibilité & méta (spec §13, §19)
 
 - [ ] **Accessibilité** : réduction shake/flash, intensité bloom, contraste renforcé, sous-titres, pause.
@@ -83,6 +89,11 @@
   que « sans éclairage travaillé les meshes paraîtront pires que les sprites » : c'est exactement ça.
   Attention : juger une coque au seul rendu studio la flatte. Toujours confirmer par une capture en
   jeu (`--capture-at=<s>` vise le bon instant de vague).
+- [ ] **Étendre le bestiaire au-delà des coques** — l'écran existe et sa mécanique est générique
+  (ADR-0015). Restent hors catalogue : les **structures** (citadelle, tourelle, balise), les
+  **bonus** et les **projectiles**. Chacun demande une variante de fiche : une tourelle n'a ni
+  vitesse ni score, un bonus n'a ni dimensions ni structure. Ne pas forcer le gabarit « coque »
+  sur eux — c'est en le forçant qu'on obtient des colonnes de tirets.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
 - [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
   vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.
