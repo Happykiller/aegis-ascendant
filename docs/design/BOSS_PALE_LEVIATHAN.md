@@ -1,0 +1,862 @@
+# THE PALE LEVIATHAN — conception du boss final
+
+- **Statut** : proposition de conception (aucun code écrit)
+- **Rédigé par** : concepteur principal
+- **Date** : 2026-07-23
+- **Amende** : spec §12 (déjà amendée par ADR-0010 : le boss se combat **au chasseur**)
+- **Références** : `docs/forge/CHARTE_CREATIVE.md` §2–§4, `assets/reference/DA.md` §5.2/§6,
+  `ADR-0008` (pipeline 3D), `ADR-0010` (un seul vaisseau), `BRIEF-0024` (coque actuelle),
+  `BRIEF-0039` (le précédent qui a rendu le mini-boss animable)
+- **Planche existante** : `assets/reference/concepts/pale_leviathan_concept_sheet.png`
+
+---
+
+## 1. Pourquoi ce document
+
+### 1.1 L'état réel du boss final
+
+`scenes/bosses/pale_leviathan.tscn` est un `BossController` **nu**. Il déclare 20 000 PV, une hitbox
+de 2,7, `phase_count = 4` — et rien d'autre. Ses quatre « phases » se déclenchent aux seuils de PV et
+ne changent que deux choses : la **forme de trajectoire**
+(`SWAY → FIGURE_EIGHT → ORBIT → CHARGE_RETREAT`, `scripts/bosses/boss_movement.gd`) et le **nombre de
+balles** des trois motifs génériques `RADIAL / AIMED_SPREAD / FAN`, qui cyclent toutes les deux
+secondes et gagnent 12 % de cadence par phase (`scripts/bosses/boss_controller.gd:260-293`).
+
+Le corps est **vulnérable en permanence**. Il n'y a ni sous-cible, ni verrou, ni condition. C'est
+cinq fois les points de vie du mini-boss, sans sa mécanique : un sac à PV.
+
+### 1.2 Ce qu'il ne faut surtout pas faire
+
+Le Choir Harvester a une vraie boucle, et elle est bonne : trois appendices destructibles qui
+protègent le corps, une fenêtre qui s'ouvre quand les trois sont à terre en même temps, et une
+repousse qui referme tout. Le réflexe serait de la rejouer en plus gros — six appendices, deux iris.
+
+Ce serait un anticlimax. Le joueur aurait déjà appris la leçon vingt minutes plus tôt, et le boss
+final ne serait qu'un contrôle de vitesse d'exécution.
+
+### 1.3 Le pilier : le Harvester est un verrou, le Leviathan est un démontage
+
+| | Choir Harvester | Pale Leviathan |
+|---|---|---|
+| Structure | **cyclique** — trois clés ouvrent une fenêtre, tout repousse | **monotone** — chaque phase arrache une partie du corps, rien ne repousse |
+| Ce qui est récompensé | la **vitesse d'enchaînement** (abattre trois bras avant que le premier ne revienne) | l'**endurance et le choix** (tenir quatre phases, décider quoi frapper) |
+| Où se lit la progression | sur la jauge du HUD | sur la **silhouette** — à la fin il ne reste qu'un noyau décharné |
+| Le corps | blindé, sauf pendant l'iris | jamais un mur : chaque phase a sa cible légitime |
+
+**La règle de conception qui découle du pilier** : *la pièce que le joueur arrache à la phase N
+devient la mécanique de la phase N+1.* La coquille brisée découvre la gueule ; la gueule domptée
+devient le tunnel ; les épines détachées deviennent l'essaim. Le boss ne « change de motif », il
+**se démonte**, et chaque perte a une conséquence physique visible.
+
+C'est aussi ce que raconte la planche : le panneau « noyau fermé », le panneau « vortex », le panneau
+« épines en éventail » et le panneau « brisé » sont déjà là, côte à côte. Le design ne va rien
+inventer contre elle — il l'exploite.
+
+---
+
+## 2. Vue d'ensemble
+
+| Phase | Nom | Le verbe | Durée visée | Ce que le joueur arrache |
+|---|---|---|---|---|
+| 1 | **Armor Choir** | BRISER | 65–75 s | les 4 plaques d'armure de la coquille |
+| 2 | **Gravitic Maw** | RÉSISTER | 55–65 s | les 3 nœuds gravitiques de la lèvre |
+| 3 | **Boarding Swarm** | PRIORISER | 50–60 s | les 4 épines |
+| 4 | **Into the Maw** | OSER | 15–25 s | le cœur |
+
+**Total visé : ~3 min 30**, dans la fourchette de la spec §7 (3 à 4 minutes pour le boss final).
+
+### 2.1 La courbe de tension
+
+```
+  intensité
+     │                                              ╭──╮ phase 4
+     │                              ╭───────────╮  ╱    │ (court, total)
+     │              ╭───────────╮  ╱             ╲╱     │
+     │  ╭────────╮ ╱             ╲╱                     │
+     │ ╱          ╲                                     │
+     └──────────────────────────────────────────────────▶ temps
+       BRISER      RÉSISTER      PRIORISER       OSER
+       lisible     étouffant     saturé          vertigineux
+```
+
+Chaque transition de phase est un **répit d'une à deux secondes** (la coque se réorganise, le boss ne
+tire pas) : c'est là que le joueur respire, voit ce qu'il a cassé, et lit la nouvelle règle.
+
+### 2.2 Le contrat de lisibilité
+
+Trois choses ne doivent jamais manquer, sous peine de rejouer les défauts déjà payés sur le
+Harvester :
+
+1. **Toute attaque lourde a un télégraphe qui annonce un point fixe.** Le verrou de cible se fait au
+   *début* du réarme, jamais pendant — sinon le coup est imparable
+   (`harvester_combat.gd:359-365`, et la règle est inscrite dans `HarvesterTuning.validate()`).
+2. **Tirer sur une pièce blindée doit produire quelque chose à l'écran.** Le signal `deflected` de
+   `BossController` existe déjà et fait une étincelle blanche + `shield_impact` : sans lui, une
+   armure se lit comme un bug.
+3. **Il y a toujours une cible légitime.** À aucun moment le joueur ne doit se demander où tirer. Si
+   la réponse n'est pas évidente, la phase est ratée.
+
+### 2.3 La jauge du HUD
+
+⚠️ Le HUD n'a qu'un `set_boss_health(ratio)` (`scripts/ui/fighter_hud.gd:339`). Sur le Harvester, il
+montre le **noyau**, qui ne bouge que pendant l'iris — le reste du temps la jauge est figée, ce qui
+est acceptable pour deux minutes.
+
+Sur quatre phases ce serait une faute : une jauge immobile pendant soixante secondes dit « tu ne fais
+rien ». La jauge du Leviathan montre donc les **dégâts cumulés sur l'ensemble des structures**,
+plaques et nœuds et épines compris :
+
+```
+ratio = 1 − (dégâts infligés à toutes les pièces) / TOTAL_STRUCTURE
+```
+
+Elle descend en continu du début à la fin. Les **trois pastilles d'appendice** du bandeau
+(`set_boss_limb`) sont réutilisées telles quelles pour montrer les sous-cibles de la phase courante —
+elles en portent trois, la phase 1 et la phase 3 en ont quatre : on affiche les **trois encore
+debout**, ou on étend le bandeau à quatre (choix d'implémentation, à trancher au moment du code ;
+l'extension à quatre est préférable et coûte peu).
+
+---
+
+## 3. Phase 1 — ARMOR CHOIR (le verbe : BRISER)
+
+### 3.1 État de la coque
+
+La coquille en croissant recouvre le noyau, exactement comme sur le panneau principal de la planche.
+Quatre plaques d'armure y sont enchâssées, réparties à 90°. **La coquille tourne lentement autour de
+l'axe du noyau** : les plaques défilent, l'une après l'autre, face au joueur.
+
+### 3.2 La mécanique
+
+**La fenêtre de tir naît de la rotation, pas d'un minuteur.** Une plaque n'encaisse que lorsqu'elle
+est dans l'arc face au joueur (±50° autour de l'axe caméra) ; de l'autre côté, elle est masquée par
+le corps et les tirs se réfléchissent (`deflected`).
+
+C'est la différence de nature avec l'iris du Harvester : là-bas, la fenêtre était un **état** que le
+joueur provoquait ; ici c'est une **géométrie** qu'il doit lire et anticiper. Il n'attend pas, il
+choisit son moment — et comme les plaques sont à 90° avec un arc utile de 100°, **il y a toujours à
+peu près une cible disponible** : la phase n'a aucun temps mort.
+
+**Rien ne repousse.** Une plaque tombée est tombée. Le rideau de balles s'allège d'un quart à chaque
+fois : le retour est immédiat, physique, et il enseigne au joueur que dans ce combat, casser paie.
+
+### 3.3 Les attaques
+
+| Attaque | Télégraphe | Effet | Cadence |
+|---|---|---|---|
+| **Chœur d'éventails** | aucun (pression de fond, balles lentes et lisibles) | chaque plaque **encore debout** crache un éventail de 7 balles, vitesse 5, ouverture 60°, décalées entre elles — un rideau qui tourne avec l'orbite | toutes les 2,4 s par plaque |
+| **Lance annoncée** | ligne fine et battante du noyau au point verrouillé, 1,8 s (`Beam` en régime télégraphe, déjà écrit) | faisceau de 1,2 s, demi-largeur 0,7, **28 dégâts par contact** | toutes les 7 s |
+| **Missiles ciblables** | sifflement + traînée magenta | 3 missiles vitesse 4 qui infléchissent vers le joueur, 22 dégâts au contact — **destructibles au tir** | 2 salves toutes les 6 s |
+
+Les missiles ciblables sont la nouveauté de lecture de la phase : ils apprennent au joueur qu'il peut
+*répondre* à un projectile, ce dont il aura besoin en phase 3.
+
+### 3.4 Sortie
+
+Dernière plaque abattue → la coquille se **rétracte en 2 s** (65° de bascule), découvrant le noyau
+intact. Le boss ne tire pas pendant la rétraction.
+
+- VFX : `VfxExplosion.Category.HEAVY` au centre + secousse 0,9
+- Audio : `boss_phase_shift`
+- Bannière : **« COQUILLE BRISEE »** en ivoire, 1,6 s
+
+Le noyau apparaît, magnifique et **toujours invulnérable** : le joueur croit avoir gagné une cible,
+il a gagné une phase. C'est le bon moment pour lui mentir une seconde.
+
+---
+
+## 4. Phase 2 — GRAVITIC MAW (le verbe : RÉSISTER)
+
+### 4.1 État de la coque
+
+Le noyau s'ouvre. Les craquelures magenta se creusent en un **vortex violet sombre** — c'est
+littéralement le deuxième panneau de gros plan de la planche, celui qui montre l'entonnoir. La lèvre
+de la gueule porte trois **nœuds gravitiques** saillants.
+
+### 4.2 La mécanique — l'aspiration
+
+Un champ radial tire le chasseur vers le centre du boss. C'est la première fois du jeu que
+**le joueur n'a plus le contrôle total de son vaisseau**.
+
+```
+vitesse_aspiration(d) = pull_speed_max × clamp(1 − d / pull_radius, 0, 1)
+```
+
+**La menace n'est pas le contact avec la gueule.** C'est de ne plus pouvoir esquiver : le rideau de
+balles n'a pas changé, mais la marge de manœuvre a fondu. Le joueur qui jouait à 14 u/s en joue à 7.
+
+> ⚠️ **L'invariant qui rend la phase jouable** : `pull_speed_max` doit rester **strictement
+> inférieure** à `PlayerStats.max_speed` (14,0) — sinon le chasseur est aspiré quoi qu'il fasse et la
+> phase devient une cinématique. La valeur retenue, **7,0 u/s**, laisse exactement la moitié de la
+> mobilité. C'est un `validate()` à écrire, pas un commentaire : c'est le genre de réglage qui a
+> l'air raisonnable isolément et rend le jeu injouable une fois combiné.
+
+**Les trois nœuds coupent l'aspiration par tiers.** Chaque nœud abattu retire un tiers de
+`pull_speed_max`. Le retour est immédiat et se *sent* dans les doigts : le joueur récupère sa vitesse
+morceau par morceau. Un tout-ou-rien aurait été moins bon — ici, chaque victoire partielle paie.
+
+### 4.3 Les débris
+
+Huit à douze blocs de coque traversent l'écran, aspirés en spirale vers la gueule. Ils sont
+**indestructibles**, infligent 30 dégâts au contact, et **occultent les balles ennemies** : ce sont à
+la fois un danger et la seule couverture de la phase. Le joueur apprend à s'en servir.
+
+### 4.4 Les attaques
+
+| Attaque | Télégraphe | Effet | Cadence |
+|---|---|---|---|
+| **Pulsations du vortex** | la gueule se contracte visiblement avant | anneau de 14 balles radiales, vitesse 6 | toutes les 3 s |
+| **Balayages d'épines** | la pointe s'illumine 0,8 s avant | les épines **encore attachées** tracent un laser court qui balaie 40° | toutes les 5 s, une épine à la fois |
+
+### 4.5 Sortie
+
+Troisième nœud abattu → le vortex s'effondre en 1,5 s, l'aspiration tombe à zéro, **la gueule reste
+béante**.
+
+- VFX : implosion (`MEDIUM` inversée) puis `HEAVY`
+- Audio : `boss_phase_shift`
+- Bannière : **« GUEULE OUVERTE »** en magenta, 1,4 s
+
+---
+
+## 5. Phase 3 — BOARDING SWARM (le verbe : PRIORISER)
+
+### 5.1 État de la coque
+
+**Les quatre épines se détachent du corps** et deviennent des unités autonomes. C'est le moment le
+plus spectaculaire de la conception : une pièce qui faisait partie de la silhouette du boss depuis
+trois minutes s'en arrache et vient chercher le joueur.
+
+Le corps, lui, n'est plus qu'un tronc et une gueule ouverte.
+
+### 5.2 La mécanique — le dilemme
+
+Le noyau est **enfin touchable en permanence**. Mais quatre épines et un flux de transports occupent
+l'écran, et l'une des épines a pour seul travail de se placer devant le noyau.
+
+Le joueur doit choisir à chaque seconde : taper le boss, ou nettoyer. Il n'y a pas de bonne réponse
+absolue — seulement une bonne réponse à l'instant t. C'est le verbe de la phase.
+
+### 5.3 Les quatre épines
+
+| Épine | Rôle | Comportement | PV |
+|---|---|---|---|
+| `Spike_01` | **Fonceuse** | charge télégraphiée (1,0 s de verrou, ligne fine), traverse l'écran à 20 u/s, 30 dégâts au contact | 1 500 |
+| `Spike_02` | **Tireuse** | se poste à distance haute, salves ajustées de 3 balles toutes les 1,2 s | 1 500 |
+| `Spike_03` | **Bloqueuse** | s'interpose entre le joueur et le noyau, absorbe les tirs — **c'est elle qui crée le dilemme** | 1 500 |
+| `Spike_04` | **Escorte** | orbite le noyau à 3 u, tir rapproché rapide | 1 500 |
+
+Hitbox 0,9 chacune. Elles ne repoussent pas.
+
+### 5.4 Les transports d'abordage
+
+Toutes les 8 s, deux transports se détachent du corps et filent vers le bas de l'écran.
+
+⚠️ **ADR-0010 a supprimé l'intégrité de forteresse** : il n'y a plus rien à protéger derrière le
+joueur, et une jauge abstraite serait un mensonge. La sanction est donc **matérielle** : un transport
+qui sort du champ **revient six secondes plus tard par le bas, en escorte armée**, et reste. Laisser
+passer, c'est augmenter la pression pour le reste de la phase. Le joueur comprend la règle en une
+fois, sans qu'aucun texte ne la lui dise.
+
+Réutiliser les coques existantes (`scenes/enemies/needle_scout_*.tscn`, `crescent_interceptor.tscn`)
+plutôt que d'en modéliser une : le budget de production va à la coque du boss.
+
+### 5.5 Sortie
+
+Quatre épines détruites → le boss est **nu**. Sa silhouette a perdu les trois quarts de sa masse ;
+c'est le panneau « brisé » de la planche, atteint par le jeu et non par une cinématique.
+
+- VFX : quatre `MEDIUM` en chaîne puis un `HEAVY`
+- Audio : `boss_phase_shift`, puis bascule musicale sur `final_charge`
+- Bannière : **« STRUCTURE DECHARNEE »** en ivoire, 1,8 s
+
+---
+
+## 6. Phase 4 — INTO THE MAW (le verbe : OSER)
+
+### 6.1 Le renversement
+
+L'aspiration reprend, mais cette fois **au-delà de la vitesse du chasseur** (16 u/s contre 14). On ne
+résiste plus. La règle de la phase 2 est explicitement cassée, et c'est le sujet de la phase : le
+joueur a passé une minute à lutter contre cette force, il doit maintenant l'accepter.
+
+Le HUD l'annonce sans ambiguïté — bannière **« ENTREZ »**, en magenta, 2 s. Il n'y a aucune autre
+option : le boss n'a plus de point faible extérieur.
+
+### 6.2 Le tunnel
+
+La gueule devient un puits vertical. Cinq anneaux internes (`Ring_01..05`), chacun percé d'une
+**ouverture qui tourne** à vitesse différente. Le joueur, aspiré vers le fond, doit aligner sa
+position latérale sur l'ouverture de chaque anneau au moment où il le franchit.
+
+- Toucher un anneau : **35 dégâts** + rejet vers l'arrière de 3 u (on perd du terrain, on ne meurt pas)
+- Au fond : le **cœur** (`Heart`), 2 600 PV, exposé, sans aucune protection. Tir libre.
+
+### 6.3 Le compte à rebours
+
+**La gueule se referme 12 s après l'entrée.** Deux issues :
+
+- **Le cœur tombe** → le boss meurt. Explosions en chaîne de l'intérieur vers l'extérieur, `helios_lance`,
+  puis la Citadelle arrive → `DOCKING` → `VICTORY` (arc ADR-0010 inchangé).
+- **Le cœur tient** → à 10 s, l'aspiration s'**inverse** en expulsion pendant 2 s : c'est la fenêtre
+  de sortie, et elle est généreuse parce qu'elle est la seule. Le joueur éjecté regarde la gueule se
+  refermer, le boss recharge 8 s, puis rouvre. On recommence.
+- **Le joueur est encore dedans à la fermeture** → mort. Une vie.
+
+12 s à 420 dps = 5 040 dégâts potentiels pour un cœur à 2 600 PV : **une descente propre suffit**.
+Une descente où l'on touche deux anneaux et où l'on tâtonne n'y arrive pas. C'est exactement le
+niveau d'exigence voulu pour un dernier geste : difficile, jamais injuste, refaisable.
+
+### 6.4 En cas de mort
+
+Spec §12.8, conservée : **reprise au début de la phase en cours**, boss remis aux PV de début de
+phase, pièces de la phase restaurées. Sans cela, la destruction définitive des pièces obligerait à
+refaire trois minutes pour une erreur de dix secondes — la mécanique du démontage se retournerait
+contre le joueur.
+
+---
+
+## 7. Chiffres et dimensionnement
+
+### 7.1 La règle qui donne les points de vie
+
+Comme pour `HarvesterTuning`, aucune valeur ne doit être posée « à l'oreille ». La règle :
+
+```
+durée_de_phase = PV_de_la_phase / (reference_dps × occupation)
+```
+
+- `reference_dps = 420` — la cadence soutenue du joueur à puissance 3, **la même hypothèse que le
+  mini-boss** (`resources/data/harvester_tuning.gd:46`). Ce n'est pas un réglage de boss, c'est
+  l'hypothèse de dimensionnement, et elle doit être écrite noir sur blanc pour être vérifiable.
+- `occupation` — la part du temps où le joueur peut réellement placer ses tirs sur une cible
+  légitime. Elle varie par phase, et c'est le **vrai levier de conception** : une phase où l'on
+  esquive plus qu'on ne tire a une occupation basse, donc moins de PV pour la même durée.
+
+### 7.2 Le tableau
+
+| Phase | Cibles | PV unitaires | PV de phase | Occupation | Durée calculée |
+|---|---|---|---|---|---|
+| 1 — Armor Choir | 4 plaques | 3 200 | 12 800 | 0,45 | **67,7 s** |
+| 2 — Gravitic Maw | 3 nœuds | 2 800 | 8 400 | 0,35 | **57,1 s** |
+| 3 — Boarding Swarm | 4 épines + noyau | 1 500 / 3 200 | 9 200 | 0,40 | **54,8 s** |
+| 4 — Into the Maw | le cœur | 2 600 | 2 600 | 0,80 | **7,7 s** de tir utile, dans une fenêtre de 12 s |
+| | | | **33 000** | | **~3 min 08** de combat net |
+
+Plus les transitions (≈ 7 s cumulées) et les temps morts d'entrée : **~3 min 20 à 3 min 40**.
+
+Pour comparaison, le Choir Harvester totalise environ 11 500 dégâts sur trois cycles pour un combat
+de deux minutes. Le boss final demande **près de trois fois plus**, sur quatre règles différentes.
+
+### 7.3 Les invariants à faire porter par `validate()`
+
+Ce sont eux qui empêchent un réglage « raisonnable pièce par pièce » de produire un combat
+impossible. Chacun se vérifie en une ligne, et chacun corrige une panne silencieuse.
+
+| Invariant | Pourquoi |
+|---|---|
+| `pull_speed_max_phase2 < PlayerStats.max_speed` (14,0), et idéalement `≤ 0,6 ×` | au-delà, le chasseur est aspiré quoi qu'il fasse : la phase 2 devient une cinématique |
+| `pull_speed_max_phase4 > PlayerStats.max_speed` | c'est le sujet de la phase 4 : si on peut résister, il n'y a plus de course |
+| `arc_touchable_plaque / 360 × periode_orbite ≥ 2,0 s` | une fenêtre plus courte que deux secondes ne se joue pas — c'est la constante `MIN_WINDOW` du Harvester, transposée à une géométrie |
+| `PV_coeur / reference_dps ≤ 0,7 × duree_gueule_ouverte` | il doit rester de la marge pour l'erreur : un cœur qu'on ne peut abattre qu'en jouant parfaitement rend la phase 4 aléatoire |
+| `∀ attaque lourde : windup > 0` | le télégraphe **est** la règle du duel. Cet invariant existe déjà mot pour mot dans `HarvesterTuning.validate()` |
+| `somme des PV de phase == TOTAL_STRUCTURE` | sinon la jauge du HUD ment sur la progression |
+
+### 7.4 Réglages détaillés (proposition de `LeviathanTuning`)
+
+```
+[Phase 1 — Armor Choir]
+plate_health            = 3200.0     PV d'une plaque
+plate_count             = 4
+shell_orbit_period      = 12.0   s   un tour complet de la coquille
+plate_arc_deg           = 100.0  °   arc face joueur où la plaque encaisse (±50°)
+plate_hitbox_radius     = 1.30       généreux : elle bouge et elle est grosse
+shell_retract_time      = 2.0    s   la rétraction de fin de phase
+fan_interval            = 2.4    s   par plaque encore debout
+fan_bullets             = 7
+fan_spread_deg          = 60.0   °
+fan_speed               = 5.0
+lance_windup_time       = 1.8    s   ⚠️ le télégraphe
+lance_beam_time         = 1.2    s
+lance_half_width        = 0.70
+lance_damage            = 28.0       par CONTACT (i-frames de 1,2 s, cf. Harvester)
+lance_interval          = 7.0    s
+missile_salvo_interval  = 6.0    s
+missile_count           = 3
+missile_speed           = 4.0
+missile_turn_rate       = 1.4    rad/s
+missile_health          = 40.0       ciblable : une salve du joueur suffit
+missile_damage          = 22.0
+
+[Phase 2 — Gravitic Maw]
+node_health             = 2800.0
+node_count              = 3
+node_hitbox_radius      = 1.00
+pull_radius             = 16.0       portée du champ
+pull_speed_max          = 7.0    u/s ⚠️ < max_speed du joueur (14,0)
+pull_relief_per_node    = 0.3333     chaque nœud abattu retire un tiers
+debris_count            = 10
+debris_speed            = 6.0
+debris_damage           = 30.0
+maw_pulse_interval      = 3.0    s
+maw_pulse_bullets       = 14
+spike_sweep_windup      = 0.8    s
+spike_sweep_arc_deg     = 40.0   °
+spike_sweep_interval    = 5.0    s
+
+[Phase 3 — Boarding Swarm]
+spike_health            = 1500.0
+spike_hitbox_radius     = 0.90
+core_health             = 3200.0
+charger_windup          = 1.0    s   ⚠️ le télégraphe de la fonceuse
+charger_speed           = 20.0   u/s
+charger_damage          = 30.0
+gunner_interval         = 1.2    s
+blocker_offset          = 2.5    u   distance à laquelle elle s'interpose
+escort_orbit_radius     = 3.0    u
+transport_interval      = 8.0    s
+transport_count         = 2
+transport_return_delay  = 6.0    s   il revient en escorte armée
+
+[Phase 4 — Into the Maw]
+heart_health            = 2600.0
+maw_open_time           = 12.0   s   le compte à rebours
+maw_reopen_delay        = 8.0    s   après un échec
+eject_window            = 2.0    s   l'aspiration s'inverse — la seule sortie
+pull_speed_max_final    = 16.0   u/s ⚠️ > max_speed : on n'y résiste pas
+ring_count              = 5
+ring_gap_deg            = 70.0   °   l'ouverture de chaque anneau
+ring_spin_base          = 0.5    tr/s (chaque anneau a un multiplicateur distinct)
+ring_damage             = 35.0
+ring_knockback          = 3.0    u
+```
+
+---
+
+## 8. Architecture visée
+
+### 8.1 Composition, comme le Harvester
+
+`BossController` **ne bouge pas**. Il garde ce qui est générique : entrée, déplacement, roulis et
+tangage déduits de la vitesse, PV, signaux HUD, mort, prise de main sur le déplacement
+(`drive_toward` / `release_drive`). Il sert déjà deux boss ; il en servira deux après.
+
+Un module `scripts/bosses/leviathan_combat.gd`, **nœud enfant de la scène**, lui prend exactement ce
+que le module du Harvester lui prend :
+
+- l'armement (`external_attacks = true`, déclaré dans le `.tscn` et non seulement posé par le module
+  — l'ordre des `_ready()` est un équilibre qu'un refactor casserait sans bruit) ;
+- la vulnérabilité du corps (`vulnerable`).
+
+Fichiers pressentis :
+
+| Fichier | Rôle |
+|---|---|
+| `scripts/bosses/leviathan_combat.gd` | la machine à phases et l'orchestration |
+| `scripts/bosses/leviathan_plate.gd` | une plaque : PV, état, arc touchable (`RefCounted`) |
+| `scripts/bosses/leviathan_spike.gd` | une épine : PV, comportement une fois détachée (`RefCounted` tant qu'attachée) |
+| `scripts/bosses/maw_tunnel.gd` | la phase 4 : anneaux, compte à rebours, cœur |
+| `resources/data/leviathan_tuning.gd` | tous les réglages + `validate()` (§7.3) |
+
+### 8.2 Les trois primitives nouvelles
+
+Chacune est isolée et **testable headless**, sans arbre ni rendu — c'est la condition pour qu'une
+mécanique qui demande trois minutes de jeu à atteindre soit vérifiable.
+
+**1. Champ d'aspiration** — `scripts/gameplay/gravity_well.gd`, fonctions statiques pures :
+
+```gdscript
+static func pull_at(position: Vector2, center: Vector2, radius: float,
+        speed_max: float) -> Vector2
+```
+
+Appliquée à la vélocité du joueur. Sur le modèle de `BossMovement` et de `Beam.hits()` : pas de
+nœud, pas d'état, testable directement. Le joueur expose déjà
+`integrate_velocity()` en statique (`player_fighter_controller.gd:361`) — l'aspiration s'y compose.
+
+**2. Projectile ennemi ciblable** — le missile de la phase 1. ⚠️ Point à vérifier à
+l'implémentation : `BulletTarget.make(Team, radius, callback)` existe, mais il faut confirmer que
+`BulletManager._resolve_hits` accepte qu'une cible d'équipe alliée soit portée par un objet **du camp
+ennemi**. Si le gestionnaire ne le permet pas tel quel, l'extension est petite et se fait là, pas
+dans le boss.
+
+**3. Détachement d'une pièce de coque** — l'épine qui devient une unité. Reparenter le `Node3D` de la
+coque sous un nœud d'unité autonome en **conservant la transformation monde**. Pièges connus :
+`extra_cull_margin` est posé récursivement par `_pad_cull_margin` (`boss_controller.gd:110`) et doit
+suivre la pièce ; et une cible laissée enregistrée dans le `BulletManager` sur une pièce détachée
+serait le « mur invisible » exact contre lequel `HarvesterCombat.release()` a été écrit.
+
+### 8.3 Les pièges déjà payés — à ne pas repayer
+
+- **Ordre d'enregistrement des cibles.** `BulletManager._resolve_hits` parcourt les cibles dans
+  l'ordre d'enregistrement et **consomme** la balle sur la première qui la réclame. Les sous-cibles
+  (plaques, nœuds, épines) doivent s'enregistrer **avant** la cible de corps, via le signal `began`
+  émis exprès avant (`boss_controller.gd:131-141`). Dans l'autre sens, un tir ajusté sur une plaque
+  serait absorbé par le corps.
+- **Un seul écrivain par axe.** Une pièce est tour à tour orientée par son animation et par sa
+  destruction : la composition se fait à **un seul endroit**. Le module pose, les pièces disent
+  seulement où elles en sont (`harvester_limb.gd`, en-tête).
+- **`RefCounted` plutôt que `Node`** pour les sous-pièces tant qu'elles n'ont besoin ni d'arbre, ni
+  de `_process`, ni de signaux. Elles deviennent instanciables à la main en test.
+- **Zéro allocation dans `tick()`.** L'iris du Harvester a coûté cinq `Basis` et cinq
+  lire-modifier-écrire sur `.transform` par image **pendant tout le combat** avant qu'on ne le pose
+  qu'en cas de mouvement réel (`harvester_combat.gd:280-288`). Sur un boss à quatre phases et une
+  vingtaine de pièces mobiles, la même erreur coûte vingt fois plus.
+- **Hook de vérification.** Le Harvester a `++ --harvester-window` pour atteindre sa fenêtre
+  instantanément (ADR-0006 : un écran qu'on n'atteint qu'en fin d'arc ne se **regarde** jamais). Le
+  Leviathan en a besoin d'un par phase : `--leviathan-phase 1..4`.
+
+---
+
+## 9. Spécification 3D
+
+### 9.1 Le défaut à corriger d'abord
+
+`tools/blender/build_pale_leviathan.py` livre bien `Core`, `Shell_Crescent` et `Spike_01..04` comme
+objets séparés — mais il ne contient **aucun appel à `ak.moving_part()`** (0 occurrence, contre 10
+dans `build_choir_harvester.py`). Chaque pièce a donc son origine au centre du modèle : la faire
+tourner la fait pivoter **autour du boss**, pas autour de sa charnière.
+
+C'est mot pour mot le défaut que BRIEF-0039 a corrigé sur le mini-boss. La coque actuelle est
+inanimable, et **aucune des quatre phases décrites ici n'est réalisable dessus**. La reforge du
+script est donc un préalable, pas une amélioration.
+
+### 9.2 Dimensions — élargissement demandé
+
+| | Actuel | Proposé |
+|---|---|---|
+| Largeur (Godot X) | 7,02 m | **11,0 m** |
+| Longueur (Godot Z) | 8,77 m | **14,0 m** |
+| Hauteur max (Godot Y) | 2,50 m | **3,20 m** |
+| Budget triangles | 25 000 (contrat du script) | **40 000** |
+
+Le plan de jeu fait 28 × 16 unités (`GameplayPlane.BOUNDS`). À 14 m de long, le boss en occupe la
+**quasi-totalité de la profondeur utile** : il écrase l'écran, ce qu'un boss final doit faire et que
+7 × 8,77 ne faisait pas — c'était à peine 25 % de plus que le mini-boss (4,55 × 7,00).
+
+**Le budget de triangles ne pose aucun problème** : ADR-0011 a relevé le plafond de la classe *boss*
+de 25 000 à **90 000**, mesure GPU à l'appui. Le `tri_budget = 25_000` que déclare aujourd'hui
+`build_pale_leviathan.py` n'est que le contrat que ce script s'impose à lui-même ; le porter à
+40 000 reste très en deçà du plafond et se fait dans le script, sans décision à prendre. ADR-0011:110
+demande d'ailleurs explicitement que les contrats des scripts existants soient relus.
+
+> ⚠️ **L'élargissement des dimensions, lui, demande un ADR.** Le tableau X/Z d'ADR-0008 (lignes
+> 80-85) est normatif, et ADR-0011 le **réaffirme expressément** en refusant d'y toucher : « c'est le
+> contrat de gameplay : hitbox, télégraphes et lisibilité en dépendent » (ADR-0011:96-97). Passer de
+> 7,02 × 8,77 à 11,0 × 14,0 est donc une décision à acter avant toute reforge, pas un réglage.
+
+### 9.3 Contrat de noms — non négociable
+
+Le code sera écrit contre cette liste, comme pour le Harvester. Un nom qui diverge casse
+l'intégration en silence.
+
+| Nœud | Nature | Parent | Pivot (repère d'auteur) |
+|---|---|---|---|
+| `Body` | maillage porteur (`hull`) | — | il porte à lui seul l'étendue longitudinale (cf. en-tête du script actuel) |
+| `Shell_Ring` | `moving_part`, racine | — | **axe du noyau** — porte l'orbite, et rien d'autre |
+| `Shell_Crescent` | `moving_part` | `Shell_Ring` | charnière arrière — porte la rétraction, et rien d'autre |
+| `Plate_01`..`Plate_04` | `moving_part` | `Shell_Crescent` | leur charnière radiale |
+| `Core` | `moving_part`, racine | — | centre du noyau |
+| `Maw_Lip` | `moving_part` | `Core` | lèvre de la gueule |
+| `Node_01`..`Node_03` | `moving_part` | `Maw_Lip` | leur embase |
+| `Ring_01`..`Ring_05` | `moving_part` | `Core` | axe du tunnel, échelonnés en profondeur |
+| `Heart` | statique | `Core` | — |
+| `Spike_01`..`Spike_04` | `moving_part`, racine | — | épaule — **détachables au runtime** |
+| `Spike_0X_Mid` | `moving_part` | `Spike_0X` | coude |
+| `Spike_0X_Tip` | `moving_part` | `Spike_0X_Mid` | pointe |
+
+⚠️ **Trois niveaux pour la coquille, et c'est délibéré.** `Shell_Ring` porte l'orbite,
+`Shell_Crescent` la rétraction, `Plate_0X` la chute. Empiler deux de ces mouvements sur le même nœud
+(`rotation.y` pour l'un, `rotation.x` pour l'autre) marche jusqu'au jour où les deux sont actifs
+ensemble — et ce jour-là, la composition d'Euler produit une pose fausse que personne ne sait
+relire. Un axe, un nœud, un écrivain.
+
+**Points d'attache** : `Core_Center`, `Maw_Center`, `Tunnel_End`, `Muzzle_C`, `Muzzle_L`, `Muzzle_R`,
+`Muzzle_Plate_01..04`, `Muzzle_Spike_01..04`.
+
+Les anciens `Muzzle_L` / `Muzzle_R` / `Muzzle_C` de `required_attach_points` sont **conservés** (le
+boss générique les lit encore si `external_attacks` retombe à faux) ; les nouveaux s'y ajoutent. Le
+`HullContract` est à mettre à jour dans le même geste, sinon l'auto-validation refuse l'export.
+
+### 9.4 Débattements exigés par le gameplay
+
+Ce sont les angles que le code appliquera. Le modèle doit les encaisser **avec de la marge**.
+
+| Pièce | Mouvement | Amplitude |
+|---|---|---|
+| `Shell_Ring` | orbite des plaques | **360° continu** autour de l'axe du noyau |
+| `Shell_Crescent` | rétraction de fin de phase 1 | **0° → 65°** |
+| `Plate_01..04` | chute après destruction | **0° → −80°** |
+| `Core` | rotation lente d'ambiance | **360° continu** |
+| `Maw_Lip` | ouverture de la gueule | **0° → 90°** |
+| `Node_01..03` | rétraction à la destruction | **0° → −60°** |
+| `Ring_01..05` | rotation de l'ouverture | **360° continu**, vitesses distinctes |
+| `Spike_01..04` | pointage avant détachement | **±40°** |
+| `Spike_0X_Mid` / `_Tip` | flexion | **±25°** chacun |
+
+> ⚠️ **Le dégagement — la leçon la plus chère du projet.** Le Specter-9 a coûté **quatre briefs**
+> (0033 → 0036) sur ce seul point : un marquage posé à cheval sur une charnière a fait tomber le
+> dégagement d'un volet de 18,5° à **2,8°**, et le contrat a validé sans un mot parce que la boîte
+> englobante *au repos* était parfaite. Un défaut d'animation ne se voit pas sur une pose fixe.
+>
+> Conséquence : **chaque pièce mobile doit être mesurée à fond de course**, et la marge minimale
+> rapportée dans un tableau. Une marge nulle ou négative est un défaut bloquant. Corollaire hérité :
+> poser le détail **en fraction de corde, jamais en coordonnée absolue**
+> (`.claude/resources/pratique-detail-en-fraction-de-corde.md`).
+
+Deux vérifications **par rendu, pas par calcul** :
+
+- à `Maw_Lip` 90°, le tunnel et `Heart` sont **entièrement dégagés en vue de dessus** — c'est l'angle
+  de la caméra de jeu ;
+- à `Plate_0X` −80°, les quatre plaques tombées ne se mordent ni entre elles ni avec la coquille.
+
+### 9.5 Palette et matériaux
+
+Palette **Null Choir** de la charte §3, inchangée : anthracite, violet sombre, ivoire froid, magenta
+en émissif, vert maladif en usage très limité. Les sept matériaux normalisés du kit
+(`ak.MATERIAL_ORDER`).
+
+Le vortex doit lire comme une **profondeur**, pas comme un disque noir : la planche le montre bien —
+un entonnoir violet sombre avec des spirales magenta qui s'enfoncent. C'est un shader, pas de la
+géométrie.
+
+⚠️ Le cyan et le corail sont **réservés au gameplay** (DA §6) : aucun décor ni aucune coque ne les
+emploie, sous peine de voler leur lisibilité aux projectiles.
+
+---
+
+## 10. Ce qui reste à faire, et dans quel ordre
+
+| # | Travail | Qui | Bloquant pour |
+|---|---|---|---|
+| 1 | **ADR** amendant le tableau de dimensions X/Z (ADR-0008:80-85, réaffirmé par ADR-0011:96) | concepteur | tout le reste |
+| 2 | **ADR** actant la refonte du boss final (ce document en devient la référence) | concepteur | — |
+| 3 | **BRIEF** — planche de concept annotée (les trois prompts de l'annexe) | asset-forge | la reforge de coque |
+| 4 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat de noms §9.3, dégagements §9.4 | asset-forge | l'implémentation |
+| 5 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | le polish |
+| 6 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | le module |
+| 7 | `LeviathanTuning` + `validate()` (§7.3) | concepteur | le module |
+| 8 | `leviathan_combat.gd` phase par phase, hooks `--leviathan-phase N` | concepteur | — |
+
+**Écrivain unique** : les briefs 3-4-5 et les travaux 6-7-8 ne se chevauchent pas dans les mêmes
+fichiers. La forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
+(`.claude/resources/pratique-ecrivain-unique.md`).
+
+---
+
+# ANNEXE — prompts de génération d'images
+
+Trois planches à générer **hors du dépôt**, chez l'opérateur. Chaque bloc de prompt se colle tel
+quel : il ne suppose aucun contexte.
+
+### ⚠️ Les légendes — lire avant de coller
+
+Le skill `/asset-image` interdit d'habitude tout texte dans une image générée. **Ces trois planches
+sont l'exception délibérée** : ce sont des documents de travail destinés à être *lus* par un
+modeleur, et une maquette sans légende oblige à deviner ce qu'on regarde. Les prompts demandent donc
+explicitement des étiquettes.
+
+Ce que ça implique :
+
+- **Étiquettes courtes, 1 à 3 mots, en majuscules, en anglais** — les générateurs déforment le texte
+  long ; un mot ou deux passent presque toujours.
+- **Reliées par un trait fin** au détail qu'elles désignent, plus un **cartouche de titre** par
+  panneau.
+- Restent **interdits** : filigrane, signature, logo, nom de marque, nom d'artiste, faux texte
+  décoratif de remplissage.
+- Si une légende sort illisible, on **re-lettre proprement** par-dessus : ces planches ne sont que
+  des références, elles n'entrent jamais dans le jeu, et un re-lettrage manuel est légitime.
+
+---
+
+### 1/3 — `pale_leviathan_phases_sheet`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Planche de conception technique pour un vaisseau-amiral extraterrestre biomécanique
+de jeu vidéo, création originale, style animation japonaise des années 1980 revisitée
+en peinture numérique nette, sur fond bleu-nuit très sombre quadrillé comme un plan
+d'ingénieur.
+
+La planche montre QUATRE grands panneaux alignés, de gauche à droite, qui présentent
+le MÊME vaisseau à quatre stades successifs de destruction. Le vaisseau mesure 14
+mètres de long ; dans chaque panneau, un petit chasseur triangulaire blanc cassé de
+2,5 mètres est dessiné à côté pour donner l'échelle.
+
+Panneau 1 — vaisseau intact : un gros noyau sphérique magenta incandescent, sillonné
+de craquelures lumineuses, à demi recouvert par une coquille en croissant faite de
+plaques blindées ivoire froid et anthracite qui se chevauchent comme des écailles.
+Quatre plaques d'armure distinctes, plus épaisses que les autres, sont réparties à
+quatre-vingt-dix degrés sur cette coquille. Quatre longs bras-épines effilés et
+segmentés, veinés de magenta, partent du corps vers l'arrière et les côtés. Silhouette
+franchement asymétrique.
+
+Panneau 2 — les quatre plaques d'armure ont été arrachées, la coquille en croissant
+est basculée en arrière, le noyau sphérique s'est ouvert en un entonnoir tourbillonnant
+violet sombre aux spirales magenta. Trois excroissances anguleuses saillent de la lèvre
+de cet entonnoir. Des débris de coque flottent autour, aspirés en spirale.
+
+Panneau 3 — les quatre bras-épines se sont détachés du corps et flottent séparément
+autour de lui, chacun dans une posture différente, pointes tournées vers l'extérieur.
+Le corps central n'est plus qu'un tronc décharné et un entonnoir béant.
+
+Panneau 4 — le vaisseau n'est plus qu'un squelette : l'entonnoir grand ouvert forme un
+puits vertical bordé d'anneaux internes concentriques percés chacun d'une ouverture,
+et tout au fond brille un petit cœur magenta intense. Le chasseur d'échelle est dessiné
+en train de plonger dans le puits.
+
+Chaque panneau porte, en haut, un court cartouche de titre en majuscules, et deux ou
+trois étiquettes de un à trois mots en majuscules reliées par un trait fin blanc aux
+détails qu'elles désignent (par exemple ARMOR PLATE, CRESCENT SHELL, GRAVITIC NODE,
+DETACHED SPIKE, INNER RINGS, HEART). Le lettrage est net, fin, technique.
+
+Palette stricte : anthracite, violet sombre, ivoire froid, magenta lumineux, plus une
+pointe très rare de vert maladif. Aucun bleu cyan, aucun rouge corail.
+
+Éviter absolument : filigrane, signature, logo, nom de marque, nom d'artiste, texte
+décoratif de remplissage, paragraphes de faux texte, photoréalisme, flou, personnages
+humains, planète ou nébuleuse en fond, symétrie parfaite, surfaces lisses et propres
+de vaisseau militaire humain.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 1152 (paysage), couleur
+DÉPOSER     : assets/reference/concepts/pale_leviathan_phases_sheet.png
+ENSUITE     : rien à dériver — c'est une planche de référence, jamais chargée par le
+              moteur (assets/reference/ porte un .gdignore). Vérifier qu'elle passe
+              bien par Git LFS : git check-attr filter -- <chemin>
+VÉRIFIER    : les quatre panneaux racontent bien une DÉGRADATION progressive (on doit
+              pouvoir les remettre dans l'ordre sans les titres) ; les légendes sont
+              lisibles ; aucun cyan ni corail
+PROVENANCE  : pale_leviathan_phases_sheet,assets/reference/concepts/pale_leviathan_phases_sheet.png,concept-art,imagegen (ChatGPT),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Planche des quatre phases du boss final ; annotee"
+```
+
+---
+
+### 2/3 — `pale_leviathan_core_states_sheet`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Planche de détails techniques pour un vaisseau-amiral extraterrestre biomécanique de
+jeu vidéo, création originale, style animation japonaise des années 1980 revisitée en
+peinture numérique nette, fond bleu-nuit très sombre quadrillé comme un plan
+d'ingénieur.
+
+Six panneaux de gros plans, disposés en deux rangées de trois.
+
+Rangée du haut — les trois états du noyau central, vus de face, chacun cadré serré :
+1) FERMÉ : une sphère magenta incandescente de trois mètres de diamètre, parcourue
+d'un réseau de craquelures lumineuses, sertie dans un anneau de plaques blindées
+ivoire froid et anthracite qui se chevauchent.
+2) OUVERT EN ENTONNOIR : la même sphère creusée en un tourbillon violet très sombre,
+aux spirales magenta qui s'enfoncent vers un point de fuite ; trois excroissances
+anguleuses saillent de la lèvre circulaire.
+3) PUITS : l'entonnoir vu dans l'axe, transformé en tunnel profond bordé de cinq
+anneaux internes concentriques, chacun percé d'une large ouverture décalée par rapport
+au précédent ; tout au fond brille un petit cœur magenta intense.
+
+Rangée du bas — trois détails de pièces, isolés sur le fond quadrillé :
+4) une plaque d'armure arrachée, vue de trois quarts : blindage ivoire froid en
+écailles superposées sur une âme anthracite, arêtes ébréchées, interstices lumineux
+magenta, environ deux mètres de large.
+5) une excroissance gravitique de la lèvre : cône anguleux segmenté, veiné de magenta,
+avec une embase articulée, environ un mètre cinquante.
+6) un bras-épine détaché, vu en entier de profil : long dard segmenté de six mètres,
+effilé, blindage ivoire et anthracite, veines magenta le long des segments, articulation
+d'épaule visible à la base et petites bouches d'arme à mi-longueur.
+
+Chaque panneau porte un court cartouche de titre en majuscules et deux ou trois
+étiquettes de un à trois mots en majuscules, reliées par un trait fin blanc au détail
+désigné (par exemple CLOSED CORE, VORTEX, INNER RING, HEART, ARMOR PLATE, GRAVITIC
+NODE, SPIKE, SHOULDER JOINT). Lettrage net, fin, technique.
+
+Palette stricte : anthracite, violet sombre, ivoire froid, magenta lumineux, plus une
+pointe très rare de vert maladif. Aucun bleu cyan, aucun rouge corail.
+
+Éviter absolument : filigrane, signature, logo, nom de marque, nom d'artiste, texte
+décoratif de remplissage, paragraphes de faux texte, photoréalisme, flou, personnages
+humains, planète ou nébuleuse en fond, surfaces lisses et propres de vaisseau militaire
+humain.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, couleur
+DÉPOSER     : assets/reference/concepts/pale_leviathan_core_states_sheet.png
+ENSUITE     : rien à dériver. Vérifier le passage en Git LFS.
+VÉRIFIER    : le panneau PUITS doit lire comme une PROFONDEUR (un tunnel où l'on
+              plonge), pas comme un disque noir — c'est le point qui portera la
+              phase 4 ; les six panneaux sont cohérents entre eux en matière
+PROVENANCE  : pale_leviathan_core_states_sheet,assets/reference/concepts/pale_leviathan_core_states_sheet.png,concept-art,imagegen (ChatGPT),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Etats du noyau et details de pieces du boss final ; annotee"
+```
+
+---
+
+### 3/3 — `pale_leviathan_parts_sheet`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Planche d'ingénierie en vue éclatée pour un vaisseau-amiral extraterrestre
+biomécanique de jeu vidéo, création originale, style plan technique dessiné : traits
+nets, éclairage neutre et frontal, très peu d'ombres portées, fond bleu-nuit sombre
+quadrillé.
+
+Deux zones.
+
+Zone du haut — quatre vues orthographiques du vaisseau intact, alignées et à la même
+échelle, sans perspective : vue de dessus, vue de face, vue de profil, vue de trois
+quarts arrière. Le vaisseau mesure 14 mètres de long et 11 mètres de large. Un gros
+noyau sphérique magenta au centre, une coquille en croissant de plaques blindées ivoire
+froid et anthracite qui le surplombe, quatre plaques d'armure plus épaisses réparties
+à quatre-vingt-dix degrés sur cette coquille, et quatre longs bras-épines segmentés
+partant vers l'arrière et les côtés. Silhouette asymétrique. Sous chaque vue, une ligne
+de cote fine avec ses flèches aux extrémités.
+
+Zone du bas — une vue éclatée du même vaisseau : toutes les pièces mobiles écartées les
+unes des autres le long de fines lignes de rappel pointillées, comme une notice de
+montage. Les pièces à montrer séparément : le corps porteur, l'anneau tournant de la
+coquille, la coquille en croissant elle-même, les quatre plaques d'armure, le noyau
+sphérique, la lèvre de l'entonnoir, les trois excroissances gravitiques, les cinq
+anneaux internes du tunnel, le petit cœur, et les quatre bras-épines chacun décomposé
+en trois segments (base, milieu, pointe).
+
+Chaque pièce écartée porte une étiquette de un à trois mots en majuscules, reliée par
+un trait fin blanc à la pièce, et un petit disque marquant son axe de rotation quand
+elle en a un. Étiquettes suggérées : BODY, SHELL RING, CRESCENT, ARMOR PLATE, CORE,
+MAW LIP, GRAVITIC NODE, INNER RING, HEART, SPIKE, SPIKE MID, SPIKE TIP.
+
+Palette stricte : anthracite, violet sombre, ivoire froid, magenta lumineux. Aucun bleu
+cyan, aucun rouge corail.
+
+Éviter absolument : filigrane, signature, logo, nom de marque, nom d'artiste,
+paragraphes de faux texte, perspective forcée sur les vues orthographiques,
+photoréalisme, flou, ombres dramatiques, personnages humains, fond étoilé.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, couleur
+DÉPOSER     : assets/reference/concepts/pale_leviathan_parts_sheet.png
+ENSUITE     : rien à dériver. Vérifier le passage en Git LFS.
+              Cette planche est l'entrée directe du brief de reforge de
+              tools/blender/build_pale_leviathan.py : la confronter au contrat de noms
+              du §9.3 de ce document, pièce par pièce.
+VÉRIFIER    : toutes les pièces du contrat §9.3 sont présentes et identifiables ; les
+              vues du haut sont bien orthographiques (aucune fuite perspective) ; les
+              axes de rotation marqués correspondent aux pivots du §9.3
+PROVENANCE  : pale_leviathan_parts_sheet,assets/reference/concepts/pale_leviathan_parts_sheet.png,concept-art,imagegen (ChatGPT),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Vues orthographiques et eclate des pieces animables du boss final ; annotee"
+```
+
+---
+
+## Au retour des planches
+
+**Les regarder** (ADR-0006 : un asset non rendu et non regardé n'est pas validé), puis :
+
+1. confronter la planche 3 au contrat de noms du §9.3 — c'est elle qui va piloter la reforge Blender ;
+2. ajouter les trois lignes de provenance dans `assets/licenses/ASSET_PROVENANCE.csv` ;
+3. ouvrir le brief de reforge de coque (§10, ligne 4).
