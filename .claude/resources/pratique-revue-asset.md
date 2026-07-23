@@ -86,3 +86,46 @@ faite sur une image qui ne pouvait pas répondre à la question posée.
 
 Avant de lancer une capture : se demander **quel axe porte la propriété à juger**, et prendre le
 plan qui ne l'écrase pas.
+
+---
+
+## Un contrat d'export valide pendant que la silhouette dérive
+
+**Ce que ça a coûté (23/07/2026)** : la reforge de la coque du Pale Leviathan (BRIEF-0040) a passé
+**tous** ses critères techniques — contrat de noms à 30 pièces, pivots, UV, tangentes, déterminisme
+byte-identique, dix dégagements mesurés à fond de course et bloquants. Et la coque **ne ressemblait
+pas à ses planches** : disque radialement symétrique là où la référence montre un croissant
+asymétrique, rosette plate au lieu d'une sphère, cônes courts au lieu de longs dards. Un brief
+correctif entier (BRIEF-0041) pour rattraper.
+
+`ak.export_hull()` vérifie la boîte englobante, le budget de triangles, les matériaux, le pivot et
+les points d'attache. **Aucune de ces cinq mesures ne parle de la forme.** Une coque peut être
+parfaitement conforme et méconnaissable — c'est le même angle mort que le dégagement d'un volet, qui
+ne se voit pas sur une pose fixe (`pratique-detail-en-fraction-de-corde.md`).
+
+### La contre-mesure : un critère d'acceptation « côte à côte, panneau par panneau »
+
+Un brief de coque doit exiger la planche de recette **posée à côté de la planche de référence**, et
+un verdict **par écart nommé** dans le compte-rendu — pas un « conforme ». Nommer les écarts dans le
+brief les rend vérifiables ; les laisser implicites les rend invisibles.
+
+### Et la mesure qui objective « ça ne ressemble pas »
+
+« Le rendu est délavé » ne se défend pas. La **répartition des sommets par matériau**, si :
+
+```python
+# lire le JSON du .glb, cumuler accessors['count'] par materiau
+AA_Greeble 32.5% | AA_Emissive_Engine 28.7% | AA_Trim 14.9% | AA_Panel 11.3% | AA_Hull 11.0%
+```
+
+Deux faits en tombent, tous deux actionnables :
+
+- **`AA_Emissive_Engine` à 28,7 %.** Un émissif **ne reçoit pas la lumière** : il rend plat et clair
+  quelle que soit l'orientation de la surface. À près d'un tiers de la coque, il noie le modelé —
+  c'est le défaut qu'ADR-0013 relève déjà pour le noyau de la citadelle, « une goutte blanche
+  uniforme ». Repère : les planches montrent le magenta en **veines entre les plaques**, quelques
+  pour cent. Au-delà de ~10 %, ce n'est plus un accent, c'est une livrée.
+- **`AA_Hull` à 11 % contre 32,5 % de greeble.** Trois fois plus de machinerie que de blindage : la
+  silhouette lit « machine » là où la référence lit « carapace ».
+
+Le même relevé sert de **critère chiffré** au brief correctif, au lieu d'un adjectif.

@@ -45,6 +45,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
+  ⚠️ **Un contrat d'export valide pendant que la silhouette dérive** : `export_hull()` mesure bbox,
+  triangles, matériaux, pivot et attaches — **aucune de ces cinq mesures ne parle de la forme**. Une
+  coque du boss final a tout passé et ne ressemblait pas à ses planches (un brief correctif entier).
+  Exiger un verdict **côte à côte, panneau par panneau**, et objectiver par la **répartition des
+  matériaux** : un émissif au-delà de ~10 % de la coque n'est plus un accent, c'est une livrée.
   ⚠️ Le rendu **studio flatte**, le **post-process rétro (960×540 + scanlines) écrase le détail
   fin** : juger en jeu, mettre le détail dans la géométrie, pas dans une texture fine. ⚠️ Et juger
   **sur la vue qui montre l'axe réglé** : le bestiaire présente les coques de trois quarts avant,
@@ -61,11 +66,15 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   sous la valeur du jeu, donc un volet qui traverse la coque. **Le contrat a validé sans un mot** :
   la bbox au repos était parfaite, et un défaut d'animation ne se voit pas sur une pose fixe.
 - [Juger une image en la MESURANT, pas à l'œil](pratique-juger-une-image-en-la-mesurant.md) —
-  dès qu'il s'agit de luminosité ou de contraste, « c'est mieux » n'est pas un résultat. Mesurer la
-  luminance **sur le sujet**, sur le **fond**, et le **rapport des deux** — c'est ce dernier qui dit
-  si la lisibilité en jeu a survécu. ⚠️ Coût de l'oubli : un correctif d'éclairage jugé bon à l'œil
-  ne valait que **+5,7 %**, et la vraie cause (un contraste pivoté à 0,5 sur une image entièrement
-  sombre, ADR-0016) serait passée inaperçue.
+  dès qu'il s'agit de luminosité, de contraste **ou d'échelle de motif**, « c'est mieux » n'est pas
+  un résultat. Mesurer la luminance **sur le sujet**, sur le **fond**, et le **rapport des deux** —
+  c'est ce dernier qui dit si la lisibilité en jeu a survécu. ⚠️ Coût de l'oubli : un correctif
+  d'éclairage jugé bon à l'œil ne valait que **+5,7 %**, et la vraie cause (un contraste pivoté à
+  0,5 sur une image entièrement sombre, ADR-0016) serait passée inaperçue. ⚠️ **Tout indicateur
+  maison passe d'abord sur un témoin connu** : une mesure de calibre a rendu *1 cm* sur des écailles
+  d'*1 m*, et ce chiffre partait dans un compte-rendu — une mesure fausse est plus dangereuse
+  qu'aucune mesure, elle porte l'autorité du chiffre. ⚠️ Et une mesure que son propre correctif rend
+  vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
@@ -88,7 +97,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   le texte à coller, le nom du fichier, son chemin de dépôt, la commande suivante et la ligne de
   provenance. L'opérateur génère hors du dépôt : un prompt qui suppose du contexte est un prompt
   raté. ⚠️ Ne jamais demander une **normal map** ni une **transparence** à un générateur — il rend
-  une image *qui y ressemble*, et le défaut a l'air correct.
+  une image *qui y ressemble*, et le défaut a l'air correct. ⚠️ **Ni une taille qu'il ne sait pas
+  rendre** : les formats sont `1024×1024`, `1536×1024`, `1024×1536` — demander 2048 rend un 1024
+  agrandi, et le post-process rétro à 960×540 rend la question sans objet.
 
 ## Outillage encodé — ne pas réinventer ces procédures
 
@@ -98,7 +109,7 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 |---|---|
 | `./scripts/play-arc.sh [s]` | l'arc en temps réel, horodaté, **avec reprise de main garantie** (la démo boucle sans fin) |
 | `./scripts/play.sh [-- flags]` | jouer le **build précédent** sans le savoir — `deploy-win.sh` n'exporte pas ; pose aussi le `++` tout seul |
-| `./scripts/check.sh` | la porte de qualité — import + parse + tests ; **détecte un LFS non tiré** (sinon Godot importe les pointeurs comme des textures et l'erreur ment) |
+| `./scripts/check.sh` | la porte de qualité — import + parse + tests ; **détecte un LFS non tiré** (sinon Godot importe les pointeurs comme des textures et l'erreur ment). ⚠️ **Toujours lui, jamais `test_runner.gd` seul** : le runner nu ne fait pas l'import, donc tout `class_name` neuf rend `Identifier not declared` — une itération perdue à chercher une faute qui n'existe pas |
 | `./scripts/deploy-win.sh` | le déploiement Windows ; **résout `powershell.exe` par chemin absolu** si le PATH interop de WSL ne l'expose pas |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
 | `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |

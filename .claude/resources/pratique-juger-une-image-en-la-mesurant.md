@@ -89,3 +89,52 @@ La cause, une fois qu'on savait où regarder, se lisait en une ligne : la couleu
 peinte à pleine luminance dans la bande de transition du limbe, sans être modulée par le terme
 « côté éclairé » — appliqué, lui, aux deux autres termes. **Le terme qu'on ne soupçonne pas est
 celui qui n'a pas reçu la règle que les autres ont reçue.**
+
+---
+
+## L'échelle d'un motif se mesure aussi — et la mesure demande un témoin
+
+La luminance n'est pas la seule propriété qu'on croit lire à l'œil. **L'échelle d'un motif de
+texture** en est une autre, et l'œil s'y trompe autant.
+
+**Ce que ça a coûté (23/07/2026)** : sur la paroi du puits du Pale Leviathan, j'ai jugé que les
+anneaux étaient « deux fois trop fins » par rapport aux 80 cm demandés, et j'allais rejeter la
+livraison. L'autocorrélation du profil moyen a rendu **0,82 m**. Je comptais les ornements *à
+l'intérieur* de chaque anneau, pas les anneaux.
+
+```python
+h = np.asarray(Image.open(f).convert('L'), dtype=np.float32) / 255.
+prof = h.mean(axis=1); prof -= prof.mean()          # axis=1 : période verticale
+ac = np.correlate(prof, prof, 'full')[len(prof)-1:]; ac /= ac[0]
+i = 1
+while i < len(ac) and ac[i] > 0: i += 1             # sortir du pic central
+periode_px = i + int(np.argmax(ac[i:i+len(prof)//2]))
+```
+
+⚠️ **Elle rend la période DOMINANTE, pas toujours celle qu'on cherche.** Sur une texture organisée
+en grandes volutes, elle rend la volute (2,71 m) et pas le conduit qui la compose. Quand les deux
+échelles coexistent, la mesure répond à côté — le dire, plutôt que de la présenter comme le calibre.
+
+### La règle qui sauve : tout indicateur passe d'abord sur un témoin connu
+
+Pour contourner le problème ci-dessus, j'ai écrit une mesure par **longueur de plage** (seuil à la
+médiane, longueur médiane des plages claires). Passée sur les écailles, dont l'autocorrélation venait
+de dire 0,99 m : elle a rendu **1 cm**. Elle comptait le grain de surface *à l'intérieur* de chaque
+écaille.
+
+Sans le témoin, ce « 3 cm » sur les greebles partait dans un compte-rendu comme un fait mesuré, et
+justifiait un rejet. **Une mesure fausse est plus dangereuse qu'une absence de mesure** : elle porte
+l'autorité du chiffre.
+
+> Avant d'utiliser un indicateur maison, le passer sur une valeur **déjà connue par ailleurs**. S'il
+> ne la retrouve pas, il est faux — le jeter, pas l'interpréter.
+
+### Le cas particulier : une mesure que le correctif rend vide
+
+`tools/derive-maps.py --fix-tiling N` force le raccord d'une tuile par fondu miroir. Après le fondu,
+`--check-tiling` rend **0,0 %**, toujours, **par construction** — le correctif a réécrit les pixels
+que la mesure compare.
+
+Conclure « tuilage OK » sur ce zéro serait une tautologie. Le seul critère qui reste est la **planche
+contact 2×2 regardée** : la bande miroir se voit, ou pas. C'est pour ça que l'outil imprime
+« REGARDER le résultat » au lieu d'un verdict.

@@ -1,17 +1,20 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
-> Point de reprise au **2026-07-12** (fin de journée). Arc complet jouable (chasseur → bonus →
-> mini-boss → appontage → forteresse → boss final 4 phases → victoire), **80 tests verts**,
-> **0,78 ms de GPU par image** (4,7 % du budget 60 Hz).
+> Point de reprise au **2026-07-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
+> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **274 tests verts**.
+>
+> ⚠️ L'en-tête précédent annonçait un arc « appontage → forteresse » supprimé depuis, 80 tests, et
+> un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
+> reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
 ## Comment reprendre
 
-1. `cd ~/sandbox/macross`
-2. `./scripts/check.sh` → doit être **ALL GREEN** (80 tests).
-3. `./scripts/export-win.sh debug && ./scripts/deploy-win.sh` → jouer (Entrée).
+1. `cd ~/aegis-ascendant`
+2. `./scripts/check.sh` → doit être **ALL GREEN**.
+3. `./scripts/play.sh` → jouer le code courant (il exporte si le build est périmé ; skill `/jouer`).
 4. Lire **`.claude/resources/INDEX.md`** — le *ghost* : comment vérifier un rendu, mesurer une perf,
    réviser un asset. C'est là que vit le savoir de méthode.
-5. Lire `docs/architecture/` et les **ADR** (`ADR-0001` à `ADR-0008`), qui priment sur la spec.
+5. Lire `docs/architecture/` et les **ADR** (`ADR-0001` à `ADR-0018`), qui priment sur la spec.
 
 ---
 
