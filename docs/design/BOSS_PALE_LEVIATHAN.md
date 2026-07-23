@@ -457,6 +457,7 @@ Fichiers pressentis :
 | `scripts/bosses/leviathan_spike.gd` | une épine : PV, comportement une fois détachée (`RefCounted` tant qu'attachée) |
 | `scripts/bosses/maw_tunnel.gd` | la phase 4 : anneaux, compte à rebours, cœur |
 | `resources/data/leviathan_tuning.gd` | tous les réglages + `validate()` (§7.3) |
+| `scripts/fx/leviathan_detail.gd` | le jeu de textures **dédié** au boss, sur le modèle de `citadel_detail.gd` (ADR-0013) — voir §9.6 et l'annexe B |
 
 ### 8.2 Les trois primitives nouvelles
 
@@ -623,6 +624,33 @@ géométrie.
 ⚠️ Le cyan et le corail sont **réservés au gameplay** (DA §6) : aucun décor ni aucune coque ne les
 emploie, sous peine de voler leur lisibilité aux projectiles.
 
+### 9.6 Textures — le blocage à lever d'abord
+
+ADR-0013 a **levé tous les interdits de texture** : jeux dédiés à une unité, relief, couleur,
+décalques. Le Leviathan a donc droit au sien, comme la citadelle.
+
+> ⚠️ **Mais il ne peut en recevoir aucune aujourd'hui.** `ak.box_project_uv()` n'est appelé que par
+> `build_specter_9.py`, `build_aegis_citadel.py`, `build_citadel_turret.py` et
+> `build_citadel_beacon.py`. **Aucun script de boss ne le fait** — ni le Leviathan, ni le Harvester.
+> Sans UV ni tangentes, une texture n'a nulle part où s'appliquer. C'est mot pour mot le symptôme
+> qu'ADR-0013 relève pour la citadelle avant sa reforge.
+>
+> La reforge du §9.1 doit donc appeler `ak.box_project_uv(obj, TEXELS_PER_METER)` sur chaque
+> maillage, **dans le même geste que les `moving_part`**. Sinon toute l'annexe B est produite pour
+> rien.
+
+**Densité proposée : `TEXELS_PER_METER = 0.18`**, soit **une tuile pour 5,5 m**. Repères mesurés
+ailleurs dans le projet : la citadelle est à 0,12 (une tuile pour 8,33 m, une plaque de blindage lit
+alors ~1,4 m) et le Specter-9 à 4,0 (une tuile pour 25 cm). Sur une coque de 14 m, 0,18 donne des
+écailles d'environ 1,1 m — l'échelle que montre la planche.
+
+⚠️ **À confirmer au rendu, pas au calcul.** La citadelle a dû doubler la taille de ses greebles après
+mesure : à la densité du blindage, chaque élément faisait 28 cm, soit **deux pixels** une fois passé
+le post-process rétro à 960×540, et les ponts lisaient comme de la saleté
+(`scripts/fx/citadel_detail.gd:34-40`). C'est la leçon d'ADR-0011 : le détail fin se noie.
+
+Le jeu de textures est décrit prompt par prompt dans **l'annexe B**.
+
 ---
 
 ## 10. Ce qui reste à faire, et dans quel ordre
@@ -631,12 +659,17 @@ emploie, sous peine de voler leur lisibilité aux projectiles.
 |---|---|---|---|
 | 1 | **ADR** amendant le tableau de dimensions X/Z (ADR-0008:80-85, réaffirmé par ADR-0011:96) | concepteur | tout le reste |
 | 2 | **ADR** actant la refonte du boss final (ce document en devient la référence) | concepteur | — |
-| 3 | **BRIEF** — planche de concept annotée (les trois prompts de l'annexe) | asset-forge | la reforge de coque |
-| 4 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat de noms §9.3, dégagements §9.4 | asset-forge | l'implémentation |
-| 5 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | le polish |
-| 6 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | le module |
-| 7 | `LeviathanTuning` + `validate()` (§7.3) | concepteur | le module |
-| 8 | `leviathan_combat.gd` phase par phase, hooks `--leviathan-phase N` | concepteur | — |
+| 3 | **BRIEF** — planches de concept annotées (**annexe A**, 3 prompts) | asset-forge | la reforge de coque |
+| 4 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat §9.3, dégagements §9.4, **et `box_project_uv`** (§9.6) | asset-forge | l'implémentation **et** les textures |
+| 5 | **BRIEF** — jeu de textures dédié (**annexe B**, 4 prompts) + `scripts/fx/leviathan_detail.gd` | asset-forge puis concepteur | le rendu final |
+| 6 | **BRIEF** — décor et VFX de l'arène (**annexe C**, 3 prompts) | asset-forge puis concepteur | le rendu final |
+| 7 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | le polish |
+| 8 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | le module |
+| 9 | `LeviathanTuning` + `validate()` (§7.3) | concepteur | le module |
+| 10 | `leviathan_combat.gd` phase par phase, hooks `--leviathan-phase N` | concepteur | — |
+
+⚠️ **L'ordre 4 avant 5-6 n'est pas négociable** : sans les UV posées par la reforge, aucune des
+textures de l'annexe B n'a de surface où s'appliquer (§9.6).
 
 **Écrivain unique** : les briefs 3-4-5 et les travaux 6-7-8 ne se chevauchent pas dans les mêmes
 fichiers. La forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
@@ -644,10 +677,49 @@ fichiers. La forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
 
 ---
 
-# ANNEXE — prompts de génération d'images
+# ANNEXES — prompts de génération d'images
 
-Trois planches à générer **hors du dépôt**, chez l'opérateur. Chaque bloc de prompt se colle tel
-quel : il ne suppose aucun contexte.
+Tout se génère **hors du dépôt**, chez l'opérateur. Chaque bloc de prompt se colle tel quel : il ne
+suppose aucun contexte.
+
+| Annexe | Ce que c'est | Ce que ça sert | Où ça finit |
+|---|---|---|---|
+| **A** — 3 planches | documents de travail **annotés** | concevoir et modeler | `assets/reference/concepts/` (jamais chargé) |
+| **B** — 4 textures | hauteurs et masques N&B | le rendu de la coque en jeu | `assets/source/textures/leviathan/` → `assets/imported/textures/leviathan/` |
+| **C** — 3 décors/VFX | images peintes détourées | l'arène du combat final | `assets/source/backgrounds|vfx/` → `assets/imported/…` |
+
+### Ce qu'un générateur ne sait pas faire — et qu'on ne lui demande donc jamais
+
+Ces trois pièges ont **déjà été payés** par le projet ; ils sont inscrits dans `/asset-image` et dans
+l'en-tête de `tools/derive-maps.py`.
+
+| Ce qu'on serait tenté de demander | Ce qui arrive | Ce qu'on demande à la place |
+|---|---|---|
+| « une normal map » | une image violette **qui y ressemble**, aux gradients faux — et qui a l'air correcte | une **hauteur en niveaux de gris** (clair = saillant). `tools/derive-maps.py` en dérive normale, rugosité, AO et carte de multiplication |
+| « fond transparent, PNG alpha » | un **damier peint** dans une image RGB opaque | un **fond noir pur** (objet lumineux) ou **uni très clair** (objet opaque), l'alpha se reconstruit ensuite |
+| « seamless, sans couture » | souvent une couture quand même, invisible sur l'image seule | on demande le seamless **et on le mesure** : `derive-maps.py --check-tiling` |
+
+Corollaire : **une texture PBR se génère en une seule carte**, pas en quatre. Demander quatre cartes
+« cohérentes entre elles » donne quatre images qui ne le sont pas.
+
+Deux règles de plus, propres à ce boss :
+
+- **Un émissif ne reçoit pas la lumière.** Les craquelures magenta du noyau ne sont donc **pas** un
+  relief : c'est un **masque**. Lui demander une hauteur ne produirait rien de visible — c'est
+  exactement ce qui a fait lire le noyau de la citadelle comme « une goutte blanche uniforme »
+  (ADR-0013).
+- **Le détail fin se noie** dans le post-process rétro (960×540 + scanlines). Chaque prompt dit donc
+  l'**échelle réelle** du motif, et on vise gros plutôt que fin.
+
+> ⚠️ **`tools/bg-key-alpha.py` ne tourne pas sur ce poste** : il importe `scipy`, qui n'est pas
+> installé (`derive-maps.py` a d'ailleurs été écrit *exprès* sans lui, cf. son en-tête). Tout
+> livrable de l'annexe C qui demande un détourage alpha bute dessus. À régler avant, au choix :
+> installer `scipy`, ou réécrire la clé de luminance sans lui. Le noter au brief plutôt que de le
+> découvrir au retour des images.
+
+---
+
+## ANNEXE A — planches de conception
 
 ### ⚠️ Les légendes — lire avant de coller
 
@@ -669,7 +741,7 @@ Ce que ça implique :
 
 ---
 
-### 1/3 — `pale_leviathan_phases_sheet`
+### 1/10 — `pale_leviathan_phases_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -735,7 +807,7 @@ PROVENANCE  : pale_leviathan_phases_sheet,assets/reference/concepts/pale_leviath
 
 ---
 
-### 2/3 — `pale_leviathan_core_states_sheet`
+### 2/10 — `pale_leviathan_core_states_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -795,7 +867,7 @@ PROVENANCE  : pale_leviathan_core_states_sheet,assets/reference/concepts/pale_le
 
 ---
 
-### 3/3 — `pale_leviathan_parts_sheet`
+### 3/10 — `pale_leviathan_parts_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -853,10 +925,391 @@ PROVENANCE  : pale_leviathan_parts_sheet,assets/reference/concepts/pale_leviatha
 
 ---
 
-## Au retour des planches
+---
 
-**Les regarder** (ADR-0006 : un asset non rendu et non regardé n'est pas validé), puis :
+## ANNEXE B — jeu de textures dédié au Leviathan
 
-1. confronter la planche 3 au contrat de noms du §9.3 — c'est elle qui va piloter la reforge Blender ;
-2. ajouter les trois lignes de provenance dans `assets/licenses/ASSET_PROVENANCE.csv` ;
-3. ouvrir le brief de reforge de coque (§10, ligne 4).
+Consommé par `scripts/fx/leviathan_detail.gd`, sur le modèle exact de `citadel_detail.gd`.
+**Prérequis absolu** : la reforge de coque doit avoir appelé `ak.box_project_uv()` (§9.6).
+
+| Texture | Ce qu'elle habille | Nature |
+|---|---|---|
+| `leviathan_scales` | le corps, la coquille, les 4 plaques d'armure | hauteur N&B tuilable |
+| `leviathan_greebles` | les interstices, les segments d'épines, la lèvre de la gueule | hauteur N&B tuilable |
+| `leviathan_cracks` | le réseau lumineux magenta du noyau | **masque**, pas un relief |
+| `leviathan_damage` | l'endommagement révélé par `health_ratio()` | **masque** |
+
+La dernière est celle qui manque au mini-boss : `HarvesterLimb.health_ratio()` a été écrit
+« pour un retour visuel d'endommagement (émissifs, fissures) » (`harvester_limb.gd:158`) et n'a
+jamais rien eu à afficher. Le Leviathan lui donne enfin sa carte — et le Harvester pourra la
+réutiliser.
+
+---
+
+### 4/10 — `leviathan_scales_height`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable en niveaux de gris représentant un blindage biomécanique fait
+d'écailles blindées qui se chevauchent, vue orthogonale de dessus, éclairage neutre
+et parfaitement plat, aucune ombre portée, aucune perspective, aucun vignettage,
+aucun assombrissement des bords.
+
+C'est une carte de HAUTEUR : le blanc est saillant, le noir est creux. Les écailles
+sont claires et bombées, les interstices entre elles sont sombres et étroits.
+
+Chaque écaille mesure environ 1,1 mètre de large dans le monde réel, et la tuile
+entière couvre environ 5,5 mètres : on voit donc à peu près cinq écailles en largeur
+et cinq en hauteur. Les écailles se recouvrent partiellement comme des tuiles de
+toit ou des plaques de carapace, avec de légères variations de taille et
+d'orientation d'une écaille à l'autre — jamais une grille régulière. Quelques
+écailles portent une arête médiane ou une rainure fine.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : couleur, teinte, perspective, ombre portée, vignettage, bords
+assombris, cadre, objet isolé au centre, texte, lettres, chiffres, logo, filigrane,
+signature, nom de marque ou d'artiste, rivets photoréalistes, rouille, surfaces
+lisses et propres de vaisseau militaire humain, grille régulière trop ordonnée.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, niveaux de gris
+DÉPOSER     : assets/source/textures/leviathan/leviathan_scales_height.png
+ENSUITE     : # 1) mesurer la couture AVANT d'intégrer
+              python3 tools/derive-maps.py \
+                assets/source/textures/leviathan/leviathan_scales_height.png \
+                --out /tmp --name probe --check-tiling
+              # 2) si OK, dériver les quatre cartes
+              python3 tools/derive-maps.py \
+                assets/source/textures/leviathan/leviathan_scales_height.png \
+                --out assets/imported/textures/leviathan --name leviathan_scales \
+                --mul --preview /tmp/leviathan_scales.png
+VÉRIFIER    : la ligne « tuilage » dit OK ; ouvrir la preview — le quart haut-gauche
+              montre 2x2 tuiles, la couture s'y voit. Puis EN JEU : le rendu studio
+              flatte, le post-process 960x540 écrase le détail fin (ADR-0011)
+PROVENANCE  : leviathan_scales_height_src,assets/source/textures/leviathan/leviathan_scales_height.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Carte de hauteur N&B repetable — ecailles blindees du boss final (~1,1 m en jeu)"
+              + une ligne par dérivée versionnée (_nrm, _rough, _ao, _mul), avec
+              source_tool = tools/derive-maps.py — cf. lignes 132-135 du CSV
+```
+
+---
+
+### 5/10 — `leviathan_greebles_height`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable en niveaux de gris représentant un encombrement mécanique
+organique dense : faisceaux de conduits souples, vertèbres, câbles tressés, petits
+blocs machinés et nervures irrégulières entremêlés, vue orthogonale de dessus,
+éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective,
+aucun vignettage.
+
+C'est une carte de HAUTEUR : le blanc est saillant, le noir est creux. Les conduits
+et les vertèbres sont clairs, les cavités entre eux sont franchement sombres et
+profondes.
+
+Le motif est grossier, pas fin : chaque conduit fait environ 25 centimètres de
+diamètre et la tuile entière couvre environ 5,5 mètres. On doit reconnaître des
+pièces, pas un moucheté. La composition est irrégulière et organique — des
+faisceaux qui serpentent, jamais un damier ni un alignement.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : couleur, teinte, perspective, ombre portée, vignettage, bords
+assombris, cadre, objet isolé au centre, texte, lettres, chiffres, logo, filigrane,
+signature, nom de marque ou d'artiste, motif trop fin et régulier, aspect de circuit
+imprimé, tuyauterie industrielle humaine bien rangée.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, niveaux de gris
+DÉPOSER     : assets/source/textures/leviathan/leviathan_greebles_height.png
+ENSUITE     : mêmes deux commandes que 4/10, avec --name leviathan_greebles
+VÉRIFIER    : ⚠️ le tuilage EN JEU à deux densités. La citadelle a dû tuiler ses
+              greebles DEUX FOIS plus gros que son blindage : à densité égale chaque
+              élément faisait 28 cm, soit deux pixels après le post-process, et les
+              ponts lisaient comme de la saleté (citadel_detail.gd:34-40). Prévoir le
+              même TILING_GREEBLE = 0.5 côté leviathan_detail.gd
+PROVENANCE  : leviathan_greebles_height_src,assets/source/textures/leviathan/leviathan_greebles_height.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Carte de hauteur N&B repetable — encombrement mecanique organique du boss final (conduits ~25 cm)"
+              + une ligne par dérivée versionnée
+```
+
+---
+
+### 6/10 — `leviathan_cracks_mask`
+
+⚠️ **Un masque, pas une hauteur.** Les craquelures sont un **émissif**, et un émissif ne reçoit pas
+la lumière : lui dériver un relief ne produirait rien de visible. C'est l'erreur qui a fait lire le
+noyau de la citadelle comme une goutte blanche uniforme (ADR-0013).
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable en noir et blanc pur représentant un réseau de craquelures
+organiques ramifiées, comme une croûte fendue ou un delta de rivière, vue
+orthogonale de dessus, éclairage neutre et parfaitement plat, aucune ombre portée,
+aucune perspective, aucun vignettage.
+
+C'est un MASQUE, pas une texture d'aspect : les craquelures sont d'un blanc franc et
+uniforme, tout le reste est d'un noir franc et uniforme. Aucun dégradé sauf un très
+léger adoucissement d'un ou deux pixels au bord des traits.
+
+Les craquelures forment un réseau irrégulier de veines qui se divisent en branches de
+plus en plus fines. Les veines principales font environ 8 centimètres de large dans le
+monde réel ; la tuile entière couvre environ 2 mètres. Les cellules entre les veines
+sont de tailles très variées, arrondies et irrégulières, jamais hexagonales ni
+régulières.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : couleur, gris intermédiaires étendus, dégradés doux, lueur,
+halo, flou, perspective, ombre portée, vignettage, texte, lettres, chiffres, logo,
+filigrane, signature, nom de marque ou d'artiste, motif hexagonal régulier, aspect
+de vitrail ou de mosaïque, éclats de verre brisé rectilignes.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, noir et blanc
+DÉPOSER     : assets/source/textures/leviathan/leviathan_cracks_mask.png
+ENSUITE     : python3 tools/derive-maps.py \
+                assets/source/textures/leviathan/leviathan_cracks_mask.png \
+                --out assets/imported/textures/leviathan --name leviathan_cracks --mask
+              (--mask ne dérive NI normale NI AO : il ne sort que le masque recadré)
+VÉRIFIER    : le masque doit être franc — l'ouvrir et vérifier que l'histogramme est
+              bien à deux pics. Un masque « gris » donne un émissif laiteux
+PROVENANCE  : leviathan_cracks_mask_src,assets/source/textures/leviathan/leviathan_cracks_mask.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Masque N&B repetable — reseau de craquelures emissives du noyau (veines ~8 cm)"
+              + une ligne pour leviathan_cracks_mask.png dans imported/
+```
+
+---
+
+### 7/10 — `leviathan_damage_mask`
+
+Révélé progressivement en fonction de `health_ratio()` d'une pièce : à pleine vie le masque est
+invisible, à zéro il est complet. C'est ce qui donne enfin un usage au retour d'endommagement prévu
+par `harvester_limb.gd:158`.
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable en niveaux de gris représentant des dégâts de combat progressifs
+sur une carapace : fissures, éclats de blindage arrachés, brûlures et traînées de
+suie, vue orthogonale de dessus, éclairage neutre et parfaitement plat, aucune ombre
+portée, aucune perspective, aucun vignettage.
+
+C'est un MASQUE PROGRESSIF : la valeur de gris code l'ORDRE d'apparition des dégâts.
+Le blanc marque les blessures les plus graves et les plus profondes, les gris moyens
+les dégâts intermédiaires, le noir les zones qui restent intactes. Les dégâts sont
+donc organisés en amas de gravité décroissante : quelques foyers très clairs, des
+auréoles de gris autour, et de larges plages noires.
+
+Les impacts principaux font environ 60 centimètres dans le monde réel, et la tuile
+entière couvre environ 5,5 mètres. Il y a trois ou quatre foyers majeurs par tuile,
+pas davantage : ce sont de vraies blessures, pas du grain.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : couleur, rouille orange, perspective, ombre portée, vignettage,
+bords assombris, cadre, texte, lettres, chiffres, logo, filigrane, signature, nom de
+marque ou d'artiste, impacts de balles régulièrement espacés, grain uniforme sur
+toute la surface, aspect de bruit ou de texture de papier.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, niveaux de gris
+DÉPOSER     : assets/source/textures/leviathan/leviathan_damage_mask.png
+ENSUITE     : python3 tools/derive-maps.py \
+                assets/source/textures/leviathan/leviathan_damage_mask.png \
+                --out assets/imported/textures/leviathan --name leviathan_damage --mask
+VÉRIFIER    : seuiller le masque à 0,25 / 0,50 / 0,75 dans un visualiseur et regarder
+              les trois états : ils doivent raconter une dégradation croissante
+              crédible, pas trois motifs sans rapport
+PROVENANCE  : leviathan_damage_mask_src,assets/source/textures/leviathan/leviathan_damage_mask.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Masque N&B progressif — endommagement des pieces du boss, revele par health_ratio()"
+              + une ligne pour leviathan_damage_mask.png dans imported/
+```
+
+---
+
+## ANNEXE C — décor et VFX de l'arène
+
+Le fond du jeu est **procédural** (ADR-0006) : on ne repeint pas un panorama. Mais BRIEF-0028 a
+établi le complément légitime — des **landmarks peints en Sprite3D billboard**, posés derrière le
+plan de jeu, devant la brume procédurale. C'est ce registre-là qu'on emploie ici, plus deux textures
+pour la gueule.
+
+⚠️ Rappel du blocage : `tools/bg-key-alpha.py` ne tourne pas (scipy manquant). Les deux images à
+fond noir de cette annexe en dépendent.
+
+**Les débris de la phase 2 ne sont pas dans cette annexe** : ce sont des morceaux de coque, et le
+`.glb` du boss en produira naturellement une fois les plaques modélisées. Réutiliser les maillages
+plutôt que de générer des sprites.
+
+---
+
+### 8/10 — `maw_vortex_color`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture carrée représentant un tourbillon vu exactement dans son axe, centré, sur
+fond NOIR PUR. Création originale pour un jeu vidéo de science-fiction.
+
+Un entonnoir de matière énergétique qui s'enfonce vers un point de fuite au centre
+exact de l'image : des spirales de plus en plus serrées à mesure qu'elles approchent
+du centre, où elles se perdent dans une obscurité profonde. La lecture doit être
+celle d'une PROFONDEUR dans laquelle on plonge, pas d'un disque plat.
+
+Couleurs : violet très sombre pour la masse de l'entonnoir, magenta lumineux pour
+les filaments et les arêtes des spirales, quelques traînées ivoire froid très fines.
+Le centre est presque noir, la périphérie est la plus lumineuse. Aucun bleu cyan,
+aucun rouge corail, aucun orange.
+
+L'entonnoir occupe environ 85 pour cent de la largeur de l'image ; les 15 pour cent
+restants sont du noir pur absolu, jusqu'aux bords. L'ouverture représente 6 mètres de
+diamètre dans le monde réel.
+
+Éviter absolument : damier de transparence, fond gris ou bleuté, halo qui déborde
+jusqu'aux bords, étoiles, planète, nébuleuse en arrière-plan, texte, lettres,
+chiffres, logo, filigrane, signature, nom de marque ou d'artiste, aspect de galaxie
+spirale vue de loin, aspect de coquillage, symétrie parfaite mécanique.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 1024 x 1024, couleur, fond noir pur
+DÉPOSER     : assets/source/vfx/maw/maw_vortex_color.png
+ENSUITE     : alpha par clé de luminance (le noir devient transparent) → 
+              assets/imported/vfx/maw/maw_vortex.png
+              ⚠️ tools/bg-key-alpha.py est cassé sur ce poste (scipy absent) :
+              régler ça d'abord (§ préambule des annexes)
+              Le shader de la gueule fait TOURNER cette carte en coordonnées polaires :
+              elle est donc générée immobile, l'animation est du code
+VÉRIFIER    : en jeu, à l'échelle réelle. Le test est unique et non négociable — on
+              doit avoir envie d'y entrer (c'est le sujet de la phase 4). Un disque
+              noir est un échec, même joli
+PROVENANCE  : maw_vortex_color_src,assets/source/vfx/maw/maw_vortex_color.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Carte polaire couleur de l'entonnoir gravitique ; tournee par shader"
+```
+
+---
+
+### 9/10 — `maw_tunnel_wall_height`
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable en niveaux de gris représentant la paroi intérieure d'un conduit
+biomécanique : anneaux de vertèbres blindées, nervures longitudinales, sphincters de
+matière organique et petites bouches d'où sortent des filaments, vue orthogonale de
+dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune
+perspective, aucun vignettage.
+
+C'est une carte de HAUTEUR : le blanc est saillant, le noir est creux. Les anneaux de
+vertèbres sont clairs et fortement bombés, les sillons entre eux sont profondément
+sombres — le relief doit être franc, bien plus marqué que sur un blindage extérieur.
+
+Le motif est organisé en BANDES HORIZONTALES : les anneaux se succèdent
+perpendiculairement à l'axe du conduit. Chaque anneau fait environ 80 centimètres de
+large dans le monde réel, et la tuile entière couvre environ 5 mètres, soit six
+anneaux environ. Les anneaux sont irréguliers en épaisseur, jamais identiques.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : couleur, perspective, ombre portée, vignettage, bords assombris,
+cadre, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou
+d'artiste, aspect de tuyau industriel humain, anneaux parfaitement identiques et
+régulièrement espacés, aspect anatomique explicite ou organique répugnant.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 2048, niveaux de gris
+DÉPOSER     : assets/source/textures/leviathan/maw_tunnel_wall_height.png
+ENSUITE     : mêmes deux commandes que 4/10, avec --name maw_tunnel_wall
+VÉRIFIER    : le tuilage sur l'axe VERTICAL surtout — c'est celui que le joueur
+              parcourt en descendant le puits, et une couture y lit comme un anneau
+              de plus qui n'existe pas
+PROVENANCE  : maw_tunnel_wall_height_src,assets/source/textures/leviathan/maw_tunnel_wall_height.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Carte de hauteur N&B repetable — paroi interieure du puits de la phase 4 (anneaux ~80 cm)"
+              + une ligne par dérivée versionnée
+```
+
+---
+
+### 10/10 — `nebula_leviathan_arena`
+
+Le combat final ne doit pas se jouer sur le même ciel que la première vague. Ce landmark rejoint
+`planet_hero`, `nebula_a`, `nebula_b` et `galaxy_distant` déjà livrés par BRIEF-0028, dans le même
+registre technique : **Sprite3D billboard**, à Y≈-3, derrière les vaisseaux et devant la brume.
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Amas de nébuleuse peint, isolé sur fond NOIR PUR, pour un jeu vidéo de science-fiction.
+Création originale.
+
+Une masse de gaz stellaire dense et menaçante, aux volutes lourdes et tourmentées, plus
+compacte et plus sombre qu'une nébuleuse ordinaire — elle doit évoquer un orage qui
+couve plutôt qu'un voile diffus. En son cœur, quelques foyers d'un magenta profond qui
+transparaissent à travers le gaz, comme si quelque chose brûlait à l'intérieur.
+
+Couleurs : violet très sombre et anthracite pour la masse, magenta profond pour les
+foyers internes, ivoire froid très désaturé pour quelques crêtes éclairées. Ensemble
+sombre et froid, faible saturation générale. Aucun bleu cyan, aucun rouge corail,
+aucun orange.
+
+L'amas occupe environ 80 pour cent de l'image et ses bords s'effilochent progressivement
+vers le noir pur, sans halo net ni contour dur. Le reste est du noir pur absolu.
+Lumière clé venant du haut à gauche.
+
+L'objet est très éloigné et sert de toile de fond : composition large et calme, aucun
+détail fin qui accrocherait l'œil, aucun élément qui pourrait passer pour un vaisseau
+ou un projectile.
+
+Éviter absolument : damier de transparence, fond gris ou bleuté, cadre, vignettage,
+étoiles brillantes au premier plan, planète, vaisseau, texte, lettres, chiffres, logo,
+filigrane, signature, nom de marque ou d'artiste, couleurs saturées et vives, contours
+nets, aspect de peinture à l'huile texturée.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 2048 x 1152, couleur, fond noir pur
+DÉPOSER     : assets/source/backgrounds/raster/nebula_leviathan_arena.png
+ENSUITE     : alpha par clé de luminance → assets/imported/backgrounds/nebula_leviathan_arena.png
+              ⚠️ tools/bg-key-alpha.py est cassé (scipy absent) — cf. préambule
+              Puis l'ajouter aux landmarks de scenes/vfx/space_backdrop.tscn, activé
+              seulement à la phase FINAL_BOSS
+VÉRIFIER    : ⚠️ EN JEU et pendant le combat, pas en preview. Le fond ne doit jamais
+              se battre avec les projectiles : le couloir de combat central reste
+              lisible, c'est la règle de DA §6 et le défaut exact qui a fait rejeter
+              les six couches de parallaxe d'ADR-0006
+PROVENANCE  : nebula_leviathan_arena_src,assets/source/backgrounds/raster/nebula_leviathan_arena.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Landmark peint de l'arene du boss final ; billboard derriere le plan de jeu (registre BRIEF-0028)"
+              + une ligne pour la version détourée dans imported/
+```
+
+---
+
+## Au retour des images
+
+**Les regarder.** Un asset non rendu et non regardé n'est pas validé (ADR-0006) — et le rendu studio
+flatte : ce qui compte, c'est le post-process rétro à 960×540 avec ses scanlines.
+
+1. Confronter la planche 3 au contrat de noms du §9.3, pièce par pièce — c'est elle qui pilote la
+   reforge Blender.
+2. Vérifier que la reforge a bien appelé `box_project_uv()` **avant** d'intégrer quoi que ce soit de
+   l'annexe B (§9.6).
+3. Ajouter les lignes de provenance dans `assets/licenses/ASSET_PROVENANCE.csv` — une par source,
+   une par dérivée versionnée.
+4. Vérifier que les binaires passent bien par Git LFS : `git check-attr filter -- <chemin>`.
+5. Ouvrir les briefs du §10 dans l'ordre : coque (4), puis textures (5), puis décor (6).
