@@ -4,9 +4,10 @@
 
 [resource]
 script = ExtResource("1_tuning")
-limb_health = 90.0
+limb_health = 1000.0
 limb_hitbox_radius = 1.05
-limb_rebuild_time = 9.0
+limb_rebuild_time = 14.0
+reference_dps = 420.0
 limb_retract_time = 0.45
 limb_deploy_time = 0.8
 iris_open_deg = 72.0
@@ -17,9 +18,11 @@ claw_fire_interval = 0.85
 claw_sweep_deg = 32.0
 claw_head_converge_deg = 18.0
 scythe_windup_time = 1.0
-scythe_strike_time = 0.35
+scythe_strike_time = 0.4
 scythe_recover_time = 1.4
 scythe_reach_radius = 1.6
+scythe_lunge_speed = 26.0
+scythe_lunge_reach = 7.0
 scythe_damage = 34.0
 cannon_charge_time = 2.0
 cannon_beam_time = 1.5

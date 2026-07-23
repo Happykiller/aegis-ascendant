@@ -13,10 +13,21 @@ extends Resource
 ## appendices suivants. Enchaîner vite est donc récompensé sans qu'aucune règle ne le
 ## dise — et allonger `limb_rebuild_time` allonge la fenêtre autant que le répit.
 
+## Fenêtre de tir minimale exploitable, en secondes. En deçà, le joueur voit l'iris
+## s'ouvrir et se refermer sans avoir le temps d'y placer une salve : la mécanique
+## centrale du combat existerait sur le papier et nulle part à l'écran.
+const MIN_WINDOW := 2.0
+
 @export_group("Appendices")
 ## Points de structure d'un appendice. Ils ne comptent PAS dans la jauge du boss :
 ## la jauge montre le noyau, seul objet que le joueur fait réellement descendre.
-@export var limb_health: float = 90.0
+##
+## ⚠️ CE N'EST PAS UN NOMBRE LIBRE. Avec `T = limb_health / reference_dps`, la fenêtre
+## de tir vaut `limb_rebuild_time − 2T` : doubler cette valeur sans toucher au délai de
+## repousse divise la fenêtre, et au-delà d'un certain seuil il n'y en a plus du tout —
+## un boss invincible. `validate()` refuse ce cas, mais le calcul se fait ICI, à la main,
+## avant d'écrire le nombre.
+@export var limb_health: float = 1000.0
 ## Rayon de la zone de touche d'un appendice. Généreux (spec §5.3) : viser un bras
 ## qui bouge sous un rideau de balles ne doit pas demander de la précision au pixel.
 ## 1,05 et non 0,85 : la zone est centrée sur les ARTICULATIONS et un bras mesure
@@ -24,7 +35,15 @@ extends Resource
 ## mais intouchable.
 @export var limb_hitbox_radius: float = 1.05
 ## Délai de repousse, mesuré depuis la destruction.
-@export var limb_rebuild_time: float = 9.0
+@export var limb_rebuild_time: float = 14.0
+## Dégâts par seconde de référence du joueur — sa cadence soutenue à puissance 3
+## (4 traits par salve, ~10 salves/s, 10 dégâts le trait).
+##
+## Ce n'est pas un réglage de boss : c'est l'HYPOTHÈSE de dimensionnement, écrite noir
+## sur blanc pour que `validate()` puisse vérifier qu'une fenêtre de tir existe encore.
+## Sans elle, la règle « fenêtre = repousse − 2 × temps d'abattage » n'est vérifiable
+## nulle part et le premier réglage un peu ambitieux rend l'iris impossible à ouvrir.
+@export var reference_dps: float = 420.0
 ## Durée de l'animation de repli (destruction) et de redéploiement.
 @export var limb_retract_time: float = 0.45
 @export var limb_deploy_time: float = 0.8
@@ -48,10 +67,20 @@ extends Resource
 @export_group("Faux")
 ## Le réarme est le télégraphe : c'est lui qui rend l'estoc esquivable.
 @export var scythe_windup_time: float = 1.0
-@export var scythe_strike_time: float = 0.35
+@export var scythe_strike_time: float = 0.4
 @export var scythe_recover_time: float = 1.4
-## Rayon de la zone tranchante, autour de la lame, pendant la frappe.
+## Rayon de la zone tranchante, autour de la LAME, pendant la frappe.
 @export var scythe_reach_radius: float = 1.6
+## Vitesse de l'estoc : à quelle allure le CORPS se fend sur le point verrouillé.
+##
+## ⚠️ L'estoc déplace le boss entier, il n'agite pas un bras dans le vide. C'était le
+## défaut de la première version : la lame frappait un point abstrait à vingt unités de
+## là, et rien à l'écran ne reliait le geste au dégât.
+@export var scythe_lunge_speed: float = 26.0
+## Jusqu'où le corps consent à descendre pendant l'estoc, en unités du plan sous sa
+## position de croisière. Borne l'agressivité : sans elle le boss finit collé au joueur,
+## qui n'a plus d'espace pour esquiver la frappe suivante.
+@export var scythe_lunge_reach: float = 7.0
 ## Dégâts au contact. Lourds : c'est un corps-à-corps télégraphié d'une seconde.
 @export var scythe_damage: float = 34.0
 
@@ -89,6 +118,19 @@ func validate() -> PackedStringArray:
 	elif limb_retract_time + limb_deploy_time > limb_rebuild_time:
 		errors.append("limb_retract_time + limb_deploy_time must be <= limb_rebuild_time (got %.2f + %.2f > %.2f)"
 			% [limb_retract_time, limb_deploy_time, limb_rebuild_time])
+	if reference_dps <= 0.0:
+		errors.append("reference_dps must be > 0 — it is the sizing assumption, not an option")
+	elif limb_health > 0.0 and limb_rebuild_time > 0.0:
+		# LA RÈGLE QUI REND LE BOSS TUABLE. Le joueur abat un appendice en `T`, il lui en
+		# reste deux : le premier repousse `limb_rebuild_time` après sa chute, donc la
+		# fenêtre où les trois sont à terre ensemble vaut `repousse − 2T`. Nulle ou
+		# négative, l'iris ne s'ouvre JAMAIS et le combat est injouable — sans qu'aucune
+		# erreur ne le dise, puisque chaque valeur prise séparément est parfaitement sensée.
+		var kill_time := limb_health / reference_dps
+		var window := limb_rebuild_time - 2.0 * kill_time
+		if window < MIN_WINDOW:
+			errors.append("no usable window: rebuild %.1f s − 2 × %.1f s kill = %.1f s (need >= %.1f)"
+				% [limb_rebuild_time, kill_time, window, MIN_WINDOW])
 	if iris_open_deg <= 0.0 or iris_open_deg > 78.0:
 		# 78° est le plafond MÉCANIQUE mesuré par la forge (BRIEF-0039) : au-delà les
 		# pétales se mordent entre eux.
@@ -104,6 +146,12 @@ func validate() -> PackedStringArray:
 		errors.append("scythe_strike_time must be > 0")
 	if scythe_reach_radius <= 0.0:
 		errors.append("scythe_reach_radius must be > 0")
+	if scythe_lunge_speed <= 0.0:
+		# Une vitesse nulle, c'est un estoc qui n'atteint jamais son point : la faux
+		# redeviendrait le geste décoratif qu'elle était.
+		errors.append("scythe_lunge_speed must be > 0 — the body has to actually reach the lock")
+	if scythe_lunge_reach <= 0.0:
+		errors.append("scythe_lunge_reach must be > 0")
 	if scythe_damage <= 0.0:
 		errors.append("scythe_damage must be > 0")
 	if cannon_charge_time <= 0.0:

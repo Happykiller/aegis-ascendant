@@ -29,6 +29,11 @@ const KIND_SCYTHE := &"scythe"
 const KIND_CLAW := &"claw"
 const KIND_CANNON := &"cannon"
 
+## L'ordre d'affichage des jauges, et la seule source de l'indice porté par
+## `limb_gauge_changed`. Il vaut aussi l'ordre de construction : les deux se lisent au
+## même endroit, donc ils ne peuvent pas diverger en silence.
+const LIMB_ORDER: Array[StringName] = [KIND_SCYTHE, KIND_CLAW, KIND_CANNON]
+
 ## Phases d'une attaque télégraphiée. `WINDUP` est le télégraphe : c'est lui qui rend
 ## le coup esquivable, et le supprimer rendrait l'attaque imparable.
 enum Attack { READY, WINDUP, ACTIVE, RECOVER }
@@ -37,6 +42,13 @@ signal iris_opened
 signal iris_closed
 signal limb_destroyed(kind: StringName)
 signal limb_restored(kind: StringName)
+## Jauge d'un appendice : son indice dans `LIMB_ORDER`, sa part de structure et s'il
+## est encore en service.
+##
+## ÉVÉNEMENTIEL, PAS SONDÉ. Le HUD n'a besoin de la valeur qu'aux trois moments où elle
+## change — un impact, une chute, un retour en service. Le temps de repousse, lui, se lit
+## sur le modèle : l'appendice se redéploie à vue (cf. `FighterHud._build_limb_pips`).
+signal limb_gauge_changed(index: int, ratio: float, alive: bool)
 
 @export var tuning: HarvesterTuning
 ## Projectile de la griffe. Les deux autres appendices ne tirent pas de balle.
@@ -48,6 +60,10 @@ var _bullet_manager: BulletManager
 var _player: PlayerFighterController
 var _limbs: Array[HarvesterLimb] = []
 var _beam: Beam
+## Télégraphe de l'estoc : le MÊME objet que le faisceau du canon, en régime « ligne de
+## visée ». Deux instances et non deux classes — la faux et le canon annoncent tous deux
+## un point, et `Beam` porte déjà les deux régimes (`beam.gd:5-7`).
+var _scythe_trace: Beam
 
 ## Pétales de l'iris et leur axe de charnière, calculé une fois au montage.
 var _petals: Array[Node3D] = []
@@ -138,6 +154,7 @@ func _build_limbs() -> void:
 	_limbs.append(_make_limb(KIND_SCYTHE, SCYTHE_NODES))
 	_limbs.append(_make_limb(KIND_CLAW, CLAW_NODES))
 	_limbs.append(_make_limb(KIND_CANNON, CANNON_NODES))
+	assert(_limbs.size() == LIMB_ORDER.size(), "LIMB_ORDER doit couvrir tous les appendices")
 	# ⚠️ ORDRE D'ENREGISTREMENT CRITIQUE. `BulletManager._resolve_hits` parcourt les
 	# cibles dans l'ordre où elles ont été enregistrées et CONSOMME la balle sur la
 	# première qui la réclame. Les appendices doivent donc passer AVANT la cible de
@@ -195,6 +212,9 @@ func _build_beam() -> void:
 		return
 	_beam = Beam.make()
 	add_child(_beam)
+	_scythe_trace = Beam.make()
+	_scythe_trace.name = "ScytheTrace"
+	add_child(_scythe_trace)
 
 # --- Boucle -------------------------------------------------------------------
 
@@ -218,6 +238,7 @@ func tick(delta: float) -> void:
 		limb.tick(delta, tuning)
 		if not was_up and limb.is_up():
 			limb_restored.emit(limb.kind)
+			_emit_gauge(limb)
 		limb.target.position = _limb_plane_position(limb, origin)
 
 	_update_iris(delta)
@@ -319,9 +340,18 @@ func _run_claw(delta: float, origin: Vector2) -> void:
 
 # --- Faux : estoc telegraphie -------------------------------------------------
 
+## L'ESTOC DÉPLACE LE CORPS. La première version agitait la lame en haut de l'écran et
+## comparait la position du joueur à un point abstrait verrouillé une seconde plus tôt :
+## rien à l'écran ne reliait le geste au dégât, et l'attaque passait pour inexistante.
+## Le boss se fend maintenant sur le point verrouillé, et ce sont les allées et venues
+## de la LAME qui blessent.
 func _run_scythe(delta: float, origin: Vector2) -> void:
 	var limb := _limb(KIND_SCYTHE)
 	if limb == null or not limb.is_up():
+		# Bras à terre en pleine charge : on rend la main au boss, sinon il resterait
+		# figé sur sa destination pour toujours — un boss immobile et sans faux.
+		if _scythe_phase == Attack.ACTIVE:
+			_release_lunge()
 		_scythe_phase = Attack.READY
 		_scythe_elapsed = 0.0
 		return
@@ -331,28 +361,78 @@ func _run_scythe(delta: float, origin: Vector2) -> void:
 			# ⚠️ La cible est VERROUILLÉE au début du réarme. Suivre le joueur pendant
 			# la seconde de télégraphe ferait un coup imparable : le télégraphe ne
 			# vaut que s'il annonce un point fixe.
-			_scythe_lock = _player.plane_position if _player != null else origin + Vector2(0.0, -4.0)
+			_scythe_lock = _lunge_target(origin)
 			_enter_scythe(Attack.WINDUP)
 		Attack.WINDUP:
+			# Le télégraphe : une ligne fine et battante, du corps au point visé. C'est
+			# elle qui rend l'estoc esquivable — sans elle, une masse de dix mètres
+			# tombe sur le joueur sans préavis.
+			_trace_scythe(origin)
 			if _scythe_elapsed >= tuning.scythe_windup_time:
 				_enter_scythe(Attack.ACTIVE)
+				# ⚠️ La charge part DANS L'IMAGE de la bascule, pas à la suivante.
+				# Déclenchée depuis le corps de la branche `ACTIVE`, elle perdait une
+				# image — invisible à l'œil, mais elle rendait l'état « en train de
+				# charger » et « le corps bouge » désaccordés pendant une frame, ce
+				# qu'un test lit comme une contradiction et un joueur comme un à-coup.
+				_begin_lunge()
 		Attack.ACTIVE:
-			_strike_scythe()
+			_strike_scythe(origin)
 			if _scythe_elapsed >= tuning.scythe_strike_time:
+				_release_lunge()
 				_enter_scythe(Attack.RECOVER)
 		Attack.RECOVER:
 			if _scythe_elapsed >= tuning.scythe_recover_time:
 				_enter_scythe(Attack.READY)
 
+## Où le corps consent à se fendre : la position du joueur, mais jamais plus bas que
+## `scythe_lunge_reach` sous sa position de croisière. Sans ce plafond, le boss finit
+## collé au bord bas, sur le joueur, qui n'a plus d'espace pour esquiver la suivante.
+func _lunge_target(origin: Vector2) -> Vector2:
+	var goal := _player.plane_position if _player != null else origin + Vector2(0.0, -4.0)
+	goal.y = maxf(goal.y, origin.y - tuning.scythe_lunge_reach)
+	return goal
+
+func _begin_lunge() -> void:
+	if _scythe_trace != null:
+		_scythe_trace.extinguish()
+	if _boss != null:
+		_boss.drive_toward(_scythe_lock, tuning.scythe_lunge_speed)
+
+func _release_lunge() -> void:
+	if _boss != null:
+		_boss.release_drive()
+
+func _trace_scythe(origin: Vector2) -> void:
+	if _scythe_trace == null:
+		return
+	_scythe_trace.aim(origin, _scythe_lock, 0.12)
+	_scythe_trace.set_regime(0.5, 1.0)
+
 func _enter_scythe(phase: Attack) -> void:
 	_scythe_phase = phase
 	_scythe_elapsed = 0.0
 
-func _strike_scythe() -> void:
+## ⚠️ LES DÉGÂTS PARTENT DE LA LAME, pas du point verrouillé. Le verrou dit où le boss
+## VA ; ce qui tranche, c'est `Scythe_Blade` là où il se trouve réellement, roulis et
+## plongeon compris. Hors de l'arbre — donc en test, où le module tourne sans coque — on
+## retombe sur le corps du boss, qui est bien l'objet qui se déplace.
+func _strike_scythe(origin: Vector2) -> void:
 	if _player == null:
 		return
-	if _player.plane_position.distance_to(_scythe_lock) <= tuning.scythe_reach_radius:
+	var blade := origin
+	var limb := _limb(KIND_SCYTHE)
+	if limb != null and not limb.joints.is_empty():
+		var tip: Node3D = limb.joints[limb.joints.size() - 1]
+		if tip.is_inside_tree():
+			blade = GameplayPlane.to_plane(tip.global_position)
+	if _player.plane_position.distance_to(blade) <= tuning.scythe_reach_radius:
 		_player.take_contact_damage(tuning.scythe_damage)
+
+## Le corps est-il en train de se fendre ? Sert au test, et au HUD s'il veut un jour
+## annoncer la charge autrement que par la ligne de télégraphe.
+func is_lunging() -> bool:
+	return _scythe_phase == Attack.ACTIVE
 
 ## Part d'avancement du réarme, de 0 à 1. Sert la pose et, plus tard, le télégraphe
 ## visuel (traînée de lame de la planche).
@@ -481,8 +561,26 @@ func _on_limb_hit(damage: float, kind: StringName) -> void:
 	var limb := _limb(kind)
 	if limb == null:
 		return
-	if limb.apply_damage(damage):
+	var fell := limb.apply_damage(damage)
+	# La jauge d'abord : le HUD doit montrer la barre vidée AVANT que le niveau ne joue
+	# l'explosion sur `limb_destroyed`, sinon la barre se vide après le boum.
+	_emit_gauge(limb)
+	if fell:
 		limb_destroyed.emit(kind)
+
+## Pousse la jauge d'un appendice. Trois scalaires, aucune allocation — c'est appelé sur
+## chaque balle qui touche un bras, soit dix fois par seconde en salve soutenue.
+func _emit_gauge(limb: HarvesterLimb) -> void:
+	var index := LIMB_ORDER.find(limb.kind)
+	if index < 0:
+		return
+	limb_gauge_changed.emit(index, limb.health_ratio(), limb.is_up())
+
+## Publie les trois jauges d'un coup. Appelé au montage : sans lui, le bandeau
+## afficherait trois barres vides sur un boss intact jusqu'au premier impact.
+func publish_gauges() -> void:
+	for limb in _limbs:
+		_emit_gauge(limb)
 
 func _limb(kind: StringName) -> HarvesterLimb:
 	for limb in _limbs:
@@ -510,10 +608,16 @@ func _aim_from(origin: Vector2) -> Vector2:
 ## Libère les cibles enregistrées. Appelé à la mort du boss : une cible d'appendice
 ## laissée dans le gestionnaire continuerait d'absorber des balles sur un cadavre.
 func release() -> void:
+	# ⚠️ AVANT la sortie anticipée sur `_bullet_manager` : un boss tué en plein estoc
+	# garderait sinon la main sur son déplacement et sa ligne de télégraphe tendue par
+	# dessus l'explosion.
+	_release_lunge()
+	if _scythe_trace != null:
+		_scythe_trace.extinguish()
+	if _beam != null:
+		_beam.extinguish()
 	if _bullet_manager == null:
 		return
 	for limb in _limbs:
 		limb.target.enabled = false
 		_bullet_manager.unregister_target(limb.target)
-	if _beam != null:
-		_beam.extinguish()

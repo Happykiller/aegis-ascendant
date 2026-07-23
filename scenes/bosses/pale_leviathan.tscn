@@ -8,7 +8,7 @@
 script = ExtResource("1_boss")
 display_name = "The Pale Leviathan"
 hull_scene = ExtResource("2_hull")
-max_health = 950.0
+max_health = 20000.0
 hitbox_radius = 2.7
 phase_count = 4
 entry_plane_position = Vector2(0, 5.5)

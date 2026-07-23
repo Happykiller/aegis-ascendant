@@ -78,7 +78,12 @@ func test_boss_values_are_read_from_the_scene() -> void:
 	var leviathan := _named("The Pale Leviathan")
 	assert_true(leviathan != null, "the Leviathan is on the roster")
 	assert_true(leviathan.boss_scene != null, "the Leviathan entry points at its boss scene")
-	assert_eq(leviathan.hull_points(), 950.0, "hull points come from pale_leviathan.tscn")
+	# ⚠️ La VALEUR est un réglage d'équilibrage, elle bougera encore. Ce que ce test
+	# garde, c'est que la fiche lise la SCÈNE et non le défaut du script (600) : on
+	# vérifie donc les deux, sinon un jour où l'équilibrage retomberait par hasard sur
+	# le défaut, le test passerait au vert sur une lecture cassée.
+	assert_eq(leviathan.hull_points(), 20000.0, "hull points come from pale_leviathan.tscn")
+	assert_true(leviathan.hull_points() != 600.0, "and not from the script default")
 	assert_eq(leviathan.phase_count(), 4, "phase count comes from pale_leviathan.tscn")
 
 ## ⚠️ LE PIÈGE QUE CE TEST GARDE — un `.tscn` ne sérialise que les propriétés

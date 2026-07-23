@@ -276,3 +276,88 @@ func test_validate_refuses_an_animation_longer_than_the_rebuild() -> void:
 	tuning.limb_deploy_time = tuning.limb_rebuild_time
 	tuning.limb_retract_time = 1.0
 	assert_true(not tuning.validate().is_empty(), "retract + deploy must fit inside the rebuild")
+
+# --- L'estoc : le corps se fend --------------------------------------------------
+
+## LE DÉFAUT QUE CE TEST GARDE — la première version de la faux comparait la position
+## du joueur à un point ABSTRAIT verrouillé une seconde plus tôt, pendant que le corps
+## du boss restait en haut de l'écran. L'attaque « fonctionnait » au sens où elle
+## infligeait parfois des dégâts, et ne se voyait jamais : rien ne reliait le geste au
+## résultat. Ce qu'on vérifie ici, c'est donc que le CORPS bouge.
+##
+## Aucune capture n'irait là-bas : il faut atteindre le mini-boss, survivre au réarme,
+## et se trouver au bon endroit à l'image près.
+func _advance_to_lunge(combat: HarvesterCombat) -> void:
+	var step := 1.0 / 60.0
+	var guard := 0.0
+	while not combat.is_lunging() and guard < 20.0:
+		combat.tick(step)
+		guard += step
+	assert_true(combat.is_lunging(), "the scythe reaches its lunge")
+
+func test_the_scythe_drives_the_body_toward_the_player() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: HarvesterCombat = rig[1]
+	_advance_to_lunge(combat)
+	assert_true(boss.is_driven(), "the module has taken the wheel")
+	var before := boss.plane_position
+	# Le contrôleur ne bouge que dans SON pas de simulation, pas dans celui du module.
+	boss._physics_process(0.2)
+	assert_true(boss.plane_position.y < before.y,
+		"the body dives toward the player (%.2f -> %.2f)" % [before.y, boss.plane_position.y])
+	_free(rig)
+
+## Sans cette remise, le boss resterait accroché à sa destination pour toujours : un
+## boss immobile, collé au bord bas, qui ne remonte jamais.
+func test_the_body_is_handed_back_after_the_strike() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: HarvesterCombat = rig[1]
+	_advance_to_lunge(combat)
+	_advance(combat, combat.tuning.scythe_strike_time + 0.1)
+	assert_false(boss.is_driven(), "the trajectory has the wheel back")
+	_free(rig)
+
+## Un appendice abattu EN PLEIN ESTOC ne doit pas emporter le déplacement du boss avec
+## lui : c'est l'ordre exact où le joueur détruit la faux pendant qu'elle charge.
+func test_killing_the_scythe_mid_lunge_hands_the_body_back() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: HarvesterCombat = rig[1]
+	_advance_to_lunge(combat)
+	_kill_limb(combat, HarvesterCombat.KIND_SCYTHE)
+	combat.tick(1.0 / 60.0)
+	assert_false(boss.is_driven(), "a severed arm releases the body")
+	_free(rig)
+
+## La destination est bornée au plan de jeu : un verrou posé sur un joueur collé au
+## bord enverrait sinon le boss hors champ, sa zone de touche avec lui.
+func test_a_lunge_never_leaves_the_playfield() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	boss.drive_toward(Vector2(999.0, -999.0), 100.0)
+	for i in 120:
+		boss._physics_process(1.0 / 60.0)
+	assert_true(GameplayPlane.is_inside(boss.plane_position, 0.1),
+		"the boss stays on the plane (got %s)" % boss.plane_position)
+	_free(rig)
+
+# --- Fenêtre de tir : la règle qui rend le boss tuable ---------------------------
+
+## ⚠️ LE RÉGLAGE QUI REND LE COMBAT INJOUABLE SANS UN MOT. Chaque valeur prise
+## séparément est sensée : des appendices coriaces, une repousse rapide. Ensemble, elles
+## font que le premier bras revient avant que le troisième ne tombe — l'iris ne s'ouvre
+## jamais, et le boss est invincible.
+func test_validate_refuses_a_tuning_with_no_window() -> void:
+	var tuning := (load(TUNING_PATH) as HarvesterTuning).duplicate() as HarvesterTuning
+	tuning.limb_health = tuning.reference_dps * tuning.limb_rebuild_time
+	assert_true(not tuning.validate().is_empty(),
+		"a limb nobody can chain down in time is rejected")
+
+func test_the_shipped_tuning_leaves_a_usable_window() -> void:
+	var tuning := load(TUNING_PATH) as HarvesterTuning
+	var kill_time := tuning.limb_health / tuning.reference_dps
+	var window := tuning.limb_rebuild_time - 2.0 * kill_time
+	assert_true(window >= HarvesterTuning.MIN_WINDOW,
+		"shipped tuning: %.1f s kill, %.1f s window" % [kill_time, window])

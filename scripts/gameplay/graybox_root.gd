@@ -225,7 +225,7 @@ func _start_mini_boss() -> void:
 		# boss intact.
 		var combat := _boss.get_node_or_null("Combat") as HarvesterCombat
 		if combat != null:
-			_hud.set_boss_limbs(combat.limbs_up())
+			combat.publish_gauges()
 
 ## Raccorde le retour propre au Harvester, s'il porte son module de combat. Câblé
 ## AVANT `begin()` : c'est lui qui déclenche le montage du module.
@@ -233,8 +233,8 @@ func _bind_harvester(boss: BossController) -> void:
 	var combat := boss.get_node_or_null("Combat") as HarvesterCombat
 	if combat == null:
 		return
-	combat.limb_destroyed.connect(_on_harvester_limb_destroyed.bind(boss, combat))
-	combat.limb_restored.connect(_on_harvester_limb_restored.bind(combat))
+	combat.limb_destroyed.connect(_on_harvester_limb_destroyed.bind(boss))
+	combat.limb_gauge_changed.connect(_on_harvester_limb_gauge)
 	combat.iris_opened.connect(_on_harvester_iris_opened.bind(boss))
 	combat.iris_closed.connect(_on_harvester_iris_closed)
 
@@ -243,17 +243,16 @@ func _on_boss_deflected(world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.IMPACT, 0.0)
 	_sfx(&"shield_impact")
 
-func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController,
-		combat: HarvesterCombat) -> void:
+func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController) -> void:
 	# `_boom` porte déjà la secousse : la redemander ici la doublerait.
 	_boom(boss.global_position, VfxExplosion.Category.MEDIUM, 0.5)
 	_sfx(&"medium_explosion")
-	if _hud != null:
-		_hud.set_boss_limbs(combat.limbs_up())
 
-func _on_harvester_limb_restored(_kind: StringName, combat: HarvesterCombat) -> void:
+## Une jauge d'appendice a bougé. Le niveau ne fait que relayer : le HUD ne connaît pas
+## le Harvester, le module ne connaît pas le HUD.
+func _on_harvester_limb_gauge(index: int, ratio: float, alive: bool) -> void:
 	if _hud != null:
-		_hud.set_boss_limbs(combat.limbs_up())
+		_hud.set_boss_limb(index, ratio, alive)
 
 ## Le moment du combat : la carapace s'ouvre. Il doit s'entendre, se sentir et se
 ## lire — c'est la seule fenêtre où le joueur peut faire des dégâts.

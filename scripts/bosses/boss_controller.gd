@@ -41,6 +41,11 @@ enum Pattern { RADIAL, AIMED_SPREAD, FAN }
 ## partent en `deflected` au lieu d'être perdus en silence.
 var vulnerable: bool = true
 
+## Prise de main d'un module sur le DÉPLACEMENT (voir `drive_toward`).
+var _drive_active: bool = false
+var _drive_target: Vector2 = Vector2.ZERO
+var _drive_speed: float = 0.0
+
 var plane_position: Vector2 = Vector2(0.0, 10.0)
 var _bullet_manager: BulletManager
 var _player: PlayerFighterController
@@ -187,14 +192,20 @@ func _physics_process(delta: float) -> void:
 	# Move in an escalating shape (BossMovement) and bank the 3D hull into it.
 	_combat_age += delta
 	var previous := plane_position
-	var pattern := BossMovement.pattern_for_phase(_phase, phase_count)
-	var target := BossMovement.position_at(pattern, _combat_age, _base_position,
-		drift_amplitude, _AMP_Y, drift_frequency)
-	target.y = clampf(target.y, _MIN_Y, _MAX_Y)
-	# Chase the target smoothly, never snap to it: a phase change swaps the movement
-	# shape, and snapping would teleport the boss to the new shape's point for one
-	# frame (read as a blink) plus a velocity spike that snaps the bank hard.
-	plane_position = plane_position.lerp(target, minf(1.0, delta * 6.0))
+	if _drive_active:
+		# Prise de main : le module fournit la destination, on ne échantillonne plus la
+		# trajectoire. ⚠️ `_combat_age` continue de courir : au relâchement, la forme
+		# reprend là où elle en serait, et non au point où la charge a commencé.
+		plane_position = plane_position.move_toward(_drive_target, _drive_speed * delta)
+	else:
+		var pattern := BossMovement.pattern_for_phase(_phase, phase_count)
+		var target := BossMovement.position_at(pattern, _combat_age, _base_position,
+			drift_amplitude, _AMP_Y, drift_frequency)
+		target.y = clampf(target.y, _MIN_Y, _MAX_Y)
+		# Chase the target smoothly, never snap to it: a phase change swaps the movement
+		# shape, and snapping would teleport the boss to the new shape's point for one
+		# frame (read as a blink) plus a velocity spike that snaps the bank hard.
+		plane_position = plane_position.lerp(target, minf(1.0, delta * 6.0))
 	position = GameplayPlane.to_world(plane_position)
 	if _target != null:
 		_target.position = plane_position
@@ -206,6 +217,31 @@ func _physics_process(delta: float) -> void:
 	if _fire_timer <= 0.0:
 		_fire_timer = fire_interval * (1.0 - 0.12 * _phase)
 		_attack()
+
+## Prise de main temporaire sur le DÉPLACEMENT, pour une attaque qui déplace le corps
+## (l'estoc du Harvester, qui se fend sur le joueur). Même partage qu'`external_attacks`
+## pour l'armement : le contrôleur garde la transformation, le roulis et la zone de
+## touche ; le module ne fournit qu'une destination et une vitesse.
+##
+## ⚠️ La destination est BORNÉE au plan de jeu. Un module qui verrouillerait la position
+## d'un joueur collé au bord enverrait sinon le boss hors champ, où il resterait à
+## charger dans le vide — et sa zone de touche avec lui.
+##
+## Le roulis n'est PAS court-circuité : il se déduit de la vitesse réellement parcourue
+## (`_apply_bank`), donc la coque pique dans son plongeon sans une ligne de plus.
+func drive_toward(target: Vector2, speed: float) -> void:
+	_drive_active = true
+	_drive_target = GameplayPlane.clamp_to_bounds(target)
+	_drive_speed = maxf(speed, 0.0)
+
+## Rend le déplacement à la trajectoire. Aucun repositionnement ici : le `lerp`
+## d'approche du mode normal ramène le boss depuis là où la charge l'a laissé, ce qui
+## est exactement le comportement voulu — une remontée, pas une téléportation.
+func release_drive() -> void:
+	_drive_active = false
+
+func is_driven() -> bool:
+	return _drive_active
 
 ## Roll from lateral speed, pitch from vertical speed: the hull leans into turns and
 ## tips into dives, so a boss that used to slide flat now reads in three dimensions.

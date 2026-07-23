@@ -10,7 +10,7 @@
 script = ExtResource("1_boss")
 display_name = "Choir Harvester"
 hull_scene = ExtResource("2_hull")
-max_health = 420.0
+max_health = 12000.0
 hitbox_radius = 2.0
 phase_count = 1
 entry_plane_position = Vector2(0, 4)

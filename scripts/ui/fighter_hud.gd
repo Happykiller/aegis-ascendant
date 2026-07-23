@@ -15,11 +15,19 @@ const BAR_TRACK := Color("02131a")
 const BLOCK_EMPTY := Color("0a2a33")
 
 const BOSS_MAGENTA := Color("d93d9c")
-## Pastilles d'appendice du Choir Harvester. Trois, comme la planche.
+## Jauges d'appendice du Choir Harvester. Trois, comme la planche.
 const LIMB_PIPS := 3
-## Couleur d'une pastille éteinte : sombre mais pas noire, sinon elle disparaît du
-## panneau et l'on ne compte plus que ce qui reste, pas ce qui manque.
+## Couleur d'une jauge à terre : sombre mais pas noire, sinon elle disparaît du panneau
+## et l'on ne compte plus que ce qui reste, pas ce qui manque.
 const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
+## Noms des appendices, dans l'ordre de `HarvesterCombat.LIMB_ORDER`.
+##
+## ⚠️ Écrits ici et non lus du module : le HUD ne connaît AUCUN boss en particulier
+## (`show_boss` sert aussi le Pale Leviathan). Le couplage se fait par l'indice, que le
+## niveau relaie — pas par un `preload` du combat dans l'interface.
+const LIMB_LABELS: PackedStringArray = ["FAUX", "GRIFFE", "CANON"]
+const LIMB_GAUGE_WIDTH := 92.0
+const LIMB_GAUGE_HEIGHT := 7.0
 
 const MARGIN := 28.0
 const SHIELD_BLOCKS := 10
@@ -53,6 +61,8 @@ var _boss_name: Label
 var _boss_fill: ColorRect
 var _boss_full_width: float = 0.0
 var _limb_pips: Array[ColorRect] = []
+var _limb_tracks: Array[ColorRect] = []
+var _limb_labels: Array[Label] = []
 var _banner: Label
 
 func _ready() -> void:
@@ -193,7 +203,8 @@ func _build_lives_panel() -> void:
 	_lives_count = _label(panel, "x3", _VALUE_FONT, 26, ACCENT, Vector2(ix + MAX_LIVES_ICONS * 24.0 + 6, 22), 80)
 
 func _build_boss_panel() -> void:
-	_boss_panel = _panel(Vector2(0.5, 0), Vector2(-400, MARGIN), Vector2(800, 58),
+	# 76 px et non 58 : les trois jauges d'appendice vivent sous la barre du noyau.
+	_boss_panel = _panel(Vector2(0.5, 0), Vector2(-400, MARGIN), Vector2(800, 76),
 		Color("d93d9c"))
 	_boss_panel.visible = false
 	_boss_name = _label(_boss_panel, "BOSS", _LABEL_FONT, 18, Color("f16bc0"), Vector2(0, 8), 800,
@@ -213,25 +224,44 @@ func _build_boss_panel() -> void:
 	_boss_full_width = 772.0
 	_build_limb_pips()
 
-## Trois pastilles d'appendice, à droite du nom du boss.
+## Trois jauges d'appendice nommées, sous la barre du boss.
 ##
-## POURQUOI — le Choir Harvester n'est vulnérable QUE lorsque ses trois appendices
-## sont à terre en même temps. Sans compteur, le joueur ne peut pas savoir s'il lui
-## en reste un ou deux à abattre, et la mécanique du combat devient une devinette.
-## Le temps de repousse, lui, se lit sur le modèle : l'appendice se redéploie à vue.
+## POURQUOI — le Choir Harvester n'est vulnérable QUE lorsque ses trois appendices sont
+## à terre EN MÊME TEMPS. Trois pastilles allumée/éteinte disaient combien il en restait,
+## jamais combien il restait à chacun : le joueur ne pouvait pas savoir s'il valait mieux
+## finir le bras entamé ou changer de cible, alors que c'est exactement l'arbitrage du
+## combat (la fenêtre vaut le délai de repousse moins le temps d'enchaîner les deux
+## autres). Le temps de repousse, lui, se lit toujours sur le modèle : l'appendice se
+## redéploie à vue, et n'a donc pas besoin de jauge.
 ##
-## ⚠️ Pas un caractère : Press Start 2P n'a ni `●` ni `■` (ADR-0012). Ce sont des
-## `ColorRect`, comme la pastille COMMS de l'accueil.
+## ⚠️ Pas un caractère de remplissage : Press Start 2P n'a ni `●` ni `■` (ADR-0012).
+## Ce sont des `ColorRect`, comme la pastille COMMS de l'accueil.
 func _build_limb_pips() -> void:
 	_limb_pips.clear()
+	_limb_tracks.clear()
+	_limb_labels.clear()
+	var span := LIMB_GAUGE_WIDTH + 60.0
+	var left := 400.0 - span * LIMB_PIPS * 0.5
 	for i in LIMB_PIPS:
-		var pip := ColorRect.new()
-		pip.color = BOSS_MAGENTA
-		pip.position = Vector2(690.0 + float(i) * 26.0, 10.0)
-		pip.size = Vector2(16, 16)
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_boss_panel.add_child(pip)
-		_limb_pips.append(pip)
+		var x := left + float(i) * span
+		# Le libellé est centré verticalement sur SA hauteur (`size + 8`), pas sur la
+		# barre : on le remonte de la moitié de l'écart pour que les deux s'alignent.
+		_limb_labels.append(_label(_boss_panel, LIMB_LABELS[i], _LABEL_FONT, 9,
+			Color("f16bc0"), Vector2(x, 49), 56))
+		var track := ColorRect.new()
+		track.color = BAR_TRACK
+		track.position = Vector2(x + 58.0, 50.0)
+		track.size = Vector2(LIMB_GAUGE_WIDTH, LIMB_GAUGE_HEIGHT)
+		track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_boss_panel.add_child(track)
+		_limb_tracks.append(track)
+		var fill := ColorRect.new()
+		fill.color = BOSS_MAGENTA
+		fill.position = Vector2(x + 58.0, 50.0)
+		fill.size = Vector2(LIMB_GAUGE_WIDTH, LIMB_GAUGE_HEIGHT)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_boss_panel.add_child(fill)
+		_limb_pips.append(fill)
 
 func _build_banner() -> void:
 	_banner = Label.new()
@@ -261,11 +291,15 @@ func bind_score(gs: Object) -> void:
 	gs.score_changed.connect(_on_score_changed)
 	_on_score_changed(gs.score)
 
-## ⚠️ Cache les pastilles d'appendice : `show_boss` sert TOUS les boss, et seul le
+## ⚠️ Cache les jauges d'appendice : `show_boss` sert TOUS les boss, et seul le
 ## Harvester en a. C'est son module qui les rallume, après son montage.
 func show_boss(display_name: String) -> void:
 	for pip in _limb_pips:
 		pip.visible = false
+	for label in _limb_labels:
+		label.visible = false
+	for track in _limb_tracks:
+		track.visible = false
 	_boss_name.text = display_name.to_upper()
 	_boss_fill.size.x = _boss_full_width
 	_boss_panel.visible = true
@@ -273,16 +307,27 @@ func show_boss(display_name: String) -> void:
 func hide_boss() -> void:
 	_boss_panel.visible = false
 
-## Allume `up` pastilles sur trois, et les REND VISIBLES : elles sont cachées par
-## défaut, parce qu'un boss générique — le Pale Leviathan — n'a pas d'appendices et
-## afficherait sinon trois pastilles mortes qui ne veulent rien dire.
-## Les appendices n'étant pas distingués visuellement
-## dans le bandeau, on n'affiche qu'un COMPTE : c'est la seule information dont le
-## joueur ait besoin — combien il lui en reste à abattre.
-func set_boss_limbs(up: int) -> void:
-	for i in _limb_pips.size():
-		_limb_pips[i].visible = true
-		_limb_pips[i].color = BOSS_MAGENTA if i < up else LIMB_PIP_DOWN
+## Pose la jauge d'UN appendice, et la REND VISIBLE : les trois sont cachées par défaut,
+## parce qu'un boss générique — le Pale Leviathan — n'a pas d'appendices et afficherait
+## sinon trois barres mortes qui ne veulent rien dire.
+##
+## `alive` n'est pas déductible de `ratio` : un appendice qui vient de tomber et un
+## appendice en train de repousser sont tous deux à zéro, mais seul le second reviendra.
+## La couleur les sépare.
+func set_boss_limb(index: int, ratio: float, alive: bool) -> void:
+	if index < 0 or index >= _limb_pips.size():
+		return
+	if index < _limb_labels.size():
+		_limb_labels[index].visible = true
+	if index < _limb_tracks.size():
+		_limb_tracks[index].visible = true
+	var fill := _limb_pips[index]
+	fill.visible = true
+	fill.color = BOSS_MAGENTA if alive else LIMB_PIP_DOWN
+	# ⚠️ Un appendice à terre garde une barre PLEINE, en sombre. Le laisser à sa part de
+	# structure (zéro) le ferait disparaître : la jauge dirait « rien ici » là où il faut
+	# lire « celui-ci est tombé, il revient ».
+	fill.size.x = LIMB_GAUGE_WIDTH * (clampf(ratio, 0.0, 1.0) if alive else 1.0)
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
