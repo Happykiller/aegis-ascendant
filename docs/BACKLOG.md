@@ -18,6 +18,81 @@
 
 ---
 
+## ⏸ Reprise en cours — Pale Leviathan (session du 2026-07-23)
+
+**HEAD au moment de la coupure : `c11f1df`, poussé sur `origin/main`.** Tout ce qui suit est
+commité et poussé sauf mention contraire.
+
+### Ce qui est acquis
+
+| Livrable | Où | État |
+|---|---|---|
+| Conception du boss (4 phases, chiffres, invariants, spec 3D, 11 prompts) | `docs/design/BOSS_PALE_LEVIATHAN.md` | ✅ |
+| Décision + dimensions 11 × 14 m | `ADR-0018`, tableau d'`ADR-0008` amendé | ✅ |
+| Les 11 images (3 planches, 5 textures, 3 décors/VFX) | `assets/reference/concepts/`, `assets/source/` | ✅ mesurées, regardées, provenance au CSV |
+| Coque animable et texturable (30 pièces, UV, tangentes) | `build_pale_leviathan.py`, `pale_leviathan.glb` | ✅ techniquement — **silhouette à corriger** |
+| `GravityWell`, `TargetableProjectile` | `scripts/gameplay/` | ✅ 25 tests |
+| `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
+| `LeviathanPlate`, `LeviathanSpike`, `LeviathanCombat` | `scripts/bosses/` | ✅ 42 tests |
+
+`./scripts/check.sh` : **274 tests verts**.
+
+### ⚠️ Travail EN VOL au moment de la coupure
+
+Un sous-agent `asset-forge` exécutait **`BRIEF-0041`** (rendre au Leviathan la silhouette de sa
+planche). État de l'arbre laissé en place, **non commité** :
+
+- `tools/blender/build_pale_leviathan.py` — **modifié** (~+495/−201 lignes). Syntaxe Python valide,
+  mais **rien ne dit qu'il est complet**.
+- `assets/imported/models/bosses/pale_leviathan.glb` — **inchangé** (sha `b475fc24…`, celui du
+  BRIEF-0040) : la coque n'avait pas encore été régénérée.
+- `tools/blender/inspect_glb.py` — outil d'inspection écrit par l'agent, non suivi.
+
+**Premier geste de la reprise — trancher entre les deux cas :**
+
+```bash
+./scripts/build-hull.sh --check pale_leviathan     # regenere 2x et compare
+```
+
+- **Ça passe** → le script était complet. Vérifier la livraison (voir ci-dessous), puis commiter.
+- **Ça échoue** → le script a été coupé en cours d'écriture. `git checkout -- tools/blender/build_pale_leviathan.py`
+  restaure la version BRIEF-0040 (fonctionnelle, commitée en `e57a285`), puis **relancer `BRIEF-0041`**.
+  Aucune perte : le brief est versionné et l'acquis technique est dans le commit.
+
+### Comment vérifier la coque quand elle revient
+
+Ne pas prendre le compte-rendu de la forge pour argent comptant — c'est ce qui a fait passer la
+première version. Les quatre contrôles qui ont servi au BRIEF-0040 :
+
+1. **Contrat de noms** — relire le JSON du `.glb` (30 maillages, parents exacts), pas le rapport.
+2. **Répartition des matériaux** — la mesure qui objective « ça ne ressemble pas ». Cibles de
+   BRIEF-0041 : `AA_Emissive_Engine` ≤ 8 %, `AA_Hull` ≥ 30 %, `AA_Greeble` ≤ 20 %.
+   *(Relevé avant correctif : 28,7 / 11,0 / 32,5.)*
+3. **Déterminisme** — `./scripts/build-hull.sh --check`.
+4. **Regarder** la planche 4 vues **à côté de** `assets/reference/concepts/pale_leviathan_parts_sheet.png`
+   (ADR-0006). Les quatre écarts nommés au brief : symétrie radiale, noyau plat, épines courtes,
+   croissant qui ne lit pas comme incomplet.
+
+La méthode est capitalisée dans `.claude/resources/pratique-revue-asset.md`.
+
+### Ce qui reste, dans l'ordre
+
+1. Récolter/relancer `BRIEF-0041` (ci-dessus).
+2. **Câbler la scène** : `pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`,
+   un `.tres` de `LeviathanTuning` pour les valeurs qui divergent des défauts).
+3. **Relayer dans `graybox_root.gd`** : `pull_changed` → vélocité du joueur, `piece_gauge_changed` et
+   `structure_changed` → HUD, `piece_destroyed` → VFX/SFX, bannières par phase.
+4. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
+   des nœuds de la coque, qui bougeaient encore.
+5. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
+   `scripts/fx/leviathan_detail.gd` dans le même commit (`CLAUDE.md` : rien d'inutilisé dans
+   `imported/`). Paramètres de dérivation consignés au §11.3 du document de conception.
+6. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
+7. **Brief séparé** : `build_choir_harvester.py` n'a ni `_triangulate_ngons()` ni `box_project_uv()`
+   — le mini-boss est probablement sans tangentes, donc intexturable. Trouvaille du BRIEF-0040.
+
+---
+
 ## Livré le 12/07/2026 — ne plus le proposer
 
 | Chantier | État |
