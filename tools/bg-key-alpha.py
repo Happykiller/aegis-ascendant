@@ -38,7 +38,15 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageFilter
-from scipy import ndimage
+
+# ⚠️ `scipy` n'est PAS importé ici, et ce n'est pas un oubli : il n'est pas installé sur
+# ce poste (cf. l'en-tête de `derive-maps.py`, écrit exprès sans lui). Seul `key_light()`
+# en a besoin — pour ses composantes connexes — et il l'importe lui-même.
+#
+# L'import était au niveau module, si bien que le script entier refusait de démarrer, y
+# compris pour `--mode black` qui ne fait qu'un seuil de luminance en numpy. Un mode
+# parfaitement fonctionnel était donc inaccessible à cause d'une dépendance d'un autre
+# mode. Ne pas remonter cet import.
 
 # Couleur d'espace de la scène (resources/graphics/space_environment.tres) pour un
 # aperçu fidèle : tout résidu visible ici sera visible en jeu.
@@ -70,7 +78,13 @@ def key_sat(a: np.ndarray, lo: float, hi: float, gamma: float) -> np.ndarray:
 
 
 def key_light(a: np.ndarray, luma_min: float, sat_max: float, erode: int) -> np.ndarray:
-	"""Fond clair uni / damier blanc -> flood-fill depuis les bords."""
+	"""Fond clair uni / damier blanc -> flood-fill depuis les bords.
+
+	Seul mode à dépendre de `scipy` : l'import est local pour que son absence ne
+	condamne pas `black` et `sat`, qui tiennent en numpy (voir en-tête du module).
+	"""
+	from scipy import ndimage  # noqa: PLC0415 — local, et volontairement
+
 	luma = a.max(2)
 	sat = a.max(2) - a.min(2)
 	bg = (luma > luma_min) & (sat < sat_max)
