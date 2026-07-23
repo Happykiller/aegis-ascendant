@@ -10,7 +10,7 @@ const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const MiniBossScene := preload("res://scenes/bosses/choir_harvester.tscn")
 const FinalBossScene := preload("res://scenes/bosses/pale_leviathan.tscn")
 const CitadelScene := preload("res://scenes/fortress/aegis_citadel.tscn")
-const VictoryScene := preload("res://scenes/ui/victory_screen.tscn")
+const MissionReportScene := preload("res://scenes/ui/mission_report.tscn")
 
 const _FINAL_BOSS_SCALE := 0.75
 
@@ -28,6 +28,15 @@ const _ALARM_TRIGGER_RATIO := 0.25
 const _ALARM_REARM_RATIO := 0.35
 
 enum Phase { FIGHTER_WAVES, MINI_BOSS, FINAL_BOSS, DOCKING, VICTORY }
+
+## Temps laissé à la mort du dernier chasseur avant que le rapport ne se lève. L'explosion
+## dure ~0,7 s (VfxExplosion.HEAVY) et la secousse doit retomber : couper plus tôt
+## escamoterait la seule chose que le joueur attend de voir à cet instant.
+const DEFEAT_HOLD := 1.6
+
+## Une partie ne se perd qu'une fois. Sans ce verrou, une seconde émission de
+## `game_over` empilerait un deuxième rapport par-dessus le premier.
+var _defeated: bool = false
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
@@ -98,6 +107,20 @@ func _ready() -> void:
 	if "--victory-demo" in args:
 		_game_state.add_score(31500)
 		_start_victory.call_deferred()
+	# Même raison exactement que `--victory-demo` : un écran qu'on n'atteint qu'en
+	# perdant trois vies ne se REGARDE jamais pendant le développement (ADR-0006), et
+	# c'est ainsi qu'il a pu ne pas exister du tout pendant tout ce temps. Le drapeau
+	# encaisse un coup mortel toutes les 3,5 s — l'espacement n'est pas décoratif :
+	# mourir coûte 1,2 s de renaissance PUIS 2 s d'invulnérabilité, soit 3,2 s pendant
+	# lesquelles un second coup ne porte pas. À 2,5 s, une fois sur deux le coup tombait
+	# dans cette fenêtre et la défaite arrivait à un moment imprévisible.
+	if "--defeat-demo" in args and _player != null:
+		_game_state.add_score(9400)
+		var killer := Timer.new()
+		killer.wait_time = 3.5
+		killer.autostart = true
+		killer.timeout.connect(func() -> void: _player.take_contact_damage(9999.0))
+		add_child(killer)
 	if "--pickup-demo" in args and _pickups != null:
 		_pickups.spawn(Pickup.Kind.POWER, Vector2(-3.0, 0.0))
 		_pickups.spawn(Pickup.Kind.SHIELD, Vector2(0.0, 0.0))
@@ -365,11 +388,16 @@ func _fire_helios_lance(target: Vector3) -> void:
 func _start_victory() -> void:
 	_set_phase(Phase.VICTORY)
 	print("[Level] VICTORY — score %d" % _game_state.score)
-	var screen := VictoryScene.instantiate()
-	screen.setup(_game_state.score)
+	_show_report(MissionReport.Outcome.VICTORY)
+
+## Le rapport de mission, dans l'une ou l'autre de ses issues.
+##
+## Même raison qu'à la pause de cacher le HUD : le rapport reprend les coins de l'écran,
+## et le score qu'il affiche ferait doublon avec celui du HUD, à deux tailles différentes.
+func _show_report(outcome: MissionReport.Outcome) -> void:
+	var screen := MissionReportScene.instantiate()
+	screen.setup(_game_state.score, outcome)
 	add_child(screen)
-	# Même raison qu'à la pause : le rapport reprend les coins du HUD, et le score
-	# qu'il affiche ferait doublon avec celui du HUD, à deux tailles différentes.
 	if _hud != null:
 		_hud.visible = false
 
@@ -394,10 +422,26 @@ func _on_player_destroyed(world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.HEAVY, 0.9)
 	_sfx(&"player_death")
 
+## Le dernier chasseur est perdu.
+##
+## ⚠️ CE CHEMIN NE MENAIT NULLE PART. Il relançait le joueur en silence (`continue_run`,
+## continues illimités, spec §8.4) : l'état `GAME_OVER` de la machine globale était
+## déclaré, transitions comprises, et n'était JAMAIS atteint. Une partie perdue se
+## confondait donc avec une vie perdue, et le seul indice était une ligne de journal
+## que le joueur ne lit pas.
+##
+## Les continues ne disparaissent pas pour autant : ils passent par le bouton
+## « REESSAYER » du rapport, qui relance le niveau. Ce qui change, c'est qu'on le DIT.
 func _on_game_over() -> void:
-	print("[Level] all fighters lost — continue")
-	if _player != null:
-		_player.continue_run()
+	if _phase == Phase.VICTORY or _defeated:
+		return
+	_defeated = true
+	print("[Level] all fighters lost — DEFEAT, score %d" % _game_state.score)
+	_game_state.transition_to(GameStateScript.State.GAME_OVER)
+	# Le rapport se lève APRÈS l'explosion du dernier chasseur : le poser dans la même
+	# image escamoterait la mort, qui est précisément ce que le joueur doit voir.
+	get_tree().create_timer(DEFEAT_HOLD).timeout.connect(
+		_show_report.bind(MissionReport.Outcome.DEFEAT))
 
 # --- Helpers -----------------------------------------------------------------
 

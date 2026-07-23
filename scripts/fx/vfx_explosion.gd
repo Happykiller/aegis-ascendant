@@ -49,33 +49,68 @@ const _DEBRIS: Dictionary = {
 	Category.IMPACT: 0,
 	Category.SMALL: 7,
 	Category.MEDIUM: 13,
-	Category.HEAVY: 22,
+	Category.HEAVY: 28,
 }
+## Taille des morceaux, par catégorie. ⚠️ Elle était COMMUNE : des éclats calibrés pour
+## la mort d'un Needle Scout de 1,9 m servaient aussi à celle du joueur, et il ne restait
+## de son explosion qu'une poussière indistincte du fond. Un vaisseau qui explose doit
+## partir EN MORCEAUX, et un morceau se voit.
+const _DEBRIS_SCALE: Dictionary = {
+	Category.IMPACT: Vector2(0.4, 0.8),
+	Category.SMALL: Vector2(0.5, 1.0),
+	Category.MEDIUM: Vector2(0.7, 1.4),
+	Category.HEAVY: Vector2(1.4, 2.8),
+}
+## Les morceaux survivent au flash : ils sont ce qu'on regarde une fois la lumière
+## retombée. À durée égale, l'explosion s'éteint d'un bloc et ne laisse rien.
+const _DEBRIS_LIFE_FACTOR := 1.8
 
 var _flash: MeshInstance3D
 var _flash_material: StandardMaterial3D
 var _sparks: GPUParticles3D
 var _spark_material: ParticleProcessMaterial
 var _debris: GPUParticles3D
+var _debris_material: ParticleProcessMaterial
 var _active: bool = false
 var _elapsed: float = 0.0
 var _size: float = 1.0
 var _flash_time: float = 0.28
+## Durée de vie des morceaux de cette explosion, 0 quand elle n'en a pas.
+##
+## ⚠️ RELEVÉE ICI ET PAS LUE SUR LE NŒUD. `GPUParticles3D.emitting` retombe à `false`
+## dès que la salve d'un `one_shot` est ÉMISE, pas quand elle s'éteint : tester ce
+## drapeau pour savoir s'il reste des morceaux à l'écran rendait l'effet au pool en
+## plein vol, et les débris disparaissaient d'un coup à mi-course. Vérifié en capture.
+var _debris_life: float = 0.0
 
 func _ready() -> void:
 	_flash = MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.5
-	sphere.height = 1.0
-	sphere.radial_segments = 12
-	sphere.rings = 6
-	_flash.mesh = sphere
+	# ⚠️ UN QUAD BILLBOARD, PLUS UNE SPHÈRE. La sphère était rendue non éclairée et en
+	# additif : elle n'apportait donc AUCUN volume, mais gardait sa silhouette à facettes
+	# (12 segments, 6 anneaux). Étirée à 3,6 unités pour la mort du joueur, elle
+	# remplissait l'écran d'un dodécagone orange opaque à bord franc, qui masquait ses
+	# propres éclats et ses propres débris. Mesuré en capture : la mort ne lisait pas
+	# comme une explosion, mais comme une pastille.
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	_flash.mesh = quad
 	_flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_flash_material = StandardMaterial3D.new()
 	_flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_flash_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_flash_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	_flash_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	# ⚠️ OBLIGATOIRE AVEC LE BILLBOARD. Godot reconstruit la base du maillage pour le
+	# tourner vers la caméra, et cette base est ORTHONORMÉE : sans ce drapeau, l'échelle
+	# du nœud est purement et simplement jetée. Le flash gardait alors sa taille unitaire
+	# quelle que soit la catégorie, et l'explosion du joueur — 3,6 unités attendues —
+	# devenait invisible. Vérifié en capture : trois images vides là où il y avait un
+	# effet une minute plus tôt.
+	_flash_material.billboard_keep_scale = true
 	_flash_material.emission_enabled = true
+	# Le dégradé radial : c'est lui qui donne un bord DOUX. Sans texture, un quad
+	# additif est un carré blanc à bord dur — le défaut que `SoftDot` existe pour éviter.
+	_flash_material.albedo_texture = SoftDot.texture()
 	_flash.material_override = _flash_material
 	add_child(_flash)
 
@@ -98,7 +133,8 @@ func _ready() -> void:
 	_debris.lifetime = 0.7
 	_debris.local_coords = false
 	_debris.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_debris.process_material = _make_debris_process_material()
+	_debris_material = _make_debris_process_material()
+	_debris.process_material = _debris_material
 	_debris.draw_pass_1 = _make_debris_mesh()
 	add_child(_debris)
 
@@ -209,10 +245,15 @@ func play(category: Category, tint: Color = Color.TRANSPARENT) -> void:
 	var debris_count: int = _DEBRIS[category]
 	if debris_count > 0:
 		_debris.amount = debris_count
-		_debris.lifetime = _SPARK_LIFE[category]
+		_debris.lifetime = _SPARK_LIFE[category] * _DEBRIS_LIFE_FACTOR
+		var span: Vector2 = _DEBRIS_SCALE[category]
+		_debris_material.scale_min = span.x
+		_debris_material.scale_max = span.y
+		_debris_life = _debris.lifetime
 		_debris.restart()
 		_debris.emitting = true
 	else:
+		_debris_life = 0.0
 		_debris.emitting = false
 	_elapsed = 0.0
 	_active = true
@@ -226,7 +267,11 @@ func _process(delta: float) -> void:
 	var t := _elapsed / _flash_time
 	if t >= 1.0:
 		_flash.visible = false
-		if _elapsed >= _sparks.lifetime:
+		# ⚠️ On attend le PLUS LONG des deux. Les morceaux vivent près de deux fois plus
+		# que les éclats depuis qu'ils portent la lecture de l'explosion : rendre l'effet
+		# au pool sur la seule durée des éclats le rendrait invisible en plein vol, et
+		# le vaisseau se volatiliserait au milieu de sa propre destruction.
+		if _elapsed >= maxf(_sparks.lifetime, _debris_life):
 			_active = false
 			visible = false
 			set_process(false)
