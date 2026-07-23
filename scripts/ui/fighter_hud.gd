@@ -17,6 +17,10 @@ const BLOCK_EMPTY := Color("0a2a33")
 const BOSS_MAGENTA := Color("d93d9c")
 ## Jauges d'appendice du Choir Harvester. Trois, comme la planche.
 const LIMB_PIPS := 3
+## Le Pale Leviathan en montre jusqu'à QUATRE (plaques, épines). On construit ce maximum
+## et `set_boss_limbs` recentre la rangée sur le nombre réellement utilisé — sinon les
+## trois du Harvester, centrées pour trois, se décaleraient sous un bandeau centré.
+const MAX_LIMB_PIPS := 4
 ## Couleur d'une jauge à terre : sombre mais pas noire, sinon elle disparaît du panneau
 ## et l'on ne compte plus que ce qui reste, pas ce qui manque.
 const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
@@ -249,11 +253,15 @@ func _build_limb_pips() -> void:
 	var unit := LIMB_LABEL_WIDTH + LIMB_GAUGE_WIDTH
 	var span := unit + LIMB_GAUGE_GAP
 	var left := 400.0 - (unit * LIMB_PIPS + LIMB_GAUGE_GAP * (LIMB_PIPS - 1)) * 0.5
-	for i in LIMB_PIPS:
+	# On bâtit MAX_LIMB_PIPS pastilles, centrées ICI pour les trois du Harvester (défaut) :
+	# la quatrième est posée à droite et reste cachée jusqu'à ce que `set_boss_limbs`
+	# recentre la rangée pour un boss qui l'utilise.
+	for i in MAX_LIMB_PIPS:
 		var x := left + float(i) * span
+		var text := LIMB_LABELS[i] if i < LIMB_LABELS.size() else ""
 		# Le libellé est centré verticalement sur SA hauteur (`size + 8`), pas sur la
 		# barre : on le remonte de la moitié de l'écart pour que les deux s'alignent.
-		_limb_labels.append(_label(_boss_panel, LIMB_LABELS[i], _LABEL_FONT, 9,
+		_limb_labels.append(_label(_boss_panel, text, _LABEL_FONT, 9,
 			Color("f16bc0"), Vector2(x, 49), LIMB_LABEL_WIDTH))
 		var track := ColorRect.new()
 		track.color = BAR_TRACK
@@ -335,6 +343,34 @@ func set_boss_limb(index: int, ratio: float, alive: bool) -> void:
 	# structure (zéro) le ferait disparaître : la jauge dirait « rien ici » là où il faut
 	# lire « celui-ci est tombé, il revient ».
 	fill.size.x = LIMB_GAUGE_WIDTH * (clampf(ratio, 0.0, 1.0) if alive else 1.0)
+
+## Reconfigure la rangée de pastilles pour les sous-cibles d'un boss : un libellé chacune,
+## la rangée RECENTRÉE sur leur nombre (trois pour le Harvester, quatre ou trois pour le
+## Leviathan selon la phase). Les pastilles au-delà du compte sont cachées.
+##
+## À appeler après `show_boss`, puis à chaque changement de phase du Leviathan quand la
+## nature des sous-cibles change (plaques → nœuds → épines). Une liste vide éteint la
+## rangée — la phase finale du Leviathan n'a plus de sous-cible extérieure.
+func set_boss_limbs(labels: PackedStringArray) -> void:
+	var count := mini(labels.size(), _limb_pips.size())
+	var unit := LIMB_LABEL_WIDTH + LIMB_GAUGE_WIDTH
+	var span := unit + LIMB_GAUGE_GAP
+	var left := 400.0 - (unit * count + LIMB_GAUGE_GAP * maxi(count - 1, 0)) * 0.5
+	for i in _limb_pips.size():
+		var used := i < count
+		_limb_labels[i].visible = used
+		_limb_tracks[i].visible = used
+		_limb_pips[i].visible = used
+		if not used:
+			continue
+		var x := left + float(i) * span
+		_limb_labels[i].text = labels[i]
+		_limb_labels[i].position = Vector2(x, 49)
+		_limb_tracks[i].position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
+		_limb_pips[i].position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
+		# Chaque sous-cible repart pleine et vive : la rangée décrit un boss neuf de phase.
+		_limb_pips[i].color = BOSS_MAGENTA
+		_limb_pips[i].size.x = LIMB_GAUGE_WIDTH
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)

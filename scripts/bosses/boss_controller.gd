@@ -167,12 +167,26 @@ func _take_hit(damage: float) -> void:
 	if _health <= 0.0:
 		_defeat()
 
+## Mort provoquée par un module composé plutôt que par les PV du corps. Le Pale
+## Leviathan meurt quand son cœur tombe (une condition MATÉRIELLE, spec §6), pas quand
+## une barre de 20 000 PV atteint zéro : son corps reste clos tout le combat et le
+## module appelle ceci. Idempotent — un boss ne meurt qu'une fois (`_defeated`).
+func defeat() -> void:
+	if _defeated or _entering:
+		return
+	_health = 0.0
+	health_changed.emit(0.0)
+	_defeat()
+
 func _defeat() -> void:
+	if _defeated:
+		return
 	_defeated = true
 	set_physics_process(false)
 	if _target != null:
 		_target.enabled = false
-		_bullet_manager.unregister_target(_target)
+		if _bullet_manager != null:
+			_bullet_manager.unregister_target(_target)
 	defeated.emit(global_position)
 
 func _physics_process(delta: float) -> void:

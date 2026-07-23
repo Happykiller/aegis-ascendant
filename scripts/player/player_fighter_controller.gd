@@ -33,6 +33,12 @@ const MAX_POWER := 5
 
 var plane_position: Vector2 = Vector2(0.0, -5.0)
 var _velocity: Vector2 = Vector2.ZERO
+## Vitesse d'aspiration imposée de l'extérieur (le champ gravitique du Pale Leviathan,
+## `GravityWell`). Le niveau la repose à chaque image tant qu'une phase l'exige ; on la
+## CONSOMME dans `_physics_process` (remise à zéro), pour qu'une phase sans champ ne
+## traîne pas la dernière valeur. Ce n'est pas un déplacement piloté : la commande du
+## joueur reste pleine, l'aspiration s'y AJOUTE — c'est le sujet des phases 2 et 4.
+var _external_pull: Vector2 = Vector2.ZERO
 var _fire_timer: float = 0.0
 ## Demo/attract mode (cmdline `--demo`): auto-fire + gentle strafe, for captures
 ## and hands-off showcase. Never active in a normal run.
@@ -151,7 +157,8 @@ func _physics_process(delta: float) -> void:
 		input = GameplayPlane.from_input(
 			Input.get_vector("move_left", "move_right", "move_up", "move_down"))
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
-	plane_position = GameplayPlane.clamp_to_bounds(plane_position + _velocity * delta)
+	plane_position = GameplayPlane.clamp_to_bounds(plane_position + (_velocity + _external_pull) * delta)
+	_external_pull = Vector2.ZERO
 	position = GameplayPlane.to_world(plane_position)
 	if _target != null:
 		_target.position = plane_position
@@ -163,6 +170,12 @@ func _physics_process(delta: float) -> void:
 ## faisceau. Ils passent par le même bouclier, donc par la même invulnérabilité de
 ## 1,2 s après impact — c'est elle, et non un plafond côté attaquant, qui empêche un
 ## faisceau continu de vider l'écu en une image.
+## Impose une aspiration pour l'image en cours (champ gravitique du boss final). À
+## reposer chaque image : elle est consommée dès qu'elle est appliquée. Sans effet
+## pendant l'autopilote ou la mort — ces états rendent la main avant le déplacement libre.
+func apply_pull(velocity: Vector2) -> void:
+	_external_pull = velocity
+
 func take_contact_damage(amount: float) -> void:
 	_take_hit(amount)
 

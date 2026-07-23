@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="LeviathanTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/leviathan_tuning.gd" id="1_tuning"]
+
+; Reglage du combat du Pale Leviathan. Les valeurs reprennent les defauts calibres de
+; `leviathan_tuning.gd` (documentes et couverts par 20 tests d'invariants) ; on ne
+; reporte ici QUE les ancres de gameplay, pour qu'un designer lise l'ossature du combat
+; sans ouvrir le script. `validate()` est rejoue au montage du module.
+[resource]
+script = ExtResource("1_tuning")
+reference_dps = 420.0
+reference_player_max_speed = 14.0
+plate_health = 3200.0
+node_health = 2800.0
+spike_health = 1500.0
+core_health = 3200.0
+heart_health = 2600.0
+shell_orbit_period = 12.0
+plate_arc_deg = 100.0
+pull_speed_max = 7.0
+pull_radius = 16.0
+maw_open_time = 12.0
+pull_speed_max_final = 16.0

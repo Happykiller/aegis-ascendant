@@ -56,20 +56,27 @@ l'ouvre un jour : **interrompre les bandes concentriques côté ouverture** (ava
 qu'élargir l'encoche — travail de géométrie de coquille avec incidence sur le harnais de dégagement.
 La méthode de revue est capitalisée dans `.claude/resources/pratique-revue-asset.md`.
 
+### ✅ Câblage de scène + relais niveau — fait (commit `feat(boss): le Leviathan combat`)
+
+`pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`) avec
+`resources/bosses/pale_leviathan_tuning.tres`. Le relais complet est dans `graybox_root.gd` :
+`structure_changed` → jauge continue, `pull_changed` → `PlayerFighterController.apply_pull()`,
+`piece_gauge_changed` → 4 pastilles (`FighterHUD.set_boss_limbs`, recentrées, 0 régression Harvester),
+`piece_destroyed` → VFX/SFX, `phase_entered` → bannières par phase. **Deux trous comblés au passage** :
+le boss ne mourait jamais (`BossController.defeat()` ajouté ; le module l'appelle quand le cœur tombe)
+et le corps n'était jamais clos (il l'est désormais de bout en bout, seul le cœur compte). Vérifié
+Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai `BossController`.
+
 ### Ce qui reste, dans l'ordre
 
-1. **Câbler la scène** : `pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`,
-   un `.tres` de `LeviathanTuning` pour les valeurs qui divergent des défauts).
-2. **Relayer dans `graybox_root.gd`** : `pull_changed` → vélocité du joueur, `piece_gauge_changed` et
-   `structure_changed` → HUD, `piece_destroyed` → VFX/SFX, bannières par phase.
-3. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
+1. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
    des nœuds de la coque, qui bougeaient encore.
-4. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
+2. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
    `scripts/fx/leviathan_detail.gd` dans le même commit (`CLAUDE.md` : rien d'inutilisé dans
    `imported/`). Paramètres de dérivation consignés au §11.3 du document de conception.
-5. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
-6. **Polish silhouette (optionnel)** : réserve écart n°4 du croissant (voir plus haut).
-7. **Brief séparé** : `build_choir_harvester.py` n'a ni `_triangulate_ngons()` ni `box_project_uv()`
+3. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
+4. **Polish silhouette (optionnel)** : réserve écart n°4 du croissant (voir plus haut).
+5. **Brief séparé** : `build_choir_harvester.py` n'a ni `_triangulate_ngons()` ni `box_project_uv()`
    — le mini-boss est probablement sans tangentes, donc intexturable. Trouvaille du BRIEF-0040.
 
 ---

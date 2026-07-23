@@ -17,6 +17,19 @@ const _FINAL_BOSS_SCALE := 0.75
 const _COLOR_ALLY := Color(0.247, 0.851, 0.91)
 const _COLOR_GOLD := Color(0.894, 0.71, 0.29)
 
+## Bannières du Pale Leviathan — les couleurs exactes du design (`docs/design/
+## BOSS_PALE_LEVIATHAN.md`) : ivoire pour la structure qui cède, magenta pour la gueule.
+const _BANNER_IVORY := Color("e8e2cf")
+const _BANNER_MAGENTA := Color("d93d9c")
+
+## Libellés des pastilles de sous-cibles, par phase. Numérotés parce que les pièces sont
+## identiques (contrairement aux appendices nommés du Harvester) et abrégés pour tenir
+## dans la jauge : P = plaque, N = nœud gravitique, E = épine. Le bandeau de phase donne
+## le contexte, le numéro distingue la cible.
+const _LEVIATHAN_PLATE_LABELS: PackedStringArray = ["P 1", "P 2", "P 3", "P 4"]
+const _LEVIATHAN_NODE_LABELS: PackedStringArray = ["N 1", "N 2", "N 3"]
+const _LEVIATHAN_SPIKE_LABELS: PackedStringArray = ["E 1", "E 2", "E 3", "E 4"]
+
 ## Impact tints: the palette's cold impact flash when we strike an enemy hull, the
 ## shield's own cyan when something strikes us.
 const _HULL_IMPACT_TINT := Color(0.851, 0.902, 0.949)
@@ -340,23 +353,107 @@ func _start_final_boss() -> void:
 	_final_boss.plane_position = Vector2(0.0, 12.0)
 	_final_boss.scale = Vector3.ONE * _FINAL_BOSS_SCALE
 	add_child(_final_boss)
-	_final_boss.health_changed.connect(_on_boss_health)
-	_final_boss.phase_changed.connect(_on_final_boss_phase)
+	# Le Pale Leviathan pilote TOUT par son module composé : phases matérielles, jauge de
+	# structure, aspiration, sous-cibles, et sa propre mort quand le cœur tombe. Le corps
+	# générique reste clos (aucune phase par seuil de PV) — on ne branche donc ni
+	# `phase_changed` ni `health_changed`, seulement la défaite, que le module déclenche.
 	_final_boss.defeated.connect(_on_final_boss_defeated)
-	_final_boss.begin(_bullet_manager, _player)
-	_sfx(&"danger_alarm")
 	if _hud != null:
 		_hud.show_boss(_final_boss.display_name)
+	_bind_leviathan(_final_boss)
+	# APRÈS `show_boss` (qui éteint les pastilles) et AVEC le module déjà branché : `begin`
+	# monte le module, qui émet `phase_entered(ARMOR_CHOIR)` — c'est lui qui rallume et
+	# nomme les quatre pastilles de plaques.
+	_final_boss.begin(_bullet_manager, _player)
+	_sfx(&"danger_alarm")
+	# APRÈS `begin()` : le module a créé les sous-cibles, publier avant afficherait des
+	# pastilles éteintes sur un boss intact.
+	var combat := _final_boss.get_node_or_null("Combat") as LeviathanCombat
+	if combat != null:
+		combat.publish_gauges()
 	_banner(_final_boss.display_name, _COLOR_GOLD, 1.6)
 
-func _on_final_boss_phase(index: int, total: int) -> void:
-	if _camera_director != null:
-		_camera_director.add_trauma(0.5)
-	_sfx(&"boss_phase_shift")
-	_music.boss_phase = index
-	_music.boss_phase_count = total
+## Raccorde le module du Pale Leviathan au reste du niveau. Câblé AVANT `begin()` : c'est
+## `begin` qui déclenche le montage du module et la première émission de phase.
+func _bind_leviathan(boss: BossController) -> void:
+	var combat := boss.get_node_or_null("Combat") as LeviathanCombat
+	if combat == null:
+		return
+	combat.phase_entered.connect(_on_leviathan_phase)
+	combat.structure_changed.connect(_on_leviathan_structure)
+	combat.piece_gauge_changed.connect(_on_leviathan_piece_gauge)
+	combat.piece_destroyed.connect(_on_leviathan_piece_destroyed)
+	combat.pull_changed.connect(_on_leviathan_pull)
+
+## La jauge du boss montre les dégâts cumulés sur TOUTE la structure (design §2.3) : elle
+## descend en continu, là où une jauge de corps resterait figée une phase entière.
+func _on_leviathan_structure(ratio: float) -> void:
+	if _hud != null:
+		_hud.set_boss_health(ratio)
+	_music.boss_health_ratio = ratio
 	_update_music()
-	print("[Level] boss phase %d/%d" % [index + 1, total])
+
+## Une sous-cible a bougé. Le niveau relaie : le HUD ne connaît pas le Leviathan, le
+## module ne connaît pas le HUD.
+func _on_leviathan_piece_gauge(index: int, ratio: float, alive: bool) -> void:
+	if _hud != null:
+		_hud.set_boss_limb(index, ratio, alive)
+
+func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
+	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)
+	_sfx(&"medium_explosion")
+
+## Le champ gravitique (phases 2 et 4) s'ajoute à la vitesse du joueur. Le module publie
+## à chaque image tant que la phase l'exige ; on la recalcule ici depuis la position
+## COURANTE du joueur (il bouge) et on la lui impose — il la consomme et la remet à zéro,
+## si bien qu'une phase sans champ ne traîne aucune aspiration résiduelle.
+func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> void:
+	if _player == null:
+		return
+	_player.apply_pull(GravityWell.pull_at(_player.plane_position, centre, radius, speed_max))
+
+## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
+## secousse, bascule musicale, et la rangée de pastilles reconfigurée pour les sous-cibles
+## de la phase qui s'ouvre. Les phases avancent sur une condition MATÉRIELLE — le module
+## en est seul juge, le niveau ne fait que l'annoncer.
+func _on_leviathan_phase(phase: int) -> void:
+	match phase:
+		LeviathanCombat.Phase.ARMOR_CHOIR:
+			# Phase initiale : la bannière du nom est déjà à l'écran, pas de doublon.
+			if _hud != null:
+				_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS)
+		LeviathanCombat.Phase.GRAVITIC_MAW:
+			if _hud != null:
+				_hud.set_boss_limbs(_LEVIATHAN_NODE_LABELS)
+			_leviathan_phase_beat("COQUILLE BRISEE", _BANNER_IVORY, 1.6, 1)
+		LeviathanCombat.Phase.BOARDING_SWARM:
+			if _hud != null:
+				_hud.set_boss_limbs(_LEVIATHAN_SPIKE_LABELS)
+			_leviathan_phase_beat("GUEULE OUVERTE", _BANNER_MAGENTA, 1.4, 2)
+		LeviathanCombat.Phase.INTO_THE_MAW:
+			# Plus aucune sous-cible extérieure : la rangée s'éteint.
+			if _hud != null:
+				_hud.set_boss_limbs(PackedStringArray())
+			_leviathan_phase_beat("STRUCTURE DECHARNEE", _BANNER_IVORY, 1.8, 3)
+			# Le second temps — « ENTREZ », le renversement de l'aspiration — suit la
+			# première bannière plutôt que de la recouvrir.
+			get_tree().create_timer(1.9).timeout.connect(_announce_into_the_maw)
+		LeviathanCombat.Phase.DEFEATED:
+			# La mort est portée par `defeated` → `_on_final_boss_defeated` (finale Helios).
+			pass
+
+func _leviathan_phase_beat(text: String, color: Color, hold: float, phase_index: int) -> void:
+	var origin := _final_boss.global_position if _final_boss != null else Vector3.ZERO
+	_boom(origin, VfxExplosion.Category.HEAVY, 0.9)
+	_sfx(&"boss_phase_shift")
+	_banner(text, color, hold)
+	_music.boss_phase = phase_index
+	_music.boss_phase_count = 4
+	_update_music()
+	print("[Level] leviathan phase %d/4" % [phase_index + 1])
+
+func _announce_into_the_maw() -> void:
+	_banner("ENTREZ", _BANNER_MAGENTA, 2.0)
 
 func _physics_process(_delta: float) -> void:
 	_update_engine_hum()

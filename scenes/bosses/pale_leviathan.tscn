@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/bosses/boss_controller.gd" id="1_boss"]
 [ext_resource type="PackedScene" path="res://assets/imported/models/bosses/pale_leviathan.glb" id="2_hull"]
 [ext_resource type="Resource" path="res://resources/weapons/boss_shot.tres" id="3_shot"]
+[ext_resource type="Script" path="res://scripts/bosses/leviathan_combat.gd" id="4_combat"]
+[ext_resource type="Resource" path="res://resources/bosses/pale_leviathan_tuning.tres" id="5_tuning"]
 
 [node name="PaleLeviathan" type="Node3D"]
 script = ExtResource("1_boss")
@@ -15,4 +17,18 @@ entry_plane_position = Vector2(0, 5.5)
 drift_amplitude = 5.0
 drift_frequency = 0.22
 fire_interval = 1.2
+projectile = ExtResource("3_shot")
+; Le module compose prend l'armement (quatre phases, quatre verbes) : le boss ne tire
+; plus ses motifs generiques. Declare ICI et pas seulement pose par le module — `_ready`
+; des enfants tourne avant celui du parent, et faire dependre le boss de cet ordre pour
+; savoir s'il lit ses bouches generiques est un equilibre qu'un refactor casserait sans
+; bruit (meme raison que le Choir Harvester).
+external_attacks = true
+
+; Le combat propre au Leviathan : plaques, noeuds gravitiques, epines, coeur. Il pose
+; `LeviathanTuning` (les valeurs de gameplay, jamais en dur) et partage la meme munition
+; `boss_shot` que les motifs generiques abandonnes — une seule Resource, aucune copie.
+[node name="Combat" type="Node" parent="."]
+script = ExtResource("4_combat")
+tuning = ExtResource("5_tuning")
 projectile = ExtResource("3_shot")

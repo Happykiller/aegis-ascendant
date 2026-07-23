@@ -422,25 +422,35 @@ func _enter_phase(next: Phase) -> void:
 	_phase_age = 0.0
 	_interlude = 0.0 if next == Phase.ARMOR_CHOIR else 1.5
 	match next:
+		Phase.ARMOR_CHOIR:
+			# Le corps reste CLOS tout le combat : rien ne le tue directement, seul le
+			# cœur en phase 4 le fait tomber. Les tirs qui ratent une sous-cible
+			# ricochent (`deflected`) au lieu d'entamer une barre de 20 000 PV qui ferait
+			# avancer les phases par les dégâts — précisément ce que le module refuse
+			# (`test_damage_alone_never_advances_a_phase`).
+			if _boss != null:
+				_boss.vulnerable = false
 		Phase.GRAVITIC_MAW:
 			# La coquille a éclaté : la lèvre et ses nœuds deviennent la cible.
 			for node in _nodes:
 				node.enabled = true
 		Phase.BOARDING_SWARM:
-			# Les épines s'arrachent, et le noyau devient enfin touchable.
+			# Les épines s'arrachent, et le noyau devient enfin touchable — la sous-cible
+			# `_core_target`, pas le corps, qui lui reste clos.
 			for spike in _spikes:
 				spike.detach(_origin())
 			_core_target.enabled = true
-			if _boss != null:
-				_boss.vulnerable = true
 		Phase.INTO_THE_MAW:
 			_maw_open = tuning.maw_open_time if tuning != null else 0.0
 			_heart_target.enabled = true
 			_core_target.enabled = false
 		Phase.DEFEATED:
 			release()
+			# Le cœur est tombé : c'est LA condition de mort. On la traduit en mort du
+			# BossController, qui émet `defeated` et déclenche la finale du niveau — le
+			# corps clos ne serait jamais mort de lui-même.
 			if _boss != null:
-				_boss.vulnerable = true
+				_boss.defeat()
 	phase_entered.emit(next)
 	_publish_structure()
 
