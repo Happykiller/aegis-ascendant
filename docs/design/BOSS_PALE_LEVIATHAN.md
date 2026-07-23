@@ -464,28 +464,32 @@ Fichiers pressentis :
 Chacune est isolée et **testable headless**, sans arbre ni rendu — c'est la condition pour qu'une
 mécanique qui demande trois minutes de jeu à atteindre soit vérifiable.
 
-**1. Champ d'aspiration** — `scripts/gameplay/gravity_well.gd`, fonctions statiques pures :
+**1. Champ d'aspiration** — ✅ **écrit** : `scripts/gameplay/gravity_well.gd`, fonctions statiques
+pures, 11 tests (`tests/unit/test_gravity_well.gd`).
 
-```gdscript
-static func pull_at(position: Vector2, center: Vector2, radius: float,
-        speed_max: float) -> Vector2
-```
+Profil **linéaire et borné**, et non un inverse du carré : une vraie loi de gravité diverge près du
+centre et rend le réglage impossible à borner, alors que le joueur doit pouvoir traverser la zone.
+Deux prédicats servent `validate()` — `escapes()` (le joueur peut-il fuir ?) et `leaves_room()`
+(lui reste-t-il de quoi jouer ?), parce qu'un champ à 13,9 u/s contre 14,0 est fuyable sur le papier
+et injouable en fait. Sur le modèle de `BossMovement` : pas de nœud, pas d'état ; le joueur expose
+déjà `integrate_velocity()` en statique (`player_fighter_controller.gd:361`), l'aspiration s'y compose.
 
-Appliquée à la vélocité du joueur. Sur le modèle de `BossMovement` et de `Beam.hits()` : pas de
-nœud, pas d'état, testable directement. Le joueur expose déjà
-`integrate_velocity()` en statique (`player_fighter_controller.gd:361`) — l'aspiration s'y compose.
+**2. Projectile ennemi ciblable** — ✅ **écrit** : `scripts/gameplay/targetable_projectile.gd`,
+14 tests. **Aucune extension du `BulletManager` n'a été nécessaire**, contrairement à ce que ce
+document annonçait comme point à vérifier : `_resolve_target()` ignore les balles de la même équipe
+que la cible (`if _teams[i] == target.team: continue`). Un projectile ennemi qui enregistre une
+`BulletTarget` d'équipe `ENEMY` est donc naturellement touché par les tirs du joueur, et par eux
+seuls. Le mécanisme était déjà là — il n'avait jamais servi qu'à des coques.
 
-**2. Projectile ennemi ciblable** — le missile de la phase 1. ⚠️ Point à vérifier à
-l'implémentation : `BulletTarget.make(Team, radius, callback)` existe, mais il faut confirmer que
-`BulletManager._resolve_hits` accepte qu'une cible d'équipe alliée soit portée par un objet **du camp
-ennemi**. Si le gestionnaire ne le permet pas tel quel, l'extension est petite et se fait là, pas
-dans le boss.
-
-**3. Détachement d'une pièce de coque** — l'épine qui devient une unité. Reparenter le `Node3D` de la
+**3. Détachement d'une pièce de coque** — ⏳ **différé jusqu'à la reforge**. Reparenter le `Node3D` de la
 coque sous un nœud d'unité autonome en **conservant la transformation monde**. Pièges connus :
 `extra_cull_margin` est posé récursivement par `_pad_cull_margin` (`boss_controller.gd:110`) et doit
 suivre la pièce ; et une cible laissée enregistrée dans le `BulletManager` sur une pièce détachée
 serait le « mur invisible » exact contre lequel `HarvesterCombat.release()` a été écrit.
+
+Différé volontairement : c'est la seule des trois primitives **liée à l'arbre et à la coque**, donc
+la seule qu'on ne peut ni écrire ni tester à l'aveugle pendant que `BRIEF-0040` refait les noms de
+nœuds. Les deux autres n'en dépendent pas et sont livrées.
 
 ### 8.3 Les pièges déjà payés — à ne pas repayer
 
