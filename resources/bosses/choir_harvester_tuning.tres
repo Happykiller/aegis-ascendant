@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_tuning")
-limb_health = 1000.0
+limb_health = 750.0
 limb_hitbox_radius = 1.05
 limb_rebuild_time = 14.0
 reference_dps = 420.0

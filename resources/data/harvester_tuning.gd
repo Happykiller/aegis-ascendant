@@ -27,7 +27,7 @@ const MIN_WINDOW := 2.0
 ## repousse divise la fenêtre, et au-delà d'un certain seuil il n'y en a plus du tout —
 ## un boss invincible. `validate()` refuse ce cas, mais le calcul se fait ICI, à la main,
 ## avant d'écrire le nombre.
-@export var limb_health: float = 1000.0
+@export var limb_health: float = 750.0
 ## Rayon de la zone de touche d'un appendice. Généreux (spec §5.3) : viser un bras
 ## qui bouge sous un rideau de balles ne doit pas demander de la précision au pixel.
 ## 1,05 et non 0,85 : la zone est centrée sur les ARTICULATIONS et un bras mesure
