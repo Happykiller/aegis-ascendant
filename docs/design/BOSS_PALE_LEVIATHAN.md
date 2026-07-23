@@ -655,25 +655,30 @@ Le jeu de textures est décrit prompt par prompt dans **l'annexe B**.
 
 ## 10. Ce qui reste à faire, et dans quel ordre
 
-| # | Travail | Qui | Bloquant pour |
+| # | Travail | Qui | État |
 |---|---|---|---|
-| 1 | **ADR** amendant le tableau de dimensions X/Z (ADR-0008:80-85, réaffirmé par ADR-0011:96) | concepteur | tout le reste |
-| 2 | **ADR** actant la refonte du boss final (ce document en devient la référence) | concepteur | — |
-| 3 | **BRIEF** — planches de concept annotées (**annexe A**, 3 prompts) | asset-forge | la reforge de coque |
-| 4 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat §9.3, dégagements §9.4, **et `box_project_uv`** (§9.6) | asset-forge | l'implémentation **et** les textures |
-| 5 | **BRIEF** — jeu de textures dédié (**annexe B**, 5 prompts) + `scripts/fx/leviathan_detail.gd` | asset-forge puis concepteur | le rendu final |
-| 6 | **BRIEF** — décor et VFX de l'arène (**annexe C**, 3 prompts) | asset-forge puis concepteur | le rendu final |
-| 7 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | le polish |
-| 8 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | le module |
-| 9 | `LeviathanTuning` + `validate()` (§7.3) | concepteur | le module |
-| 10 | `leviathan_combat.gd` phase par phase, hooks `--leviathan-phase N` | concepteur | — |
+| 1 | **ADR** — refonte du boss final **et** amendement du tableau de dimensions | concepteur | ✅ **`ADR-0018`** |
+| 2 | **Images** — les 11 prompts des annexes A, B et C | opérateur | ✅ livrées, mesurées, versionnées (§11) |
+| 3 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat §9.3, dégagements §9.4, **et `box_project_uv`** (§9.6) | asset-forge | ✅ **`BRIEF-0040`**, prêt à confier |
+| 4 | Intégration des textures : dérivation, `scripts/fx/leviathan_detail.gd` | concepteur | ⏳ **après** la reforge |
+| 5 | Intégration du décor : vortex, landmark de l'arène dans `space_backdrop.tscn` | concepteur | ⏳ |
+| 6 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | ⏳ |
+| 7 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | ⏳ |
+| 8 | `LeviathanTuning` + `validate()` (§7.3) | concepteur | ⏳ |
+| 9 | `leviathan_combat.gd` phase par phase, hooks `--leviathan-phase N` | concepteur | ⏳ |
 
-⚠️ **L'ordre 4 avant 5-6 n'est pas négociable** : sans les UV posées par la reforge, aucune des
-textures de l'annexe B n'a de surface où s'appliquer (§9.6).
+> Les deux ADR prévus n'en font qu'un : l'élargissement des dimensions est une **conséquence** de la
+> refonte, pas une décision parallèle. Deux ADR auraient dupliqué la même justification, et un ADR
+> creux se périme plus vite qu'il ne se lit.
 
-**Écrivain unique** : les briefs 3-4-5 et les travaux 6-7-8 ne se chevauchent pas dans les mêmes
-fichiers. La forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
-(`.claude/resources/pratique-ecrivain-unique.md`).
+⚠️ **L'ordre 3 avant 4 n'est pas négociable** : sans les UV posées par la reforge, aucune des
+textures livrées n'a de surface où s'appliquer (§9.6). C'est la raison pour laquelle les cartes
+dérivées ne sont **pas** encore dans `assets/imported/` — `CLAUDE.md` y interdit ce qui n'est pas
+chargé, et rien ne peut les charger aujourd'hui. Elles y entreront avec le code qui les lit.
+
+**Écrivain unique** : la forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
+(`.claude/resources/pratique-ecrivain-unique.md`). Les travaux 7-8-9 peuvent donc avancer **en
+parallèle** de la reforge : les primitives et `LeviathanTuning` ne dépendent d'aucune coque.
 
 ---
 

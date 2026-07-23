@@ -81,8 +81,15 @@ télégraphes et la lisibilité changent silencieusement. Tolérance **±3 %** s
 | Needle Scout | 0,65 m | 1,90 m | 0,45 |
 | Crescent Interceptor | 1,10 m | 1,60 m | 0,55 |
 | Choir Harvester (boss) | 4,55 m | 7,00 m | 2,0 |
-| Pale Leviathan (boss) | 7,02 m | 8,77 m | 3,6 |
+| Pale Leviathan (boss) | **11,0 m** | **14,0 m** | — (voir ci-dessous) |
 | Aegis Citadel (structure) | 19,6 m | 16,6 m | — |
+
+> ⚠️ **La ligne « Pale Leviathan » est amendée par ADR-0018** (elle valait 7,02 × 8,77, hitbox 3,6).
+> Le boss final se démonte en quatre phases et devait pouvoir écraser l'écran ; l'exception est
+> motivée là-bas et **ne vaut que pour cette coque**. Sa hitbox n'a plus de valeur unique : le corps
+> n'est la cible qu'en fin de combat, les sous-cibles portent le reste — elle est fixée par phase
+> dans `LeviathanTuning`. La valeur 3,6 qui figurait ici n'avait d'ailleurs jamais été appliquée
+> (`pale_leviathan.tscn` déclarait 2,7).
 
 La hauteur (Y) est libre, mais reste **modeste** : une coque trop épaisse casse la lecture en vue
 de dessus. Viser Y ≈ 15-25 % de la longueur pour les chasseurs.
