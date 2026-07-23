@@ -555,7 +555,7 @@ l'intégration en silence.
 |---|---|---|---|
 | `Body` | maillage porteur (`hull`) | — | il porte à lui seul l'étendue longitudinale (cf. en-tête du script actuel) |
 | `Shell_Ring` | `moving_part`, racine | — | **axe du noyau** — porte l'orbite, et rien d'autre |
-| `Shell_Crescent` | `moving_part` | `Shell_Ring` | charnière arrière — porte la rétraction, et rien d'autre |
+| `Shell_Crescent` | `moving_part` | `Shell_Ring` | charnière arrière — porte la bascule de fin de phase 1 (⚠️ §11.4 : la planche la fait **éclater** plutôt que se rétracter) |
 | `Plate_01`..`Plate_04` | `moving_part` | `Shell_Crescent` | leur charnière radiale |
 | `Core` | `moving_part`, racine | — | centre du noyau |
 | `Maw_Lip` | `moving_part` | `Core` | lèvre de la gueule |
@@ -586,7 +586,7 @@ Ce sont les angles que le code appliquera. Le modèle doit les encaisser **avec 
 | Pièce | Mouvement | Amplitude |
 |---|---|---|
 | `Shell_Ring` | orbite des plaques | **360° continu** autour de l'axe du noyau |
-| `Shell_Crescent` | rétraction de fin de phase 1 | **0° → 65°** |
+| `Shell_Crescent` | bascule de fin de phase 1 | **0° → 65°** — ⚠️ §11.4 : à remplacer par un **état détruit** (la coquille éclate en débris), le débattement n'est plus qu'un repli d'amorce |
 | `Plate_01..04` | chute après destruction | **0° → −80°** |
 | `Core` | rotation lente d'ambiance | **360° continu** |
 | `Maw_Lip` | ouverture de la gueule | **0° → 90°** |
@@ -674,6 +674,81 @@ textures de l'annexe B n'a de surface où s'appliquer (§9.6).
 **Écrivain unique** : les briefs 3-4-5 et les travaux 6-7-8 ne se chevauchent pas dans les mêmes
 fichiers. La forge ne touche ni au GDScript, ni aux scènes, ni aux Resources
 (`.claude/resources/pratique-ecrivain-unique.md`).
+
+---
+
+## 11. Retour des images — ce que la livraison a donné
+
+*Section écrite après réception : les 11 images ont été livrées, regardées et mesurées. Elle vaut
+compte-rendu de recette — les prompts des annexes restent tels quels, ils ont fait leur travail.*
+
+### 11.1 Recette
+
+| Contrôle | Résultat |
+|---|---|
+| Présence | **11/11**, aux chemins exacts |
+| Palette des 3 cartes couleur | **0 % de cyan, de corail ou d'orange**, sur les trois. `core_albedo` : 61 % violet / 39 % magenta. `maw_vortex` : 58 / 42. `nebula` : 85 / 15. Le verrou DA §6 tient |
+| Grisé des 5 cartes N&B | chroma ≤ 0,002 — très en dessous du seuil d'alerte 0,08 de `derive_maps.load_height()` |
+| Masque de craquelures | franchement bimodal, comme exigé |
+| Échelle des motifs | mesurée par **autocorrélation** du profil moyen, pas à l'œil |
+| Détourage alpha | vortex et nébuleuse : aucun résidu sur la couleur d'espace de la scène |
+
+### 11.2 Échelle des motifs — mesurée
+
+| Tuile | Période mesurée | Demandée | Verdict |
+|---|---|---|---|
+| `leviathan_scales` | **0,99 m** | 1,10 m | conforme |
+| `maw_tunnel_wall` | **0,82 m** | 0,80 m | conforme |
+| `leviathan_greebles` | conduits de **55 à 70 cm** | 25 cm | plus **gros** que demandé — du bon côté, le détail fin se noie à 960×540 |
+
+> ⚠️ **Méthode.** L'autocorrélation du profil moyen mesure la **période dominante** ; sur les
+> greebles elle rend 2,71 m, qui est la volute macro et non le calibre du conduit. Une mesure par
+> longueur de plage a été tentée pour y remédier : elle rend 1 cm sur les écailles, dont on sait
+> qu'elles font 1 m. **Témoin faux, mesure jetée** — le calibre des greebles est un relevé à l'œil
+> sur la source en pleine résolution, et il est annoncé comme tel.
+
+### 11.3 Tuilage — le point qui a coûté du travail
+
+Aucune tuile n'est arrivée seamless. Mesures natives (`derive-maps.py --check-tiling`, seuil 4 %) et
+rattrapage retenu :
+
+| Tuile | X natif | Y natif | Fondu retenu | Verdict après examen |
+|---|---|---|---|---|
+| `leviathan_damage_mask` | 1,8 % | 2,2 % | **aucun** | seul livrable seamless d'origine |
+| `leviathan_core_albedo` | 3,0 % | 3,0 % | **aucun** | passe |
+| `leviathan_scales_height` | 4,2 % | 5,3 % | **48 px** | bande invisible |
+| `leviathan_cracks_mask` | 6,6 % | 3,4 % | **48 px** | le réseau irrégulier absorbe la bande |
+| `maw_tunnel_wall_height` | 4,5 % | **11,9 %** | **48 px** | passe — voir la réserve ci-dessous |
+| `leviathan_greebles_height` | 8,3 % | 10,3 % | **40 px** | passe — voir la réserve ci-dessous |
+
+> ⚠️ **Après `--fix-tiling`, le chiffre de tuilage ne veut plus rien dire** : le fondu force le
+> raccord à 0,0 % par construction. Le seul critère est **l'œil sur la planche contact 2×2**. C'est
+> pour ça que l'outil imprime « REGARDER le résultat » plutôt qu'un verdict.
+
+**Deux réserves consignées**, à lever en jeu une fois la coque munie de ses UV :
+
+1. **`greebles`** — la bande miroir est *détectable* sur une planche contact plate quand on la
+   cherche. Pari retenu : projetée à 0,5 tuile sur une coque courbe puis écrasée à 960×540, elle ne
+   lira pas. Si elle lit, régénérer plutôt qu'élargir le fondu.
+2. **`maw_tunnel_wall`** — le motif est **nativement symétrique gauche-droite** ; le brief demandait
+   des anneaux irréguliers. Ce n'est pas un défaut de tuilage (les rendus à 48 et 96 px sont
+   identiques), c'est un trait de l'image. Acceptable pour un tunnel traversé en douze secondes, à
+   revoir si la répétition saute aux yeux.
+
+### 11.4 Les planches ont tranché des points de conception
+
+L'illustration est meilleure que la spec sur plusieurs points. **Le §9.3 s'aligne sur elle**, pas
+l'inverse.
+
+| Point | Ce que disait §9 | Ce que montre la planche | Décision |
+|---|---|---|---|
+| Fin de phase 1 | la coquille se **rétracte** (0° → 65°) | elle **éclate en débris** (panneau CORE EXPOSED) | **suivre la planche** — plus spectaculaire, et parfaitement cohérent avec « rien ne repousse ». `Shell_Crescent` n'a donc plus besoin d'un débattement de rétraction : il lui faut un état *détruit* |
+| Ouverture des anneaux | non nommée | **OFFSET GATE**, décalée d'un anneau au suivant | **adopter le terme** : il nomme la mécanique de la phase 4, et un nom rend une règle enseignable |
+| `Maw_Lip` | ce nom | légendé **OUTER RIM** | garder `Maw_Lip` dans le code ; équivalence notée ici |
+| Anneaux internes | `Ring_01..05` (5) | **6** dans l'éclaté | à trancher à la reforge. 6 allonge le puits d'un temps ; l'invariant §7.3 sur la durée d'ouverture tranchera |
+| Nœuds gravitiques | 3, enfants de `Maw_Lip` | 2 visibles, à **base articulée** | 3 confirmé : une projection de profil en masque un. La base articulée confirme le parentage |
+| Segments d'épine | `Base / Mid / Tip` | 3ᵉ segment légendé **SPIKE MID** | erreur de légende. Garder `Tip` |
+| Cotes des orthos | 11 m large × 14 m long | les 4 vues cotées « 14.0 m » | erreur de légende : la vue de face montre les 11 m |
 
 ---
 
@@ -774,11 +849,16 @@ Deux endroits le méritent sur ce boss, et ils sont dans les annexes :
 Partout ailleurs — écailles, greebles, craquelures, dégâts, paroi du puits — le gris est le bon
 choix, et il est délibéré.
 
-> ⚠️ **`tools/bg-key-alpha.py` ne tourne pas sur ce poste** : il importe `scipy`, qui n'est pas
-> installé (`derive-maps.py` a d'ailleurs été écrit *exprès* sans lui, cf. son en-tête). Tout
-> livrable de l'annexe C qui demande un détourage alpha bute dessus. À régler avant, au choix :
-> installer `scipy`, ou réécrire la clé de luminance sans lui. Le noter au brief plutôt que de le
-> découvrir au retour des images.
+> ✅ **`tools/bg-key-alpha.py` — corrigé, et la cause n'était pas celle annoncée.** Une version
+> précédente de ce document affirmait que le script « ne tourne pas, scipy manquant ». C'était faux
+> en substance : `scipy` ne sert qu'à `key_light()` (flood-fill par composantes connexes, pour un
+> objet opaque sur fond clair). Nos deux images sont des objets **lumineux sur noir pur** →
+> `--mode black` → `key_black()`, qui tient en trois lignes de numpy.
+>
+> Le blocage réel était un `from scipy import ndimage` **au niveau module** : le script refusait de
+> démarrer pour *tous* les modes à cause de la dépendance d'un seul. L'import est désormais local à
+> `key_light()`, et `black`/`sat` fonctionnent sans rien installer. Le détourage des deux images de
+> l'annexe C a été fait et vérifié sur cette base.
 
 ---
 
@@ -1285,8 +1365,9 @@ Le fond du jeu est **procédural** (ADR-0006) : on ne repeint pas un panorama. M
 plan de jeu, devant la brume procédurale. C'est ce registre-là qu'on emploie ici, plus deux textures
 pour la gueule.
 
-⚠️ Rappel du blocage : `tools/bg-key-alpha.py` ne tourne pas (scipy manquant). Les deux images à
-fond noir de cette annexe en dépendent.
+✅ Les deux images à fond noir de cette annexe ont été détourées et vérifiées : `bg-key-alpha.py`
+fonctionne en `--mode black` depuis que son import de `scipy` est local à `key_light()` (cf.
+préambule des annexes).
 
 **Les débris de la phase 2 ne sont pas dans cette annexe** : ce sont des morceaux de coque, et le
 `.glb` du boss en produira naturellement une fois les plaques modélisées. Réutiliser les maillages
@@ -1328,8 +1409,11 @@ FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), couleur, fond noir p
 DÉPOSER     : assets/source/vfx/maw/maw_vortex_color.png
 ENSUITE     : alpha par clé de luminance (le noir devient transparent) → 
               assets/imported/vfx/maw/maw_vortex.png
-              ⚠️ tools/bg-key-alpha.py est cassé sur ce poste (scipy absent) :
-              régler ça d'abord (§ préambule des annexes)
+              ✅ FAIT et vérifié :
+              python3 tools/bg-key-alpha.py --mode black \
+                assets/source/vfx/maw/maw_vortex_color.png \
+                assets/imported/vfx/maw/maw_vortex.png --lo 6 --hi 50 \
+                --preview /tmp/prev_vortex.png
               Le shader de la gueule fait TOURNER cette carte en coordonnées polaires :
               elle est donc générée immobile, l'animation est du code
 VÉRIFIER    : en jeu, à l'échelle réelle. Le test est unique et non négociable — on
@@ -1424,7 +1508,7 @@ nets, aspect de peinture à l'huile texturée.
 FORMAT      : PNG, 1536 x 1024 (paysage natif du generateur), couleur, fond noir pur
 DÉPOSER     : assets/source/backgrounds/raster/nebula_leviathan_arena.png
 ENSUITE     : alpha par clé de luminance → assets/imported/backgrounds/nebula_leviathan_arena.png
-              ⚠️ tools/bg-key-alpha.py est cassé (scipy absent) — cf. préambule
+              ✅ FAIT et vérifié : bg-key-alpha.py --mode black --lo 4 --hi 40
               Puis l'ajouter aux landmarks de scenes/vfx/space_backdrop.tscn, activé
               seulement à la phase FINAL_BOSS
 VÉRIFIER    : ⚠️ EN JEU et pendant le combat, pas en preview. Le fond ne doit jamais
