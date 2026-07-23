@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/codex_screen.gd" id="1_codex"]
+[ext_resource type="Script" path="res://scripts/fx/retro_post.gd" id="99_retro_post"]
 [ext_resource type="Script" path="res://scripts/ui/codex_datasheet.gd" id="2_sheet"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="3_capture"]
 [ext_resource type="Environment" path="res://resources/graphics/title_environment.tres" id="4_env"]
@@ -82,6 +83,7 @@ script = ExtResource("3_capture")
 
 [node name="RetroPost" type="CanvasLayer" parent="."]
 layer = -1
+script = ExtResource("99_retro_post")
 
 [node name="Effect" type="ColorRect" parent="RetroPost"]
 material = SubResource("mat_retro")

@@ -28,6 +28,8 @@ const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
 const LIMB_LABELS: PackedStringArray = ["FAUX", "GRIFFE", "CANON"]
 const LIMB_GAUGE_WIDTH := 92.0
 const LIMB_GAUGE_HEIGHT := 7.0
+const LIMB_LABEL_WIDTH := 58.0
+const LIMB_GAUGE_GAP := 44.0
 
 const MARGIN := 28.0
 const SHIELD_BLOCKS := 10
@@ -240,24 +242,29 @@ func _build_limb_pips() -> void:
 	_limb_pips.clear()
 	_limb_tracks.clear()
 	_limb_labels.clear()
-	var span := LIMB_GAUGE_WIDTH + 60.0
-	var left := 400.0 - span * LIMB_PIPS * 0.5
+	# Centrage de la RANGÉE, pas de chaque colonne : un pas de « largeur + marge » posé
+	# depuis le milieu décale l'ensemble d'une demi-marge vers la gauche, et la rangée
+	# se retrouve visiblement décentrée sous un titre, lui, centré. On compose donc la
+	# largeur réelle (libellé + jauge, trois fois, deux intervalles) et on la centre.
+	var unit := LIMB_LABEL_WIDTH + LIMB_GAUGE_WIDTH
+	var span := unit + LIMB_GAUGE_GAP
+	var left := 400.0 - (unit * LIMB_PIPS + LIMB_GAUGE_GAP * (LIMB_PIPS - 1)) * 0.5
 	for i in LIMB_PIPS:
 		var x := left + float(i) * span
 		# Le libellé est centré verticalement sur SA hauteur (`size + 8`), pas sur la
 		# barre : on le remonte de la moitié de l'écart pour que les deux s'alignent.
 		_limb_labels.append(_label(_boss_panel, LIMB_LABELS[i], _LABEL_FONT, 9,
-			Color("f16bc0"), Vector2(x, 49), 56))
+			Color("f16bc0"), Vector2(x, 49), LIMB_LABEL_WIDTH))
 		var track := ColorRect.new()
 		track.color = BAR_TRACK
-		track.position = Vector2(x + 58.0, 50.0)
+		track.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
 		track.size = Vector2(LIMB_GAUGE_WIDTH, LIMB_GAUGE_HEIGHT)
 		track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_boss_panel.add_child(track)
 		_limb_tracks.append(track)
 		var fill := ColorRect.new()
 		fill.color = BOSS_MAGENTA
-		fill.position = Vector2(x + 58.0, 50.0)
+		fill.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
 		fill.size = Vector2(LIMB_GAUGE_WIDTH, LIMB_GAUGE_HEIGHT)
 		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_boss_panel.add_child(fill)

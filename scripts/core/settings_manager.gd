@@ -8,11 +8,15 @@ extends Node
 const SettingsDataScript := preload("res://scripts/core/settings_data.gd")
 const SETTINGS_PATH := "user://settings.cfg"
 const _SECTION := "audio"
+const _SECTION_GRAPHICS := "graphics"
 ## Dragging a slider fires continuously; writing the file on every frame would hammer
 ## the disk for nothing.
 const _SAVE_DEBOUNCE := 0.5
 
 signal audio_changed(data: SettingsData)
+## Émis quand un réglage d'image change. Les post-process s'y abonnent — ils vivent
+## dans les scènes, pas ici : cet autoload ne connaît aucun nœud de rendu.
+signal graphics_changed(data: SettingsData)
 
 var _data: SettingsData = SettingsDataScript.new()
 var _save_timer: SceneTreeTimer
@@ -23,6 +27,19 @@ func _ready() -> void:
 
 func get_audio() -> SettingsData:
 	return _data
+
+## Même objet que `get_audio()` : une seule Resource de réglages, deux vues. Deux
+## accesseurs plutôt qu'un `get_settings()` fourre-tout, pour que l'appelant dise ce
+## qu'il vient chercher.
+func get_graphics() -> SettingsData:
+	return _data
+
+func set_pixelation(enabled: bool) -> void:
+	if _data.pixelation == enabled:
+		return
+	_data.pixelation = enabled
+	graphics_changed.emit(_data)
+	_schedule_save()
 
 func set_bus_linear(bus: StringName, value: float) -> void:
 	_data.set_linear(bus, value)
@@ -48,12 +65,17 @@ func load_settings() -> void:
 	var stored := {}
 	for key in config.get_section_keys(_SECTION) if config.has_section(_SECTION) else []:
 		stored[key] = config.get_value(_SECTION, key)
-	_data.from_dict(stored)
+	_data.audio_from_dict(stored)
+	var graphics := {}
+	for key in config.get_section_keys(_SECTION_GRAPHICS) if config.has_section(_SECTION_GRAPHICS) else []:
+		graphics[key] = config.get_value(_SECTION_GRAPHICS, key)
+	_data.graphics_from_dict(graphics)
 
 func save_settings() -> void:
 	var config := ConfigFile.new()
 	for bus in SettingsData.BUSES:
 		config.set_value(_SECTION, String(bus), _data.get_linear(bus))
+	config.set_value(_SECTION_GRAPHICS, "pixelation", _data.pixelation)
 	var error := config.save(SETTINGS_PATH)
 	if error != OK:
 		push_warning("[Settings] could not save %s (error %d)" % [SETTINGS_PATH, error])

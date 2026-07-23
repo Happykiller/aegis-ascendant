@@ -1,6 +1,7 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/fx/retro_post.gd" id="99_retro_post"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_fighter.tscn" id="2_player"]
 [ext_resource type="PackedScene" path="res://scenes/projectiles/bullet_manager.tscn" id="3_bullets"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="4_spawner"]
@@ -105,6 +106,7 @@ player_path = NodePath("../PlayerFighter")
 
 [node name="RetroPost" type="CanvasLayer" parent="."]
 layer = -1
+script = ExtResource("99_retro_post")
 
 [node name="Effect" type="ColorRect" parent="RetroPost"]
 material = SubResource("mat_retro")
