@@ -661,7 +661,7 @@ Le jeu de textures est décrit prompt par prompt dans **l'annexe B**.
 | 2 | **ADR** actant la refonte du boss final (ce document en devient la référence) | concepteur | — |
 | 3 | **BRIEF** — planches de concept annotées (**annexe A**, 3 prompts) | asset-forge | la reforge de coque |
 | 4 | **BRIEF** — reforge de `build_pale_leviathan.py` : `moving_part`, contrat §9.3, dégagements §9.4, **et `box_project_uv`** (§9.6) | asset-forge | l'implémentation **et** les textures |
-| 5 | **BRIEF** — jeu de textures dédié (**annexe B**, 4 prompts) + `scripts/fx/leviathan_detail.gd` | asset-forge puis concepteur | le rendu final |
+| 5 | **BRIEF** — jeu de textures dédié (**annexe B**, 5 prompts) + `scripts/fx/leviathan_detail.gd` | asset-forge puis concepteur | le rendu final |
 | 6 | **BRIEF** — décor et VFX de l'arène (**annexe C**, 3 prompts) | asset-forge puis concepteur | le rendu final |
 | 7 | **BRIEF** — SFX : aspiration du vortex, détachement d'épine, fermeture de gueule | asset-forge | le polish |
 | 8 | Primitives §8.2 (aspiration, projectile ciblable, détachement), **avec leurs tests** | concepteur | le module |
@@ -685,7 +685,7 @@ suppose aucun contexte.
 | Annexe | Ce que c'est | Ce que ça sert | Où ça finit |
 |---|---|---|---|
 | **A** — 3 planches | documents de travail **annotés** | concevoir et modeler | `assets/reference/concepts/` (jamais chargé) |
-| **B** — 4 textures | hauteurs et masques N&B | le rendu de la coque en jeu | `assets/source/textures/leviathan/` → `assets/imported/textures/leviathan/` |
+| **B** — 5 textures | 4 hauteurs/masques N&B + 1 albédo couleur | le rendu de la coque en jeu | `assets/source/textures/leviathan/` → `assets/imported/textures/leviathan/` |
 | **C** — 3 décors/VFX | images peintes détourées | l'arène du combat final | `assets/source/backgrounds|vfx/` → `assets/imported/…` |
 
 ### Ce qu'un générateur ne sait pas faire — et qu'on ne lui demande donc jamais
@@ -710,6 +710,69 @@ Deux règles de plus, propres à ce boss :
   (ADR-0013).
 - **Le détail fin se noie** dans le post-process rétro (960×540 + scanlines). Chaque prompt dit donc
   l'**échelle réelle** du motif, et on vise gros plutôt que fin.
+
+### La résolution — demander 2048 est un mensonge
+
+Le générateur d'images de ChatGPT ne rend **pas** de 2048 × 2048. Ses formats natifs sont
+**1024 × 1024**, **1536 × 1024** et **1024 × 1536**. Lui demander 2048, c'est recevoir un 1024
+agrandi : du détail **inventé par l'interpolation**, jamais du détail supplémentaire.
+
+Le dépôt le confirme, fichier par fichier — toutes les images réellement rendues par le générateur y
+sont dans un format natif :
+
+| Fichier | Taille réelle |
+|---|---|
+| `citadel_panels_height.png`, `citadel_greebles_height.png`, `crystal_facets_height.png` | **1254 × 1254** |
+| `nebula_monument_a.png`, `nebula_monument_b.png` | **1536 × 1024** |
+| `planet_hero.png`, `galaxy_distant.png` | **1254 × 1254** |
+
+Les trois seuls fichiers en 2048 du dépôt (`assets/source/textures/hull/*_seamless_2048.png`)
+datent d'avant ce pipeline et ne viennent pas de cette route.
+
+**Et ça n'a aucune importance.** La citadelle tourne en jeu sur des cartes en 1254, et le rendu final
+passe par le post-process rétro à **960 × 540** : une texture en 1024 sur une tuile de 5,5 m donne
+186 pixels par mètre, soit largement plus que ce que l'écran peut montrer. Viser 2048 coûte du poids
+et du temps de génération pour un détail que le filtre rétro efface (c'est la leçon d'ADR-0011 : le
+détail fin se noie).
+
+**Donc : on demande le format natif, et on ne redimensionne pas.** Les carrés en 1024 × 1024, les
+planches en 1536 × 1024.
+
+### La couleur — délibérée sur les cartes de relief, pas ailleurs
+
+Question légitime, et la réponse n'est pas la même pour tous les livrables.
+
+**Une hauteur et un masque sont gris par définition**, pas par goût : ce sont des champs scalaires
+(clair = saillant, sombre = creux). `derive-maps.py` en calcule la normale, la rugosité, l'AO et la
+multiplication d'albedo. Il **avertit d'ailleurs explicitement** si l'image reçue est colorée :
+
+> `⚠ image nettement colorée (chroma moyenne …) — est-ce bien une carte de HAUTEUR en niveaux de gris ?`
+> — `tools/derive-maps.py:58-64`
+
+Parce qu'une hauteur colorée est le symptôme d'un générateur qui a rendu *une jolie image de
+blindage* au lieu de la carte demandée. Ce n'est pas un caprice de format : c'est le contrôle qui
+attrape l'erreur.
+
+**D'où vient la couleur du boss, alors ?** Des **matériaux Blender**, qui portent la palette Null
+Choir normative (charte §3). La carte `_mul` ne fait que la moduler. C'est pour cela que les cartes
+sont grises : la palette est la source de vérité, et un albédo peint en couleur la **recouvrirait**.
+
+**Mais rien n'oblige à s'y tenir partout.** ADR-0013 §3 a explicitement débloqué la couleur
+« lorsque c'est motivé (cristal, décalques, marquages) » — et le projet **ne s'en est jamais servi** :
+toutes les cartes importées sont en mode `L`, sauf les normales qui sont RGB par construction. Le
+verrou est levé depuis deux mois et personne ne l'a franchi.
+
+Deux endroits le méritent sur ce boss, et ils sont dans les annexes :
+
+- **le vortex** (9/11) — déjà en couleur : c'est un effet lumineux, il n'a aucun matériau de palette
+  derrière lui à moduler ;
+- **la croûte du noyau** (8/11) — ajoutée pour cette raison : c'est l'équivalent exact du
+  `crystal_facets` de la citadelle, la seule surface du boss où la teinte varie *à l'intérieur* d'un
+  même matériau (croûte violette morte ↔ chair magenta incandescente). Une multiplication grise ne
+  sait pas faire cette bascule.
+
+Partout ailleurs — écailles, greebles, craquelures, dégâts, paroi du puits — le gris est le bon
+choix, et il est délibéré.
 
 > ⚠️ **`tools/bg-key-alpha.py` ne tourne pas sur ce poste** : il importe `scipy`, qui n'est pas
 > installé (`derive-maps.py` a d'ailleurs été écrit *exprès* sans lui, cf. son en-tête). Tout
@@ -741,7 +804,7 @@ Ce que ça implique :
 
 ---
 
-### 1/10 — `pale_leviathan_phases_sheet`
+### 1/11 — `pale_leviathan_phases_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -794,7 +857,7 @@ de vaisseau militaire humain.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 1152 (paysage), couleur
+FORMAT      : PNG, 1536 x 1024 (paysage natif du generateur), couleur
 DÉPOSER     : assets/reference/concepts/pale_leviathan_phases_sheet.png
 ENSUITE     : rien à dériver — c'est une planche de référence, jamais chargée par le
               moteur (assets/reference/ porte un .gdignore). Vérifier qu'elle passe
@@ -807,7 +870,7 @@ PROVENANCE  : pale_leviathan_phases_sheet,assets/reference/concepts/pale_leviath
 
 ---
 
-### 2/10 — `pale_leviathan_core_states_sheet`
+### 2/11 — `pale_leviathan_core_states_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -856,7 +919,7 @@ humain.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, couleur
+FORMAT      : PNG, 1536 x 1024 (paysage natif du generateur), couleur
 DÉPOSER     : assets/reference/concepts/pale_leviathan_core_states_sheet.png
 ENSUITE     : rien à dériver. Vérifier le passage en Git LFS.
 VÉRIFIER    : le panneau PUITS doit lire comme une PROFONDEUR (un tunnel où l'on
@@ -867,7 +930,7 @@ PROVENANCE  : pale_leviathan_core_states_sheet,assets/reference/concepts/pale_le
 
 ---
 
-### 3/10 — `pale_leviathan_parts_sheet`
+### 3/11 — `pale_leviathan_parts_sheet`
 
 ```
 PROMPT — à coller tel quel :
@@ -911,7 +974,7 @@ photoréalisme, flou, ombres dramatiques, personnages humains, fond étoilé.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, couleur
+FORMAT      : PNG, 1536 x 1024 (paysage natif du generateur), couleur
 DÉPOSER     : assets/reference/concepts/pale_leviathan_parts_sheet.png
 ENSUITE     : rien à dériver. Vérifier le passage en Git LFS.
               Cette planche est l'entrée directe du brief de reforge de
@@ -938,6 +1001,7 @@ Consommé par `scripts/fx/leviathan_detail.gd`, sur le modèle exact de `citadel
 | `leviathan_greebles` | les interstices, les segments d'épines, la lèvre de la gueule | hauteur N&B tuilable |
 | `leviathan_cracks` | le réseau lumineux magenta du noyau | **masque**, pas un relief |
 | `leviathan_damage` | l'endommagement révélé par `health_ratio()` | **masque** |
+| `leviathan_core_albedo` | la croûte du noyau | **couleur** — la seule, et elle est motivée |
 
 La dernière est celle qui manque au mini-boss : `HarvesterLimb.health_ratio()` a été écrit
 « pour un retour visuel d'endommagement (émissifs, fissures) » (`harvester_limb.gd:158`) et n'a
@@ -946,7 +1010,7 @@ réutiliser.
 
 ---
 
-### 4/10 — `leviathan_scales_height`
+### 4/11 — `leviathan_scales_height`
 
 ```
 PROMPT — à coller tel quel :
@@ -977,7 +1041,7 @@ lisses et propres de vaisseau militaire humain, grille régulière trop ordonné
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, niveaux de gris
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), niveaux de gris
 DÉPOSER     : assets/source/textures/leviathan/leviathan_scales_height.png
 ENSUITE     : # 1) mesurer la couture AVANT d'intégrer
               python3 tools/derive-maps.py \
@@ -998,7 +1062,7 @@ PROVENANCE  : leviathan_scales_height_src,assets/source/textures/leviathan/levia
 
 ---
 
-### 5/10 — `leviathan_greebles_height`
+### 5/11 — `leviathan_greebles_height`
 
 ```
 PROMPT — à coller tel quel :
@@ -1029,9 +1093,9 @@ imprimé, tuyauterie industrielle humaine bien rangée.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, niveaux de gris
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), niveaux de gris
 DÉPOSER     : assets/source/textures/leviathan/leviathan_greebles_height.png
-ENSUITE     : mêmes deux commandes que 4/10, avec --name leviathan_greebles
+ENSUITE     : mêmes deux commandes que 4/11, avec --name leviathan_greebles
 VÉRIFIER    : ⚠️ le tuilage EN JEU à deux densités. La citadelle a dû tuiler ses
               greebles DEUX FOIS plus gros que son blindage : à densité égale chaque
               élément faisait 28 cm, soit deux pixels après le post-process, et les
@@ -1043,7 +1107,7 @@ PROVENANCE  : leviathan_greebles_height_src,assets/source/textures/leviathan/lev
 
 ---
 
-### 6/10 — `leviathan_cracks_mask`
+### 6/11 — `leviathan_cracks_mask`
 
 ⚠️ **Un masque, pas une hauteur.** Les craquelures sont un **émissif**, et un émissif ne reçoit pas
 la lumière : lui dériver un relief ne produirait rien de visible. C'est l'erreur qui a fait lire le
@@ -1078,7 +1142,7 @@ de vitrail ou de mosaïque, éclats de verre brisé rectilignes.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, noir et blanc
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), noir et blanc
 DÉPOSER     : assets/source/textures/leviathan/leviathan_cracks_mask.png
 ENSUITE     : python3 tools/derive-maps.py \
                 assets/source/textures/leviathan/leviathan_cracks_mask.png \
@@ -1092,7 +1156,7 @@ PROVENANCE  : leviathan_cracks_mask_src,assets/source/textures/leviathan/leviath
 
 ---
 
-### 7/10 — `leviathan_damage_mask`
+### 7/11 — `leviathan_damage_mask`
 
 Révélé progressivement en fonction de `health_ratio()` d'une pièce : à pleine vie le masque est
 invisible, à zéro il est complet. C'est ce qui donne enfin un usage au retour d'endommagement prévu
@@ -1127,7 +1191,7 @@ toute la surface, aspect de bruit ou de texture de papier.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, niveaux de gris
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), niveaux de gris
 DÉPOSER     : assets/source/textures/leviathan/leviathan_damage_mask.png
 ENSUITE     : python3 tools/derive-maps.py \
                 assets/source/textures/leviathan/leviathan_damage_mask.png \
@@ -1137,6 +1201,79 @@ VÉRIFIER    : seuiller le masque à 0,25 / 0,50 / 0,75 dans un visualiseur et r
               crédible, pas trois motifs sans rapport
 PROVENANCE  : leviathan_damage_mask_src,assets/source/textures/leviathan/leviathan_damage_mask.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Masque N&B progressif — endommagement des pieces du boss, revele par health_ratio()"
               + une ligne pour leviathan_damage_mask.png dans imported/
+```
+
+---
+
+### 8/11 — `leviathan_core_albedo` ⟵ **en couleur, et c'est motivé**
+
+La seule carte **colorée** du jeu de coque, et la première du projet à exercer le déverrouillage
+d'ADR-0013 §3. La raison est la même que pour le cristal de la citadelle : sur le noyau, la teinte
+varie **à l'intérieur d'un même matériau** — croûte violette morte contre chair magenta
+incandescente. Une multiplication grise sait assombrir, elle ne sait pas faire cette bascule.
+
+⚠️ **La couleur reste soumise à la palette.** Elle ne l'élargit pas : ce sont les teintes Null Choir
+de la charte §3 et rien d'autre. Une carte qui introduirait une couleur hors palette contournerait la
+règle au lieu de la servir — c'est exactement ce qu'ADR-0011 craignait, et ce qu'ADR-0013 n'a pas
+autorisé.
+
+```
+PROMPT — à coller tel quel :
+────────────────────────────────────────────────────────────
+Texture répétable EN COULEUR représentant la surface d'un noyau d'énergie organique :
+une croûte minérale fendue à travers laquelle affleure une matière incandescente, vue
+orthogonale de dessus, éclairage neutre et parfaitement plat, aucune ombre portée,
+aucune perspective, aucun vignettage.
+
+C'est une carte de COULEUR (albédo), pas un relief : elle décrit ce que la surface
+EST, pas comment elle est bosselée.
+
+La croûte occupe environ les deux tiers de l'image : plaques minérales d'un violet
+très sombre, presque anthracite, mates et éteintes, aux bords irréguliers. Le tiers
+restant est la matière qui affleure entre elles : magenta lumineux, saturé, avec un
+cœur presque blanc-rose au plus profond des fissures, et une transition douce du
+magenta vers le violet sur les bords de chaque plaque, comme du métal chauffé qui
+refroidit vers l'extérieur. Quelques rares filets ivoire froid, très fins, parcourent
+la croûte.
+
+Aucune autre couleur : pas de bleu cyan, pas de rouge corail, pas d'orange, pas de
+jaune, pas de vert vif.
+
+Les plaques de croûte mesurent environ 40 centimètres dans le monde réel et la tuile
+entière couvre environ 2,5 mètres : on voit donc une trentaine de plaques. La
+répartition est organique et irrégulière, jamais un damier ni un réseau hexagonal.
+
+L'image doit se répéter parfaitement en tuile, sans aucune couture visible sur les
+quatre bords.
+
+Éviter absolument : perspective, ombre portée, vignettage, bords assombris, cadre,
+objet isolé au centre, texte, lettres, chiffres, logo, filigrane, signature, nom de
+marque ou d'artiste, aspect de lave ou de roche volcanique terrestre, aspect de
+braise de feu de bois, teintes orangées ou jaunes, motif hexagonal régulier, lueur
+diffuse qui noierait le contraste entre croûte et matière.
+────────────────────────────────────────────────────────────
+```
+
+```
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), COULEUR
+DÉPOSER     : assets/source/textures/leviathan/leviathan_core_albedo.png
+ENSUITE     : ⚠️ NE PAS passer par derive-maps.py — ce n'est pas une hauteur, et
+              l'outil avertirait justement qu'elle est colorée (derive-maps.py:58-64).
+              Elle se copie telle quelle, après vérification du tuilage :
+              python3 tools/derive-maps.py \
+                assets/source/textures/leviathan/leviathan_core_albedo.png \
+                --out /tmp --name probe --check-tiling
+              cp assets/source/textures/leviathan/leviathan_core_albedo.png \
+                 assets/imported/textures/leviathan/
+              Le relief du noyau, lui, vient de la géométrie (croûte modélisée par
+              build_pale_leviathan.py) et du masque de craquelures 6/11.
+VÉRIFIER    : ⚠️ LA PALETTE, pixel par pixel. Échantillonner l'image et confirmer que
+              toutes les teintes tombent dans le Null Choir (anthracite, violet
+              sombre, ivoire froid, magenta). Une dérive vers l'orange ou le rouge
+              corail est un REJET : elle volerait leur lisibilité aux projectiles
+              ennemis (DA §6). Puis en jeu, à l'échelle réelle
+PROVENANCE  : leviathan_core_albedo_src,assets/source/textures/leviathan/leviathan_core_albedo.png,raster_texture,ChatGPT imagegen (OpenAI),,tiers (genere IA),proprietary-internal,2026-07-23,docs/design/BOSS_PALE_LEVIATHAN.md,,"Carte d'albedo COULEUR de la croute du noyau — premiere carte coloree du projet (ADR-0013 §3) ; teintes Null Choir uniquement"
+              + une ligne pour la copie dans imported/
 ```
 
 ---
@@ -1157,7 +1294,7 @@ plutôt que de générer des sprites.
 
 ---
 
-### 8/10 — `maw_vortex_color`
+### 9/11 — `maw_vortex_color`
 
 ```
 PROMPT — à coller tel quel :
@@ -1187,7 +1324,7 @@ spirale vue de loin, aspect de coquillage, symétrie parfaite mécanique.
 ```
 
 ```
-FORMAT      : PNG, 1024 x 1024, couleur, fond noir pur
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), couleur, fond noir pur
 DÉPOSER     : assets/source/vfx/maw/maw_vortex_color.png
 ENSUITE     : alpha par clé de luminance (le noir devient transparent) → 
               assets/imported/vfx/maw/maw_vortex.png
@@ -1203,7 +1340,7 @@ PROVENANCE  : maw_vortex_color_src,assets/source/vfx/maw/maw_vortex_color.png,ra
 
 ---
 
-### 9/10 — `maw_tunnel_wall_height`
+### 10/11 — `maw_tunnel_wall_height`
 
 ```
 PROMPT — à coller tel quel :
@@ -1234,9 +1371,9 @@ régulièrement espacés, aspect anatomique explicite ou organique répugnant.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 2048, niveaux de gris
+FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), niveaux de gris
 DÉPOSER     : assets/source/textures/leviathan/maw_tunnel_wall_height.png
-ENSUITE     : mêmes deux commandes que 4/10, avec --name maw_tunnel_wall
+ENSUITE     : mêmes deux commandes que 4/11, avec --name maw_tunnel_wall
 VÉRIFIER    : le tuilage sur l'axe VERTICAL surtout — c'est celui que le joueur
               parcourt en descendant le puits, et une couture y lit comme un anneau
               de plus qui n'existe pas
@@ -1246,7 +1383,7 @@ PROVENANCE  : maw_tunnel_wall_height_src,assets/source/textures/leviathan/maw_tu
 
 ---
 
-### 10/10 — `nebula_leviathan_arena`
+### 11/11 — `nebula_leviathan_arena`
 
 Le combat final ne doit pas se jouer sur le même ciel que la première vague. Ce landmark rejoint
 `planet_hero`, `nebula_a`, `nebula_b` et `galaxy_distant` déjà livrés par BRIEF-0028, dans le même
@@ -1284,7 +1421,7 @@ nets, aspect de peinture à l'huile texturée.
 ```
 
 ```
-FORMAT      : PNG, 2048 x 1152, couleur, fond noir pur
+FORMAT      : PNG, 1536 x 1024 (paysage natif du generateur), couleur, fond noir pur
 DÉPOSER     : assets/source/backgrounds/raster/nebula_leviathan_arena.png
 ENSUITE     : alpha par clé de luminance → assets/imported/backgrounds/nebula_leviathan_arena.png
               ⚠️ tools/bg-key-alpha.py est cassé (scipy absent) — cf. préambule
