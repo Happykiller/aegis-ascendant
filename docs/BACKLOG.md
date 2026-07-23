@@ -18,10 +18,7 @@
 
 ---
 
-## ⏸ Reprise en cours — Pale Leviathan (session du 2026-07-23)
-
-**HEAD au moment de la coupure : `c11f1df`, poussé sur `origin/main`.** Tout ce qui suit est
-commité et poussé sauf mention contraire.
+## ⏳ En cours — Pale Leviathan (coque livrée le 2026-07-23, câblage restant)
 
 ### Ce qui est acquis
 
@@ -30,77 +27,48 @@ commité et poussé sauf mention contraire.
 | Conception du boss (4 phases, chiffres, invariants, spec 3D, 11 prompts) | `docs/design/BOSS_PALE_LEVIATHAN.md` | ✅ |
 | Décision + dimensions 11 × 14 m | `ADR-0018`, tableau d'`ADR-0008` amendé | ✅ |
 | Les 11 images (3 planches, 5 textures, 3 décors/VFX) | `assets/reference/concepts/`, `assets/source/` | ✅ mesurées, regardées, provenance au CSV |
-| Coque animable et texturable (30 pièces, UV, tangentes) | `build_pale_leviathan.py`, `pale_leviathan.glb` | ✅ techniquement — **silhouette à corriger** |
+| **Coque + silhouette (BRIEF-0041)** — noyau sphérique, épines longues/inégales, croissant asymétrique | `build_pale_leviathan.py`, `pale_leviathan.glb` | ✅ mesurée, rendue, regardée (voir réserve) |
 | `GravityWell`, `TargetableProjectile` | `scripts/gameplay/` | ✅ 25 tests |
 | `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
 | `LeviathanPlate`, `LeviathanSpike`, `LeviathanCombat` | `scripts/bosses/` | ✅ 42 tests |
 
 `./scripts/check.sh` : **274 tests verts**.
 
-### ⚠️ BRIEF-0041 interrompu en cours de route — état exact
+### ✅ BRIEF-0041 (silhouette) — livré et intégré
 
-L'agent `asset-forge` a été **arrêté à la main** pendant la reforge de silhouette. Son dernier mot :
-« maintenant les plaques et les épines » — le rééquilibrage des matériaux était donc fait, la forme
-des plaques et des épines ne l'était pas.
+La reforge de silhouette était en réalité **déjà complète dans le script commité** (`0af3123`) : le
+message WIP sous-décrivait son contenu (sphère du noyau, arc de coquille, épines allongées/inégales,
+gonflement du croissant, tous présents). Le `9,481 m` de la note de reprise était un état
+intermédiaire écarté ; le script commité produit **11,03 m et passe le contrat d'export**. La coque
+a été **régénérée** (le `.glb` sur disque était encore celui de BRIEF-0040) puis vérifiée point par
+point, pas sur la foi du rapport :
 
-**Ce qui est commité** : `tools/blender/build_pale_leviathan.py` en l'état (~+528/−213 lignes,
-syntaxe valide, **jamais exécuté jusqu'au bout**) et `tools/blender/inspect_glb.py`, l'outil
-d'inspection que l'agent s'est écrit.
+- **bbox 11,0313 × 3,1620 × 13,9972 m** (X +0,28 %, Z −0,02 %, Y ≤ 3,20), 27 710 tris / 40 630 sommets.
+- Matériaux aux 3 cibles : `AA_Hull` 35,2 % (≥ 30), `AA_Emissive_Engine` 7,8 % (≤ 8), `AA_Greeble` 17,9 % (≤ 20).
+- Contrat de noms intact (30 maillages, parentage exact), `TANGENT` + `TEXCOORD_0` sur 30/30.
+- Déterminisme OK, sha256 `98529ce7…`. Rendu de recette : `docs/forge/output/BRIEF-0041-planche-quatre-vues.png`.
 
-**Ce qui n'est PAS commité, et pourquoi** : le `.glb` régénéré a été **restauré à la version
-BRIEF-0040**. La coque produite par le script en cours mesurait **9,481 m de large pour un contrat à
-11,0 ±3 %** — hors tolérance de 14 %. La longueur (13,997 m) passait, portée par le `Body` ; la
-largeur, portée par les épines, manquait, ce qui est cohérent avec « les épines restaient à faire ».
-Ce `.glb` venait donc d'un export **dont l'auto-validation a échoué** : `ak.export_hull()` écrit le
-fichier *puis* le relit, si bien qu'un échec laisse un fichier non conforme sur le disque.
-
-Un artefact généré non conforme n'a rien à faire dans le dépôt : il est reproductible depuis le
-script, et le garder priverait le jeu d'une coque valide pour rien.
-
-**Le bon côté — le rééquilibrage de matière est acquis et mesuré** sur ce `.glb` intermédiaire :
-
-| Matériau | Avant (BRIEF-0040) | Après (WIP) | Cible BRIEF-0041 |
-|---|---|---|---|
-| `AA_Emissive_Engine` | 28,7 % | **7,8 %** | ≤ 8 % ✅ |
-| `AA_Hull` | 11,0 % | **35,2 %** | ≥ 30 % ✅ |
-| `AA_Greeble` | 32,5 % | **17,9 %** | ≤ 20 % ✅ |
-
-Contrat de noms intact (30 maillages), `TANGENT` et `TEXCOORD_0` présents, 27 710 triangles.
-⚠️ **Rien de tout cela n'a été regardé** (ADR-0006) : aucun rendu n'a été produit.
-
-**Reprise** : relancer `asset-forge` sur `BRIEF-0041`. Il repart du script commité, qui porte déjà
-le plus gros du travail — lui dire que **seules la forme des plaques et des épines** restent, et que
-la largeur de 11,0 m dépend de l'envergure des épines.
-
-### Comment vérifier la coque quand elle revient
-
-Ne pas prendre le compte-rendu de la forge pour argent comptant — c'est ce qui a fait passer la
-première version. Les quatre contrôles qui ont servi au BRIEF-0040 :
-
-1. **Contrat de noms** — relire le JSON du `.glb` (30 maillages, parents exacts), pas le rapport.
-2. **Répartition des matériaux** — la mesure qui objective « ça ne ressemble pas ». Cibles de
-   BRIEF-0041 : `AA_Emissive_Engine` ≤ 8 %, `AA_Hull` ≥ 30 %, `AA_Greeble` ≤ 20 %.
-   *(Relevé avant correctif : 28,7 / 11,0 / 32,5.)*
-3. **Déterminisme** — `./scripts/build-hull.sh --check`.
-4. **Regarder** la planche 4 vues **à côté de** `assets/reference/concepts/pale_leviathan_parts_sheet.png`
-   (ADR-0006). Les quatre écarts nommés au brief : symétrie radiale, noyau plat, épines courtes,
-   croissant qui ne lit pas comme incomplet.
-
-La méthode est capitalisée dans `.claude/resources/pratique-revue-asset.md`.
+**3 des 4 écarts résolus et lisibles** : symétrie→asymétrie, noyau plat→sphère saillante, épines
+courtes→longs dards inégaux. **Réserve visuelle non bloquante** (écart n°4, candidate à un polish
+ultérieur) : la coquille lit comme des **anneaux concentriques machinés** plutôt qu'une **carapace de
+tuiles chevauchantes**, et l'incomplétude du croissant reste peu dramatique. Levier propre si on
+l'ouvre un jour : **interrompre les bandes concentriques côté ouverture** (avant-tribord) plutôt
+qu'élargir l'encoche — travail de géométrie de coquille avec incidence sur le harnais de dégagement.
+La méthode de revue est capitalisée dans `.claude/resources/pratique-revue-asset.md`.
 
 ### Ce qui reste, dans l'ordre
 
-1. Récolter/relancer `BRIEF-0041` (ci-dessus).
-2. **Câbler la scène** : `pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`,
+1. **Câbler la scène** : `pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`,
    un `.tres` de `LeviathanTuning` pour les valeurs qui divergent des défauts).
-3. **Relayer dans `graybox_root.gd`** : `pull_changed` → vélocité du joueur, `piece_gauge_changed` et
+2. **Relayer dans `graybox_root.gd`** : `pull_changed` → vélocité du joueur, `piece_gauge_changed` et
    `structure_changed` → HUD, `piece_destroyed` → VFX/SFX, bannières par phase.
-4. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
+3. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
    des nœuds de la coque, qui bougeaient encore.
-5. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
+4. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
    `scripts/fx/leviathan_detail.gd` dans le même commit (`CLAUDE.md` : rien d'inutilisé dans
    `imported/`). Paramètres de dérivation consignés au §11.3 du document de conception.
-6. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
+5. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
+6. **Polish silhouette (optionnel)** : réserve écart n°4 du croissant (voir plus haut).
 7. **Brief séparé** : `build_choir_harvester.py` n'a ni `_triangulate_ngons()` ni `box_project_uv()`
    — le mini-boss est probablement sans tangentes, donc intexturable. Trouvaille du BRIEF-0040.
 
