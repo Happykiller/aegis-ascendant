@@ -37,27 +37,40 @@ commité et poussé sauf mention contraire.
 
 `./scripts/check.sh` : **274 tests verts**.
 
-### ⚠️ Travail EN VOL au moment de la coupure
+### ⚠️ BRIEF-0041 interrompu en cours de route — état exact
 
-Un sous-agent `asset-forge` exécutait **`BRIEF-0041`** (rendre au Leviathan la silhouette de sa
-planche). État de l'arbre laissé en place, **non commité** :
+L'agent `asset-forge` a été **arrêté à la main** pendant la reforge de silhouette. Son dernier mot :
+« maintenant les plaques et les épines » — le rééquilibrage des matériaux était donc fait, la forme
+des plaques et des épines ne l'était pas.
 
-- `tools/blender/build_pale_leviathan.py` — **modifié** (~+495/−201 lignes). Syntaxe Python valide,
-  mais **rien ne dit qu'il est complet**.
-- `assets/imported/models/bosses/pale_leviathan.glb` — **inchangé** (sha `b475fc24…`, celui du
-  BRIEF-0040) : la coque n'avait pas encore été régénérée.
-- `tools/blender/inspect_glb.py` — outil d'inspection écrit par l'agent, non suivi.
+**Ce qui est commité** : `tools/blender/build_pale_leviathan.py` en l'état (~+528/−213 lignes,
+syntaxe valide, **jamais exécuté jusqu'au bout**) et `tools/blender/inspect_glb.py`, l'outil
+d'inspection que l'agent s'est écrit.
 
-**Premier geste de la reprise — trancher entre les deux cas :**
+**Ce qui n'est PAS commité, et pourquoi** : le `.glb` régénéré a été **restauré à la version
+BRIEF-0040**. La coque produite par le script en cours mesurait **9,481 m de large pour un contrat à
+11,0 ±3 %** — hors tolérance de 14 %. La longueur (13,997 m) passait, portée par le `Body` ; la
+largeur, portée par les épines, manquait, ce qui est cohérent avec « les épines restaient à faire ».
+Ce `.glb` venait donc d'un export **dont l'auto-validation a échoué** : `ak.export_hull()` écrit le
+fichier *puis* le relit, si bien qu'un échec laisse un fichier non conforme sur le disque.
 
-```bash
-./scripts/build-hull.sh --check pale_leviathan     # regenere 2x et compare
-```
+Un artefact généré non conforme n'a rien à faire dans le dépôt : il est reproductible depuis le
+script, et le garder priverait le jeu d'une coque valide pour rien.
 
-- **Ça passe** → le script était complet. Vérifier la livraison (voir ci-dessous), puis commiter.
-- **Ça échoue** → le script a été coupé en cours d'écriture. `git checkout -- tools/blender/build_pale_leviathan.py`
-  restaure la version BRIEF-0040 (fonctionnelle, commitée en `e57a285`), puis **relancer `BRIEF-0041`**.
-  Aucune perte : le brief est versionné et l'acquis technique est dans le commit.
+**Le bon côté — le rééquilibrage de matière est acquis et mesuré** sur ce `.glb` intermédiaire :
+
+| Matériau | Avant (BRIEF-0040) | Après (WIP) | Cible BRIEF-0041 |
+|---|---|---|---|
+| `AA_Emissive_Engine` | 28,7 % | **7,8 %** | ≤ 8 % ✅ |
+| `AA_Hull` | 11,0 % | **35,2 %** | ≥ 30 % ✅ |
+| `AA_Greeble` | 32,5 % | **17,9 %** | ≤ 20 % ✅ |
+
+Contrat de noms intact (30 maillages), `TANGENT` et `TEXCOORD_0` présents, 27 710 triangles.
+⚠️ **Rien de tout cela n'a été regardé** (ADR-0006) : aucun rendu n'a été produit.
+
+**Reprise** : relancer `asset-forge` sur `BRIEF-0041`. Il repart du script commité, qui porte déjà
+le plus gros du travail — lui dire que **seules la forme des plaques et des épines** restent, et que
+la largeur de 11,0 m dépend de l'envergure des épines.
 
 ### Comment vérifier la coque quand elle revient
 

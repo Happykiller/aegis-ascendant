@@ -40,6 +40,62 @@ CE QUE BRIEF-0040 CHANGE — trois verrous leves d'un coup
    40 000 triangles (ADR-0018).
 
 
+CE QUE BRIEF-0041 CHANGE — la forme et le budget de MATIERE
+===========================================================
+BRIEF-0040 a livre une coque animable, texturable et a sa taille. Elle ne
+ressemblait pas a ses planches, et deux mesures le disaient : `AA_Emissive_Engine`
+portait **28,7 %** des sommets, `AA_Hull` **11,0 %** contre **32,5 %** a
+`AA_Greeble`. Un emissif ne recoit pas la lumiere : a ce dosage il noie le
+modele et fait lire l'ensemble en rose pale delave, exactement le defaut
+qu'ADR-0013 releve pour le noyau de la citadelle.
+
+**Doctrine de materiaux** (elle vaut contrat : chaque face de ce script doit
+pouvoir se justifier par une de ces cinq lignes) :
+
+    AA_Hull      anthracite #24252B — LE BLINDAGE. Nappes de pont, flancs
+                 d'ecaille, corps des dards. C'est la matiere DOMINANTE.
+    AA_Trim      ivoire froid #DDDCD2 — les ecailles claires, celles qui
+                 accrochent la lumiere et donnent le « Pale » du nom.
+    AA_Panel     violet sombre #452663 — les segments organiques : croute du
+                 noyau, paroi du puits, dessous de jupe.
+    AA_Greeble   #141419 — les INTERSTICES seulement : dessous de tuile,
+                 culots, joints. Jamais une grande surface vue de dessus.
+    AA_Emissive  magenta #D93D9C — des VEINES, pas une livree. Le budget est
+                 un plafond dur, et la quasi-totalite en revient au noyau.
+
+Quatre corrections de forme, lues panneau par panneau sur
+`pale_leviathan_parts_sheet.png` et `..._core_states_sheet.png` :
+
+1. **Le noyau est une SPHERE** (panneau CLOSED CORE), plus une rosette plate.
+   Il est desormais bati sur une icosphere — dont les facettes irregulieres
+   donnent le reseau de craquelures de la planche, la ou un tour (lathe) a
+   grille regulier produisait, vu de dessus, un spirographe concentrique. Il
+   est **remonte et grossi** jusqu'a devenir le point le plus haut de la coque
+   (z = +1,56 contre +1,37 aux plaques) : c'est ce debord, et lui seul, qui
+   fait lire une boule sous une camera qui regarde de dessus.
+2. **Le croissant se lit incomplet AU REPOS.** Ce n'etait pas le cas : les
+   230 deg de matiere du croissant etaient visuellement refermes par un
+   `Shell_Ring` complet a 360 deg. L'anneau porteur est donc lui aussi devenu
+   un arc, plus large de 14 deg que le croissant de chaque cote — les deux
+   ouvertures se superposent et **une seule encoche** traverse toute la
+   coquille.
+3. **Les dards s'allongent** : corde de 2,7 a 5,8 m (contre 4,4 m au plus long),
+   rayon de base ramene de 0,42 a 0,32 m, effilement porte a 1,45. Ils sont
+   plus longs, plus fins, plus segmentes, et **inegaux** — `Spike_01` fait plus
+   du double de `Spike_04`.
+4. **L'asymetrie est portee par la coque, pas par les zones de touche.** Le
+   croissant s'epaissit progressivement d'un bout a l'autre (facteur 1,22 -> 0,80
+   sur sa corde), son ouverture est franchement decentree (secteur avant-tribord),
+   et les quatre epines n'ont ni la meme longueur ni le meme espacement. Les
+   quatre `Plate_0X` restent en revanche de meme taille et de meme portee : le
+   joueur les abat dans n'importe quel ordre, elles doivent rester
+   interchangeables.
+
+⚠️ Ce que la reforme NE touche pas, et ne doit jamais toucher : le contrat de
+noms, les 29 `moving_part` et leurs pivots, `box_project_uv(0.18)`,
+`_triangulate_ngons()`, le harnais de degagement bloquant, le determinisme.
+
+
 LE PLAN VIENT DE LA MECANIQUE, PAS SEULEMENT DE LA PLANCHE
 ==========================================================
 La camera de jeu regarde le plan **de dessus** (20 deg d'ecart a la verticale).
@@ -192,7 +248,10 @@ BODY_R: list[tuple[float, float]] = [
 #: puits, gorge de la coquille, contre-levre exterieure. Elles sont absolues et
 #: non fractionnaires parce que la coquille orbite dessus : la piste doit etre
 #: un solide de revolution, sinon l'orbite raboterait la coque une fois sur deux.
-DISC_R = (1.96, 2.06, 2.40, 2.84, 3.18, 3.50, 3.86, 4.14)
+#: ⚠️ `DISC_R[0]` EST la levre du puits : c'est la meme boucle que `SHAFT[0]`
+#: (`build_body` reutilise `top_rings[0]` comme premiere station du puits). Les
+#: deux valeurs bougent ensemble ou le puits se decolle du pont.
+DISC_R = (1.90, 2.02, 2.40, 2.84, 3.18, 3.50, 3.86, 4.14)
 DISC_TOP = (0.60, 0.22, 0.18, 0.18, 0.20, 0.36, 0.60, 0.54)
 DISC_BOT = (-0.92, -1.02, -1.08, -1.10, -1.08, -1.04, -0.96, -0.90)
 
@@ -214,30 +273,55 @@ RIM_HALF = 0.045          # demi-epaisseur de la tranche : jamais un fil de raso
 
 #: Paroi INTERIEURE du puits : (z, rayon). Elle part de la levre et descend au
 #: coeur. C'est elle qui borne les anneaux — leur rayon en est DERIVE.
+#: ⚠️ Le puits est legerement EN TONNEAU (il s'evase de 1,90 a 1,98 sous la
+#: levre avant de se resserrer) : le noyau de BRIEF-0041 est une sphere de
+#: 1,56 m de rayon posee a z = +0,40, et sa calotte basse descend a z = -0,60.
+#: Sans cet evasement, `Ring_01` — dont le rayon derive de cette table — passait
+#: 6 cm DANS le noyau. La coupe n'est visible de nulle part ; la collision, si.
 SHAFT: tuple[tuple[float, float], ...] = (
-    (0.60, 1.96), (0.26, 1.92), (-0.10, 1.84), (-0.44, 1.66),
-    (-0.76, 1.42), (-1.04, 1.12), (-1.26, 0.76), (-1.44, 0.32),
+    (0.60, 1.90), (0.26, 1.96), (-0.10, 1.98), (-0.44, 1.78),
+    (-0.76, 1.50), (-1.04, 1.16), (-1.26, 0.78), (-1.44, 0.32),
 )
-SHAFT_MATS = ("AA_Greeble", "AA_Panel", "AA_Panel", "AA_Greeble",
-              "AA_Panel", "AA_Greeble", "AA_Panel")
+SHAFT_MATS = ("AA_Panel", "AA_Panel", "AA_Hull", "AA_Panel",
+              "AA_Hull", "AA_Panel", "AA_Panel")
 
 #: Ventre : peau exterieure du puits, de la premiere station basse au culot.
 BELLY: tuple[tuple[float, float], ...] = (
-    (-0.92, 1.96), (-1.14, 1.70), (-1.32, 1.20), (-1.46, 0.70), (-1.54, 0.34),
+    (-0.92, 1.90), (-1.14, 1.68), (-1.32, 1.20), (-1.46, 0.70), (-1.54, 0.34),
 )
 
 # ==========================================================================
 # Le noyau — la cible, et le pivot de tout le puits
 # ==========================================================================
 
-CORE_RXY = 1.52           # demi-grand axe du noyau (aplati : la coque est plate)
-CORE_RZ = 0.68
-CORE_Z = 0.20             # centre du noyau = pivot de `Core`
-CORE_SEG = 32             # c'est LA cible du joueur : on la paie ronde
-CORE_RINGS = 15
-CORE_CRUST_P = 0.78       # part des facettes qui deviennent croute violette
-CORE_CRUST_LIFT = 0.030
-CORE_CRUST_INSET = 0.030
+#
+# ⚠️ BRIEF-0041 : c'est une SPHERE, et elle DEBORDE. Trois chiffres la tiennent,
+# et aucun n'est cosmetique :
+#   * `CORE_RZ / CORE_RXY = 0,74` (contre 0,45) — au-dessous, la piece lit comme
+#     une lentille, pas comme une boule ;
+#   * `CORE_Z + CORE_RZ = +1,56` fait du noyau **le point le plus haut de toute
+#     la coque** (les plaques culminent a +1,37, la levre a +1,20). Sous une
+#     camera qui regarde de dessus, c'est le seul indice de rondeur disponible :
+#     une sphere et un disque se projettent tous deux en cercle, seule
+#     l'occultation de ce qui l'entoure trahit le volume ;
+#   * `CORE_Z - CORE_RZ = -0,76` : la calotte basse plonge dans le puits, dont
+#     la table `SHAFT` a ete evasee pour la laisser passer sans toucher
+#     `Ring_01`. Descendre le centre re-enterrerait la boule.
+CORE_RXY = 1.56           # rayon equatorial
+CORE_RZ = 1.16            # demi-hauteur — 0,74 x l'equateur, une boule
+CORE_Z = 0.40             # centre du noyau = pivot de `Core`
+
+#: ⚠️ ICOSPHERE, pas un tour (lathe). Un tour a grille reguliere (32 x 15) donnait
+#: vu de dessus — l'angle de la camera — un spirographe de cercles concentriques :
+#: c'est ce qui faisait lire une rosette plate au lieu d'une boule. Les facettes
+#: d'une icosphere n'ont ni rangee ni meridien, et leur reseau de joints EST le
+#: « CRACK VEINS » de la planche. Subdivision 3 = 320 facettes, soit ~0,09 m2
+#: chacune sur une boule de 3,1 m : l'echelle de plaque du panneau CLOSED CORE.
+CORE_SUBDIV = 3           # 320 facettes (Blender : 1 -> 20, 2 -> 80, 3 -> 320)
+CORE_CRUST_P = 0.62       # part des facettes soulevees (joint emissif autour)
+CORE_FLAT_P = 0.23        # part posee a plat, sans joint : economie d'emissif
+CORE_CRUST_LIFT = 0.034
+CORE_CRUST_INSET = 0.032
 
 HEART_Z = -1.24
 HEART_R = 0.12
@@ -246,32 +330,58 @@ HEART_R = 0.12
 # La levre de la gueule (`Maw_Lip`, legendee OUTER RIM sur la planche)
 # ==========================================================================
 #
-# Secteur arriere de l'ouverture, arque au-dessus du noyau, griffes en surplomb.
+# Secteur arriere de l'ouverture, arque contre le noyau, griffes en surplomb.
 # Sa charniere est une droite parallele a X posee DERRIERE l'ouverture : a
 # +90 deg (Godot `rotation.x`) toute la piece se dresse a l'exterieur du puits,
 # qui se degage entierement en vue de dessus.
-
+#
+# ⚠️ BRIEF-0041 : la levre ne peut plus passer AU-DESSUS du noyau, puisque celui-ci
+# est devenu une boule qui monte a z = +1,56. Elle devient ce que la planche
+# montre vraiment (panneau VORTEX OPEN) : un COLLIER arque qui epouse le flanc de
+# la boule, entre r = 1,66 et r = 2,06. Les deux bornes sont dures :
+#   * en deca de 1,66 la levre entre dans le noyau (rayon de la sphere a
+#     l'altitude de la crete : 1,24 m a z = 1,10) ;
+#   * au-dela de 2,10 elle entre dans la piste de la coquille (`Shell_Ring`
+#     commence a r = 2,20) et se ferait raboter a chaque tour d'orbite.
 LIP_A = 42.0              # azimut de depart (deg)
 LIP_B = 138.0             # azimut de fin — 96 deg de secteur, centre sur +Y
 LIP_SEG = 14
 #: (rayon, z du dessus). L'epaisseur descend de LIP_T sous cette nappe.
 LIP_PROFILE: tuple[tuple[float, float], ...] = (
-    (2.00, 0.86), (1.86, 0.98), (1.58, 1.06), (1.30, 1.06), (1.10, 1.00),
+    (2.06, 0.84), (1.98, 1.00), (1.86, 1.12), (1.74, 1.19), (1.66, 1.18),
 )
 LIP_T = 0.14
-LIP_PIVOT = (0.0, 2.14, 0.80)
-#: Griffes du surplomb : elles mordent au-dessus du noyau sans le toucher.
+#: ⚠️ La charniere doit rester DERRIERE toute la matiere de la levre (y_max =
+#: 2,06 a l'azimut 90 deg), sans quoi un point plongerait des les premiers degres
+#: d'ouverture. Elle doit aussi rester EN DECA de r = 2,20 (piste de coquille).
+LIP_PIVOT = (0.0, 2.16, 0.82)
+#: Griffes du surplomb : elles mordent vers la boule sans la toucher (le rayon
+#: du noyau a leur altitude vaut 1,19 m ; elles s'arretent a 1,46).
 LIP_FANGS = (52.0, 70.0, 90.0, 110.0, 128.0)
-LIP_FANG_R = (1.12, 0.92)     # (base, pointe) en rayon
-LIP_FANG_Z = (0.96, 0.93)
+LIP_FANG_R = (1.68, 1.46)     # (base, pointe) en rayon
+LIP_FANG_Z = (1.12, 1.08)
 
 #: Noeuds gravitiques : azimut sur la levre, longueur, inclinaison sortante.
+#:
+#: ⚠️ BRIEF-0041 — DEUX PLACEMENTS ONT ETE REFUSES PAR LA MESURE avant celui-ci,
+#: et les deux echecs disent la meme chose : le debattement impose (-60 deg
+#: autour de `rotation.x`, tableau de BRIEF-0040, intouchable) fixe la direction
+#: de repli, et c'est elle qui contraint la pose, pas l'inverse.
+#:   * plante sur le flanc externe (r = 2,00, z = 0,98) : le noeud remontait en
+#:     RASANT l'arche de la levre et la traversait entre 25 et 35 cm du pivot —
+#:     hors du rayon d'exclusion de charniere, donc une vraie morsure ;
+#:   * penche vers l'interieur (`NODE_TILT = 118 deg`) : au repos tout degageait,
+#:     mais le repli le rabattait a l'horizontale en travers de la crete.
+#: Le placement retenu est sur le POINT HAUT de l'arche, penche vers l'exterieur :
+#: le repli le redresse alors presque a la verticale, au-dessus du vide. La levre
+#: ayant remonte contre la boule, la pointe ne sort qu'a r = 2,04 — sous la piste
+#: de `Shell_Ring`, qui ne monte de toute facon qu'a z = 0,68.
 NODE_AZ = (58.0, 92.0, 124.0)
-NODE_R = 1.56             # rayon d'implantation, sur la crete de la levre
-NODE_Z = 1.05
-NODE_LEN = (0.56, 0.60, 0.52)
-NODE_TILT = 42.0          # deg au-dessus du plan, penche vers l'exterieur
-NODE_W = 0.18             # demi-largeur de l'embase
+NODE_R = 1.78             # rayon d'implantation, sur la crete de la levre
+NODE_Z = 1.15
+NODE_LEN = (0.42, 0.46, 0.40)
+NODE_TILT = 55.0          # deg au-dessus du plan, penche vers l'exterieur
+NODE_W = 0.16             # demi-largeur de l'embase
 
 # ==========================================================================
 # Le puits — cinq anneaux a ouverture decalee (« OFFSET GATE »)
@@ -304,51 +414,80 @@ RING_SEG = 26             # segments sur les 290 deg de matiere
 # jour ou les deux sont actifs, une composition d'Euler que personne ne sait
 # relire.
 
+#: Croissant : l'anneau INCOMPLET de la charte (SS2, « anneau incomplet »). Il
+#: court de -50 a +155 deg, soit 205 deg de matiere ; les 155 deg manquants
+#: ouvrent sur le quadrant AVANT-TRIBORD (milieu de l'ouverture a 232 deg, entre
+#: le travers tribord a 180 et l'etrave a 270). C'est le secteur que la camera
+#: montre en grand : une ouverture posee a l'arriere ne se serait jamais lue.
+CR_PHI_A = -50.0
+CR_PHI_B = 155.0
+CR_OVERLAP = 1.26
+
+#: ⚠️ BRIEF-0041 — CE QUI FAISAIT ECHOUER L'INCOMPLETUDE. Les 230 deg de matiere
+#: de BRIEF-0040 etaient corrects sur le papier et invisibles a l'ecran : le
+#: `Shell_Ring` porteur, lui, faisait 360 deg et **refermait optiquement**
+#: l'ouverture, un anneau concentrique complet passant juste dessous. L'anneau
+#: porteur est donc devenu un ARC, deborde de `SR_MARGIN` degres de chaque cote :
+#: les deux ouvertures se superposent, et la coquille n'a plus qu'UNE encoche,
+#: traversante, visible au repos en vue de dessus. Une seule regle a retenir : ce
+#: qui vit sous le croissant ne doit jamais etre plus ferme que lui.
+SR_MARGIN = 14.0
+
 SHELL_PIVOT = (0.0, 0.0, CORE_Z)   # l'axe du noyau, et rien d'autre
 
 #: Anneau porteur : deux rangees de tuiles tangentielles qui se recouvrent.
-#: (rayon interne, rayon externe, z interne, z externe, tuiles, dephasage)
+#: (rayon interne, rayon externe, z interne, z externe, tuiles, dephasage).
+#: `tuiles` est desormais compte SUR L'ARC, pas sur 360 deg.
 RING_ROWS: tuple[tuple[float, float, float, float, int, float], ...] = (
-    (2.20, 2.60, 0.56, 0.62, 18, 0.00),
-    (2.54, 2.94, 0.62, 0.52, 15, 0.43),
+    (2.20, 2.60, 0.56, 0.62, 13, 0.00),
+    (2.54, 2.94, 0.62, 0.52, 11, 0.43),
 )
 RING_Z_BASE = 0.34        # les tuiles plongent dans la gorge : pas de flottement
 RING_OVERLAP = 1.30
 
-#: Croissant : l'anneau INCOMPLET de la charte. Il court de -135 a +95 deg,
-#: soit 230 deg ; les 130 deg manquants ouvrent sur le quadrant avant-tribord.
-CR_PHI_A = -135.0
-CR_PHI_B = 95.0
-CR_OVERLAP = 1.26
-#: ⚠️ La charniere est posee derriere les PLAQUES (y = 3,66 au plus loin), pas
-#: derriere le croissant seul (y = 3,02) : les plaques sont ses enfants, elles
+#: ⚠️ La charniere est posee derriere les PLAQUES (y = 3,74 au plus loin), pas
+#: derriere le croissant seul (y = 3,09) : les plaques sont ses enfants, elles
 #: basculent avec lui, et une plaque restee en arriere de l'axe plongeait dans
 #: la coque des les premiers degres (mesure : morsure a 56 deg de chute).
 CR_PIVOT = (0.0, 3.86, 0.94)
 #: (rayon interne, rayon externe, tuiles, elevation, dephasage)
 CR_ROWS: tuple[tuple[float, float, int, float, float], ...] = (
-    (2.26, 2.66, 20, 0.00, 0.00),
-    (2.60, 3.02, 16, 0.05, 0.42),
+    (2.26, 2.66, 18, 0.00, 0.00),
+    (2.60, 3.02, 14, 0.05, 0.42),
 )
 CR_Z_BASE = 0.88
 CR_TOP = 1.06
+#: ⚠️ ASYMETRIE (brief SS2) : facteur applique a la CORDE RADIALE de la tuile,
+#: interpole de `CR_PHI_A` a `CR_PHI_B`. Le croissant est donc franchement plus
+#: epais a une extremite qu'a l'autre — 1,16 contre 0,78, soit +49 %. C'est
+#: l'asymetrie la plus lisible de la silhouette vue de dessus, et elle ne coute
+#: rien au gameplay : elle porte sur la COQUE, pas sur les zones de touche.
+CR_SWELL = (1.16, 0.78)
 
-#: Tirage des materiaux de tuile. Majorite d'ivoire (« Pale » Leviathan),
-#: ponctue d'anthracite et de violet.
+#: Tirage des materiaux de tuile. Anthracite et ivoire a parts egales — c'est le
+#: blindage (doctrine : `AA_Hull` domine), pique de violet.
 PLATE_MATS = (
-    "AA_Trim", "AA_Trim", "AA_Trim", "AA_Hull",
-    "AA_Trim", "AA_Panel", "AA_Hull", "AA_Trim",
+    "AA_Hull", "AA_Trim", "AA_Hull", "AA_Trim",
+    "AA_Trim", "AA_Hull", "AA_Panel", "AA_Hull",
 )
 
 #: Les quatre plaques d'armure : azimut du centre, demi-ouverture angulaire.
-#: Espacement volontairement irregulier (charte SS4 : le Choeur Nul est
-#: asymetrique) — mais toutes dans l'arc du croissant, sinon elles pendraient
-#: dans le vide une fois celui-ci bascule.
+#: ⚠️ Elles ont toutes la MEME demi-ouverture et la meme portee radiale, et c'est
+#: une contrainte de jeu, pas un oubli d'asymetrie : elles orbitent et le joueur
+#: les abat dans n'importe quel ordre. Une plaque plus grande que les autres
+#: serait une zone de touche plus facile, donc un ordre impose. L'asymetrie du
+#: vaisseau est portee par le croissant et les epines (brief SS2).
+#: Leur espacement, lui, est irregulier — et toutes tiennent dans l'arc du
+#: croissant, sinon elles pendraient dans le vide une fois celui-ci bascule.
 PLATES: tuple[tuple[float, float], ...] = (
-    (-112.0, 25.0), (-46.0, 27.0), (18.0, 24.0), (76.0, 22.0),
+    (-28.0, 21.0), (26.0, 21.0), (80.0, 21.0), (134.0, 21.0),
 )
 PLATE_R = (3.10, 3.74)    # (charniere tangentielle, bord externe)
-PLATE_Z = (1.12, 1.40, 1.18)   # (charniere, crete, bord externe)
+#: ⚠️ BRIEF-0041 : les plaques ont ete ABAISSEES de 8 cm (crete 1,32 au lieu de
+#: 1,40). Ce n'est pas un ajustement esthetique : il faut que le noyau (+1,56)
+#: soit le point le plus haut de la coque, sinon la boule reste enfermee dans sa
+#: couronne et se relit en disque.
+PLATE_Z = (1.10, 1.32, 1.12)   # (charniere, crete, bord externe)
 PLATE_T = 0.13
 PLATE_SEG = 8
 
@@ -362,50 +501,70 @@ PLATE_SEG = 8
 # seules les 11,0 m imposes — l'enveloppe est equilibree, la silhouette ne l'est
 # pas.
 #
-# ⚠️ Les racines sont a z ~ 1,10 et a r >= 4,25 : c'est un mat dorsal qui les
+# ⚠️ Les racines sont a z ~ 1,10 et a r >= 4,15 : c'est un mat dorsal qui les
 # tient, au-dessus du pont et EN DEHORS de la piste de la coquille. Sans cette
 # double condition, le pointage de +/-40 deg enterrerait l'epine dans les lobes
 # avant et arriere des le premier degre, et sa rotule se ferait raboter par une
 # plaque a chaque tour d'orbite (les deux ont ete mesures).
+#
+# ⚠️ Le rayon 4,15 est un PLANCHER CALCULE, pas un souvenir : une plaque orbite
+# jusqu'a r = 3,74, et le flanc interne d'une epine est a `r_racine - r0`. Avec
+# `r0 = 0,32`, une racine posee a 3,96 (ce que la geometrie permettrait) mettrait
+# ce flanc a 3,64 — dans la course des plaques. Le harnais de degagement ne le
+# verrait PAS : il mesure l'epine contre la coque, jamais contre la coquille.
+#
+# BRIEF-0041 — LES DARDS S'ALLONGENT. Le panneau DETACHED SPIKE montre une lame
+# presque aussi longue que le corps, effilee sur toute sa course. Trois leviers,
+# tous mesures :
+#   * la CORDE passe de 4,4 m au plus long a 5,8 m — les racines reculent vers
+#     l'axe long, les pointes vont chercher les bornes de la boite ;
+#   * le rayon de base tombe de 0,425 a 0,32 m et l'effilement monte de 1,26 a
+#     1,45 : une epine deux fois plus fine a mi-course qu'avant ;
+#   * les vertebres passent de 5-7 a 7-10, donc des ecailles plus courtes et un
+#     dard qui lit segmente meme detache, seul a l'ecran (phase 3).
+# L'INEGALITE est voulue et forte : `Spike_01` mesure 5,81 m de corde, `Spike_04`
+# 2,73 m — moins de la moitie. Deux bras longs a babord-arriere / tribord-avant,
+# un moyen, un mognon : la silhouette est desequilibree alors que l'enveloppe
+# reste centree au millimetre (contrainte de pivot d'`export_hull`, +/- 2 cm).
 
 SPIKES: tuple[dict, ...] = (
-    {   # babord-arriere : la plus longue, l'aiguille. Elle porte le +X.
+    {   # babord-arriere : de loin la plus longue, l'aiguille. Elle porte le +X.
         "name": "Spike_01",
-        "root": (4.24, 0.42, 1.12),
-        "ctrl": (5.10, 2.25, 1.16),
-        "tip": (HALF_W, 4.62, 0.92),
-        "r0": 0.385, "sides": 9, "vertebrae": 7, "flat": 0.62, "taper": 1.26,
+        "root": (4.14, -0.52, 1.12),
+        "ctrl": (5.42, 1.92, 1.16),
+        "tip": (HALF_W, 5.10, 1.00),
+        "r0": 0.320, "sides": 9, "vertebrae": 10, "flat": 0.60, "taper": 1.45,
+        "splits": (0.30, 0.62), "port": 0.44,
+    },
+    {   # tribord-arriere : la faux longue, tres cambree
+        "name": "Spike_02",
+        "root": (-4.10, 1.05, 1.10),
+        "ctrl": (-5.24, 3.20, 1.14),
+        "tip": (-4.88, 6.05, 0.96),
+        "r0": 0.310, "sides": 9, "vertebrae": 9, "flat": 0.64, "taper": 1.40,
         "splits": (0.32, 0.64), "port": 0.46,
     },
-    {   # tribord-arriere : le bras lourd, trapu, tres segmente
-        "name": "Spike_02",
-        "root": (-4.02, 1.72, 1.10),
-        "ctrl": (-5.05, 3.05, 1.14),
-        "tip": (-5.02, 5.26, 0.88),
-        "r0": 0.425, "sides": 9, "vertebrae": 6, "flat": 0.66, "taper": 1.10,
-        "splits": (0.34, 0.66), "port": 0.50,
-    },
-    {   # tribord-avant : la faux. Elle porte le -X.
+    {   # tribord-avant : la lame droite. Elle porte le -X.
         "name": "Spike_03",
-        "root": (-4.14, -1.28, 1.12),
-        "ctrl": (-5.25, -2.70, 1.14),
-        "tip": (-HALF_W, -4.48, 0.90),
-        "r0": 0.400, "sides": 9, "vertebrae": 6, "flat": 0.60, "taper": 1.20,
-        "splits": (0.33, 0.65), "port": 0.44,
+        "root": (-4.02, -1.10, 1.12),
+        "ctrl": (-5.36, -2.72, 1.14),
+        "tip": (-HALF_W, -5.34, 0.98),
+        "r0": 0.316, "sides": 9, "vertebrae": 9, "flat": 0.58, "taper": 1.42,
+        "splits": (0.31, 0.63), "port": 0.42,
     },
-    {   # babord-avant : la plus courte, la « pince »
+    {   # babord-avant : le mognon, moins de la moitie de `Spike_01`
         "name": "Spike_04",
-        "root": (3.62, -2.62, 1.10),
-        "ctrl": (4.62, -4.05, 1.12),
-        "tip": (4.72, -5.34, 0.88),
-        "r0": 0.355, "sides": 9, "vertebrae": 5, "flat": 0.64, "taper": 1.16,
-        "splits": (0.35, 0.67), "port": 0.48,
+        "root": (3.74, -2.60, 1.10),
+        "ctrl": (4.46, -3.86, 1.12),
+        "tip": (4.30, -5.22, 0.94),
+        "r0": 0.300, "sides": 9, "vertebrae": 7, "flat": 0.62, "taper": 1.30,
+        "splits": (0.33, 0.66), "port": 0.48,
     },
 )
 
-SPIKE_SAMPLES = 4         # stations par vertebre
-SPIKE_TIP_R = 0.016
-SPIKE_FLARE = 0.18        # relief de vertebre (l'ecaille recouvre la suivante)
+SPIKE_SAMPLES = 3         # stations par vertebre
+SPIKE_TIP_R = 0.014
+SPIKE_FLARE = 0.22        # relief de vertebre (l'ecaille recouvre la suivante)
 SPIKE_GAP = 0.35          # retrait d'un troncon a son articulation, en rayons
 
 # ==========================================================================
@@ -598,12 +757,15 @@ def tangential_tile(bm, rng, a0: float, a1: float, r_in: float, r_out: float,
     lo = [lo[0], lo[1], lo[3], lo[2]]
     hi = [hi[0], hi[1], hi[3], hi[2]]
     mat = PLATE_MATS[rng.randrange(len(PLATE_MATS))]
-    top, sides = slab(bm, lo, hi, mat, mat_side="AA_Greeble")
-    # Une contremarche emissive sur quatre, pas une sur deux : a une sur deux,
-    # le magenta se lit comme des confettis semes sur la carapace au lieu d'un
-    # reseau de coutures — et il vole la vedette au noyau, qui est LA cible
-    # (spec pilier B). Verifie au rendu, pas au chiffre.
-    if rng.random() < 0.26:
+    # Flanc en `AA_Hull` : la contremarche d'une ecaille EST du blindage vu de
+    # trois quarts. En `AA_Greeble` (#141419) elle disparaissait dans le noir et
+    # la coquille perdait son epaisseur — c'est une des sources du desequilibre
+    # mesure par BRIEF-0041 (32,5 % de greeble contre 11 % de coque).
+    top, sides = slab(bm, lo, hi, mat, mat_side="AA_Hull")
+    # ⚠️ Une contremarche emissive sur DOUZE (0,26 -> 0,08). Le magenta est un
+    # reseau de veines, pas une livree : a une sur quatre il constellait toute la
+    # coquille et volait la vedette au noyau, qui est LA cible (spec pilier B).
+    if rng.random() < 0.03:
         ak.set_material([sides[0]], "AA_Emissive_Engine")
     if top is not None and rng.random() < 0.42:
         ak.inset_panel(bm, [top], "AA_Panel", thickness=0.040, depth=-0.026)
@@ -669,11 +831,16 @@ def build_body() -> object:
         ]))
 
     # --- les deux nappes ---------------------------------------------------
-    # Fond anthracite tres sombre : ce sont les joints entre plaques. Les
-    # plaques elles-memes seront extrudees par-dessus (`inset_panel`).
-    top_bands = [ak.bridge_rings(bm, top_rings[k], top_rings[k + 1], "AA_Greeble")
+    # ⚠️ BRIEF-0041 : ces deux nappes sont, a elles seules, la plus grande
+    # surface de la coque — 5 700 sommets, plus du tiers du `Body`. Les laisser
+    # en `AA_Greeble` (#141419, la couleur des CREUX) revenait a peindre en noir
+    # de fond ce qui est justement le blindage, et c'est ce qui produisait le
+    # rapport inverse de la planche : 11 % de coque pour 32,5 % de machinerie.
+    # Elles passent en `AA_Hull` (anthracite #24252B) ; le greeble se retire ou
+    # il a un sens — culots, dessous de tuile, joints etroits.
+    top_bands = [ak.bridge_rings(bm, top_rings[k], top_rings[k + 1], "AA_Hull")
                  for k in range(n_st - 1)]
-    bot_bands = [ak.bridge_rings(bm, bot_rings[k + 1], bot_rings[k], "AA_Greeble")
+    bot_bands = [ak.bridge_rings(bm, bot_rings[k + 1], bot_rings[k], "AA_Hull")
                  for k in range(n_st - 1)]
     ak.bridge_rings(bm, top_rings[-1], bot_rings[-1], "AA_Trim")   # la tranche
 
@@ -682,14 +849,14 @@ def build_body() -> object:
     for i in range(len(well) - 1):
         ak.bridge_rings(bm, well[i + 1], well[i], SHAFT_MATS[i])
     floor = bm.verts.new((0.0, 0.0, SHAFT[-1][0] - 0.04))
-    ak.fan_to_point(bm, well[-1], floor, "AA_Greeble")
+    ak.fan_to_point(bm, well[-1], floor, "AA_Panel")
 
     # --- le ventre ---------------------------------------------------------
     belly = [bot_rings[0]] + [polar_ring(bm, r, z, N_SEG) for z, r in BELLY[1:]]
     for i in range(len(belly) - 1):
         ak.bridge_rings(bm, belly[i], belly[i + 1], "AA_Hull" if i % 2 else "AA_Panel")
     keel = bm.verts.new((0.0, 0.0, BELLY[-1][0] - 0.03))
-    ak.fan_to_point(bm, list(reversed(belly[-1])), keel, "AA_Greeble")
+    ak.fan_to_point(bm, list(reversed(belly[-1])), keel, "AA_Panel")
 
     # --- plaques de pont : couronne, gorge, jupe ---------------------------
     def pick(bands, ks, cols):
@@ -705,7 +872,7 @@ def build_body() -> object:
     for s in range(8):
         cols = range(5 * s, 5 * s + 4)
         ak.inset_panel(bm, pick(top_bands, (5, 6), cols),
-                       "AA_Trim" if s % 3 else "AA_Panel",
+                       "AA_Trim" if s % 3 else "AA_Hull",
                        thickness=0.030, depth=0.016)
     for s in range(10):
         cols = range(4 * s, 4 * s + 3)
@@ -721,19 +888,23 @@ def build_body() -> object:
                    thickness=0.030, depth=0.008)
 
     # --- veines magenta dans les interstices de la jupe --------------------
-    # Fines et confinees : tracees larges et jusqu'au bord, elles voleraient la
-    # vedette au noyau — or c'est lui, et lui seul, que le joueur doit voir en
-    # premier (spec pilier B).
-    for j in (2, 11, 19, 27, 34):
+    # ⚠️ BRIEF-0041 : trois veines la ou il y en avait cinq, et deux troncons au
+    # lieu de trois. Le cout de ces boites en sommets est enorme au regard de leur
+    # surface : une reglette de 2 cm de large arrive a l'export avec une
+    # cinquantaine de sommets (facettes dupliquees par le lissage, plus le
+    # chanfrein qui HERITE du materiau adjacent, donc de l'emissif). C'est cette
+    # arithmetique-la, et pas une grande nappe rose, qui portait a elle seule
+    # pres d'un dixieme du budget emissif de la coque.
+    for j in (7, 27):
         deg = degs[j]
         a = thetas[j]
         pts = []
-        for f in (0.10, 0.34, 0.58, 0.80):
+        for f in (0.18, 0.62):
             r = DISC_R[-1] + (body_radius(deg) - DISC_R[-1]) * f
             pts.append(Vector((r * math.cos(a), r * math.sin(a),
                                hull_top(r, deg) + 0.012)))
         for i in range(len(pts) - 1):
-            seg_box(bm, pts[i], pts[i + 1], 0.020, 0.011, "AA_Emissive_Engine")
+            seg_box(bm, pts[i], pts[i + 1], 0.017, 0.010, "AA_Emissive_Engine")
 
     _build_rim_teeth(bm)
     _build_crest(bm)
@@ -759,20 +930,24 @@ def _build_rim_teeth(bm) -> None:
     """Denture fixe de la levre du puits (l'ARMOR RING de la planche).
 
     ⚠️ Elle mord vers l'INTERIEUR et reste sous z = 0,62 : la levre mobile passe
-    au-dessus a 0,72, et le noyau — donc la levre, qui en est l'enfant — tourne.
-    Une dent qui depasserait raboterait la levre a chaque tour.
+    au-dessus, et le noyau — donc la levre, qui en est l'enfant — tourne. Une
+    dent qui depasserait raboterait la levre a chaque tour.
+
+    ⚠️ BRIEF-0041 : elle mord aussi vers la BOULE. Le noyau descend a r = 1,53 a
+    l'altitude des dents ; elles s'arretent a 1,82, soit 24 cm de jeu remesures
+    a chaque build par la ligne « Core / coque » du harnais.
     """
     rng = random.Random(SEED + 31)
     for i in range(18):
         a = 2.0 * math.pi * (i + 0.5) / 18.0
         d = Vector((math.cos(a), math.sin(a), 0.0))
-        base = d * 2.02 + Vector((0.0, 0.0, 0.52))
-        tip = d * (1.86 + rng.uniform(-0.04, 0.04)) + Vector((0.0, 0.0, 0.58))
+        base = d * 1.98 + Vector((0.0, 0.0, 0.52))
+        tip = d * (1.82 + rng.uniform(-0.04, 0.04)) + Vector((0.0, 0.0, 0.58))
         seg_box(bm, base, tip, 0.105, 0.070, "AA_Trim")
-        if i % 3 == 0:
-            seg_box(bm, d * 2.06 + Vector((0.0, 0.0, 0.60)),
-                    d * 1.94 + Vector((0.0, 0.0, 0.62)),
-                    0.030, 0.014, "AA_Emissive_Engine")
+        if i % 9 == 0:
+            seg_box(bm, d * 2.02 + Vector((0.0, 0.0, 0.60)),
+                    d * 1.90 + Vector((0.0, 0.0, 0.62)),
+                    0.026, 0.012, "AA_Emissive_Engine")
 
 
 def _build_crest(bm) -> None:
@@ -804,48 +979,69 @@ def _build_crest(bm) -> None:
                   tuple(d * r0 - side * w0 + Vector((0.0, 0.0, z0 + 0.11))),
                   tuple(d * r1 - side * w1 + Vector((0.0, 0.0, z1 + 0.07))),
                   tuple(d * r1 + side * w1 + Vector((0.0, 0.0, z1 + 0.07)))]
-            top, sides = slab(bm, lo, hi, mat, mat_side="AA_Panel")
-            if k % 2 == 0:
+            top, sides = slab(bm, lo, hi, mat, mat_side="AA_Hull")
+            if k == 1:   # une seule contremarche lumineuse par crete
                 ak.set_material([sides[0]], "AA_Emissive_Engine")
 
 
+#: Ecaillage de la jupe : (azimut de debut, azimut de fin, nombre d'ecailles).
+#: Les quatre secteurs evitent le bec (270 deg) et le dard (90 deg), ou courent
+#: les cretes.
+SCALE_SECTORS = ((14.0, 76.0, 6), (102.0, 160.0, 6),
+                 (192.0, 254.0, 6), (288.0, 348.0, 6))
+#: Deux rangees qui se recouvrent, en FRACTION de la corde restante : l'interne
+#: mord sur la gorge, l'externe va jusqu'au bord de la tranche.
+SCALE_ROWS = ((0.02, 0.30, 0.48), (0.40, 0.36, 0.56))
+
+
 def _build_scales(bm) -> None:
-    """Ecailles dorsales sur la jupe : elles se recouvrent, comme la planche.
+    """Ecaillage dorsal de la jupe : deux rangees qui se recouvrent.
 
     Leur largeur derive du contour a leur azimut, jamais d'une coordonnee
     absolue : une ecaille ne peut donc pas se retrouver a flotter a cote de la
     coque quand le contour change.
+
+    ⚠️ BRIEF-0041 — c'est ICI que se joue la lecture « coque blindee » plutot que
+    « disque machine ». Les planches montrent de grandes plaques qui se
+    recouvrent et DOMINENT la silhouette, la machinerie reduite aux interstices ;
+    la version precedente n'en posait qu'une rangee de cinq par secteur, sur le
+    tiers interne de la jupe, et laissait les deux tiers externes en nappe nue.
+    On passe a **deux rangees de six**, qui couvrent la jupe du bord de la gorge
+    a la tranche. Ce n'est pas de la decoration ajoutee : c'est la surface qui
+    manquait a `AA_Hull` et `AA_Trim` pour dominer le budget de matiere.
     """
     rng = random.Random(SEED + 41)
-    for deg0, deg1, count in ((18.0, 74.0, 5), (104.0, 156.0, 5),
-                              (196.0, 250.0, 5), (292.0, 344.0, 5)):
-        for k in range(count):
-            a0 = math.radians(deg0 + (deg1 - deg0) * k / count)
-            a1 = math.radians(deg0 + (deg1 - deg0) * (k + 0.86) / count)
-            d0, d1 = math.degrees(a0), math.degrees(a1)
-            f0 = rng.uniform(0.10, 0.24)
-            f1 = f0 + rng.uniform(0.34, 0.52)
-            span0 = body_radius(d0) - DISC_R[-1]
-            span1 = body_radius(d1) - DISC_R[-1]
-            r_in = DISC_R[-1] + span0 * f0
-            r_out = DISC_R[-1] + span1 * f1
-            z_in = hull_top(r_in, d0)
-            z_out = hull_top(r_out, d1)
-            lo = [(r_in * math.cos(a0), r_in * math.sin(a0), z_in - 0.14),
-                  (r_out * math.cos(a0), r_out * math.sin(a0), z_out - 0.14),
-                  (r_out * math.cos(a1), r_out * math.sin(a1), z_out - 0.14),
-                  (r_in * math.cos(a1), r_in * math.sin(a1), z_in - 0.14)]
-            hi = [(r_in * math.cos(a0), r_in * math.sin(a0), z_in + 0.075),
-                  (r_out * math.cos(a0), r_out * math.sin(a0), z_out + 0.030),
-                  (r_out * math.cos(a1), r_out * math.sin(a1), z_out + 0.030),
-                  (r_in * math.cos(a1), r_in * math.sin(a1), z_in + 0.075)]
-            mat = PLATE_MATS[rng.randrange(len(PLATE_MATS))]
-            top, sides = slab(bm, lo, hi, mat, mat_side="AA_Panel")
-            if rng.random() < 0.24:
-                ak.set_material([sides[0]], "AA_Emissive_Engine")
-            if top is not None and rng.random() < 0.5:
-                ak.inset_panel(bm, [top], "AA_Greeble",
-                               thickness=0.050, depth=-0.024)
+    for deg0, deg1, count in SCALE_SECTORS:
+        for row, (base_f, min_len, max_len) in enumerate(SCALE_ROWS):
+            for k in range(count):
+                shift = 0.5 if row else 0.0
+                a0 = math.radians(deg0 + (deg1 - deg0) * (k + shift * 0.5) / count)
+                a1 = math.radians(
+                    deg0 + (deg1 - deg0) * (k + shift * 0.5 + 0.88) / count)
+                d0, d1 = math.degrees(a0), math.degrees(a1)
+                f0 = base_f + rng.uniform(0.0, 0.08)
+                f1 = min(f0 + rng.uniform(min_len, max_len), 0.99)
+                span0 = body_radius(d0) - DISC_R[-1]
+                span1 = body_radius(d1) - DISC_R[-1]
+                r_in = DISC_R[-1] + span0 * f0
+                r_out = DISC_R[-1] + span1 * f1
+                z_in = hull_top(r_in, d0)
+                z_out = hull_top(r_out, d1)
+                lo = [(r_in * math.cos(a0), r_in * math.sin(a0), z_in - 0.16),
+                      (r_out * math.cos(a0), r_out * math.sin(a0), z_out - 0.16),
+                      (r_out * math.cos(a1), r_out * math.sin(a1), z_out - 0.16),
+                      (r_in * math.cos(a1), r_in * math.sin(a1), z_in - 0.16)]
+                hi = [(r_in * math.cos(a0), r_in * math.sin(a0), z_in + 0.085),
+                      (r_out * math.cos(a0), r_out * math.sin(a0), z_out + 0.032),
+                      (r_out * math.cos(a1), r_out * math.sin(a1), z_out + 0.032),
+                      (r_in * math.cos(a1), r_in * math.sin(a1), z_in + 0.085)]
+                mat = PLATE_MATS[rng.randrange(len(PLATE_MATS))]
+                top, sides = slab(bm, lo, hi, mat, mat_side="AA_Hull")
+                if rng.random() < 0.04:
+                    ak.set_material([sides[0]], "AA_Emissive_Engine")
+                if top is not None and rng.random() < 0.45:
+                    ak.inset_panel(bm, [top], "AA_Panel",
+                                   thickness=0.055, depth=-0.022)
 
 
 def _build_masts(bm) -> None:
@@ -874,18 +1070,21 @@ def _build_masts(bm) -> None:
         # mat se fasse raboter (le corps du mat, lui, s'arrete 36 cm plus bas).
         seg_box(bm, tuple(Vector((root.x, root.y, root.z - 0.32))),
                 tuple(Vector((root.x, root.y, root.z))),
-                spec["r0"] * 0.34, spec["r0"] * 0.34, "AA_Greeble")
+                spec["r0"] * 0.34, spec["r0"] * 0.34, "AA_Panel")
         # embase : large, mais ecrasee sous le plafond de piste
         base_z = min(deck + 0.10, track_ceiling(r_post - 0.42) - 0.02)
         oriented_box(bm, tuple(post + Vector((0.0, 0.0, base_z - 0.16))),
                      (0.96, 0.86, 0.32),
                      Matrix.Rotation(math.radians(deg) + math.pi / 2.0, 3, "Z"),
-                     "AA_Greeble")
+                     "AA_Hull")
+        # BRIEF-0041 : ce jonc etait emissif sur les quatre mats. Il devient une
+        # nervure de blindage — la lumiere du vaisseau vient du noyau et des
+        # jointures d'epine, pas de sa quincaillerie.
         seg_box(bm, tuple(post + d * spec["r0"] * 1.05
                           + Vector((0.0, 0.0, deck - 0.10))),
                 tuple(post + d * spec["r0"] * 1.05
                       + Vector((0.0, 0.0, root.z - 0.14))),
-                0.034, 0.018, "AA_Emissive_Engine")
+                0.034, 0.018, "AA_Trim")
         # nodule vert maladif au pied du mat : le « bourgeon » d'ou sort le bras
         ak.add_box(bm, tuple(post + d * 0.52 + Vector((0.0, 0.0, deck - 0.02))),
                    (0.19, 0.19, 0.13), "AA_Marking_Red")
@@ -898,24 +1097,30 @@ def _build_gun_decks(bm) -> None:
     `external_attacks` retombe a faux : sans eux, un boss non arme par son
     module tirerait depuis son centre geometrique.
     """
-    for x, y, z, scale in ((0.0, MUZZLE_C[1], MUZZLE_C[2], 1.0),
-                           (MUZZLE_LR[0], MUZZLE_LR[1], MUZZLE_LR[2], 0.82),
-                           (-MUZZLE_LR[0], MUZZLE_LR[1], MUZZLE_LR[2], 0.82)):
+    # Seule la bouche CENTRALE est allumee : les deux laterales sont vues de
+    # profil sous la camera de jeu, leur magenta ne portait rien et coutait le
+    # meme prix en sommets que celui du noyau.
+    for x, y, z, scale, bore in (
+            (0.0, MUZZLE_C[1], MUZZLE_C[2], 1.0, "AA_Emissive_Engine"),
+            (MUZZLE_LR[0], MUZZLE_LR[1], MUZZLE_LR[2], 0.82, "AA_Panel"),
+            (-MUZZLE_LR[0], MUZZLE_LR[1], MUZZLE_LR[2], 0.82, "AA_Panel")):
         # `add_lathe` autour de Y : la premiere coordonnee du contour EST le y
         # absolu, on l'exprime donc par rapport a la bouche.
         ak.add_lathe(
             bm,
-            [(y + 0.86, 0.000, "AA_Greeble"),
-             (y + 0.74, 0.44 * scale, "AA_Panel"),
+            # BRIEF-0041 : une seule bande emissive au lieu de deux — le fond de
+            # bouche. La collerette qui la precede redevient du blindage.
+            [(y + 0.86, 0.000, "AA_Hull"),
+             (y + 0.74, 0.44 * scale, "AA_Hull"),
              (y + 0.46, 0.46 * scale, "AA_Hull"),
              (y + 0.34, 0.36 * scale, "AA_Trim"),
-             (y + 0.14, 0.30 * scale, "AA_Greeble"),
-             (y + 0.05, 0.22 * scale, "AA_Emissive_Engine"),
-             (y, 0.000, "AA_Emissive_Engine")],
+             (y + 0.14, 0.30 * scale, "AA_Panel"),
+             (y + 0.05, 0.22 * scale, "AA_Greeble"),
+             (y, 0.000, bore)],
             12, center_x=x, center_z=z, axis="Y",
         )
         ak.add_box(bm, (x, y + 1.05, z - 0.14), (0.94 * scale, 0.80, 0.26),
-                   "AA_Greeble")
+                   "AA_Hull")
 
 
 def _build_membranes(bm) -> None:
@@ -940,29 +1145,65 @@ def _build_membranes(bm) -> None:
 
 
 def build_core() -> ak.MovingPart:
-    """Noyau : ellipsoide magenta emissive, sillonnee de craquelures.
+    """Noyau : la BOULE du panneau CLOSED CORE, croutee et veinee.
 
-    La croute (plaques violettes en relief) est *soulevee* facette par facette :
-    ce qui reste au niveau de la surface — les interstices et les parois
-    d'inset — est emissif. La lumiere sort donc *d'entre* les plaques, comme sur
-    le panneau CLOSED CORE. Le tirage est seede : rejouer donne le meme noyau.
+    Trois decisions, et chacune corrige un defaut mesure de BRIEF-0040.
+
+    **Icosphere, pas un tour.** Un tour a grille reguliere (32 meridiens x
+    15 paralleles) projette, vu de dessus — l'angle exact de la camera de jeu —
+    une famille de cercles concentriques. Avec un inset par facette, le noyau
+    lisait comme un spirographe : une rosette plate, pas une sphere. Les facettes
+    d'une icosphere n'ont ni rangee ni meridien ; leur reseau de joints est
+    directement le « CRACK VEINS » de la planche.
+
+    **Trois etats de facette, pas deux.** Avant : soulevee (donc cerclee d'un
+    joint emissif) ou nue (donc integralement emissive). Le second etat coutait
+    tres cher — 28,7 % de la coque en emissif, le magenta partout et le modele
+    noye. Desormais une facette est soulevee (joint lumineux), **posee a plat**
+    (croute muette, sans un seul sommet emissif) ou nue (eclat vif, rare). Le
+    dosage est le seul reglage du magenta de tout le vaisseau.
+
+    **Elle deborde.** `CORE_Z + CORE_RZ` fait du noyau le point le plus haut de
+    la coque. Une sphere et un disque se projettent tous deux en cercle sous une
+    camera zenithale : ce qui trahit le volume, c'est que la boule passe DEVANT
+    ce qui l'entoure. Enterree dans sa couronne, comme elle l'etait, elle ne
+    pouvait pas se lire autrement qu'a plat.
+
+    Le tirage est seede : rejouer donne le meme noyau, craquelure pour craquelure.
     """
     bm = bmesh.new()
-    contour = []
-    for i in range(CORE_RINGS + 1):
-        t = math.pi * i / CORE_RINGS
-        contour.append((CORE_Z - CORE_RZ * math.cos(t),
-                        CORE_RXY * math.sin(t), "AA_Emissive_Engine"))
-    bands = ak.add_lathe(bm, contour, CORE_SEG, axis="Z")
+    res = bmesh.ops.create_icosphere(
+        bm, subdivisions=CORE_SUBDIV, radius=1.0,
+        matrix=Matrix.Diagonal(Vector((CORE_RXY, CORE_RXY, CORE_RZ, 1.0))),
+    )
+    bmesh.ops.translate(bm, vec=Vector((0.0, 0.0, CORE_Z)), verts=res["verts"])
+    idx = ak.mat_index("AA_Emissive_Engine")
+    faces = [f for f in bm.faces if f.is_valid]
+    for face in faces:
+        face.material_index = idx
 
-    faces = [f for band in bands for f in band if f is not None and f.is_valid]
     rng = random.Random(SEED + 101)
     for face in faces:
-        if rng.random() >= CORE_CRUST_P:
-            continue  # facette laissee nue : c'est une craquelure lumineuse
-        mat = "AA_Panel" if rng.random() < 0.78 else "AA_Hull"
-        ak.inset_panel(bm, [face], mat, thickness=CORE_CRUST_INSET,
-                       depth=CORE_CRUST_LIFT * rng.uniform(0.7, 1.25))
+        draw = rng.random()
+        if draw < CORE_CRUST_P:
+            # Plaque soulevee. ⚠️ Son pourtour ne reste PAS emissif en entier :
+            # une craquelure qui fait le tour de chaque plaque dessine un filet
+            # regulier — un grillage, pas un reseau. `inset_panel` rend les faces
+            # de bordure ; on n'en garde qu'une ou deux en magenta, tirees au
+            # sort. Les veines se rejoignent alors par endroits et s'interrompent
+            # ailleurs, exactement comme le panneau CLOSED CORE, et le budget
+            # emissif du noyau tombe des deux tiers.
+            mat = "AA_Panel" if rng.random() < 0.72 else "AA_Hull"
+            walls = ak.inset_panel(bm, [face], mat, thickness=CORE_CRUST_INSET,
+                                   depth=CORE_CRUST_LIFT * rng.uniform(0.7, 1.25))
+            ak.set_material(walls, mat)
+            if walls:
+                ak.set_material([rng.choice(walls)], "AA_Emissive_Engine")
+        elif draw < CORE_CRUST_P + CORE_FLAT_P:
+            # croute muette : posee a plat, aucun joint, aucun sommet emissif
+            ak.set_material(
+                [face], "AA_Panel" if rng.random() < 0.62 else "AA_Hull")
+        # sinon : facette laissee nue — un eclat de magenta a vif
     return ak.moving_part("Core", bm, (0.0, 0.0, CORE_Z))
 
 
@@ -1008,8 +1249,15 @@ def build_maw_lip() -> ak.MovingPart:
         ak.bridge_rings(bm, bots[i + 1], bots[i], "AA_Greeble", closed=False)
         if i == 1:
             ak.inset_panel(bm, band[2:-2], "AA_Panel", thickness=0.050, depth=-0.030)
-    for k in (0, -1):
-        ak.bridge_rings(bm, bots[k], tops[k], "AA_Panel", closed=False)
+    ak.bridge_rings(bm, bots[0], tops[0], "AA_Hull", closed=False)
+    # ⚠️ BRIEF-0041 — LA COUTURE MAGENTA NE SE MODELISE PLUS. Elle etait faite de
+    # 14 reglettes de 2,6 cm posees sur la crete : 1 344 sommets emissifs, le
+    # deuxieme poste du budget magenta de toute la coque, pour 0,1 m2 de surface.
+    # Le chanfrein herite du materiau des faces adjacentes, donc chaque reglette
+    # arrivait a l'export cerclee de magenta. Elle devient ce qu'elle aurait
+    # toujours du etre : la TRANCHE INTERNE de la levre, deja modelisee, a qui
+    # l'on assigne le materiau. Meme lecture, 56 sommets, zero triangle ajoute.
+    ak.bridge_rings(bm, bots[-1], tops[-1], "AA_Emissive_Engine", closed=False)
     # tranches laterales du secteur
     for j, mat in ((0, "AA_Greeble"), (LIP_SEG, "AA_Greeble")):
         ring = [tops[i][j] for i in range(len(tops))]
@@ -1017,19 +1265,13 @@ def build_maw_lip() -> ak.MovingPart:
         ak.cap_ring(bm, ring if j else list(reversed(ring)), mat)
 
     # --- griffes du surplomb ------------------------------------------------
+    # Elles mordent vers la boule sans la toucher (cf. `LIP_FANG_R`).
     for deg in LIP_FANGS:
         a = math.radians(deg)
         d = Vector((math.cos(a), math.sin(a), 0.0))
         seg_box(bm, tuple(d * LIP_FANG_R[0] + Vector((0.0, 0.0, LIP_FANG_Z[0]))),
                 tuple(d * LIP_FANG_R[1] + Vector((0.0, 0.0, LIP_FANG_Z[1]))),
                 0.085, 0.055, "AA_Trim")
-    # couture magenta le long de la crete
-    for i in range(LIP_SEG):
-        a0, a1 = angles[i], angles[i + 1]
-        r = 1.74
-        seg_box(bm, (r * math.cos(a0), r * math.sin(a0), 1.035),
-                (r * math.cos(a1), r * math.sin(a1), 1.035),
-                0.026, 0.014, "AA_Emissive_Engine")
     return ak.moving_part("Maw_Lip", bm, LIP_PIVOT, parent="Core")
 
 
@@ -1042,8 +1284,10 @@ def build_node(index: int) -> ak.MovingPart:
     """Un noeud gravitique : fer de lance sur embase articulee.
 
     Il est plante sur la crete de la levre, penche vers l'exterieur. Sa
-    retraction (-60 deg) le rabat vers l'avant, au-dessus de la gueule, ou il
-    n'y a que du vide : c'est la seule direction qui degage.
+    retraction (-60 deg) le REDRESSE vers l'avant, presque a la verticale
+    au-dessus de la gueule, ou il n'y a que du vide : c'est la seule direction
+    qui degage, et `NODE_TILT` a ete choisi pour elle (cf. le commentaire de la
+    constante : deux autres placements ont ete refuses par la mesure).
     """
     bm = bmesh.new()
     base = node_base(index)
@@ -1100,8 +1344,13 @@ def build_ring(index: int) -> ak.MovingPart:
     in_hi, in_lo = ring_at(r_in, RING_T * 0.5), ring_at(r_in, -RING_T * 0.5)
     ak.bridge_rings(bm, in_hi, out_hi, "AA_Trim", closed=False)
     ak.bridge_rings(bm, out_lo, in_lo, "AA_Greeble", closed=False)
-    ak.bridge_rings(bm, out_hi, out_lo, "AA_Panel", closed=False)
-    ak.bridge_rings(bm, in_lo, in_hi, "AA_Emissive_Engine", closed=False)
+    ak.bridge_rings(bm, out_hi, out_lo, "AA_Hull", closed=False)
+    # ⚠️ BRIEF-0041 : la paroi INTERNE de l'anneau — 26 quads par anneau, cinq
+    # anneaux — n'est plus emissive. Elle l'etait sur toute sa longueur, ce qui
+    # faisait du puits un tube de neon vu de dessus. Ne restent lumineuses que les
+    # deux TRANCHES de l'ouverture : c'est la porte qui brille, et c'est elle que
+    # le joueur doit trouver en phase 4. Un signal, plus un aplat.
+    ak.bridge_rings(bm, in_lo, in_hi, "AA_Panel", closed=False)
     for j, rev in ((0, True), (RING_SEG, False)):
         ring = [out_hi[j], in_hi[j], in_lo[j], out_lo[j]]
         ak.cap_ring(bm, list(reversed(ring)) if rev else ring, "AA_Emissive_Engine")
@@ -1124,29 +1373,58 @@ def build_ring(index: int) -> ak.MovingPart:
 # ==========================================================================
 
 
+def arc_ring(bm, radius: float, z: float, phi_a: float, phi_b: float,
+             segments: int):
+    """Boucle OUVERTE : la primitive de tout ce qui doit rester incomplet."""
+    return ak.add_ring(bm, [
+        (radius * math.cos(math.radians(phi_a + (phi_b - phi_a) * i / segments)),
+         radius * math.sin(math.radians(phi_a + (phi_b - phi_a) * i / segments)),
+         z)
+        for i in range(segments + 1)
+    ])
+
+
 def build_shell_ring() -> ak.MovingPart:
     """L'anneau porteur : il ne porte que l'orbite, et rien d'autre.
 
     Deux rangees de tuiles tangentielles dephasees, posees dans la gorge du
     pont. La nappe emissive sous les tuiles n'est visible que par les fentes :
     la lumiere sort *d'entre* les ecailles, elle n'est pas peinte dessus.
+
+    ⚠️ BRIEF-0041 — CE N'EST PLUS UN ANNEAU, C'EST UN ARC. C'etait la cause
+    reelle de l'echec du critere « anneau incomplet » : le croissant avait bien
+    ses 130 deg d'ouverture, mais cette piece-ci, complete a 360 deg et posee
+    juste dessous, refermait le trou a l'oeil. On ne voyait pas une ouverture, on
+    voyait une couronne concentrique de plus. L'arc deborde le croissant de
+    `SR_MARGIN` degres de chaque cote — assez pour que la coquille garde une
+    epaisseur lisible sur ses bords, trop peu pour reboucher quoi que ce soit.
     """
     bm = bmesh.new()
     rng = random.Random(SEED + 201)
-    glow_lo = polar_ring(bm, 2.18, RING_Z_BASE + 0.02, 36)
-    glow_hi = polar_ring(bm, 2.96, RING_Z_BASE + 0.02, 36)
-    ak.bridge_rings(bm, glow_lo, glow_hi, "AA_Emissive_Engine")
-    glow_bot_lo = polar_ring(bm, 2.18, RING_Z_BASE - 0.06, 36)
-    glow_bot_hi = polar_ring(bm, 2.96, RING_Z_BASE - 0.06, 36)
-    ak.bridge_rings(bm, glow_bot_hi, glow_bot_lo, "AA_Greeble")
-    ak.bridge_rings(bm, glow_hi, glow_bot_hi, "AA_Greeble")
-    ak.bridge_rings(bm, glow_bot_lo, glow_lo, "AA_Greeble")
+    phi_a, phi_b = CR_PHI_A - SR_MARGIN, CR_PHI_B + SR_MARGIN
+    n_glow = 30
+    glow_lo = arc_ring(bm, 2.18, RING_Z_BASE + 0.02, phi_a, phi_b, n_glow)
+    glow_hi = arc_ring(bm, 2.96, RING_Z_BASE + 0.02, phi_a, phi_b, n_glow)
+    ak.bridge_rings(bm, glow_lo, glow_hi, "AA_Emissive_Engine", closed=False)
+    glow_bot_lo = arc_ring(bm, 2.18, RING_Z_BASE - 0.06, phi_a, phi_b, n_glow)
+    glow_bot_hi = arc_ring(bm, 2.96, RING_Z_BASE - 0.06, phi_a, phi_b, n_glow)
+    ak.bridge_rings(bm, glow_bot_hi, glow_bot_lo, "AA_Greeble", closed=False)
+    ak.bridge_rings(bm, glow_hi, glow_bot_hi, "AA_Greeble", closed=False)
+    ak.bridge_rings(bm, glow_bot_lo, glow_lo, "AA_Greeble", closed=False)
+    for quad, rev in (((glow_lo[0], glow_hi[0], glow_bot_hi[0], glow_bot_lo[0]),
+                       True),
+                      ((glow_lo[-1], glow_hi[-1], glow_bot_hi[-1],
+                        glow_bot_lo[-1]), False)):
+        ak.cap_ring(bm, list(reversed(quad)) if rev else list(quad), "AA_Hull")
 
+    span = math.radians(phi_b - phi_a)
     for r_in, r_out, z_in, z_out, count, phase in RING_ROWS:
-        step = 2.0 * math.pi / count
+        step = span / count
         for k in range(count):
-            a0 = (k + phase) * step
-            a1 = a0 + step * RING_OVERLAP
+            a0 = math.radians(phi_a) + (k + phase * 0.5) * step
+            a1 = min(a0 + step * RING_OVERLAP, math.radians(phi_b))
+            if a1 - a0 < step * 0.35:
+                continue
             tangential_tile(
                 bm, rng, a0, a1,
                 r_in + rng.uniform(-0.02, 0.03), r_out + rng.uniform(-0.05, 0.05),
@@ -1156,14 +1434,34 @@ def build_shell_ring() -> ak.MovingPart:
     return ak.moving_part("Shell_Ring", bm, SHELL_PIVOT)
 
 
+def cr_swell(phi_deg: float) -> float:
+    """Facteur d'epaisseur radiale du croissant a l'azimut `phi_deg`.
+
+    Interpole lineairement `CR_SWELL` d'un bout a l'autre de l'arc. C'est
+    l'asymetrie principale de la silhouette : une extremite du croissant est
+    epaisse de 49 % de plus que l'autre. Le facteur s'applique a la CORDE
+    (`r_out - r_in`) et jamais au rayon interne, qui doit rester constant : c'est
+    lui qui garantit que rien ne descend dans la gorge de la coque.
+    """
+    t = (phi_deg - CR_PHI_A) / (CR_PHI_B - CR_PHI_A)
+    t = min(max(t, 0.0), 1.0)
+    return CR_SWELL[0] + (CR_SWELL[1] - CR_SWELL[0]) * t
+
+
 def build_crescent() -> ak.MovingPart:
     """Le croissant : l'anneau INCOMPLET de la charte, monte sur l'anneau porteur.
 
     Sa charniere est tangente a son bord arriere : toute sa matiere est en avant
     d'elle, donc la bascule de fin de phase 1 (0 -> 65 deg) la redresse sans
-    qu'un seul point ne plonge vers la coque. Les 130 deg manquants ouvrent sur
+    qu'un seul point ne plonge vers la coque. Les 155 deg manquants ouvrent sur
     le quadrant avant-tribord — l'anneau est ouvert du cote ou le boss est le
-    plus arme.
+    plus arme, et c'est le secteur que la camera montre en grand.
+
+    ⚠️ BRIEF-0041 : il s'EPAISSIT d'un bout a l'autre (`cr_swell`). Un croissant
+    d'epaisseur constante, quelle que soit son ouverture, se relit comme un
+    anneau auquel il manque un morceau ; un croissant qui enfle se lit comme une
+    carapace de creature. C'est la meme intention que le contour dissymetrique de
+    `BODY_R`, portee jusqu'a la coquille.
     """
     bm = bmesh.new()
     rng = random.Random(SEED + 301)
@@ -1174,9 +1472,11 @@ def build_crescent() -> ak.MovingPart:
     n_glow = 26
     lo_ring, hi_ring = [], []
     for i in range(n_glow + 1):
-        a = a0 + (a1 - a0) * i / n_glow
+        phi = CR_PHI_A + span * i / n_glow
+        a = math.radians(phi)
+        r_hi = 2.24 + 0.80 * cr_swell(phi)
         lo_ring.append((2.24 * math.cos(a), 2.24 * math.sin(a), CR_Z_BASE - 0.03))
-        hi_ring.append((3.04 * math.cos(a), 3.04 * math.sin(a), CR_Z_BASE - 0.03))
+        hi_ring.append((r_hi * math.cos(a), r_hi * math.sin(a), CR_Z_BASE - 0.03))
     lo = ak.add_ring(bm, lo_ring)
     hi = ak.add_ring(bm, hi_ring)
     ak.bridge_rings(bm, lo, hi, "AA_Emissive_Engine", closed=False)
@@ -1197,25 +1497,30 @@ def build_crescent() -> ak.MovingPart:
             b0 = max(b0, math.radians(CR_PHI_A))
             if b1 - b0 < step * 0.35:
                 continue
+            swell = cr_swell(math.degrees((b0 + b1) * 0.5))
             tangential_tile(
                 bm, rng, b0, b1,
-                r_in + rng.uniform(-0.02, 0.03), r_out + rng.uniform(-0.04, 0.04),
+                r_in + rng.uniform(-0.02, 0.03),
+                r_in + (r_out - r_in) * swell + rng.uniform(-0.04, 0.04),
                 CR_TOP + lift + rng.uniform(-0.02, 0.02),
                 CR_TOP + lift - 0.04 + rng.uniform(-0.02, 0.02),
                 CR_Z_BASE, 0.028,
             )
 
-    # cornes : deux pointes qui prolongent les extremites du croissant
-    for phi, length in ((CR_PHI_A, -16.0), (CR_PHI_B, 12.0)):
+    # cornes : deux pointes qui prolongent les extremites du croissant, l'une
+    # bien plus longue que l'autre — les deux bouts de l'ouverture ne se
+    # repondent pas, et c'est ce qui empeche l'oeil de la refermer.
+    for phi, length, r_tip in ((CR_PHI_A, -24.0, 2.60), (CR_PHI_B, 9.0, 2.86)):
         a = math.radians(phi)
+        r_out = 2.30 + 0.74 * cr_swell(phi)
         ring = ak.add_ring(bm, [
             (2.30 * math.cos(a), 2.30 * math.sin(a), CR_Z_BASE + 0.02),
-            (3.00 * math.cos(a), 3.00 * math.sin(a), CR_Z_BASE + 0.02),
-            (3.00 * math.cos(a), 3.00 * math.sin(a), CR_TOP + 0.02),
+            (r_out * math.cos(a), r_out * math.sin(a), CR_Z_BASE + 0.02),
+            (r_out * math.cos(a), r_out * math.sin(a), CR_TOP + 0.02),
             (2.30 * math.cos(a), 2.30 * math.sin(a), CR_TOP + 0.02),
         ])
         b = math.radians(phi + length)
-        tip = bm.verts.new((2.66 * math.cos(b), 2.66 * math.sin(b),
+        tip = bm.verts.new((r_tip * math.cos(b), r_tip * math.sin(b),
                             CR_Z_BASE + 0.08))
         ak.fan_to_point(bm, ring, tip, "AA_Trim")
         ak.cap_ring(bm, list(reversed(ring)), "AA_Greeble")
@@ -1265,19 +1570,21 @@ def build_plate(index: int) -> ak.MovingPart:
             ak.set_material([band[0], band[-1]], "AA_Hull")
     ak.bridge_rings(bm, tops[0], bots[0], "AA_Panel", closed=False)
     ak.bridge_rings(bm, bots[PLATE_SEG], tops[PLATE_SEG], "AA_Trim", closed=False)
+    # ⚠️ BRIEF-0041 — LE CORE SEAM DE LA PLANCHE, SANS GEOMETRIE AJOUTEE. Il
+    # etait fait de quatre reglettes emissives par plaque : 414 sommets, soit
+    # **la moitie de chaque plaque en magenta**, pour une couture que le panneau
+    # ARMOR PLATE montre comme un lisere. On assigne desormais le materiau au
+    # flanc lateral deja modelise (`j = 0`, le bord tourne vers l'interieur du
+    # croissant) : meme liseré, 16 sommets, aucun triangle de plus.
     for j, rev in ((0, False), (len(ss) - 1, True)):
         ring = [tops[i][j] for i in range(len(tops))]
         ring += [bots[i][j] for i in reversed(range(len(bots)))]
-        ak.cap_ring(bm, list(reversed(ring)) if rev else ring, "AA_Greeble")
+        ak.cap_ring(bm, list(reversed(ring)) if rev else ring,
+                    "AA_Emissive_Engine" if j == 0 else "AA_Greeble")
 
-    # couture de noyau magenta sur le bord interne (le CORE SEAM de la planche)
-    for i in range(0, PLATE_SEG, 2):
-        p0 = point(fs[i], -1.0, -PLATE_T * 0.45)
-        p1 = point(fs[min(i + 2, PLATE_SEG)], -1.0, -PLATE_T * 0.45)
-        seg_box(bm, p0, p1, 0.024, 0.030, "AA_Emissive_Engine")
     # bouche de tir de la plaque
     port = point(0.62, 0.0, 0.04)
-    knuckle(bm, port, 0.13, "AA_Emissive_Engine")
+    knuckle(bm, port, 0.11, "AA_Emissive_Engine")
     if rng.random() < 0.5:
         knuckle(bm, point(0.30, 0.55, 0.03), 0.09, "AA_Greeble")
     return ak.moving_part(f"Plate_{index + 1:02d}", bm, tuple(plate_pivot(index)),
@@ -1338,7 +1645,7 @@ def build_spike_segment(spec: dict, seg: int) -> ak.MovingPart:
     r_pivot = spike_radius(spec, bounds[0])
 
     bm = bmesh.new()
-    knuckle(bm, tuple(pivot), r_pivot * 0.94, "AA_Greeble")
+    knuckle(bm, tuple(pivot), r_pivot * 0.94, "AA_Panel")
 
     length = bounds[1] - bounds[0]
     gap = min(SPIKE_GAP * r_pivot / max(_arc_len(spec), 1e-3), length * 0.30)
@@ -1355,20 +1662,28 @@ def build_spike_segment(spec: dict, seg: int) -> ak.MovingPart:
         band = ak.bridge_rings(bm, rings[i], rings[i + 1], "AA_Hull")
         phase = i % SPIKE_SAMPLES
         if phase == SPIKE_SAMPLES - 1:
-            ak.set_material(band, "AA_Emissive_Engine")   # jonction de vertebres
+            # ⚠️ BRIEF-0041 : la jonction de vertebres n'est plus emissive SUR
+            # TOUT SON POURTOUR (9 faces), seulement sur les trois du dessus. Un
+            # anneau complet, repete a chaque vertebre sur quatre bras, faisait a
+            # lui seul ~850 sommets magenta — et sous une camera zenithale la
+            # moitie n'etait meme pas visible. Ce qui se voit, c'est une VEINE
+            # DORSALE qui court le long du dard : c'est ce que montre le panneau
+            # DETACHED SPIKE.
+            ak.set_material(band, "AA_Trim")
+            ak.set_material([band[k] for k in top_ks[:1]], "AA_Emissive_Engine")
             continue
         if phase == 0:
             ak.set_material(band, "AA_Trim")              # collier ivoire
             continue
         ak.set_material([band[k] for k in top_ks], "AA_Trim")
-        ak.set_material([band[k] for k in side_ks], "AA_Panel")
+        ak.set_material([band[k] for k in side_ks], "AA_Hull")
         ak.set_material([band[bottom_k]], "AA_Greeble")
-    ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
+    ak.cap_ring(bm, list(reversed(rings[0])), "AA_Panel")
     if seg == 2:
         tip = bm.verts.new(tuple(Vector(spec["tip"])))
         ak.fan_to_point(bm, rings[-1], tip, "AA_Trim")    # griffe ivoire
     else:
-        ak.cap_ring(bm, rings[-1], "AA_Greeble")
+        ak.cap_ring(bm, rings[-1], "AA_Panel")
         # bouche de tir (le WEAPON PORT de la planche), sur le maillon median
         if seg == 1 and spec["port"] > bounds[0]:
             port = spike_point(spec, spec["port"])
