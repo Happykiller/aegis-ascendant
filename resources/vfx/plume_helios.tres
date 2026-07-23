@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="PlumeTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/plume_tuning.gd" id="1_plume"]
+
+[resource]
+script = ExtResource("1_plume")
+length_idle = 0.55
+length_full = 1.35
+throat_radius = 0.085
+throat_idle = 0.7
+tail_flare = 1.8
+shock_count = 3.0
+shock_depth = 0.3
+shock_threshold = 0.55
+core_color = Color(0.85, 0.98, 1, 1)
+plume_color = Color(0.247, 0.851, 0.91, 1)
+tail_color = Color(0.11, 0.169, 0.369, 1)
+energy = 1.0
+energy_idle = 0.45
+flicker = 0.06
+rings = 22
+radial_segments = 12
+idle_throttle = 0.32
+forward_gain = 0.62
+lateral_gain = 0.18
+speed_gain = 0.28
+brake_drop = 0.3
+attack_rate = 10.0
+decay_rate = 3.5

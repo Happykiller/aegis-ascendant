@@ -25,6 +25,7 @@ var _camera_rest: Vector3
 var _hero_rest: Vector3
 var _age: float = 0.0
 var _hero_flight: ShipFlight
+var _hero_plumes: Array[EnginePlume] = []
 
 # --- Chorégraphie -------------------------------------------------------------
 # Des périodes volontairement non harmoniques (11.0 / 7.3 / 17.0 s) : la scène ne
@@ -105,6 +106,16 @@ const HERO_TRAIL_ENERGY := 1.5
 const ESCORT_TRAIL_SCALE := 0.65
 const ESCORT_TRAIL_ENERGY := 2.4
 
+## Plumes d'echappement du diorama (ADR-0017), meme calibrage de cadrage que les braises.
+const PLUME_TUNING := preload("res://resources/vfx/plume_helios.tres")
+## Les escortes traversent a vitesse constante : plein gaz, disques de Mach allumes.
+const ESCORT_PLUME_THROTTLE := 0.95
+## Le heros RESPIRE — sa poussee oscille sur HERO_SWEEP_PERIOD. C'est le seul plan du
+## jeu ou l'on voit une plume monter et retomber en gros plan : elle y fait la
+## demonstration de ce que l'effet raconte manette en main.
+const HERO_PLUME_MIN := 0.34
+const HERO_PLUME_MAX := 0.78
+
 const CitadelTurretScene := preload("res://scenes/fortress/citadel_turret.tscn")
 const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
 
@@ -135,9 +146,11 @@ func _animate_citadel() -> void:
 	CitadelLife.apply(hull, CitadelTurretScene, CitadelBeaconScene)
 
 func _attach_engine_trails() -> void:
-	_attach_trail_to(_hero, HERO_TRAIL_SCALE, 18, HERO_TRAIL_ENERGY)
+	_hero_plumes = _attach_trail_to(_hero, HERO_TRAIL_SCALE, 10, HERO_TRAIL_ENERGY,
+		HERO_PLUME_MAX)
 	for escort in _escorts.get_children():
-		_attach_trail_to(escort as Node3D, ESCORT_TRAIL_SCALE, 14, ESCORT_TRAIL_ENERGY)
+		_attach_trail_to(escort as Node3D, ESCORT_TRAIL_SCALE, 8, ESCORT_TRAIL_ENERGY,
+			ESCORT_PLUME_THROTTLE)
 
 ## Volets et tuyeres des quatre Specter-9 du diorama (BRIEF-0033).
 ##
@@ -151,10 +164,14 @@ func _bind_flight() -> void:
 		if flight != null:
 			flight.set_thrust(1.0)
 
-func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: float) -> void:
+## Pose la plume et ses braises sur chaque tuyere, et REND les plumes construites —
+## l'appelant n'a pas a les retrouver dans l'arbre pour les piloter ensuite.
+func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: float,
+		throttle: float) -> Array[EnginePlume]:
+	var plumes: Array[EnginePlume] = []
 	var hull := ship.get_node_or_null("Hull")
 	if hull == null:
-		return
+		return plumes
 	for point_name in ["Engine_L", "Engine_R"]:
 		var point := hull.get_node_or_null(NodePath(point_name)) as Node3D
 		if point == null:
@@ -163,9 +180,20 @@ func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: flo
 		# Tous les vaisseaux restent à l'échelle 1 : le cadrage se fait par la
 		# distance caméra. Mettre le NŒUD à l'échelle multiplierait deux fois — une
 		# par la transformation du parent, une par la taille des particules.
+		# ⚠️ PAS de `trail_scale` sur la plume. Les deux calibrages de braises existent
+		# parce qu'une particule se règle à l'œil selon la distance caméra ; une plume,
+		# elle, est une longueur du MONDE. Les quatre coques sont le même Specter-9 à
+		# l'échelle 1 : leurs jets mesurent donc la même chose, et c'est la perspective
+		# qui doit les rapetisser — sinon l'escorte du fond crache plus loin que le héros.
+		var jet := EnginePlume.make(PLUME_TUNING)
+		jet.position = point.position
+		jet.snap_throttle(throttle)
+		ship.add_child(jet)
+		plumes.append(jet)
 		var trail := EngineTrail.make(trail_scale, amount, energy)
 		trail.position = point.position
 		ship.add_child(trail)
+	return plumes
 
 func _process(delta: float) -> void:
 	_age += delta
@@ -193,6 +221,16 @@ func _animate_hero() -> void:
 	_hero.rotation.z = deg_to_rad(sin(roll) * HERO_ROLL_DEG)
 	# Le nez suit le roulis, très légèrement : un vaisseau qui s'incline vire.
 	_hero.rotation.y = deg_to_rad(sin(roll) * HERO_ROLL_DEG * 0.35)
+	# La respiration de la poussee. ⚠️ Les tuyeres ET les plumes lisent le MEME ratio :
+	# HERO_SWEEP_PERIOD existait deja mais n'etait branchee nulle part, si bien que les
+	# petales du heros restaient fermes. Les brancher separement, c'est se donner un
+	# jour une plume plein gaz sortant d'une tuyere au ralenti.
+	var sweep := (sin(_age * TAU / HERO_SWEEP_PERIOD) + 1.0) * 0.5
+	var throttle := lerpf(HERO_PLUME_MIN, HERO_PLUME_MAX, sweep)
+	if _hero_flight != null:
+		_hero_flight.set_thrust(throttle)
+	for jet in _hero_plumes:
+		jet.set_throttle(throttle)
 
 ## Traversée en boucle, sur le modèle de BackdropLandmark : position absolue dérivée
 ## d'un compteur, rebouclage par wrap. Zéro allocation par image (spec §31).

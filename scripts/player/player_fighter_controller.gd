@@ -26,6 +26,9 @@ const MAX_POWER := 5
 
 @export var stats: PlayerStats
 @export var primary_projectile: ProjectileData
+## Réglages de la plume d'échappement (ADR-0017). Nul = pas de plume : la coque vole
+## quand même, moteur éteint — un écran de debug ne doit pas planter faute de VFX.
+@export var plume: PlumeTuning
 @export var bullet_manager_path: NodePath
 
 var plane_position: Vector2 = Vector2(0.0, -5.0)
@@ -61,6 +64,9 @@ const MUZZLE_NAMES: Array[String] = [
 ## Engine trails and muzzle flashes sit on the hull's attach points (ADR-0008),
 ## one per nozzle / per gun — never on hard-coded offsets.
 var _engine_trails: Array[GPUParticles3D] = []
+## Les plumes d'échappement, une par tuyère. Tableau TYPÉ et préalloué : il est
+## parcouru à chaque image de vol.
+var _engine_plumes: Array[EnginePlume] = []
 ## Plane-space offset of each gun from the ship origin, read once from the hull.
 var _muzzles: Dictionary[String, Vector2] = {}
 ## One flash quad per gun, shown only for the guns that fired this salvo.
@@ -124,6 +130,10 @@ func _physics_process(delta: float) -> void:
 		_shield.grant_invulnerability(0.3) # safe during the guided approach
 		plane_position = plane_position.move_toward(_autopilot_target, stats.max_speed * 0.6 * delta)
 		position = GameplayPlane.to_world(plane_position)
+		# L'approche d'appontage est pilotée : la commande du joueur ne dit plus rien,
+		# mais le moteur pousse — sans cette ligne la plume s'éteindrait pendant le
+		# seul plan du jeu où le vaisseau est filmé en approche lente.
+		_update_plumes(Vector2(0.0, 0.5))
 		if _target != null:
 			_target.position = plane_position
 		if plane_position.distance_to(_autopilot_target) < 0.1:
@@ -146,6 +156,7 @@ func _physics_process(delta: float) -> void:
 	if _target != null:
 		_target.position = plane_position
 	_apply_visual_bank(delta)
+	_update_plumes(input)
 	_update_fire(delta)
 
 ## Dégâts qui ne viennent PAS d'un projectile : la lame de la faux du Harvester, son
@@ -299,55 +310,35 @@ func _cache_muzzles() -> void:
 		var world: Vector3 = _hull.transform * _attach_point(muzzle_name)
 		_muzzles[muzzle_name] = Vector2(world.x, -world.z)
 
+## Une plume d'échappement et un filet de braises par tuyère (ADR-0017). La plume dit
+## le RÉGIME du moteur, les braises disent le DÉPLACEMENT de la coque : deux
+## informations distinctes, et la plume seule ne peut pas porter la seconde puisqu'elle
+## est solidaire du vaisseau.
+##
+## La fabrication locale de la traînée a disparu : elle dupliquait `EngineTrail`, et les
+## deux copies avaient déjà divergé (l'écran titre réglait la sienne, pas celle-ci).
 func _build_engine_trails() -> void:
 	for point_name in ["Engine_L", "Engine_R"]:
-		var trail := _make_engine_trail()
-		trail.position = _attach_point(point_name)
+		var mount := _attach_point(point_name)
+		if plume != null:
+			var jet := EnginePlume.make(plume)
+			jet.position = mount
+			_visual_root.add_child(jet)
+			_engine_plumes.append(jet)
+		var trail := EngineTrail.make()
+		trail.position = mount
 		_visual_root.add_child(trail)
 		_engine_trails.append(trail)
 
-func _make_engine_trail() -> GPUParticles3D:
-	var trail := GPUParticles3D.new()
-	trail.amount = 24
-	trail.lifetime = 0.32
-	trail.local_coords = false
-	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := ParticleProcessMaterial.new()
-	mat.direction = Vector3(0.0, 0.0, 1.0)
-	mat.spread = 6.0
-	mat.gravity = Vector3.ZERO
-	mat.initial_velocity_min = 6.0
-	mat.initial_velocity_max = 9.0
-	mat.scale_min = 0.5
-	mat.scale_max = 1.0
-	var curve := Curve.new()
-	curve.add_point(Vector2(0.0, 1.0))
-	curve.add_point(Vector2(1.0, 0.0))
-	var scale_tex := CurveTexture.new()
-	scale_tex.curve = curve
-	mat.scale_curve = scale_tex
-	var ramp := Gradient.new()
-	ramp.set_color(0, Color(0.6, 0.95, 1.0, 1.0))
-	ramp.set_color(1, Color(0.15, 0.5, 0.9, 0.0))
-	var ramp_tex := GradientTexture1D.new()
-	ramp_tex.gradient = ramp
-	mat.color_ramp = ramp_tex
-	trail.process_material = mat
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.19, 0.42)
-	var qmat := StandardMaterial3D.new()
-	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	qmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	qmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	qmat.vertex_color_use_as_albedo = true
-	qmat.emission_enabled = true
-	qmat.emission_energy_multiplier = 2.5
-	qmat.albedo_texture = FlameStreak.texture()
-	quad.material = qmat
-	trail.draw_pass_1 = quad
-	trail.emitting = true
-	return trail
+## Le régime que le pilote demande, poussé aux plumes. Appelé avec la commande brute :
+## c'est elle qui porte l'INTENTION (le geste précède la vitesse), la vitesse acquise
+## n'entretenant ensuite le jet que le temps que le vaisseau file encore.
+func _update_plumes(input: Vector2) -> void:
+	if plume == null:
+		return
+	var ratio := EnginePlume.throttle_from(input, speed_ratio(), plume)
+	for jet in _engine_plumes:
+		jet.set_throttle(ratio)
 
 func _build_muzzle_flashes() -> void:
 	var quad := QuadMesh.new()

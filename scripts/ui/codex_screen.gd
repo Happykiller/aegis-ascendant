@@ -24,6 +24,13 @@ const GameStateScript := preload("res://scripts/core/game_state.gd")
 const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
 const BOOT_SCENE := "res://scenes/boot/boot.tscn"
 
+## Plumes d'échappement du présentoir (ADR-0017), une par camp.
+const HELIOS_PLUME := preload("res://resources/vfx/plume_helios.tres")
+const NULL_CHOIR_PLUME := preload("res://resources/vfx/plume_null_choir.tres")
+## Régime de présentation : au-dessus du seuil des disques de Mach. Une fiche technique
+## montre le moteur ouvert — au ralenti, la moitié de ce qu'il y a à voir est absente.
+const PLUME_THROTTLE := 0.85
+
 ## L'ordre est celui de la rencontre : le vaisseau du joueur, puis la menace par
 ## gravité croissante. Ce n'est pas l'ordre alphabétique, c'est une progression.
 ##
@@ -220,7 +227,7 @@ func _mount(entry: CodexEntry) -> void:
 	else:
 		HullDetail.apply(_hull)
 		_flight = ShipFlight.apply(_hull)
-	_attach_trails(bounds)
+	_attach_trails(bounds, entry.camp)
 
 	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
 	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
@@ -244,17 +251,35 @@ func _count_fittings(hull: Node3D) -> Dictionary[StringName, int]:
 ## Les points d'attache sont de vrais Node3D du `.glb` (ADR-0008). Toutes les coques
 ## n'en ont pas les mêmes — le Leviathan n'en a aucun — et une coque sans réacteur
 ## nommé n'est pas une erreur ici : c'est une coque qui ne pousse pas.
-func _attach_trails(bounds: AABB) -> void:
+func _attach_trails(bounds: AABB, camp: CodexEntry.Camp) -> void:
 	# Proportionnel à la coque, borné aux deux bouts : à réglage fixe, la plume d'un
 	# Needle Scout de 1,9 m et celle d'un Leviathan de 8,8 m ne peuvent pas être la
 	# même. Le halo blanc au centre du Choir Harvester n'est PAS cette plume — c'est
 	# son noyau émissif, vérifié en baissant l'échelle sans que l'image bouge.
 	var trail_scale := clampf(bounds.size.length() * 0.10, 0.10, 0.55)
+	# La plume porte la couleur du CAMP : une fiche du Null Choir ne crache pas du cyan
+	# Helios. `camp` est déclaré sur l'entrée, on ne le devine pas de la coque.
+	var tuning: PlumeTuning = HELIOS_PLUME if camp == CodexEntry.Camp.HELIOS else NULL_CHOIR_PLUME
+	# ⚠️ Le catalogue mélange les orientations (ADR-0015) : une coque Helios est modelée
+	# nez vers -Z, une coque ennemie nez vers le bas de l'écran. L'échappement part donc
+	# dans des sens opposés selon le camp — pris à l'envers, le jet sort du nez.
+	var aft := Vector3.BACK if camp == CodexEntry.Camp.HELIOS else Vector3.FORWARD
+	# Échelle PROPRE à la plume, et non `trail_scale` : celui-ci est calibré sur des
+	# particules (0,10 par unité de coque) et rendait un jet de 39 cm derrière un
+	# chasseur de 2,46 m — mesuré, pas supposé. 0,35 pose le Specter-9 du présentoir à
+	# la taille qu'il a en jeu, et suit les coques plus grandes.
+	var plume_scale := clampf(bounds.size.length() * 0.35, 0.3, 2.0)
 	for point_name in ["Engine_C", "Engine_L", "Engine_R"]:
 		var point := _hull.get_node_or_null(NodePath(point_name)) as Node3D
 		if point == null:
 			continue
-		var trail := EngineTrail.make(trail_scale, 16, 1.6)
+		# Régime de présentation : assez haut pour que les disques de Mach soient
+		# allumés — le bestiaire est une fiche technique, il montre le moteur ouvert.
+		var jet := EnginePlume.make(tuning, plume_scale, aft)
+		jet.position = point.position
+		jet.snap_throttle(PLUME_THROTTLE)
+		_hull.add_child(jet)
+		var trail := EngineTrail.make(trail_scale, 8, 1.6)
 		# `local_coords` vrai, contrairement au jeu : le plateau tourne, et des
 		# particules laissées dans le monde décriraient un arc de cercle derrière la
 		# coque au lieu d'une plume.

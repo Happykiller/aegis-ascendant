@@ -5,6 +5,15 @@ extends Node3D
 ## Instances are pooled: spawners preinstantiate then activate/deactivate;
 ## death never queue_free()s during gameplay (spec §26.1).
 
+## Réglages de la plume Null Choir (ADR-0017). Chargé ici et non dans `EnemyData` :
+## c'est une couleur de CAMP, pas une caractéristique d'espèce — la répliquer dans les
+## neuf `.tres` d'ennemis garantirait qu'un jour ils ne s'accorderaient plus.
+const PLUME_TUNING := preload("res://resources/vfx/plume_null_choir.tres")
+## Un ennemi plonge vers le joueur à régime établi : il n'a ni manche ni ralenti. On lui
+## pose une poussée haute et fixe — assez pour que ses disques de Mach s'allument, ce qui
+## distingue à l'œil une coque en approche d'une épave qui dérive.
+const PLUME_THROTTLE := 0.9
+
 ## Logical "down the screen" (toward the player).
 const DIR_DOWN := Vector2(0.0, -1.0)
 const MUZZLE_OFFSET := Vector2(0.0, -0.6)
@@ -42,6 +51,7 @@ var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _hit_flash: float = 0.0
 var _thruster: GPUParticles3D
+var _plume: EnginePlume
 ## Additive wash laid over the hull mesh on impact. A mesh has no `modulate`, so
 ## the flash is an overlay pass rather than a tint.
 var _flash_material: StandardMaterial3D
@@ -101,6 +111,10 @@ func _set_active(value: bool) -> void:
 	if _thruster != null:
 		# Pooled instances are reused: a dormant hull must not keep burning.
 		_thruster.emitting = value
+	if _plume != null:
+		# `snap_throttle` et non `set_throttle` : une instance recyclée qui revient en
+		# scène doit déjà pousser, pas allumer son moteur devant le joueur.
+		_plume.snap_throttle(PLUME_THROTTLE if value else 0.0)
 	if value and _flash_material != null:
 		_hit_flash = 0.0
 		_flash_material.albedo_color.a = 0.0
@@ -182,12 +196,19 @@ func _update_fire(delta: float) -> void:
 		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
 			plane_position + _muzzle_offset, DIR_DOWN, data.projectile)
 
-## Exhaust plume, so the hull reads as a thing under power rather than a decal
-## sliding down the screen. Built in code, like the player's own trail.
+## La plume d'échappement et ses braises, pour que la coque lise comme une chose sous
+## puissance et non comme une décalcomanie qui glisse vers le bas de l'écran.
+##
+## ⚠️ L'ennemi plonge vers le joueur (+Z monde) : son échappement part donc vers -Z,
+## à l'INVERSE de celui du joueur. C'est ce que dit `Vector3.FORWARD` à la fabrique.
 func _build_thruster() -> void:
+	_plume = EnginePlume.make(PLUME_TUNING, 1.0, Vector3.FORWARD)
+	_plume.position = _attach_point("Engine_C")
+	_plume.snap_throttle(PLUME_THROTTLE)
+	add_child(_plume)
 	_thruster = GPUParticles3D.new()
-	_thruster.amount = 14
-	_thruster.lifetime = 0.24
+	_thruster.amount = 6
+	_thruster.lifetime = 0.2
 	_thruster.local_coords = false
 	_thruster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# The scout dives toward the player (world +Z), so its exhaust trails behind
@@ -199,8 +220,10 @@ func _build_thruster() -> void:
 	mat.gravity = Vector3.ZERO
 	mat.initial_velocity_min = 3.0
 	mat.initial_velocity_max = 5.0
-	mat.scale_min = 0.35
-	mat.scale_max = 0.7
+	# Braises seulement : le moteur, c'est la plume. Aux valeurs d'avant (0,35–0,7,
+	# quads de 0,16 × 0,36) les particules reprenaient le dessus sur elle.
+	mat.scale_min = 0.18
+	mat.scale_max = 0.38
 	var curve := Curve.new()
 	curve.add_point(Vector2(0.0, 1.0))
 	curve.add_point(Vector2(1.0, 0.0))
@@ -217,7 +240,7 @@ func _build_thruster() -> void:
 	mat.color_ramp = ramp_tex
 	_thruster.process_material = mat
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.16, 0.36)
+	quad.size = Vector2(0.09, 0.2)
 	var qmat := StandardMaterial3D.new()
 	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

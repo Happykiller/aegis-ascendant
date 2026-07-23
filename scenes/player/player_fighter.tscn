@@ -1,14 +1,16 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_fighter_controller.gd" id="1_ctrl"]
 [ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="2_stats"]
 [ext_resource type="Resource" path="res://resources/weapons/pulse_shot.tres" id="3_shot"]
 [ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9.glb" id="4_hull"]
+[ext_resource type="Resource" path="res://resources/vfx/plume_helios.tres" id="5_plume"]
 
 [node name="PlayerFighter" type="Node3D"]
 script = ExtResource("1_ctrl")
 stats = ExtResource("2_stats")
 primary_projectile = ExtResource("3_shot")
+plume = ExtResource("5_plume")
 
 [node name="VisualRoot" type="Node3D" parent="."]
 

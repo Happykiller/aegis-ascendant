@@ -55,5 +55,7 @@ et lire la sortie, pas viser une image.
 | `--victory-demo` | saute droit au rapport de mission, score semé (sinon il faut jouer l'arc entier — c'est ainsi que cet écran a vécu longtemps avec la police par défaut sans que personne le voie) |
 | `--demo` | pilote automatique + tir continu (utile pour voir des projectiles) |
 | `--novsync` | débride la présentation |
+| `--goto-codex` | ouvre le bestiaire ; `--codex-entry=N` choisit la coque |
 | `--no-backdrop` | désactive le fond (isoler son coût, cf. [howto-mesurer-la-perf](howto-mesurer-la-perf.md)) |
+| `--no-plumes` | désactive les plumes de réacteur (isoler leur coût, ADR-0017) |
 | `--capture --capture-after=N` | PNG après N images, puis quitte |
