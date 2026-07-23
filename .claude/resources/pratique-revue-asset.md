@@ -64,3 +64,25 @@ studio ; trois cycles export+deploy+capture pour retomber sur un réglage propre
   recadrer le sujet et regarder. Ne pas valider une texture sur le seul rendu Cycles.
 - Un détail qui n'est visible qu'à pleine résolution studio **n'existe pas** pour le joueur — même
   logique que la règle des 20° de BRIEF-0026, appliquée à la finesse au lieu de l'angle.
+
+## Choisir la vue qui montre l'axe qu'on juge (23/07/2026)
+
+« Juger en jeu » ne suffit pas : encore faut-il **la vue où la propriété qu'on règle est visible**.
+Un même effet, correct ou raté, peut être indiscernable d'un écran à l'autre.
+
+**Ce que ça a coûté** : la forme de la plume de réacteur (ADR-0017) a été jugée sur le **bestiaire**,
+qui présente les coques de trois quarts avant. Le jet y part *en enfilade*, presque dans l'axe de la
+caméra : sa longueur est écrasée par la perspective et son profil rendait un blob rond quelle que
+soit la valeur réglée. Une itération complète de réglage — export, déploiement, capture, analyse —
+faite sur une image qui ne pouvait pas répondre à la question posée.
+
+**Les trois plans du jeu, et ce que chacun sait dire :**
+
+| Plan | Angle | Bon juge de |
+|---|---|---|
+| Jeu (`--goto-graybox`) | quasi zénithal, 20° de la verticale | la lisibilité réelle, la taille relative au vaisseau |
+| Accueil (défaut) | presque à l'horizontale, gros plan | **la forme** — silhouette, profil, dégradés |
+| Bestiaire (`--goto-codex`) | trois quarts avant, coque qui tourne | le **volume** (ça tourne), les couleurs par camp |
+
+Avant de lancer une capture : se demander **quel axe porte la propriété à juger**, et prendre le
+plan qui ne l'écrase pas.

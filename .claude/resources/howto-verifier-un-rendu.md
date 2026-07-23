@@ -46,6 +46,20 @@ par Godot et **silencieusement ignorés** — la capture ne s'arme pas, et rien 
 faut laisser tourner en temps réel (`timeout 300 ./scripts/deploy-win.sh -- ++ --novsync --demo`)
 et lire la sortie, pas viser une image.
 
+**3. Le compteur se RÉARME à chaque chargement de scène.** La ligne `[ScreenCapture] armed: N
+frames` apparaît une fois au démarrage, puis **une seconde fois** quand la scène de jeu se monte :
+les images se comptent depuis le **dernier** montage, pas depuis le lancement. C'est ce qui rend
+les captures d'événements chronométrés praticables — **sans `--novsync`**, une image vaut 1/60 s
+depuis `[Level] ready`, donc un événement à *t* secondes se vise à `60 × t` :
+
+```bash
+# la 3e mort survient à 10,5 s de jeu, le rapport se lève 1,6 s après
+./scripts/deploy-win.sh -- ++ --goto-graybox --defeat-demo --capture --capture-after=780
+```
+
+⚠️ Ne pas combiner ce calcul avec `--novsync` : la cadence n'est plus 60 Hz et l'arithmétique
+s'effondre.
+
 ## Flags utiles
 
 | Flag | Effet |
