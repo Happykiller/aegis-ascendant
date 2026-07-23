@@ -50,7 +50,6 @@ var _spawn: Vector2 = Vector2.ZERO
 var _age: float = 0.0
 var _fire_timer: float = 0.0
 var _hit_flash: float = 0.0
-var _thruster: GPUParticles3D
 var _plume: EnginePlume
 ## Additive wash laid over the hull mesh on impact. A mesh has no `modulate`, so
 ## the flash is an overlay pass rather than a tint.
@@ -77,7 +76,7 @@ func _ready() -> void:
 		var muzzle := _attach_point("Muzzle_C")
 		_muzzle_offset = Vector2(muzzle.x, -muzzle.z)
 		_build_flash_overlay()
-		_build_thruster()
+		_build_plume()
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)
@@ -108,10 +107,8 @@ func _set_active(value: bool) -> void:
 	set_physics_process(value)
 	if _target != null:
 		_target.enabled = value
-	if _thruster != null:
-		# Pooled instances are reused: a dormant hull must not keep burning.
-		_thruster.emitting = value
 	if _plume != null:
+		# Pooled instances are reused: a dormant hull must not keep burning.
 		# `snap_throttle` et non `set_throttle` : une instance recyclée qui revient en
 		# scène doit déjà pousser, pas allumer son moteur devant le joueur.
 		_plume.snap_throttle(PLUME_THROTTLE if value else 0.0)
@@ -196,63 +193,16 @@ func _update_fire(delta: float) -> void:
 		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
 			plane_position + _muzzle_offset, DIR_DOWN, data.projectile)
 
-## La plume d'échappement et ses braises, pour que la coque lise comme une chose sous
-## puissance et non comme une décalcomanie qui glisse vers le bas de l'écran.
+## La plume d'échappement, pour que la coque lise comme une chose sous puissance et
+## non comme une décalcomanie qui glisse vers le bas de l'écran.
 ##
 ## ⚠️ L'ennemi plonge vers le joueur (+Z monde) : son échappement part donc vers -Z,
 ## à l'INVERSE de celui du joueur. C'est ce que dit `Vector3.FORWARD` à la fabrique.
-func _build_thruster() -> void:
+func _build_plume() -> void:
 	_plume = EnginePlume.make(PLUME_TUNING, 1.0, Vector3.FORWARD)
 	_plume.position = _attach_point("Engine_C")
 	_plume.snap_throttle(PLUME_THROTTLE)
 	add_child(_plume)
-	_thruster = GPUParticles3D.new()
-	_thruster.amount = 6
-	_thruster.lifetime = 0.2
-	_thruster.local_coords = false
-	_thruster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# The scout dives toward the player (world +Z), so its exhaust trails behind
-	# it, up the screen — from the nozzle the hull actually carries.
-	_thruster.position = _attach_point("Engine_C")
-	var mat := ParticleProcessMaterial.new()
-	mat.direction = Vector3(0.0, 0.0, -1.0)
-	mat.spread = 7.0
-	mat.gravity = Vector3.ZERO
-	mat.initial_velocity_min = 3.0
-	mat.initial_velocity_max = 5.0
-	# Braises seulement : le moteur, c'est la plume. Aux valeurs d'avant (0,35–0,7,
-	# quads de 0,16 × 0,36) les particules reprenaient le dessus sur elle.
-	mat.scale_min = 0.18
-	mat.scale_max = 0.38
-	var curve := Curve.new()
-	curve.add_point(Vector2(0.0, 1.0))
-	curve.add_point(Vector2(1.0, 0.0))
-	var scale_tex := CurveTexture.new()
-	scale_tex.curve = curve
-	mat.scale_curve = scale_tex
-	# Null Choir magenta (palette): the enemy's own signature, never the coral
-	# reserved for its bullets nor the cyan reserved for ours.
-	var ramp := Gradient.new()
-	ramp.set_color(0, Color(0.95, 0.45, 0.85, 1.0))
-	ramp.set_color(1, Color(0.55, 0.15, 0.55, 0.0))
-	var ramp_tex := GradientTexture1D.new()
-	ramp_tex.gradient = ramp
-	mat.color_ramp = ramp_tex
-	_thruster.process_material = mat
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.09, 0.2)
-	var qmat := StandardMaterial3D.new()
-	qmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	qmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	qmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	qmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	qmat.vertex_color_use_as_albedo = true
-	qmat.emission_enabled = true
-	qmat.emission_energy_multiplier = 2.0
-	qmat.albedo_texture = FlameStreak.texture()
-	quad.material = qmat
-	_thruster.draw_pass_1 = quad
-	add_child(_thruster)
 
 ## A non-lethal hit: the killing blow is reported by `destroyed` instead.
 func _on_damaged(_amount: float, remaining: float) -> void:

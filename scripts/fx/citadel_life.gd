@@ -6,7 +6,7 @@ extends Node
 ## POURQUOI UNE FABRIQUE, ET PAS DU CODE DANS `aegis_citadel.gd` — l'écran d'accueil
 ## instancie le `.glb` **nu** (`boot.tscn:87`), pas la scène de gameplay. Une
 ## animation écrite dans le contrôleur serait donc absente de l'endroit même où la
-## forteresse est mise en vedette. Sur le modèle de `HullDetail` et `EngineTrail` :
+## forteresse est mise en vedette. Sur le modèle de `HullDetail` et `ShipFlight` :
 ## une fonction statique appelable de partout, sans instancier de gameplay.
 ##
 ## C'est un `Node` — et pas une classe purement statique — parce que la respiration

@@ -2,9 +2,9 @@ class_name EnginePlume
 extends MeshInstance3D
 ## Plume d'échappement d'un réacteur — le cône de gaz et ses disques de Mach (ADR-0017).
 ##
-## Remplace la traînée de particules (`EngineTrail`) dans son rôle de MOTEUR. La traînée
-## survit à côté, réduite, dans son seul rôle honnête : les braises laissées dans le
-## monde par un vaisseau qui se déplace.
+## Remplace ENTIÈREMENT la traînée de particules qui tenait lieu de réacteur. Gardée
+## un temps en braises résiduelles derrière la plume, elle lisait comme des DÉBRIS qui
+## tombent du vaisseau : le moteur se raconte dans la plume, et nulle part ailleurs.
 ##
 ## Sur le patron de `Beam` : le nœud et la math pure vivent dans le même fichier, la
 ## seconde étant statique pour être vérifiable sans rendu ni arbre.
@@ -19,7 +19,7 @@ const PlumeShader := preload("res://shaders/engine_plume.gdshader")
 ## String -> StringName se referait sinon indéfiniment (leçon `beam.gd:64-65`).
 const U_LENGTH := &"plume_length"
 const U_THROAT := &"throat_radius"
-const U_FLARE := &"tail_flare"
+const U_FLARE := &"belly_flare"
 const U_SHOCK_COUNT := &"shock_count"
 const U_SHOCK_DEPTH := &"shock_depth"
 const U_CORE := &"core_color"
@@ -54,13 +54,12 @@ var _throttle: float = -1.0
 var _pushed: float = -1.0
 const PUSH_EPSILON := 0.002
 
-## `scale_factor` met la plume à l'échelle de la coque, comme `EngineTrail.make()` :
-## le jet d'un Needle Scout de 1,9 m et celui d'un Leviathan ne peuvent pas mesurer
-## pareil. Il ne passe PAS par `scale` du nœud — la mise à l'échelle d'un nœud
+## `scale_factor` met la plume à l'échelle de la coque : le jet d'un Needle Scout de
+## 1,9 m et celui d'un Leviathan ne peuvent pas mesurer pareil. Il ne passe PAS par `scale` du nœud — la mise à l'échelle d'un nœud
 ## multiplierait aussi la marge de culling et les uniformes déjà dimensionnés.
 ##
 ## `aft` : le sens de l'échappement, dans l'espace du parent. `Vector3.BACK` (+Z) pour
-## une coque modelée nez vers -Z (le Specter-9, cf. `EngineTrail`) ; `Vector3.FORWARD`
+## une coque modelée nez vers -Z (le Specter-9) ; `Vector3.FORWARD`
 ## pour une coque lacée nez vers le bas de l'écran (les ennemis qui plongent).
 static func make(tuning: PlumeTuning, scale_factor: float = 1.0,
 		aft: Vector3 = Vector3.BACK) -> EnginePlume:
@@ -136,7 +135,7 @@ func _push() -> void:
 		lerpf(_tuning.length_idle, _tuning.length_full, t) * _scale)
 	_material.set_shader_parameter(U_THROAT,
 		_tuning.throat_radius * lerpf(_tuning.throat_idle, 1.0, t) * _scale)
-	_material.set_shader_parameter(U_FLARE, _tuning.tail_flare)
+	_material.set_shader_parameter(U_FLARE, _tuning.belly_flare)
 	_material.set_shader_parameter(U_SHOCK_COUNT, _tuning.shock_count)
 	_material.set_shader_parameter(U_SHOCK_DEPTH, shock_depth_at(t, _tuning))
 	# Le cœur ne devient blanc qu'en montant en régime : au ralenti, le col est de la

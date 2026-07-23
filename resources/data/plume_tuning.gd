@@ -19,8 +19,13 @@ extends Resource
 ## Fraction du col conservée à la dérive. Une tuyère qui garde sa pleine section au
 ## ralenti raconte un moteur bloqué plein gaz.
 @export var throat_idle: float = 0.72
-## Rayon en queue, rapporté au col.
-@export var tail_flare: float = 2.3
+## Rayon du VENTRE de la plume, rapporté au col. Le ventre est juste en aval de la
+## tuyère : au-delà, la plume se referme en pointe.
+##
+## ⚠️ Ce n'est PAS un rayon de queue. Une plume s'effile ; un profil qui s'ouvre
+## jusqu'au bout rend un cône ouvert à bout franc — c'est le premier défaut de forme
+## qu'a signalé l'opérateur, et il est indiscernable sur une valeur seule.
+@export var belly_flare: float = 1.8
 
 @export_group("Disques de Mach")
 ## ⚠️ Plafond de LISIBILITÉ à 3 : le post rétro rend à 960×540 et écrase le détail fin.
@@ -86,8 +91,8 @@ func validate() -> PackedStringArray:
 		errors.append("throat_radius must be > 0")
 	if throat_idle <= 0.0 or throat_idle > 1.0:
 		errors.append("throat_idle must be in (0, 1]")
-	if tail_flare <= 0.0:
-		errors.append("tail_flare must be > 0")
+	if belly_flare <= 0.0:
+		errors.append("belly_flare must be > 0")
 	if shock_count < 0.0 or shock_count > 3.0:
 		errors.append("shock_count must be in [0, 3] — 960x540 retro post caps readability at 3")
 	if shock_depth < 0.0 or shock_depth >= 1.0:

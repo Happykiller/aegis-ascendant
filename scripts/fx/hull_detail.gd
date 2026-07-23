@@ -13,7 +13,7 @@ class_name HullDetail
 ## Aucune couleur n'est recopiee cote Godot : la palette vient du .glb, qui la
 ## tient du kit — une seule source de verite.
 ##
-## Volontairement une fonction statique, comme SoftDot/FlameStreak : appelable de
+## Volontairement une fonction statique, comme SoftDot : appelable de
 ## partout, aucun etat.
 
 const DETAIL_MAP := preload("res://assets/imported/textures/hull/hull_detail_mul.png")

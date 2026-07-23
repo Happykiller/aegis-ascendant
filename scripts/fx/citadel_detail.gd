@@ -11,7 +11,7 @@ class_name CitadelDetail
 ## relief sont DÉRIVÉES des hauteurs par `tools/derive-maps.py` — jamais générées
 ## (un générateur d'images rend une normal map aux gradients faux, cf. ADR-0013).
 ##
-## Volontairement une classe statique, comme `HullDetail` et `EngineTrail`.
+## Volontairement une classe statique, comme `HullDetail` et `CitadelLife`.
 
 const _DIR := "res://assets/imported/textures/citadel/"
 

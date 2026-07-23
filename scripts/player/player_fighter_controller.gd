@@ -61,9 +61,9 @@ const MUZZLE_NAMES: Array[String] = [
 	"Muzzle_C", "Muzzle_Tip_L", "Muzzle_Tip_R",
 ]
 
-## Engine trails and muzzle flashes sit on the hull's attach points (ADR-0008),
+## Plumes and muzzle flashes sit on the hull's attach points (ADR-0008),
 ## one per nozzle / per gun — never on hard-coded offsets.
-var _engine_trails: Array[GPUParticles3D] = []
+##
 ## Les plumes d'échappement, une par tuyère. Tableau TYPÉ et préalloué : il est
 ## parcouru à chaque image de vol.
 var _engine_plumes: Array[EnginePlume] = []
@@ -95,7 +95,7 @@ func _ready() -> void:
 	# HullDetail duplicates before retexturing.
 	HullDetail.apply(_hull)
 	_cache_muzzles()
-	_build_engine_trails()
+	_build_engine_plumes()
 	_flight = ShipFlight.apply(_hull)
 	_build_muzzle_flashes()
 	_demo = "--demo" in OS.get_cmdline_user_args()
@@ -310,25 +310,19 @@ func _cache_muzzles() -> void:
 		var world: Vector3 = _hull.transform * _attach_point(muzzle_name)
 		_muzzles[muzzle_name] = Vector2(world.x, -world.z)
 
-## Une plume d'échappement et un filet de braises par tuyère (ADR-0017). La plume dit
-## le RÉGIME du moteur, les braises disent le DÉPLACEMENT de la coque : deux
-## informations distinctes, et la plume seule ne peut pas porter la seconde puisqu'elle
-## est solidaire du vaisseau.
+## Une plume d'échappement par tuyère (ADR-0017).
 ##
-## La fabrication locale de la traînée a disparu : elle dupliquait `EngineTrail`, et les
-## deux copies avaient déjà divergé (l'écran titre réglait la sienne, pas celle-ci).
-func _build_engine_trails() -> void:
+## La traînée de particules a disparu, et pas seulement sa fabrication locale : gardée
+## en braises résiduelles derrière la plume, elle lisait comme des DÉBRIS qui tombent
+## du vaisseau. Le moteur se raconte entièrement dans la plume.
+func _build_engine_plumes() -> void:
+	if plume == null:
+		return
 	for point_name in ["Engine_L", "Engine_R"]:
-		var mount := _attach_point(point_name)
-		if plume != null:
-			var jet := EnginePlume.make(plume)
-			jet.position = mount
-			_visual_root.add_child(jet)
-			_engine_plumes.append(jet)
-		var trail := EngineTrail.make()
-		trail.position = mount
-		_visual_root.add_child(trail)
-		_engine_trails.append(trail)
+		var jet := EnginePlume.make(plume)
+		jet.position = _attach_point(point_name)
+		_visual_root.add_child(jet)
+		_engine_plumes.append(jet)
 
 ## Le régime que le pilote demande, poussé aux plumes. Appelé avec la commande brute :
 ## c'est elle qui porte l'INTENTION (le geste précède la vitesse), la vitesse acquise

@@ -31,9 +31,11 @@ Le maillage est un `CylinderMesh` **unitaire** (rayons 1, hauteur 1, capuchons c
 profil — longueur, évasement, train de chocs — est calculé dans le vertex shader. Deux plumes de même
 subdivision partagent donc le même maillage, quels que soient leur camp, leur taille et leur régime.
 
-`EngineTrail` **survit**, réduit, dans son seul rôle honnête : les braises laissées **dans le monde**
-par une coque qui se déplace. La plume, rigide, ne peut pas dire ça — sans les braises, une embardée
-latérale ne laisse plus aucune trace de vitesse.
+**Les particules disparaissent entièrement** — `EngineTrail` et `FlameStreak` sont supprimés du dépôt.
+Elles ont d'abord été conservées, réduites, comme braises résiduelles : la plume étant rigide, on
+craignait qu'une embardée latérale ne laisse plus aucune trace de vitesse. À l'écran, ces braises
+lisent comme des **débris qui tombent du vaisseau**, pas comme un sillage. Le moteur se raconte dans
+la plume, et nulle part ailleurs.
 
 ## Conséquences
 
@@ -49,9 +51,26 @@ latérale ne laisse plus aucune trace de vitesse.
   mesure ~45 px de long : au-delà de 3 cellules le motif devient une bouillie grise.
 - Drapeau de bissection **`--no-plumes`**, sur le modèle de `--no-backdrop` / `--no-glow`.
 
+## La forme : une plume s'effile, elle ne s'ouvre pas
+
+C'est le défaut de forme qui a survécu le plus longtemps, parce qu'il vient d'une intuition juste
+appliquée trop loin : *« le gaz se détend en sortant de la tuyère, donc ça s'ouvre »*. C'est vrai
+sur les premiers pourcents de la course, et faux ensuite — le jet se dilue et **se referme en
+pointe**. Un profil d'évasement **monotone**, quel que soit l'exposant, rend un **cône ouvert à bout
+franc**, la forme la plus éloignée d'une plume.
+
+Le profil retenu est donc un produit de deux termes : un **ventre** qui s'ouvre très tôt (8 % de la
+course) et très peu (`belly_flare` ≈ 1,25), puis un **effilement** `pow(1 - t, 0.5)` qui reprend tout
+et termine sur un point. Le nom du réglage dit lequel des deux il pilote : `belly_flare`, pas
+`tail_flare` — sur une valeur seule, les deux sont indiscernables.
+
+Corollaire indissociable : **c'est la géométrie qui termine la plume, pas l'alpha.** Une extinction
+d'alpha trop raide éteint le jet avant que le maillage ne se referme, et l'on retrouve un bout franc
+alors même que le profil est correct. L'exposant d'extinction reste donc faible (0,4).
+
 ## Ce que les captures ont corrigé — à ne pas refaire
 
-Quatre réglages « raisonnables » ont été mesurés faux en capture, dans cet ordre :
+Quatre autres réglages « raisonnables » ont été mesurés faux en capture, dans cet ordre :
 
 1. **Extinction de l'alpha à `t = 0.55`** : elle tuait la moitié aval du cône, c'est-à-dire
    exactement la moitié qui s'évase. La plume rendait **deux barres parallèles**, et l'évasement
@@ -79,5 +98,7 @@ Null Choir, pas le shader.
 ## Alternatives écartées
 
 - **Restyler les particules** — impossible par construction (voir plus haut).
+- **Garder des braises résiduelles derrière la plume** — essayé, puis retiré : à l'écran ce sont des
+  débris qui tombent, pas un sillage.
 - **Quad billboard peint au fragment** — le moins cher, mais c'est un décalque : le bestiaire, qui
   fait tourner la coque, montrerait un plan.

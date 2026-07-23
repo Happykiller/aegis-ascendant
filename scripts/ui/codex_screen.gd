@@ -69,7 +69,7 @@ const FITTINGS: Dictionary[StringName, String] = {
 
 # --- Présentoir ---------------------------------------------------------------
 ## Pose de présentation : trois quarts avant, légèrement plongeant. Le 180° vient de
-## ce que les coques sont modelées nez vers -Z (cf. EngineTrail) : sans lui, le
+## ce que les coques sont modelées nez vers -Z (cf. EnginePlume) : sans lui, le
 ## bestiaire ouvrirait sur des tuyères.
 const DEFAULT_YAW_DEG := 205.0
 const DEFAULT_PITCH_DEG := 16.0
@@ -227,7 +227,7 @@ func _mount(entry: CodexEntry) -> void:
 	else:
 		HullDetail.apply(_hull)
 		_flight = ShipFlight.apply(_hull)
-	_attach_trails(bounds, entry.camp)
+	_attach_plumes(bounds, entry.camp)
 
 	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
 	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
@@ -251,12 +251,7 @@ func _count_fittings(hull: Node3D) -> Dictionary[StringName, int]:
 ## Les points d'attache sont de vrais Node3D du `.glb` (ADR-0008). Toutes les coques
 ## n'en ont pas les mêmes — le Leviathan n'en a aucun — et une coque sans réacteur
 ## nommé n'est pas une erreur ici : c'est une coque qui ne pousse pas.
-func _attach_trails(bounds: AABB, camp: CodexEntry.Camp) -> void:
-	# Proportionnel à la coque, borné aux deux bouts : à réglage fixe, la plume d'un
-	# Needle Scout de 1,9 m et celle d'un Leviathan de 8,8 m ne peuvent pas être la
-	# même. Le halo blanc au centre du Choir Harvester n'est PAS cette plume — c'est
-	# son noyau émissif, vérifié en baissant l'échelle sans que l'image bouge.
-	var trail_scale := clampf(bounds.size.length() * 0.10, 0.10, 0.55)
+func _attach_plumes(bounds: AABB, camp: CodexEntry.Camp) -> void:
 	# La plume porte la couleur du CAMP : une fiche du Null Choir ne crache pas du cyan
 	# Helios. `camp` est déclaré sur l'entrée, on ne le devine pas de la coque.
 	var tuning: PlumeTuning = HELIOS_PLUME if camp == CodexEntry.Camp.HELIOS else NULL_CHOIR_PLUME
@@ -264,10 +259,12 @@ func _attach_trails(bounds: AABB, camp: CodexEntry.Camp) -> void:
 	# nez vers -Z, une coque ennemie nez vers le bas de l'écran. L'échappement part donc
 	# dans des sens opposés selon le camp — pris à l'envers, le jet sort du nez.
 	var aft := Vector3.BACK if camp == CodexEntry.Camp.HELIOS else Vector3.FORWARD
-	# Échelle PROPRE à la plume, et non `trail_scale` : celui-ci est calibré sur des
-	# particules (0,10 par unité de coque) et rendait un jet de 39 cm derrière un
-	# chasseur de 2,46 m — mesuré, pas supposé. 0,35 pose le Specter-9 du présentoir à
-	# la taille qu'il a en jeu, et suit les coques plus grandes.
+	# Proportionnelle à la coque, bornée aux deux bouts : à réglage fixe, la plume d'un
+	# Needle Scout de 1,9 m et celle d'un Leviathan de 8,8 m ne peuvent pas être la
+	# même. 0,35 pose le Specter-9 du présentoir à la taille qu'il a en jeu — l'ancien
+	# facteur de braises (0,10) rendait un jet de 39 cm derrière un chasseur de 2,46 m,
+	# mesuré et non supposé. Le halo blanc au centre du Choir Harvester n'est PAS cette
+	# plume — c'est son noyau émissif, vérifié en baissant l'échelle sans que l'image bouge.
 	var plume_scale := clampf(bounds.size.length() * 0.35, 0.3, 2.0)
 	for point_name in ["Engine_C", "Engine_L", "Engine_R"]:
 		var point := _hull.get_node_or_null(NodePath(point_name)) as Node3D
@@ -279,13 +276,6 @@ func _attach_trails(bounds: AABB, camp: CodexEntry.Camp) -> void:
 		jet.position = point.position
 		jet.snap_throttle(PLUME_THROTTLE)
 		_hull.add_child(jet)
-		var trail := EngineTrail.make(trail_scale, 8, 1.6)
-		# `local_coords` vrai, contrairement au jeu : le plateau tourne, et des
-		# particules laissées dans le monde décriraient un arc de cercle derrière la
-		# coque au lieu d'une plume.
-		trail.local_coords = true
-		trail.position = point.position
-		_hull.add_child(trail)
 
 func _pop() -> void:
 	_yaw.scale = Vector3.ONE * 0.86

@@ -19,8 +19,9 @@ render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabl
 uniform float plume_length : hint_range(0.05, 8.0) = 1.2;
 // Rayon au col (la section de sortie de la tuyère).
 uniform float throat_radius : hint_range(0.005, 2.0) = 0.09;
-// Évasement : rayon en queue rapporté au col.
-uniform float tail_flare : hint_range(0.2, 6.0) = 2.2;
+// Évasement du VENTRE : rayon au plus large, rapporté au col. Le ventre se situe juste
+// en aval de la tuyère — au-delà, la plume se referme.
+uniform float belly_flare : hint_range(0.2, 6.0) = 1.8;
 // Nombre de disques. ⚠️ PLAFOND DE LISIBILITÉ : le post rétro rend à 960×540, où la
 // plume du joueur fait ~40 px de long. Au-delà de 3 disques le motif devient une
 // bouillie grise (cf. .claude/resources/pratique-revue-asset.md).
@@ -42,10 +43,21 @@ varying float axial;
 void vertex() {
 	// 0 au col, 1 en queue. Le cylindre unitaire va de y = +0,5 (haut) à y = -0,5.
 	float t = clamp(0.5 - VERTEX.y, 0.0, 1.0);
-	// Évasement général, CONVEXE : le jet reste serré sur sa première moitié puis
-	// s'ouvre en queue. ⚠️ Avec l'exposant inverse (0,7, concave) le cône ballonne dès
-	// la sortie et la plume lit comme une bulle de savon — vérifié en capture.
-	float cone = mix(1.0, tail_flare, pow(t, 1.4));
+	// LE PROFIL EST UNE PLUME, PAS UN CÔNE. Le gaz s'épanouit en sortant de la tuyère
+	// (détente), puis se dilue et se referme en POINTE. Deux termes, donc :
+	//   — le ventre, qui s'ouvre vite sur le premier quart ;
+	//   — l'effilement, qui reprend tout et termine sur un point.
+	//
+	// ⚠️ Un évasement MONOTONE (`mix(1.0, flare, pow(t, k))`, quel que soit l'exposant)
+	// rend un CÔNE OUVERT à bout franc et large — la forme la plus éloignée d'une plume,
+	// et celle qu'on obtient par défaut si l'on ne pense qu'à « ça s'ouvre en sortant ».
+	// ⚠️ Le ventre s'ouvre TRÈS TÔT (8 % de la course) et TRÈS PEU. Étalé sur un quart
+	// avec un facteur d'évasement franc, il produit un bulbe collé à la tuyère suivi
+	// d'une colonne à flancs parallèles : le contraire d'une plume, qui est large à la
+	// sortie puis se referme d'un seul mouvement.
+	float belly = mix(1.0, belly_flare, smoothstep(0.0, 0.08, t));
+	float taper = pow(1.0 - t, 0.5);
+	float cone = belly * taper;
 	// Le train de chocs : une cellule TRIANGULAIRE, pincée aux deux bouts et renflée au
 	// milieu, amortie vers la queue — chaque cellule dissipe, la suivante est plus molle.
 	//
@@ -86,9 +98,13 @@ void fragment() {
 	// un plancher large, et le biais ne fait que l'accentuer.
 	float shell = 0.6 + 0.4 * rim;
 	float fill = mix(1.0, shell, smoothstep(0.02, 0.4, t));
-	// Le jet s'éteint EN SE DILUANT le long de sa course. C'est cette décroissance
-	// continue, et non une coupure, qui donne une queue de plume.
-	float decay = pow(1.0 - t, 1.3);
+	// Le jet s'éteint EN SE DILUANT le long de sa course.
+	//
+	// ⚠️ EXPOSANT FAIBLE, à dessein. C'est la GÉOMÉTRIE qui termine la plume, en pointe ;
+	// l'alpha ne fait que la diluer. Mesuré à 1,3, l'alpha éteignait le jet bien avant que
+	// le maillage ne se referme : on ne voyait que le ventre, coupé net — un bout franc,
+	// exactement le défaut de forme signalé.
+	float decay = pow(1.0 - t, 0.4);
 
 	// ⚠️ Le blanc du cœur reste CONFINÉ au col (14 % de la course). Étalé sur 30 %, il
 	// couvrait la moitié visible du jet : la plume rendait une colonne blanche, et la

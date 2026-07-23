@@ -53,7 +53,7 @@ func _ready() -> void:
 	_tune_backdrop()
 	_detail_hulls()
 	_animate_citadel()
-	_attach_engine_trails()
+	_attach_engine_plumes()
 	_bind_flight()
 	_apply_bisect_flags()
 	print("[TitleStage] ready")
@@ -98,15 +98,8 @@ func _apply_bisect_flags() -> void:
 ## Les points d'attache sont de vrais Node3D enfants du .glb (ADR-0008), adressables
 ## par nom. Une coque à laquelle il en manque un est un bug d'asset : le signaler et
 ## dégrader, pas planter l'écran d'accueil.
-## Le héros est à 3 m de la caméra, les escortes à une quinzaine : à réglage égal,
-## les plumes du héros écrasent l'image pendant que celles des escortes disparaissent.
-## D'où deux calibrages distincts — c'est une question de cadrage, pas de physique.
-const HERO_TRAIL_SCALE := 0.34
-const HERO_TRAIL_ENERGY := 1.5
-const ESCORT_TRAIL_SCALE := 0.65
-const ESCORT_TRAIL_ENERGY := 2.4
 
-## Plumes d'echappement du diorama (ADR-0017), meme calibrage de cadrage que les braises.
+## Plumes d'echappement du diorama (ADR-0017).
 const PLUME_TUNING := preload("res://resources/vfx/plume_helios.tres")
 ## Les escortes traversent a vitesse constante : plein gaz, disques de Mach allumes.
 const ESCORT_PLUME_THROTTLE := 0.95
@@ -145,12 +138,10 @@ func _animate_citadel() -> void:
 		return
 	CitadelLife.apply(hull, CitadelTurretScene, CitadelBeaconScene)
 
-func _attach_engine_trails() -> void:
-	_hero_plumes = _attach_trail_to(_hero, HERO_TRAIL_SCALE, 10, HERO_TRAIL_ENERGY,
-		HERO_PLUME_MAX)
+func _attach_engine_plumes() -> void:
+	_hero_plumes = _attach_plume_to(_hero, HERO_PLUME_MAX)
 	for escort in _escorts.get_children():
-		_attach_trail_to(escort as Node3D, ESCORT_TRAIL_SCALE, 8, ESCORT_TRAIL_ENERGY,
-			ESCORT_PLUME_THROTTLE)
+		_attach_plume_to(escort as Node3D, ESCORT_PLUME_THROTTLE)
 
 ## Volets et tuyeres des quatre Specter-9 du diorama (BRIEF-0033).
 ##
@@ -164,10 +155,16 @@ func _bind_flight() -> void:
 		if flight != null:
 			flight.set_thrust(1.0)
 
-## Pose la plume et ses braises sur chaque tuyere, et REND les plumes construites —
-## l'appelant n'a pas a les retrouver dans l'arbre pour les piloter ensuite.
-func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: float,
-		throttle: float) -> Array[EnginePlume]:
+## Pose la plume sur chaque tuyere, et REND les plumes construites — l'appelant n'a
+## pas a les retrouver dans l'arbre pour les piloter ensuite.
+##
+## ⚠️ AUCUNE mise a l'echelle par vaisseau. Les anciens calibrages de braises (0,34
+## pour le heros, 0,65 pour les escortes) existaient parce qu'une particule se regle a
+## l'oeil selon la distance camera ; une plume, elle, est une longueur du MONDE. Les
+## quatre coques sont le meme Specter-9 a l'echelle 1 : leurs jets mesurent donc la
+## meme chose, et c'est la perspective qui doit les rapetisser — sinon l'escorte du
+## fond crache plus loin que le heros.
+func _attach_plume_to(ship: Node3D, throttle: float) -> Array[EnginePlume]:
 	var plumes: Array[EnginePlume] = []
 	var hull := ship.get_node_or_null("Hull")
 	if hull == null:
@@ -177,22 +174,11 @@ func _attach_trail_to(ship: Node3D, trail_scale: float, amount: int, energy: flo
 		if point == null:
 			push_error("[TitleStage] %s : coque sans point d'attache '%s'" % [ship.name, point_name])
 			continue
-		# Tous les vaisseaux restent à l'échelle 1 : le cadrage se fait par la
-		# distance caméra. Mettre le NŒUD à l'échelle multiplierait deux fois — une
-		# par la transformation du parent, une par la taille des particules.
-		# ⚠️ PAS de `trail_scale` sur la plume. Les deux calibrages de braises existent
-		# parce qu'une particule se règle à l'œil selon la distance caméra ; une plume,
-		# elle, est une longueur du MONDE. Les quatre coques sont le même Specter-9 à
-		# l'échelle 1 : leurs jets mesurent donc la même chose, et c'est la perspective
-		# qui doit les rapetisser — sinon l'escorte du fond crache plus loin que le héros.
 		var jet := EnginePlume.make(PLUME_TUNING)
 		jet.position = point.position
 		jet.snap_throttle(throttle)
 		ship.add_child(jet)
 		plumes.append(jet)
-		var trail := EngineTrail.make(trail_scale, amount, energy)
-		trail.position = point.position
-		ship.add_child(trail)
 	return plumes
 
 func _process(delta: float) -> void:
