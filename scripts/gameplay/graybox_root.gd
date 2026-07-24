@@ -382,6 +382,7 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.phase_entered.connect(_on_leviathan_phase)
 	combat.structure_changed.connect(_on_leviathan_structure)
 	combat.piece_gauge_changed.connect(_on_leviathan_piece_gauge)
+	combat.piece_active_changed.connect(_on_leviathan_piece_active)
 	combat.piece_destroyed.connect(_on_leviathan_piece_destroyed)
 	combat.pull_changed.connect(_on_leviathan_pull)
 
@@ -398,6 +399,12 @@ func _on_leviathan_structure(ratio: float) -> void:
 func _on_leviathan_piece_gauge(index: int, ratio: float, alive: bool) -> void:
 	if _hud != null:
 		_hud.set_boss_limb(index, ratio, alive)
+
+## La plaque à viser a changé (phase 1) ou s'est éteinte (`-1`, autres phases). Le niveau
+## relaie au HUD, qui surligne la pastille active — le joueur voit enfin laquelle traiter.
+func _on_leviathan_piece_active(index: int) -> void:
+	if _hud != null:
+		_hud.set_boss_limb_active(index)
 
 func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)

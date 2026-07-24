@@ -34,6 +34,11 @@ signal phase_entered(phase: int)
 ## joueur qu'il ne fait rien.
 signal structure_changed(ratio: float)
 signal piece_gauge_changed(index: int, ratio: float, alive: bool)
+## Sous-cible que le joueur doit viser MAINTENANT (`-1` = aucune). En phase 1 une seule
+## plaque encaisse à la fois, celle dans l'arc face au joueur ; rien à l'écran ne le disait,
+## d'où le « j'ai pas compris quelle plaque viser » du playtest (ADR-0019). Le HUD surligne
+## la pastille, le monde télégraphie la plaque. Émis SEULEMENT au changement.
+signal piece_active_changed(index: int)
 signal piece_destroyed(phase: int, index: int, world_position: Vector3)
 ## Force d'aspiration à appliquer au chasseur, en unités par seconde. Le niveau la
 ## relaie ; le module ne touche jamais au joueur directement.
@@ -67,6 +72,9 @@ var _missiles: Array[TargetableProjectile] = []
 ## Rotation courante de la coquille, en radians. C'est elle qui fabrique la fenêtre de
 ## tir de la phase 1.
 var _shell_rotation: float = 0.0
+## Plaque actuellement exposée (`-1` = aucune). Mémorisée pour n'émettre `piece_active_changed`
+## qu'au changement : la boucle de la phase 1 tourne à chaque image pendant vingt secondes.
+var _active_piece: int = -1
 var _fan_timer: float = 0.0
 var _missile_timer: float = 0.0
 var _pulse_timer: float = 0.0
@@ -275,11 +283,22 @@ func _run_armor_choir(delta: float, origin: Vector2) -> void:
 	# La coquille tourne : c'est elle qui fabrique la fenêtre de tir.
 	if tuning.shell_orbit_period > 0.0:
 		_shell_rotation = wrapf(_shell_rotation + TAU * delta / tuning.shell_orbit_period, -PI, PI)
+	# La plaque à viser : celle qui est exposée ET la plus proche du centre de l'arc (angle
+	# le plus petit). Elle porte le télégraphe HUD et monde de la phase.
+	var active := -1
+	var best := INF
 	for plate in _plates:
 		plate.tick(delta, tuning.shell_break_time)
 		# Une plaque n'encaisse que dans l'arc face au joueur. Hors de l'arc le corps
 		# la masque, et le tir part en `deflected` plutôt que dans le vide.
-		plate.target.enabled = plate.is_exposed(_shell_rotation, tuning.plate_arc_deg)
+		var exposed := plate.is_exposed(_shell_rotation, tuning.plate_arc_deg)
+		plate.target.enabled = exposed
+		if exposed:
+			var offset := absf(plate.angle_at(_shell_rotation))
+			if offset < best:
+				best = offset
+				active = plate.index
+	_set_active_piece(active)
 	_fan_timer -= delta
 	if _fan_timer <= 0.0:
 		_fan_timer = tuning.fan_interval
@@ -290,6 +309,14 @@ func _run_armor_choir(delta: float, origin: Vector2) -> void:
 		_launch_missiles(origin)
 	if _plates_up() == 0:
 		_advance_phase()
+
+## Bascule la plaque à viser et n'émet qu'au changement — sinon `piece_active_changed`
+## partirait à chaque image pendant toute la phase 1. Le monde et le HUD s'y accrochent.
+func _set_active_piece(index: int) -> void:
+	if index == _active_piece:
+		return
+	_active_piece = index
+	piece_active_changed.emit(index)
 
 ## Un éventail par plaque **encore debout** : moins de plaques = moins de rideau. Le
 ## retour de la destruction est immédiat et physique, sans qu'aucun texte ne l'explique.
@@ -421,6 +448,10 @@ func _enter_phase(next: Phase) -> void:
 	_phase = next
 	_phase_age = 0.0
 	_interlude = 0.0 if next == Phase.ARMOR_CHOIR else 1.5
+	# Hors phase 1, aucune « plaque à viser » unique : on éteint le télégraphe. En quittant
+	# la phase 1 c'est ce qui émet enfin `-1`, la boucle de brisure ne le ferait plus.
+	if next != Phase.ARMOR_CHOIR:
+		_set_active_piece(-1)
 	match next:
 		Phase.ARMOR_CHOIR:
 			# Le corps reste CLOS tout le combat : rien ne le tue directement, seul le

@@ -24,6 +24,10 @@ const MAX_LIMB_PIPS := 4
 ## Couleur d'une jauge à terre : sombre mais pas noire, sinon elle disparaît du panneau
 ## et l'on ne compte plus que ce qui reste, pas ce qui manque.
 const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
+## Sous-cible ACTIVE — celle que le joueur doit viser MAINTENANT (la plaque exposée en
+## phase 1 du Leviathan). Plus vive que le magenta des vivantes ordinaires : c'est ce qui
+## répond au « j'ai pas compris quelle plaque viser » du playtest.
+const LIMB_PIP_ACTIVE := Color("ff8ad4")
 ## Noms des appendices, dans l'ordre de `HarvesterCombat.LIMB_ORDER`.
 ##
 ## ⚠️ Écrits ici et non lus du module : le HUD ne connaît AUCUN boss en particulier
@@ -69,6 +73,13 @@ var _boss_full_width: float = 0.0
 var _limb_pips: Array[ColorRect] = []
 var _limb_tracks: Array[ColorRect] = []
 var _limb_labels: Array[Label] = []
+## Vie de chaque pastille : le surlignage de la pastille active ne recolore QUE les
+## vivantes, une pastille à terre reste sombre. Le HUD ne peut pas le déduire de la
+## couleur seule (magenta actif vs magenta ordinaire se ressembleraient).
+var _limb_alive: Array[bool] = []
+## Sous-cible active (plaque exposée) ; -1 = aucune. Mémorisée parce que `set_boss_limb`
+## repeindrait sinon la pastille active en magenta ordinaire au premier dégât reçu.
+var _active_limb: int = -1
 var _banner: Label
 
 func _ready() -> void:
@@ -246,6 +257,8 @@ func _build_limb_pips() -> void:
 	_limb_pips.clear()
 	_limb_tracks.clear()
 	_limb_labels.clear()
+	_limb_alive.clear()
+	_active_limb = -1
 	# Centrage de la RANGÉE, pas de chaque colonne : un pas de « largeur + marge » posé
 	# depuis le milieu décale l'ensemble d'une demi-marge vers la gauche, et la rangée
 	# se retrouve visiblement décentrée sous un titre, lui, centré. On compose donc la
@@ -277,6 +290,7 @@ func _build_limb_pips() -> void:
 		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_boss_panel.add_child(fill)
 		_limb_pips.append(fill)
+		_limb_alive.append(true)
 
 func _build_banner() -> void:
 	_banner = Label.new()
@@ -336,9 +350,10 @@ func set_boss_limb(index: int, ratio: float, alive: bool) -> void:
 		_limb_labels[index].visible = true
 	if index < _limb_tracks.size():
 		_limb_tracks[index].visible = true
+	_limb_alive[index] = alive
 	var fill := _limb_pips[index]
 	fill.visible = true
-	fill.color = BOSS_MAGENTA if alive else LIMB_PIP_DOWN
+	fill.color = _limb_alive_color(index) if alive else LIMB_PIP_DOWN
 	# ⚠️ Un appendice à terre garde une barre PLEINE, en sombre. Le laisser à sa part de
 	# structure (zéro) le ferait disparaître : la jauge dirait « rien ici » là où il faut
 	# lire « celui-ci est tombé, il revient ».
@@ -356,11 +371,15 @@ func set_boss_limbs(labels: PackedStringArray) -> void:
 	var unit := LIMB_LABEL_WIDTH + LIMB_GAUGE_WIDTH
 	var span := unit + LIMB_GAUGE_GAP
 	var left := 400.0 - (unit * count + LIMB_GAUGE_GAP * maxi(count - 1, 0)) * 0.5
+	# Un nouveau jeu de sous-cibles : plus aucune n'est active tant que le module ne l'a
+	# pas redit (le surlignage suit la phase, pas la rangée).
+	_active_limb = -1
 	for i in _limb_pips.size():
 		var used := i < count
 		_limb_labels[i].visible = used
 		_limb_tracks[i].visible = used
 		_limb_pips[i].visible = used
+		_limb_alive[i] = used
 		if not used:
 			continue
 		var x := left + float(i) * span
@@ -371,6 +390,25 @@ func set_boss_limbs(labels: PackedStringArray) -> void:
 		# Chaque sous-cible repart pleine et vive : la rangée décrit un boss neuf de phase.
 		_limb_pips[i].color = BOSS_MAGENTA
 		_limb_pips[i].size.x = LIMB_GAUGE_WIDTH
+
+## Couleur d'une pastille VIVANTE selon qu'elle est la cible active ou non. Centralisée
+## pour que `set_boss_limb` (à chaque dégât) et `set_boss_limb_active` (à chaque bascule)
+## ne se contredisent jamais sur la couleur d'une même pastille.
+func _limb_alive_color(index: int) -> Color:
+	return LIMB_PIP_ACTIVE if index == _active_limb else BOSS_MAGENTA
+
+## Désigne la sous-cible que le joueur doit viser MAINTENANT (la plaque exposée en phase 1
+## du Leviathan) : elle passe au rose vif, les autres vivantes reviennent au magenta. `-1`
+## éteint le surlignage — phases 2/3/4, où plusieurs cibles valent à la fois. Les pastilles
+## à terre ne bougent pas : elles restent sombres, on lit toujours ce qui est tombé.
+func set_boss_limb_active(index: int) -> void:
+	if index == _active_limb:
+		return
+	_active_limb = index
+	for i in _limb_pips.size():
+		if not _limb_pips[i].visible or not _limb_alive[i]:
+			continue
+		_limb_pips[i].color = _limb_alive_color(i)
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
