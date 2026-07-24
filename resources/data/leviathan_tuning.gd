@@ -45,7 +45,9 @@ extends Resource
 # ==========================================================================
 
 @export_group("Phase 1 - Armor Choir")
-@export var plate_health: float = 3200.0
+## Coupé ÷~3,4 après playtest (ADR-0019) : à 3200 la phase durait ~68 s, le joueur
+## abandonnait avant la fin. 950 vise ~20 s (950 × 4 / (420 × 0,45)).
+@export var plate_health: float = 950.0
 @export var plate_count: int = 4
 ## Durée d'un tour complet de la coquille. C'est elle qui fabrique la fenêtre de tir :
 ## les plaques défilent, le joueur choisit son moment.
@@ -96,7 +98,8 @@ extends Resource
 # ==========================================================================
 
 @export_group("Phase 2 - Gravitic Maw")
-@export var node_health: float = 2800.0
+## Coupé après playtest (ADR-0019) : ~20 s de phase (950 × 3 / (420 × 0,35)).
+@export var node_health: float = 950.0
 @export var node_count: int = 3
 @export var node_hitbox_radius: float = 1.00
 @export var pull_radius: float = 16.0
@@ -118,11 +121,13 @@ extends Resource
 # ==========================================================================
 
 @export_group("Phase 3 - Boarding Swarm")
-@export var spike_health: float = 1500.0
+## Coupé après playtest (ADR-0019).
+@export var spike_health: float = 550.0
 @export var spike_count: int = 4
 @export var spike_hitbox_radius: float = 0.90
 ## Le noyau devient enfin touchable en permanence — mais une épine s'interpose.
-@export var core_health: float = 3200.0
+## Coupé après playtest (ADR-0019) : épines+noyau visent ~20 s ((550 × 4 + 1200) / (420 × 0,40)).
+@export var core_health: float = 1200.0
 @export var core_hitbox_radius: float = 2.20
 @export var charger_windup: float = 1.0
 @export var charger_speed: float = 20.0

@@ -104,22 +104,25 @@ func test_a_missile_that_turns_too_fast_is_refused() -> void:
 
 func test_phase_durations_land_in_the_intended_range() -> void:
 	var t := _tuning()
-	# Le document vise 65-75 / 55-65 / 50-60 s, et une phase 4 tres courte.
-	assert_true(t.phase_duration(0) > 60.0 and t.phase_duration(0) < 80.0,
+	# Coupe de playtest (ADR-0019) : ~20 s par phase de brisure, phase 4 tres courte.
+	# L'ancien 65-75 / 55-65 / 50-60 s etait injouable — l'operateur abandonnait avant la fin.
+	assert_true(t.phase_duration(0) > 15.0 and t.phase_duration(0) < 25.0,
 		"phase 1 : %.1f s" % t.phase_duration(0))
-	assert_true(t.phase_duration(1) > 50.0 and t.phase_duration(1) < 70.0,
+	assert_true(t.phase_duration(1) > 15.0 and t.phase_duration(1) < 25.0,
 		"phase 2 : %.1f s" % t.phase_duration(1))
-	assert_true(t.phase_duration(2) > 45.0 and t.phase_duration(2) < 65.0,
+	assert_true(t.phase_duration(2) > 15.0 and t.phase_duration(2) < 25.0,
 		"phase 3 : %.1f s" % t.phase_duration(2))
-	assert_true(t.phase_duration(3) < 15.0, "phase 4 : %.1f s de tir utile" % t.phase_duration(3))
+	assert_true(t.phase_duration(3) < 10.0, "phase 4 : %.1f s de tir utile" % t.phase_duration(3))
 
-func test_the_whole_fight_lands_in_the_three_to_four_minute_bracket() -> void:
+func test_the_whole_fight_lands_around_a_minute_and_a_bit() -> void:
 	var t := _tuning()
 	var total := 0.0
 	for phase in 4:
 		total += t.phase_duration(phase)
-	assert_true(total > 170.0 and total < 240.0,
-		"spec §7 annonce 3 a 4 min pour le boss final ; obtenu %.0f s" % total)
+	# ADR-0019 acte ~67 s, ce qui CONTREDIT la spec §7 (« 3 a 4 min ») : decision de
+	# playtest, un ADR prime sur la spec. L'ancien ~3 min etait injouable.
+	assert_true(total > 55.0 and total < 85.0,
+		"ADR-0019 vise ~67 s de combat net ; obtenu %.0f s" % total)
 
 func test_an_impossible_occupancy_is_refused() -> void:
 	var t := _tuning()
@@ -137,13 +140,20 @@ func test_total_structure_is_the_sum_of_the_phases() -> void:
 	for phase in 4:
 		sum += t.phase_health(phase)
 	assert_almost_eq(t.total_structure(), sum, 0.001, "la jauge couvre les quatre phases")
-	assert_true(t.total_structure() > 30000.0, "environ 33 000 PV de structures au total")
+	# Coupe de playtest (ADR-0019) : ~12 650 PV, contre ~33 000 avant. La jauge doit
+	# quand meme couvrir de quoi ne pas se figer sur une phase entiere.
+	assert_true(t.total_structure() > 12000.0, "environ 12 650 PV de structures au total")
 
-func test_the_final_boss_is_substantially_bigger_than_the_mini_boss() -> void:
-	# Le Harvester totalise ~11 500 degats sur trois cycles. Le boss final doit
-	# demander nettement plus, sur quatre regles differentes.
-	assert_true(_tuning().total_structure() > 11500.0 * 2.0,
-		"au moins le double du mini-boss")
+func test_the_final_boss_demands_more_than_the_mini_boss_in_time_and_rules() -> void:
+	# RECADRE apres la coupe de playtest (ADR-0019). Le boss final n'est plus « plus gros »
+	# en PV bruts (~12 650, soit ~1,1x le Harvester) : il l'est par sa DUREE et sa VARIETE.
+	# Le Harvester est un cycle unique repete ; le Leviathan enchaine quatre regles
+	# distinctes (BRISER / RESISTER / PRIORISER / OSER) sur ~67 s.
+	var t := _tuning()
+	var total := 0.0
+	for phase in 4:
+		total += t.phase_duration(phase)
+	assert_true(total > 60.0, "au moins une minute de combat net, sur quatre regles : %.0f s" % total)
 
 # --- Garde-fous de base ---------------------------------------------------
 

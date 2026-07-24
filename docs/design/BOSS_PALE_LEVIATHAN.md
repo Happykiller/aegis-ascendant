@@ -58,12 +58,16 @@ inventer contre elle — il l'exploite.
 
 | Phase | Nom | Le verbe | Durée visée | Ce que le joueur arrache |
 |---|---|---|---|---|
-| 1 | **Armor Choir** | BRISER | 65–75 s | les 4 plaques d'armure de la coquille |
-| 2 | **Gravitic Maw** | RÉSISTER | 55–65 s | les 3 nœuds gravitiques de la lèvre |
-| 3 | **Boarding Swarm** | PRIORISER | 50–60 s | les 4 épines |
-| 4 | **Into the Maw** | OSER | 15–25 s | le cœur |
+| 1 | **Armor Choir** | BRISER | ~20 s | les 4 plaques d'armure de la coquille |
+| 2 | **Gravitic Maw** | RÉSISTER | ~20 s | les 3 nœuds gravitiques de la lèvre |
+| 3 | **Boarding Swarm** | PRIORISER | ~20 s | les 4 épines |
+| 4 | **Into the Maw** | OSER | ~8 s | le cœur |
 
-**Total visé : ~3 min 30**, dans la fourchette de la spec §7 (3 à 4 minutes pour le boss final).
+**Total visé : ~67 s de combat net.** ⚠️ Coupé après playtest (**ADR-0019**) : la version
+initiale (~3 min 10, dans la fourchette de la spec §7) était **injouable** — l'opérateur
+abandonnait avant la fin, le boss encore à 80 %. Le ~67 s **contredit la spec §7 (3 à 4 min)** :
+un ADR prime sur la spec. Le boss final reste « plus gros » que le mini-boss par sa **durée et ses
+quatre règles distinctes**, non par les PV bruts (voir §7.2).
 
 ### 2.1 La courbe de tension
 
@@ -335,18 +339,23 @@ durée_de_phase = PV_de_la_phase / (reference_dps × occupation)
 
 ### 7.2 Le tableau
 
+Valeurs coupées après playtest (**ADR-0019**) : à droite, entre parenthèses, la version initiale
+injouable.
+
 | Phase | Cibles | PV unitaires | PV de phase | Occupation | Durée calculée |
 |---|---|---|---|---|---|
-| 1 — Armor Choir | 4 plaques | 3 200 | 12 800 | 0,45 | **67,7 s** |
-| 2 — Gravitic Maw | 3 nœuds | 2 800 | 8 400 | 0,35 | **57,1 s** |
-| 3 — Boarding Swarm | 4 épines + noyau | 1 500 / 3 200 | 9 200 | 0,40 | **54,8 s** |
-| 4 — Into the Maw | le cœur | 2 600 | 2 600 | 0,80 | **7,7 s** de tir utile, dans une fenêtre de 12 s |
-| | | | **33 000** | | **~3 min 08** de combat net |
+| 1 — Armor Choir | 4 plaques | 950 (3 200) | 3 800 | 0,45 | **20,1 s** |
+| 2 — Gravitic Maw | 3 nœuds | 950 (2 800) | 2 850 | 0,35 | **19,4 s** |
+| 3 — Boarding Swarm | 4 épines + noyau | 550 / 1 200 (1 500 / 3 200) | 3 400 | 0,40 | **20,2 s** |
+| 4 — Into the Maw | le cœur | 2 600 (inchangé) | 2 600 | 0,80 | **7,7 s** de tir utile, dans une fenêtre de 12 s |
+| | | | **12 650** | | **~67 s** de combat net |
 
-Plus les transitions (≈ 7 s cumulées) et les temps morts d'entrée : **~3 min 20 à 3 min 40**.
+Plus les transitions (≈ 7 s cumulées) et les temps morts d'entrée : **~1 min 15**.
 
 Pour comparaison, le Choir Harvester totalise environ 11 500 dégâts sur trois cycles pour un combat
-de deux minutes. Le boss final demande **près de trois fois plus**, sur quatre règles différentes.
+de deux minutes. En PV bruts le boss final n'est plus que ~1,1× le mini-boss — mais il l'est en
+**durée et en variété** : quatre règles distinctes (BRISER / RÉSISTER / PRIORISER / OSER) là où le
+Harvester répète un cycle unique. C'est là que se mesure « plus gros » depuis la coupe (ADR-0019).
 
 ### 7.3 Les invariants à faire porter par `validate()`
 
@@ -366,7 +375,7 @@ impossible. Chacun se vérifie en une ligne, et chacun corrige une panne silenci
 
 ```
 [Phase 1 — Armor Choir]
-plate_health            = 3200.0     PV d'une plaque
+plate_health            = 950.0      PV d'une plaque (coupé de 3200, ADR-0019)
 plate_count             = 4
 shell_orbit_period      = 12.0   s   un tour complet de la coquille
 plate_arc_deg           = 100.0  °   arc face joueur où la plaque encaisse (±50°)
@@ -389,7 +398,7 @@ missile_health          = 40.0       ciblable : une salve du joueur suffit
 missile_damage          = 22.0
 
 [Phase 2 — Gravitic Maw]
-node_health             = 2800.0
+node_health             = 950.0      (coupé de 2800, ADR-0019)
 node_count              = 3
 node_hitbox_radius      = 1.00
 pull_radius             = 16.0       portée du champ
@@ -405,9 +414,9 @@ spike_sweep_arc_deg     = 40.0   °
 spike_sweep_interval    = 5.0    s
 
 [Phase 3 — Boarding Swarm]
-spike_health            = 1500.0
+spike_health            = 550.0      (coupé de 1500, ADR-0019)
 spike_hitbox_radius     = 0.90
-core_health             = 3200.0
+core_health             = 1200.0     (coupé de 3200, ADR-0019)
 charger_windup          = 1.0    s   ⚠️ le télégraphe de la fonceuse
 charger_speed           = 20.0   u/s
 charger_damage          = 30.0
