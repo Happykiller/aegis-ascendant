@@ -20,58 +20,41 @@
 
 ## ⏳ En cours — Pale Leviathan (coque livrée le 2026-07-23, câblage restant)
 
-### ⏸ PRIORITÉ REPRISE — équilibrage & lisibilité (playtest opérateur, 2026-07-23)
+### ✅ REPRISE FAITE — équilibrage & lisibilité (playtest opérateur 2026-07-23, traité 2026-07-24)
 
-**Le combat est câblé et fonctionne, mais il est INJOUABLE en l'état.** Verdict de l'opérateur
-après plusieurs minutes de jeu réel : *« beaucoup beaucoup trop long, j'ai arrêté volontairement,
-les pastilles P 1..4 se vidaient, le boss encore à 80 %, j'ai pas compris les phases, il n'a fait
-qu'aller de gauche à droite, rien ne s'est passé. »* Décision actée : **coupe franche ~20 s/phase +
-télégraphier la mécanique.** Deux chantiers, à faire dans cet ordre.
+Verdict opérateur : *« beaucoup beaucoup trop long, j'ai arrêté volontairement, les pastilles P 1..4
+se vidaient, le boss encore à 80 %, j'ai pas compris les phases, il n'a fait qu'aller de gauche à
+droite, rien ne s'est passé. »* Les deux chantiers sont traités.
 
-#### 1. Coupe des durées (÷ ~3) — le tuning, le test, le doc, un ADR
+#### 1. Coupe des durées — FAIT (`ADR-0019`)
 
-Racine : les durées visées sont énormes (phase 1 ≈ 68 s, total ≈ 3 min 10 en jeu **parfait**, bien
-plus en vrai car le tir sur le corps clos ricoche sans dégât). Nouvelles valeurs, calées sur
-`durée = PV / (dps 420 × occupation)` pour viser ~20 s/phase (phase 4 reste courte) :
+PV coupés dans les deux sources (`leviathan_tuning.gd` défaut + `pale_leviathan_tuning.tres`) :
+plate 3200→**950**, node 2800→**950**, spike 1500→**550**, core 3200→**1200**, heart **2600**
+inchangé. Total ~12 650 PV, durées théoriques ~20/19/20/8 s, **~67 s** de combat net. `validate()`
+reste vert (ses invariants portent sur des rapports). Quatre tests de `test_leviathan_tuning.gd`
+recadrés (durées, total renommé, plancher `total_structure`, comparaison mini-boss basculée sur la
+durée). Doc `BOSS_PALE_LEVIATHAN.md` §2/§7.2 à jour. `ADR-0019` acte le ~67 s contre la spec §7 et le
+recadrage « boss final ≥ mini-boss » des PV bruts vers durée+variété.
 
-| Champ (`resources/data/leviathan_tuning.gd` défaut **et** `resources/bosses/pale_leviathan_tuning.tres`) | Actuel | **Cible** | durée obtenue |
-|---|---|---|---|
-| `plate_health` | 3200 | **950** | 20,1 s |
-| `node_health` | 2800 | **950** | 19,4 s |
-| `spike_health` | 1500 | **550** | (phase 3) |
-| `core_health` | 3200 | **1200** | 20,2 s (épines+noyau) |
-| `heart_health` | 2600 | **2600** (inchangé) | 7,7 s |
+#### 2. Lisibilité — FAIT (HUD + in-world)
 
-Total ≈ **67 s**. Invariants inchangés (heart intact → invariant 4 ok ; fenêtres/télégraphes intacts) :
-`validate()` passe toujours. À toucher en même temps, sinon `check.sh` casse :
-- **`tests/unit/test_leviathan_tuning.gd`** : `test_phase_durations_land_in_the_intended_range`
-  (bornes → phases 1-3 entre 15 et 25 s, phase 4 < 10 s) et
-  `test_the_whole_fight_lands_in_the_three_to_four_minute_bracket` (total → 55–85 s ; renommer, ce
-  n'est plus « 3-4 min »).
-- **`docs/design/BOSS_PALE_LEVIATHAN.md`** : la section durées/occupation (« vise 65-75 / 55-65 /
-  50-60 s ») et toute mention de PV par phase.
-- **ADR nouveau** (`ADR-0019` ?) : ce ~70 s **contredit la spec §7 (« 3 à 4 min »)** — décision de
-  playtest, un ADR prime sur la spec (cf. règle projet). Y consigner le verdict opérateur.
+- **HUD** : signal `piece_active_changed(index)` (émis au changement), relais niveau, méthode
+  `set_boss_limb_active` — la pastille de la plaque exposée passe au rose vif, les autres s'atténuent.
+- **In-world** : `Shell_Ring` tourne enfin par `_shell_rotation` (le runtime n'animait AUCUN mesh —
+  c'était *le* « rien ne s'est passé ») et un `material_overlay` additif pulse sur la plaque exposée.
+  Vérifié à la capture Windows : coquille qui tourne franchement, halo qui suit la plaque, GPU
+  3,2–4,1 ms/image.
 
-#### 2. Lisibilité — télégraphier la mécanique (le vrai fond du « rien ne se passe »)
+#### Reste à confirmer / différé (à rejuger, PAS d'office)
 
-En phase 1 **une seule plaque encaisse à la fois** (celle dans l'arc face au joueur, coquille qui
-tourne sur 12 s) ; les autres tirs ricochent sur le corps clos. Rien à l'écran ne dit **laquelle**
-viser. À faire :
-- **Pastille cible active** : le module sait quelle plaque est exposée (`plate.is_exposed(...)`).
-  Le faire remonter (signal `piece_active_changed(index)` ou lecture par le niveau) et, côté HUD,
-  **surligner la pastille active / atténuer les autres** (nouvelle méthode `set_boss_limb_active`).
-- **Télégraphe dans le monde** : teinter/pulser en émissif le nœud de coque de la plaque exposée
-  (`plate.node`, un `Plate_0X`) pour qu'on voie où tirer. Idem plus tard pour le nœud/l'épine
-  prioritaire.
-- **Levier de rythme si toujours confus** (à rejuger, pas à appliquer d'office) :
-  `shell_orbit_period` 12 → 8 s et/ou `plate_arc_deg` 100 → 120 — une plaque revient plus souvent.
-- **Corps clos** : le ricochet `deflected` se lit « rien ne se passe ». Envisager un retour plus
-  clair « ARMURE » quand on frappe le corps fermé (basse priorité).
-
-#### Après les deux chantiers
-`check.sh` vert, puis **valider au réel** : `balance-prober` pour la chronologie par phase (durées
-mesurées), puis un `/jouer` manuel. Ne pas conclure « c'est bon » sur les seuls chiffres.
+- **`/jouer` manuel** (opérateur) : confirmer au ressenti que ce n'est plus « trop long » ET que le
+  halo pointe **pile** la plaque que les tirs touchent (alignement halo↔hitbox non jugeable à l'arrêt).
+- **Halo un peu chaud** en plein rideau de balles (bloom additif + glow de scène) — baisser l'albédo
+  si besoin.
+- **Leviers de rythme** si encore confus : `shell_orbit_period` 12→8 et/ou `plate_arc_deg` 100→120.
+- **Corps clos** : retour « ARMURE » clair sur un tir qui ricoche (`deflected`), basse priorité.
+- **Chute des plaques / épines** : `fall_ratio` est calculé mais toujours pas appliqué aux meshes —
+  une plaque abattue ne se soulève pas encore visuellement (polish, cf. art restant ci-dessous).
 
 ---
 
