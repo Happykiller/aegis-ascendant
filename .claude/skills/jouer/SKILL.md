@@ -1,6 +1,6 @@
 ---
 name: jouer
-description: Lance Aegis Ascendant sur Windows pour un test à la main, en garantissant qu'on joue le code courant et non le build précédent. Sait ouvrir directement une scène, tourne en arrière-plan pour ne pas bloquer la session, et rend la chronologie de la partie à partir du journal. Déclencher avec /jouer.
+description: Lance Aegis Ascendant sur Windows pour un test à la main, en garantissant qu'on joue le code courant et non le build précédent. Par défaut démarre normalement à l'écran-titre (arc complet depuis le début) ; sait aussi ouvrir directement une scène, mais SEULEMENT si l'opérateur le demande explicitement. Tourne en arrière-plan pour ne pas bloquer la session, et rend la chronologie de la partie à partir du journal. Déclencher avec /jouer.
 trigger: /jouer
 ---
 
@@ -16,6 +16,19 @@ chronologie d'équilibrage (→ sous-agent `balance-prober`).
 ```bash
 ./scripts/play.sh [--release|--rebuild] [-- <drapeaux de jeu>]
 ```
+
+### ⚠️ Par défaut : DÉMARRAGE NORMAL, aucun drapeau de jeu
+
+Un `/jouer` nu se lance **`./scripts/play.sh` sans rien après `--`** : l'opérateur veut jouer
+l'arc depuis l'écran-titre, en conditions réelles. C'est le cas **par défaut, toujours**.
+
+**Ne JAMAIS ajouter `--goto-graybox`, `--skip-to-final` ni aucun autre drapeau de sa propre
+initiative** — même quand la session vient de travailler sur une scène précise (un boss, le
+codex). Sauter droit à cette scène est tentant, mais ça prive l'opérateur du contexte qu'il
+voulait justement retrouver (montée en puissance, transitions, musique), et ça n'est PAS ce qu'il
+a demandé. Les drapeaux de la table plus bas ne s'ajoutent **que si l'opérateur les demande
+explicitement** (« lance-moi direct au boss », « ouvre le bestiaire »). En cas de doute : rien
+après `--`.
 
 Tout ce qui suit est **déjà dans le script**. Ne le refais pas à la main : c'est exactement ce
 que `/capitalize` interdit — une procédure déterministe s'encode, elle ne se raconte pas.
@@ -73,7 +86,9 @@ Signaler ce qui **manque** autant que ce qui est là : pas de `SCRIPT ERROR`, pa
 
 ## Drapeaux de jeu
 
-Ils vont **après `--`**. Le `++` est ajouté par le script.
+**À n'ajouter QUE sur demande explicite de l'opérateur** (voir le défaut plus haut : un `/jouer`
+nu démarre normalement, sans aucun drapeau). Ils vont **après `--`**. Le `++` est ajouté par le
+script.
 
 | Drapeau | Effet |
 |---|---|
