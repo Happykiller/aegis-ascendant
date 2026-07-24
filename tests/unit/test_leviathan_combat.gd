@@ -11,14 +11,17 @@ const BossScript := preload("res://scripts/bosses/boss_controller.gd")
 
 var _phases: Array[int] = []
 var _pull: Array = []
+var _active: Array[int] = []
 
 func _make() -> LeviathanCombat:
 	var combat: LeviathanCombat = CombatScript.new()
 	combat.tuning = LeviathanTuning.new()
 	_phases = []
 	_pull = []
+	_active = []
 	combat.phase_entered.connect(func(p: int) -> void: _phases.append(p))
 	combat.pull_changed.connect(func(s: float, _r: float, _c: Vector2) -> void: _pull.append(s))
+	combat.piece_active_changed.connect(func(i: int) -> void: _active.append(i))
 	combat.setup(null, null, null)
 	return combat
 
@@ -93,6 +96,35 @@ func test_a_plate_out_of_the_arc_cannot_be_damaged_through_the_target() -> void:
 	var back := combat.plates()[2]
 	assert_false(back.is_exposed(combat.shell_rotation(), combat.tuning.plate_arc_deg),
 		"hors de l'arc")
+
+# --- La plaque a viser est designee (le « rien ne se passe » du playtest) --
+
+func test_phase_one_announces_the_exposed_plate_to_shoot() -> void:
+	# Le vrai fond du verdict operateur : en phase 1 une seule plaque encaisse, rien ne
+	# disait laquelle. Le module la designe desormais.
+	var combat := _make()
+	combat.tick(0.016)
+	assert_true(_active.size() > 0, "la phase 1 designe une plaque a viser")
+	var idx: int = _active.back()
+	assert_true(idx >= 0, "une plaque, pas -1")
+	assert_true(combat.plates()[idx].is_exposed(combat.shell_rotation(), combat.tuning.plate_arc_deg),
+		"et c'est bien une plaque exposee")
+
+func test_the_active_plate_is_announced_only_when_it_changes() -> void:
+	# La boucle de la phase 1 tourne vingt secondes : emettre a chaque image noierait
+	# le HUD et le monde de signaux identiques.
+	var combat := _make()
+	combat.tick(0.016)
+	var count := _active.size()
+	combat.tick(0.016)   # l'orbite est lente : la meme plaque reste exposee
+	assert_eq(_active.size(), count, "pas une emission par image, seulement au changement")
+
+func test_leaving_phase_one_clears_the_active_plate() -> void:
+	var combat := _make()
+	combat.tick(0.016)
+	assert_true(_active.size() > 0 and _active.back() >= 0, "en phase 1, une plaque est designee")
+	_kill_plates(combat); _settle(combat)   # coquille brisee -> phase 2
+	assert_eq(_active.back(), -1, "hors phase 1, aucune plaque unique a viser : le halo s'eteint")
 
 # --- Les transitions sont MATERIELLES, pas des seuils de PV ---------------
 

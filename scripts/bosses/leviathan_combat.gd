@@ -75,6 +75,15 @@ var _shell_rotation: float = 0.0
 ## Plaque actuellement exposée (`-1` = aucune). Mémorisée pour n'émettre `piece_active_changed`
 ## qu'au changement : la boucle de la phase 1 tourne à chaque image pendant vingt secondes.
 var _active_piece: int = -1
+## La coque visible : `Shell_Ring` porte l'orbite (contrat BRIEF-0040 : `Shell_Ring →
+## Shell_Crescent → Plate_0X`). Sans cette rotation la hitbox orbitait mais le mesh restait
+## fixe — c'est le « il n'a fait qu'aller de gauche à droite, rien ne s'est passé » du playtest.
+var _shell_ring: Node3D
+var _shell_ring_rest: Basis = Basis.IDENTITY
+## Surbrillance additive de la plaque active, partagée par tous ses maillages. Créée une fois :
+## la moduler par image ne réalloue rien. Posée en `material_overlay` pour ne PAS remplacer la
+## texture de la plaque, seulement ajouter un halo par-dessus.
+var _highlight: StandardMaterial3D
 var _fan_timer: float = 0.0
 var _missile_timer: float = 0.0
 var _pulse_timer: float = 0.0
@@ -130,6 +139,7 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	_build_nodes()
 	_build_spikes()
 	_build_core_and_heart()
+	_bind_shell_visual()
 	_register_targets()
 	_enter_phase(Phase.ARMOR_CHOIR)
 	# Hook de vérification : atteindre la phase 3 demande deux minutes de jeu, donc
@@ -149,6 +159,7 @@ func _build_plates() -> void:
 				push_error("[Leviathan] coque sans 'Plate_%02d' (contrat BRIEF-0040)" % (i + 1))
 			else:
 				plate.rest_basis = plate.node.transform.basis
+				_collect_meshes(plate.node, plate.meshes)
 		_plates.append(plate)
 
 func _build_nodes() -> void:
@@ -184,6 +195,33 @@ func _build_core_and_heart() -> void:
 	_heart_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.heart_hitbox_radius,
 		Callable(self, "_on_heart_hit"))
 	_heart_target.enabled = false
+
+## Résout la coquille tournante et prépare le halo de surbrillance. Nul en test (coque
+## absente) : la boucle tourne sans 3D, seule la géométrie des hitbox compte.
+func _bind_shell_visual() -> void:
+	_shell_ring = null
+	if _hull != null:
+		_shell_ring = _hull.find_child("Shell_Ring", true, false) as Node3D
+		if _shell_ring == null:
+			push_error("[Leviathan] coque sans 'Shell_Ring' (contrat BRIEF-0040)")
+		else:
+			_shell_ring_rest = _shell_ring.transform.basis
+	if _highlight == null:
+		# Additif, non éclairé : un halo qui s'AJOUTE à la texture au lieu de la remplacer.
+		# Posé en `material_overlay`, il laisse la plaque lisible et signale « ici, maintenant ».
+		_highlight = StandardMaterial3D.new()
+		_highlight.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_highlight.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_highlight.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_highlight.albedo_color = Color(0.90, 0.35, 0.70, 1.0)
+
+## Tous les `MeshInstance3D` sous un nœud, racine comprise. Mirror de `HarvesterLimb`.
+static func _collect_meshes(node: Node, into: Array[MeshInstance3D]) -> void:
+	var mesh := node as MeshInstance3D
+	if mesh != null and mesh.mesh != null:
+		into.append(mesh)
+	for child in node.get_children():
+		_collect_meshes(child, into)
 
 ## ⚠️ ORDRE D'ENREGISTREMENT CRITIQUE. `BulletManager._resolve_hits` parcourt les cibles
 ## dans l'ordre d'enregistrement et CONSOMME la balle sur la première qui la réclame.
@@ -283,6 +321,7 @@ func _run_armor_choir(delta: float, origin: Vector2) -> void:
 	# La coquille tourne : c'est elle qui fabrique la fenêtre de tir.
 	if tuning.shell_orbit_period > 0.0:
 		_shell_rotation = wrapf(_shell_rotation + TAU * delta / tuning.shell_orbit_period, -PI, PI)
+	_pose_shell()
 	# La plaque à viser : celle qui est exposée ET la plus proche du centre de l'arc (angle
 	# le plus petit). Elle porte le télégraphe HUD et monde de la phase.
 	var active := -1
@@ -310,13 +349,36 @@ func _run_armor_choir(delta: float, origin: Vector2) -> void:
 	if _plates_up() == 0:
 		_advance_phase()
 
+## Fait tourner la coquille visible et pulse le halo de la plaque à viser. Un seul écrivain
+## sur la pose (le module), comme le Harvester : deux auteurs sur une même rotation finissent
+## par se marcher dessus. `.transform.basis =` réassigne un type valeur — aucune allocation
+## par image. `Basis(UP, _shell_rotation)` fait défiler les meshes du même sens que les
+## hitbox (calé sur `angle_at`), pour que la plaque brillante soit bien celle qu'on frappe.
+func _pose_shell() -> void:
+	if _shell_ring != null:
+		_shell_ring.transform.basis = _shell_ring_rest * Basis(Vector3.UP, _shell_rotation)
+	if _highlight != null:
+		# Battement lent : le halo respire pour attirer l'œil sans clignoter agressivement.
+		var pulse := 0.55 + 0.45 * (0.5 + 0.5 * sin(_age * 4.0))
+		_highlight.albedo_color = Color(0.90, 0.35, 0.70, pulse)
+
 ## Bascule la plaque à viser et n'émet qu'au changement — sinon `piece_active_changed`
 ## partirait à chaque image pendant toute la phase 1. Le monde et le HUD s'y accrochent.
 func _set_active_piece(index: int) -> void:
 	if index == _active_piece:
 		return
 	_active_piece = index
+	_apply_highlight(index)
 	piece_active_changed.emit(index)
+
+## Pose le halo sur les maillages de la plaque active, le retire des autres. Appelé seulement
+## au changement de plaque : réassigner un `material_overlay` par image serait gratuit en pure
+## perte. Une plaque tombée ne brille jamais (`is_up()`), même si son indice redevient actif.
+func _apply_highlight(index: int) -> void:
+	for plate in _plates:
+		var lit: Material = _highlight if (plate.index == index and plate.is_up()) else null
+		for mesh in plate.meshes:
+			mesh.material_overlay = lit
 
 ## Un éventail par plaque **encore debout** : moins de plaques = moins de rideau. Le
 ## retour de la destruction est immédiat et physique, sans qu'aucun texte ne l'explique.

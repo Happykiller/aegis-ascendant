@@ -32,6 +32,10 @@ var base_angle: float = 0.0
 ## Nœud `Plate_0X` de la coque. Nul en test : une plaque sans nœud à poser reste une
 ## plaque qui vit, encaisse et tombe.
 var node: Node3D
+## Maillages de la plaque, racine comprise. Résolus UNE fois au montage : c'est sur eux que
+## le module pose la surbrillance de la plaque active, et les rechercher par image coûterait
+## une descente d'arbre à chaque frame (cf. `HarvesterLimb.meshes`).
+var meshes: Array[MeshInstance3D] = []
 var rest_basis: Basis = Basis.IDENTITY
 ## Axe de chute, déduit de la position radiale — jamais saisi à la main. Même raison
 ## que les pétales du Harvester : `ak.moving_part()` pose l'origine sur la charnière
