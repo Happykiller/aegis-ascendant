@@ -29,6 +29,11 @@ enum State { DORMANT, ALERT, WINDUP, ACTIVE, SPENT }
 ## coûte une constante et supprime la catégorie de bug.
 const RELEASE_FACTOR := 1.25
 
+## Plafond du régime en simple éveil. Au-delà, l'unité est ENGAGÉE — et ce seuil
+## est exposé parce que la coque s'en sert : c'est là qu'elle cesse de monter en
+## intensité pour changer de couleur (`EnemyVitals`).
+const ALERT_CEILING := 0.6
+
 
 ## Ce qui vient après. `time_in_state` est le temps écoulé DANS l'état courant.
 static func next_state(state: int, time_in_state: float, distance: float,
@@ -74,9 +79,9 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 	match state:
 		State.ALERT:
 			var span := maxf(data.alert_radius - data.trigger_radius, 0.001)
-			return clampf(1.0 - (distance - data.trigger_radius) / span, 0.0, 1.0) * 0.6
+			return clampf(1.0 - (distance - data.trigger_radius) / span, 0.0, 1.0) * ALERT_CEILING
 		State.WINDUP:
-			return 0.6 + 0.4 * windup_ratio(state, time_in_state, data)
+			return ALERT_CEILING + (1.0 - ALERT_CEILING) * windup_ratio(state, time_in_state, data)
 		State.ACTIVE:
 			return 1.0
 		_:

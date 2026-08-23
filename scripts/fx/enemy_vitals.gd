@@ -28,9 +28,29 @@ const ALARM_PERIOD := 4.3
 ## Ce que le battement d'alerte devient à menace pleine : presque cinq fois plus
 ## rapide. Le joueur n'a pas besoin de compter, il entend le régime monter.
 const ALARM_RUSH := 0.21
-## Gain d'énergie à menace pleine. Le noyau ne change pas de couleur — il chauffe.
+## Gain d'énergie à menace pleine.
 const THREAT_GAIN := 2.4
 const ALARM_AMPLITUDE := 0.35
+
+## Régime d'une coque ENDORMIE, en fraction du nominal. Une mine qui dort doit
+## lire comme éteinte : sans cette atténuation, son réveil part du même niveau
+## qu'un ennemi ordinaire et n'a plus aucune amplitude pour se faire remarquer.
+const DORMANT_DIM := 0.40
+
+## ⚠️ CE QUE LA MESURE A APPRIS. Monter l'énergie d'un émissif DÉJÀ SATURÉ ne fait
+## rien : à la première capture en jeu, la mine en plein télégraphe rendait un pic
+## de luminance de 236 quand les dormantes rendaient 215 à 227 — l'engagement était
+## DANS la dispersion du repos, donc invisible. Les pixels du noyau étaient déjà à
+## 244-255, et multiplier par 2,4 une valeur écrêtée est une opération nulle.
+##
+## Le fond n'aide pas : la nébuleuse est magenta, exactement la teinte du Chœur Nul.
+## Ce qui se voit sur un fond lumineux n'est pas l'intensité, c'est le CHANGEMENT DE
+## TEINTE. Le Leviathan avait déjà tranché pareil pour son halo de cible : « rester
+## dans la teinte de coque le faisait lire comme un reflet » (leviathan_combat.gd).
+##
+## L'engagement vire donc au blanc chaud, et seulement à partir de l'engagement —
+## l'éveil, lui, reste magenta : deux signaux distincts pour deux moments distincts.
+const COMMIT_TINT := Color(1.0, 0.94, 0.88)
 
 ## Décalage de phase distribué d'une instance à l'autre. Un incrément irrationnel
 ## (le nombre d'or) plutôt qu'un tirage aléatoire : deux coques voisines sont
@@ -40,6 +60,7 @@ static var _phase_cursor := 0.0
 
 var _material: StandardMaterial3D
 var _base_energy: float = 1.0
+var _base_emission: Color = Color.WHITE
 var _phase: float = 0.0
 var _age: float = 0.0
 
@@ -57,6 +78,7 @@ static func bind(hull: Node3D) -> EnemyVitals:
 			var vitals := EnemyVitals.new()
 			vitals._material = base.duplicate()
 			vitals._base_energy = vitals._material.emission_energy_multiplier
+			vitals._base_emission = vitals._material.emission
 			vitals._phase = _phase_cursor
 			_phase_cursor = fposmod(_phase_cursor + PHASE_STEP * BREATH_PERIOD, BREATH_PERIOD)
 			mesh.set_surface_override_material(i, vitals._material)
@@ -83,11 +105,24 @@ func update(delta: float, threat: float) -> void:
 	var alarm_period := BREATH_PERIOD * lerpf(1.0, ALARM_RUSH, threat)
 	var alarm := 1.0 + ALARM_AMPLITUDE * threat * sin(_age * TAU / alarm_period)
 	_material.emission_energy_multiplier = _base_energy * breath * alarm \
-		* lerpf(1.0, THREAT_GAIN, threat)
+		* lerpf(DORMANT_DIM, THREAT_GAIN, threat)
+	# La teinte ne bouge qu'au-delà du simple éveil : le magenta dit « elle t'a vu »,
+	# le blanc dit « c'est parti ». Confondre les deux, c'est n'en avoir qu'un.
+	_material.emission = _base_emission.lerp(COMMIT_TINT, commit_ratio(threat))
+
+
+## Part d'ENGAGEMENT dans une menace, de 0 (au plus simple éveil) à 1 (charge).
+## Pure et statique : c'est elle que testent les assertions de teinte.
+static func commit_ratio(threat: float) -> float:
+	var span := 1.0 - EnemyReaction.ALERT_CEILING
+	if span <= 0.0:
+		return 0.0
+	return clampf((threat - EnemyReaction.ALERT_CEILING) / span, 0.0, 1.0)
 
 
 ## Remise au repos. Appelée quand l'instance retourne au pool : une coque recyclée
 ## qui revient en scène déjà en alerte désignerait une menace qui n'existe pas.
 func reset() -> void:
 	_age = 0.0
-	_material.emission_energy_multiplier = _base_energy
+	_material.emission_energy_multiplier = _base_energy * DORMANT_DIM
+	_material.emission = _base_emission
