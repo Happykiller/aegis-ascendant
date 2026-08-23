@@ -329,7 +329,17 @@ func _build_spines() -> void:
 				push_error("[Leviathan] coque sans 'Spike_%02d' (contrat BRIEF-0040)" % (i + 1))
 		_spine_nodes.append(node)
 		_spine_rest.append(node.transform if node != null else Transform3D.IDENTITY)
-		_spine_tip.append(_far_corner(node))
+		# ⚠️ LA COQUE LIVRE SA PROPRE BOUCHE. `Muzzle_Spike_0X` fait partie du contrat de
+		# noms depuis le premier brief, posé au bout de l'épine — et personne ne l'avait
+		# câblé : le code calculait la pointe par boîte englobante alors que le point exact
+		# était dans le `.glb`. Mesuré : base à ~4,1 du centre, bouche à ~5,0.
+		# Le calcul reste en repli, pour une coque qui n'aurait pas la bouche.
+		var muzzle := _hull.find_child("Muzzle_Spike_%02d" % (i + 1), true, false) as Node3D \
+			if _hull != null else null
+		if muzzle != null and node != null and node.is_inside_tree():
+			_spine_tip.append(node.global_transform.affine_inverse() * muzzle.global_position)
+		else:
+			_spine_tip.append(_far_corner(node))
 		var beam: Beam = null
 		if is_inside_tree():
 			beam = Beam.make()
