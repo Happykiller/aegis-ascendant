@@ -30,7 +30,7 @@ enum Fire { SINGLE, NONE, FAN, AIMED, RADIAL }
 ## Ce que l'unité fait qui n'est PAS une balle. Une menace peut se passer de
 ## projectile : le puits gravitationnel ne blesse pas, il mange l'esquive.
 ## ⚠️ Même règle d'APPEND.
-enum Effect { NONE, GRAVITY_WELL, LEECH }
+enum Effect { NONE, GRAVITY_WELL, LEECH, SHIELD_AURA }
 @export var effect: Effect = Effect.NONE
 
 ## Qui pilote la position. `PATH` échantillonne `EnemyPath`, fonction pure de l'âge —
@@ -113,6 +113,15 @@ enum Motion { PATH, HOMING }
 ## donc il sort par un bord comme tout le monde.
 @export var chase_time: float = 8.0
 
+## SHIELD_AURA : rayon (unités) dans lequel les AUTRES ennemis deviennent
+## invulnérables. Passif : il n'y a ni télégraphe ni déclenchement — tant que le
+## porteur vit, la bulle tient.
+##
+## ⚠️ LE PORTEUR NE SE COUVRE JAMAIS LUI-MÊME. C'est toute la mécanique : sans cette
+## règle il serait invulnérable et immortel, et la « cible prioritaire » deviendrait
+## une cible impossible.
+@export var aura_radius: float = 0.0
+
 ## LEECH : part de la vitesse du joueur volée tant que l'unité est accrochée, et
 ## drain de bouclier par seconde.
 ##
@@ -176,6 +185,7 @@ func validate() -> PackedStringArray:
 	errors.append_array(_validate_pose())
 	errors.append_array(_validate_motion())
 	errors.append_array(_validate_leech())
+	errors.append_array(_validate_aura())
 	return errors
 
 
@@ -250,6 +260,19 @@ func _validate_leech() -> PackedStringArray:
 	return errors
 
 
+func _validate_aura() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if effect != Effect.SHIELD_AURA:
+		return errors
+	if aura_radius <= 0.0:
+		errors.append("aura_radius must be > 0 for SHIELD_AURA")
+	if EnemyReaction.is_reactive(self):
+		# Une aura qui se déclencherait serait une aura qu'on peut attendre. Celle-ci
+		# tient tant que le porteur vit : c'est ce qui force à le viser LUI.
+		errors.append("SHIELD_AURA is passive and must not declare a trigger_radius")
+	return errors
+
+
 func _validate_pose() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if moving_part_prefix.is_empty():
@@ -262,10 +285,6 @@ func _validate_pose() -> PackedStringArray:
 	if open_spread < 0.0 or open_spread > EnemyPose.MAX_SPREAD:
 		errors.append("open_spread must be between 0 and %.2f of the part radius"
 			% EnemyPose.MAX_SPREAD)
-	if not EnemyReaction.is_reactive(self):
-		# Une coque qui s'ouvre sans rien déclencher s'ouvrirait... quand ? Le
-		# télégraphe est le seul moteur de l'ouverture.
-		errors.append("moving_part_prefix requires a trigger_radius (the windup drives the hull)")
 	return errors
 
 

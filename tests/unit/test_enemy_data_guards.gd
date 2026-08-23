@@ -179,3 +179,44 @@ func test_a_leech_without_a_trigger_is_refused() -> void:
 	data.alert_radius = 0.0
 	data.trigger_radius = 0.0
 	_refuses(data, "requires a trigger_radius", "une sangsue sans prise est refusée")
+
+# --- Aura de protection (Shield Carrier) --------------------------------------
+
+func _carrier() -> EnemyData:
+	var data := _sane()
+	data.path = EnemyData.Path.HOVER_STRAFE
+	data.fire = EnemyData.Fire.NONE
+	data.effect = EnemyData.Effect.SHIELD_AURA
+	data.aura_radius = 3.5
+	data.hold_time = 4.0
+	return data
+
+func test_a_well_formed_carrier_is_accepted() -> void:
+	assert_true(_carrier().validate().is_empty(), "un porteur bien réglé passe")
+
+func test_an_aura_without_reach_is_refused() -> void:
+	var data := _carrier()
+	data.aura_radius = 0.0
+	_refuses(data, "aura_radius", "une aura sans portée est refusée")
+
+## ⚠️ L'aura est PASSIVE, et ce n'est pas un détail de réglage. Une aura qui se
+## déclencherait serait une aura qu'on peut attendre ; celle-ci tient tant que le
+## porteur vit, et c'est ce qui force le joueur à le viser LUI plutôt que ce qu'il
+## a devant le canon.
+func test_a_triggered_aura_is_refused() -> void:
+	var data := _carrier()
+	data.alert_radius = 4.0
+	data.trigger_radius = 2.0
+	_refuses(data, "passive", "une aura à déclenchement est refusée")
+
+## Une coque articulée SANS télégraphe est légitime depuis le porteur : ses bras
+## respirent au lieu d'annoncer. C'était refusé tant qu'aucune unité passive
+## n'existait — la règle disait « le télégraphe est le seul moteur de l'ouverture »,
+## et elle n'était vraie que par accident d'échantillon.
+func test_a_passive_hull_may_still_have_moving_parts() -> void:
+	var data := _carrier()
+	data.moving_part_prefix = "Cradle"
+	data.open_angle_deg = 24.0
+	assert_true(data.validate().is_empty(),
+		"des bras qui respirent sans rien déclencher sont acceptés (%s)"
+			% ", ".join(data.validate()))

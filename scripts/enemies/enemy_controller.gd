@@ -47,6 +47,20 @@ const FLASH_STRENGTH := 0.85
 ## How hard the hull banks into its weave, in degrees at full lateral speed.
 const MAX_BANK_DEG := 26.0
 
+## Teinte de l'éclat quand un coup est ABSORBÉ par un bouclier d'aura. Le blanc dit
+## « touché », celle-ci dit « touché et sans effet » — deux informations, deux
+## couleurs, sinon le joueur croit à un défaut de collision.
+const SHIELD_FLASH_TINT := Color(0.42, 0.85, 1.0)
+
+## Durée d'une couverture d'aura, renouvelée à chaque image par le porteur. Assez
+## longue pour tenir entre deux images même à cadence dégradée, assez courte pour
+## que la mort du porteur se voie tout de suite.
+const AURA_GRACE := 0.12
+
+## Période de respiration d'une coque articulée SANS télégraphe (porteur de
+## bouclier). Lente : c'est un signe de vie, pas une annonce.
+const PASSIVE_POSE_PERIOD := 5.3
+
 var _bullet_manager: BulletManager
 var _target: BulletTarget
 ## Point de spawn : les trajectoires sont des fonctions de l'âge ET de ce point.
@@ -58,6 +72,8 @@ var _plume: EnginePlume
 ## Additive wash laid over the hull mesh on impact. A mesh has no `modulate`, so
 ## the flash is an overlay pass rather than a tint.
 var _flash_material: StandardMaterial3D
+## Couleur du prochain éclat : blanche si le coup porte, bleue s'il est absorbé.
+var _flash_tint: Color = Color.WHITE
 ## Distance from the enemy's origin to its gun, read from the hull.
 var _muzzle_offset: Vector2 = MUZZLE_OFFSET
 ## Le joueur, injecté par le spawner. `null` est un cas normal : une unité qui ne
@@ -80,8 +96,18 @@ var _velocity: Vector2 = Vector2.ZERO
 ## touché, et y reste. Sans ça elle se téléporterait au centre du chasseur, où le
 ## moindre tir vers l'avant la détruirait aussitôt.
 var _attach_offset: Vector2 = Vector2.ZERO
-## Pièces articulées de la coque, s'il y en a (mines, corolles).
+## Pièces articulées de la coque, s'il y en a (mines, corolles, berceaux).
 var _pose: EnemyPose
+## Secondes d'invulnérabilité restantes, accordées par un porteur de bouclier.
+##
+## Un COMPTE À REBOURS et non un drapeau : le porteur repose la couverture à chaque
+## image, et l'unité la consomme. Aucun ordre d'exécution à garantir entre eux, et
+## rien à nettoyer quand le porteur meurt — la couverture s'éteint d'elle-même.
+var _shield_grace: float = 0.0
+## Voisins couverts par l'aura, résolus UNE fois. Le pool est préinstancié avant la
+## première activation, donc le groupe ne bouge plus : rappeler `get_nodes_in_group`
+## à chaque image allouerait un tableau par porteur et par frame.
+var _neighbours: Array[EnemyController] = []
 
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
@@ -95,8 +121,11 @@ func _ready() -> void:
 	add_to_group("enemies")
 	_health.died.connect(_on_died)
 	_health.damaged.connect(_on_damaged)
+	# ⚠️ Les dégâts passent par NOUS et non plus directement par la santé : c'est ici
+	# qu'une unité couverte par un porteur de bouclier les absorbe. Brancher
+	# `HealthComponent.apply_damage` en direct ne laissait aucun endroit pour le dire.
 	_target = BulletTarget.make(BulletManager.Team.ENEMY, data.hitbox_radius,
-		Callable(_health, "apply_damage"))
+		Callable(self, "_receive_damage"))
 	_target.enabled = false
 	_reactive = EnemyReaction.is_reactive(data)
 	if _hull != null:
@@ -159,6 +188,7 @@ func _set_active(value: bool) -> void:
 	_state_time = 0.0
 	_threat = 0.0
 	_salvo = 0
+	_shield_grace = 0.0
 	if _vitals != null:
 		_vitals.reset()
 	if _pose != null:
@@ -188,8 +218,13 @@ func _physics_process(delta: float) -> void:
 	var bank := clampf(lateral_speed / EnemyPath.BANK_REFERENCE_SPEED, -1.0, 1.0)
 	_visual_root.rotation.z = deg_to_rad(-MAX_BANK_DEG) * bank
 	_update_hit_flash(delta)
+	tick_cover(delta)
 	_update_reaction(delta)
+	if data.effect == EnemyData.Effect.SHIELD_AURA:
+		_project_aura()
 	_update_fire(delta)
+	if _pose != null:
+		_pose.pose(_pose_ratio())
 	if _vitals != null:
 		_vitals.update(delta, _threat)
 
@@ -276,7 +311,8 @@ func _update_hit_flash(delta: float) -> void:
 	if _flash_material == null or _hit_flash <= 0.0:
 		return
 	_hit_flash = maxf(_hit_flash - delta, 0.0)
-	_flash_material.albedo_color.a = FLASH_STRENGTH * (_hit_flash / HIT_FLASH_TIME)
+	_flash_material.albedo_color = Color(_flash_tint.r, _flash_tint.g, _flash_tint.b,
+		FLASH_STRENGTH * (_hit_flash / HIT_FLASH_TIME))
 
 func _update_fire(delta: float) -> void:
 	# Une unité réactive ne tire pas à l'horloge : elle tire quand ON s'approche.
@@ -326,8 +362,6 @@ func _update_reaction(delta: float) -> void:
 		elif previous == EnemyReaction.State.ACTIVE:
 			_on_discharged()
 	_threat = EnemyReaction.threat_ratio(_state, _state_time, distance, data)
-	if _pose != null:
-		_pose.pose(EnemyReaction.open_ratio(_state, _state_time, data))
 	if _state != EnemyReaction.State.ACTIVE or _player == null:
 		return
 	match data.effect:
@@ -350,6 +384,75 @@ func _distance_to_player() -> float:
 ## que `add_pull` est la seule porte du chasseur : une affectation ferait gagner la
 ## dernière appelée, et le joueur traverserait tranquillement un nid qui devrait
 ## l'écraser.
+## Combien la coque doit être ouverte, cette image.
+##
+## Une unité qui DÉCLENCHE s'ouvre au rythme de son télégraphe. Une unité passive —
+## le porteur de bouclier — n'a rien à annoncer : ses bras respirent, lentement, et
+## c'est ce qui la fait lire comme une machine en fonctionnement plutôt que comme
+## une épave qui plane. Ni télégraphe ni état : un signe de vie.
+func _pose_ratio() -> float:
+	if _reactive:
+		return EnemyReaction.open_ratio(_state, _state_time, data)
+	return 0.5 + 0.5 * sin(_age * TAU / PASSIVE_POSE_PERIOD)
+
+
+## Les dégâts entrants, avant la santé.
+##
+## ⚠️ UNE UNITÉ COUVERTE NE PERD RIEN, ET DOIT LE MONTRER. Sans retour visuel, le
+## joueur tire dans le vide et croit à un bug de collision : il faut qu'il voie que
+## le coup PORTE et qu'il ne compte pas. D'où un éclat de couleur distincte plutôt
+## que l'absence de réaction.
+func _receive_damage(amount: float) -> void:
+	if _shield_grace > 0.0:
+		_hit_flash = HIT_FLASH_TIME
+		_flash_tint = SHIELD_FLASH_TINT
+		return
+	_flash_tint = Color.WHITE
+	_health.apply_damage(amount)
+
+
+## Accorde une invulnérabilité, renouvelée à chaque image par le porteur.
+## `maxf` et non une affectation : deux porteurs qui se recouvrent ne doivent pas
+## se voler la couverture — le plus généreux gagne.
+func cover(duration: float) -> void:
+	_shield_grace = maxf(_shield_grace, duration)
+
+
+func is_covered() -> bool:
+	return _shield_grace > 0.0
+
+
+## Consomme une image de couverture. Une méthode plutôt que deux mots dans la boucle
+## physique, pour la même raison que `PlayerFighterController.consume_pull()` : la
+## règle « la couverture s'éteint si personne ne la repose » devient vérifiable sans
+## arbre de scène, donc elle est vérifiée.
+func tick_cover(delta: float) -> void:
+	_shield_grace = maxf(_shield_grace - delta, 0.0)
+
+
+## L'aura du porteur de bouclier : elle couvre les VOISINS, jamais lui.
+##
+## ⚠️ C'est toute la mécanique de l'unité. S'il se couvrait lui-même il serait
+## immortel, et la « cible prioritaire » deviendrait une cible impossible. Le joueur
+## doit pouvoir l'abattre — c'est même la seule chose qu'il puisse faire.
+func _project_aura() -> void:
+	if _neighbours.is_empty():
+		_resolve_neighbours()
+	var reach := data.aura_radius * data.aura_radius
+	for other in _neighbours:
+		if other.active and other.plane_position.distance_squared_to(plane_position) <= reach:
+			other.cover(AURA_GRACE)
+
+
+## Voisins résolus une fois pour toutes : le pool est préinstancié avant la première
+## activation, donc le groupe ne change plus en cours de partie.
+func _resolve_neighbours() -> void:
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var other := node as EnemyController
+		if other != null and other != self:
+			_neighbours.append(other)
+
+
 ## Ce que fait une sangsue accrochée : elle VOLE de la vitesse, et elle grignote.
 ##
 ## ⚠️ La menace réelle est le frein, pas les dégâts. Le drain passe par le même

@@ -72,6 +72,16 @@ func _ready() -> void:
 	print("[Lab] COQUE PROVISOIRE : needle_scout.glb sert de silhouette")
 	var data := _build(_slug)
 	var errors := data.validate()
+	if _slug == "carrier":
+		# Un porteur seul ne prouve rien : ce qu'on vérifie, c'est qu'il couvre les
+		# AUTRES et pas lui. Il lui faut donc une escorte, et le banc la construit.
+		for error in errors:
+			push_error("[Lab] montage 'carrier' invalide : %s" % error)
+		print("[Lab] unite='carrier' 1 porteur + %d escortes" % ESCORT_COUNT)
+		print("[Lab] %s" % _describe(_slug))
+		_apply_backdrop_flag()
+		_build_escorted_pool(data)
+		return
 	for error in errors:
 		# Le banc valide ses propres montages : une donnée fautive ici serait un
 		# comportement qu'on réglerait pendant des heures sans qu'il soit jouable.
@@ -158,6 +168,19 @@ func _build(slug: String) -> EnemyData:
 			data.max_health = 26.0
 			data.hitbox_radius = 0.55
 			data.score_value = 140
+		"carrier":
+			# Passive : elle ne tire pas, ne poursuit pas, ne touche jamais. Elle rend
+			# les AUTRES invulnérables — et jamais elle-même.
+			data.path = EnemyData.Path.HOVER_STRAFE
+			data.move_speed = 1.6
+			data.hold_y = 4.0
+			data.hold_time = 20.0
+			data.fire = EnemyData.Fire.NONE
+			data.effect = EnemyData.Effect.SHIELD_AURA
+			data.aura_radius = 3.5
+			data.max_health = 40.0
+			data.hitbox_radius = 0.70
+			data.score_value = 300
 		"leech":
 			# Elle POURSUIT : premier ennemi du jeu dont la position accumule.
 			data.motion = EnemyData.Motion.HOMING
@@ -193,6 +216,8 @@ func _describe(slug: String) -> String:
 			return "MAW — puits d'aspiration a 3.0, 1.6 s, se rearme apres 2.5 s"
 		"leech":
 			return "LEECH — poursuit, s'accroche a 0.9, vole 35 pct de vitesse pendant 2.5 s"
+		"carrier":
+			return "CARRIER — 1 porteur + 4 escortes : l'aura de 3.5 les rend invulnerables"
 		_:
 			return "unite inconnue"
 
@@ -244,22 +269,70 @@ func _log_player_speed() -> void:
 		return
 	_speed_log_at = _clock + SPEED_LOG_EVERY
 	var accrochees := 0
+	var couvertes := 0
 	for unit in _units:
-		if unit.active and unit.is_attached():
+		if not unit.active:
+			continue
+		if unit.is_attached():
 			accrochees += 1
+		if unit.is_covered():
+			couvertes += 1
 	# ⚠️ ON MESURE LE DÉPLACEMENT RÉEL, PAS `speed_ratio()`. Ce dernier lit la
 	# vitesse COMMANDÉE, et le frein d'une sangsue s'applique au déplacement : le
 	# ratio reste à 0,85 pendant que le chasseur avance à 40 %. Premier relevé fait
 	# avec la mauvaise grandeur, et il annonçait « aucun effet ».
 	var parcouru := _player.plane_position.distance_to(_last_player_position) / SPEED_LOG_EVERY
 	_last_player_position = _player.plane_position
-	print("[Lab] t=%.2f parcouru %.2f u/s (commande %.3f)   accrochees=%d"
-		% [_clock, parcouru, _player.speed_ratio(), accrochees])
+	var porteur := ""
+	if _slug == "carrier" and not _units.is_empty():
+		# ⚠️ LA RÈGLE QUI DÉCIDE, lue et non déduite : le porteur ne se couvre JAMAIS
+		# lui-même. S'il le faisait il serait immortel, et la « cible prioritaire »
+		# deviendrait une cible impossible. Un compte global ne le dirait pas — trois
+		# couvertes sur cinq se lit aussi bien avec le porteur dedans que dehors.
+		porteur = "   porteur_couvert=%s" % ("OUI" if _units[0].is_covered() else "non")
+	print("[Lab] t=%.2f parcouru %.2f u/s   accrochees=%d   couvertes=%d/%d%s"
+		% [_clock, parcouru, accrochees, couvertes, _active_count(), porteur])
+
+
+func _active_count() -> int:
+	var n := 0
+	for unit in _units:
+		if unit.active:
+			n += 1
+	return n
+
+
+## Nombre d'escortes autour du porteur de bouclier.
+const ESCORT_COUNT := 4
+## Colonnes du montage escorté : le porteur au centre, les escortes serrées autour
+## pour tenir dans son aura. Réglées à la main — un porteur dont personne n'est à
+## portée ne prouve rien du tout.
+const ESCORT_COLUMNS := [0.0, -1.6, 1.6, -3.0, 3.0]
+
+## Un porteur, puis son escorte d'ennemis ordinaires.
+func _build_escorted_pool(carrier_data: EnemyData) -> void:
+	_respawn_at.resize(1 + ESCORT_COUNT)
+	_add_unit(0, NEEDLE_SCOUT, carrier_data)
+	for i in ESCORT_COUNT:
+		_add_unit(1 + i, NEEDLE_SCOUT, BASE_DATA)
+
+
+func _add_unit(index: int, scene: PackedScene, data: EnemyData) -> void:
+	var unit := scene.instantiate() as EnemyController
+	unit.data = data
+	add_child(unit)
+	unit.setup(_bullets, _player)
+	unit.reaction_changed.connect(_on_reaction_changed.bind(index))
+	unit.destroyed.connect(_on_destroyed)
+	_units.append(unit)
+	_respawn_at[index] = float(index) * 0.4
 
 
 ## Colonnes centrées : l'unité du milieu tombe sur l'axe, les autres de part et
 ## d'autre. Le joueur démarre au centre, donc il choisit celle qu'il va toucher.
 func _column(index: int) -> float:
+	if _slug == "carrier":
+		return ESCORT_COLUMNS[index % ESCORT_COLUMNS.size()]
 	return (float(index) - float(UNIT_COUNT - 1) * 0.5) * COLUMN_SPACING
 
 
