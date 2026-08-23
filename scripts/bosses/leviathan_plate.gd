@@ -37,9 +37,18 @@ var node: Node3D
 ## une descente d'arbre à chaque frame (cf. `HarvesterLimb.meshes`).
 var meshes: Array[MeshInstance3D] = []
 var rest_basis: Basis = Basis.IDENTITY
-## Axe de chute, déduit de la position radiale — jamais saisi à la main. Même raison
-## que les pétales du Harvester : `ak.moving_part()` pose l'origine sur la charnière
-## sans réorienter les axes locaux.
+## Pose complète au repos — position comprise. La chute déplace la plaque autant qu'elle
+## la fait pivoter : garder seulement la base obligerait à relire la position du nœud à
+## chaque image, alors qu'elle est déjà en train de bouger.
+var rest_transform: Transform3D = Transform3D.IDENTITY
+## Axe de chute — la TANGENTE à l'anneau au point où la plaque est posée.
+##
+## ⚠️ CE COMMENTAIRE A MENTI PENDANT DES SEMAINES. Il annonçait un axe « déduit de la
+## position radiale » ; rien ne le déduisait, et les quatre plaques basculaient toutes
+## autour du même `Vector3.RIGHT`. Celle du sommet se couchait vers l'avant, celle du
+## flanc pivotait de travers : « les boucliers descendent très bizarrement » au playtest.
+## Un commentaire qui décrit une intention non câblée est pire qu'aucun commentaire — il
+## empêche de chercher là où c'est cassé. L'axe est désormais posé par `orient_fall()`.
 var fall_axis: Vector3 = Vector3.RIGHT
 var target: BulletTarget
 var elapsed: float = 0.0
@@ -53,6 +62,15 @@ static func make(p_index: int, p_base_angle: float, p_health: float,
 	plate.health = p_health
 	plate.target = BulletTarget.make(BulletManager.Team.ENEMY, hitbox_radius, hit_callback)
 	return plate
+
+## Oriente la chute : la plaque bascule vers l'EXTÉRIEUR de l'anneau, en pivotant autour
+## de la tangente au cercle. C'est le mouvement d'une écaille qui se décolle, et il est
+## différent pour chaque plaque puisqu'il dépend de sa place.
+##
+## L'anneau est dans le plan XZ de la coque (Y = haut) : le rayon au point d'angle `a`
+## vaut `(cos a, 0, sin a)`, et la tangente `(-sin a, 0, cos a)`.
+func orient_fall() -> void:
+	fall_axis = Vector3(-sin(base_angle), 0.0, cos(base_angle)).normalized()
 
 ## Angle courant de la plaque, orbite de la coquille comprise.
 func angle_at(shell_rotation: float) -> float:

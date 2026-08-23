@@ -41,6 +41,9 @@ const SPINE_SLOTS := 4
 const NODE_COUNT := 3
 ## Durée de chute d'une pièce détachée, en secondes.
 const DEBRIS_FALL_TIME := 1.2
+## Braquage maximal d'une épine, en degrés, et vitesse à laquelle elle s'y rend.
+const SPINE_TRACK_DEG := 38.0
+const SPINE_TRACK_SPEED := 2.4
 
 enum Phase { ARMOR, DIVE, DEFEATED }
 ## Les trois temps d'une plongée. Le module les traverse ; le niveau les met en scène.
@@ -107,9 +110,19 @@ var _shell_open: float = 0.0
 ## pendant le combat.
 var _spine_nodes: Array[Node3D] = []
 var _spine_rest: Array[Transform3D] = []
+## Pointe de chaque épine, en espace LOCAL de son nœud.
+##
+## ⚠️ L'origine d'un nœud `Spike_0X` est à sa BASE, contre le corps — mesuré sur le
+## `.glb` : origine à (0,0,0), maillage centré à z = +0,99, longueur 2,63. Tirer depuis
+## `node.global_position` fait donc partir le laser du CORPS, pas de la pointe. Au
+## playtest : « ça sort d'un peu n'importe où, ça manque de cohésion ». La pointe est le
+## sommet de la boîte englobante le plus éloigné de cette origine.
+var _spine_tip: Array[Vector3] = []
 var _spine_beams: Array[Beam] = []
 var _spine_state: PackedInt32Array = PackedInt32Array()
 var _spine_timer: PackedFloat32Array = PackedFloat32Array()
+## Braquage courant de chaque épine, en radians autour de la verticale.
+var _spine_track: PackedFloat32Array = PackedFloat32Array()
 
 ## Les nœuds décoratifs, qui tombent avec la première armure.
 var _debris: Array[Node3D] = []
@@ -117,6 +130,13 @@ var _debris_rest: Array[Transform3D] = []
 var _debris_fall: PackedFloat32Array = PackedFloat32Array()
 ## Chute des plaques abattues, par emplacement.
 var _plate_fall: PackedFloat32Array = PackedFloat32Array()
+## Pose d'origine de chaque emplacement de plaque, relevée UNE SEULE FOIS au montage.
+##
+## ⚠️ Ne jamais la relire depuis le nœud au début d'un cycle : à ce moment-là la plaque
+## est encore dans la pose où sa chute l'a laissée — basculée et écartée. On mémoriserait
+## cette pose comme « repos », et l'armure reformée repousserait de travers, un peu plus à
+## chaque cycle.
+var _plate_rest: Array[Transform3D] = []
 
 var _fan_timer: float = 0.0
 var _missile_timer: float = 0.0
@@ -171,6 +191,10 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	_fight_damage = 0.0
 	_plate_fall.resize(PLATE_SLOTS)
 	_plate_fall.fill(-1.0)
+	_plate_rest.clear()
+	for i in PLATE_SLOTS:
+		var node: Node3D = _hull.find_child("Plate_%02d" % (i + 1), true, false) as Node3D if _hull != null else null
+		_plate_rest.append(node.transform if node != null else Transform3D.IDENTITY)
 	_build_flux()
 	_bind_shell_visual()
 	_build_spines()
@@ -194,12 +218,17 @@ func _arm_cycle(cycle: int) -> void:
 	for i in alive:
 		var plate := LeviathanPlate.make(i, TAU * i / float(alive), tuning.plate_health,
 			tuning.plate_hitbox_radius, Callable(self, "_on_plate_hit").bind(i))
+		plate.orient_fall()
 		if _hull != null:
 			plate.node = _hull.find_child("Plate_%02d" % (i + 1), true, false) as Node3D
 			if plate.node == null:
 				push_error("[Leviathan] coque sans 'Plate_%02d' (contrat BRIEF-0040)" % (i + 1))
 			else:
-				plate.rest_basis = plate.node.transform.basis
+				plate.rest_transform = _plate_rest[i]
+				plate.rest_basis = plate.rest_transform.basis
+				# La plaque qui revient RETROUVE sa pose d'origine, pas celle où sa chute
+				# l'a laissée.
+				plate.node.transform = plate.rest_transform
 				plate.node.visible = true
 				_collect_meshes(plate.node, plate.meshes)
 		_plates.append(plate)
@@ -219,6 +248,7 @@ func _arm_cycle(cycle: int) -> void:
 		# Les épines se relaient au lieu de tirer ensemble : quatre lasers simultanés
 		# sont un mur, quatre lasers déphasés sont une danse.
 		_spine_timer[i] = tuning.spine_interval * float(i) / float(maxi(alive, 1))
+		_spine_track[i] = 0.0
 		if i < _spine_nodes.size() and _spine_nodes[i] != null:
 			_spine_nodes[i].visible = up
 			_spine_nodes[i].transform = _spine_rest[i]
@@ -263,9 +293,11 @@ func _bind_shell_visual() -> void:
 func _build_spines() -> void:
 	_spine_nodes.clear()
 	_spine_rest.clear()
+	_spine_tip.clear()
 	_spine_beams.clear()
 	_spine_state.resize(SPINE_SLOTS)
 	_spine_timer.resize(SPINE_SLOTS)
+	_spine_track.resize(SPINE_SLOTS)
 	for i in SPINE_SLOTS:
 		var node: Node3D = null
 		if _hull != null:
@@ -274,6 +306,7 @@ func _build_spines() -> void:
 				push_error("[Leviathan] coque sans 'Spike_%02d' (contrat BRIEF-0040)" % (i + 1))
 		_spine_nodes.append(node)
 		_spine_rest.append(node.transform if node != null else Transform3D.IDENTITY)
+		_spine_tip.append(_far_corner(node))
 		var beam: Beam = null
 		if is_inside_tree():
 			beam = Beam.make()
@@ -303,6 +336,38 @@ func _collect_debris() -> void:
 		_debris.append(node)
 		_debris_rest.append(node.transform)
 		_debris_fall.append(-1.0)
+
+## Sommet de la boîte englobante d'un nœud le plus éloigné de son origine, en espace
+## local. C'est la pointe d'une épine — le seul endroit d'où un laser puisse partir sans
+## que ça se voie.
+static func _far_corner(node: Node3D) -> Vector3:
+	if node == null:
+		return Vector3.ZERO
+	var box := AABB()
+	var first := true
+	var meshes: Array[MeshInstance3D] = []
+	_collect_meshes(node, meshes)
+	if not node.is_inside_tree():
+		return Vector3.ZERO   # hors arbre (tests) : pas de coque, donc pas de pointe
+	var to_node := node.global_transform.affine_inverse()
+	for mesh in meshes:
+		# ⚠️ Passer par les transformations GLOBALES : composer `mesh.transform` à la main
+		# ne marche que si le maillage est le nœud lui-même ou son enfant direct, et se
+		# trompe silencieusement d'un niveau dès qu'il est plus profond.
+		var local: AABB = to_node * (mesh.global_transform * mesh.mesh.get_aabb())
+		box = local if first else box.merge(local)
+		first = false
+	if first:
+		return Vector3.ZERO
+	var best := Vector3.ZERO
+	var far := -1.0
+	for i in 8:
+		var corner := box.get_endpoint(i)
+		var d := corner.length()
+		if d > far:
+			far = d
+			best = corner
+	return best
 
 ## Tous les `MeshInstance3D` sous un nœud, racine comprise. Mirror de `HarvesterLimb`.
 static func _collect_meshes(node: Node, into: Array[MeshInstance3D]) -> void:
@@ -451,10 +516,20 @@ func _aim_spine(index: int, origin: Vector2) -> void:
 	var muzzle := origin + direction * 3.2
 	var node: Node3D = _spine_nodes[index] if index < _spine_nodes.size() else null
 	if node != null and node.is_inside_tree():
-		muzzle = GameplayPlane.to_plane(node.global_position)
-		var away := muzzle - origin
-		if away.length_squared() > 0.01:
-			direction = away.normalized()
+		# La bouche est la POINTE de l'épine — mesurée sur le maillage, pas l'origine du
+		# nœud, qui est à sa base contre le corps.
+		muzzle = GameplayPlane.to_plane(node.global_transform * _spine_tip[index])
+		# ⚠️ MAIS LE TIR NE SUIT PAS L'AXE DE L'ÉPINE, et ce n'est pas un oubli. Capture à
+		# l'appui (coque isolée, `--no-backdrop`) : les épines de cette coque sont des
+		# cornes qui pointent vers l'ARRIÈRE du boss. Prolonger leur axe envoie le faisceau
+		# à l'opposé du joueur — spectaculairement inutile, et illisible. Le tir part donc
+		# de la pointe et vise le joueur, comme une tourelle montée sur un bras.
+		# La cohérence complète (une épine qui pointe là où elle tire) demanderait de
+		# reforger la coque : c'est un brief, pas une ligne de code.
+		var aim := _player.plane_position if _player != null else muzzle + Vector2(0.0, -1.0)
+		var to_player := aim - muzzle
+		if to_player.length_squared() > 0.01:
+			direction = to_player.normalized()
 	var reach := muzzle + direction * tuning.spine_range
 	var firing := _spine_state[index] == Spine.FIRING
 	if index < _spine_beams.size() and _spine_beams[index] != null:
@@ -557,8 +632,16 @@ func _tick_plate_falls(delta: float) -> void:
 		var fall := plate.fall_ratio(tuning.shell_break_time)
 		if fall <= 0.0:
 			continue
-		plate.node.transform.basis = plate.rest_basis.rotated(plate.fall_axis, fall * PI * 0.55) \
-			.scaled(Vector3.ONE * maxf(1.0 - fall, 0.05))
+		# ⚠️ ELLE TOMBE, ELLE NE RÉTRÉCIT PAS. La mise à l'échelle vers 0,05 faisait
+		# « s'évaporer » la plaque sur place au lieu de la faire basculer : à l'écran, une
+		# pièce d'armure qui disparaît en fondu ne se lit pas comme une pièce arrachée.
+		# Elle pivote maintenant vers l'extérieur autour de sa tangente, s'écarte du corps
+		# et part vers l'arrière — puis s'efface une fois hors de la silhouette.
+		var rest := plate.rest_transform
+		var swing := plate.rest_basis.rotated(plate.fall_axis, fall * PI * 0.75)
+		var radial := Vector3(cos(plate.base_angle), 0.0, sin(plate.base_angle))
+		plate.node.transform = Transform3D(swing,
+			rest.origin + radial * fall * 1.8 + Vector3(0.0, -1.2 * fall * fall, 0.0))
 		if fall >= 1.0 and plate.node.visible:
 			plate.node.visible = false
 	# Les épines tombées suivent le même mouvement, une seconde après la plaque qui les
