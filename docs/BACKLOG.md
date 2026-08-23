@@ -250,6 +250,209 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   qui instancie un `LeviathanCombat` (`extends Node`) par méthode. Un Node construit à la main hors
   arbre n'a **aucun parent pour le récupérer**, là où les unités `RefCounted` meurent avec le cas de
   test — et Godot ne rapporte la pile qu'à la sortie, donc le bruit ne désigne jamais son coupable.
+  ⚠️ **Résolu POUR LE RUNNER DE TESTS seulement — le jeu, lui, n'arrête pas ses flux audio à la
+  sortie.** Diagnostic complet (`--verbose`, jeu entier) : les quinze instances fuitées sont
+  **toutes** audio — `AudioStreamWAV` ×3, `AudioStreamPlaybackWAV` ×4, `OggPacketSequence` ×2,
+  `AudioStreamOggVorbis` ×2, `AudioStreamPlaybackOggVorbis` ×2, `OggPacketSequencePlayback` ×2 ;
+  ressources retenues : `player_pulse.wav`, `enemy_pulse.wav`, `engine_loop.wav`, `main_theme.ogg`,
+  `launch.ogg`. **Aucune géométrie, aucun matériau, aucun nœud.**
+  **La règle est mécanique : le compte vaut 2 × le nombre de sons en cours de lecture** — 4/2 sur
+  l'écran-titre (le thème seul), 14/7 en combat (thème + lancement + trois boucles de SFX).
+  → Correctif : un `stop()` des flux à la sortie, dans `AudioManager`. Non fait.
+  ⚠️ **Mesurer avec un `quit` DÉTERMINISTE**, sinon le chiffre n'en est pas un : en headless,
+  `godot4 --headless --quit-after N` arrête à une image fixe et rend cinq fois le même relevé. Un
+  lancement Windows via `play.sh` s'arrête, lui, à un instant variable — d'où des relevés qui ont
+  donné `0/0`, `4/2` et `8/4` pour la même commande, et une accusation portée à tort contre la
+  chambre du noyau du boss. Le phénomène est parfaitement déterministe ; c'était la méthode qui ne
+  l'était pas.
+- ⚠️ **Quatre coques sur dix sont sans UV, donc impossibles à texturer** — mesuré le 2026-08-23
+  **une fois chargées dans Godot** (`mesh.surface_get_format() & ARRAY_FORMAT_TEX_UV`) :
+  `choir_harvester` **0/61** (le mini-boss), `crescent_interceptor` 0/7, `needle_scout` 0/7,
+  `null_maw` 0/36 avant sa reforge. Saine : `pale_leviathan` **145/145**.
+  Cause : sans `_triangulate_ngons()` ni `box_project_uv()`, le dépliage n'est jamais produit — et
+  aucun importateur ne peut le deviner. Ce n'est pas un rendu dégradé aujourd'hui, c'est une **porte
+  fermée pour demain** : `HullDetail.apply()` n'a rien où plaquer.
+  ⚠️ **Correction d'une conclusion fausse** : cette ligne a d'abord annoncé « sans tangentes », sur
+  un comptage de `TANGENT` dans le JSON des `.glb`. Les tangentes sont **fabriquées par Godot à
+  l'import** (`meshes/ensure_tangents=true`, identique sur toutes les coques) : `needle_scout` passe
+  de 0/7 dans le fichier à 7/7 chargées. Le fichier ne dit pas ce dont le moteur dispose.
+- ⚠️ **`HarvesterCombat` attache ses `Beam` comme le Leviathan le faisait** — enfants d'un
+  `Node` sous le `BossController`, donc doublement transformés. Le Leviathan est corrigé
+  (`top_level = true`) ; **le mini-boss n'a pas été vérifié**. Si ses faisceaux sont décalés,
+  personne ne l'a jamais remarqué.
+- Le document de conception `BOSS_PALE_LEVIATHAN.md` décrit toujours quatre phases. Il porte un
+  avertissement en tête et sert encore pour les assets ; ses §4 à §6 sont de la matière non
+  employée.
+
+### Ce qui est acquis
+
+| Livrable | Où | État |
+|---|---|---|
+| Conception du boss (4 phases, chiffres, invariants, spec 3D, 11 prompts) | `docs/design/BOSS_PALE_LEVIATHAN.md` | ✅ |
+| Décision + dimensions 11 × 14 m | `ADR-0018`, tableau d'`ADR-0008` amendé | ✅ |
+| Les 11 images (3 planches, 5 textures, 3 décors/VFX) | `assets/reference/concepts/`, `assets/source/` | ✅ mesurées, regardées, provenance au CSV |
+| **Coque + silhouette (BRIEF-0041)** — noyau sphérique, épines longues/inégales, croissant asymétrique | `build_pale_leviathan.py`, `pale_leviathan.glb` | ✅ mesurée, rendue, regardée (voir réserve) |
+| `GravityWell`, `TargetableProjectile` | `scripts/gameplay/` | ✅ 25 tests (le puits sert désormais les vagues d'aspiration de la phase 2) |
+| `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
+| `LeviathanPlate`, `LeviathanCombat` | `scripts/bosses/` | ✅ refondus par ADR-0020 ; `LeviathanSpike` supprimé avec ses 13 tests |
+
+`./scripts/check.sh` : **311 tests verts** (les deux sessions confondues).
+
+### ✅ BRIEF-0041 (silhouette) — livré et intégré
+
+La reforge de silhouette était en réalité **déjà complète dans le script commité** (`0af3123`) : le
+message WIP sous-décrivait son contenu (sphère du noyau, arc de coquille, épines allongées/inégales,
+gonflement du croissant, tous présents). Le `9,481 m` de la note de reprise était un état
+intermédiaire écarté ; le script commité produit **11,03 m et passe le contrat d'export**. La coque
+a été **régénérée** (le `.glb` sur disque était encore celui de BRIEF-0040) puis vérifiée point par
+point, pas sur la foi du rapport :
+
+- **bbox 11,0313 × 3,1620 × 13,9972 m** (X +0,28 %, Z −0,02 %, Y ≤ 3,20), 27 710 tris / 40 630 sommets.
+- Matériaux aux 3 cibles : `AA_Hull` 35,2 % (≥ 30), `AA_Emissive_Engine` 7,8 % (≤ 8), `AA_Greeble` 17,9 % (≤ 20).
+- Contrat de noms intact (30 maillages, parentage exact), `TANGENT` + `TEXCOORD_0` sur 30/30.
+- Déterminisme OK, sha256 `98529ce7…`. Rendu de recette : `docs/forge/output/BRIEF-0041-planche-quatre-vues.png`.
+
+**3 des 4 écarts résolus et lisibles** : symétrie→asymétrie, noyau plat→sphère saillante, épines
+courtes→longs dards inégaux. **Réserve visuelle non bloquante** (écart n°4, candidate à un polish
+ultérieur) : la coquille lit comme des **anneaux concentriques machinés** plutôt qu'une **carapace de
+tuiles chevauchantes**, et l'incomplétude du croissant reste peu dramatique. Levier propre si on
+l'ouvre un jour : **interrompre les bandes concentriques côté ouverture** (avant-tribord) plutôt
+qu'élargir l'encoche — travail de géométrie de coquille avec incidence sur le harnais de dégagement.
+La méthode de revue est capitalisée dans `.claude/resources/pratique-revue-asset.md`.
+
+### ✅ Câblage de scène + relais niveau — fait (commit `feat(boss): le Leviathan combat`)
+
+`pale_leviathan.tscn` monte `LeviathanCombat` (`external_attacks = true`) avec
+`resources/bosses/pale_leviathan_tuning.tres`. Le relais complet est dans `graybox_root.gd` :
+`structure_changed` → jauge continue, `pull_changed` → `PlayerFighterController.apply_pull()`,
+`piece_gauge_changed` → 4 pastilles (`FighterHUD.set_boss_limbs`, recentrées, 0 régression Harvester),
+`piece_destroyed` → VFX/SFX, `phase_entered` → bannières par phase. **Deux trous comblés au passage** :
+le boss ne mourait jamais (`BossController.defeat()` ajouté ; le module l'appelle quand le cœur tombe)
+et le corps n'était jamais clos (il l'est désormais de bout en bout, seul le cœur compte). Vérifié
+Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai `BossController`.
+
+### Ce qui reste, dans l'ordre
+
+1. **Détachement visuel des épines** (3ᵉ primitive, §8.2 du document) — différée exprès : elle dépend
+   des nœuds de la coque, qui bougeaient encore.
+2. **Textures** : dériver dans `assets/imported/textures/leviathan/` **et** écrire
+   `scripts/fx/leviathan_detail.gd` dans le même commit (`CLAUDE.md` : rien d'inutilisé dans
+   `imported/`). Paramètres de dérivation consignés au §11.3 du document de conception.
+3. **Décor** : vortex et landmark de l'arène (`--mode black`), câblés dans `space_backdrop.tscn`.
+4. **Polish silhouette (optionnel)** : réserve écart n°4 du croissant (voir plus haut).
+5. **Brief séparé** : `build_choir_harvester.py` n'a ni `_triangulate_ngons()` ni `box_project_uv()`
+   — le mini-boss est probablement sans tangentes, donc intexturable. Trouvaille du BRIEF-0040.
+
+---
+
+## Livré le 12/07/2026 — ne plus le proposer
+
+| Chantier | État |
+|---|---|
+| Axe vertical inversé (flèche bas = monter) | ✅ corrigé + 4 tests |
+| Fond spatial | ✅ nébuleuse procédurale volumétrique (domain warping) — **ADR-0006** ; le carré cyan graybox a disparu |
+| Sprites & projectiles | ✅ plus aucune primitive : bolts cœur+halo, traînées douces (`SoftDot`) |
+| Retour d'impact | ✅ gerbe teintée par camp (blanc froid sur coque ennemie, cyan sur notre bouclier) + flash de coque |
+| Vie des ennemis | ✅ réacteur, roulis dans le virage, flash à l'impact |
+| Boss qui mourait deux fois | ✅ corrigé aux deux niveaux (garde `_defeated` + cible qui cesse d'absorber) + test |
+| Audio | ✅ banque de cues typée, 20 SFX, **musique adaptative 9 états** + thème de titre, bus, réglages persistants, menu d'options — **ADR-0007** |
+| Mix audio | ✅ musique normalisée en **loudness** (−16 dB RMS) ; compresseur déplacé du Master vers SFX (le tir du joueur écrasait la partition) |
+| Passage 3D | ✅ **5 coques en meshes glTF** (Specter-9, Needle Scout, Citadelle, Choir Harvester, Pale Leviathan) + éclairage clé/contour avec ombres — **ADR-0008** |
+| Ghost | ✅ `.claude/resources/` (index de process) + roster de **5 sous-agents** |
+
+---
+
+## Livré le 22/07/2026
+
+| Chantier | État |
+|---|---|
+| **Bandeau de vie du boss sur le HUD** | ✅ `_panel` traitait « ancre ≠ 0 » comme « ancré à droite » : le bandeau, seul panneau ancré au CENTRE, s'étalait de centre−1200 à centre−400 et se posait sur la jauge de bouclier. Invisible en développement — il faut atteindre le mini-boss pour le voir. Gardé par `tests/unit/test_hud_layout.gd`, qui échoue bien sur l'ancienne formule |
+| **Planète « découpée »** | ✅ son PNG a un bord BINAIRE (alpha 255 → 0 en 4 px sur un rayon de 500, mesuré) : à l'écran le dégradé tombait sous le pixel. `shaders/planet_atmosphere.gdshader` — limbe adouci, anneau, et surtout **halo débordant sur le fond**, tous modulés par le côté éclairé |
+| **Luminosité** | ✅ le post-traitement rétro pivotait son contraste à 0,5 sur une image entièrement sous 0,25 : il n'était qu'un assombrisseur. `lift` en gamma + troisième lumière ajoutée au combat — **+25,8 %** sur la coque du joueur, mesuré — **ADR-0016** |
+| **Aegis Citadel au bestiaire** | ✅ sixième fiche, famille `FORTRESS` : aucune valeur de combat, donc ses **équipements comptés sur la coque** (6 tourelles, 3 balises, 2 batteries, 1 baie) au lieu de trois lignes de tirets. Tourelles et balises montées et animées (`CitadelLife`) — **BRIEF-0038** |
+| **Bestiaire** (menu d'accueil) | ✅ cinq coques sur présentoir 3D — rotation souris/clavier, zoom, pièces mobiles animées en démonstration, fiche technique HUD qui vire au camp. Dimensions et polygones **mesurés** sur la coque, PV/vitesse/cadence/score **lus** dans les Resources de gameplay (aucune recopie) ; fiction produite par la forge (**BRIEF-0037**) — **ADR-0015** |
+
+---
+
+## P0 — Rendre la démo irréprochable
+
+- [ ] **Contenu de la phase chasseur** — une seule vague de ~10 Needle Scouts puis mini-boss.
+  Ajouter 1-2 vagues et une **2ᵉ famille d'ennemis** pour 2-3 min de jeu et laisser la puissance
+  monter à 5. → tâches **H5** / **H6** de `docs/TASKS_HORIZONTAL.md`.
+- [ ] **Écran titre** — texte nu. Le `title_backdrop.svg` et les emblèmes de faction de la forge
+  **ne sont pas utilisés**. → tâche **H3**.
+- [x] **Écrans** — **pause** et **victoire / rapport** reforgés dans le langage d'interface de
+  l'accueil (ADR-0012). Les cadres SVG plein écran de la forge sont abandonnés, pas intégrés.
+- [ ] **Écran d'échec de mission** — il n'en existe **aucun** : perdre tous les chasseurs appelle
+  `continue_run()` et la partie repart, sans écran ni choix offert au joueur. Manque de gameplay
+  autant que d'interface. → ex-tâche **H4**, redéfinie par l'ADR-0012.
+- [ ] **Pacing de l'appontage** — trop rapide ; ajouter des temps de pause entre l'arrivée de la
+  Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
+- [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».
+  Outil : sous-agent `balance-prober` (rend la chronologie de l'arc).
+
+## P1 — Systèmes de gameplay manquants (spec, valeur forte)
+
+- [ ] **Missiles secondaires** (verrouillage doux, salves, recharge par bonus — `Missile Rack` en asset).
+- [ ] **Overdrive** (jauge, boost temporaire ; devient « Citadel Burst » en forteresse).
+- [ ] **Configurations de tir** : Spread / Lance / Orbit (touche E).
+- [ ] **Familles d'ennemis** — chantier repris par une session dédiée (`ADR-0022`). Le
+  **Crescent Interceptor est livré** (cette ligne l'annonçait encore comme à faire) ; restent
+  Choir Mine, Leech Drone, Null Bomber, Shield Carrier, Frigate Turret. `EnemyController` est
+  une base de composition prête à étendre.
+- [ ] **EncounterDirector** formel (remplacer le pilotage en dur dans `graybox_root`) : timeline
+  data-driven, checkpoints, synchro musique/caméra.
+- [ ] **Objectifs de défense** (« Citadel Under Siege ») : batteries à protéger.
+- [ ] **Scoring avancé** : multiplicateur, combos, précision ; **résumé de fin détaillé** (spec §14.3).
+- [ ] **Manette** + **remapping** des touches.
+
+## P2 — Accessibilité & méta (spec §13, §19)
+
+- [ ] **Accessibilité** : réduction shake/flash, intensité bloom, contraste renforcé, sous-titres, pause.
+- [ ] **Presets graphiques** (Low/Medium/High/Ultra) + option FPS/VSync exposée.
+- [ ] **Voix radio** (concepts personnages produits par la forge) — à sonoriser + sous-titrer.
+- [ ] **Checkpoints** formels (avant appontage / avant boss).
+
+## P3 — Art & finition
+
+- [ ] **Enrichir les coques 3D** — les meshes existent mais restent sobres. → tâche **H1**.
+- [ ] **Enrichir le fond** — la nébuleuse est belle mais uniforme : aucun élément remarquable
+  (planète, bande galactique, débris qui dérivent). → tâche **H2**.
+- [ ] **Couleur des explosions** : arbitrer orange chaud vs consigne « froid/désaturé ».
+- [x] ~~⚠️ **Les coques lisent BEAUCOUP plus sombre en jeu qu'en rendu studio.**~~ **Résolu le
+  22/07/2026 — ADR-0016.** Le diagnostic du 20/07 (« c'est l'éclairage de scène, pas les meshes »)
+  était juste mais n'expliquait qu'**un cinquième** de l'écart, et son correctif n'avait été
+  appliqué qu'à l'écran titre. Deux causes, mesurées : la **troisième lumière** (remplissage)
+  manquait dans `graybox.tscn`, et surtout le post-traitement rétro pivotait son contraste à **0,5**
+  sur une image dont tous les tons vivent **sous 0,25** — il ne pouvait donc que soustraire
+  (−22 % sur la coque, −90 % sur le fond). Corrigé par un `lift` en gamma dans le shader. Gain
+  final : **+25,8 %** de luminance sur la coque du joueur.
+  ⚠️ Reste vrai : juger une coque au seul rendu studio la flatte. Toujours confirmer par une
+  capture en jeu.
+- [ ] **Étendre le bestiaire au-delà des coques** — l'écran existe, et la famille `FORTRESS`
+  (ADR-0015, addendum) a montré comment lui ajouter une nature de coque sans tordre le gabarit.
+  Restent hors catalogue : les **bonus** et les **projectiles**. Un bonus n'a ni dimensions ni
+  structure : lui donner sa propre famille, comme on l'a fait pour la forteresse, plutôt que de
+  lui servir un gabarit de coque — c'est en le forçant qu'on obtient des colonnes de tirets.
+- [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
+- [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
+  vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.
+
+## P4 — Dette technique
+
+- [ ] **Flag `--no-shadow`** pour bissecter le coût de l'éclairage (le projet a déjà `--no-backdrop`
+  et `--no-glow`). Demandé par `godot-verifier`, qui ne peut pas isoler le coût des ombres sans lui.
+- [ ] **Extraire un `FortressController`** (le contrôle est aujourd'hui dans `graybox_root`).
+- [ ] **Swept collision** pour projectiles rapides (spec §21.2).
+- [ ] **Tests d'intégration** (spawn vague, mort ennemi, transition de phase) via harnais headless.
+- [ ] **Export release** + icône/console off + manifeste/hash.
+- [x] ~~**Fuite à la sortie** : 8 ObjectDB leaked / 4 resources still in use (tweens/timers non
+  libérés).~~ **Résolu le 2026-08-23.** Le diagnostic « tweens/timers » était faux, et le chiffre
+  avait entre-temps décuplé (**789** objets fuités / 10 resources / pages du `PagedAllocator`).
+  Sondé fichier par fichier : **la totalité venait d'un seul test**, `test_leviathan_combat.gd`,
+  qui instancie un `LeviathanCombat` (`extends Node`) par méthode. Un Node construit à la main hors
+  arbre n'a **aucun parent pour le récupérer**, là où les unités `RefCounted` meurent avec le cas de
+  test — et Godot ne rapporte la pile qu'à la sortie, donc le bruit ne désigne jamais son coupable.
   ⚠️ **Résolu POUR LE RUNNER DE TESTS seulement.** Le **jeu** fuit encore — cause identifiée par la
   session du bestiaire, `--verbose` à l'appui : le **flux musical Ogg encore en lecture** au moment
   où le processus s'arrête (`OggPacketSequence`, `AudioStreamOggVorbis`,
