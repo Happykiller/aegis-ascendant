@@ -98,7 +98,8 @@ func _ready() -> void:
 		if _hull.find_child("Engine_C", true, false) != null:
 			_build_plume()
 		_vitals = EnemyVitals.bind(_hull)
-		_pose = EnemyPose.bind(_hull, data.moving_part_prefix, data.open_angle_deg)
+		_pose = EnemyPose.bind(_hull, data.moving_part_prefix, data.open_angle_deg,
+			data.open_spread)
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)

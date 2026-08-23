@@ -41,20 +41,60 @@ func test_it_finds_every_numbered_part() -> void:
 		assert_true(part.rotation.length() > 0.01,
 			"%s a bien été posée (rotation %s)" % [part.name, part.rotation])
 
-## ⚠️ LE PIÈGE. Une pièce doit BASCULER autour de sa charnière, pas tourner autour
-## du centre de l'objet. La différence se mesure sur son ORIGINE : elle ne bouge
-## pas d'un millimètre quand la coque s'ouvre — seule son orientation change.
-func test_opening_never_moves_a_part_off_its_hinge() -> void:
+## ⚠️ LE PIÈGE. Une pièce doit BASCULER autour de sa charnière, pas ORBITER autour
+## du centre de l'objet. La différence se mesure sur le déplacement de son origine :
+## un pivot ne la bouge pas, une orbite la fait glisser LATÉRALEMENT.
+##
+## Le coulissement radial, lui, est légitime — il éloigne la pièce du centre en
+## ligne droite. L'invariant n'est donc pas « l'origine ne bouge pas » mais « elle
+## ne bouge jamais de travers ».
+func test_opening_never_makes_a_part_orbit_the_centre() -> void:
 	var hull := _hull()
-	var pose := EnemyPose.bind(hull, "Segment", OPEN_DEG)
+	var pose := EnemyPose.bind(hull, "Segment", OPEN_DEG, 0.3)
 	var before: Array[Vector3] = []
 	for child in hull.get_children():
 		before.append((child as Node3D).position)
 	pose.pose(1.0)
 	for i in hull.get_child_count():
 		var after := (hull.get_child(i) as Node3D).position
-		assert_true(before[i].distance_to(after) < 0.0001,
-			"la pièce %d a pivoté sur place (%s -> %s)" % [i, before[i], after])
+		var moved := after - before[i]
+		var radial := Vector3(before[i].x, 0.0, before[i].z).normalized()
+		var sideways := moved - radial * moved.dot(radial)
+		assert_true(sideways.length() < 0.0001,
+			"la pièce %d n'a pas glissé de travers (dérive %s)" % [i, sideways])
+
+## Sans coulissement, le pivot est strictement sur place : c'est le réglage des
+## coques dont on n'a pas mesuré la marge radiale, et il doit rester sûr.
+func test_without_spread_a_part_pivots_exactly_in_place() -> void:
+	var hull := _hull()
+	var pose := EnemyPose.bind(hull, "Segment", OPEN_DEG)
+	var before := (hull.get_child(0) as Node3D).position
+	pose.pose(1.0)
+	assert_true(before.distance_to((hull.get_child(0) as Node3D).position) < 0.0001,
+		"l'origine n'a pas bougé d'un millimètre")
+
+## Le coulissement fait GROSSIR l'enveloppe : c'est sa seule raison d'être, et
+## c'est ce qui se lit à 46 pixels là où un angle ne se lit pas.
+func test_spreading_grows_the_envelope() -> void:
+	var hull := _hull()
+	var pose := EnemyPose.bind(hull, "Segment", OPEN_DEG, 0.25)
+	var rest := Vector3(hull.get_child(0).position.x, 0.0, hull.get_child(0).position.z).length()
+	pose.pose(1.0)
+	var opened := Vector3((hull.get_child(0) as Node3D).position.x, 0.0,
+		(hull.get_child(0) as Node3D).position.z).length()
+	assert_almost_eq(opened, rest * 1.25, 0.0001,
+		"la pièce s'est éloignée du quart de son rayon (%f -> %f)" % [rest, opened])
+
+## Une instance recyclée doit revenir refermée ET resserrée : le coulissement
+## laisse une position, pas seulement une rotation.
+func test_a_recycled_hull_comes_back_tucked_in() -> void:
+	var hull := _hull()
+	var pose := EnemyPose.bind(hull, "Segment", OPEN_DEG, 0.3)
+	var rest := (hull.get_child(0) as Node3D).position
+	pose.pose(1.0)
+	pose.reset()
+	assert_true(rest.distance_to((hull.get_child(0) as Node3D).position) < 0.0001,
+		"les plaques sont revenues contre la coque")
 
 ## Chaque pièce bascule vers l'EXTÉRIEUR, donc autour d'un axe tangent à son propre
 ## rayon. Si toutes partageaient un axe unique, la coque s'ouvrirait comme un livre :

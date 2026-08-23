@@ -101,6 +101,15 @@ enum Effect { NONE, GRAVITY_WELL }
 ## dans le compte-rendu du brief de la coque. La régler à l'œil, c'est prendre le
 ## risque d'une auto-intersection qu'aucune pose fixe ne montre.
 @export var open_angle_deg: float = 0.0
+## Coulissement des pièces vers l'extérieur à pleine ouverture, en fraction de leur
+## propre rayon. Zéro = elles pivotent sur place.
+##
+## ⚠️ Il existe parce que le pivot SEUL ne se voit pas : 45 degrés mesurés et testés
+## restent invisibles sur un objet de 46 pixels vu de dessus, sous le bloom. Ce qui
+## se lit à cette taille est l'ENVELOPPE globale. Comme `open_angle_deg`, la valeur
+## est un débattement mesuré par la forge — ici contre la couronne de modules de
+## l'équateur, que le pivot n'approche jamais.
+@export var open_spread: float = 0.0
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -180,6 +189,9 @@ func _validate_pose() -> PackedStringArray:
 	elif open_angle_deg > EnemyPose.MAX_OPEN_DEG:
 		errors.append("open_angle_deg above %.0f would drive a part through its neighbour"
 			% EnemyPose.MAX_OPEN_DEG)
+	if open_spread < 0.0 or open_spread > EnemyPose.MAX_SPREAD:
+		errors.append("open_spread must be between 0 and %.2f of the part radius"
+			% EnemyPose.MAX_SPREAD)
 	if not EnemyReaction.is_reactive(self):
 		# Une coque qui s'ouvre sans rien déclencher s'ouvrirait... quand ? Le
 		# télégraphe est le seul moteur de l'ouverture.
