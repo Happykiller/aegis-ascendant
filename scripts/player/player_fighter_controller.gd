@@ -127,6 +127,18 @@ func _emit_initial_state() -> void:
 	power_changed.emit(_power_level)
 
 func _physics_process(delta: float) -> void:
+	# L'aspiration se CONSOMME ici, en tête et inconditionnellement, avant toute
+	# sortie anticipée.
+	#
+	# ⚠️ Elle était consommée au milieu du déplacement libre, donc jamais pendant
+	# l'appontage ni pendant la mort — deux chemins qui rendent la main plus haut.
+	# Tant qu'un seul champ AFFECTAIT la valeur, la traîner était sans conséquence :
+	# elle était écrasée à l'image suivante. Depuis que plusieurs puits s'AJOUTENT,
+	# une aspiration posée pendant un état pilote s'accumulerait sans borne, et le
+	# chasseur serait catapulté dans un coin du champ à la première image rendue —
+	# sans erreur, sans test rouge, et seulement dans une partie qui va jusqu'à
+	# l'appontage.
+	var pull := consume_pull()
 	if not _alive:
 		_respawn_timer -= delta
 		if _respawn_timer <= 0.0:
@@ -157,8 +169,7 @@ func _physics_process(delta: float) -> void:
 		input = GameplayPlane.from_input(
 			Input.get_vector("move_left", "move_right", "move_up", "move_down"))
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
-	plane_position = GameplayPlane.clamp_to_bounds(plane_position + (_velocity + _external_pull) * delta)
-	_external_pull = Vector2.ZERO
+	plane_position = GameplayPlane.clamp_to_bounds(plane_position + (_velocity + pull) * delta)
 	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	if _target != null:
 		_target.position = plane_position
@@ -170,20 +181,37 @@ func _physics_process(delta: float) -> void:
 ## faisceau. Ils passent par le même bouclier, donc par la même invulnérabilité de
 ## 1,2 s après impact — c'est elle, et non un plafond côté attaquant, qui empêche un
 ## faisceau continu de vider l'écu en une image.
-## Impose une aspiration pour l'image en cours (champ gravitique du boss final). À
-## reposer chaque image : elle est consommée dès qu'elle est appliquée. Sans effet
-## pendant l'autopilote ou la mort — ces états rendent la main avant le déplacement libre.
-func apply_pull(velocity: Vector2) -> void:
-	_external_pull = velocity
-
-## Même aspiration, mais qui S'AJOUTE à celles déjà posées cette image.
+## ⚠️ ALIAS CONSERVÉ POUR LE SITE D'APPEL DU BOSS FINAL — utiliser `add_pull()`.
 ##
-## Le boss est seul : une affectation lui suffit. Un champ de mines, non — deux
-## puits ouverts en même temps doivent tirer chacun leur part, sinon le dernier
-## appelé gagne et le joueur traverse le nid sans rien sentir. Consommée par la
-## même remise à zéro, dans `_physics_process`.
+## Elle AFFECTAIT la valeur. Avec un seul champ dans le jeu c'était sans conséquence ;
+## avec plusieurs, l'ordre d'appel décidait du résultat en silence — un `apply_pull`
+## arrivant après les puits d'un champ de mines les effaçait tous, et l'inverse
+## marchait. Un nom qui promet une affectation et qui accumule serait un piège de
+## plus : celui-ci délègue, et disparaîtra quand son dernier appelant aura migré.
+func apply_pull(velocity: Vector2) -> void:
+	add_pull(velocity)
+
+## Impose une aspiration pour l'image en cours (`GravityWell`), qui S'AJOUTE à celles
+## déjà posées. À reposer chaque image : elle est consommée en tête de
+## `_physics_process`, quel que soit l'état du chasseur.
+##
+## Deux puits ouverts en même temps doivent tirer chacun leur part — sans quoi le
+## dernier appelé gagne et le joueur traverse tranquillement un nid qui devrait
+## l'écraser.
 func add_pull(velocity: Vector2) -> void:
 	_external_pull += velocity
+
+## Retire l'aspiration accumulée et remet le compteur à zéro, en un seul geste.
+##
+## Une méthode plutôt que deux lignes en tête de `_physics_process` pour une seule
+## raison : ainsi la règle « on consomme, donc on remet à zéro » est vérifiable sans
+## arbre de scène (tests/unit/test_player_pull.gd). Séparer la lecture de la remise
+## à zéro, c'est autoriser un chemin qui lit sans effacer — et c'est exactement le
+## défaut qu'on vient de corriger.
+func consume_pull() -> Vector2:
+	var pull := _external_pull
+	_external_pull = Vector2.ZERO
+	return pull
 
 func take_contact_damage(amount: float) -> void:
 	_take_hit(amount)
