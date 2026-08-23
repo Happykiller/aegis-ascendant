@@ -287,9 +287,10 @@ func _distance_to_player() -> float:
 ## Le champ d'aspiration, tant que la charge dure. La même primitive que la phase
 ## gravitique du boss (`GravityWell`), mais posée par une unité de vague.
 ##
-## ⚠️ `add_pull` et non `apply_pull` : deux mines ouvertes en même temps doivent
-## ADDITIONNER leurs champs. Une affectation ferait gagner la dernière appelée,
-## et le joueur traverserait tranquillement un nid qui devrait l'écraser.
+## ⚠️ Deux mines ouvertes en même temps ADDITIONNENT leurs champs. C'est pour ça
+## que `add_pull` est la seule porte du chasseur : une affectation ferait gagner la
+## dernière appelée, et le joueur traverserait tranquillement un nid qui devrait
+## l'écraser.
 func _pull_player() -> void:
 	_player.add_pull(GravityWell.pull_at(_player.plane_position, plane_position,
 		data.pull_radius, data.pull_speed_max))

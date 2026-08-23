@@ -26,17 +26,28 @@ func test_two_wells_pull_together_instead_of_overwriting_each_other() -> void:
 	assert_almost_eq(pull.x, 3.0, 0.0001, "le premier puits tire encore")
 	assert_almost_eq(pull.y, 4.0, 0.0001, "et le second s'y ajoute")
 
-## ⚠️ Le piège que ce test ferme : `apply_pull()` AFFECTAIT la valeur. Le jour où
-## le boss final et un champ de mines coexisteront — un EncounterDirector est au
-## backlog — l'ordre d'appel aurait décidé du résultat en silence : un appel du
-## boss arrivant après les puits des mines les aurait tous effacés.
-func test_the_bosss_call_site_no_longer_erases_the_mines() -> void:
+## ⚠️ LA PORTE QUI RESTE FERMÉE. Il a existé un `apply_pull()` qui AFFECTAIT la
+## valeur, et tant qu'il n'y avait qu'un champ dans le jeu, rien ne pouvait le
+## révéler : le défaut était masqué par le NOMBRE D'APPELANTS, pas par le code. Le
+## boss et les mines ont désormais la même porte, et ce test échouera si quelqu'un
+## en rouvre une qui écrase — un appelant qui affecte annulerait en silence tous
+## les autres de la même image.
+func test_there_is_no_second_door_that_overwrites() -> void:
 	var fighter := _fighter()
-	fighter.add_pull(Vector2(2.0, 0.0))
-	fighter.apply_pull(Vector2(0.0, 5.0))
-	var pull := fighter.consume_pull()
-	assert_almost_eq(pull.x, 2.0, 0.0001, "le puits de la mine a survécu à l'appel du boss")
-	assert_almost_eq(pull.y, 5.0, 0.0001, "et le champ du boss est bien là")
+	assert_false(fighter.has_method("apply_pull"),
+		"aucune voie d'affectation n'est offerte a cote de add_pull()")
+
+## Le scénario que le boss et les mines partageront le jour où une rencontre les
+## fera cohabiter : chacun pose sa part, l'ordre d'appel n'y change rien.
+func test_a_boss_field_and_a_minefield_compose_in_any_order() -> void:
+	var first := _fighter()
+	first.add_pull(Vector2(2.0, 0.0))
+	first.add_pull(Vector2(0.0, 5.0))
+	var second := _fighter()
+	second.add_pull(Vector2(0.0, 5.0))
+	second.add_pull(Vector2(2.0, 0.0))
+	assert_true(first.consume_pull().is_equal_approx(second.consume_pull()),
+		"le resultat ne depend pas de qui a parle en premier")
 
 ## Consommer, c'est prendre ET effacer. Un chemin qui lirait sans effacer
 ## rejouerait la même aspiration à chaque image.

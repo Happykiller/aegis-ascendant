@@ -181,16 +181,6 @@ func _physics_process(delta: float) -> void:
 ## faisceau. Ils passent par le même bouclier, donc par la même invulnérabilité de
 ## 1,2 s après impact — c'est elle, et non un plafond côté attaquant, qui empêche un
 ## faisceau continu de vider l'écu en une image.
-## ⚠️ ALIAS CONSERVÉ POUR LE SITE D'APPEL DU BOSS FINAL — utiliser `add_pull()`.
-##
-## Elle AFFECTAIT la valeur. Avec un seul champ dans le jeu c'était sans conséquence ;
-## avec plusieurs, l'ordre d'appel décidait du résultat en silence — un `apply_pull`
-## arrivant après les puits d'un champ de mines les effaçait tous, et l'inverse
-## marchait. Un nom qui promet une affectation et qui accumule serait un piège de
-## plus : celui-ci délègue, et disparaîtra quand son dernier appelant aura migré.
-func apply_pull(velocity: Vector2) -> void:
-	add_pull(velocity)
-
 ## Impose une aspiration pour l'image en cours (`GravityWell`), qui S'AJOUTE à celles
 ## déjà posées. À reposer chaque image : elle est consommée en tête de
 ## `_physics_process`, quel que soit l'état du chasseur.
@@ -198,6 +188,12 @@ func apply_pull(velocity: Vector2) -> void:
 ## Deux puits ouverts en même temps doivent tirer chacun leur part — sans quoi le
 ## dernier appelé gagne et le joueur traverse tranquillement un nid qui devrait
 ## l'écraser.
+##
+## ⚠️ C'EST LA SEULE PORTE. Il a existé un `apply_pull()` qui AFFECTAIT la valeur,
+## et tant qu'il n'y avait qu'un champ dans le jeu, personne ne pouvait le voir :
+## le défaut était masqué par le nombre d'appelants, pas par le code. Ne pas
+## rouvrir de voie qui écrase — un appelant qui affecte annule en silence tous les
+## autres de la même image.
 func add_pull(velocity: Vector2) -> void:
 	_external_pull += velocity
 
