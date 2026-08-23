@@ -138,6 +138,26 @@ Puis reposer le commit détruit avec **son message d'origine** et ses chemins ex
 le contenu ligne à ligne (`git diff --cached`) avant de croire qui que ce soit sur parole — y
 compris l'autre session, qui rapporte de bonne foi ce qu'elle croit avoir fait.
 
+## On vérifie moins ce qu'on affirme sur le travail d'autrui que sur le sien (23/08/2026)
+
+Deux sessions ont passé une journée à se corriger mutuellement, chacune mesurant avant d'affirmer :
+tangentes recomptées, fuites reprises hors pipe, différentiel refait avec le bon témoin, chaque
+`.glb` ouvert avant de croire un rapport de forge. **Une seule affirmation de la journée a été
+faite sans vérifier — et c'était la seule qui portait sur le travail de l'autre session.**
+
+Le contenu était mineur (« ta ligne de backlog ne liste que deux coques » ; elle en listait quatre,
+et la donnée manquante venait de son propre relevé, des heures plus tôt). Le mécanisme, lui, ne
+l'est pas : sur son propre travail on doute par réflexe, sur celui d'un autre on lit **de mémoire**
+— et la mémoire garde ce qu'on croyait au moment où on l'a lu, pas ce que le fichier dit maintenant.
+
+⚠️ **Avant de signaler un défaut dans le travail d'une autre session, ouvrir le fichier.** C'est
+peu coûteux, et c'est exactement là que la vigilance baisse : on est en train de rendre service, ce
+qui n'a pas l'air d'être un moment où l'on se trompe.
+
+Corollaire pour celui qui reçoit : **un signalement de bonne foi n'est pas une mesure.** Le
+redresser vaut mieux que le laisser passer par politesse — les deux sessions ont retenu ce jour-là
+qu'un signalement faux accepté poliment devient une ligne fausse dans le dépôt.
+
 ## Ne jamais faire
 
 - `git add -A` quand l'arbre contient du travail dont on n'est pas l'auteur.
