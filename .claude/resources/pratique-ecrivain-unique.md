@@ -99,9 +99,49 @@ propriétaire `faro`.
   `happykiller`, ou GitKraken sous `happykiller`). Le signaler à l'opérateur plutôt que de rejouer
   le blocage à chaque commit.
 
+## `--amend` cible `HEAD`, pas « mon dernier commit » (23/08/2026)
+
+Deux sessions travaillaient en parallèle avec des périmètres disjoints et une règle explicite :
+**commits en chemins explicites** (`git commit -F <fichier> -- <chemins>`), jamais de `-a` ni de
+`git add .`. La règle a tenu tout l'après-midi. Elle n'a pas empêché ceci :
+
+1. session A committe `cb1aeca` ;
+2. session B committe `4b3714c` **par-dessus** ;
+3. session A veut corriger le sujet de *son* commit et lance `git commit --amend` ;
+4. `--amend` réécrit **`4b3714c`**, le commit de B, parce que c'est lui qui est en `HEAD` ;
+5. le `git reset --soft HEAD^` de réparation **supprime le commit de B**.
+
+Le travail de B n'a survécu que parce qu'un `reset --soft` laisse le contenu dans l'index. C'est un
+heureux hasard, pas une réparation.
+
+**Un pathspec n'aurait rien sauvé.** Le problème n'est pas ce que la commande *prend*, c'est ce
+qu'elle **vise** : le dernier commit, quel qu'en soit l'auteur. Sur un arbre partagé, `HEAD`
+appartient à celui qui a committé en dernier — et rien ne le dit.
+
+⚠️ **Et il n'existe pas de version « en vérifiant d'abord ».** Lire `git log -1` puis lancer
+`--amend` n'est pas atomique : l'autre session peut committer entre les deux. C'est exactement ce
+qui vient de se produire.
+
+**Donc, tant que deux sessions écrivent : aucune réécriture d'historique. Pas `--amend`, pas
+`rebase`, pas `reset --hard`, pas `commit --fixup`.** Un sujet de commit malformé attend qu'on soit
+seul ; il ne vaut jamais une réécriture à chaud.
+
+**Comment on s'en sort quand c'est arrivé** — le reflog dit tout, et lui seul :
+
+```bash
+git reflog --oneline | head -8      # la ligne `commit (amend)` nomme le coupable
+git show --stat <commit-amende>     # si le jeu de fichiers est celui de l'AUTRE, c'est son commit
+git status --short                  # `M ` en 1re colonne = contenu sauf, dans l'index
+```
+
+Puis reposer le commit détruit avec **son message d'origine** et ses chemins explicites. Vérifier
+le contenu ligne à ligne (`git diff --cached`) avant de croire qui que ce soit sur parole — y
+compris l'autre session, qui rapporte de bonne foi ce qu'elle croit avoir fait.
+
 ## Ne jamais faire
 
 - `git add -A` quand l'arbre contient du travail dont on n'est pas l'auteur.
+- **Réécrire l'historique à deux** : `--amend`, `rebase`, `reset --hard`, `commit --fixup`.
 - « Réparer » le test rouge d'un autre agent : c'est son chantier en cours, pas un bug.
 - Diagnostiquer un crash sur un seul lancement raté quand un autre agent déploie en parallèle.
 

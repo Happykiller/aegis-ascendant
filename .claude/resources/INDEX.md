@@ -93,7 +93,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et
-  fichier fantôme `NUL` — ce n'est pas ton code.
+  fichier fantôme `NUL` — ce n'est pas ton code. ⚠️ **Aucune réécriture d'historique à deux**
+  (`--amend`, `rebase`, `reset --hard`) : `--amend` vise `HEAD`, donc le commit de l'AUTRE s'il a
+  committé en dernier, et un pathspec n'y change rien. Vécu : un commit détruit, sauvé par hasard
+  parce qu'un `reset --soft` laisse le contenu dans l'index.
 
 ## Process — étendre le ghost
 
