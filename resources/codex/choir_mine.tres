@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/choir_mine.glb" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/enemies/choir_mine.tres" id="3_data"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Choir Mine"
+camp = 1
+designation = "NX-051"
+hull_class = "CHARGE DORMANTE A COURONNE"
+builder = "INCONNU - SEMIS ORBITAL"
+status = "MENACE CONFIRMEE"
+notice = "Elle ne manoeuvre pas. Elle dérive avec le champ de débris et attend qu'on vienne à elle: le mouvement relatif est le nôtre, jamais le sien. À portée, six plaques s'écartent et le noyau vire au blanc pendant sept dixièmes de seconde. Ce qui s'allume part, même si l'on recule. Un tir à distance la neutralise sans qu'elle ait rien coûté."
+mass_t = 0.34
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+enemy_data = ExtResource("3_data")
