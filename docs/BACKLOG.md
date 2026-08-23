@@ -62,6 +62,15 @@ pour tomber au troisième passage — ni au premier, ni jamais.
 
 #### Dette laissée par la refonte
 
+- ⚠️ **Quatre coques sur dix sont sans tangentes ni UV, donc intexturables** — mesuré le
+  2026-08-23 en lisant le JSON des `.glb` (`TANGENT` dans `meshes[].primitives[].attributes`) :
+  `choir_harvester` **0/61**, `null_maw` 0/36, `crescent_interceptor` 0/7, `needle_scout` 0/7.
+  Cause connue : sans `_triangulate_ngons()`, l'exporteur glTF **abandonne silencieusement** les
+  tangentes — ni erreur, ni test rouge, juste un relief qui ne s'allume jamais. Saines :
+  `pale_leviathan` **145/145**, `choir_mine` 33/33, `specter_9` 29/29, les trois pièces de citadelle.
+  → Le mini-boss est le cas le plus coûteux (61 primitives) et confirme la trouvaille du BRIEF-0040.
+  Vérification en quelques secondes, sans Godot ni Blender : le `.glb` porte son JSON en clair
+  (chunk 0, longueur sur 4 octets à l'offset 12, JSON à partir de 20).
 - ⚠️ **`HarvesterCombat` attache ses `Beam` comme le Leviathan le faisait** — enfants d'un
   `Node` sous le `BossController`, donc doublement transformés. Le Leviathan est corrigé
   (`top_level = true`) ; **le mini-boss n'a pas été vérifié**. Si ses faisceaux sont décalés,
