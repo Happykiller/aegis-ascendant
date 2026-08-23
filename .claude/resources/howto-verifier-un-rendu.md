@@ -60,6 +60,34 @@ depuis `[Level] ready`, donc un événement à *t* secondes se vise à `60 × t`
 ⚠️ Ne pas combiner ce calcul avec `--novsync` : la cadence n'est plus 60 Hz et l'arithmétique
 s'effondre.
 
+## Deux captures, jamais une : la silhouette sur fond NOIR, la couleur sur le fond RÉEL
+
+`--no-backdrop` n'est pas qu'un outil de perf. C'est **l'outil de lecture de la géométrie**, et
+c'est le premier drapeau à sortir dès qu'on juge une forme, un point d'ancrage ou un alignement.
+
+| Ce qu'on veut juger | Fond | Pourquoi |
+|---|---|---|
+| Silhouette, forme, **d'où part un effet**, ce qui traverse quoi | **`--no-backdrop`** | La nébuleuse est claire et bariolée ; une pièce claire dessus est illisible, et on valide des choses fausses |
+| **Couleur**, contraste, lisibilité d'un télégraphe | **le fond réel** | Un signal se juge contre ce qui l'entoure. Sur fond noir, tout ressort — y compris ce qui disparaîtra en jeu |
+
+**Ce que ça a coûté (23/08/2026)** — deux sessions, le même jour, chacune dans la mauvaise
+configuration :
+
+- Le boss final : ses lasers d'épines partaient **du vide**, et un correctif de braquage faisait
+  **traverser le corps** aux épines. Trois captures sur fond de jeu n'avaient rien montré : cornes
+  claires sur nébuleuse claire. **Une seule capture `--no-backdrop`** a rendu les deux défauts
+  évidents en un coup d'œil.
+- Les mines du bestiaire : leur signal d'engagement (émissif ×2,4) était **invisible en jeu** alors
+  que la mesure disait qu'il montait. Cause : les pixels étaient déjà **écrêtés à 244-255**, et
+  multiplier une valeur saturée est une opération nulle ; le fond magenta achevait de noyer une
+  mine magenta. Là, il fallait le fond réel — sur fond noir, l'effet aurait paru parfait.
+
+⚠️ **Et la grandeur à mesurer n'est pas toujours la luminance.** Sur un fond lumineux, ce qui se
+voit est le **changement de teinte**. Mesurée sur les mines : luminance de la pièce engagée 236,6
+contre 215-227 au repos — **dans la dispersion du repos**, donc rien. Écart rouge-vert sur les
+mêmes pixels : 7,2 contre 26,8-53,2 — **aucun recouvrement**. Même image, même effet, une grandeur
+qui ment et une qui tranche.
+
 ## Flags utiles
 
 | Flag | Effet |

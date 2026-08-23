@@ -25,7 +25,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 ## Howtos — outillage vérifié
 
 - [Vérifier un rendu visuel depuis WSL](howto-verifier-un-rendu.md) — capture PNG autonome, sans
-  solliciter l'opérateur. ⚠️ Effacer `capture.png` **avant** chaque lancement et exiger la ligne
+  solliciter l'opérateur. ⚠️ **Deux captures, jamais une** : la **silhouette** (et d'où part un
+  effet) se juge sur fond NOIR (`--no-backdrop`), la **couleur** sur le fond RÉEL. Coût de la
+  confusion, le même jour dans les deux sens : des lasers de boss qui partaient du vide, invisibles
+  sur la nébuleuse ; et un signal de mine parfait sur fond noir, noyé en jeu. ⚠️ Sur fond lumineux,
+  mesurer la **teinte**, pas la luminance — un pic à 255 ne dit pas « lumineux », il dit « écrêté ». ⚠️ Effacer `capture.png` **avant** chaque lancement et exiger la ligne
   `saved` (sinon on juge un PNG périmé) ; les flags de jeu passent **après `++`** ; et
   `--capture-after` compte des **images**, pas des secondes.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
