@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+; Null Maw — l'unite qui NE BLESSE PAS. Elle ne retire pas de bouclier, elle
+; retire la marge de manoeuvre : le joueur reste libre de ses commandes et cesse
+; de pouvoir se replacer. Elle se referme, se rearme, recommence — c'est une zone
+; interdite, pas un obstacle qu'on depense (a l'inverse de la Choir Mine).
+;
+; Aucun projectile, et c'est legitime : validate() n'en exige un que si l'unite
+; tire. Sa menace est entierement dans son champ.
+;
+; ⚠️ pull_speed_max = 7,0 contre 14,0 de vitesse joueur : GravityWell.leaves_room()
+; l'impose et validate() le verifie. Une aspiration a laquelle on ne peut rien
+; opposer n'est plus un danger, c'est une cinematique — et sur une mine c'est pire,
+; puisque le joueur a CHOISI de s'approcher.
+;
+; open_angle_deg = 45 est mesure (BRIEF-0043-report.md) : c'est le seuil ou le
+; percement central devient TRAVERSANT vu de dessus, donc ou le puits se lit. La
+; premiere interpenetration petale/anneau est a 57,5 degres.
+;
+; hitbox_radius : le diametre circonscrit vaut 1,580 m (pointes a 22/96/155/265/321
+; degres), mais on vise le CORPS et pas les extremites — un rayon de 0,79 ferait
+; toucher le vide entre deux lobes.
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+path = 9
+fire = 1
+effect = 1
+display_name = "Null Maw"
+max_health = 26.0
+move_speed = 1.1
+fire_interval = 1.9
+hitbox_radius = 0.62
+score_value = 140
+alert_radius = 5.5
+trigger_radius = 3.0
+windup_time = 0.5
+active_time = 1.6
+rearm_time = 2.5
+pull_radius = 4.5
+pull_speed_max = 7.0
+moving_part_prefix = "Petal"
+open_angle_deg = 45.0

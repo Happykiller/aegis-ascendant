@@ -11,6 +11,8 @@ extends "res://tests/test_case.gd"
 
 const CHOIR_MINE_HULL := preload("res://assets/imported/models/ships/choir_mine.glb")
 const CHOIR_MINE_DATA := preload("res://resources/enemies/choir_mine.tres")
+const NULL_MAW_HULL := preload("res://assets/imported/models/ships/null_maw.glb")
+const NULL_MAW_DATA := preload("res://resources/enemies/null_maw.tres")
 
 ## Débattement mécanique MESURÉ sur le maillage livré (BRIEF-0042-report.md) :
 ## première interpénétration plaque/voisine à 57°, dernière valeur sûre 56°.
@@ -48,3 +50,96 @@ func test_the_mine_hull_declares_no_engine() -> void:
 		"la bouche existe : le contrôleur la lit à l'initialisation")
 	assert_true(hull.find_child("Engine_C", true, false) == null,
 		"et aucune tuyère : une mine derive, elle ne pousse pas")
+
+
+# --- Null Maw -----------------------------------------------------------------
+
+## Débattement mesuré (BRIEF-0043-report.md) : première interpénétration
+## pétale/anneau à 57,5°, l'anneau tournant impose de retenir cette valeur pour les
+## cinq pétales. La butée est toujours l'anneau, jamais un voisin.
+const NULL_MAW_CLEARANCE_DEG := 57.5
+
+func test_the_shipped_maw_hull_carries_the_parts_the_code_looks_for() -> void:
+	var hull := track(NULL_MAW_HULL.instantiate()) as Node3D
+	var pose := EnemyPose.bind(hull, NULL_MAW_DATA.moving_part_prefix,
+		NULL_MAW_DATA.open_angle_deg, NULL_MAW_DATA.open_spread)
+	assert_true(pose != null, "les pétales existent dans la coque livrée")
+	assert_eq(hull.find_children("Petal_*", "Node3D", true, false).size(), 5,
+		"les cinq pétales annoncés par le brief sont là")
+
+func test_the_maw_never_opens_past_what_its_geometry_allows() -> void:
+	assert_true(NULL_MAW_DATA.open_angle_deg <= NULL_MAW_CLEARANCE_DEG,
+		"l'ouverture réglée (%.1f°) tient sous le débattement mesuré (%.1f°)"
+			% [NULL_MAW_DATA.open_angle_deg, NULL_MAW_CLEARANCE_DEG])
+
+func test_the_maw_hull_declares_no_engine() -> void:
+	var hull := track(NULL_MAW_HULL.instantiate()) as Node3D
+	assert_true(hull.find_child("Engine_C", true, false) == null,
+		"un puits derive, il ne pousse pas")
+
+# --- Ce qui survit a l'import, et ce qui ne survit pas -------------------------
+
+## ⚠️ DEUX DEFAUTS QUI SE RESSEMBLENT ET N'ONT RIEN A VOIR.
+##
+## Un `.glb` sans triangulation ni UV sort de Blender sans TANGENT ni TEXCOORD_0 —
+## l'exporteur abandonne mikktspace en silence. On en a conclu, la forge comme moi,
+## que le relief de ces coques ne s'allumerait jamais. **C'est faux pour les
+## tangentes** : l'import Godot porte `meshes/ensure_tangents=true` (identique sur
+## toutes les coques du depot), et le moteur les FABRIQUE. Mesure a l'appui :
+## `needle_scout.glb` a 0 tangente sur 7 primitives dans le fichier, et 7 surfaces
+## sur 7 avec tangentes une fois chargee.
+##
+## **Les UV, elles, ne s'inventent pas.** Aucun importateur ne peut deviner comment
+## deplier une coque. Une surface sans UV ne peut recevoir AUCUNE carte de detail —
+## `HullDetail.apply()` n'aurait rien ou plaquer. C'est la propriete qui decide, et
+## c'est donc elle qu'on garde.
+##
+## La lecon vaut au-dela du cas : un test ecrit sur la mauvaise propriete est PIRE
+## qu'aucun test, parce qu'il ne peut pas echouer et qu'il rassure. La premiere
+## version de ce test portait sur les tangentes ; elle etait vacante.
+const HULLS_THAT_MUST_CARRY_UVS := {
+	"choir_mine": CHOIR_MINE_HULL,
+	"null_maw": NULL_MAW_HULL,
+}
+
+func _uv_coverage(scene: PackedScene) -> Vector2i:
+	var hull := track(scene.instantiate())
+	var surfaces := 0
+	var uvs := 0
+	for mesh in _meshes(hull):
+		var array_mesh := mesh.mesh as ArrayMesh
+		if array_mesh == null:
+			continue
+		for i in array_mesh.get_surface_count():
+			surfaces += 1
+			if array_mesh.surface_get_format(i) & Mesh.ARRAY_FORMAT_TEX_UV:
+				uvs += 1
+	return Vector2i(uvs, surfaces)
+
+func test_the_new_hulls_can_all_receive_a_detail_map() -> void:
+	for name in HULLS_THAT_MUST_CARRY_UVS:
+		var coverage := _uv_coverage(HULLS_THAT_MUST_CARRY_UVS[name])
+		assert_true(coverage.y > 0, "%s a bien des surfaces" % name)
+		assert_eq(coverage.x, coverage.y,
+			"%s porte ses UV (%d sur %d surfaces)" % [name, coverage.x, coverage.y])
+
+## LA GARDE EST-ELLE VACANTE ? Non, et voici la preuve : la coque historique du
+## Needle Scout n'a AUCUNE UV, et le test ci-dessus la refuserait.
+##
+## Elle n'y figure pas volontairement — c'est une dette connue, inscrite au backlog,
+## et l'ajouter rendrait la porte rouge sur un defaut deja arbitre. Le jour ou elle
+## sera reforgee, elle rejoint la liste et ce test-ci disparait.
+func test_the_uv_check_would_actually_catch_a_bad_hull() -> void:
+	var legacy := _uv_coverage(preload("res://assets/imported/models/ships/needle_scout.glb"))
+	assert_true(legacy.y > 0, "la coque historique a bien des surfaces")
+	assert_eq(legacy.x, 0,
+		"et aucune UV : la garde n'est pas vacante (dette connue, %d/%d)"
+			% [legacy.x, legacy.y])
+
+func _meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
+	var mesh := node as MeshInstance3D
+	if mesh != null:
+		out.append(mesh)
+	for child in node.get_children():
+		_meshes(child, out)
+	return out

@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+; Null Maw. Meme squelette de quatre noeuds que les autres familles.
+;
+; La coque porte aussi un noeud `Ring` (anneau d'accretion) qui n'est PAS anime
+; aujourd'hui : EnemyPose ne pilote que les pieces numerotees `<prefix>_NN`, et
+; l'anneau tourne sur lui-meme, ce qui est un autre geste. Il est la, il ne bouge
+; pas, et c'est dit plutot que decouvert plus tard.
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_ctrl"]
+[ext_resource type="Resource" path="res://resources/enemies/null_maw.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/health_component.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/null_maw.glb" id="4_hull"]
+
+[node name="NullMaw" type="Node3D"]
+script = ExtResource("1_ctrl")
+data = ExtResource("2_data")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Hull" parent="VisualRoot" instance=ExtResource("4_hull")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
