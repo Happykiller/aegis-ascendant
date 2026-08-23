@@ -13,6 +13,9 @@ const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const OptionsMenuScene := preload("res://scenes/ui/options_menu.tscn")
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
 const CODEX_SCENE := "res://scenes/ui/codex.tscn"
+## Banc d'essai du bestiaire : une famille d'ennemis seule, en boucle. Jamais
+## atteignable au menu — c'est un outil de réglage, pas un mode de jeu.
+const BESTIARY_LAB_SCENE := "res://scenes/dev/bestiary_lab.tscn"
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _scene_router: SceneRouterScript = get_node("/root/SceneRouter")
@@ -39,6 +42,16 @@ func _ready() -> void:
 		_start_game.call_deferred()
 	elif "--goto-codex" in args:
 		_open_codex.call_deferred()
+	elif _has_prefix(args, "--goto-lab"):
+		# `--goto-lab` ou `--goto-lab=<unite>` : le banc lit lui-même l'unité.
+		_scene_router.goto_scene.call_deferred(BESTIARY_LAB_SCENE)
+
+
+static func _has_prefix(args: PackedStringArray, prefix: String) -> bool:
+	for arg in args:
+		if arg == prefix or arg.begins_with(prefix + "="):
+			return true
+	return false
 
 func _build_menu_focus() -> void:
 	var buttons := _buttons()

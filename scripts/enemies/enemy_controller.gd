@@ -24,6 +24,12 @@ signal destroyed(enemy: EnemyController)
 signal fired
 ## Emitted when the enemy takes a hit without dying (audio cue).
 signal hit
+## Changement d'état de la menace de proximité (`EnemyReaction.State`).
+##
+## Ce qu'une mine fait ne se voit pas dans sa position : elle dérive pareil qu'elle
+## dorme ou qu'elle s'apprête à éclater. Sans ce signal, son comportement n'est
+## observable qu'à l'œil, sur une capture — c'est-à-dire mal.
+signal reaction_changed(state: int)
 
 @export var data: EnemyData
 ## Optional wiring for enemies placed directly in a scene (spawners inject
@@ -254,6 +260,7 @@ func _update_reaction(delta: float) -> void:
 		var previous := _state
 		_state = next
 		_state_time = 0.0
+		reaction_changed.emit(_state)
 		if _state == EnemyReaction.State.ACTIVE:
 			_fire_salvo()
 		elif previous == EnemyReaction.State.ACTIVE:
