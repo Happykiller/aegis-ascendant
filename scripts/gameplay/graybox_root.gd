@@ -431,7 +431,11 @@ func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vec
 func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> void:
 	if _player == null:
 		return
-	_player.apply_pull(GravityWell.pull_at(_player.plane_position, centre, radius, speed_max))
+	# `add_pull` et non `apply_pull` : l'aspiration s'AJOUTE à celles déjà posées cette
+	# image. Le boss est seul aujourd'hui, mais un champ de mines et lui peuvent se
+	# retrouver dans la même rencontre — et une affectation effacerait silencieusement les
+	# puits des autres, sans erreur ni test rouge.
+	_player.add_pull(GravityWell.pull_at(_player.plane_position, centre, radius, speed_max))
 
 # --- La plongée dans le noyau (ADR-0021) --------------------------------------
 ## Le playtest disait : « on ne voit pas, on ne comprend pas qu'il faut aller dans le
