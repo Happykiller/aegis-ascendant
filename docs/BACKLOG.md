@@ -73,6 +73,18 @@ pour tomber au troisième passage — ni au premier, ni jamais.
   un comptage de `TANGENT` dans le JSON des `.glb`. Les tangentes sont **fabriquées par Godot à
   l'import** (`meshes/ensure_tangents=true`, identique sur toutes les coques) : `needle_scout` passe
   de 0/7 dans le fichier à 7/7 chargées. Le fichier ne dit pas ce dont le moteur dispose.
+- ⚠️ **`ak.inset_panel()` est un no-op sur un BMesh fraîchement bâti** — signalé par la forge de la
+  session bestiaire, mesuré : `inset_region` lit la normale de face, qui vaut `(0,0,0)` tant que
+  `normal_update()` n'a pas été appelé. Bordures d'aire **0,000000 m²** sans la mise à jour contre
+  **0,000714 m²** avec, puis ressoudées par `cleanup()`. **Il ne reste que le changement de
+  matériau** : un panneau qui se voit et qui n'existe pas.
+  → **Les deux coques de boss sont concernées** : `build_pale_leviathan.py` (10 appels,
+  0 `normal_update`, 28 `bridge_rings`) et `build_choir_harvester.py` (7 appels, 0). Comme d'habitude
+  ici, **rien ne le signale** — ni le compte de triangles, ni le contrat d'export, ni le rendu.
+  → Le correctif a sa place dans **`lib/aegis_kit.py` lui-même**, sinon le prochain script l'oubliera
+  comme les précédents. Mais le kit est partagé : le corriger régénère **tous** les `.glb` du dépôt,
+  donc déterminisme à revérifier et silhouettes à re-regarder, coque par coque. **Chantier à part,
+  pas un correctif à glisser** — accord pris entre les deux sessions le 2026-08-23.
 - ⚠️ **`HarvesterCombat` attache ses `Beam` comme le Leviathan le faisait** — enfants d'un
   `Node` sous le `BossController`, donc doublement transformés. Le Leviathan est corrigé
   (`top_level = true`) ; **le mini-boss n'a pas été vérifié**. Si ses faisceaux sont décalés,
