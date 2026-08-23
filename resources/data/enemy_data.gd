@@ -88,6 +88,20 @@ enum Effect { NONE, GRAVITY_WELL }
 @export var pull_radius: float = 0.0
 @export var pull_speed_max: float = 0.0
 
+# --- Coque articulée (EnemyPose) ---------------------------------------------
+
+## Préfixe des pièces mobiles à ouvrir pendant le télégraphe : "Segment" pour la
+## Choir Mine, "Petal" pour le Null Maw. Vide = coque rigide, comme les neuf
+## familles écrites avant celle-ci.
+@export var moving_part_prefix: String = ""
+## Ouverture à pleine charge, en degrés.
+##
+## ⚠️ Cette valeur n'est pas un goût : c'est le DÉBATTEMENT MÉCANIQUE mesuré par la
+## forge sur la coque, au-delà duquel une pièce traverse sa voisine. Il est consigné
+## dans le compte-rendu du brief de la coque. La régler à l'œil, c'est prendre le
+## risque d'une auto-intersection qu'aucune pose fixe ne montre.
+@export var open_angle_deg: float = 0.0
+
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if max_health <= 0.0:
@@ -116,6 +130,7 @@ func validate() -> PackedStringArray:
 	errors.append_array(_validate_fire())
 	errors.append_array(_validate_reaction())
 	errors.append_array(_validate_effect())
+	errors.append_array(_validate_pose())
 	return errors
 
 
@@ -153,6 +168,22 @@ func _validate_reaction() -> PackedStringArray:
 		errors.append("active_time must be > 0 when the unit reacts")
 	if rearm_time < 0.0:
 		errors.append("rearm_time must be >= 0 (zero means single use)")
+	return errors
+
+
+func _validate_pose() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if moving_part_prefix.is_empty():
+		return errors
+	if open_angle_deg <= 0.0:
+		errors.append("open_angle_deg must be > 0 when moving_part_prefix is set")
+	elif open_angle_deg > EnemyPose.MAX_OPEN_DEG:
+		errors.append("open_angle_deg above %.0f would drive a part through its neighbour"
+			% EnemyPose.MAX_OPEN_DEG)
+	if not EnemyReaction.is_reactive(self):
+		# Une coque qui s'ouvre sans rien déclencher s'ouvrirait... quand ? Le
+		# télégraphe est le seul moteur de l'ouverture.
+		errors.append("moving_part_prefix requires a trigger_radius (the windup drives the hull)")
 	return errors
 
 

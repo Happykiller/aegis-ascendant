@@ -83,6 +83,28 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 			return 0.0
 
 
+## Ouverture mécanique de la coque, de 0 (fermée) à 1 (grande ouverte).
+##
+## Elle suit le télégraphe et non la menace : une mine qui bâillerait dès qu'on
+## l'approche aurait déjà tout dit, et le joueur n'aurait plus rien à lire dans les
+## 700 ms qui décident. Elle s'ouvre pendant le WINDUP, exactement.
+##
+## Ce qu'elle fait après la charge distingue les deux règles du jeu : une unité à
+## usage unique reste ouverte — elle est finie, sa carcasse le montre. Une unité qui
+## se réarme se REFERME pendant son temps mort, et c'est ce qui rend visible, de
+## loin, le moment où elle redevient dangereuse.
+static func open_ratio(state: int, time_in_state: float, data: EnemyData) -> float:
+	match state:
+		State.WINDUP:
+			return windup_ratio(state, time_in_state, data)
+		State.ACTIVE:
+			return 1.0
+		State.SPENT:
+			return 1.0 if data.rearm_time <= 0.0 else 0.0
+		_:
+			return 0.0
+
+
 ## L'unité réagit-elle seulement au joueur ? Une unité sans rayon de déclenchement
 ## est un ennemi classique : elle suit sa courbe et tire, sans jamais rien attendre.
 static func is_reactive(data: EnemyData) -> bool:

@@ -72,6 +72,8 @@ var _reactive: bool = false
 ## d'un tir au suivant, pour qu'un trou ne reste jamais au même endroit.
 var _salvo: int = 0
 var _vitals: EnemyVitals
+## Pièces articulées de la coque, s'il y en a (mines, corolles).
+var _pose: EnemyPose
 
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
@@ -93,8 +95,10 @@ func _ready() -> void:
 		var muzzle := _attach_point("Muzzle_C")
 		_muzzle_offset = Vector2(muzzle.x, -muzzle.z)
 		_build_flash_overlay()
-		_build_plume()
+		if _hull.find_child("Engine_C", true, false) != null:
+			_build_plume()
 		_vitals = EnemyVitals.bind(_hull)
+		_pose = EnemyPose.bind(_hull, data.moving_part_prefix, data.open_angle_deg)
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)
@@ -145,6 +149,8 @@ func _set_active(value: bool) -> void:
 	_salvo = 0
 	if _vitals != null:
 		_vitals.reset()
+	if _pose != null:
+		_pose.reset()
 	if value and _flash_material != null:
 		_hit_flash = 0.0
 		_flash_material.albedo_color.a = 0.0
@@ -266,6 +272,8 @@ func _update_reaction(delta: float) -> void:
 		elif previous == EnemyReaction.State.ACTIVE:
 			_on_discharged()
 	_threat = EnemyReaction.threat_ratio(_state, _state_time, distance, data)
+	if _pose != null:
+		_pose.pose(EnemyReaction.open_ratio(_state, _state_time, data))
 	if _state == EnemyReaction.State.ACTIVE and data.effect == EnemyData.Effect.GRAVITY_WELL:
 		_pull_player()
 
@@ -298,6 +306,12 @@ func _on_discharged() -> void:
 
 ## La plume d'échappement, pour que la coque lise comme une chose sous puissance et
 ## non comme une décalcomanie qui glisse vers le bas de l'écran.
+##
+## ⚠️ POSÉE SEULEMENT SI LA COQUE A UN MOTEUR. Une mine dérive avec le décor : lui
+## allumer une tuyère la ferait lire comme un vaisseau en approche, c'est-à-dire
+## comme la seule chose qu'elle n'est pas. Le contrat d'attaches n'est pas perdu
+## pour autant — il est tenu à l'EXPORT, par `ak.HullContract.required_attach_points`,
+## qui échoue à la construction plutôt qu'en vol.
 ##
 ## ⚠️ L'ennemi plonge vers le joueur (+Z monde) : son échappement part donc vers -Z,
 ## à l'INVERSE de celui du joueur. C'est ce que dit `Vector3.FORWARD` à la fabrique.
