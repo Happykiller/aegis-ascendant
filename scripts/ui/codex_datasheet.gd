@@ -207,15 +207,25 @@ func _build_identity() -> void:
 
 ## Bandeau des coques, en haut au centre. La coque courante est vive, les autres
 ## sourdes : le joueur voit d'un coup où il est ET ce qui reste à voir.
+##
+## ⚠️ IL EST POSÉ SOUS LE BLOC D'IDENTITÉ, ET NON À SA HAUTEUR. Ce bandeau est
+## CENTRÉ et sa largeur croît avec le nombre de coques : à six il tenait au centre,
+## à neuf son bord gauche recouvrait « ARCHIVE TECHNIQUE ». Rien ne le signalait —
+## aucun test ne regarde une mise en page, et la collision n'apparaît qu'à la
+## capture. Chaque famille d'ennemi ajoutée le rapproche du bord.
+##
+## Il reste **trois familles à livrer** (spec §11.1) : au-delà d'une douzaine de
+## coques, ce bandeau demandera un retour à la ligne ou une fenêtre glissante — la
+## largeur de l'écran, elle, ne croît pas.
 func _build_roster() -> void:
 	var strip := HBoxContainer.new()
 	strip.name = "Roster"
 	strip.anchor_left = 0.5
 	strip.anchor_right = 0.5
-	strip.offset_left = -880.0
-	strip.offset_right = 880.0
-	strip.offset_top = 62.0
-	strip.offset_bottom = 92.0
+	strip.offset_left = -920.0
+	strip.offset_right = 920.0
+	strip.offset_top = 112.0
+	strip.offset_bottom = 142.0
 	strip.alignment = BoxContainer.ALIGNMENT_CENTER
 	strip.add_theme_constant_override("separation", 22)
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
