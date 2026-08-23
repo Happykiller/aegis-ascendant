@@ -49,6 +49,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
+  ⚠️ **Un correctif de brief ne se propage pas aux autres livrables du même brief** : deux coques,
+  même forge, même session, une corrigée et pas l'autre (tangentes 33/33 contre 0/36). Auditer
+  CHAQUE fichier, sur la mesure et pas sur le rapport — un `.glb` porte son JSON en clair, la
+  vérification prend quelques secondes.
   ⚠️ **Un contrat d'export valide pendant que la silhouette dérive** : `export_hull()` mesure bbox,
   triangles, matériaux, pivot et attaches — **aucune de ces cinq mesures ne parle de la forme**. Une
   coque du boss final a tout passé et ne ressemblait pas à ses planches (un brief correctif entier).

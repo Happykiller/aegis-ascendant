@@ -89,6 +89,53 @@ plan qui ne l'écrase pas.
 
 ---
 
+## Un correctif de brief ne se propage pas aux autres livrables du MÊME brief (23/08/2026)
+
+Deux coques sorties de la même forge, dans la même session, avec le même défaut connu — et **une
+seule corrigée**. Mesuré sur les `.glb` livrés :
+
+    choir_mine.glb    33 primitives, 33 TANGENT   ✓
+    null_maw.glb      36 primitives,  0 TANGENT   ✗
+
+Le correctif (`_triangulate_ngons()`, sans lequel l'exporteur glTF **abandonne silencieusement**
+les tangentes) avait été appliqué au script sur lequel le défaut avait été découvert, et pas à
+l'autre. Aucune erreur, aucun test rouge : juste un relief qui ne s'allumerait jamais.
+
+**C'est un mode de panne de la DÉLÉGATION, pas de l'outil.** Un agent qui corrige un défaut le
+corrige là où il l'a vu ; rien ne l'oblige à balayer les autres fichiers du même lot, et son
+rapport dira en toute bonne foi que le problème est réglé — ce qui est vrai, pour un des deux.
+
+**Donc : ne jamais clore un brief à plusieurs livrables sur un rapport global. Auditer CHAQUE
+fichier séparément**, et sur la mesure, pas sur le rapport.
+
+### La mesure, en quelques secondes, sans Godot ni Blender
+
+Un `.glb` porte son JSON **en clair** dans son premier chunk : en-tête `glTF`, longueur du chunk 0
+sur 4 octets à l'offset 12, JSON à partir de l'offset 20. Il suffit de compter.
+
+```python
+ln = struct.unpack('<I', data[12:16])[0]
+j = json.loads(data[20:20+ln])
+for m in j['meshes']:
+    for prim in m['primitives']:
+        has_tangent = 'TANGENT' in prim['attributes']
+```
+
+État relevé du dépôt ce jour-là : **quatre coques sur dix sans tangentes ni UV** —
+`choir_harvester` 0/61 (le mini-boss), `null_maw` 0/36, `crescent_interceptor` 0/7,
+`needle_scout` 0/7. Saines : `pale_leviathan` 145/145, `choir_mine` 33/33, `specter_9` 29/29,
+les trois pièces de citadelle.
+
+### Le corollaire : une articulation peut marcher et ne rien dire
+
+Même session, autre mesure : l'ouverture mécanique des plaques d'une mine — 45°, validée par test,
+mesurée sur le maillage — est **invisible à la taille de jeu**. Vue à 70° au-dessus du plan, sur un
+objet de 46 pixels, avec le bloom par-dessus. La mécanique fonctionne, sa **lisibilité** ne paie
+pas, et le télégraphe repose entièrement sur la couleur.
+
+⚠️ Un test qui prouve qu'une pièce pivote ne prouve pas que le joueur le voit. C'est la même
+frontière que « le rendu studio flatte » plus haut, appliquée au mouvement plutôt qu'au détail.
+
 ## Un contrat d'export valide pendant que la silhouette dérive
 
 **Ce que ça a coûté (23/07/2026)** : la reforge de la coque du Pale Leviathan (BRIEF-0040) a passé
