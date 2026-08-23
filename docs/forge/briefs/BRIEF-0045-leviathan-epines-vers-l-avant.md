@@ -1,9 +1,40 @@
 # BRIEF-0045 — Retourner deux épines du Pale Leviathan vers l'avant
 
-- **Statut** : assigné
+- **Statut** : livré par la forge, **ANNULÉ à l'intégration — convention de repère fausse**
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-23
+
+## ⚠️ CE BRIEF ÉTAIT FAUX — lire ceci avant de le rejouer
+
+La forge a livré exactement ce qui était demandé, et l'a prouvé sur six points mesurés. **La cible
+était fausse : les angles de ce brief sont relevés dans le repère du FICHIER, et présentés comme
+ceux du plan de jeu.** Or `BossController` applique `FACING_PLAYER = Vector3(0, PI, 0)` à la coque
+à l'instanciation : une rotation de 180° autour de Y envoie `(x, y, z)` sur `(−x, y, −z)`, donc
+**tout axe mesuré dans le `.glb` est vu retourné de 180° en jeu**.
+
+Conséquence, calculée après coup :
+
+| Épine | angle fichier | **angle en jeu** | avant reforge | après reforge |
+|---|---|---|---|---|
+| `Spike_01` | −111,3° | **+68,7°** | arrière | arrière |
+| `Spike_02` | −71,0° | **+109,0°** | arrière | arrière |
+| `Spike_03` | +59,3° → −42,7° | **−120,7° → +137,3°** | **vers le joueur** | arrière |
+| `Spike_04` | +111,5° → −138,1° | **−68,5° → +41,9°** | **vers le joueur** | arrière |
+
+**On est passé de 2 épines sur 4 vers le joueur à 0 sur 4.** Le brief a fait retourner les deux
+qui allaient bien. Les livrables ont été annulés (`git checkout`), le travail de la forge est
+conservé en patch dans le scratchpad de session.
+
+**Pour rejouer ce brief correctement** : la cible est que les quatre axes tombent dans
+**[+20° ; +160°] dans le repère du fichier** (ce qui donne [−160° ; −20°] en jeu). Ce sont donc
+`Spike_01` et `Spike_02` qu'il faut retourner, pas `Spike_03` et `Spike_04`. Et la mesure de
+recette doit être faite **après application de `FACING_PLAYER`**, ou en ajoutant 180° à l'angle du
+fichier — sinon la même erreur se reproduira à l'identique.
+
+⚠️ La leçon, au-delà de ce brief : **un repère n'est pas une convention, c'est une mesure.** Celui
+du fichier et celui du jeu diffèrent ici d'une rotation posée par le code, à trois fichiers de
+distance de l'endroit où l'on mesure.
 
 ## Objectif
 

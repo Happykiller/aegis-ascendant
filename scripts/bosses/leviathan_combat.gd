@@ -41,9 +41,6 @@ const SPINE_SLOTS := 4
 const NODE_COUNT := 3
 ## Durée de chute d'une pièce détachée, en secondes.
 const DEBRIS_FALL_TIME := 1.2
-## Braquage maximal d'une épine, en degrés, et vitesse à laquelle elle s'y rend.
-const SPINE_TRACK_DEG := 38.0
-const SPINE_TRACK_SPEED := 2.4
 
 enum Phase { ARMOR, DIVE, DEFEATED }
 ## Les trois temps d'une plongée. Le module les traverse ; le niveau les met en scène.
@@ -133,8 +130,6 @@ var _spine_tip: Array[Vector3] = []
 var _spine_beams: Array[Beam] = []
 var _spine_state: PackedInt32Array = PackedInt32Array()
 var _spine_timer: PackedFloat32Array = PackedFloat32Array()
-## Braquage courant de chaque épine, en radians autour de la verticale.
-var _spine_track: PackedFloat32Array = PackedFloat32Array()
 
 ## Les nœuds décoratifs, qui tombent avec la première armure.
 var _debris: Array[Node3D] = []
@@ -260,7 +255,6 @@ func _arm_cycle(cycle: int) -> void:
 		# Les épines se relaient au lieu de tirer ensemble : quatre lasers simultanés
 		# sont un mur, quatre lasers déphasés sont une danse.
 		_spine_timer[i] = tuning.spine_interval * float(i) / float(maxi(alive, 1))
-		_spine_track[i] = 0.0
 		if i < _spine_nodes.size() and _spine_nodes[i] != null:
 			_spine_nodes[i].visible = up
 			_spine_nodes[i].transform = _spine_rest[i]
@@ -320,7 +314,6 @@ func _build_spines() -> void:
 	_spine_beams.clear()
 	_spine_state.resize(SPINE_SLOTS)
 	_spine_timer.resize(SPINE_SLOTS)
-	_spine_track.resize(SPINE_SLOTS)
 	for i in SPINE_SLOTS:
 		var node: Node3D = null
 		if _hull != null:
@@ -552,13 +545,19 @@ func _aim_spine(index: int, origin: Vector2) -> void:
 		# La bouche est la POINTE de l'épine — mesurée sur le maillage, pas l'origine du
 		# nœud, qui est à sa base contre le corps.
 		muzzle = GameplayPlane.to_plane(node.global_transform * _spine_tip[index])
-		# ⚠️ MAIS LE TIR NE SUIT PAS L'AXE DE L'ÉPINE, et ce n'est pas un oubli. Capture à
-		# l'appui (coque isolée, `--no-backdrop`) : les épines de cette coque sont des
-		# cornes qui pointent vers l'ARRIÈRE du boss. Prolonger leur axe envoie le faisceau
-		# à l'opposé du joueur — spectaculairement inutile, et illisible. Le tir part donc
-		# de la pointe et vise le joueur, comme une tourelle montée sur un bras.
-		# La cohérence complète (une épine qui pointe là où elle tire) demanderait de
-		# reforger la coque : c'est un brief, pas une ligne de code.
+		# ⚠️ LE TIR NE SUIT PAS L'AXE DE L'ÉPINE, et c'est une dette, pas un choix.
+		# Sur cette coque, DEUX épines sur quatre pointent vers l'arrière du boss —
+		# `Spike_01` et `Spike_02`, mesurées à +68,7° et +109,0° dans le plan de jeu quand
+		# le joueur est à −90°. Prolonger leur axe enverrait le faisceau à l'opposé de la
+		# cible. Le tir part donc de la pointe et vise le joueur, comme une tourelle montée
+		# sur un bras : la pièce montre une direction, le tir en prend une autre.
+		#
+		# ⚠️ ET LE PLAN DE JEU N'EST PAS LE REPÈRE DU FICHIER. `BossController` applique
+		# `FACING_PLAYER = (0, π, 0)` à la coque : un axe mesuré dans le `.glb` est vu
+		# **retourné de 180°** en jeu. Un brief de reforge (`BRIEF-0045`) a été commandé sur
+		# des angles relevés dans le fichier et présentés comme ceux du plan — il a fait
+		# retourner les deux épines qui allaient bien. Annulé. La convention à employer est
+		# écrite dans `docs/forge/briefs/BRIEF-0045-*.md`.
 		var aim := _player.plane_position if _player != null else muzzle + Vector2(0.0, -1.0)
 		var to_player := aim - muzzle
 		if to_player.length_squared() > 0.01:
