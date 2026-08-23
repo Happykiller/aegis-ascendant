@@ -14,7 +14,7 @@ var _pull: Array = []
 var _active: Array[int] = []
 
 func _make() -> LeviathanCombat:
-	var combat: LeviathanCombat = CombatScript.new()
+	var combat := track(CombatScript.new()) as LeviathanCombat
 	combat.tuning = LeviathanTuning.new()
 	_phases = []
 	_pull = []
@@ -253,8 +253,9 @@ func test_killing_the_heart_ends_the_fight() -> void:
 ## quoi le corps clos ne mourrait jamais et la finale du niveau ne partirait pas.
 
 func _rig() -> Array:
-	var bm := BulletManager.new()
-	var boss: BossController = BossScript.new()
+	var bm := track(BulletManager.new()) as BulletManager
+	# `combat` n'est pas suivi : il devient enfant de `boss`, qui le libere avec lui.
+	var boss := track(BossScript.new()) as BossController
 	boss.max_health = 20000.0
 	boss.hitbox_radius = 2.7
 	boss.entry_plane_position = Vector2(0.0, 5.5)
@@ -336,6 +337,6 @@ func test_the_interlude_holds_the_boss_silent_between_phases() -> void:
 	assert_true(combat._interlude > 0.0, "un repit s'ouvre : le joueur voit ce qu'il a casse")
 
 func test_a_module_without_tuning_ticks_without_crashing() -> void:
-	var combat: LeviathanCombat = CombatScript.new()
+	var combat := track(CombatScript.new()) as LeviathanCombat
 	combat.tick(0.5)
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "degrade proprement, sans planter")

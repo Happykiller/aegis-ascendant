@@ -61,6 +61,7 @@ func _run_unit_tests() -> Dictionary:
 				continue
 			var case: RefCounted = (script as GDScript).new()
 			case.call(name)
+			case.call("free_tracked")   # reaps the Nodes the method built by hand
 			methods += 1
 			asserts += case.assert_count
 			if case.failures.is_empty():

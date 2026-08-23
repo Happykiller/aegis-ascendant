@@ -7,6 +7,28 @@ extends RefCounted
 var failures: PackedStringArray = PackedStringArray()
 var assert_count: int = 0
 
+## Nodes the test built by hand, freed by the runner once the method returns.
+##
+## A Node instantiated outside the scene tree has no parent to reap it: `RefCounted`
+## units die with the test case, Nodes do NOT, and Godot only reports the pile at exit
+## ("N ObjectDB instances were leaked"). That noise is harmless in itself — but it
+## drowns the day a real runtime leak appears. Wrap every hand-built Node:
+##   var combat := track(CombatScript.new()) as LeviathanCombat
+var _owned: Array[Node] = []
+
+func track(node: Node) -> Node:
+	_owned.append(node)
+	return node
+
+## Freed newest-first, so a tracked child goes before the parent that owns it;
+## `is_instance_valid` covers the reverse case (parent freed its child already).
+func free_tracked() -> void:
+	for i in range(_owned.size() - 1, -1, -1):
+		var node: Node = _owned[i]
+		if is_instance_valid(node):
+			node.free()
+	_owned.clear()
+
 func assert_true(condition: bool, message: String) -> void:
 	assert_count += 1
 	if not condition:
