@@ -55,9 +55,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   **sur la vue qui montre l'axe réglé** : le bestiaire présente les coques de trois quarts avant,
   la plume y part en enfilade — une itération de réglage perdue sur une image incapable de répondre.
 - [Les géométries Godot qui disparaissent sans une erreur](pratique-geometries-invisibles.md) —
-  trois pièges qui ne produisent **ni erreur, ni test rouge, ni ligne au journal**, et ne se
-  diagnostiquent qu'en capture : le **billboard jette l'échelle** du nœud (`billboard_keep_scale`),
-  `GPUParticles3D.emitting` retombe à faux dès la salve **émise** (pas éteinte), et une géométrie
+  **cinq** pièges qui ne produisent **ni erreur, ni test rouge, ni ligne au journal**, et ne se
+  diagnostiquent qu'en capture. ⚠️ Les deux derniers datent du 23/08/2026 : un nœud posé en
+  coordonnées **monde** subit quand même la transformation de son premier ancêtre `Node3D` (Godot
+  traverse les `Node` intermédiaires) — d'où **aucun laser à l'écran** alors que le tir fonctionnait,
+  parade `top_level` ; et une paroi vue de l'intérieur en `CULL_DISABLED` **referme le cadre**, un
+  disque plein écran à la place de la scène. Les trois premiers : le **billboard jette l'échelle**
+  du nœud (`billboard_keep_scale`), `GPUParticles3D.emitting` retombe à faux dès la salve **émise**
+  (pas éteinte), et une géométrie
   déformée au vertex garde l'**AABB** de son maillage au repos. Coût du premier : trois captures vides.
 - [Poser le détail en fraction, jamais en coordonnée absolue](pratique-detail-en-fraction-de-corde.md)
   — deux reforges de plan, deux fois le même dégât : les bandeaux posés à des abscisses absolues se

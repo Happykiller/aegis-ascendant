@@ -2,8 +2,8 @@
 
 ## La famille
 
-Trois façons, dans ce projet, pour une géométrie parfaitement construite de **ne rien rendre à
-l'écran** — sans exception, sans `push_error`, sans une ligne au journal. Toutes les trois se
+Cinq façons, dans ce projet, pour une géométrie parfaitement construite de **ne rien rendre à
+l'écran** — ou de tout recouvrir — sans exception, sans `push_error`, sans une ligne au journal. Toutes les trois se
 diagnostiquent en capture et **uniquement** en capture : le code se lit juste, les tests passent,
 et il n'y a rien à voir.
 
@@ -67,9 +67,55 @@ la famille, pas comme une découverte.
 
 ---
 
+## 4. Un nœud posé en coordonnées MONDE hérite quand même de ses ancêtres
+
+`Beam.aim()` calcule sa pose en coordonnées monde (`GameplayPlane.to_world(...)`). Le faisceau
+était ajouté comme enfant du module de combat — un `Node` sans transformation — lui-même enfant du
+`BossController`. **Godot remonte l'arbre jusqu'au premier ancêtre `Node3D`** : le `Node`
+intermédiaire ne protège de rien, et la position du boss s'applique **une seconde fois**.
+
+```gdscript
+var beam := Beam.make()
+beam.top_level = true   # ⚠️ ignore la transformation des parents
+add_child(beam)
+```
+
+**Ce que ça a coûté (23/08/2026)** : les tourelles-épines du Leviathan tiraient — timers corrects,
+état `FIRING` atteint, dégâts appliqués au joueur — et **aucun laser à l'écran**. Le boss combat à
+une douzaine d'unités du centre, donc le faisceau partait au double, hors du cadre. Ni erreur, ni
+test rouge : la seule chose visible était une capture sans le moindre trait.
+
+⚠️ **`HarvesterCombat._build_beam()` attache ses deux faisceaux exactement de la même façon** et
+n'a pas été vérifié. Si les faisceaux du mini-boss sont décalés, personne ne l'a jamais remarqué —
+c'est au backlog.
+
+⚠️ Cousin du même piège, rencontré dans la foulée : **un vaisseau à la même hauteur qu'une grande
+coque est *dans* cette coque**, donc masqué par elle. Le chasseur entrant dans le noyau du boss
+avait disparu — pas de bug, de la géométrie. La parade est un décalage purement visuel
+(`PlayerFighterController.plane_lift`), qui ne touche ni `plane_position`, ni les collisions, ni
+les tirs.
+
+---
+
+## 5. Une paroi qu'on regarde de l'intérieur ne doit rendre QUE ses faces internes
+
+Pour une chambre (sphère retournée), `flip_faces = true` ne suffit pas : si le matériau est en
+`CULL_DISABLED`, la face avant est rendue elle aussi et **la coque se referme sur le cadre**.
+
+```gdscript
+sphere.flip_faces = true                             # on la regarde du dedans
+material.cull_mode = BaseMaterial3D.CULL_BACK        # ⚠️ JAMAIS CULL_DISABLED ici
+```
+
+**Ce que ça a coûté (23/08/2026)** : l'intérieur du noyau du Pale Leviathan rendait un **disque
+bordeaux plein écran** — plus de boss, plus de joueur, plus de flux. Symptôme spectaculaire,
+diagnostic instantané *en capture*, invisible partout ailleurs.
+
+---
+
 ## Le corollaire de méthode
 
-Ces trois pièges ont en commun de ne produire **aucun signal** : ni erreur, ni avertissement, ni
+Ces cinq pièges ont en commun de ne produire **aucun signal** : ni erreur, ni avertissement, ni
 test rouge. La seule chose qui les révèle est **une capture prise à la bonne image**, ce qui suppose
 de savoir *quand* regarder :
 
