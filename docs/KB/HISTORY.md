@@ -1,0 +1,27 @@
+---
+titre: HISTORY — index chronologique des sujets abordés
+type: index
+statut: actif
+maj: 2026-08-23
+---
+
+# Historique des sujets
+
+Une ligne par **session utile** — pas un journal de commits, git le fait déjà. Ce qu'on cherche ici :
+« a-t-on déjà creusé ce sujet, et qu'en est-il sorti ? »
+
+Les lignes antérieures au 2026-08-23 sont **reconstituées** à partir des dates portées par les ADR
+et par `docs/BACKLOG.md` : elles sont datées de façon fiable, mais ne racontent que ce qui a été
+acté, pas ce qui a été exploré.
+
+| Date | Sujet | Ce qui en est sorti | Traces |
+|---|---|---|---|
+| 2026-07-11 | Fondations : moteur, environnement, commandes, délégation créative, quarantaine IP | 5 ADR d'un coup ; le cadre de travail du projet | [ADR-0001 à 0005](../decisions/) |
+| 2026-07-12 | Fond spatial, audio, chaîne 3D Blender | Nébuleuse procédurale (les SVG picturaux sont écartés), banque de cues + musique adaptative, pipeline `.glb` déterministe | [ADR-0006](../decisions/ADR-0006-fond-spatial-procedural.md), [0007](../decisions/ADR-0007-pipeline-audio.md), [0008](../decisions/ADR-0008-pipeline-3d-blender.md) |
+| 2026-07-19 | **Un seul vaisseau** : la transformation en forteresse est supprimée | Nouvel arc `FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS → DOCKING → VICTORY` ; référence d'inspiration réinstaurée | [ADR-0010](../decisions/ADR-0010-un-seul-vaisseau-docking-final.md), [ADR-0009](../decisions/ADR-0009-reference-ip-reinstauree.md), [DAF/arc-de-jeu.md](DAF/arc-de-jeu.md) |
+| 2026-07-20 → 21 | Détail des coques, textures, écrans, silhouette du Specter-9 | Budgets de coque, textures déverrouillées, langage d'interface unifié, exception IP unique et actée | [ADR-0011 à 0014](../decisions/) |
+| 2026-07-22 | Bestiaire, et la luminosité qui manquait | Le post-traitement rétro **pivotait son contraste à 0,5 sur une image entièrement sombre** : il n'était qu'un assombrisseur. +25,8 % mesurés sur la coque du joueur | [ADR-0015](../decisions/ADR-0015-bestiaire-catalogue-de-coques.md), [ADR-0016](../decisions/ADR-0016-luminosite-le-contraste-pivotait-a-0-5.md) |
+| 2026-07-23 → 24 | Le Pale Leviathan : conception, silhouette, câblage, puis **coupe au playtest** | Boss à 4 phases sur conditions matérielles ; combat ramené de ~3 min à ~67 s ; lisibilité HUD + coquille qui tourne | [ADR-0017](../decisions/ADR-0017-plume-d-echappement.md), [ADR-0018](../decisions/ADR-0018-le-boss-final-se-demonte.md), [ADR-0019](../decisions/ADR-0019-le-leviathan-coupe-au-playtest.md) |
+| 2026-08-23 | Reprise après un mois : revue d'état, fuites de test, mise en place de la KB | Dépôt à jour et vert (279 tests) ; **789 objets fuités** attribués à un seul fichier de test et supprimés ; backlog recalé ; création de `docs/KB/` et du skill `/cloture` | [REGLES/normes.md](REGLES/normes.md), `.claude/resources/pratique-verifier-par-test.md`, [MOTEUR.md](MOTEUR.md) |
+
+> Découper par année (`HISTORY/README.md` + `HISTORY/2026.md`) au-delà de ~200 lignes.

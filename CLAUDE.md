@@ -8,6 +8,24 @@ Prototype de vertical shooter 2.5D/3D sous **Godot 4.7-stable** (Forward+, GDScr
 - **`docs/decisions/ADR-*.md`** — décisions actées qui priment sur la spec en cas d'écart (ex. : Godot 4.7 au lieu de 4.6).
 - Ne jamais inventer une API/option CLI Godot : vérifier dans la doc officielle **4.7** (https://docs.godotengine.org/en/4.7/).
 
+## Base de connaissance
+
+La mémoire longue du projet est dans [`docs/KB/`](docs/KB/README.md) :
+architecture technique ([`DAT/`](docs/KB/DAT/README.md)), architecture fonctionnelle
+([`DAF/`](docs/KB/DAF/README.md)), règles du projet ([`REGLES/`](docs/KB/REGLES/README.md)),
+outillage ([`MOTEUR.md`](docs/KB/MOTEUR.md)) et historique des sujets
+([`HISTORY.md`](docs/KB/HISTORY.md)).
+
+**Avant d'agir sur un sujet, consulte l'index concerné.** Les pages `REGLES/lois.md` et
+`REGLES/consignes.md` sont contraignantes : elles priment sur tes défauts.
+
+La KB dit ce qu'il faut savoir **du jeu** ; le ghost ci-dessous dit comment **travailler** dessus.
+La KB n'est pas la source de vérité du produit — spec et ADR le restent : elle y aiguille.
+
+En fin de session de travail, lance `/cloture` : il capitalise, committe et pousse tous les
+dépôts du projet, puis arrête les conteneurs. Pour capitaliser seul, sans refermer la session :
+`/capitalize`.
+
 ## Le ghost — comment travailler ici (chargé à la demande)
 
 **`.claude/resources/INDEX.md`** indexe les process, workflows, bonnes pratiques et howtos du projet.
