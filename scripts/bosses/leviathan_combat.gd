@@ -1,43 +1,63 @@
 class_name LeviathanCombat
 extends Node
-## Le combat du Pale Leviathan : quatre phases, quatre verbes
-## (`docs/design/BOSS_PALE_LEVIATHAN.md`, acté par `ADR-0018`).
+## Le combat du Pale Leviathan : **deux phases, deux gestes**
+## (`docs/design/BOSS_PALE_LEVIATHAN.md`, refondu par `ADR-0020`).
+##
+##     PHASE 1 — BRISER L'ARMURE : quatre plaques, une seule vulnérable à la fois.
+##     PHASE 2 — LE CŒUR : la coquille s'écarte, le cœur est à nu jusqu'à la fin.
 ##
 ## COMPOSITION — `BossController` garde tout le générique (entrée, déplacement, roulis,
 ## PV, signaux HUD, mort, prise de main sur le déplacement) et sert toujours le Choir
 ## Harvester. Ce module ne lui prend que deux choses, exactement comme `HarvesterCombat` :
 ## l'armement (`external_attacks`) et la vulnérabilité du corps.
 ##
-## LE PILIER — le Harvester est un **verrou** (trois clés ouvrent une fenêtre, en boucle,
-## tout repousse). Le Leviathan est un **démontage** : chaque phase lui arrache une
-## partie du corps, **rien ne repousse**, et la pièce arrachée devient la mécanique de
-## la phase suivante.
+## ⚠️ CE QUE LA REFONTE A RETIRÉ, ET POURQUOI (ADR-0020). Le combat comptait quatre
+## phases : armure, nœuds gravitiques, essaim d'abordage, plongée dans la gueule. Le
+## playtest a rendu un verdict sans appel — « mal équilibré, on ne voit pas les phases,
+## je n'aime pas le combat » — et la partie s'est arrêtée **pendant la phase 1**, sans
+## que le joueur voie jamais les trois autres. Trois défauts, tous vérifiés dans ce
+## fichier avant d'y toucher :
+##
+##   1. **La jauge mentait.** Elle divisait par les PV des quatre phases : briser toute
+##      l'armure ne valait que 30 % de barre. Le joueur travaillait vingt secondes et
+##      lisait « 70 % ». Elle montre désormais **la phase en cours**, et se remplit à
+##      nouveau à la bascule — l'idiome de shmup que tout le monde sait lire.
+##   2. **La fenêtre de tir n'existait pas.** Quatre plaques espacées de 90°, arc de
+##      100° : il y avait toujours une plaque exposée, souvent deux. « Lire la rotation
+##      pour choisir son moment » ne contraignait donc jamais rien.
+##   3. **Les dégâts s'étalaient.** Comme toutes les plaques exposées encaissaient, elles
+##      descendaient ensemble et tombaient toutes à la fin. Une seule est désormais
+##      vulnérable — celle qui brille : le feu se concentre, une plaque cède toutes les
+##      ~5,5 s, et le démontage devient visible.
+##
+## Nœuds, épines et noyau intermédiaire ont disparu **comme cibles**. Ils restent à
+## l'écran et se détachent quand une plaque cède : le boss se démonte à vue sans qu'aucune
+## règle nouvelle n'ait à s'apprendre.
 ##
 ## ⚠️ LES PHASES N'AVANCENT PAS AUX SEUILS DE POINTS DE VIE. C'est ce que faisait le
-## `BossController` générique, et c'est précisément ce qui rendait le boss final
-## illisible : la « phase » changeait sans que rien à l'écran ne l'explique. Ici chaque
-## transition a une **condition matérielle** — les quatre plaques à terre, les trois
-## nœuds abattus, les quatre épines détruites, le cœur mort. Le joueur voit ce qu'il a
-## cassé, et c'est ce qui fait avancer le combat.
+## `BossController` générique, et c'est ce qui rendait le boss illisible : la « phase »
+## changeait sans que rien à l'écran ne l'explique. Ici chaque transition a une
+## **condition matérielle** — les quatre plaques à terre, puis le cœur mort.
 
 ## Le contrat de noms de la coque (BRIEF-0040, vérifié dans le `.glb`).
 const PLATE_COUNT := 4
-const NODE_COUNT := 3
+## Épines et nœuds : décor qui se détache, plus aucune cible.
 const SPIKE_COUNT := 4
+const NODE_COUNT := 3
+## Durée de chute d'une pièce détachée, en secondes.
+const DEBRIS_FALL_TIME := 1.6
 
-enum Phase { ARMOR_CHOIR, GRAVITIC_MAW, BOARDING_SWARM, INTO_THE_MAW, DEFEATED }
+enum Phase { ARMOR, HEART, DEFEATED }
 
 ## Le HUD et le niveau écoutent ; le module ne connaît ni l'un ni l'autre.
 signal phase_entered(phase: int)
-## Progression globale : dégâts cumulés sur TOUTES les structures. ⚠️ Une jauge qui ne
-## montrerait que le corps resterait figée pendant une phase entière et dirait au
-## joueur qu'il ne fait rien.
+## Santé restante **de la phase en cours**, entre 1 et 0. ⚠️ Ce n'était pas le cas avant :
+## le signal portait les dégâts cumulés sur les quatre phases, et c'est précisément ce qui
+## faisait dire au joueur « je ne fais rien » alors qu'il venait de briser toute l'armure.
 signal structure_changed(ratio: float)
 signal piece_gauge_changed(index: int, ratio: float, alive: bool)
 ## Sous-cible que le joueur doit viser MAINTENANT (`-1` = aucune). En phase 1 une seule
-## plaque encaisse à la fois, celle dans l'arc face au joueur ; rien à l'écran ne le disait,
-## d'où le « j'ai pas compris quelle plaque viser » du playtest (ADR-0019). Le HUD surligne
-## la pastille, le monde télégraphie la plaque. Émis SEULEMENT au changement.
+## plaque encaisse à la fois, celle qui est surlignée. Émis SEULEMENT au changement.
 signal piece_active_changed(index: int)
 signal piece_destroyed(phase: int, index: int, world_position: Vector3)
 ## Force d'aspiration à appliquer au chasseur, en unités par seconde. Le niveau la
@@ -52,46 +72,51 @@ var _hull: Node3D
 var _bullet_manager: BulletManager
 var _player: PlayerFighterController
 
-var _phase: Phase = Phase.ARMOR_CHOIR
+var _phase: Phase = Phase.ARMOR
 var _phase_age: float = 0.0
 var _age: float = 0.0
-## Répit entre deux phases : la coque se réorganise et le boss ne tire pas. C'est là
-## que le joueur respire, voit ce qu'il a cassé, et lit la nouvelle règle.
+## Répit entre les deux phases : la coque s'ouvre et le boss ne tire pas. C'est là que le
+## joueur respire, voit ce qu'il a cassé, et lit la nouvelle règle.
 var _interlude: float = 0.0
 
 var _plates: Array[LeviathanPlate] = []
-var _nodes: Array[BulletTarget] = []
-var _node_health: PackedFloat32Array = PackedFloat32Array()
-var _spikes: Array[LeviathanSpike] = []
-var _core_target: BulletTarget
-var _core_health: float = 0.0
 var _heart_target: BulletTarget
 var _heart_health: float = 0.0
 var _missiles: Array[TargetableProjectile] = []
 
-## Rotation courante de la coquille, en radians. C'est elle qui fabrique la fenêtre de
-## tir de la phase 1.
+## Rotation courante de la coquille, en radians. C'est elle qui donne le tempo de la phase 1.
 var _shell_rotation: float = 0.0
-## Plaque actuellement exposée (`-1` = aucune). Mémorisée pour n'émettre `piece_active_changed`
-## qu'au changement : la boucle de la phase 1 tourne à chaque image pendant vingt secondes.
+## Plaque vulnérable (`-1` = aucune). Mémorisée pour n'émettre `piece_active_changed` qu'au
+## changement : la boucle tourne à chaque image pendant vingt secondes.
 var _active_piece: int = -1
-## La coque visible : `Shell_Ring` porte l'orbite (contrat BRIEF-0040 : `Shell_Ring →
-## Shell_Crescent → Plate_0X`). Sans cette rotation la hitbox orbitait mais le mesh restait
-## fixe — c'est le « il n'a fait qu'aller de gauche à droite, rien ne s'est passé » du playtest.
+## La coque visible : `Shell_Ring` porte l'orbite (contrat BRIEF-0040).
 var _shell_ring: Node3D
-var _shell_ring_rest: Basis = Basis.IDENTITY
-## Surbrillance additive de la plaque active, partagée par tous ses maillages. Créée une fois :
-## la moduler par image ne réalloue rien. Posée en `material_overlay` pour ne PAS remplacer la
-## texture de la plaque, seulement ajouter un halo par-dessus.
+var _shell_ring_rest: Transform3D = Transform3D.IDENTITY
+## Le cœur (`Heart`), révélé en phase 2.
+var _heart_node: Node3D
+## Surbrillance additive de la pièce à viser, partagée par tous ses maillages. Créée une
+## fois : la moduler par image ne réalloue rien. Posée en `material_overlay` pour ne PAS
+## remplacer la texture, seulement ajouter un halo par-dessus.
 var _highlight: StandardMaterial3D
+## Ouverture de la coquille en phase 2, de 0 (fermée) à 1 (le cœur est à nu). C'est le
+## seul « texte » de la transition : le corps s'ouvre, la cible apparaît.
+var _shell_open: float = 0.0
+
+## Pièces décoratives qui se détachent quand l'armure cède. Trois tableaux parallèles,
+## dimensionnés une fois au montage : aucune allocation pendant le combat.
+var _debris: Array[Node3D] = []
+var _debris_rest: Array[Transform3D] = []
+## Progression de chute, par pièce : `-1` = encore en place, sinon 0 → 1.
+var _debris_fall: PackedFloat32Array = PackedFloat32Array()
+
 var _fan_timer: float = 0.0
 var _missile_timer: float = 0.0
 var _pulse_timer: float = 0.0
-## Dégâts cumulés sur toutes les structures — le numérateur de la jauge.
-var _damage_taken: float = 0.0
-## Compte à rebours de la gueule en phase 4.
-var _maw_open: float = 0.0
-var _maw_closed_for: float = 0.0
+## Aspiration intermittente de la phase 2 : `_pull_left > 0` pendant la vague.
+var _pull_timer: float = 0.0
+var _pull_left: float = 0.0
+## Dégâts encaissés **dans la phase en cours** — le numérateur de la jauge.
+var _phase_damage: float = 0.0
 
 # --- Montage ------------------------------------------------------------------
 
@@ -136,21 +161,21 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	_player = player
 	release()
 	_build_plates()
-	_build_nodes()
-	_build_spikes()
-	_build_core_and_heart()
+	_build_heart()
 	_bind_shell_visual()
+	_collect_debris()
 	_register_targets()
-	_enter_phase(Phase.ARMOR_CHOIR)
-	# Hook de vérification : atteindre la phase 3 demande deux minutes de jeu, donc
-	# personne ne la REGARDE jamais (ADR-0006). `++ --leviathan-phase 3` y saute.
+	_enter_phase(Phase.ARMOR)
+	# Hook de vérification : la phase 2 arrive après vingt secondes de jeu, donc personne
+	# ne la REGARDE jamais (ADR-0006). `++ --leviathan-phase=2` y saute.
 	_apply_phase_hook()
 
 func _build_plates() -> void:
 	_plates.clear()
 	for i in PLATE_COUNT:
-		# Réparties régulièrement : c'est cet écart qui garantit qu'il y a presque
-		# toujours une cible dans l'arc, donc aucun temps mort dans la phase.
+		# Réparties régulièrement. ⚠️ L'écart entre deux plaques (360/N) doit rester
+		# inférieur ou égal à `plate_arc_deg`, sans quoi il existe des instants où aucune
+		# plaque n'est atteignable — `LeviathanTuning.validate()` refuse ce réglage.
 		var plate := LeviathanPlate.make(i, TAU * i / PLATE_COUNT, tuning.plate_health,
 			tuning.plate_hitbox_radius, Callable(self, "_on_plate_hit").bind(i))
 		if _hull != null:
@@ -162,58 +187,53 @@ func _build_plates() -> void:
 				_collect_meshes(plate.node, plate.meshes)
 		_plates.append(plate)
 
-func _build_nodes() -> void:
-	_nodes.clear()
-	_node_health.resize(NODE_COUNT)
-	for i in NODE_COUNT:
-		_node_health[i] = tuning.node_health
-		var target := BulletTarget.make(BulletManager.Team.ENEMY, tuning.node_hitbox_radius,
-			Callable(self, "_on_node_hit").bind(i))
-		target.enabled = false   # la lèvre est fermée tant que la phase 1 dure
-		_nodes.append(target)
-
-func _build_spikes() -> void:
-	_spikes.clear()
-	for i in SPIKE_COUNT:
-		var spike := LeviathanSpike.make(i, LeviathanSpike.role_for(i), TAU * i / SPIKE_COUNT,
-			tuning.spike_health, tuning.spike_hitbox_radius, Callable(self, "_on_spike_hit").bind(i))
-		spike.target.enabled = false   # attachée : le corps la protège
-		if _hull != null:
-			spike.node = _hull.find_child("Spike_%02d" % (i + 1), true, false) as Node3D
-			if spike.node == null:
-				push_error("[Leviathan] coque sans 'Spike_%02d' (contrat BRIEF-0040)" % (i + 1))
-			else:
-				spike.rest_transform = spike.node.transform
-		_spikes.append(spike)
-
-func _build_core_and_heart() -> void:
-	_core_health = tuning.core_health
+func _build_heart() -> void:
 	_heart_health = tuning.heart_health
-	_core_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.core_hitbox_radius,
-		Callable(self, "_on_core_hit"))
-	_core_target.enabled = false
 	_heart_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.heart_hitbox_radius,
 		Callable(self, "_on_heart_hit"))
-	_heart_target.enabled = false
+	_heart_target.enabled = false   # l'armure le protège tant qu'elle tient
 
-## Résout la coquille tournante et prépare le halo de surbrillance. Nul en test (coque
-## absente) : la boucle tourne sans 3D, seule la géométrie des hitbox compte.
+## Résout la coquille tournante, le cœur et le halo. Nuls en test (coque absente) : la
+## boucle tourne sans 3D, seule la géométrie des hitbox compte.
 func _bind_shell_visual() -> void:
 	_shell_ring = null
+	_heart_node = null
 	if _hull != null:
 		_shell_ring = _hull.find_child("Shell_Ring", true, false) as Node3D
 		if _shell_ring == null:
 			push_error("[Leviathan] coque sans 'Shell_Ring' (contrat BRIEF-0040)")
 		else:
-			_shell_ring_rest = _shell_ring.transform.basis
+			_shell_ring_rest = _shell_ring.transform
+		_heart_node = _hull.find_child("Heart", true, false) as Node3D
 	if _highlight == null:
 		# Additif, non éclairé : un halo qui s'AJOUTE à la texture au lieu de la remplacer.
-		# Posé en `material_overlay`, il laisse la plaque lisible et signale « ici, maintenant ».
+		# Posé en `material_overlay`, il laisse la pièce lisible et signale « ici, maintenant ».
 		_highlight = StandardMaterial3D.new()
 		_highlight.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_highlight.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		_highlight.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_highlight.albedo_color = Color(0.90, 0.35, 0.70, 1.0)
+
+## Les pièces qui tombent avec l'armure : épines et nœuds. Elles n'ont plus de vie, plus
+## de zone de touche et plus de comportement — elles ne servent qu'à montrer le démontage.
+## Un boss qui perd des morceaux se lit sans bannière.
+func _collect_debris() -> void:
+	_debris.clear()
+	_debris_rest.clear()
+	_debris_fall.resize(0)
+	if _hull == null:
+		return
+	for i in SPIKE_COUNT:
+		_push_debris(_hull.find_child("Spike_%02d" % (i + 1), true, false) as Node3D)
+	for i in NODE_COUNT:
+		_push_debris(_hull.find_child("Node_%02d" % (i + 1), true, false) as Node3D)
+
+func _push_debris(node: Node3D) -> void:
+	if node == null:
+		return
+	_debris.append(node)
+	_debris_rest.append(node.transform)
+	_debris_fall.append(-1.0)
 
 ## Tous les `MeshInstance3D` sous un nœud, racine comprise. Mirror de `HarvesterLimb`.
 static func _collect_meshes(node: Node, into: Array[MeshInstance3D]) -> void:
@@ -233,11 +253,6 @@ func _register_targets() -> void:
 		return
 	for plate in _plates:
 		_bullet_manager.register_target(plate.target)
-	for node in _nodes:
-		_bullet_manager.register_target(node)
-	for spike in _spikes:
-		_bullet_manager.register_target(spike.target)
-	_bullet_manager.register_target(_core_target)
 	_bullet_manager.register_target(_heart_target)
 
 func _apply_phase_hook() -> void:
@@ -245,26 +260,21 @@ func _apply_phase_hook() -> void:
 		if not arg.begins_with("--leviathan-phase"):
 			continue
 		var wanted := arg.get_slice("=", 1).to_int() if "=" in arg else 0
-		for _step in clampi(wanted - 1, 0, 3):
+		for _step in clampi(wanted - 1, 0, 1):
 			_force_next_phase()
 		return
 
 ## Abat tout ce que la phase courante demande, et bascule. Réservé au hook de debug :
 ## le combat, lui, avance sur des conditions matérielles.
+## ⚠️ Passe par `_on_plate_hit`, pas par `plate.apply_damage` : c'est le chemin réel des
+## dégâts, celui qui détache les pièces et publie les jauges. Le raccourci laissait le hook
+## sauter en phase 2 avec une coque intacte — on vérifiait alors un état que le jeu ne
+## produit jamais.
 func _force_next_phase() -> void:
-	match _phase:
-		Phase.ARMOR_CHOIR:
-			for plate in _plates:
-				plate.apply_damage(plate.max_health)
-		Phase.GRAVITIC_MAW:
-			for i in _nodes.size():
-				_on_node_hit(tuning.node_health, i)
-		Phase.BOARDING_SWARM:
-			for spike in _spikes:
-				spike.detach(_origin())
-				spike.apply_damage(spike.max_health)
-		_:
-			return
+	if _phase != Phase.ARMOR:
+		return
+	for plate in _plates:
+		_on_plate_hit(plate.max_health, plate.index)
 	_advance_phase()
 
 # --- Boucle -------------------------------------------------------------------
@@ -274,7 +284,7 @@ func _physics_process(delta: float) -> void:
 
 ## Toute la logique du combat. Publique et sans dépendance à l'arbre : les tests la
 ## pilotent directement, ce qui rend vérifiable un enchaînement qu'aucune capture ne
-## pourrait couvrir — il faut plus de trois minutes de jeu pour voir les quatre phases.
+## pourrait couvrir — il faut une quarantaine de secondes de jeu pour voir les deux phases.
 func tick(delta: float) -> void:
 	if tuning == null:
 		return
@@ -282,15 +292,16 @@ func tick(delta: float) -> void:
 	_phase_age += delta
 	var origin := _origin()
 	_tick_missiles(delta)
+	_tick_debris(delta)
 	if _interlude > 0.0:
-		# Le répit : la coque se réorganise, le boss ne tire pas.
+		# Le répit : la coque s'ouvre, le boss ne tire pas.
 		_interlude = maxf(_interlude - delta, 0.0)
+		_open_shell(delta)
+		_pose_shell()
 		return
 	match _phase:
-		Phase.ARMOR_CHOIR: _run_armor_choir(delta, origin)
-		Phase.GRAVITIC_MAW: _run_gravitic_maw(delta, origin)
-		Phase.BOARDING_SWARM: _run_boarding_swarm(delta, origin)
-		Phase.INTO_THE_MAW: _run_into_the_maw(delta, origin)
+		Phase.ARMOR: _run_armor(delta, origin)
+		Phase.HEART: _run_heart(delta, origin)
 		Phase.DEFEATED: return
 	_sync_targets(origin)
 
@@ -304,40 +315,34 @@ func _sync_targets(origin: Vector2) -> void:
 		# La plaque tourne avec la coquille : sa zone de touche suit son angle réel.
 		var a := plate.angle_at(_shell_rotation)
 		plate.target.position = origin + Vector2(cos(a), sin(a)) * 2.6
-	for i in _nodes.size():
-		var a := TAU * i / float(maxi(_nodes.size(), 1)) + _age * 0.2
-		_nodes[i].position = origin + Vector2(cos(a), sin(a)) * 1.8
-	if _core_target != null:
-		_core_target.position = origin
 	if _heart_target != null:
 		_heart_target.position = origin
-	for spike in _spikes:
-		if spike.is_free() or spike.state == LeviathanSpike.State.DETACHING:
-			spike.target.position = spike.plane_position
 
-# --- Phase 1 — ARMOR CHOIR (BRISER) -------------------------------------------
+# --- Phase 1 — BRISER L'ARMURE ------------------------------------------------
 
-func _run_armor_choir(delta: float, origin: Vector2) -> void:
-	# La coquille tourne : c'est elle qui fabrique la fenêtre de tir.
+func _run_armor(delta: float, origin: Vector2) -> void:
+	# La coquille tourne : c'est elle qui fait défiler la plaque à viser.
 	if tuning.shell_orbit_period > 0.0:
 		_shell_rotation = wrapf(_shell_rotation + TAU * delta / tuning.shell_orbit_period, -PI, PI)
-	_pose_shell()
-	# La plaque à viser : celle qui est exposée ET la plus proche du centre de l'arc (angle
-	# le plus petit). Elle porte le télégraphe HUD et monde de la phase.
+	# La plaque vulnérable : la plus proche du centre de l'arc face au joueur.
 	var active := -1
 	var best := INF
 	for plate in _plates:
 		plate.tick(delta, tuning.shell_break_time)
-		# Une plaque n'encaisse que dans l'arc face au joueur. Hors de l'arc le corps
-		# la masque, et le tir part en `deflected` plutôt que dans le vide.
-		var exposed := plate.is_exposed(_shell_rotation, tuning.plate_arc_deg)
-		plate.target.enabled = exposed
-		if exposed:
-			var offset := absf(plate.angle_at(_shell_rotation))
-			if offset < best:
-				best = offset
-				active = plate.index
+		if not plate.is_exposed(_shell_rotation, tuning.plate_arc_deg):
+			continue
+		var offset := absf(plate.angle_at(_shell_rotation))
+		if offset < best:
+			best = offset
+			active = plate.index
+	# ⚠️ UNE SEULE plaque encaisse, et c'est celle qui brille. Avant, toutes les plaques
+	# exposées encaissaient : les dégâts se répartissaient sur quatre barres qui
+	# descendaient ensemble, donc rien ne tombait avant la toute fin de la phase. Le
+	# joueur tirait vingt secondes sans voir une seule pièce céder.
+	for plate in _plates:
+		plate.target.enabled = plate.index == active and plate.is_up()
 	_set_active_piece(active)
+	_pose_shell()
 	_fan_timer -= delta
 	if _fan_timer <= 0.0:
 		_fan_timer = tuning.fan_interval
@@ -349,21 +354,118 @@ func _run_armor_choir(delta: float, origin: Vector2) -> void:
 	if _plates_up() == 0:
 		_advance_phase()
 
-## Fait tourner la coquille visible et pulse le halo de la plaque à viser. Un seul écrivain
-## sur la pose (le module), comme le Harvester : deux auteurs sur une même rotation finissent
-## par se marcher dessus. `.transform.basis =` réassigne un type valeur — aucune allocation
-## par image. `Basis(UP, _shell_rotation)` fait défiler les meshes du même sens que les
-## hitbox (calé sur `angle_at`), pour que la plaque brillante soit bien celle qu'on frappe.
+# --- Phase 2 — LE CŒUR --------------------------------------------------------
+
+func _run_heart(delta: float, origin: Vector2) -> void:
+	_open_shell(delta)
+	# La coquille vidée continue de tourner, deux fois plus lentement : le boss reste
+	# vivant à l'écran sans reprendre le tempo de la phase précédente.
+	if tuning.shell_orbit_period > 0.0:
+		_shell_rotation = wrapf(_shell_rotation + TAU * delta / (tuning.shell_orbit_period * 2.0), -PI, PI)
+	_pose_shell()
+	_pulse_timer -= delta
+	if _pulse_timer <= 0.0:
+		_pulse_timer = tuning.pulse_interval
+		_fire_pulse(origin)
+	_missile_timer -= delta
+	if _missile_timer <= 0.0:
+		_missile_timer = tuning.missile_salvo_interval
+		_launch_missiles(origin)
+	_tick_pull(delta, origin)
+
+## Aspiration par vagues. ⚠️ Elle était une phase entière (« RÉSISTER ») ; elle est
+## devenue une pression intermittente. La différence tient en une phrase : une phase
+## impose d'apprendre une règle, une pression se sent sans qu'on l'explique.
+func _tick_pull(delta: float, origin: Vector2) -> void:
+	if _pull_left > 0.0:
+		_pull_left = maxf(_pull_left - delta, 0.0)
+		pull_changed.emit(tuning.pull_speed_max, tuning.pull_radius, origin)
+		if _pull_left <= 0.0:
+			pull_changed.emit(0.0, tuning.pull_radius, origin)
+		return
+	_pull_timer -= delta
+	if _pull_timer <= 0.0:
+		_pull_timer = tuning.pull_interval
+		_pull_left = tuning.pull_time
+
+## Écarte la coquille pour découvrir le cœur. C'est le seul « texte » de la transition.
+func _open_shell(delta: float) -> void:
+	if _phase == Phase.ARMOR or tuning.shell_open_time <= 0.0:
+		return
+	_shell_open = minf(_shell_open + delta / tuning.shell_open_time, 1.0)
+
+# --- Rendu de la coque --------------------------------------------------------
+
+## Fait tourner la coquille visible, l'écarte en phase 2, pulse le halo de la pièce à
+## viser et couche les plaques abattues. Un seul écrivain sur la pose (le module), comme
+## le Harvester : deux auteurs sur une même rotation finissent par se marcher dessus.
+## `.transform =` réassigne un type valeur — aucune allocation par image.
 func _pose_shell() -> void:
 	if _shell_ring != null:
-		_shell_ring.transform.basis = _shell_ring_rest * Basis(Vector3.UP, _shell_rotation)
+		var basis := _shell_ring_rest.basis * Basis(Vector3.UP, _shell_rotation)
+		# L'ouverture recule la coquille et l'élargit : le cœur se dégage sans que la
+		# silhouette se disloque.
+		var opened := _shell_ring_rest.origin + Vector3(0.0, 0.0, tuning.shell_open_offset * _shell_open)
+		_shell_ring.transform = Transform3D(basis.scaled(Vector3.ONE * (1.0 + 0.12 * _shell_open)), opened)
+	# Les plaques abattues se couchent et s'effacent : `fall_ratio` était calculé depuis
+	# le premier jour et n'était appliqué à AUCUN maillage — la plaque mourait donc sans
+	# que rien ne bouge à l'écran.
+	for plate in _plates:
+		if plate.node == null:
+			continue
+		var fall := plate.fall_ratio(tuning.shell_break_time)
+		if fall <= 0.0:
+			continue
+		plate.node.transform.basis = plate.rest_basis.rotated(plate.fall_axis, fall * PI * 0.55) \
+			.scaled(Vector3.ONE * maxf(1.0 - fall, 0.05))
+		if fall >= 1.0 and plate.node.visible:
+			plate.node.visible = false
+	if _heart_node != null:
+		# ⚠️ Le cœur ne bat QU'UNE FOIS À NU. Vu en capture : un cœur qui palpite au centre
+		# pendant la phase 1 attire l'œil autant que le halo de la plaque à viser, et les
+		# deux sont roses. On désignait deux cibles à la fois, dont une intouchable.
+		var beat := 1.0 + 0.09 * _shell_open * sin(_age * 6.0)
+		_heart_node.scale = Vector3.ONE * beat
 	if _highlight != null:
-		# Battement lent : le halo respire pour attirer l'œil sans clignoter agressivement.
-		var pulse := 0.55 + 0.45 * (0.5 + 0.5 * sin(_age * 4.0))
-		_highlight.albedo_color = Color(0.90, 0.35, 0.70, pulse)
+		# Le halo doit trancher sur une coque qui est DÉJÀ rose et ivoire. Il monte donc
+		# vers le blanc chaud au sommet de son battement au lieu de rester dans la teinte
+		# de la coque, où il se lisait comme un reflet.
+		var pulse := 0.5 + 0.5 * sin(_age * 4.0)
+		_highlight.albedo_color = Color(0.95, 0.35 + 0.45 * pulse, 0.72 + 0.24 * pulse,
+			0.55 + 0.45 * pulse)
 
-## Bascule la plaque à viser et n'émet qu'au changement — sinon `piece_active_changed`
-## partirait à chaque image pendant toute la phase 1. Le monde et le HUD s'y accrochent.
+## Fait tomber les pièces détachées. Aucune allocation : `Vector3` et `Transform3D` sont
+## des types valeur, et les trois tableaux sont dimensionnés au montage.
+func _tick_debris(delta: float) -> void:
+	for i in _debris.size():
+		var fall := _debris_fall[i]
+		if fall < 0.0 or fall >= 1.0:
+			continue
+		fall = minf(fall + delta / DEBRIS_FALL_TIME, 1.0)
+		_debris_fall[i] = fall
+		var node := _debris[i]
+		if node == null:
+			continue
+		var rest := _debris_rest[i]
+		# Elle part vers l'extérieur et vers le bas, en tournant : une pièce arrachée,
+		# pas un objet qu'on éteint.
+		var drift := Vector3(rest.origin.x * 1.4, -6.0 * fall * fall, rest.origin.z * 1.4) * fall
+		node.transform = Transform3D(
+			rest.basis.rotated(Vector3.FORWARD, fall * PI * 1.2).scaled(Vector3.ONE * maxf(1.0 - fall * 0.9, 0.05)),
+			rest.origin + drift)
+		if fall >= 1.0:
+			node.visible = false
+
+## Détache une pièce décorative encore en place. Appelée quand une plaque cède : le
+## joueur casse une plaque, le boss perd un morceau de plus que ce qu'il visait.
+func _shed_debris() -> void:
+	for i in _debris.size():
+		if _debris_fall[i] < 0.0:
+			_debris_fall[i] = 0.0
+			return
+
+## Bascule la pièce à viser et n'émet qu'au changement — sinon `piece_active_changed`
+## partirait à chaque image pendant toute la phase 1.
 func _set_active_piece(index: int) -> void:
 	if index == _active_piece:
 		return
@@ -371,14 +473,16 @@ func _set_active_piece(index: int) -> void:
 	_apply_highlight(index)
 	piece_active_changed.emit(index)
 
-## Pose le halo sur les maillages de la plaque active, le retire des autres. Appelé seulement
-## au changement de plaque : réassigner un `material_overlay` par image serait gratuit en pure
-## perte. Une plaque tombée ne brille jamais (`is_up()`), même si son indice redevient actif.
+## Pose le halo sur les maillages de la plaque active, le retire des autres. Appelé
+## seulement au changement : réassigner un `material_overlay` par image serait gratuit en
+## pure perte. Une plaque tombée ne brille jamais (`is_up()`).
 func _apply_highlight(index: int) -> void:
 	for plate in _plates:
 		var lit: Material = _highlight if (plate.index == index and plate.is_up()) else null
 		for mesh in plate.meshes:
 			mesh.material_overlay = lit
+
+# --- Armement -----------------------------------------------------------------
 
 ## Un éventail par plaque **encore debout** : moins de plaques = moins de rideau. Le
 ## retour de la destruction est immédiat et physique, sans qu'aucun texte ne l'explique.
@@ -395,6 +499,15 @@ func _fire_fans(origin: Vector2) -> void:
 			var spread := deg_to_rad(tuning.fan_spread_deg) * t
 			_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
 				Vector2(0.0, -1.0).rotated(spread), projectile)
+
+## La salve circulaire de la phase 2 : le corps à nu se défend dans toutes les directions.
+func _fire_pulse(origin: Vector2) -> void:
+	if _bullet_manager == null or projectile == null:
+		return
+	for i in tuning.pulse_bullets:
+		var a := TAU * i / float(maxi(tuning.pulse_bullets, 1))
+		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
+			Vector2(cos(a), sin(a)), projectile)
 
 func _launch_missiles(origin: Vector2) -> void:
 	var aim := _player.plane_position if _player != null else origin + Vector2(0.0, -6.0)
@@ -418,7 +531,7 @@ func _tick_missiles(delta: float) -> void:
 			_player.take_contact_damage(missile.damage)
 			missile.consume()
 	# ⚠️ On ne compacte le tableau que lorsqu'il grossit : `filter()` alloue, et cette
-	# boucle tourne à chaque image pendant soixante secondes.
+	# boucle tourne à chaque image pendant toute la durée du combat.
 	if _missiles.size() > 24:
 		var kept: Array[TargetableProjectile] = []
 		for missile in _missiles:
@@ -428,115 +541,38 @@ func _tick_missiles(delta: float) -> void:
 				_bullet_manager.unregister_target(missile.target)
 		_missiles = kept
 
-# --- Phase 2 — GRAVITIC MAW (RÉSISTER) ----------------------------------------
-
-func _run_gravitic_maw(delta: float, origin: Vector2) -> void:
-	_pulse_timer -= delta
-	if _pulse_timer <= 0.0:
-		_pulse_timer = tuning.maw_pulse_interval
-		_fire_pulse(origin)
-	_publish_pull(origin)
-	if _nodes_up() == 0:
-		_advance_phase()
-
-func _fire_pulse(origin: Vector2) -> void:
-	if _bullet_manager == null or projectile == null:
-		return
-	for i in tuning.maw_pulse_bullets:
-		var a := TAU * i / float(maxi(tuning.maw_pulse_bullets, 1))
-		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
-			Vector2(cos(a), sin(a)), projectile)
-
-## Chaque nœud abattu retire un tiers de l'aspiration. Le soulagement est fractionnaire
-## et se **sent dans les doigts** : chaque victoire partielle paie.
-func _publish_pull(origin: Vector2) -> void:
-	var down := NODE_COUNT - _nodes_up()
-	var speed := GravityWell.speed_max_after(tuning.pull_speed_max, down, NODE_COUNT)
-	pull_changed.emit(speed, tuning.pull_radius, origin)
-
-# --- Phase 3 — BOARDING SWARM (PRIORISER) -------------------------------------
-
-func _run_boarding_swarm(delta: float, origin: Vector2) -> void:
-	var player := _player.plane_position if _player != null else origin + Vector2(0.0, -6.0)
-	for spike in _spikes:
-		if not spike.is_alive():
-			continue
-		spike.tick(delta, 0.6)
-		if spike.state == LeviathanSpike.State.ATTACHED:
-			continue
-		var want := spike.desired_position(origin, player, tuning.blocker_offset,
-			tuning.escort_orbit_radius, _age)
-		var speed := tuning.charger_speed if spike.charging else 8.0
-		spike.plane_position = spike.plane_position.move_toward(want, speed * delta)
-		spike.plane_position = GameplayPlane.clamp_to_bounds(spike.plane_position)
-	if _spikes_alive() == 0:
-		_advance_phase()
-
-# --- Phase 4 — INTO THE MAW (OSER) --------------------------------------------
-
-func _run_into_the_maw(delta: float, origin: Vector2) -> void:
-	if _maw_closed_for > 0.0:
-		_maw_closed_for = maxf(_maw_closed_for - delta, 0.0)
-		if _maw_closed_for <= 0.0:
-			_maw_open = tuning.maw_open_time
-			_heart_target.enabled = true
-		pull_changed.emit(0.0, tuning.pull_radius, origin)
-		return
-	_maw_open = maxf(_maw_open - delta, 0.0)
-	# ⚠️ L'aspiration DÉPASSE ici la vitesse du joueur, et c'est le sujet de la phase :
-	# on ne résiste plus, on entre. `LeviathanTuning.validate()` vérifie ce sens-là.
-	pull_changed.emit(tuning.pull_speed_max_final, tuning.pull_radius, origin)
-	if _maw_open <= 0.0:
-		# Le cœur a tenu : la gueule se referme, le boss recharge, on recommence.
-		_heart_target.enabled = false
-		_maw_closed_for = tuning.maw_reopen_delay
-
-## Part restante du compte à rebours, pour le HUD.
-func maw_open_ratio() -> float:
-	if tuning == null or tuning.maw_open_time <= 0.0:
-		return 0.0
-	return _maw_open / tuning.maw_open_time
-
 # --- Transitions --------------------------------------------------------------
 
 func _advance_phase() -> void:
 	match _phase:
-		Phase.ARMOR_CHOIR: _enter_phase(Phase.GRAVITIC_MAW)
-		Phase.GRAVITIC_MAW: _enter_phase(Phase.BOARDING_SWARM)
-		Phase.BOARDING_SWARM: _enter_phase(Phase.INTO_THE_MAW)
-		Phase.INTO_THE_MAW: _enter_phase(Phase.DEFEATED)
+		Phase.ARMOR: _enter_phase(Phase.HEART)
+		Phase.HEART: _enter_phase(Phase.DEFEATED)
 
 func _enter_phase(next: Phase) -> void:
 	_phase = next
 	_phase_age = 0.0
-	_interlude = 0.0 if next == Phase.ARMOR_CHOIR else 1.5
-	# Hors phase 1, aucune « plaque à viser » unique : on éteint le télégraphe. En quittant
-	# la phase 1 c'est ce qui émet enfin `-1`, la boucle de brisure ne le ferait plus.
-	if next != Phase.ARMOR_CHOIR:
+	# ⚠️ Les dégâts de la phase précédente ne comptent plus : la jauge repart à plein.
+	# C'est l'idiome de shmup — « il lui reste une deuxième barre » — et c'est ce qui
+	# remplace une barre unique qui n'avançait que d'un tiers pour vingt secondes de jeu.
+	_phase_damage = 0.0
+	_interlude = 0.0 if next == Phase.ARMOR else 1.5
+	if next != Phase.ARMOR:
+		# Plus de « plaque à viser » : on éteint le télégraphe. C'est ce qui émet enfin
+		# `-1`, la boucle de brisure ne le ferait plus.
 		_set_active_piece(-1)
 	match next:
-		Phase.ARMOR_CHOIR:
+		Phase.ARMOR:
 			# Le corps reste CLOS tout le combat : rien ne le tue directement, seul le
-			# cœur en phase 4 le fait tomber. Les tirs qui ratent une sous-cible
-			# ricochent (`deflected`) au lieu d'entamer une barre de 20 000 PV qui ferait
-			# avancer les phases par les dégâts — précisément ce que le module refuse
-			# (`test_damage_alone_never_advances_a_phase`).
+			# cœur le fait tomber. Les tirs qui ratent une sous-cible ricochent
+			# (`deflected`) au lieu d'entamer une barre de 20 000 PV qui ferait avancer
+			# les phases par les dégâts — ce que le module refuse.
 			if _boss != null:
 				_boss.vulnerable = false
-		Phase.GRAVITIC_MAW:
-			# La coquille a éclaté : la lèvre et ses nœuds deviennent la cible.
-			for node in _nodes:
-				node.enabled = true
-		Phase.BOARDING_SWARM:
-			# Les épines s'arrachent, et le noyau devient enfin touchable — la sous-cible
-			# `_core_target`, pas le corps, qui lui reste clos.
-			for spike in _spikes:
-				spike.detach(_origin())
-			_core_target.enabled = true
-		Phase.INTO_THE_MAW:
-			_maw_open = tuning.maw_open_time if tuning != null else 0.0
+		Phase.HEART:
+			# L'armure est tombée : le cœur est la seule cible, et il le reste.
+			for plate in _plates:
+				plate.target.enabled = false
 			_heart_target.enabled = true
-			_core_target.enabled = false
 		Phase.DEFEATED:
 			release()
 			# Le cœur est tombé : c'est LA condition de mort. On la traduit en mort du
@@ -555,43 +591,18 @@ func _on_plate_hit(damage: float, index: int) -> void:
 		return
 	_account(damage)
 	if plate.apply_damage(damage):
-		piece_destroyed.emit(Phase.ARMOR_CHOIR, index, _piece_world(plate.target.position))
+		# Une plaque cède : une épine ou un nœud part avec elle. Le boss se démonte plus
+		# vite que ce que le joueur a visé, et ça se voit.
+		_shed_debris()
+		piece_destroyed.emit(Phase.ARMOR, index, _piece_world(plate.target.position))
 	piece_gauge_changed.emit(index, plate.health_ratio(), plate.is_up())
 
-func _on_node_hit(damage: float, index: int) -> void:
-	if _node_health[index] <= 0.0:
-		return
-	_account(damage)
-	_node_health[index] = maxf(_node_health[index] - damage, 0.0)
-	if _node_health[index] <= 0.0:
-		_nodes[index].enabled = false
-		piece_destroyed.emit(Phase.GRAVITIC_MAW, index, _piece_world(_nodes[index].position))
-	piece_gauge_changed.emit(index, _node_health[index] / tuning.node_health, _node_health[index] > 0.0)
-
-func _on_spike_hit(damage: float, index: int) -> void:
-	var spike := _spikes[index]
-	if not spike.is_alive():
-		return
-	_account(damage)
-	if spike.apply_damage(damage):
-		piece_destroyed.emit(Phase.BOARDING_SWARM, index, _piece_world(spike.plane_position))
-	piece_gauge_changed.emit(index, spike.health_ratio(), spike.is_alive())
-
-func _on_core_hit(damage: float) -> void:
-	if _core_health <= 0.0:
-		return
-	_account(damage)
-	_core_health = maxf(_core_health - damage, 0.0)
-	if _core_health <= 0.0:
-		_core_target.enabled = false
-
 func _on_heart_hit(damage: float) -> void:
-	if _heart_health <= 0.0:
+	if _phase != Phase.HEART or _heart_health <= 0.0:
 		return
 	_account(damage)
 	_heart_health = maxf(_heart_health - damage, 0.0)
 	if _heart_health <= 0.0:
-		_heart_target.enabled = false
 		_advance_phase()
 
 func _on_missile_hit(damage: float, index: int) -> void:
@@ -599,19 +610,13 @@ func _on_missile_hit(damage: float, index: int) -> void:
 		return
 	_missiles[index].apply_damage(damage)
 
-## Comptabilise les dégâts pour la jauge globale. ⚠️ Tout y passe — plaques, nœuds,
-## épines, noyau, cœur — sinon la jauge se fige pendant une phase entière.
+## Comptabilise les dégâts de la phase en cours — le numérateur de la jauge.
 func _account(damage: float) -> void:
-	_damage_taken += damage
+	_phase_damage += damage
 	_publish_structure()
 
 func _publish_structure() -> void:
-	if tuning == null:
-		return
-	var total := tuning.total_structure()
-	if total <= 0.0:
-		return
-	structure_changed.emit(clampf(1.0 - _damage_taken / total, 0.0, 1.0))
+	structure_changed.emit(structure_ratio())
 
 func _piece_world(plane: Vector2) -> Vector3:
 	return GameplayPlane.to_world(plane)
@@ -627,8 +632,10 @@ func shell_rotation() -> float:
 func plates() -> Array[LeviathanPlate]:
 	return _plates
 
-func spikes() -> Array[LeviathanSpike]:
-	return _spikes
+## Ouverture de la coquille, de 0 à 1. Sert au niveau pour caler ses effets sur la
+## révélation du cœur.
+func shell_open_ratio() -> float:
+	return _shell_open
 
 func _plates_up() -> int:
 	var up := 0
@@ -637,31 +644,25 @@ func _plates_up() -> int:
 			up += 1
 	return up
 
-func _nodes_up() -> int:
-	var up := 0
-	for value in _node_health:
-		if value > 0.0:
-			up += 1
-	return up
-
-func _spikes_alive() -> int:
-	var alive := 0
-	for spike in _spikes:
-		if spike.is_alive():
-			alive += 1
-	return alive
-
+## Santé restante de la PHASE en cours, entre 1 et 0.
 func structure_ratio() -> float:
 	if tuning == null:
 		return 1.0
-	var total := tuning.total_structure()
-	return clampf(1.0 - _damage_taken / total, 0.0, 1.0) if total > 0.0 else 1.0
+	var total := tuning.phase_health(_phase) if _phase < LeviathanTuning.PHASE_COUNT else 0.0
+	if total <= 0.0:
+		return 0.0
+	return clampf(1.0 - _phase_damage / total, 0.0, 1.0)
 
 ## Publie l'état de toutes les jauges. Le niveau l'appelle après `begin()`, quand le
 ## HUD est prêt : interroger avant afficherait des pastilles éteintes sur un boss intact.
 func publish_gauges() -> void:
-	for plate in _plates:
-		piece_gauge_changed.emit(plate.index, plate.health_ratio(), plate.is_up())
+	# ⚠️ Les pastilles n'existent qu'en phase 1. Les publier en phase 2 RALLUME une rangée
+	# que le niveau vient d'éteindre : vu en capture, quatre pastilles de plaques pleines
+	# pendant que le cœur était la seule cible du combat. `set_boss_limb()` rend visible
+	# la pastille qu'il met à jour — publier, c'est afficher.
+	if _phase == Phase.ARMOR:
+		for plate in _plates:
+			piece_gauge_changed.emit(plate.index, plate.health_ratio(), plate.is_up())
 	_publish_structure()
 
 ## Retire TOUTES les cibles du gestionnaire. Sans cela, un boss vaincu ou un remontage
@@ -673,17 +674,10 @@ func release() -> void:
 	for plate in _plates:
 		plate.target.enabled = false
 		_bullet_manager.unregister_target(plate.target)
-	for node in _nodes:
-		node.enabled = false
-		_bullet_manager.unregister_target(node)
-	for spike in _spikes:
-		spike.target.enabled = false
-		_bullet_manager.unregister_target(spike.target)
 	for missile in _missiles:
 		missile.target.enabled = false
 		_bullet_manager.unregister_target(missile.target)
 	_missiles.clear()
-	for target in [_core_target, _heart_target]:
-		if target != null:
-			target.enabled = false
-			_bullet_manager.unregister_target(target)
+	if _heart_target != null:
+		_heart_target.enabled = false
+		_bullet_manager.unregister_target(_heart_target)

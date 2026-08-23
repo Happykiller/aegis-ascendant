@@ -26,9 +26,10 @@ const _BANNER_MAGENTA := Color("d93d9c")
 ## identiques (contrairement aux appendices nommés du Harvester) et abrégés pour tenir
 ## dans la jauge : P = plaque, N = nœud gravitique, E = épine. Le bandeau de phase donne
 ## le contexte, le numéro distingue la cible.
+## Les quatre plaques de la phase 1. ⚠️ Il n'y a plus de rangée pour les nœuds ni pour
+## les épines : ADR-0020 les a retirés du combat, ils ne sont plus que des pièces qui
+## tombent. Une pastille sans cible derrière est un mensonge de HUD.
 const _LEVIATHAN_PLATE_LABELS: PackedStringArray = ["P 1", "P 2", "P 3", "P 4"]
-const _LEVIATHAN_NODE_LABELS: PackedStringArray = ["N 1", "N 2", "N 3"]
-const _LEVIATHAN_SPIKE_LABELS: PackedStringArray = ["E 1", "E 2", "E 3", "E 4"]
 
 ## Impact tints: the palette's cold impact flash when we strike an enemy hull, the
 ## shield's own cyan when something strikes us.
@@ -386,8 +387,10 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.piece_destroyed.connect(_on_leviathan_piece_destroyed)
 	combat.pull_changed.connect(_on_leviathan_pull)
 
-## La jauge du boss montre les dégâts cumulés sur TOUTE la structure (design §2.3) : elle
-## descend en continu, là où une jauge de corps resterait figée une phase entière.
+## La jauge du boss montre la santé de la PHASE EN COURS (ADR-0020). ⚠️ Elle cumulait les
+## quatre phases : briser toute l'armure ne valait que 30 % de barre, et le joueur lisait
+## « 70 % » après vingt secondes d'effort. Elle se remplit à nouveau à chaque bascule —
+## « il lui reste une deuxième barre », l'idiome que tout joueur de shmup sait lire.
 func _on_leviathan_structure(ratio: float) -> void:
 	if _hud != null:
 		_hud.set_boss_health(ratio)
@@ -410,7 +413,7 @@ func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vec
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)
 	_sfx(&"medium_explosion")
 
-## Le champ gravitique (phases 2 et 4) s'ajoute à la vitesse du joueur. Le module publie
+## Le champ gravitique (vagues d'aspiration de la phase 2) s'ajoute à la vitesse du joueur. Le module publie
 ## à chaque image tant que la phase l'exige ; on la recalcule ici depuis la position
 ## COURANTE du joueur (il bouge) et on la lui impose — il la consomme et la remet à zéro,
 ## si bien qu'une phase sans champ ne traîne aucune aspiration résiduelle.
@@ -425,26 +428,15 @@ func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> voi
 ## en est seul juge, le niveau ne fait que l'annoncer.
 func _on_leviathan_phase(phase: int) -> void:
 	match phase:
-		LeviathanCombat.Phase.ARMOR_CHOIR:
+		LeviathanCombat.Phase.ARMOR:
 			# Phase initiale : la bannière du nom est déjà à l'écran, pas de doublon.
 			if _hud != null:
 				_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS)
-		LeviathanCombat.Phase.GRAVITIC_MAW:
-			if _hud != null:
-				_hud.set_boss_limbs(_LEVIATHAN_NODE_LABELS)
-			_leviathan_phase_beat("COQUILLE BRISEE", _BANNER_IVORY, 1.6, 1)
-		LeviathanCombat.Phase.BOARDING_SWARM:
-			if _hud != null:
-				_hud.set_boss_limbs(_LEVIATHAN_SPIKE_LABELS)
-			_leviathan_phase_beat("GUEULE OUVERTE", _BANNER_MAGENTA, 1.4, 2)
-		LeviathanCombat.Phase.INTO_THE_MAW:
-			# Plus aucune sous-cible extérieure : la rangée s'éteint.
+		LeviathanCombat.Phase.HEART:
+			# Plus aucune sous-cible : la rangée s'éteint, il ne reste que le cœur.
 			if _hud != null:
 				_hud.set_boss_limbs(PackedStringArray())
-			_leviathan_phase_beat("STRUCTURE DECHARNEE", _BANNER_IVORY, 1.8, 3)
-			# Le second temps — « ENTREZ », le renversement de l'aspiration — suit la
-			# première bannière plutôt que de la recouvrir.
-			get_tree().create_timer(1.9).timeout.connect(_announce_into_the_maw)
+			_leviathan_phase_beat("COEUR A NU", _BANNER_MAGENTA, 1.8, 1)
 		LeviathanCombat.Phase.DEFEATED:
 			# La mort est portée par `defeated` → `_on_final_boss_defeated` (finale Helios).
 			pass
@@ -455,12 +447,9 @@ func _leviathan_phase_beat(text: String, color: Color, hold: float, phase_index:
 	_sfx(&"boss_phase_shift")
 	_banner(text, color, hold)
 	_music.boss_phase = phase_index
-	_music.boss_phase_count = 4
+	_music.boss_phase_count = LeviathanTuning.PHASE_COUNT
 	_update_music()
-	print("[Level] leviathan phase %d/4" % [phase_index + 1])
-
-func _announce_into_the_maw() -> void:
-	_banner("ENTREZ", _BANNER_MAGENTA, 2.0)
+	print("[Level] leviathan phase %d/%d" % [phase_index + 1, LeviathanTuning.PHASE_COUNT])
 
 func _physics_process(_delta: float) -> void:
 	_update_engine_hum()

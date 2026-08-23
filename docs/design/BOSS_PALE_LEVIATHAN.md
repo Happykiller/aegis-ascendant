@@ -1,5 +1,20 @@
 # THE PALE LEVIATHAN — conception du boss final
 
+> ## ⚠️ CE DOCUMENT DÉCRIT QUATRE PHASES ; LE COMBAT N'EN A PLUS QUE DEUX
+>
+> **`ADR-0020` (2026-08-23) a refondu le boss après playtest** : `BRISER L'ARMURE` puis
+> `LE CŒUR`, ~40 s au total. Les phases **RÉSISTER** (nœuds gravitiques), **PRIORISER**
+> (essaim d'abordage) et **OSER** (plongée dans la gueule) ne sont plus jouées — leurs
+> pièces restent à l'écran et se détachent quand l'armure cède.
+>
+> Ce document n'est pas corrigé section par section, et c'est délibéré : il porte aussi les
+> briefs d'assets, les onze prompts d'images et la spec 3D de la coque, tous encore valides.
+> Ses §4 à §6 sont donc de la **matière non employée** — pas une description du jeu. Pour
+> l'état réel, lire `ADR-0020`, puis `resources/data/leviathan_tuning.gd`.
+>
+> **Les valeurs de PV, de durée et d'occupation citées plus bas sont périmées.** Le tuning
+> fait foi, et il porte désormais son propre garde-fou de durée.
+
 - **Statut** : proposition de conception (aucun code écrit)
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-07-23

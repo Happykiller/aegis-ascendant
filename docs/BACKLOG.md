@@ -1,10 +1,11 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
 > Point de reprise au **2026-08-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
-> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **279 tests verts**.
+> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **269 tests verts**.
 >
-> Le chantier Leviathan est câblé et coupé (`ADR-0019`) ; il attend **le playtest manuel de
-> l'opérateur** — voir « Reste à confirmer », plus bas. Ne pas tirer les leviers de rythme d'office.
+> Le boss final a été **refondu à deux phases** après playtest (`ADR-0020`, ~40 s). Il attend
+> maintenant **une partie jouée** : c'est le seul juge de l'alignement halo/hitbox et du
+> ressenti de durée. Ne pas tirer de levier de réglage avant ce verdict.
 >
 > ⚠️ L'en-tête précédent annonçait un arc « appontage → forteresse » supprimé depuis, 80 tests, et
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
@@ -21,45 +22,42 @@
 
 ---
 
-## ⏳ En cours — Pale Leviathan (coque livrée le 2026-07-23, câblage restant)
+## ⏳ En cours — Pale Leviathan (refondu le 2026-08-23)
 
-### ✅ REPRISE FAITE — équilibrage & lisibilité (playtest opérateur 2026-07-23, traité 2026-07-24)
+### ✅ REFONTE FAITE — deux phases, ~40 s (`ADR-0020`)
 
-Verdict opérateur : *« beaucoup beaucoup trop long, j'ai arrêté volontairement, les pastilles P 1..4
-se vidaient, le boss encore à 80 %, j'ai pas compris les phases, il n'a fait qu'aller de gauche à
-droite, rien ne s'est passé. »* Les deux chantiers sont traités.
+Verdict opérateur du 2026-08-23 : *« il est mal équilibré, je n'aime pas le combat, on ne voit
+pas bien les phases — il faut revoir entièrement son équilibrage et son gameplay. »* La partie
+s'était arrêtée **pendant la phase 1**, sans qu'aucune ligne `leviathan phase N/4` ne parte.
 
-#### 1. Coupe des durées — FAIT (`ADR-0019`)
+Trois causes, trouvées dans le code avant de toucher à quoi que ce soit :
 
-PV coupés dans les deux sources (`leviathan_tuning.gd` défaut + `pale_leviathan_tuning.tres`) :
-plate 3200→**950**, node 2800→**950**, spike 1500→**550**, core 3200→**1200**, heart **2600**
-inchangé. Total ~12 650 PV, durées théoriques ~20/19/20/8 s, **~67 s** de combat net. `validate()`
-reste vert (ses invariants portent sur des rapports). Quatre tests de `test_leviathan_tuning.gd`
-recadrés (durées, total renommé, plancher `total_structure`, comparaison mini-boss basculée sur la
-durée). Doc `BOSS_PALE_LEVIATHAN.md` §2/§7.2 à jour. `ADR-0019` acte le ~67 s contre la spec §7 et le
-recadrage « boss final ≥ mini-boss » des PV bruts vers durée+variété.
+1. **La jauge mentait** — elle divisait par les PV des quatre phases, donc briser toute
+   l'armure ne valait que **30 %** de barre. C'était déjà le retour de juillet (« les
+   pastilles se vidaient, le boss encore à 80 % »), contourné à l'époque, jamais traité.
+2. **La fenêtre de tir n'existait pas** — quatre plaques à 90°, arc de 100° : il y en avait
+   toujours une exposée, souvent deux. « Lire la rotation » ne contraignait rien.
+3. **Les dégâts s'étalaient** — toutes les plaques exposées encaissaient, elles descendaient
+   ensemble et tombaient **toutes à la fin**. Quinze secondes sans qu'une pièce cède.
 
-#### 2. Lisibilité — FAIT (HUD + in-world)
+Ce qui est en place : deux phases (`BRISER L'ARMURE` ~22 s, `LE CŒUR` ~18 s), **une seule
+plaque vulnérable à la fois** (celle qui brille), jauge **par phase** qui se remplit à la
+bascule, cœur exposé en permanence, coquille qui s'écarte, épines et nœuds qui **se détachent**
+quand une plaque cède, aspiration devenue pression intermittente. `LeviathanSpike` supprimé.
 
-- **HUD** : signal `piece_active_changed(index)` (émis au changement), relais niveau, méthode
-  `set_boss_limb_active` — la pastille de la plaque exposée passe au rose vif, les autres s'atténuent.
-- **In-world** : `Shell_Ring` tourne enfin par `_shell_rotation` (le runtime n'animait AUCUN mesh —
-  c'était *le* « rien ne s'est passé ») et un `material_overlay` additif pulse sur la plaque exposée.
-  Vérifié à la capture Windows : coquille qui tourne franchement, halo qui suit la plaque, GPU
-  3,2–4,1 ms/image.
+Deux invariants neufs gardent ce qui avait échappé à tous les tests : la **durée totale**
+(40 ± 10 s) et le **poids de chaque phase** (25–75 % du combat).
 
-#### Reste à confirmer / différé (à rejuger, PAS d'office)
+#### Reste à juger — PAR UNE PARTIE, pas par une capture
 
-- **`/jouer` manuel** (opérateur) : confirmer au ressenti que ce n'est plus « trop long » ET que le
-  halo pointe **pile** la plaque que les tirs touchent (alignement halo↔hitbox non jugeable à l'arrêt).
-- **Halo un peu chaud** en plein rideau de balles (bloom additif + glow de scène) — baisser l'albédo
-  si besoin.
-- **Leviers de rythme** si encore confus : `shell_orbit_period` 12→8 et/ou `plate_arc_deg` 100→120.
-- **Corps clos** : retour « ARMURE » clair sur un tir qui ricoche (`deflected`), basse priorité.
-- **Chute des plaques / épines** : `fall_ratio` est calculé mais toujours pas appliqué aux meshes —
-  une plaque abattue ne se soulève pas encore visuellement (polish, cf. art restant ci-dessous).
-
----
+- **`/jouer`** : est-ce que le combat est enfin lisible et nerveux ? C'est LA question.
+- **Alignement halo ↔ hitbox** : le halo pointe-t-il pile la plaque que les tirs touchent ?
+  Non jugeable à l'arrêt. Le halo a été éclairci vers le blanc chaud pour trancher sur une
+  coque déjà rose ; le cœur ne bat plus qu'une fois à nu, pour ne pas désigner deux cibles.
+- **Écartement de la coquille** (`shell_open_offset` 2,2) : visible en capture, mais discret
+  sous l'angle de la caméra de jeu. À renforcer si la transition ne se lit pas.
+- **Leviers de rythme** si la phase 1 traîne encore : `shell_orbit_period` 9→7,
+  `plate_health` 1270→1100 (le garde-fou de durée refusera d'aller trop bas).
 
 ### Ce qui est acquis
 
@@ -69,11 +67,11 @@ recadrage « boss final ≥ mini-boss » des PV bruts vers durée+variété.
 | Décision + dimensions 11 × 14 m | `ADR-0018`, tableau d'`ADR-0008` amendé | ✅ |
 | Les 11 images (3 planches, 5 textures, 3 décors/VFX) | `assets/reference/concepts/`, `assets/source/` | ✅ mesurées, regardées, provenance au CSV |
 | **Coque + silhouette (BRIEF-0041)** — noyau sphérique, épines longues/inégales, croissant asymétrique | `build_pale_leviathan.py`, `pale_leviathan.glb` | ✅ mesurée, rendue, regardée (voir réserve) |
-| `GravityWell`, `TargetableProjectile` | `scripts/gameplay/` | ✅ 25 tests |
+| `GravityWell`, `TargetableProjectile` | `scripts/gameplay/` | ✅ 25 tests (le puits sert désormais les vagues d'aspiration de la phase 2) |
 | `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
-| `LeviathanPlate`, `LeviathanSpike`, `LeviathanCombat` | `scripts/bosses/` | ✅ 42 tests |
+| `LeviathanPlate`, `LeviathanCombat` | `scripts/bosses/` | ✅ refondus par ADR-0020 ; `LeviathanSpike` supprimé avec ses 13 tests |
 
-`./scripts/check.sh` : **279 tests verts**.
+`./scripts/check.sh` : **269 tests verts**.
 
 ### ✅ BRIEF-0041 (silhouette) — livré et intégré
 

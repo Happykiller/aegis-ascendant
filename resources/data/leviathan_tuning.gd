@@ -4,10 +4,17 @@ extends Resource
 ## gameplay en dur). Unités : distances en unités monde, temps en secondes, angles en
 ## degrés. Référence de conception : `docs/design/BOSS_PALE_LEVIATHAN.md`.
 ##
-## LE PILIER QUE CES VALEURS DÉCRIVENT — le Harvester est un **verrou** (trois clés
-## ouvrent une fenêtre, en boucle, tout repousse). Le Leviathan est un **démontage** :
-## chaque phase lui arrache une partie du corps, **rien ne repousse**, et la pièce
-## arrachée devient la mécanique de la phase suivante.
+## LE COMBAT QUE CES VALEURS DÉCRIVENT — **deux phases, un seul geste à comprendre par
+## phase** (`ADR-0020`). Le joueur brise l'armure, puis frappe le cœur. C'est tout.
+##
+## ⚠️ CE QUI A ÉTÉ RETIRÉ, ET POURQUOI. Le combat comptait quatre phases (armure, nœuds
+## gravitiques, essaim d'abordage, plongée dans la gueule). Au playtest il a été jugé
+## « mal équilibré, on ne voit pas les phases, je n'aime pas le combat » — et la partie
+## s'est arrêtée en phase 1, sans que le joueur voie jamais les trois autres. Quatre
+## mécaniques inédites en une minute, sans droit à l'erreur, ne s'apprennent pas : elles
+## se subissent. Nœuds, épines et noyau intermédiaire ont disparu **comme cibles** ; ils
+## restent à l'écran et se détachent quand l'armure cède, pour que le démontage se voie
+## sans avoir à s'expliquer.
 ##
 ## COMMENT LES POINTS DE VIE SONT OBTENUS — jamais à l'oreille :
 ##
@@ -36,25 +43,35 @@ extends Resource
 @export var reference_player_max_speed: float = 14.0
 ## Fenêtre de tir minimale exploitable, en secondes. En deçà, le joueur voit la cible
 ## passer sans avoir le temps d'y placer une salve : la mécanique existe sur le papier
-## et nulle part à l'écran. C'est la constante `MIN_WINDOW` du Harvester, transposée à
-## une géométrie plutôt qu'à un minuteur.
+## et nulle part à l'écran.
 @export var min_window: float = 2.0
+## Durée totale visée pour le combat, en secondes, et sa tolérance. Le playtest a tranché
+## « nerveux » : le boss final doit rester au-dessus du mini-boss (~30 s) sans devenir une
+## épreuve d'endurance. `validate()` refuse un jeu de réglages qui sortirait de la plage —
+## c'est le garde-fou qui a manqué quand le combat dérivait vers trois minutes.
+@export var target_duration: float = 40.0
+@export var duration_tolerance: float = 10.0
 
 # ==========================================================================
-# Phase 1 — ARMOR CHOIR (le verbe : BRISER)
+# Phase 1 — BRISER L'ARMURE
 # ==========================================================================
 
-@export_group("Phase 1 - Armor Choir")
-## Coupé ÷~3,4 après playtest (ADR-0019) : à 3200 la phase durait ~68 s, le joueur
-## abandonnait avant la fin. 950 vise ~20 s (950 × 4 / (420 × 0,45)).
-@export var plate_health: float = 950.0
+@export_group("Phase 1 - Briser l'armure")
+## ⚠️ 950 → 1270 alors même que la phase RACCOURCIT. Ce n'est pas une contradiction :
+## avant, les quatre plaques encaissaient dès qu'elles passaient dans l'arc, donc les
+## dégâts du joueur s'étalaient sur les quatre et **aucune ne tombait avant la fin**.
+## Une seule plaque est désormais vulnérable — celle qui est surlignée. Le feu se
+## concentre, une plaque cède toutes les ~5,5 s, et le joueur voit son travail payer
+## quatre fois au lieu d'une.
+@export var plate_health: float = 1270.0
 @export var plate_count: int = 4
-## Durée d'un tour complet de la coquille. C'est elle qui fabrique la fenêtre de tir :
-## les plaques défilent, le joueur choisit son moment.
-@export var shell_orbit_period: float = 12.0
-## Arc face au joueur où une plaque encaisse. ⚠️ CE N'EST PAS UN NOMBRE LIBRE : avec
-## `arc/360 × période`, il donne la durée pendant laquelle une plaque est atteignable.
-## Trop étroit, le joueur regarde la cible passer sans pouvoir la traiter.
+## Durée d'un tour complet de la coquille. Accélérée (12 → 9 s) : c'est elle qui donne
+## le tempo de la phase, et à 12 s la rotation se lisait comme une dérive lente.
+@export var shell_orbit_period: float = 9.0
+## Arc face au joueur où une plaque peut être exposée. ⚠️ CE N'EST PAS UN NOMBRE LIBRE :
+## il doit rester **au moins égal à l'écart entre deux plaques** (360 / plate_count),
+## sans quoi il existe des instants où aucune plaque n'est atteignable — le joueur tire
+## dans le vide sans comprendre pourquoi. `validate()` refuse ce cas.
 @export var plate_arc_deg: float = 100.0
 ## Généreux : la plaque bouge, elle est grosse, et viser sous un rideau de balles ne
 ## doit pas demander de la précision au pixel (spec §5.3).
@@ -70,6 +87,10 @@ extends Resource
 @export var fan_speed: float = 5.0
 
 @export_subgroup("Lance annoncee")
+## ⚠️ RÉGLAGES SANS ATTAQUE — vérifié le 2026-08-23 : `LeviathanCombat` n'implémente
+## aucune lance. Les valeurs sont conservées parce que la conception la prévoit
+## (`BOSS_PALE_LEVIATHAN.md`) et que l'invariant de télégraphe la garde déjà, mais tant
+## qu'aucun code ne les lit, **les régler ne change rien à l'écran**.
 ## ⚠️ Le réarme EST la règle du duel : c'est lui qui rend la lance esquivable.
 @export var lance_windup_time: float = 1.8
 @export var lance_beam_time: float = 1.2
@@ -94,105 +115,66 @@ extends Resource
 @export var missile_damage: float = 22.0
 
 # ==========================================================================
-# Phase 2 — GRAVITIC MAW (le verbe : RÉSISTER)
+# Phase 2 — LE CŒUR
 # ==========================================================================
 
-@export_group("Phase 2 - Gravitic Maw")
-## Coupé après playtest (ADR-0019) : ~20 s de phase (950 × 3 / (420 × 0,35)).
-@export var node_health: float = 950.0
-@export var node_count: int = 3
-@export var node_hitbox_radius: float = 1.00
-@export var pull_radius: float = 16.0
+@export_group("Phase 2 - Le coeur")
+## Le cœur est exposé **en permanence** : plus de gueule qui se referme, plus de compte
+## à rebours. La cible est visible du premier au dernier tir de la phase, et c'est ce
+## qui rend la barre honnête — elle descend quand on tire, elle s'arrête quand on esquive.
+## La pression vient de la DENSITÉ (salve circulaire, missiles, aspiration par vagues),
+## jamais d'une règle nouvelle à apprendre au dernier moment.
+@export var heart_health: float = 4500.0
+## Élargi (1,10 → 1,60) : c'est désormais la SEULE cible de la phase. Une cible unique
+## qu'on rate n'enseigne rien, elle punit.
+@export var heart_hitbox_radius: float = 1.60
+## Écartement de la coquille brisée, en unités monde. Purement visuel, mais c'est LUI
+## qui dit « nouvelle phase » sans texte : le corps s'ouvre et le cœur apparaît.
+@export var shell_open_offset: float = 2.20
+@export var shell_open_time: float = 1.2
+
+@export_subgroup("Aspiration intermittente")
+## L'aspiration survit à la refonte, mais comme **pression** et non comme phase : elle
+## revient par vagues, le joueur la sent, elle ne lui prend jamais les commandes.
 ## ⚠️ DOIT rester nettement sous `reference_player_max_speed`. Au-delà, le chasseur est
-## aspiré quoi qu'il fasse et la phase devient une cinématique. `validate()` refuse le
-## cas, mais le calcul se fait ICI, à la main, avant d'écrire le nombre.
+## aspiré quoi qu'il fasse et la phase devient une cinématique.
 @export var pull_speed_max: float = 7.0
-@export var debris_count: int = 10
-@export var debris_speed: float = 6.0
-@export var debris_damage: float = 30.0
-@export var maw_pulse_interval: float = 3.0
-@export var maw_pulse_bullets: int = 14
-@export var spike_sweep_windup: float = 0.8
-@export var spike_sweep_arc_deg: float = 40.0
-@export var spike_sweep_interval: float = 5.0
+@export var pull_radius: float = 16.0
+@export var pull_interval: float = 6.0
+@export var pull_time: float = 2.5
 
-# ==========================================================================
-# Phase 3 — BOARDING SWARM (le verbe : PRIORISER)
-# ==========================================================================
-
-@export_group("Phase 3 - Boarding Swarm")
-## Coupé après playtest (ADR-0019).
-@export var spike_health: float = 550.0
-@export var spike_count: int = 4
-@export var spike_hitbox_radius: float = 0.90
-## Le noyau devient enfin touchable en permanence — mais une épine s'interpose.
-## Coupé après playtest (ADR-0019) : épines+noyau visent ~20 s ((550 × 4 + 1200) / (420 × 0,40)).
-@export var core_health: float = 1200.0
-@export var core_hitbox_radius: float = 2.20
-@export var charger_windup: float = 1.0
-@export var charger_speed: float = 20.0
-@export var charger_damage: float = 30.0
-@export var gunner_interval: float = 1.2
-@export var blocker_offset: float = 2.50
-@export var escort_orbit_radius: float = 3.0
-@export var transport_interval: float = 8.0
-@export var transport_count: int = 2
-## Un transport qui sort du champ **revient en escorte armée**. ADR-0010 a supprimé
-## l'intégrité de forteresse : il n'y a plus rien à protéger derrière le joueur, et une
-## jauge abstraite serait un mensonge. La sanction est donc matérielle.
-@export var transport_return_delay: float = 6.0
-
-# ==========================================================================
-# Phase 4 — INTO THE MAW (le verbe : OSER)
-# ==========================================================================
-
-@export_group("Phase 4 - Into the Maw")
-@export var heart_health: float = 2600.0
-@export var heart_hitbox_radius: float = 1.10
-## Le compte à rebours de la phase. Trop court, la descente devient aléatoire.
-@export var maw_open_time: float = 12.0
-@export var maw_reopen_delay: float = 8.0
-## L'aspiration s'inverse en expulsion : c'est la seule sortie, donc elle est généreuse.
-@export var eject_window: float = 2.0
-## ⚠️ SUPÉRIEURE à la vitesse du joueur, et c'est le SUJET de la phase : on ne résiste
-## plus, on entre. `validate()` vérifie ce sens-là — un réglage qui repasserait sous la
-## vitesse du joueur ferait disparaître la phase sans erreur.
-@export var pull_speed_max_final: float = 16.0
-@export var ring_count: int = 5
-@export var ring_gap_deg: float = 70.0
-@export var ring_spin_base: float = 0.5
-@export var ring_damage: float = 35.0
-@export var ring_knockback: float = 3.0
+@export_subgroup("Salve circulaire")
+@export var pulse_interval: float = 3.0
+@export var pulse_bullets: int = 14
 
 # ==========================================================================
 # Occupation visée par phase — le levier de conception
 # ==========================================================================
 
 @export_group("Occupation visee")
-@export var occupancy_phase_1: float = 0.45
-@export var occupancy_phase_2: float = 0.35
-@export var occupancy_phase_3: float = 0.40
-@export var occupancy_phase_4: float = 0.80
+## Relevée (0,45 → 0,55) : la cible unique et surlignée fait moins chercher le joueur.
+@export var occupancy_phase_1: float = 0.55
+@export var occupancy_phase_2: float = 0.60
 
 # ==========================================================================
 # Lectures dérivées
 # ==========================================================================
 
+## Nombre de phases qui portent des points de vie. Le compte fait partie du contrat :
+## le HUD annonce « PHASE n/N » et la jauge se remet à plein à chaque bascule.
+const PHASE_COUNT := 2
+
 ## Points de vie de chaque phase. Sert la jauge du HUD **et** les invariants de durée.
 func phase_health(phase: int) -> float:
 	match phase:
 		0: return plate_health * float(plate_count)
-		1: return node_health * float(node_count)
-		2: return spike_health * float(spike_count) + core_health
-		3: return heart_health
+		1: return heart_health
 	return 0.0
 
 func occupancy(phase: int) -> float:
 	match phase:
 		0: return occupancy_phase_1
 		1: return occupancy_phase_2
-		2: return occupancy_phase_3
-		3: return occupancy_phase_4
 	return 1.0
 
 ## Durée attendue d'une phase, en secondes, sous les hypothèses de dimensionnement.
@@ -200,19 +182,34 @@ func phase_duration(phase: int) -> float:
 	var rate := reference_dps * occupancy(phase)
 	return phase_health(phase) / rate if rate > 0.0 else 0.0
 
-## Total des structures. ⚠️ C'est ce que la jauge du HUD divise : elle montre les dégâts
-## cumulés sur TOUT, pas les PV d'un corps. Sur quatre phases, une jauge figée pendant
-## soixante secondes dirait au joueur « tu ne fais rien ».
+## Durée attendue du combat entier. C'est la promesse faite au joueur (~40 s), et
+## `validate()` la défend.
+func total_duration() -> float:
+	var total := 0.0
+	for phase in PHASE_COUNT:
+		total += phase_duration(phase)
+	return total
+
+## Total des structures, toutes phases confondues.
+##
+## ⚠️ N'EST PLUS LE DÉNOMINATEUR DE LA JAUGE. Il l'a été, et c'est ce qui faisait mentir
+## le HUD : briser les quatre plaques ne valait que 30 % d'une barre qui comptait quatre
+## phases, donc le joueur voyait « 70 % » après vingt secondes d'effort et concluait
+## qu'il ne servait à rien. La jauge montre désormais la phase EN COURS. Ce total ne sert
+## plus qu'au dimensionnement.
 func total_structure() -> float:
 	var total := 0.0
-	for phase in 4:
+	for phase in PHASE_COUNT:
 		total += phase_health(phase)
 	return total
 
-## Durée pendant laquelle une plaque est atteignable à chaque passage. C'est la
-## « fenêtre » de la phase 1 — née d'une géométrie, pas d'un minuteur.
+## Durée pendant laquelle une plaque donnée reste dans l'arc à chaque passage.
 func plate_window() -> float:
 	return shell_orbit_period * plate_arc_deg / 360.0
+
+## Écart angulaire entre deux plaques voisines, en degrés.
+func plate_spacing_deg() -> float:
+	return 360.0 / float(plate_count) if plate_count > 0 else 360.0
 
 # ==========================================================================
 # validate() — les invariants qui empêchent un réglage sensé de casser le jeu
@@ -230,33 +227,38 @@ func validate() -> PackedStringArray:
 		errors.append("min_window must be > 0")
 
 	# --- Points de vie ---------------------------------------------------
-	for value in [plate_health, node_health, spike_health, core_health, heart_health, missile_health]:
+	for value in [plate_health, heart_health, missile_health]:
 		if value <= 0.0:
 			errors.append("every health pool must be > 0")
 			break
-	if plate_count <= 0 or node_count <= 0 or spike_count <= 0 or ring_count <= 0:
-		errors.append("plate/node/spike/ring counts must be > 0")
+	if plate_count <= 0:
+		errors.append("plate_count must be > 0")
 
 	# --- Zones de touche -------------------------------------------------
-	for value in [plate_hitbox_radius, node_hitbox_radius, spike_hitbox_radius,
-			core_hitbox_radius, heart_hitbox_radius, missile_hitbox_radius]:
+	for value in [plate_hitbox_radius, heart_hitbox_radius, missile_hitbox_radius]:
 		if value <= 0.0:
 			errors.append("every hitbox radius must be > 0")
 			break
 
-	# --- INVARIANT 1 : la fenêtre de la phase 1 existe -------------------
-	# Elle naît de la rotation de la coquille, pas d'un minuteur. Trop étroite, le
-	# joueur regarde les plaques défiler sans pouvoir en traiter une : la phase est
-	# injouable alors que chaque valeur prise séparément est parfaitement sensée.
+	# --- INVARIANT 1 : la phase 1 offre toujours une cible ---------------
+	# Une seule plaque est vulnérable à la fois, celle qui est surlignée. Si l'arc est
+	# plus étroit que l'écart entre deux plaques, il existe des instants où AUCUNE
+	# plaque n'est dans l'arc : le joueur tire dans le vide sans qu'on lui dise
+	# pourquoi. C'était l'ancien invariant de « fenêtre », qui mesurait la mauvaise
+	# grandeur — il vérifiait qu'une plaque restait assez longtemps, jamais qu'il y en
+	# avait une.
 	if shell_orbit_period <= 0.0:
 		errors.append("shell_orbit_period must be > 0")
 	elif plate_arc_deg <= 0.0 or plate_arc_deg > 360.0:
 		errors.append("plate_arc_deg must be in (0, 360]")
+	elif plate_arc_deg < plate_spacing_deg():
+		errors.append("phase 1 arc %.0f deg is narrower than the %.0f deg between plates — there are moments with no target at all"
+			% [plate_arc_deg, plate_spacing_deg()])
 	elif plate_window() < min_window:
 		errors.append("phase 1 window too short: %.1f s orbit x %.0f deg / 360 = %.2f s (need >= %.1f)"
 			% [shell_orbit_period, plate_arc_deg, plate_window(), min_window])
 
-	# --- INVARIANT 2 : la phase 2 laisse jouer ---------------------------
+	# --- INVARIANT 2 : l'aspiration de la phase 2 laisse jouer -----------
 	# `escapes()` seul autoriserait 13,9 contre 14,0, où l'on avance à un dixième
 	# d'unité par seconde : techniquement libre, injouable en fait.
 	if pull_radius <= 0.0:
@@ -269,39 +271,41 @@ func validate() -> PackedStringArray:
 	elif not GravityWell.leaves_room(pull_speed_max, reference_player_max_speed):
 		errors.append("phase 2 pull %.1f leaves less than %.0f%% mobility against %.1f — escapable on paper, unplayable in fact"
 			% [pull_speed_max, GravityWell.MIN_MOBILITY * 100.0, reference_player_max_speed])
+	if pull_time <= 0.0 or pull_interval <= 0.0:
+		errors.append("pull_time and pull_interval must be > 0")
+	elif pull_time >= pull_interval:
+		errors.append("pull_time %.1f >= pull_interval %.1f — the pull never stops, so it is not intermittent"
+			% [pull_time, pull_interval])
 
-	# --- INVARIANT 3 : la phase 4 ne se résiste PAS ----------------------
-	# C'est le sujet de la phase : la règle de la phase 2 est cassée volontairement.
-	# Un réglage qui repasserait sous la vitesse du joueur ferait disparaître la
-	# phase sans qu'aucune erreur ne le dise.
-	if pull_speed_max_final <= reference_player_max_speed:
-		errors.append("phase 4 pull %.1f <= player speed %.1f — the point of the phase is that you cannot resist"
-			% [pull_speed_max_final, reference_player_max_speed])
+	# --- INVARIANT 3 : le combat tient sa durée --------------------------
+	# Le garde-fou qui a manqué. Un boss dont chaque valeur est sensée peut dériver vers
+	# trois minutes sans qu'aucun test ne s'en aperçoive : c'est arrivé, et il a fallu
+	# un playtest pour le voir.
+	if target_duration <= 0.0:
+		errors.append("target_duration must be > 0 — it is the promise made to the player")
+	elif duration_tolerance < 0.0:
+		errors.append("duration_tolerance must be >= 0")
+	else:
+		var total := total_duration()
+		if absf(total - target_duration) > duration_tolerance:
+			errors.append("fight lasts %.0f s, outside the %.0f +/- %.0f s target — %s"
+				% [total, target_duration, duration_tolerance,
+					"cut health or raise occupancy" if total > target_duration else "the final boss must not be shorter than the mini-boss"])
 
-	# --- INVARIANT 4 : le cœur est abattable avec de la marge ------------
-	# Un cœur qu'on ne peut tuer qu'en jouant parfaitement rend la phase 4 aléatoire.
-	# On exige que le tir utile tienne dans 70 % de la fenêtre d'ouverture.
-	if maw_open_time <= 0.0:
-		errors.append("maw_open_time must be > 0 — it is the countdown of the phase")
-	elif reference_dps > 0.0:
-		var kill_time := heart_health / reference_dps
-		if kill_time > maw_open_time * 0.7:
-			errors.append("heart takes %.1f s to kill, more than 70%% of the %.1f s window — no room for error"
-				% [kill_time, maw_open_time])
-	if eject_window <= 0.0:
-		errors.append("eject_window must be > 0 — it is the only way out")
-	elif eject_window >= maw_open_time:
-		errors.append("eject_window %.1f >= maw_open_time %.1f — the exit would open before the dive"
-			% [eject_window, maw_open_time])
+	# --- INVARIANT 4 : chaque phase pèse dans le combat ------------------
+	# Une phase de trois secondes n'est pas une phase, c'est une transition ; une phase
+	# qui prend les trois quarts du combat rend l'autre décorative.
+	if PHASE_COUNT > 0 and target_duration > 0.0:
+		for phase in PHASE_COUNT:
+			var share := phase_duration(phase) / target_duration
+			if share < 0.25 or share > 0.75:
+				errors.append("phase %d takes %.0f%% of the fight — a phase must carry between 25%% and 75%%"
+					% [phase + 1, share * 100.0])
 
 	# --- INVARIANT 5 : toute attaque lourde est télégraphiée -------------
 	# Le télégraphe EST la règle du duel. Sans réarme, l'attaque devient imparable.
 	if lance_windup_time <= 0.0:
 		errors.append("lance_windup_time must be > 0 — the wind-up is what makes the beam dodgeable")
-	if charger_windup <= 0.0:
-		errors.append("charger_windup must be > 0 — the wind-up is what makes the charge dodgeable")
-	if spike_sweep_windup <= 0.0:
-		errors.append("spike_sweep_windup must be > 0 — the wind-up is what makes the sweep dodgeable")
 	if missile_turn_rate < 0.0:
 		errors.append("missile_turn_rate must be >= 0")
 	elif missile_turn_rate > PI:
@@ -311,7 +315,7 @@ func validate() -> PackedStringArray:
 	# --- INVARIANT 6 : les occupations sont des parts -------------------
 	# Une occupation hors de (0, 1] rendrait `phase_duration()` absurde, et c'est elle
 	# qui justifie chaque point de vie du tableau.
-	for phase in 4:
+	for phase in PHASE_COUNT:
 		var value := occupancy(phase)
 		if value <= 0.0 or value > 1.0:
 			errors.append("occupancy of phase %d must be in (0, 1] (got %.2f)" % [phase + 1, value])
@@ -319,8 +323,7 @@ func validate() -> PackedStringArray:
 	# --- Cadences --------------------------------------------------------
 	for pair in [["fan_interval", fan_interval], ["lance_interval", lance_interval],
 			["missile_salvo_interval", missile_salvo_interval],
-			["maw_pulse_interval", maw_pulse_interval], ["spike_sweep_interval", spike_sweep_interval],
-			["gunner_interval", gunner_interval], ["transport_interval", transport_interval]]:
+			["pulse_interval", pulse_interval], ["shell_open_time", shell_open_time]]:
 		if float(pair[1]) <= 0.0:
 			errors.append("%s must be > 0" % pair[0])
 

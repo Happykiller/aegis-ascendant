@@ -1,5 +1,10 @@
 extends "res://tests/test_case.gd"
-## LeviathanPlate et LeviathanSpike : les deux mecaniques neuves du boss final.
+## LeviathanPlate : l'armure du boss final, et la geometrie qui decide de sa vulnerabilite.
+##
+## ⚠️ `LeviathanSpike` a disparu avec la refonte (ADR-0020) : les epines ne sont plus des
+## cibles autonomes avec des roles, seulement des pieces qui se detachent quand l'armure
+## cede. Ses treize tests sont partis avec elle — garder des tests verts sur du code que
+## plus rien n'appelle donne l'illusion d'une couverture.
 ## Instanciables a la main — aucun arbre, aucune coque, aucun boss.
 
 var _hits: int = 0
@@ -11,8 +16,6 @@ func _plate(index: int = 0) -> LeviathanPlate:
 	# Quatre plaques a 90 deg : index 0 face camera, les autres derriere.
 	return LeviathanPlate.make(index, TAU * index / 4.0, 3200.0, 1.30, Callable(self, "_on_hit"))
 
-func _spike(role: int = LeviathanSpike.Role.CHARGER) -> LeviathanSpike:
-	return LeviathanSpike.make(0, role, 0.0, 1500.0, 0.90, Callable(self, "_on_hit"))
 
 # --- LeviathanPlate : la fenetre nait d'une geometrie ----------------------
 
@@ -71,87 +74,3 @@ func test_the_fall_runs_to_completion_then_rests() -> void:
 
 func test_an_intact_plate_has_not_begun_to_fall() -> void:
 	assert_almost_eq(_plate(0).fall_ratio(1.0), 0.0, 0.001, "aucune chute tant qu'elle vit")
-
-# --- LeviathanSpike : quatre roles, un dilemme ----------------------------
-
-func test_the_four_spikes_take_four_distinct_roles() -> void:
-	# Deux fonceuses feraient perdre a la phase son dilemme.
-	var roles := {}
-	for i in 4:
-		roles[LeviathanSpike.role_for(i)] = true
-	assert_eq(roles.size(), 4, "quatre roles distincts sur quatre epines")
-
-func test_a_spike_starts_attached_and_is_not_a_target_yet() -> void:
-	var spike := _spike()
-	assert_eq(spike.state, LeviathanSpike.State.ATTACHED, "sur le corps au depart")
-	assert_false(spike.is_free(), "et pas encore autonome")
-
-func test_detaching_opens_a_transition_before_autonomy() -> void:
-	var spike := _spike()
-	spike.detach(Vector2(3.0, 5.0))
-	assert_eq(spike.state, LeviathanSpike.State.DETACHING, "elle s'arrache")
-	assert_false(spike.is_free(), "pas encore autonome pendant l'arrachement")
-	assert_true(spike.target.enabled, "mais deja touchable")
-	spike.tick(1.0, 0.6)
-	assert_true(spike.is_free(), "puis elle vole seule")
-
-func test_a_spike_cannot_detach_twice() -> void:
-	var spike := _spike()
-	spike.detach(Vector2(1.0, 1.0))
-	spike.tick(1.0, 0.6)
-	spike.detach(Vector2(9.0, 9.0))
-	assert_true(spike.is_free(), "un second detachement ne la renvoie pas en arrachement")
-	assert_eq(spike.plane_position, Vector2(1.0, 1.0), "et ne la teleporte pas")
-
-func test_the_blocker_places_itself_between_the_player_and_the_core() -> void:
-	# C'est elle qui cree le dilemme de la phase : frapper ou nettoyer.
-	var spike := _spike(LeviathanSpike.Role.BLOCKER)
-	var core := Vector2(0.0, 5.0)
-	var player := Vector2(0.0, -3.0)
-	var want := spike.desired_position(core, player, 2.5, 3.0, 0.0)
-	assert_almost_eq(want.x, 0.0, 0.001, "alignee sur l'axe joueur-noyau")
-	assert_almost_eq(want.y, 2.5, 0.001, "a blocker_offset du noyau, du cote du joueur")
-
-func test_the_blocker_does_not_divide_by_zero_on_top_of_the_core() -> void:
-	var spike := _spike(LeviathanSpike.Role.BLOCKER)
-	var core := Vector2(0.0, 5.0)
-	var want := spike.desired_position(core, core, 2.5, 3.0, 0.0)
-	assert_eq(want, core, "joueur pile sur le noyau : pas de direction, pas de NaN")
-	assert_false(is_nan(want.x) or is_nan(want.y), "et surtout pas un NaN")
-
-func test_the_escort_orbits_the_core_at_its_radius() -> void:
-	var spike := _spike(LeviathanSpike.Role.ESCORT)
-	var core := Vector2(0.0, 5.0)
-	for age in [0.0, 1.3, 4.7]:
-		var want := spike.desired_position(core, Vector2.ZERO, 2.5, 3.0, age)
-		assert_almost_eq(want.distance_to(core), 3.0, 0.001, "toujours a escort_radius du noyau")
-
-func test_the_charger_locks_its_point_at_the_start_of_the_wind_up() -> void:
-	# Une fonceuse qui suit sa cible pendant le telegraphe est imparable.
-	var spike := _spike(LeviathanSpike.Role.CHARGER)
-	var core := Vector2(0.0, 5.0)
-	spike.begin_charge(Vector2(6.0, -2.0))
-	var want := spike.desired_position(core, Vector2(-9.0, -7.0), 2.5, 3.0, 0.0)
-	assert_eq(want, Vector2(6.0, -2.0), "elle fonce sur le point VERROUILLE, pas sur le joueur")
-
-func test_a_charger_at_rest_returns_to_the_core() -> void:
-	var spike := _spike(LeviathanSpike.Role.CHARGER)
-	var core := Vector2(0.0, 5.0)
-	spike.begin_charge(Vector2(6.0, -2.0))
-	spike.end_charge()
-	assert_eq(spike.desired_position(core, Vector2(-9.0, -7.0), 2.5, 3.0, 0.0), core,
-		"charge terminee, elle revient sur le noyau")
-
-func test_killing_a_spike_reports_once_and_releases_its_target() -> void:
-	var spike := _spike()
-	assert_false(spike.apply_damage(750.0), "encore debout a mi-vie")
-	assert_true(spike.apply_damage(750.0), "le frame ou elle tombe")
-	assert_false(spike.apply_damage(750.0), "et pas une fois de plus")
-	assert_false(spike.is_alive(), "morte")
-	assert_false(spike.target.enabled, "cible retiree avec elle")
-
-func test_health_ratios_are_safe_at_zero_max() -> void:
-	var plate := LeviathanPlate.make(0, 0.0, 0.0, 1.0, Callable(self, "_on_hit"))
-	var spike := LeviathanSpike.make(0, LeviathanSpike.Role.GUNNER, 0.0, 0.0, 1.0, Callable(self, "_on_hit"))
-	assert_almost_eq(plate.health_ratio(), 0.0, 0.001, "aucune division par zero")
-	assert_almost_eq(spike.health_ratio(), 0.0, 0.001, "aucune division par zero")
