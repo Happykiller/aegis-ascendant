@@ -25,6 +25,7 @@ class_name EnemyPath
 ##   BOOMERANG   entrée puis RETRAITE   — repart vers le haut : à tuer avant qu'il file
 ##   STRAFE_RUN  entrée LATÉRALE        — balaie l'horizontale depuis un bord : autre apparition
 ##   CRESCENT_HOOK  FEINTE puis coupe   — s'écarte vers l'extérieur, puis crochète vers le centre
+##   DRIFT       ligne DROITE, immobile — elle ne manœuvre pas : c'est le joueur qui avance
 
 ## Vitesse latérale (unités/s) à laquelle le roulis visuel est à fond.
 const BANK_REFERENCE_SPEED := 6.0
@@ -59,6 +60,8 @@ static func position_at(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 			return _strafe_run(data, age, spawn)
 		EnemyData.Path.CRESCENT_HOOK:
 			return _crescent_hook(data, age, spawn)
+		EnemyData.Path.DRIFT:
+			return _drift(data, age, spawn)
 		_:
 			return _weave(data, age, spawn)
 
@@ -198,3 +201,18 @@ static func _crescent_hook(data: EnemyData, age: float, spawn: Vector2) -> Vecto
 	return Vector2(
 		spawn.x + turn * (cut - feint),
 		spawn.y - data.move_speed * age)
+
+
+## Elle ne fait RIEN. Pas d'oscillation, pas de virage, pas de piqué : une descente
+## rectiligne à vitesse constante, sur sa colonne de spawn.
+##
+## C'est la seule trajectoire dont la signature est une ABSENCE, et c'est
+## exactement ce qui la distingue des huit autres : toutes cherchent le joueur,
+## celle-ci l'attend. Le mouvement relatif vient du chasseur qui remonte le champ ;
+## la mine, elle, se contente de dériver avec le décor. La menace ne naîtra pas de
+## sa course mais de la distance (voir `EnemyReaction`).
+##
+## ⚠️ Elle sort par le bas comme les autres — c'est ce qui libère son entrée de
+## pool. Une mine « vraiment » stationnaire resterait vivante à jamais.
+static func _drift(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
+	return Vector2(spawn.x, spawn.y - data.move_speed * age)

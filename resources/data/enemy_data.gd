@@ -2,6 +2,12 @@ class_name EnemyData
 extends Resource
 ## Enemy tuning values (spec §11, §22). Units: world units, seconds.
 
+## Statistiques du joueur, chargées et non recopiées : `validate()` doit pouvoir
+## dire si un puits gravitationnel lui laisse de quoi manœuvrer, et la seule
+## réponse juste est celle du chasseur réel (spec §22 : aucune duplication
+## silencieuse d'une valeur de gameplay).
+const PLAYER_STATS := preload("res://resources/player/specter9_stats.tres")
+
 ## Trajectoire suivie. Le mouvement est DATA-DRIVEN : le contrôleur échantillonne
 ## EnemyPath, il ne décide de rien. Ajouter une famille, c'est choisir ici.
 ## L'ordre est celui de la variété perçue, pas une hiérarchie. Chaque valeur a une
@@ -10,8 +16,22 @@ extends Resource
 ## numérique, donc une insertion au milieu réaffecterait silencieusement la
 ## trajectoire de tous les ennemis existants.
 enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG, STRAFE_RUN,
-	CRESCENT_HOOK }
+	CRESCENT_HOOK, DRIFT }
 @export var path: Path = Path.WEAVE
+
+## Schéma de tir (`EnemyFire`). Deuxième axe de variété, orthogonal au premier :
+## la trajectoire dit où va la coque, celui-ci dit où part le coup. `SINGLE` est
+## l'indice 0, donc les Resources écrites avant cet axe gardent exactement leur
+## comportement — un coup droit vers le bas.
+## ⚠️ Même règle d'APPEND que `Path` : l'indice est ce qui est sérialisé.
+enum Fire { SINGLE, NONE, FAN, AIMED, RADIAL }
+@export var fire: Fire = Fire.SINGLE
+
+## Ce que l'unité fait qui n'est PAS une balle. Une menace peut se passer de
+## projectile : le puits gravitationnel ne blesse pas, il mange l'esquive.
+## ⚠️ Même règle d'APPEND.
+enum Effect { NONE, GRAVITY_WELL }
+@export var effect: Effect = Effect.NONE
 
 @export var display_name: String = "enemy"
 @export var max_health: float = 20.0
@@ -39,6 +59,35 @@ enum Path { WEAVE, DIVE, ARC_CROSS, HOVER_STRAFE, SERPENTINE, SPIRAL, BOOMERANG,
 ## CRESCENT_HOOK : instant (s) du sommet de la feinte, avant que la coupe ne l'emporte.
 @export var hook_delay: float = 1.0
 
+## Nombre de coups par salve (FAN, AIMED, RADIAL). Sans effet sur SINGLE.
+@export var burst_count: int = 5
+
+# --- Menace de proximité (EnemyReaction) -------------------------------------
+#
+# Un rayon de déclenchement NUL veut dire « cette unité ne réagit pas » : elle
+# suit sa courbe et tire, comme les neuf familles écrites avant cet axe. C'est ce
+# qui dispense d'un enum de plus pour dire « réactive ou non ».
+
+## Distance (unités) à laquelle l'unité s'éveille et le MONTRE. L'avertissement est
+## gratuit : à ce stade rien n'est encore engagé, le joueur peut faire demi-tour.
+@export var alert_radius: float = 0.0
+## Distance à laquelle elle s'engage — sans retour possible. Toujours < alert_radius,
+## faute de quoi l'unité passerait de l'inertie à la détonation sans un mot.
+@export var trigger_radius: float = 0.0
+## Durée du télégraphe (s). La spec §11.2 impose 300 à 800 ms : en deçà le joueur
+## n'a pas le temps de lire, au-delà la menace cesse d'en être une.
+@export var windup_time: float = 0.6
+## Durée de la charge (s) : la salve part, l'aspiration tire, l'aura tient.
+@export var active_time: float = 0.4
+## Temps mort avant réarmement (s). ZÉRO = usage unique — la mine est vidée et le
+## restera. Une mine qui se réarme est une zone interdite ; une mine à usage unique
+## est un obstacle qu'on peut dépenser. Ce ne sont pas les mêmes règles du jeu.
+@export var rearm_time: float = 0.0
+
+## GRAVITY_WELL : portée (unités) et vitesse d'aspiration au centre (unités/s).
+@export var pull_radius: float = 0.0
+@export var pull_speed_max: float = 0.0
+
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if max_health <= 0.0:
@@ -64,8 +113,64 @@ func validate() -> PackedStringArray:
 			# Division par hook_delay dans la trajectoire : zéro n'est pas seulement
 			# absurde, c'est une NaN qui se propagerait dans la position.
 			errors.append("hook_delay must be > 0 for CRESCENT_HOOK")
+	errors.append_array(_validate_fire())
+	errors.append_array(_validate_reaction())
+	errors.append_array(_validate_effect())
+	return errors
+
+
+## Une unité qui ne tire pas n'a pas besoin de munition — mais une unité qui tire
+## sans projectile est une salve muette qu'aucune erreur ne signalerait en jeu.
+func _validate_fire() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if fire == Fire.NONE:
+		return errors
 	if projectile == null:
-		errors.append("projectile is required")
+		errors.append("projectile is required unless fire is NONE")
 	else:
 		errors.append_array(projectile.validate())
+	# Un éventail d'un seul coup n'est pas un éventail : c'est un SINGLE qui se
+	# ment. La règle de variété se garde ici, pas seulement dans les tests.
+	if fire != Fire.SINGLE and burst_count < 2:
+		errors.append("burst_count must be >= 2 for FAN/AIMED/RADIAL")
+	if fire == Fire.RADIAL and burst_count < 3:
+		errors.append("burst_count must be >= 3 for RADIAL (a ring needs a ring)")
+	return errors
+
+
+func _validate_reaction() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if not EnemyReaction.is_reactive(self):
+		return errors
+	if alert_radius <= trigger_radius:
+		# Sans marge d'éveil, l'unité passe de l'inertie à l'engagement dans la même
+		# image : le joueur n'a rien vu venir, et le télégraphe ne sert plus à rien.
+		errors.append("alert_radius must be > trigger_radius when the unit reacts")
+	if windup_time < 0.3 or windup_time > 0.8:
+		# Spec §11.2 : la fenêtre de lecture n'est pas un goût, c'est un contrat.
+		errors.append("windup_time must be between 0.3 and 0.8 s (spec §11.2 telegraph)")
+	if active_time <= 0.0:
+		errors.append("active_time must be > 0 when the unit reacts")
+	if rearm_time < 0.0:
+		errors.append("rearm_time must be >= 0 (zero means single use)")
+	return errors
+
+
+func _validate_effect() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if effect != Effect.GRAVITY_WELL:
+		return errors
+	if pull_radius <= 0.0:
+		errors.append("pull_radius must be > 0 for GRAVITY_WELL")
+	if pull_speed_max <= 0.0:
+		errors.append("pull_speed_max must be > 0 for GRAVITY_WELL")
+	elif not GravityWell.leaves_room(pull_speed_max, PLAYER_STATS.max_speed):
+		# Le même invariant que la phase gravitique du boss, pour la même raison :
+		# une aspiration à laquelle on ne peut rien opposer n'est plus un danger,
+		# c'est une cinématique. Sur une MINE c'est pire — le joueur choisit de
+		# s'approcher, il doit pouvoir choisir de repartir.
+		errors.append("pull_speed_max leaves no room to manoeuvre (max %.1f for a %.1f u/s fighter)"
+			% [PLAYER_STATS.max_speed * (1.0 - GravityWell.MIN_MOBILITY), PLAYER_STATS.max_speed])
+	if not EnemyReaction.is_reactive(self):
+		errors.append("GRAVITY_WELL requires a trigger_radius (it is a reaction, not a passive)")
 	return errors

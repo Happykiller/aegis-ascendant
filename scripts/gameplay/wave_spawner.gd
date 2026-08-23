@@ -11,6 +11,10 @@ signal progress_changed(ratio: float)
 
 @export var wave: WaveData
 @export var bullet_manager_path: NodePath
+## Le joueur, transmis aux unités qui le REGARDENT (mines, salves visées, puits
+## gravitationnels — ADR-0022). Facultatif : laissé vide, la vague se comporte
+## exactement comme avant, les trajectoires restant des fonctions du seul âge.
+@export var player_path: NodePath
 
 var _clock: float = 0.0
 var _next_spawn: int = 0
@@ -29,6 +33,7 @@ func _ready() -> void:
 		set_physics_process(false)
 		return
 	var bullet_manager := get_node(bullet_manager_path) as BulletManager
+	var player := get_node_or_null(player_path) as PlayerFighterController
 	var schedule := build_schedule(wave)
 	_spawn_times = schedule["times"]
 	_spawn_positions = schedule["positions"]
@@ -37,7 +42,7 @@ func _ready() -> void:
 		var entry := wave.entries[entry_indices[k]]
 		var enemy := entry.enemy_scene.instantiate() as EnemyController
 		add_child(enemy)               # _ready runs now: enemy starts deactivated
-		enemy.setup(bullet_manager)
+		enemy.setup(bullet_manager, player)
 		_pool.append(enemy)
 	print("[WaveSpawner] pool ready: %d enemies" % _pool.size())
 

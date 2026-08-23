@@ -14,8 +14,6 @@ const PLUME_TUNING := preload("res://resources/vfx/plume_null_choir.tres")
 ## distingue à l'œil une coque en approche d'une épave qui dérive.
 const PLUME_THROTTLE := 0.9
 
-## Logical "down the screen" (toward the player).
-const DIR_DOWN := Vector2(0.0, -1.0)
 const MUZZLE_OFFSET := Vector2(0.0, -0.6)
 const DESPAWN_MARGIN := 1.5
 ## Marge de sortie par le HAUT : au-delà, un ennemi qui bat en retraite est perdu.
@@ -56,6 +54,18 @@ var _plume: EnginePlume
 var _flash_material: StandardMaterial3D
 ## Distance from the enemy's origin to its gun, read from the hull.
 var _muzzle_offset: Vector2 = MUZZLE_OFFSET
+## Le joueur, injecté par le spawner. `null` est un cas normal : une unité qui ne
+## réagit à rien n'a aucune raison de le connaître, et les tests n'en ont pas.
+var _player: PlayerFighterController
+## Menace de proximité (`EnemyReaction`). Une unité non réactive reste DORMANT.
+var _state: int = EnemyReaction.State.DORMANT
+var _state_time: float = 0.0
+var _threat: float = 0.0
+var _reactive: bool = false
+## Numéro de salve : c'est lui qui fait tourner les couronnes de `Fire.RADIAL`
+## d'un tir au suivant, pour qu'un trou ne reste jamais au même endroit.
+var _salvo: int = 0
+var _vitals: EnemyVitals
 
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
@@ -72,11 +82,13 @@ func _ready() -> void:
 	_target = BulletTarget.make(BulletManager.Team.ENEMY, data.hitbox_radius,
 		Callable(_health, "apply_damage"))
 	_target.enabled = false
+	_reactive = EnemyReaction.is_reactive(data)
 	if _hull != null:
 		var muzzle := _attach_point("Muzzle_C")
 		_muzzle_offset = Vector2(muzzle.x, -muzzle.z)
 		_build_flash_overlay()
 		_build_plume()
+		_vitals = EnemyVitals.bind(_hull)
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)
@@ -84,9 +96,15 @@ func _ready() -> void:
 		activate(GameplayPlane.to_plane(position))
 
 ## One-time wiring done by the owner (spawner or scene).
-func setup(bullet_manager: BulletManager) -> void:
+##
+## Le joueur est OPTIONNEL et ne sert qu'aux unités qui le regardent : menace de
+## proximité, salve visée, puits gravitationnel. Les neuf familles écrites avant
+## cet axe ne le lisent jamais — leur trajectoire reste une fonction pure de leur
+## âge, et c'est ce qui garde le pooling et les tests headless valables (ADR-0022).
+func setup(bullet_manager: BulletManager, player: PlayerFighterController = null) -> void:
 	_bullet_manager = bullet_manager
 	_bullet_manager.register_target(_target)
+	_player = player
 
 func activate(spawn_plane_position: Vector2) -> void:
 	plane_position = spawn_plane_position
@@ -112,6 +130,15 @@ func _set_active(value: bool) -> void:
 		# `snap_throttle` et non `set_throttle` : une instance recyclée qui revient en
 		# scène doit déjà pousser, pas allumer son moteur devant le joueur.
 		_plume.snap_throttle(PLUME_THROTTLE if value else 0.0)
+	# Toute pose et tout régime se rejouent à zéro : une mine recyclée qui revient
+	# en scène déjà éveillée désignerait une menace qui n'existe pas, et sa salve
+	# serait déjà partie.
+	_state = EnemyReaction.State.DORMANT
+	_state_time = 0.0
+	_threat = 0.0
+	_salvo = 0
+	if _vitals != null:
+		_vitals.reset()
 	if value and _flash_material != null:
 		_hit_flash = 0.0
 		_flash_material.albedo_color.a = 0.0
@@ -140,7 +167,10 @@ func _physics_process(delta: float) -> void:
 	var bank := clampf(lateral_speed / EnemyPath.BANK_REFERENCE_SPEED, -1.0, 1.0)
 	_visual_root.rotation.z = deg_to_rad(-MAX_BANK_DEG) * bank
 	_update_hit_flash(delta)
+	_update_reaction(delta)
 	_update_fire(delta)
+	if _vitals != null:
+		_vitals.update(delta, _threat)
 
 ## Local position of an attach point baked into the hull mesh (ADR-0008),
 ## expressed in VisualRoot space so the hull's own yaw is accounted for.
@@ -184,14 +214,80 @@ func _update_hit_flash(delta: float) -> void:
 	_flash_material.albedo_color.a = FLASH_STRENGTH * (_hit_flash / HIT_FLASH_TIME)
 
 func _update_fire(delta: float) -> void:
-	if _bullet_manager == null or not GameplayPlane.is_inside(plane_position):
+	# Une unité réactive ne tire pas à l'horloge : elle tire quand ON s'approche.
+	# Son unique salve part à l'entrée en ACTIVE, dans `_update_reaction`.
+	if _reactive or _bullet_manager == null or not GameplayPlane.is_inside(plane_position):
 		return
 	_fire_timer -= delta
 	if _fire_timer <= 0.0:
 		_fire_timer = data.fire_interval
-		fired.emit()
-		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
-			plane_position + _muzzle_offset, DIR_DOWN, data.projectile)
+		_fire_salvo()
+
+## Une salve, quel que soit son schéma (`EnemyFire`). Zéro allocation : on demande
+## les directions une par une plutôt qu'un tableau par tir.
+func _fire_salvo() -> void:
+	var count := EnemyFire.shot_count(data)
+	if _bullet_manager == null or count <= 0:
+		return
+	# Une couronne part du NOYAU, pas de la bouche : un anneau décentré se lit
+	# comme une gerbe et le joueur cherche un angle sûr qui n'existe pas.
+	var origin := plane_position if data.fire == EnemyData.Fire.RADIAL \
+		else plane_position + _muzzle_offset
+	var target := _player.plane_position if _player != null else origin
+	for i in count:
+		_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
+			EnemyFire.direction(data, _salvo, i, origin, target), data.projectile)
+	_salvo += 1
+	fired.emit()
+
+## La menace de proximité : le seul endroit du contrôleur qui regarde le joueur.
+##
+## Tout le reste — trajectoire, roulis, despawn — reste une fonction du seul âge,
+## donc reste vrai pour une instance poolée et vérifiable sans arbre de scène.
+func _update_reaction(delta: float) -> void:
+	if not _reactive:
+		return
+	_state_time += delta
+	var distance := _distance_to_player()
+	var next := EnemyReaction.next_state(_state, _state_time, distance, data)
+	if next != _state:
+		var previous := _state
+		_state = next
+		_state_time = 0.0
+		if _state == EnemyReaction.State.ACTIVE:
+			_fire_salvo()
+		elif previous == EnemyReaction.State.ACTIVE:
+			_on_discharged()
+	_threat = EnemyReaction.threat_ratio(_state, _state_time, distance, data)
+	if _state == EnemyReaction.State.ACTIVE and data.effect == EnemyData.Effect.GRAVITY_WELL:
+		_pull_player()
+
+## Distance au joueur, ou l'infini s'il n'y en a pas (tests, scène de debug).
+## L'infini est la bonne réponse : sans joueur, aucune menace ne se déclenche.
+func _distance_to_player() -> float:
+	if _player == null:
+		return INF
+	return plane_position.distance_to(_player.plane_position)
+
+## Le champ d'aspiration, tant que la charge dure. La même primitive que la phase
+## gravitique du boss (`GravityWell`), mais posée par une unité de vague.
+##
+## ⚠️ `add_pull` et non `apply_pull` : deux mines ouvertes en même temps doivent
+## ADDITIONNER leurs champs. Une affectation ferait gagner la dernière appelée,
+## et le joueur traverserait tranquillement un nid qui devrait l'écraser.
+func _pull_player() -> void:
+	_player.add_pull(GravityWell.pull_at(_player.plane_position, plane_position,
+		data.pull_radius, data.pull_speed_max))
+
+## La charge est finie. Une unité à usage unique s'est CONSOMMÉE : elle quitte le
+## champ sans émettre `destroyed`, donc sans score ni explosion de mise à mort.
+##
+## C'est le choix de design qui rend la prudence payante : abattre une mine à
+## distance rapporte ses points, la laisser se vider n'en rapporte aucun. Si les
+## deux payaient, il n'y aurait plus de décision à prendre.
+func _on_discharged() -> void:
+	if data.rearm_time <= 0.0:
+		deactivate()
 
 ## La plume d'échappement, pour que la coque lise comme une chose sous puissance et
 ## non comme une décalcomanie qui glisse vers le bas de l'écran.

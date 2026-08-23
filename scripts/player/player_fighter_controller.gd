@@ -176,6 +176,15 @@ func _physics_process(delta: float) -> void:
 func apply_pull(velocity: Vector2) -> void:
 	_external_pull = velocity
 
+## Même aspiration, mais qui S'AJOUTE à celles déjà posées cette image.
+##
+## Le boss est seul : une affectation lui suffit. Un champ de mines, non — deux
+## puits ouverts en même temps doivent tirer chacun leur part, sinon le dernier
+## appelé gagne et le joueur traverse le nid sans rien sentir. Consommée par la
+## même remise à zéro, dans `_physics_process`.
+func add_pull(velocity: Vector2) -> void:
+	_external_pull += velocity
+
 func take_contact_damage(amount: float) -> void:
 	_take_hit(amount)
 
@@ -242,6 +251,13 @@ func begin_autopilot(target: Vector2) -> void:
 	_autopilot = true
 	_autopilot_target = target
 	_visual_root.visible = true
+
+## Rend la main au joueur avant l'arrivée. L'autopilote d'appontage s'arrête tout seul
+## au contact de sa cible ; la plongée dans le noyau du boss (ADR-0021), elle, doit la
+## rendre à un instant PRÉCIS — celui où le tir s'ouvre. Sans ça le chasseur resterait
+## guidé, invulnérable et muet pendant les cinq secondes qui comptent.
+func end_autopilot() -> void:
+	_autopilot = false
 
 ## Hide the fighter (after docking, when the player becomes the fortress).
 func stow() -> void:

@@ -6,7 +6,7 @@ const ALL_PATHS: Array[int] = [
 	EnemyData.Path.WEAVE, EnemyData.Path.DIVE, EnemyData.Path.ARC_CROSS,
 	EnemyData.Path.HOVER_STRAFE, EnemyData.Path.SERPENTINE, EnemyData.Path.SPIRAL,
 	EnemyData.Path.BOOMERANG, EnemyData.Path.STRAFE_RUN,
-	EnemyData.Path.CRESCENT_HOOK,
+	EnemyData.Path.CRESCENT_HOOK, EnemyData.Path.DRIFT,
 ]
 
 func _data(path: int) -> EnemyData:
@@ -199,3 +199,27 @@ func test_crescent_hook_reverses_its_lateral_direction_exactly_once() -> void:
 			reversals += 1
 		previous = velocity
 	assert_true(reversals == 1, "exactement une inversion latérale (obtenu %d)" % reversals)
+
+
+## La dérive ne manœuvre pas — et c'est précisément sa signature. Toutes les autres
+## trajectoires cherchent le joueur d'une manière ou d'une autre ; celle-ci tient sa
+## colonne du début à la fin. Le mouvement relatif vient du chasseur qui remonte le
+## champ, pas d'elle : c'est ce qui rend une mine lisible comme un obstacle et non
+## comme un ennemi qui vous poursuit.
+func test_drift_never_leaves_its_spawn_column() -> void:
+	var data := _data(EnemyData.Path.DRIFT)
+	for i in 40:
+		var here := EnemyPath.position_at(data, i * 0.15, SPAWN)
+		assert_almost_eq(here.x, SPAWN.x, 0.0001,
+			"à t=%f elle est toujours sur sa colonne" % (i * 0.15))
+
+## Et elle descend à vitesse constante : ni piqué, ni palier, ni retraite. La
+## deuxième différence par rapport à HOVER_STRAFE, qui partage pourtant sa descente
+## initiale — celle-là s'arrête, la dérive jamais.
+func test_drift_descends_at_a_steady_pace_and_never_holds() -> void:
+	var data := _data(EnemyData.Path.DRIFT)
+	var first := SPAWN.y - EnemyPath.position_at(data, 1.0, SPAWN).y
+	var later := EnemyPath.position_at(data, 5.0, SPAWN).y \
+		- EnemyPath.position_at(data, 6.0, SPAWN).y
+	assert_almost_eq(first, data.move_speed, 0.0001, "elle couvre sa vitesse en une seconde")
+	assert_almost_eq(later, data.move_speed, 0.0001, "et la même chose bien plus tard")

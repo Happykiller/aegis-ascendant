@@ -99,6 +99,7 @@ bullet_manager_path = NodePath("../BulletManager")
 script = ExtResource("4_spawner")
 wave = ExtResource("5_wave")
 bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
 
 [node name="PickupManager" type="Node3D" parent="."]
 script = ExtResource("12_pickups")
