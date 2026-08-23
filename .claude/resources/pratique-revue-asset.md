@@ -94,12 +94,11 @@ plan qui ne l'écrase pas.
 Deux coques sorties de la même forge, dans la même session, avec le même défaut connu — et **une
 seule corrigée**. Mesuré sur les `.glb` livrés :
 
-    choir_mine.glb    33 primitives, 33 TANGENT   ✓
-    null_maw.glb      36 primitives,  0 TANGENT   ✗
+    choir_mine.glb    33 surfaces, 33 UV   ✓
+    null_maw.glb      36 surfaces,  0 UV   ✗
 
-Le correctif (`_triangulate_ngons()`, sans lequel l'exporteur glTF **abandonne silencieusement**
-les tangentes) avait été appliqué au script sur lequel le défaut avait été découvert, et pas à
-l'autre. Aucune erreur, aucun test rouge : juste un relief qui ne s'allumerait jamais.
+Le correctif (`_triangulate_ngons()`) avait été appliqué au script sur lequel le défaut avait été
+découvert, et pas à l'autre. Aucune erreur, aucun test rouge.
 
 **C'est un mode de panne de la DÉLÉGATION, pas de l'outil.** Un agent qui corrige un défaut le
 corrige là où il l'a vu ; rien ne l'oblige à balayer les autres fichiers du même lot, et son
@@ -108,23 +107,42 @@ rapport dira en toute bonne foi que le problème est réglé — ce qui est vrai
 **Donc : ne jamais clore un brief à plusieurs livrables sur un rapport global. Auditer CHAQUE
 fichier séparément**, et sur la mesure, pas sur le rapport.
 
-### La mesure, en quelques secondes, sans Godot ni Blender
+### ⚠️ Mesurer la BONNE propriété : le fichier ne dit pas ce que le moteur charge
 
-Un `.glb` porte son JSON **en clair** dans son premier chunk : en-tête `glTF`, longueur du chunk 0
-sur 4 octets à l'offset 12, JSON à partir de l'offset 20. Il suffit de compter.
+Cette entrée a d'abord été écrite sur les **tangentes**, et c'était faux. Deux sessions l'ont
+conclu ensemble à partir d'un comptage de `TANGENT` dans le JSON des `.glb`, et la conclusion
+n'a pas survécu à la vérification suivante :
 
-```python
-ln = struct.unpack('<I', data[12:16])[0]
-j = json.loads(data[20:20+ln])
-for m in j['meshes']:
-    for prim in m['primitives']:
-        has_tangent = 'TANGENT' in prim['attributes']
+    needle_scout.glb        fichier :  0 TANGENT / 7    chargé par Godot : 7 / 7
+    crescent_interceptor    fichier :  0 TANGENT / 7    chargé par Godot : 7 / 7
+    choir_harvester         fichier :  0 TANGENT / 61   chargé par Godot : 61 / 61
+
+**L'import fabrique les tangentes** (`meshes/ensure_tangents=true`, réglage identique sur toutes
+les coques du dépôt). Le relief de ces coques n'était donc pas mort du tout.
+
+**Ce qui est vrai, et qui n'est pas la même chose : les UV ne s'inventent pas.** Aucun importateur
+ne peut deviner comment déplier une coque. Une surface sans `TEXCOORD_0` ne peut recevoir **aucune**
+carte de détail — `HullDetail.apply()` n'a rien où plaquer. Et la sévérité n'est pas la même : ce
+n'est pas un rendu dégradé aujourd'hui, c'est une **porte fermée pour demain**.
+
+État réel du dépôt, mesuré une fois chargé : **quatre coques sur dix sans UV** — `choir_harvester`
+0/61 (le mini-boss), `null_maw` 0/36 avant reforge, `crescent_interceptor` 0/7, `needle_scout` 0/7.
+Saine : `pale_leviathan` 145/145.
+
+```gdscript
+# La mesure qui compte : ce que le MOTEUR a chargé, pas ce que le fichier contient.
+var fmt := mesh.surface_get_format(i)
+fmt & Mesh.ARRAY_FORMAT_TEX_UV     # les UV — le fichier fait foi, rien ne les reconstruit
+fmt & Mesh.ARRAY_FORMAT_TANGENT    # les tangentes — reconstruites à l'import, ne rien en conclure
 ```
 
-État relevé du dépôt ce jour-là : **quatre coques sur dix sans tangentes ni UV** —
-`choir_harvester` 0/61 (le mini-boss), `null_maw` 0/36, `crescent_interceptor` 0/7,
-`needle_scout` 0/7. Saines : `pale_leviathan` 145/145, `choir_mine` 33/33, `specter_9` 29/29,
-les trois pièces de citadelle.
+Le comptage dans le JSON du `.glb` reste utile (rapide, sans moteur), mais il répond à « qu'y
+a-t-il dans le fichier », **jamais** à « de quoi le moteur dispose ». Pour les UV les deux
+coïncident ; pour les tangentes, non.
+
+⚠️ La leçon dépasse le cas : **une garde écrite sur la mauvaise propriété est pire qu'aucune
+garde.** Le test « toute coque neuve porte ses tangentes » n'aurait jamais pu échouer — vacant, et
+rassurant, pendant que le vrai défaut restait entier.
 
 ### Le corollaire : une articulation peut marcher et ne rien dire
 

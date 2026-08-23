@@ -62,15 +62,17 @@ pour tomber au troisième passage — ni au premier, ni jamais.
 
 #### Dette laissée par la refonte
 
-- ⚠️ **Quatre coques sur dix sont sans tangentes ni UV, donc intexturables** — mesuré le
-  2026-08-23 en lisant le JSON des `.glb` (`TANGENT` dans `meshes[].primitives[].attributes`) :
-  `choir_harvester` **0/61**, `null_maw` 0/36, `crescent_interceptor` 0/7, `needle_scout` 0/7.
-  Cause connue : sans `_triangulate_ngons()`, l'exporteur glTF **abandonne silencieusement** les
-  tangentes — ni erreur, ni test rouge, juste un relief qui ne s'allume jamais. Saines :
-  `pale_leviathan` **145/145**, `choir_mine` 33/33, `specter_9` 29/29, les trois pièces de citadelle.
-  → Le mini-boss est le cas le plus coûteux (61 primitives) et confirme la trouvaille du BRIEF-0040.
-  Vérification en quelques secondes, sans Godot ni Blender : le `.glb` porte son JSON en clair
-  (chunk 0, longueur sur 4 octets à l'offset 12, JSON à partir de 20).
+- ⚠️ **Quatre coques sur dix sont sans UV, donc impossibles à texturer** — mesuré le 2026-08-23
+  **une fois chargées dans Godot** (`mesh.surface_get_format() & ARRAY_FORMAT_TEX_UV`) :
+  `choir_harvester` **0/61** (le mini-boss), `crescent_interceptor` 0/7, `needle_scout` 0/7,
+  `null_maw` 0/36 avant sa reforge. Saine : `pale_leviathan` **145/145**.
+  Cause : sans `_triangulate_ngons()` ni `box_project_uv()`, le dépliage n'est jamais produit — et
+  aucun importateur ne peut le deviner. Ce n'est pas un rendu dégradé aujourd'hui, c'est une **porte
+  fermée pour demain** : `HullDetail.apply()` n'a rien où plaquer.
+  ⚠️ **Correction d'une conclusion fausse** : cette ligne a d'abord annoncé « sans tangentes », sur
+  un comptage de `TANGENT` dans le JSON des `.glb`. Les tangentes sont **fabriquées par Godot à
+  l'import** (`meshes/ensure_tangents=true`, identique sur toutes les coques) : `needle_scout` passe
+  de 0/7 dans le fichier à 7/7 chargées. Le fichier ne dit pas ce dont le moteur dispose.
 - ⚠️ **`HarvesterCombat` attache ses `Beam` comme le Leviathan le faisait** — enfants d'un
   `Node` sous le `BossController`, donc doublement transformés. Le Leviathan est corrigé
   (`top_level = true`) ; **le mini-boss n'a pas été vérifié**. Si ses faisceaux sont décalés,
