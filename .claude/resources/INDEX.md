@@ -76,7 +76,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   qu'aucune mesure, elle porte l'autorité du chiffre. ⚠️ Et une mesure que son propre correctif rend
   vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
-  observer est probabiliste, la capture d'écran est le mauvais outil.
+  observer est probabiliste, la capture d'écran est le mauvais outil. ⚠️ **Un test qui construit un
+  `Node` le fuit** (mode `--script` : pas d'arbre, donc pas de parent pour le récupérer) — passer par
+  `track()`. Le compte de Godot ne désigne pas son coupable : l'attribuer en exécutant **un fichier
+  de test par process**. Un backlog annonçait 8 fuites « tweens/timers », il y en avait **789**,
+  toutes dans un seul fichier.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et

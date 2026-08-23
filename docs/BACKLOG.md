@@ -1,7 +1,10 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
-> Point de reprise au **2026-07-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
-> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **274 tests verts**.
+> Point de reprise au **2026-08-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
+> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **279 tests verts**.
+>
+> Le chantier Leviathan est câblé et coupé (`ADR-0019`) ; il attend **le playtest manuel de
+> l'opérateur** — voir « Reste à confirmer », plus bas. Ne pas tirer les leviers de rythme d'office.
 >
 > ⚠️ L'en-tête précédent annonçait un arc « appontage → forteresse » supprimé depuis, 80 tests, et
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
@@ -70,7 +73,7 @@ recadrage « boss final ≥ mini-boss » des PV bruts vers durée+variété.
 | `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
 | `LeviathanPlate`, `LeviathanSpike`, `LeviathanCombat` | `scripts/bosses/` | ✅ 42 tests |
 
-`./scripts/check.sh` : **274 tests verts**.
+`./scripts/check.sh` : **279 tests verts**.
 
 ### ✅ BRIEF-0041 (silhouette) — livré et intégré
 
@@ -218,7 +221,19 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 - [ ] **Swept collision** pour projectiles rapides (spec §21.2).
 - [ ] **Tests d'intégration** (spawn vague, mort ennemi, transition de phase) via harnais headless.
 - [ ] **Export release** + icône/console off + manifeste/hash.
-- [ ] **Fuite à la sortie** : 8 ObjectDB leaked / 4 resources still in use (tweens/timers non libérés).
+- [x] ~~**Fuite à la sortie** : 8 ObjectDB leaked / 4 resources still in use (tweens/timers non
+  libérés).~~ **Résolu le 2026-08-23.** Le diagnostic « tweens/timers » était faux, et le chiffre
+  avait entre-temps décuplé (**789** objets fuités / 10 resources / pages du `PagedAllocator`).
+  Sondé fichier par fichier : **la totalité venait d'un seul test**, `test_leviathan_combat.gd`,
+  qui instancie un `LeviathanCombat` (`extends Node`) par méthode. Un Node construit à la main hors
+  arbre n'a **aucun parent pour le récupérer**, là où les unités `RefCounted` meurent avec le cas de
+  test — et Godot ne rapporte la pile qu'à la sortie, donc le bruit ne désigne jamais son coupable.
+  `tests/test_case.gd` expose désormais `track()` / `free_tracked()`, ce dernier appelé par le
+  runner après chaque méthode. La sortie du check ne porte **plus une seule ligne de fuite**.
+  ⚠️ Restent 3 `ERROR: Condition "!is_inside_tree()" is true`, **préexistantes et sans rapport** :
+  `BossController.defeat()` fait `defeated.emit(global_position)` sur un boss que les tests montent
+  hors arbre. Inoffensif, mais non étiqueté `[test] expected error below` comme les deux autres
+  erreurs volontaires du run — un lecteur les prend pour un vrai défaut.
 
 ---
 

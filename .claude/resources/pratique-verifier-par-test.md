@@ -30,6 +30,35 @@ projectiles atteignent le boss **sur la même image**. Injouable à reproduire �
 Le test le force en une ligne : quatre balles simultanées sur une cible qui meurt à la première →
 `assert_eq(_lethal_hits, 1)`. La capture n'aurait **jamais** attrapé ça.
 
+## Un test qui construit un Node le fuit — `track()` (23/08/2026)
+
+Les tests tournent en mode `--script` : **il n'y a pas d'arbre de scène**. Une unité `RefCounted`
+meurt avec le cas de test ; un **`Node` construit à la main n'a aucun parent pour le récupérer** et
+survit jusqu'à la fin du process. Godot ne rapporte la pile qu'à la sortie :
+
+```
+WARNING: 789 ObjectDB instances were leaked at exit
+```
+
+Ce chiffre **ne désigne jamais son coupable** — il tombe après le dernier test, tous fichiers
+confondus. Pour l'attribuer : exécuter **un fichier de test par process** et lire le compte de
+chacun. Ici la totalité venait d'un seul (`test_leviathan_combat.gd`, un `LeviathanCombat extends
+Node` par méthode) pendant que le backlog l'annonçait à « 8, tweens/timers non libérés » — le
+diagnostic hérité était faux **et** cent fois trop petit.
+
+La parade est dans le socle : `tests/test_case.gd` expose `track()`, et le runner appelle
+`free_tracked()` après chaque méthode.
+
+```gdscript
+var combat := track(CombatScript.new()) as LeviathanCombat
+```
+
+Ne pas tracker un nœud qu'un parent tracké possède déjà — `add_child()` suffit, le parent le libère.
+
+**Pourquoi s'en soucier alors que le test passe** : ce bruit est inoffensif *en soi*, mais il occupe
+la place où s'afficherait une **vraie** fuite runtime. Une sortie de check propre est un instrument ;
+une sortie qui crie déjà 789 objets n'en est plus un.
+
 ## Le partage
 
 | Ce qu'on veut savoir | Bon outil |
