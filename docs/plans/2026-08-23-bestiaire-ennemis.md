@@ -6,7 +6,7 @@
 | **Auteur** | session `aegis-ascendant-f0` (bestiaire) |
 | **Périmètre** | familles d'ennemis, coques de vaisseaux, socle de comportement |
 | **État** | **à appliquer** — lots 0 à 3 livrés, lots 3b à 6 à faire |
-| **Supersède** | rien. Complète `docs/BACKLOG.md` (qui reste la liste maître) et l'entrée « Familles d'ennemis » qui y renvoie désormais ici. |
+| **Supersède** | `docs/BACKLOG.md` sur le périmètre ci-dessous. Le backlog reste l'**inventaire** ; en cas de désaccord avec ce plan, **c'est le plan qui gagne** (règle inscrite en tête du backlog le 2026-08-23). |
 | **Ne couvre pas** | le boss final et ses coques — session `aegis-ascendant-47`, voir son propre plan daté du jour. |
 
 > **Pourquoi ce fichier est daté.** Le dépôt accumule des documents de planification
@@ -14,6 +14,10 @@
 > commune aux deux sessions : `docs/plans/AAAA-MM-JJ-<sujet>.md`, en-tête portant
 > date / auteur / périmètre / état, et une ligne disant ce que le plan supersède.
 > **Un plan sans ces quatre champs est à considérer comme périmé.**
+>
+> Et la date seule ne suffisait pas : elle dit lequel est **le plus récent**, pas
+> lequel **s'applique**. D'où la règle d'arbitrage posée en tête de `docs/BACKLOG.md`
+> le même jour — **entre le backlog et un plan plus récent, le plan gagne.**
 
 ---
 
