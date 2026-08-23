@@ -47,6 +47,7 @@ const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/aegis_citadel.tres"),
 	preload("res://resources/codex/needle_scout.tres"),
 	preload("res://resources/codex/crescent_interceptor.tres"),
+	preload("res://resources/codex/leech_drone.tres"),
 	preload("res://resources/codex/choir_mine.tres"),
 	preload("res://resources/codex/null_maw.tres"),
 	preload("res://resources/codex/choir_harvester.tres"),

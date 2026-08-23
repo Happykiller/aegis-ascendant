@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/leech_drone.glb" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/enemies/leech_drone.tres" id="3_data"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Leech Drone"
+camp = 1
+designation = "NX-062"
+hull_class = "DRONE DE CONTACT A TROIS PINCES"
+builder = "INCONNU - VARIANTE SERIE"
+status = "MENACE CONFIRMEE"
+notice = "Le premier appareil du Choeur Nul qui suive. Il ne tire pas: il rattrape, se pose sur la coque et prend une part de la poussée. Le pilote garde toutes ses commandes et n'avance plus qu'à quatre dixièmes. Il ne vire pas assez vite pour tenir un crochet, et il ne va pas assez vite pour interdire la fuite: se laisser coincer est le seul moyen de le subir. Structure minimale, il cède au premier impact franc."
+mass_t = 0.09
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+enemy_data = ExtResource("3_data")

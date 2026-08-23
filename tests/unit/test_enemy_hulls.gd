@@ -13,6 +13,8 @@ const CHOIR_MINE_HULL := preload("res://assets/imported/models/ships/choir_mine.
 const CHOIR_MINE_DATA := preload("res://resources/enemies/choir_mine.tres")
 const NULL_MAW_HULL := preload("res://assets/imported/models/ships/null_maw.glb")
 const NULL_MAW_DATA := preload("res://resources/enemies/null_maw.tres")
+const LEECH_HULL := preload("res://assets/imported/models/ships/leech_drone.glb")
+const LEECH_DATA := preload("res://resources/enemies/leech_drone.tres")
 
 ## Débattement mécanique MESURÉ sur le maillage livré (BRIEF-0042-report.md) :
 ## première interpénétration plaque/voisine à 57°, dernière valeur sûre 56°.
@@ -72,6 +74,40 @@ func test_the_maw_never_opens_past_what_its_geometry_allows() -> void:
 		"l'ouverture réglée (%.1f°) tient sous le débattement mesuré (%.1f°)"
 			% [NULL_MAW_DATA.open_angle_deg, NULL_MAW_CLEARANCE_DEG])
 
+# --- Leech Drone --------------------------------------------------------------
+
+## Débattement mesuré (BRIEF-0044-report.md) : première interpénétration à 147°
+## sur la pince arrière, 166° sur les deux avant. Il n'y a donc PAS de butée
+## mécanique à respecter ici — la douille de poignet est une surface de révolution.
+## Ce qui borne l'ouverture est la LECTURE : au-delà de 51° l'enveloppe apparente
+## redescend. C'est le seul réglage du bestiaire dont la limite ne soit pas une
+## collision, et il vaut de le dire plutôt que de le laisser deviner.
+const LEECH_CLEARANCE_DEG := 146.0
+
+func test_the_shipped_leech_hull_carries_the_parts_the_code_looks_for() -> void:
+	var hull := track(LEECH_HULL.instantiate()) as Node3D
+	var pose := EnemyPose.bind(hull, LEECH_DATA.moving_part_prefix,
+		LEECH_DATA.open_angle_deg, LEECH_DATA.open_spread)
+	assert_true(pose != null, "les pinces existent dans la coque livrée")
+	assert_eq(hull.find_children("Claw_*", "Node3D", true, false).size(), 3,
+		"les trois pinces annoncées par le brief sont là")
+
+func test_the_leech_opening_stays_within_reach() -> void:
+	assert_true(LEECH_DATA.open_angle_deg <= LEECH_CLEARANCE_DEG,
+		"l'ouverture réglée (%.0f°) tient sous la première interpénétration (%.0f°)"
+			% [LEECH_DATA.open_angle_deg, LEECH_CLEARANCE_DEG])
+
+## ⚠️ CELLE-CI DOIT AVOIR UN MOTEUR, à l'inverse des deux mines. C'est la plume
+## d'échappement qui la fait lire comme une chose qui VIENT ; sans `Engine_C` le
+## contrôleur n'en pose aucune et une poursuivante ressemblerait à un objet qui
+## dérive — exactement le contresens que les mines, elles, recherchent.
+func test_the_leech_hull_declares_an_engine() -> void:
+	var hull := track(LEECH_HULL.instantiate()) as Node3D
+	assert_true(hull.find_child("Engine_C", true, false) != null,
+		"elle a une tuyère : elle poursuit, elle ne dérive pas")
+	assert_true(hull.find_child("Muzzle_C", true, false) != null,
+		"et la bouche que le contrôleur lit à l'initialisation")
+
 func test_the_maw_hull_declares_no_engine() -> void:
 	var hull := track(NULL_MAW_HULL.instantiate()) as Node3D
 	assert_true(hull.find_child("Engine_C", true, false) == null,
@@ -100,6 +136,7 @@ func test_the_maw_hull_declares_no_engine() -> void:
 const HULLS_THAT_MUST_CARRY_UVS := {
 	"choir_mine": CHOIR_MINE_HULL,
 	"null_maw": NULL_MAW_HULL,
+	"leech_drone": LEECH_HULL,
 }
 
 func _uv_coverage(scene: PackedScene) -> Vector2i:

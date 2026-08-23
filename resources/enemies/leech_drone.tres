@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+; Leech Drone — le premier ennemi du jeu qui POURSUIT. Sa position accumule, donc
+; elle n'est pas une trajectoire : Motion.HOMING, EnemyHoming (ADR-0022).
+;
+; ⚠️ move_speed = 9,0 contre 14,0 de vitesse joueur, et c'est REGLE, pas devine.
+; A 3,2 elle ne rattrapait jamais un chasseur qui bouge — mesure au banc, cinq
+; exemplaires, zero accrochage sur toute la duree : une menace qui n'existait que
+; contre un joueur immobile. A 9,0 elle coupe une trajectoire sans pouvoir
+; interdire la fuite en ligne droite. Les deux contres existent : distancer, ou
+; crocheter (le virage est borne).
+;
+; drag_factor = 0,35 : deux sangsues volent 0,70, plafonne a 0,60 par le chasseur.
+; Le pilote garde 40 % de sa mobilite quoi qu'il arrive — meme plancher que sous
+; aspiration, et pour la meme raison.
+;
+; drain_per_second traverse take_contact_damage(), donc l'invulnerabilite de 1,2 s
+; le cadence toute seule. La menace reelle est le frein, pas les degats.
+;
+; open_angle_deg = 51 est le MAXIMUM D'ENVELOPPE mesure, pas un maximum mecanique :
+; la premiere interpenetration est a 147 degres, il n'y a pas de butee a respecter.
+; Au-dela de 51 l'enveloppe apparente REDESCEND (70 degres a deja reperdu 3 points).
+; C'est la lecture qui borne, pas la mecanique.
+;
+; open_spread = 0 : le coulissement paierait tres bien (+33 % a 0,15) mais ouvre un
+; jour de 52 mm a la chape — poignet deboite. Ecarte sur mesure, pas par defaut.
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+motion = 1
+fire = 1
+effect = 2
+display_name = "Leech Drone"
+max_health = 10.0
+move_speed = 9.0
+fire_interval = 1.9
+hitbox_radius = 0.45
+score_value = 160
+homing_turn_rate = 2.2
+chase_time = 8.0
+alert_radius = 3.0
+trigger_radius = 0.9
+windup_time = 0.35
+active_time = 2.5
+rearm_time = 1.5
+drag_factor = 0.35
+drain_per_second = 6.0
+moving_part_prefix = "Claw"
+open_angle_deg = 51.0

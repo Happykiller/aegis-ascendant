@@ -20,6 +20,7 @@ const NEEDLE_SCOUT := preload("res://scenes/enemies/needle_scout.tscn")
 const BASE_DATA := preload("res://resources/enemies/needle_scout.tres")
 const CHOIR_MINE := preload("res://scenes/enemies/choir_mine.tscn")
 const NULL_MAW := preload("res://scenes/enemies/null_maw.tscn")
+const LEECH_DRONE := preload("res://scenes/enemies/leech_drone.tscn")
 
 ## Combien d'exemplaires tournent en même temps. Assez pour lire une interaction
 ## (deux puits qui s'additionnent, un éveil isolé dans une rangée), pas assez pour
@@ -56,6 +57,7 @@ var _last_player_position: Vector2 = Vector2.ZERO
 const SHIPPED := {
 	"mine": CHOIR_MINE,
 	"maw": NULL_MAW,
+	"leech": LEECH_DRONE,
 }
 
 func _ready() -> void:
