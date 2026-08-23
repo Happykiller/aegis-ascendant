@@ -3,9 +3,14 @@
 > Point de reprise au **2026-08-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
 > DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **269 tests verts**.
 >
-> Le boss final a été **refondu à deux phases** après playtest (`ADR-0020`, ~40 s). Il attend
-> maintenant **une partie jouée** : c'est le seul juge de l'alignement halo/hitbox et du
-> ressenti de durée. Ne pas tirer de levier de réglage avant ce verdict.
+> Le boss final a été **refondu deux fois le même jour** après playtest : `ADR-0020` (quatre
+> phases → deux) puis `ADR-0021` (**trois cycles armure/noyau**, épines devenues tourelles
+> laser, entrée du chasseur dans le noyau). Il attend **une partie jouée** : durée ressentie,
+> lisibilité des cycles et alignement halo/hitbox ne se jugent pas à la capture.
+>
+> ⚠️ Une autre session travaille en parallèle sur le **bestiaire ennemi** (`ADR-0022`,
+> `scripts/enemies/`, `wave_spawner`, assets). Périmètres disjoints, mais `C:\tmp` et le
+> processus Windows ne sont **pas** cloisonnés : s'annoncer avant tout déploiement.
 >
 > ⚠️ L'en-tête précédent annonçait un arc « appontage → forteresse » supprimé depuis, 80 tests, et
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
@@ -22,42 +27,48 @@
 
 ---
 
-## ⏳ En cours — Pale Leviathan (refondu le 2026-08-23)
+## ⏳ En cours — Pale Leviathan (refondu en cycles le 2026-08-23)
 
-### ✅ REFONTE FAITE — deux phases, ~40 s (`ADR-0020`)
+### ✅ REFONTE FAITE — trois cycles armure/noyau (`ADR-0021`)
 
-Verdict opérateur du 2026-08-23 : *« il est mal équilibré, je n'aime pas le combat, on ne voit
-pas bien les phases — il faut revoir entièrement son équilibrage et son gameplay. »* La partie
-s'était arrêtée **pendant la phase 1**, sans qu'aucune ligne `leviathan phase N/4` ne parte.
+Verdict opérateur, sur un combat pourtant **gagné** : *« extrêmement lancinant — on arrose les
+plaques sans faire gaffe en attendant qu'elles disparaissent ; les tentacules, je ne vois pas à
+quoi elles servent ; et qu'il faille aller dans le noyau pour tirer, on ne le voit pas, on ne
+le comprend pas. »* Trois griefs de natures différentes : du temps sans décision, des pièces
+sans rôle, une cible qu'il fallait deviner.
 
-Trois causes, trouvées dans le code avant de toucher à quoi que ce soit :
+Ce qui est en place :
 
-1. **La jauge mentait** — elle divisait par les PV des quatre phases, donc briser toute
-   l'armure ne valait que **30 %** de barre. C'était déjà le retour de juillet (« les
-   pastilles se vidaient, le boss encore à 80 % »), contourné à l'époque, jamais traité.
-2. **La fenêtre de tir n'existait pas** — quatre plaques à 90°, arc de 100° : il y en avait
-   toujours une exposée, souvent deux. « Lire la rotation » ne contraignait rien.
-3. **Les dégâts s'étalaient** — toutes les plaques exposées encaissaient, elles descendaient
-   ensemble et tombaient **toutes à la fin**. Quinze secondes sans qu'une pièce cède.
+| Grief | Réponse livrée |
+|---|---|
+| « lancinant » | Plaques à **460 PV** (contre 1270) : une cède toutes les ~2 s, la salve d'armure passe de ~22 s à ~8 s |
+| « les tentacules ne servent à rien » | Ce sont des **tourelles laser télégraphiées** (`Beam`), et **chaque plaque brisée en éteint une** |
+| « on ne comprend pas qu'il faut tirer le noyau » | **On y entre** : coquille écartée, aspiration, autopilote, caméra qui plonge, flux d'énergie plein cadre, ~5 s de tir puis éjection |
+| — | **Trois cycles** : 4 plaques, puis 3, puis 2. L'armure revient toujours amoindrie |
 
-Ce qui est en place : deux phases (`BRISER L'ARMURE` ~22 s, `LE CŒUR` ~18 s), **une seule
-plaque vulnérable à la fois** (celle qui brille), jauge **par phase** qui se remplit à la
-bascule, cœur exposé en permanence, coquille qui s'écarte, épines et nœuds qui **se détachent**
-quand une plaque cède, aspiration devenue pression intermittente. `LeviathanSpike` supprimé.
+Deux invariants neufs : l'**arc d'exposition s'élargit** quand il reste moins de plaques (sans
+quoi il existe des instants sans aucune cible dès le cycle 2), et le **flux est dimensionné**
+pour tomber au troisième passage — ni au premier, ni jamais.
 
-Deux invariants neufs gardent ce qui avait échappé à tous les tests : la **durée totale**
-(40 ± 10 s) et le **poids de chaque phase** (25–75 % du combat).
+#### Reste à juger — PAR UNE PARTIE
 
-#### Reste à juger — PAR UNE PARTIE, pas par une capture
+- **`/jouer`** : les cycles sont-ils lisibles ? La plongée fait-elle son effet ? Est-ce enfin
+  nerveux ? C'est LA question, et aucune capture n'y répond.
+- **Alignement halo ↔ hitbox** : non jugeable à l'arrêt.
+- **Cadrage de la plongée** : réglé à l'œil en trois captures. Le chasseur est visible dans le
+  noyau (`plane_lift`), mais sa lisibilité en mouvement reste à confirmer.
+- **Leviers** si la phase d'armure traîne encore : `shell_orbit_period` 9→7,
+  `plate_health` 460→380 (le garde-fou de durée refusera d'aller trop loin).
 
-- **`/jouer`** : est-ce que le combat est enfin lisible et nerveux ? C'est LA question.
-- **Alignement halo ↔ hitbox** : le halo pointe-t-il pile la plaque que les tirs touchent ?
-  Non jugeable à l'arrêt. Le halo a été éclairci vers le blanc chaud pour trancher sur une
-  coque déjà rose ; le cœur ne bat plus qu'une fois à nu, pour ne pas désigner deux cibles.
-- **Écartement de la coquille** (`shell_open_offset` 2,2) : visible en capture, mais discret
-  sous l'angle de la caméra de jeu. À renforcer si la transition ne se lit pas.
-- **Leviers de rythme** si la phase 1 traîne encore : `shell_orbit_period` 9→7,
-  `plate_health` 1270→1100 (le garde-fou de durée refusera d'aller trop bas).
+#### Dette laissée par la refonte
+
+- ⚠️ **`HarvesterCombat` attache ses `Beam` comme le Leviathan le faisait** — enfants d'un
+  `Node` sous le `BossController`, donc doublement transformés. Le Leviathan est corrigé
+  (`top_level = true`) ; **le mini-boss n'a pas été vérifié**. Si ses faisceaux sont décalés,
+  personne ne l'a jamais remarqué.
+- Le document de conception `BOSS_PALE_LEVIATHAN.md` décrit toujours quatre phases. Il porte un
+  avertissement en tête et sert encore pour les assets ; ses §4 à §6 sont de la matière non
+  employée.
 
 ### Ce qui est acquis
 
@@ -71,7 +82,7 @@ Deux invariants neufs gardent ce qui avait échappé à tous les tests : la **du
 | `LeviathanTuning` + 6 invariants | `resources/data/` | ✅ 20 tests |
 | `LeviathanPlate`, `LeviathanCombat` | `scripts/bosses/` | ✅ refondus par ADR-0020 ; `LeviathanSpike` supprimé avec ses 13 tests |
 
-`./scripts/check.sh` : **269 tests verts**.
+`./scripts/check.sh` : **311 tests verts** (les deux sessions confondues).
 
 ### ✅ BRIEF-0041 (silhouette) — livré et intégré
 
@@ -171,8 +182,10 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 - [ ] **Missiles secondaires** (verrouillage doux, salves, recharge par bonus — `Missile Rack` en asset).
 - [ ] **Overdrive** (jauge, boost temporaire ; devient « Citadel Burst » en forteresse).
 - [ ] **Configurations de tir** : Spread / Lance / Orbit (touche E).
-- [ ] **Familles d'ennemis** : Crescent Interceptor, Choir Mine, Leech Drone, Null Bomber,
-  Shield Carrier, Frigate Turret. `EnemyController` est une base de composition prête à étendre.
+- [ ] **Familles d'ennemis** — chantier repris par une session dédiée (`ADR-0022`). Le
+  **Crescent Interceptor est livré** (cette ligne l'annonçait encore comme à faire) ; restent
+  Choir Mine, Leech Drone, Null Bomber, Shield Carrier, Frigate Turret. `EnemyController` est
+  une base de composition prête à étendre.
 - [ ] **EncounterDirector** formel (remplacer le pilotage en dur dans `graybox_root`) : timeline
   data-driven, checkpoints, synchro musique/caméra.
 - [ ] **Objectifs de défense** (« Citadel Under Siege ») : batteries à protéger.

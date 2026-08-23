@@ -389,6 +389,10 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.piece_active_changed.connect(_on_leviathan_piece_active)
 	combat.piece_destroyed.connect(_on_leviathan_piece_destroyed)
 	combat.pull_changed.connect(_on_leviathan_pull)
+	combat.dive_started.connect(_on_leviathan_dive_started)
+	combat.dive_entered.connect(_on_leviathan_dive_entered)
+	combat.dive_ended.connect(_on_leviathan_dive_ended)
+	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 
 ## La jauge du boss montre la santé de la PHASE EN COURS (ADR-0020). ⚠️ Elle cumulait les
 ## quatre phases : briser toute l'armure ne valait que 30 % de barre, et le joueur lisait
@@ -429,34 +433,157 @@ func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> voi
 		return
 	_player.apply_pull(GravityWell.pull_at(_player.plane_position, centre, radius, speed_max))
 
+# --- La plongée dans le noyau (ADR-0021) --------------------------------------
+## Le playtest disait : « on ne voit pas, on ne comprend pas qu'il faut aller dans le
+## noyau pour tirer ». La cible ne se DÉSIGNE donc plus, elle se REMPLIT l'écran : le
+## corps s'ouvre, le chasseur y est tiré, la caméra plonge derrière lui. C'est la même
+## grammaire que l'appontage — un autopilote et un cadrage — parce que le joueur l'a
+## déjà apprise à la fin du niveau.
+
+## Le noyau ouvert, construit au vol : une sphère retournée autour du boss. Bâtie par
+## code et non posée dans `graybox.tscn` — la scène est éditée par une autre session, et
+## un `.tscn` se fusionne très mal à deux.
+var _core_chamber: MeshInstance3D
+
+func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
+	_sfx(&"boss_phase_shift")
+	_banner("DANS LE NOYAU" if cycle == 0 else "ENCORE", _BANNER_MAGENTA, 1.2)
+	if _hud != null:
+		_hud.set_boss_limbs(PackedStringArray())   # plus de plaques : la rangée s'éteint
+	_build_core_chamber()
+	if _player != null:
+		# ⚠️ Pendant l'autopilote le chasseur est GUIDÉ, invulnérable et il ne tire pas
+		# (`player_fighter_controller.gd:133`). C'est acceptable — et voulu — pour les
+		# 1,4 s de l'entrée : le joueur regarde le corps s'ouvrir. Mais il faut lui rendre
+		# la main à l'instant exact où le tir s'ouvre, d'où `end_autopilot()` juste après.
+		# ⚠️ PAS AU CENTRE EXACT : le flux y est, et le chasseur disparaissait DERRIÈRE lui —
+		# vu en capture, un noyau splendide et pas un vaisseau à l'écran. On le pose en
+		# dessous, à portée de tir : c'est la position d'un shooter vertical, celle où le
+		# joueur sait déjà ce qu'il a à faire.
+		_player.begin_autopilot(centre + Vector2(0.0, -5.0))
+		# Il vole DANS le noyau, au-dessus de son plancher : sans cette hauteur il passe
+		# derrière la coque et on ne le voit plus.
+		_player.plane_lift = 2.2
+	_dive_camera(true)
+
+func _on_leviathan_dive_entered(_cycle: int) -> void:
+	if _player != null:
+		_player.end_autopilot()
+	if _core_chamber != null:
+		_core_chamber.visible = true
+
+func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
+	# L'éjection est une secousse, pas un fondu : on est recraché.
+	_boom(_final_boss.global_position if _final_boss != null else Vector3.ZERO,
+		VfxExplosion.Category.HEAVY, 0.85)
+	_sfx(&"boss_phase_shift")
+	if _player != null:
+		_player.end_autopilot()
+		_player.plane_lift = 0.0   # on ressort, le chasseur redescend dans le plan
+	_dive_camera(false)
+	_clear_core_chamber()
+	if not flux_down:
+		_banner("EJECTE", _BANNER_IVORY, 1.0)
+
+## L'armure revient — avec une plaque de moins. ⚠️ À ANNONCER : une armure qui repousse
+## sans un mot se lit comme un bug, pas comme une mécanique. Le compte dans la bannière
+## dit que le boss se répare de plus en plus mal.
+func _on_leviathan_armour_reformed(_cycle: int, plates: int) -> void:
+	_sfx(&"danger_alarm")
+	_banner("ARMURE REFORMEE — %d PLAQUES" % plates, _BANNER_IVORY, 1.4)
+	if _hud != null:
+		_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS.slice(0, plates))
+
+## Glisse la caméra vers le noyau, ou la ramène. ⚠️ Passe par la POSE DE REPOS du
+## `CameraDirector` : écrire `Camera3D.transform` directement serait écrasé par le shake
+## à l'image suivante.
+func _dive_camera(inside: bool) -> void:
+	var director := get_node_or_null("CameraDirector") as CameraDirector
+	if director == null:
+		return
+	if not inside:
+		director.restore_rest(0.7)
+		return
+	var home := director.home_transform()
+	# ⚠️ ON CADRE LE BOSS, PAS LE CENTRE DU MONDE. Un simple rapprochement vers l'origine
+	# laissait le noyau en haut du cadre, à moitié coupé, et le chasseur hors champ —
+	# le boss combat à une douzaine d'unités devant, pas au centre. Vu en capture.
+	# L'orientation d'origine est conservée : seule la distance change, donc la lecture
+	# du plan de jeu reste la même une fois dedans.
+	# Le cadrage se règle À L'ŒIL, en capture : deux essais l'encadrent. Viser le centre du
+	# monde laissait le noyau coupé en haut ; se poser à l'aplomb du boss le renvoyait en
+	# bas de l'écran. On glisse donc À MI-CHEMIN vers lui, en se rapprochant du plan.
+	var focus := _final_boss.global_position if _final_boss != null else Vector3.ZERO
+	director.push_rest(Transform3D(home.basis, Vector3(
+		focus.x * 0.5,
+		home.origin.y * 0.58,
+		focus.z * 0.38 + home.origin.z * 0.58)), 1.2)
+
+func _build_core_chamber() -> void:
+	if _core_chamber != null or _final_boss == null or _leviathan == null:
+		return
+	var sphere := SphereMesh.new()
+	sphere.radius = _leviathan.tuning.chamber_radius if _leviathan.tuning != null else 7.0
+	sphere.height = sphere.radius * 2.0
+	sphere.flip_faces = true   # on la regarde de l'INTÉRIEUR
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = Color(0.16, 0.05, 0.20)
+	material.emission_enabled = true
+	material.emission = Color(0.42, 0.10, 0.38)
+	material.emission_energy_multiplier = 0.7
+	# ⚠️ SURTOUT PAS `CULL_DISABLED`. Avec les faces retournées, seules les faces
+	# INTERNES doivent être rendues : la caméra reste dehors, elle regarde donc le fond
+	# de la sphère par son ouverture, et le boss comme le chasseur restent visibles
+	# devant. En rendant les deux faces, la coque de la sphère se referme sur le cadre —
+	# vu en capture : un disque bordeaux plein écran, plus de boss, plus de joueur.
+	material.cull_mode = BaseMaterial3D.CULL_BACK
+	_core_chamber = MeshInstance3D.new()
+	_core_chamber.mesh = sphere
+	_core_chamber.material_override = material
+	_core_chamber.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_core_chamber.visible = false   # révélée quand le chasseur est dedans
+	_final_boss.add_child(_core_chamber)
+
+func _clear_core_chamber() -> void:
+	if _core_chamber == null:
+		return
+	_core_chamber.queue_free()
+	_core_chamber = null
+
 ## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
 ## secousse, bascule musicale, et la rangée de pastilles reconfigurée pour les sous-cibles
 ## de la phase qui s'ouvre. Les phases avancent sur une condition MATÉRIELLE — le module
 ## en est seul juge, le niveau ne fait que l'annoncer.
+## Chaque bascule du Leviathan. ⚠️ Les phases avancent sur une condition MATÉRIELLE —
+## l'armure du cycle à terre, ou le compte à rebours du noyau épuisé. Le module en est
+## seul juge ; le niveau ne fait que l'annoncer et régler la musique.
 func _on_leviathan_phase(phase: int) -> void:
 	match phase:
 		LeviathanCombat.Phase.ARMOR:
-			# Phase initiale : la bannière du nom est déjà à l'écran, pas de doublon.
-			if _hud != null:
-				_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS)
-		LeviathanCombat.Phase.HEART:
-			# Plus aucune sous-cible : la rangée s'éteint, il ne reste que le cœur.
-			if _hud != null:
-				_hud.set_boss_limbs(PackedStringArray())
-			_leviathan_phase_beat("COEUR A NU", _BANNER_MAGENTA, 1.8, 1)
+			# La rangée de pastilles suit le nombre de plaques du cycle : au cycle 2 il
+			# n'y en a plus que trois, et une quatrième pastille mentirait.
+			if _hud != null and _leviathan != null:
+				_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS.slice(0, _leviathan.plates().size()))
+			_leviathan_cycle_beat()
+		LeviathanCombat.Phase.DIVE:
+			# La mise en scène est portée par `dive_started` : ici, seulement la musique.
+			_leviathan_cycle_beat()
 		LeviathanCombat.Phase.DEFEATED:
 			# La mort est portée par `defeated` → `_on_final_boss_defeated` (finale Helios).
 			pass
 
-func _leviathan_phase_beat(text: String, color: Color, hold: float, phase_index: int) -> void:
-	var origin := _final_boss.global_position if _final_boss != null else Vector3.ZERO
-	_boom(origin, VfxExplosion.Category.HEAVY, 0.9)
-	_sfx(&"boss_phase_shift")
-	_banner(text, color, hold)
-	_music.boss_phase = phase_index
-	_music.boss_phase_count = LeviathanTuning.PHASE_COUNT
+## Règle la musique sur l'avancement du combat. `boss_phase` porte le CYCLE : la
+## partition monte à chaque tour, et le dernier cycle sonne comme le dernier.
+func _leviathan_cycle_beat() -> void:
+	if _leviathan == null:
+		return
+	var cycles: int = _leviathan.tuning.cycle_count if _leviathan.tuning != null else 1
+	_music.boss_phase = mini(_leviathan.cycle(), maxi(cycles - 1, 0))
+	_music.boss_phase_count = cycles
 	_update_music()
-	print("[Level] leviathan phase %d/%d" % [phase_index + 1, LeviathanTuning.PHASE_COUNT])
+	print("[Level] leviathan cycle %d/%d — %s" % [_leviathan.cycle() + 1, cycles,
+		"noyau" if _leviathan.phase() == LeviathanCombat.Phase.DIVE else "armure"])
 
 func _physics_process(_delta: float) -> void:
 	_update_engine_hum()

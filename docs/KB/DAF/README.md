@@ -28,7 +28,7 @@ est l'aiguillage — elle dit **où lire**, et **ce qui s'est décidé depuis**.
 | Bonus (pickups) | `ARCHITECTURE_FONCTIONNELLE.md` §4.3 | — |
 | Ennemis & familles | `ARCHITECTURE_FONCTIONNELLE.md` §4.4 | ADR-0015 (bestiaire) |
 | Mini-boss (Choir Harvester) | `ARCHITECTURE_TECHNIQUE.md` §9 | — |
-| **Boss final (Pale Leviathan)** | **`ADR-0020`** fait foi ; `docs/design/BOSS_PALE_LEVIATHAN.md` décrit encore quatre phases et porte un avertissement en tête | ADR-0018 puis **ADR-0020** (refonte à deux phases, ~40 s) |
+| **Boss final (Pale Leviathan)** | **`ADR-0021`** fait foi ; `docs/design/BOSS_PALE_LEVIATHAN.md` décrit encore quatre phases et porte un avertissement en tête | ADR-0018, puis ADR-0020, puis **ADR-0021** (trois cycles armure/noyau, ~40 s) |
 | Appontage & clôture | `ARCHITECTURE_FONCTIONNELLE.md` §4.5 | **ADR-0010** — l'appontage devient la séquence de fin |
 | Finale & victoire, score | `ARCHITECTURE_FONCTIONNELLE.md` §4.7, §4.8 | ADR-0012 (langage d'interface des écrans) |
 | Direction artistique | `ARCHITECTURE_FONCTIONNELLE.md` §5 | ADR-0006, ADR-0011, ADR-0013, ADR-0014, ADR-0016, ADR-0017 |

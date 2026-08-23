@@ -1,11 +1,16 @@
 # THE PALE LEVIATHAN — conception du boss final
 
-> ## ⚠️ CE DOCUMENT DÉCRIT QUATRE PHASES ; LE COMBAT N'EN A PLUS QUE DEUX
+> ## ⚠️ CE DOCUMENT DÉCRIT QUATRE PHASES ; LE COMBAT EST DEVENU CYCLIQUE
 >
-> **`ADR-0020` (2026-08-23) a refondu le boss après playtest** : `BRISER L'ARMURE` puis
-> `LE CŒUR`, ~40 s au total. Les phases **RÉSISTER** (nœuds gravitiques), **PRIORISER**
-> (essaim d'abordage) et **OSER** (plongée dans la gueule) ne sont plus jouées — leurs
-> pièces restent à l'écran et se détachent quand l'armure cède.
+> **`ADR-0020` puis `ADR-0021` (2026-08-23) ont refondu le boss après playtest.** L'état
+> réel : **trois cycles** de `BRISER L'ARMURE` (4 puis 3 puis 2 plaques) → `PLONGER DANS LE
+> NOYAU`, ~40 s au total. Les épines sont devenues des **tourelles laser** et tombent une par
+> plaque brisée ; les nœuds gravitiques, l'essaim d'abordage et le compte à rebours de la
+> gueule ne sont plus joués.
+>
+> À noter : la plongée d'`ADR-0021` **reprend l'intention** de l'ancienne phase 4 (`OSER`,
+> §6) — entrer, tirer vite, être éjecté. Ce qui lui manquait n'était pas la mécanique mais la
+> mise en scène : rien ne la montrait.
 >
 > Ce document n'est pas corrigé section par section, et c'est délibéré : il porte aussi les
 > briefs d'assets, les onze prompts d'images et la spec 3D de la coque, tous encore valides.

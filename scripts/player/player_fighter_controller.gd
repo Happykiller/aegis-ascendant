@@ -94,7 +94,7 @@ func _ready() -> void:
 	if primary_projectile != null:
 		for error in primary_projectile.validate():
 			push_error("[PlayerFighter] invalid projectile: %s" % error)
-	position = GameplayPlane.to_world(plane_position)
+	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	# Same detail sheet the title screen puts on its hulls: the .glb ships with no
 	# texture (ADR-0008), so without this the fighter reads as smooth plastic in
 	# combat while looking panelled on the menu. Safe on a shared imported material —
@@ -135,7 +135,7 @@ func _physics_process(delta: float) -> void:
 	if _autopilot:
 		_shield.grant_invulnerability(0.3) # safe during the guided approach
 		plane_position = plane_position.move_toward(_autopilot_target, stats.max_speed * 0.6 * delta)
-		position = GameplayPlane.to_world(plane_position)
+		position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 		# L'approche d'appontage est pilotée : la commande du joueur ne dit plus rien,
 		# mais le moteur pousse — sans cette ligne la plume s'éteindrait pendant le
 		# seul plan du jeu où le vaisseau est filmé en approche lente.
@@ -159,7 +159,7 @@ func _physics_process(delta: float) -> void:
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
 	plane_position = GameplayPlane.clamp_to_bounds(plane_position + (_velocity + _external_pull) * delta)
 	_external_pull = Vector2.ZERO
-	position = GameplayPlane.to_world(plane_position)
+	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	if _target != null:
 		_target.position = plane_position
 	_apply_visual_bank(delta)
@@ -215,7 +215,7 @@ func _respawn() -> void:
 	_alive = true
 	plane_position = Vector2(0.0, -5.0)
 	_velocity = Vector2.ZERO
-	position = GameplayPlane.to_world(plane_position)
+	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	_visual_root.visible = true
 	_shield.reset()
 	_shield.grant_invulnerability(2.0)
@@ -247,6 +247,15 @@ func speed_ratio() -> float:
 	return clampf(_velocity.length() / stats.max_speed, 0.0, 1.0)
 
 ## Take over control and fly to a target on the plane (docking, spec §6.5).
+## Hauteur du chasseur au-dessus du plan de jeu, en unités monde.
+##
+## ⚠️ PUREMENT VISUEL : `plane_position` ne bouge pas, donc ni les collisions, ni les
+## tirs, ni les bornes de terrain ne changent. Sert la plongée dans le noyau du boss
+## final (ADR-0021) : à hauteur nulle, le chasseur se retrouve À L'INTÉRIEUR de la coque
+## et disparaît derrière elle — vu en capture, un noyau splendide et pas un vaisseau à
+## l'écran. Le monter le fait passer devant, sans rien changer au jeu.
+var plane_lift: float = 0.0
+
 func begin_autopilot(target: Vector2) -> void:
 	_autopilot = true
 	_autopilot_target = target

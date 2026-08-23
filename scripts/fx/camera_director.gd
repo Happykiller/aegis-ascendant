@@ -1,8 +1,15 @@
 class_name CameraDirector
 extends Node3D
 ## Owns the gameplay Camera3D and applies centralized trauma-based screen shake
-## (spec §16.3). The camera keeps a fixed rest pose; shake is an additive offset
-## so gameplay dodging is never disturbed. Trauma accumulates (capped) and decays.
+## (spec §16.3). Shake is an additive offset around a REST POSE, so gameplay dodging is
+## never disturbed. Trauma accumulates (capped) and decays.
+##
+## La pose de repos était fixe ; elle est désormais **déplaçable** (`push_rest`), ce qui
+## donne le plongeon dans le noyau du boss final (ADR-0021) sans toucher au shake : le
+## tremblement reste additif par-dessus, où que la caméra soit posée. ⚠️ Un cadrage animé
+## en écrivant directement `Camera3D.transform` serait écrasé par le shake à l'image
+## suivante — c'est pour ça que le déplacement passe par la pose de repos, et pas par la
+## caméra.
 
 @export var max_translation: float = 0.35
 @export var max_roll_deg: float = 2.2
@@ -12,7 +19,15 @@ extends Node3D
 @export var shake_multiplier: float = 1.0
 
 var _camera: Camera3D
+## Pose d'origine, jamais perdue : `restore_rest()` y ramène toujours.
+var _home_transform: Transform3D
+## Pose de repos courante — celle autour de laquelle le shake s'applique.
 var _rest_transform: Transform3D
+## Cible et vitesse du glissement en cours (`_rest_move_time <= 0` : pas de glissement).
+var _rest_target: Transform3D
+var _rest_move_time: float = 0.0
+var _rest_move_left: float = 0.0
+var _rest_from: Transform3D
 var _trauma: float = 0.0
 var _noise: FastNoiseLite
 var _noise_time: float = 0.0
@@ -23,6 +38,9 @@ func _ready() -> void:
 		push_error("[CameraDirector] expects a child Camera3D")
 		return
 	_rest_transform = _camera.transform
+	_home_transform = _rest_transform
+	_rest_target = _rest_transform
+	_rest_from = _rest_transform
 	_noise = FastNoiseLite.new()
 	_noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	_noise.frequency = 0.08
@@ -31,9 +49,38 @@ func _ready() -> void:
 func add_trauma(amount: float) -> void:
 	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
+## Glisse la pose de repos vers `target` en `duration` secondes. Le shake continue de
+## s'appliquer par-dessus pendant le trajet.
+func push_rest(target: Transform3D, duration: float) -> void:
+	_rest_from = _rest_transform
+	_rest_target = target
+	_rest_move_time = maxf(duration, 0.0001)
+	_rest_move_left = _rest_move_time
+
+## Ramène la caméra à sa pose d'origine. ⚠️ Toujours passer par ici plutôt que de
+## mémoriser la pose côté appelant : une séquence interrompue (mort du joueur, sortie de
+## niveau) laisserait la caméra dans le noyau du boss, et rien ne le remettrait droit.
+func restore_rest(duration: float) -> void:
+	push_rest(_home_transform, duration)
+
+## Pose d'origine de la caméra, pour composer un cadrage relatif.
+func home_transform() -> Transform3D:
+	return _home_transform
+
+## Vrai tant qu'un glissement est en cours.
+func is_moving() -> bool:
+	return _rest_move_left > 0.0
+
 func _process(delta: float) -> void:
 	if _camera == null:
 		return
+	if _rest_move_left > 0.0:
+		_rest_move_left = maxf(_rest_move_left - delta, 0.0)
+		# Lissage en cosinus : un glissement linéaire donne deux à-coups, au départ et à
+		# l'arrivée, et ils se lisent comme une saccade de moteur.
+		var t := 1.0 - _rest_move_left / _rest_move_time
+		var eased := 0.5 - 0.5 * cos(clampf(t, 0.0, 1.0) * PI)
+		_rest_transform = _rest_from.interpolate_with(_rest_target, eased)
 	if _trauma <= 0.0:
 		_camera.transform = _rest_transform
 		return

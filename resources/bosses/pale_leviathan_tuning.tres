@@ -2,23 +2,34 @@
 
 [ext_resource type="Script" path="res://resources/data/leviathan_tuning.gd" id="1_tuning"]
 
-; Reglage du combat du Pale Leviathan, refondu a deux phases par ADR-0020. Les valeurs
+; Reglage du combat du Pale Leviathan, refondu en CYCLES par ADR-0021. Les valeurs
 ; reprennent les defauts calibres de `leviathan_tuning.gd` (documentes et couverts par les
 ; tests d'invariants) ; on ne reporte ici QUE les ancres de gameplay, pour qu'un designer
 ; lise l'ossature du combat sans ouvrir le script. `validate()` est rejoue au montage.
 ;
-; Ossature : BRISER L'ARMURE (4 x 1270 PV, ~22 s) puis LE COEUR (4500 PV, ~18 s) = ~40 s.
+; Ossature : 3 cycles de BRISER L'ARMURE (4 puis 3 puis 2 plaques, ~8 / 6 / 4 s) suivis
+; chacun d'une PLONGEE dans le noyau (~7,4 s). Total ~40 s. Le flux tombe au troisieme
+; passage si le joueur tire correctement ; sinon un cycle de plus s'ouvre.
 [resource]
 script = ExtResource("1_tuning")
 reference_dps = 420.0
 reference_player_max_speed = 14.0
 target_duration = 40.0
-plate_health = 1270.0
+cycle_count = 3
+plate_count = 4
+plate_count_min = 2
+plate_health = 460.0
 shell_orbit_period = 9.0
 plate_arc_deg = 100.0
-heart_health = 4500.0
-heart_hitbox_radius = 1.6
+spine_windup_time = 1.0
+spine_beam_time = 0.9
+spine_damage = 24.0
+spine_interval = 3.2
+flux_health = 5300.0
+flux_hitbox_radius = 1.8
+dive_enter_time = 1.4
+dive_time = 5.0
+dive_eject_time = 1.0
 pull_speed_max = 7.0
 pull_radius = 16.0
-pull_interval = 6.0
-pull_time = 2.5
+chamber_radius = 7.0
