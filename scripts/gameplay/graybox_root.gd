@@ -67,6 +67,8 @@ var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
 var _citadel: AegisCitadel
 var _final_boss: BossController
+## Le module du boss final, gardé pour lire sa progression de combat (la musique la suit).
+var _leviathan: LeviathanCombat
 var _alarm_armed: bool = true
 ## One instance for the whole run: resolving the musical state must not allocate.
 var _music: MusicContext = MusicContext.new()
@@ -380,6 +382,7 @@ func _bind_leviathan(boss: BossController) -> void:
 	var combat := boss.get_node_or_null("Combat") as LeviathanCombat
 	if combat == null:
 		return
+	_leviathan = combat
 	combat.phase_entered.connect(_on_leviathan_phase)
 	combat.structure_changed.connect(_on_leviathan_structure)
 	combat.piece_gauge_changed.connect(_on_leviathan_piece_gauge)
@@ -394,7 +397,11 @@ func _bind_leviathan(boss: BossController) -> void:
 func _on_leviathan_structure(ratio: float) -> void:
 	if _hud != null:
 		_hud.set_boss_health(ratio)
-	_music.boss_health_ratio = ratio
+	# ⚠️ La musique suit la progression du COMBAT, le HUD celle de la PHASE. Depuis que la
+	# jauge se remplit à nouveau en phase 2, lui passer `ratio` faisait culminer la
+	# partition à mi-combat puis retomber d'un cran : `music 9 -> 8 -> 9` au journal du
+	# playtest, un sommet dramatique atteint quand l'armure tombe et perdu ensuite.
+	_music.boss_health_ratio = _leviathan.fight_ratio() if _leviathan != null else ratio
 	_update_music()
 
 ## Une sous-cible a bougé. Le niveau relaie : le HUD ne connaît pas le Leviathan, le

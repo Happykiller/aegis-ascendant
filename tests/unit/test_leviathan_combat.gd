@@ -227,6 +227,24 @@ func test_the_gauge_refills_when_the_next_phase_opens() -> void:
 	combat._on_heart_hit(combat.tuning.heart_health * 0.5)
 	assert_almost_eq(combat.structure_ratio(), 0.5, 0.01, "et elle descend quand on frappe le coeur")
 
+func test_the_fight_progress_never_climbs_back_up() -> void:
+	# ⚠️ DEUX MESURES, DEUX USAGES. La jauge du HUD se remplit a la bascule de phase ; la
+	# progression du combat, jamais. Les confondre a coute un sommet musical : la partition
+	# culminait a la fin de l'armure — MI-combat — puis retombait d'un cran. Entendu au
+	# playtest, lisible au journal (`music 9 -> 8 -> 9`).
+	var combat := _make()
+	assert_almost_eq(combat.fight_ratio(), 1.0, 0.001, "combat intact")
+	_kill_plates(combat)
+	var after_armour := combat.fight_ratio()
+	assert_true(after_armour < 1.0 and after_armour > 0.0,
+		"l'armure brisee, il reste du combat : %.2f" % after_armour)
+	_settle(combat)
+	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "la JAUGE se remplit a nouveau")
+	assert_almost_eq(combat.fight_ratio(), after_armour, 0.001,
+		"mais la PROGRESSION ne remonte pas")
+	combat._on_heart_hit(combat.tuning.heart_health)
+	assert_almost_eq(combat.fight_ratio(), 0.0, 0.001, "et elle atteint zero quand le coeur tombe")
+
 func test_the_gauge_never_goes_below_zero() -> void:
 	var combat := _make()
 	for i in 200:

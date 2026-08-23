@@ -115,8 +115,12 @@ var _pulse_timer: float = 0.0
 ## Aspiration intermittente de la phase 2 : `_pull_left > 0` pendant la vague.
 var _pull_timer: float = 0.0
 var _pull_left: float = 0.0
-## Dégâts encaissés **dans la phase en cours** — le numérateur de la jauge.
+## Dégâts encaissés **dans la phase en cours** — le numérateur de la jauge du HUD.
 var _phase_damage: float = 0.0
+## Dégâts encaissés depuis le début du combat — la progression réelle. ⚠️ Les deux sont
+## nécessaires et ne disent pas la même chose : la jauge se remplit à nouveau à chaque
+## phase, la progression du combat, elle, ne remonte jamais.
+var _fight_damage: float = 0.0
 
 # --- Montage ------------------------------------------------------------------
 
@@ -610,9 +614,10 @@ func _on_missile_hit(damage: float, index: int) -> void:
 		return
 	_missiles[index].apply_damage(damage)
 
-## Comptabilise les dégâts de la phase en cours — le numérateur de la jauge.
+## Comptabilise les dégâts : pour la jauge (phase) et pour la progression (combat entier).
 func _account(damage: float) -> void:
 	_phase_damage += damage
+	_fight_damage += damage
 	_publish_structure()
 
 func _publish_structure() -> void:
@@ -652,6 +657,18 @@ func structure_ratio() -> float:
 	if total <= 0.0:
 		return 0.0
 	return clampf(1.0 - _phase_damage / total, 0.0, 1.0)
+
+## Part du combat qui reste à faire, entre 1 et 0, toutes phases confondues.
+##
+## ⚠️ À NE PAS CONFONDRE avec `structure_ratio()`. Le HUD montre la phase — elle se remplit
+## à nouveau à la bascule. La musique, elle, doit suivre le combat : lui donner le ratio de
+## phase faisait culminer la partition à MI-COMBAT (fin de l'armure) puis redescendre d'un
+## cran au début de la phase 2. Entendu au playtest, dans le journal : `music 9 -> 8 -> 9`.
+func fight_ratio() -> float:
+	if tuning == null:
+		return 1.0
+	var total := tuning.total_structure()
+	return clampf(1.0 - _fight_damage / total, 0.0, 1.0) if total > 0.0 else 1.0
 
 ## Publie l'état de toutes les jauges. Le niveau l'appelle après `begin()`, quand le
 ## HUD est prêt : interroger avant afficherait des pastilles éteintes sur un boss intact.
