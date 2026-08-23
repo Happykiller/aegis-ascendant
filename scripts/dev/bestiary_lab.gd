@@ -51,7 +51,25 @@ func _ready() -> void:
 	print("[Lab] unite='%s' exemplaires=%d" % [_slug, UNIT_COUNT])
 	print("[Lab] COQUE PROVISOIRE : needle_scout.glb sert de silhouette (lot 1 a venir)")
 	print("[Lab] %s" % _describe(_slug))
+	_apply_backdrop_flag()
 	_build_pool(data)
+
+
+## `--no-backdrop` : éteindre la nébuleuse. Même drapeau que le niveau, même nom.
+##
+## Ce n'est pas un réglage de perf ici, c'est un INSTRUMENT. Une silhouette et un
+## point d'ancrage se jugent sur fond noir — sur la nébuleuse, une coque claire sur
+## fond clair ne dit rien, et on tourne en rond à corriger ce qu'on ne voit pas.
+## Une COULEUR, elle, se juge sur le fond réel : le télégraphe d'une mine a
+## justement échoué parce que son magenta se noyait dans une nébuleuse magenta.
+## Ce sont deux captures différentes, jamais la même.
+func _apply_backdrop_flag() -> void:
+	if not ("--no-backdrop" in OS.get_cmdline_user_args()):
+		return
+	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
+	if backdrop != null:
+		backdrop.visible = false
+	print("[Lab] fond eteint : on juge une silhouette, pas une couleur")
 
 
 ## Le drapeau, lu après le séparateur `++` : `--goto-lab=<unite>`. Sans valeur, on
