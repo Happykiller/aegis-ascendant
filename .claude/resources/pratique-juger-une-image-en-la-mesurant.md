@@ -138,3 +138,38 @@ que la mesure compare.
 Conclure « tuilage OK » sur ce zéro serait une tautologie. Le seul critère qui reste est la **planche
 contact 2×2 regardée** : la bande miroir se voit, ou pas. C'est pour ça que l'outil imprime
 « REGARDER le résultat » au lieu d'un verdict.
+
+## Un différentiel ne vaut que si le témoin ne diffère QUE par la variable mesurée (23/08/2026)
+
+Deux objets « comparables » ne sont pas un témoin. Le seul témoin valable, c'est **la même chose
+sans le réglage** — même pose, même instant, même distance, une passe avec, une passe sans.
+
+**Ce que ça a failli coûter.** Une session mesurait si l'ouverture mécanique d'une mine élargit
+assez sa silhouette pour se lire à 46 px. Premier protocole : comparer la mine **engagée** à une
+mine **dormante voisine**, dans la même image. Verdict rendu : « aucune croissance d'enveloppe »,
+et le réglage allait être abandonné.
+
+Deux biais se cumulaient, tous deux invisibles dans le chiffre :
+
+1. les deux unités n'étaient pas à la **même profondeur**, donc pas à la même taille apparente ;
+2. l'une était **allumée** et l'autre **éteinte** — le seuil de luminance mesurait donc la menace,
+   pas l'enveloppe.
+
+Le différentiel refait sur **la même unité, avec et sans le réglage** rend l'inverse : rayon à
+mi-couverture **31,4 → 36,8 px, +17,2 %**, contre un seuil de 10 % posé avant la mesure.
+
+⚠️ **Le premier chiffre était faux dans le sens qui faisait renoncer** — c'est-à-dire dans celui
+qui avait l'air le plus rigoureux. « J'ai posé un seuil, il n'est pas atteint, je renonce » sonne
+irréprochable, et c'était une mesure sur un mauvais témoin. **La discipline du seuil ne protège de
+rien si le témoin est mauvais.**
+
+Le projet a déjà l'outillage pour ce genre de différentiel : `--no-glow`, `--no-backdrop`,
+`--no-plumes` isolent un effet à image constante — et servent à juger, pas seulement à mesurer un
+coût GPU.
+
+### Et l'enveloppe n'appartient pas toujours à la pièce qu'on anime
+
+Même mesure, autre trouvaille : le pivot des plaques était invisible parce que **la couronne de
+modules culmine plus loin qu'elles** (r = 0,578 m contre 0,496 fermées, 0,477 à 45°). Le pivot les
+faisait *rentrer* sous l'enveloppe. Avant d'animer une pièce pour changer une silhouette, vérifier
+qu'elle est bien **celle qui porte la silhouette**.

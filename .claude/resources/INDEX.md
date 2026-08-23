@@ -81,6 +81,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   sous la valeur du jeu, donc un volet qui traverse la coque. **Le contrat a validé sans un mot** :
   la bbox au repos était parfaite, et un défaut d'animation ne se voit pas sur une pose fixe.
 - [Juger une image en la MESURANT, pas à l'œil](pratique-juger-une-image-en-la-mesurant.md) —
+  ⚠️ **Un différentiel ne vaut que si le témoin ne diffère QUE par la variable mesurée** : deux
+  objets « comparables » ne sont pas un témoin, le témoin c'est **la même chose sans le réglage**
+  (`--no-glow`, `--no-backdrop` servent à ça). Vécu : un verdict « aucune croissance » rendu sur
+  deux unités à des profondeurs différentes, dont une allumée — le vrai différentiel dit +17,2 %.
+  Le chiffre faux allait dans le sens qui faisait **renoncer**, donc dans celui qui avait l'air
+  rigoureux.
   dès qu'il s'agit de luminosité, de contraste **ou d'échelle de motif**, « c'est mieux » n'est pas
   un résultat. Mesurer la luminance **sur le sujet**, sur le **fond**, et le **rapport des deux** —
   c'est ce dernier qui dit si la lisibilité en jeu a survécu. ⚠️ Coût de l'oubli : un correctif

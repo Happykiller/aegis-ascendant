@@ -250,6 +250,12 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   qui instancie un `LeviathanCombat` (`extends Node`) par méthode. Un Node construit à la main hors
   arbre n'a **aucun parent pour le récupérer**, là où les unités `RefCounted` meurent avec le cas de
   test — et Godot ne rapporte la pile qu'à la sortie, donc le bruit ne désigne jamais son coupable.
+  ⚠️ **Résolu POUR LE RUNNER DE TESTS seulement.** Vérifié le 2026-08-23 : le **jeu** fuit encore,
+  mais uniquement quand on quitte **pendant la plongée du boss** — `8 ObjectDB / 4 resources`, là
+  où un lancement en phase d'armure sort parfaitement propre. Suspect désigné : la chambre du noyau
+  (`_build_core_chamber`), un `MeshInstance3D` + `SphereMesh` + `StandardMaterial3D` construits au
+  vol. Non corrigé : la plongée est en attente d'arbitrage, et corriger une phase qu'on supprime
+  serait du travail perdu.
   `tests/test_case.gd` expose désormais `track()` / `free_tracked()`, ce dernier appelé par le
   runner après chaque méthode. La sortie du check ne porte **plus une seule ligne de fuite**.
   ⚠️ Restent 3 `ERROR: Condition "!is_inside_tree()" is true`, **préexistantes et sans rapport** :
