@@ -31,6 +31,16 @@ const _VALUE_FONT := preload("res://assets/fonts/VT323.ttf")
 
 # --- Mise en page (viewport de référence 1920 x 1080) -------------------------
 const MARGIN := 52.0
+
+## Bandeau des coques. Ces valeurs sont relues telles quelles par
+## `tests/unit/test_codex_layout.gd` : les changer ici sans l'y répercuter rendrait
+## le test faux plutôt que rouge, ce qui est pire.
+const ROSTER_HALF_WIDTH := 908.0
+const ROSTER_TOP := 122.0
+## Deux lignes : une seule tant que le bestiaire tient, deux quand il déborde.
+const ROSTER_BOTTOM := 182.0
+const ROSTER_SEPARATION := 22
+const ROSTER_FONT_SIZE := 11
 const FRAME_INSET := 22.0
 const LEFT_WIDTH := 660.0
 const RIGHT_WIDTH := 560.0
@@ -218,22 +228,34 @@ func _build_identity() -> void:
 ## coques, ce bandeau demandera un retour à la ligne ou une fenêtre glissante — la
 ## largeur de l'écran, elle, ne croît pas.
 func _build_roster() -> void:
-	var strip := HBoxContainer.new()
+	# `HFlowContainer` et non `HBoxContainer` : il REVIENT À LA LIGNE tout seul.
+	# Une boîte horizontale, elle, s'élargit indéfiniment — et la largeur de l'écran
+	# ne croît pas. Mesuré : les douze coques de la spec §11.1 demandent 2 310 px
+	# pour 1 816 disponibles, donc le débordement n'était pas hypothétique, il était
+	# programmé pour la prochaine famille livrée.
+	var strip := HFlowContainer.new()
 	strip.name = "Roster"
 	strip.anchor_left = 0.5
 	strip.anchor_right = 0.5
-	strip.offset_left = -920.0
-	strip.offset_right = 920.0
-	strip.offset_top = 112.0
-	strip.offset_bottom = 142.0
-	strip.alignment = BoxContainer.ALIGNMENT_CENTER
-	strip.add_theme_constant_override("separation", 22)
+	strip.offset_left = -ROSTER_HALF_WIDTH
+	strip.offset_right = ROSTER_HALF_WIDTH
+	strip.offset_top = ROSTER_TOP
+	strip.offset_bottom = ROSTER_BOTTOM
+	strip.alignment = FlowContainer.ALIGNMENT_CENTER
+	strip.add_theme_constant_override("h_separation", ROSTER_SEPARATION)
+	strip.add_theme_constant_override("v_separation", 8)
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root().add_child(strip)
 
 func set_roster(names: PackedStringArray) -> void:
-	var strip := _root().get_node_or_null("Roster") as HBoxContainer
+	# ⚠️ `Container` et non `HFlowContainer` : un cast trop précis échoue en SILENCE.
+	# Le bandeau a été un `HBoxContainer` ; le jour où il est passé au flux, ce cast
+	# a rendu `null`, la fonction est sortie sans rien dire, et le bandeau a
+	# entièrement disparu de l'écran. Ni erreur, ni test rouge — seule la capture
+	# l'a montré.
+	var strip := _root().get_node_or_null("Roster") as Container
 	if strip == null:
+		push_error("[CodexDatasheet] bandeau des coques introuvable")
 		return
 	for child in strip.get_children():
 		child.queue_free()
@@ -243,13 +265,13 @@ func set_roster(names: PackedStringArray) -> void:
 			var sep := Label.new()
 			sep.text = "/"
 			sep.add_theme_font_override("font", _LABEL_FONT)
-			sep.add_theme_font_size_override("font_size", 11)
+			sep.add_theme_font_size_override("font_size", ROSTER_FONT_SIZE)
 			sep.add_theme_color_override("font_color", Color(1, 1, 1, 0.2))
 			strip.add_child(sep)
 		var label := Label.new()
 		label.text = names[i].to_upper()
 		label.add_theme_font_override("font", _LABEL_FONT)
-		label.add_theme_font_size_override("font_size", 11)
+		label.add_theme_font_size_override("font_size", ROSTER_FONT_SIZE)
 		label.add_theme_color_override("font_color", TEXT_DIM)
 		strip.add_child(label)
 		_roster_labels.append(label)
@@ -583,7 +605,7 @@ func _highlight_roster(index: int) -> void:
 			label.add_theme_font_size_override("font_size", 12)
 		else:
 			label.add_theme_color_override("font_color", TEXT_DIM)
-			label.add_theme_font_size_override("font_size", 11)
+			label.add_theme_font_size_override("font_size", ROSTER_FONT_SIZE)
 
 ## Repeint tout ce qui porte l'accent du camp. Les couleurs sont posées à la
 ## construction ET ici : un bloc construit avant la première fiche doit déjà être
