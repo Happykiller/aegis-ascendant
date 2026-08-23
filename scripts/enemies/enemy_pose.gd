@@ -22,8 +22,15 @@ extends RefCounted
 ## garde-fou qui empêche une donnée absurde de désassembler la coque à l'écran.
 const MAX_OPEN_DEG := 85.0
 
-## Plafond du coulissement radial, en fraction du rayon de la pièce. Même rôle que
-## `MAX_OPEN_DEG` : empêcher une donnée absurde de désassembler la coque à l'écran.
+## Plafond du coulissement radial, en fraction du rayon de la pièce.
+##
+## ⚠️ CONTRAIREMENT À `open_angle_deg`, CE PLAFOND N'EST PAS UNE MESURE. Le pivot a
+## une butée physique — les plaques finissent par se toucher, à 57° sur la Choir
+## Mine. Le coulissement, lui, n'en a aucune : mesuré de 0 à 300 mm sur les six
+## plaques, la marge ne fait que CROÎTRE (12,6 → 99,9 mm), parce que les plaques
+## survolent la couronne de 88 mm en permanence. Ce nombre est donc un garde-fou
+## arbitraire contre une donnée absurde, et rien d'autre. Ne pas le lire comme une
+## limite mécanique : il n'y en a pas.
 const MAX_SPREAD := 0.5
 
 var _parts: Array[Node3D] = []
@@ -33,6 +40,8 @@ var _axes: PackedVector3Array = PackedVector3Array()
 ## Position de repos et direction radiale de chaque pièce, pour le coulissement.
 var _rest: PackedVector3Array = PackedVector3Array()
 var _radial: PackedVector3Array = PackedVector3Array()
+## Rayon de chaque pièce DANS LE PLAN de la coque, jamais sa distance à l'origine.
+var _radius: PackedFloat32Array = PackedFloat32Array()
 var _open_deg: float = 0.0
 var _spread: float = 0.0
 
@@ -56,6 +65,12 @@ static func bind(hull: Node3D, prefix: String, open_deg: float,
 		pose._axes.append(_hinge_axis(part.position))
 		pose._rest.append(part.position)
 		pose._radial.append(_radial_axis(part.position))
+		# ⚠️ LE RAYON EST CELUI DU PLAN, pas la distance 3D à l'origine. Une charnière
+		# posée en hauteur rendrait la seconde plus grande que le premier — 14,9 %
+		# d'écart sur la Choir Mine, mesuré — et « fraction du rayon » cesserait de
+		# vouloir dire ce que la Resource annonce. L'écart glisserait en silence à la
+		# prochaine reforge qui change la hauteur des charnières.
+		pose._radius.append(Vector2(part.position.x, part.position.z).length())
 		index += 1
 	return pose if not pose._parts.is_empty() else null
 
@@ -108,7 +123,7 @@ func pose(ratio: float) -> void:
 	for i in _parts.size():
 		_parts[i].transform.basis = Basis(_axes[i], angle)
 		if _spread > 0.0:
-			_parts[i].position = _rest[i] + _radial[i] * _rest[i].length() * _spread * open
+			_parts[i].position = _rest[i] + _radial[i] * _radius[i] * _spread * open
 
 
 ## Referme tout. Appelée quand l'instance retourne au pool : une mine recyclée qui

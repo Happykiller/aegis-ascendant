@@ -7,6 +7,23 @@
 ; mecanique mesure sur la coque livree (BRIEF-0042-report.md) — la premiere
 ; interpenetration plaque/voisine survient a 57 degres, la limite sure est 56, et
 ; 45 laisse 12,9 mm de marge.
+;
+; open_spread = 0,50 : le pivot SEUL ne se voit pas, et la mesure dit pourquoi —
+; la couronne de modules culmine a r = 0,578 m, les plaques a 0,496 fermees et
+; 0,477 a 45 degres. Le pivot les fait RENTRER : l'enveloppe appartient a la
+; couronne, pas aux plaques. Il faut 101 mm de coulissement rien que pour rattraper
+; le bord. A 0,50 (150 mm) la silhouette change de nature — rondelle pleine ->
+; couronne de six lobes autour d'un coeur degage — et passe de 46 a 50 px.
+;
+; VERIFIE EN JEU, avec le bloom, par differentiel : meme unite, meme instant, seul
+; le coulissement change. Le rayon a mi-couverture passe de 31,4 a 36,8 px, soit
+; +17,2 % — au-dessus du seuil de 10 % pose AVANT la mesure. Les bandes exterieures
+; se remplissent nettement (+26 points a r=26..37, part doublee a r=38..43).
+; Le bloom ne comble PAS les fentes : la reserve de la forge est levee.
+;
+; ⚠️ Contrairement a open_angle_deg, cette valeur n'a AUCUNE butee mecanique :
+; mesuree de 0 a 300 mm, la marge ne fait que croitre, les plaques survolant la
+; couronne de 88 mm en permanence. C'est un choix de lisibilite, pas une limite.
 
 [ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
 [ext_resource type="Resource" path="res://resources/weapons/mine_burst.tres" id="2_shot"]
@@ -30,3 +47,4 @@ active_time = 0.15
 rearm_time = 0.0
 moving_part_prefix = "Segment"
 open_angle_deg = 45.0
+open_spread = 0.5

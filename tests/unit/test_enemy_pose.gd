@@ -85,6 +85,27 @@ func test_spreading_grows_the_envelope() -> void:
 	assert_almost_eq(opened, rest * 1.25, 0.0001,
 		"la pièce s'est éloignée du quart de son rayon (%f -> %f)" % [rest, opened])
 
+## ⚠️ « Fraction du rayon » doit vouloir dire le rayon DANS LE PLAN, pas la distance
+## 3D à l'origine. Une charnière posée en hauteur rend la seconde plus grande — 14,9 %
+## d'écart mesuré sur la Choir Mine, dont les charnières sont à Y = 0,148 pour un
+## rayon de 0,262. Sans ce test, le sens de la donnée dériverait à la première
+## reforge qui change cette hauteur, sans que rien ne le dise.
+func test_the_fraction_is_of_the_planar_radius_not_the_distance_to_the_origin() -> void:
+	var hull := track(Node3D.new()) as Node3D
+	var part := Node3D.new()
+	part.name = "Segment_01"
+	# Rayon 0,3 dans le plan, mais 0,5 de distance à l'origine (triangle 3-4-5).
+	part.position = Vector3(0.3, 0.4, 0.0)
+	hull.add_child(part)
+	# 0,5 et non 1,0 : `MAX_SPREAD` ramènerait 1,0 à 0,5 et le test mesurerait le
+	# plafond au lieu de la formule. Il l'a d'ailleurs fait au premier jet.
+	var pose := EnemyPose.bind(hull, "Segment", 0.0, 0.5)
+	pose.pose(1.0)
+	assert_almost_eq((hull.get_child(0) as Node3D).position.x, 0.45, 0.0001,
+		"un coulissement de 50 %% ajoute la moitié du rayon PLAN (0,3 -> 0,45)")
+	assert_almost_eq((hull.get_child(0) as Node3D).position.y, 0.4, 0.0001,
+		"et ne change pas la hauteur de la charnière")
+
 ## Une instance recyclée doit revenir refermée ET resserrée : le coulissement
 ## laisse une position, pas seulement une rotation.
 func test_a_recycled_hull_comes_back_tucked_in() -> void:
