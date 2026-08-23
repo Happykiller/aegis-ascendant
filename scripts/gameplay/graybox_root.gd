@@ -532,10 +532,15 @@ func _build_core_chamber() -> void:
 	sphere.flip_faces = true   # on la regarde de l'INTÉRIEUR
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color = Color(0.16, 0.05, 0.20)
+	# ⚠️ LA CHAMBRE RECULE POUR QUE LA CIBLE AVANCE. Elle était rouge-violet saturé
+	# (R−G 41,9), le flux aussi (31,5) : dix points d'écart, donc aucun contraste de teinte
+	# entre ce qu'il faut tirer et la pièce où l'on se trouve. Elle passe à un violet
+	# profond et DÉSATURÉ, très sombre — elle délimite le lieu, elle ne le décore plus.
+	# Le flux, lui, vire au blanc chaud (`_flux_glow` dans le module).
+	material.albedo_color = Color(0.09, 0.05, 0.12)
 	material.emission_enabled = true
-	material.emission = Color(0.42, 0.10, 0.38)
-	material.emission_energy_multiplier = 0.7
+	material.emission = Color(0.20, 0.10, 0.26)
+	material.emission_energy_multiplier = 0.35
 	# ⚠️ SURTOUT PAS `CULL_DISABLED`. Avec les faces retournées, seules les faces
 	# INTERNES doivent être rendues : la caméra reste dehors, elle regarde donc le fond
 	# de la sphère par son ouverture, et le boss comme le chasseur restent visibles

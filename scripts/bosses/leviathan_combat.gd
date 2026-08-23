@@ -103,6 +103,18 @@ var _shell_ring: Node3D
 var _shell_ring_rest: Transform3D = Transform3D.IDENTITY
 var _heart_node: Node3D
 var _highlight: StandardMaterial3D
+## Le flux d'énergie, dans le noyau ouvert : sa propre identité visuelle.
+##
+## ⚠️ MESURÉ, PAS SUPPOSÉ. Le grief du playtest — « on ne voit rien, je ne sais pas du tout
+## ce qu'il faut faire » — n'était pas un excès de lumière. Relevé sur capture : la chambre
+## est à R−G 41,9 / B−G 34,9, le flux à 31,5 / 25,6. **Dix points d'écart sur les deux axes
+## de teinte** : la cible et le décor occupaient la même case chromatique, et seule la
+## luminance les séparait — ce qui ne désigne pas une cible. Le flux vire donc au **blanc
+## chaud**, la seule teinte que ni la chambre (rouge-violet) ni le fond spatial (bleu)
+## n'occupent.
+var _flux_glow: StandardMaterial3D
+## État du halo de flux, pour ne réassigner le `material_overlay` qu'au changement.
+var _flux_lit: bool = false
 ## Ouverture de la coquille, de 0 (close) à 1 (le noyau est béant).
 var _shell_open: float = 0.0
 
@@ -276,7 +288,12 @@ func _bind_shell_visual() -> void:
 			push_error("[Leviathan] coque sans 'Shell_Ring' (contrat BRIEF-0040)")
 		else:
 			_shell_ring_rest = _shell_ring.transform
-		_heart_node = _hull.find_child("Heart", true, false) as Node3D
+		# ⚠️ `Core`, PAS `Heart`. Mesuré dans le `.glb` : `Heart` fait 0,63 × 0,31 × 0,56 m et
+		# vit à l'intérieur du noyau — invisible. `Core` fait 3,17 × 2,38 × 3,17 m : c'est la
+		# masse que le joueur voit au centre quand la coquille s'ouvre. Tout le traitement
+		# visuel du « cœur » a d'abord été posé sur `Heart` : son battement n'a jamais rien
+		# fait à l'écran, et le halo du flux non plus. On animait une pièce invisible.
+		_heart_node = _hull.find_child("Core", true, false) as Node3D
 	if _highlight == null:
 		# Additif, non éclairé : un halo qui s'AJOUTE à la texture au lieu de la
 		# remplacer. Il monte vers le blanc chaud au sommet de son battement, sans quoi
@@ -286,6 +303,12 @@ func _bind_shell_visual() -> void:
 		_highlight.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		_highlight.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_highlight.albedo_color = Color(0.95, 0.35, 0.72, 1.0)
+	if _flux_glow == null:
+		_flux_glow = StandardMaterial3D.new()
+		_flux_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_flux_glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_flux_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_flux_glow.albedo_color = Color(1.0, 0.92, 0.72, 0.0)   # éteint hors du noyau
 
 ## Les épines deviennent des tourelles. Leur faisceau n'est construit que dans l'arbre :
 ## en test il reste nul, et `_fire_spine` le null-garde — la portée est éprouvée à part
@@ -618,6 +641,12 @@ func _pose_shell() -> void:
 		# pendant le temps 1 attire l'œil autant que le halo de la plaque à viser, et les
 		# deux sont roses : on désignait deux cibles à la fois, dont une intouchable.
 		_heart_node.scale = Vector3.ONE * (1.0 + 0.12 * _shell_open * sin(_age * 6.0))
+		# Le flux ne s'allume qu'une fois le noyau ouvert, et il bat : dedans, c'est la
+		# SEULE chose de cette couleur, donc la seule qui puisse dire « tire ici ».
+		if _flux_glow != null:
+			var beat := 0.55 + 0.45 * (0.5 + 0.5 * sin(_age * 7.0))
+			_flux_glow.albedo_color = Color(1.0, 0.92, 0.72, _shell_open * beat)
+			_apply_flux_glow(_shell_open > 0.02)
 	if _highlight != null:
 		var pulse := 0.5 + 0.5 * sin(_age * 4.0)
 		_highlight.albedo_color = Color(0.95, 0.35 + 0.45 * pulse, 0.72 + 0.24 * pulse,
@@ -655,6 +684,18 @@ func _tick_plate_falls(delta: float) -> void:
 		var rest := _spine_rest[i]
 		node.transform = Transform3D(rest.basis.scaled(Vector3.ONE * 0.92), rest.origin)
 		node.visible = false
+
+## Pose le halo du flux sur les maillages du cœur, ou le retire. Au CHANGEMENT seulement :
+## réassigner un `material_overlay` par image serait gratuit en pure perte, même raison que
+## pour le halo des plaques.
+func _apply_flux_glow(lit: bool) -> void:
+	if lit == _flux_lit or _heart_node == null:
+		return
+	_flux_lit = lit
+	var meshes: Array[MeshInstance3D] = []
+	_collect_meshes(_heart_node, meshes)
+	for mesh in meshes:
+		mesh.material_overlay = _flux_glow if lit else null
 
 ## Fait tomber les pièces décoratives. Aucune allocation : `Vector3` et `Transform3D`
 ## sont des types valeur, et les tableaux sont dimensionnés au montage.
