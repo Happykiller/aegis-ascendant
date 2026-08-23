@@ -72,6 +72,14 @@ var _reactive: bool = false
 ## d'un tir au suivant, pour qu'un trou ne reste jamais au même endroit.
 var _salvo: int = 0
 var _vitals: EnemyVitals
+## Poursuite (`Motion.HOMING`) : la vitesse courante, seule chose que le contrôleur
+## accumule. Les unités `PATH` ne s'en servent pas — leur position reste une
+## fonction de leur âge.
+var _velocity: Vector2 = Vector2.ZERO
+## Décalage figé à l'instant de l'accrochage : la sangsue se pose LÀ où elle a
+## touché, et y reste. Sans ça elle se téléporterait au centre du chasseur, où le
+## moindre tir vers l'avant la détruirait aussitôt.
+var _attach_offset: Vector2 = Vector2.ZERO
 ## Pièces articulées de la coque, s'il y en a (mines, corolles).
 var _pose: EnemyPose
 
@@ -122,6 +130,9 @@ func activate(spawn_plane_position: Vector2) -> void:
 	_spawn = spawn_plane_position
 	_age = 0.0
 	_fire_timer = data.fire_interval
+	if data.motion == EnemyData.Motion.HOMING:
+		_velocity = EnemyHoming.initial_velocity(spawn_plane_position, _player_position(),
+			data.move_speed)
 	_health.max_health = data.max_health
 	_health.revive()
 	position = GameplayPlane.to_world(plane_position)
@@ -159,10 +170,7 @@ func _set_active(value: bool) -> void:
 func _physics_process(delta: float) -> void:
 	_age += delta
 	var previous_x := plane_position.x
-	# La trajectoire est une fonction pure de l'âge (EnemyPath) : le contrôleur
-	# l'échantillonne, il ne décide de rien. Ajouter un comportement, c'est ajouter
-	# une trajectoire là-bas et la choisir dans la Resource — pas toucher ici.
-	plane_position = EnemyPath.position_at(data, _age, _spawn)
+	_advance(delta)
 	position = GameplayPlane.to_world(plane_position)
 	_target.position = plane_position
 	# Sortie par le bas OU par le haut : le BOOMERANG s'échappe en remontant, et sans
@@ -184,6 +192,50 @@ func _physics_process(delta: float) -> void:
 	_update_fire(delta)
 	if _vitals != null:
 		_vitals.update(delta, _threat)
+
+## Où va la coque cette image. Trois régimes, et un seul par unité.
+##
+## `PATH` reste ce qu'il a toujours été : une fonction PURE de l'âge, échantillonnée
+## et non décidée. C'est ce qui garde le pooling sûr et les tests headless valables
+## pour les neuf familles historiques — ajouter un comportement de ce type, c'est
+## ajouter une trajectoire dans `EnemyPath` et la choisir dans la Resource, pas
+## toucher ici.
+func _advance(delta: float) -> void:
+	if _is_attached():
+		# Accrochée : elle ne se déplace plus, elle est PORTÉE. Le décalage a été
+		# figé au contact, donc elle reste posée là où elle a mordu.
+		plane_position = _player.plane_position + _attach_offset
+		return
+	if data.motion == EnemyData.Motion.HOMING:
+		# ⚠️ Passé `chase_time` elle cesse de virer, donc elle finit par sortir par un
+		# bord. Sans cette rupture, un poursuivant qui rate sa proie tournerait à
+		# l'intérieur des bornes indéfiniment et gèlerait son entrée de pool à vie.
+		if _age <= data.chase_time:
+			_velocity = EnemyHoming.steer(_velocity, plane_position, _player_position(),
+				data.homing_turn_rate, delta)
+		plane_position += _velocity * delta
+		return
+	plane_position = EnemyPath.position_at(data, _age, _spawn)
+
+
+## Publique : le banc d'essai s'en sert pour corréler la vitesse du chasseur au
+## nombre d'unités réellement accrochées. Sans cette corrélation, on ne saurait pas
+## distinguer « le frein n'est pas appliqué » de « rien n'est accroché ».
+func is_attached() -> bool:
+	return _is_attached()
+
+
+func _is_attached() -> bool:
+	return _player != null and data.effect == EnemyData.Effect.LEECH \
+		and _state == EnemyReaction.State.ACTIVE
+
+
+## Position du joueur, ou le point de spawn s'il n'y en a pas (tests, banc d'essai
+## sans chasseur). Jamais `ZERO` : une poursuite vers l'origine du plan enverrait
+## la coque au centre de l'écran comme si elle y avait un objectif.
+func _player_position() -> Vector2:
+	return _player.plane_position if _player != null else _spawn
+
 
 ## Local position of an attach point baked into the hull mesh (ADR-0008),
 ## expressed in VisualRoot space so the hull's own yaw is accounted for.
@@ -269,14 +321,20 @@ func _update_reaction(delta: float) -> void:
 		_state_time = 0.0
 		reaction_changed.emit(_state)
 		if _state == EnemyReaction.State.ACTIVE:
+			_attach_offset = plane_position - _player_position()
 			_fire_salvo()
 		elif previous == EnemyReaction.State.ACTIVE:
 			_on_discharged()
 	_threat = EnemyReaction.threat_ratio(_state, _state_time, distance, data)
 	if _pose != null:
 		_pose.pose(EnemyReaction.open_ratio(_state, _state_time, data))
-	if _state == EnemyReaction.State.ACTIVE and data.effect == EnemyData.Effect.GRAVITY_WELL:
-		_pull_player()
+	if _state != EnemyReaction.State.ACTIVE or _player == null:
+		return
+	match data.effect:
+		EnemyData.Effect.GRAVITY_WELL:
+			_pull_player()
+		EnemyData.Effect.LEECH:
+			_leech_player(delta)
 
 ## Distance au joueur, ou l'infini s'il n'y en a pas (tests, scène de debug).
 ## L'infini est la bonne réponse : sans joueur, aucune menace ne se déclenche.
@@ -292,6 +350,18 @@ func _distance_to_player() -> float:
 ## que `add_pull` est la seule porte du chasseur : une affectation ferait gagner la
 ## dernière appelée, et le joueur traverserait tranquillement un nid qui devrait
 ## l'écraser.
+## Ce que fait une sangsue accrochée : elle VOLE de la vitesse, et elle grignote.
+##
+## ⚠️ La menace réelle est le frein, pas les dégâts. Le drain passe par le même
+## bouclier que tout le reste, donc par la même invulnérabilité de 1,2 s après
+## impact : un drain « par seconde » est écrêté par elle et ne peut pas vider l'écu
+## en continu. C'est elle qui cadence, pas une valeur d'ici — et c'est voulu.
+func _leech_player(delta: float) -> void:
+	_player.add_drag(data.drag_factor)
+	if data.drain_per_second > 0.0:
+		_player.take_contact_damage(data.drain_per_second * delta)
+
+
 func _pull_player() -> void:
 	_player.add_pull(GravityWell.pull_at(_player.plane_position, plane_position,
 		data.pull_radius, data.pull_speed_max))

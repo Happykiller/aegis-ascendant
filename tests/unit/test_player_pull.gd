@@ -73,3 +73,42 @@ func test_a_long_unconsumed_pull_is_settled_in_one_go() -> void:
 func test_no_pull_at_all_is_a_zero_not_a_surprise() -> void:
 	assert_almost_eq(_fighter().consume_pull().length(), 0.0, 0.0001,
 		"sans champ, l'aspiration est nulle")
+
+# --- Le frein extérieur (Leech Drone) -----------------------------------------
+
+## Deux sangsues freinent plus qu'une : leurs prises s'additionnent, comme deux
+## puits additionnent leur aspiration. Même porte unique, même raison.
+func test_two_leeches_steal_more_than_one() -> void:
+	var fighter := _fighter()
+	fighter.add_drag(0.2)
+	fighter.add_drag(0.2)
+	assert_almost_eq(fighter.consume_drag(), 0.4, 0.0001, "les deux prises s'ajoutent")
+
+## ⚠️ L'INVARIANT QUI REND LA MENACE JOUABLE. Le pilote garde 40 % de sa mobilité
+## quoi qu'il arrive — même règle que `GravityWell.MIN_MOBILITY`, et pour la même
+## raison : en deçà, l'esquive devient une loterie et la sangsue cesse d'être une
+## menace pour devenir une panne. Trois sangsues ne freinent pas plus que deux.
+func test_a_swarm_can_never_bring_the_fighter_to_a_halt() -> void:
+	var fighter := _fighter()
+	for i in 20:
+		fighter.add_drag(0.5)
+	assert_almost_eq(fighter.consume_drag(), PlayerFighterController.MAX_EXTERNAL_DRAG, 0.0001,
+		"l'essaim entier ne descend pas sous le plancher de mobilité")
+	assert_true(PlayerFighterController.MAX_EXTERNAL_DRAG < 1.0,
+		"et ce plancher n'est jamais zero")
+
+## Consommer, c'est prendre ET effacer — sinon une sangsue morte continuerait de
+## freiner. Même forme que l'aspiration, parce que c'est le même piège.
+func test_consuming_the_drag_leaves_nothing_behind() -> void:
+	var fighter := _fighter()
+	fighter.add_drag(0.3)
+	fighter.consume_drag()
+	assert_almost_eq(fighter.consume_drag(), 0.0, 0.0001,
+		"la deuxieme lecture ne freine plus rien")
+
+## Une valeur négative accélérerait le chasseur : ce serait un bonus déguisé en
+## agression, et personne ne le verrait passer.
+func test_a_negative_grip_can_never_speed_the_fighter_up() -> void:
+	var fighter := _fighter()
+	fighter.add_drag(-5.0)
+	assert_almost_eq(fighter.consume_drag(), 0.0, 0.0001, "une prise negative ne fait rien")

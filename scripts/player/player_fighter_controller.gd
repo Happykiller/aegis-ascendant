@@ -39,6 +39,10 @@ var _velocity: Vector2 = Vector2.ZERO
 ## traîne pas la dernière valeur. Ce n'est pas un déplacement piloté : la commande du
 ## joueur reste pleine, l'aspiration s'y AJOUTE — c'est le sujet des phases 2 et 4.
 var _external_pull: Vector2 = Vector2.ZERO
+## Part de vitesse volée par ce qui s'accroche à la coque (`Leech Drone`). Même
+## cycle de vie que l'aspiration : posée par les agresseurs, consommée en tête de
+## `_physics_process`, quel que soit l'état du chasseur.
+var _external_drag: float = 0.0
 var _fire_timer: float = 0.0
 ## Demo/attract mode (cmdline `--demo`): auto-fire + gentle strafe, for captures
 ## and hands-off showcase. Never active in a normal run.
@@ -139,6 +143,7 @@ func _physics_process(delta: float) -> void:
 	# sans erreur, sans test rouge, et seulement dans une partie qui va jusqu'à
 	# l'appontage.
 	var pull := consume_pull()
+	var drag := consume_drag()
 	if not _alive:
 		_respawn_timer -= delta
 		if _respawn_timer <= 0.0:
@@ -169,7 +174,10 @@ func _physics_process(delta: float) -> void:
 		input = GameplayPlane.from_input(
 			Input.get_vector("move_left", "move_right", "move_up", "move_down"))
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
-	plane_position = GameplayPlane.clamp_to_bounds(plane_position + (_velocity + pull) * delta)
+	# Le frein s'applique à la COMMANDE du joueur, l'aspiration s'y ajoute. Une
+	# sangsue vole de la vitesse ; elle ne pousse pas le chasseur quelque part.
+	plane_position = GameplayPlane.clamp_to_bounds(
+		plane_position + (_velocity * (1.0 - drag) + pull) * delta)
 	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	if _target != null:
 		_target.position = plane_position
@@ -208,6 +216,27 @@ func consume_pull() -> Vector2:
 	var pull := _external_pull
 	_external_pull = Vector2.ZERO
 	return pull
+
+## Part maximale de vitesse qu'on peut voler au chasseur, toutes sangsues confondues.
+##
+## ⚠️ MÊME INVARIANT QUE `GravityWell.MIN_MOBILITY`, ET POUR LA MÊME RAISON : le
+## pilote doit conserver 40 % de sa mobilité quoi qu'il arrive. En deçà, l'esquive
+## devient une loterie et la menace cesse d'être une menace pour devenir une panne.
+## Deux sangsues freinent plus qu'une, trois ne freinent pas plus que deux.
+const MAX_EXTERNAL_DRAG := 0.6
+
+## Vole une part de la vitesse pour l'image en cours. Cumulatif et plafonné : à
+## reposer chaque image, comme l'aspiration.
+func add_drag(factor: float) -> void:
+	_external_drag = clampf(_external_drag + maxf(factor, 0.0), 0.0, MAX_EXTERNAL_DRAG)
+
+## Retire le frein accumulé et remet le compteur à zéro, en un seul geste — même
+## forme que `consume_pull()`, et pour la même raison : séparer la lecture de la
+## remise à zéro autoriserait un chemin qui lit sans effacer.
+func consume_drag() -> float:
+	var drag := _external_drag
+	_external_drag = 0.0
+	return drag
 
 func take_contact_damage(amount: float) -> void:
 	_take_hit(amount)

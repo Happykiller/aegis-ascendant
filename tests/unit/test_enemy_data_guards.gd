@@ -123,3 +123,59 @@ func test_a_well_without_a_trigger_is_refused() -> void:
 	data.alert_radius = 0.0
 	data.trigger_radius = 0.0
 	_refuses(data, "requires a trigger_radius", "un puits sans déclenchement est refusé")
+
+# --- Poursuite et accrochage (Leech Drone) ------------------------------------
+
+func _leech() -> EnemyData:
+	var data := _sane()
+	data.motion = EnemyData.Motion.HOMING
+	data.homing_turn_rate = 2.2
+	data.chase_time = 8.0
+	data.fire = EnemyData.Fire.NONE
+	data.effect = EnemyData.Effect.LEECH
+	data.drag_factor = 0.35
+	data.drain_per_second = 6.0
+	data.alert_radius = 3.0
+	data.trigger_radius = 0.9
+	data.windup_time = 0.35
+	data.active_time = 2.5
+	data.rearm_time = 1.5
+	return data
+
+func test_a_well_formed_leech_is_accepted() -> void:
+	assert_true(_leech().validate().is_empty(), "une sangsue bien réglée passe")
+
+## Sans virage, la poursuite est une ligne droite : l'unité rate le joueur à la
+## première esquive et ne revient jamais.
+func test_a_chaser_that_cannot_turn_is_refused() -> void:
+	var data := _leech()
+	data.homing_turn_rate = 0.0
+	_refuses(data, "homing_turn_rate", "un poursuivant sans virage est refusé")
+
+## ⚠️ SÉCURITÉ DE POOL, pas réglage de difficulté. Une trajectoire finit toujours
+## par sortir du champ ; une poursuite, non. Un poursuivant sans borne tournerait
+## indéfiniment à l'intérieur et gèlerait son entrée de pool à vie.
+func test_an_unbounded_chase_is_refused() -> void:
+	var data := _leech()
+	data.chase_time = 0.0
+	_refuses(data, "chase_time", "une poursuite sans borne est refusée")
+
+func test_a_leech_that_steals_nothing_is_refused() -> void:
+	var data := _leech()
+	data.drag_factor = 0.0
+	_refuses(data, "drag_factor", "une sangsue qui ne vole rien est refusée")
+
+## Le pilote garde 40 % de sa mobilité quoi qu'il arrive. Une prise au-delà en
+## ferait une panne et non une menace — même invariant que le puits gravitationnel.
+func test_a_leech_that_pins_the_fighter_is_refused() -> void:
+	var data := _leech()
+	data.drag_factor = PlayerFighterController.MAX_EXTERNAL_DRAG + 0.1
+	_refuses(data, "no room to manoeuvre", "une prise qui cloue le chasseur est refusée")
+
+## Elle doit ATTRAPER avant de mordre : sans rayon de déclenchement, elle
+## freinerait le joueur depuis l'autre bout du champ.
+func test_a_leech_without_a_trigger_is_refused() -> void:
+	var data := _leech()
+	data.alert_radius = 0.0
+	data.trigger_radius = 0.0
+	_refuses(data, "requires a trigger_radius", "une sangsue sans prise est refusée")

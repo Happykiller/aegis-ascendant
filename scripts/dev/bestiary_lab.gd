@@ -40,6 +40,14 @@ var _slug: String = "mine"
 var _units: Array[EnemyController] = []
 var _respawn_at: PackedFloat32Array = PackedFloat32Array()
 var _clock: float = 0.0
+## Cadence du relevé de vitesse du chasseur. Il existe pour une raison précise :
+## un effet qui agit SUR LE JOUEUR ne se lit dans aucun journal d'ennemi. Le
+## contrôleur peut appeler `add_drag()` correctement pendant que le joueur ne le
+## consomme jamais, et rien ne le dirait — c'est exactement le genre de trou de
+## câblage qui a déjà coûté deux fois sur ce projet.
+const SPEED_LOG_EVERY := 0.5
+var _speed_log_at: float = 0.0
+var _last_player_position: Vector2 = Vector2.ZERO
 
 
 ## Familles réellement livrées : coque, Resource et réglages sont ceux du jeu.
@@ -148,8 +156,26 @@ func _build(slug: String) -> EnemyData:
 			data.max_health = 26.0
 			data.hitbox_radius = 0.55
 			data.score_value = 140
+		"leech":
+			# Elle POURSUIT : premier ennemi du jeu dont la position accumule.
+			data.motion = EnemyData.Motion.HOMING
+			data.homing_turn_rate = 2.2
+			data.chase_time = 8.0
+			data.move_speed = 9.0
+			data.fire = EnemyData.Fire.NONE
+			data.effect = EnemyData.Effect.LEECH
+			data.drag_factor = 0.35
+			data.drain_per_second = 6.0
+			data.alert_radius = 3.0
+			data.trigger_radius = 0.9
+			data.windup_time = 0.35
+			data.active_time = 2.5
+			data.rearm_time = 1.5
+			data.max_health = 10.0
+			data.hitbox_radius = 0.4
+			data.score_value = 160
 		_:
-			push_error("[Lab] unite inconnue '%s' (connues : fan, aimed, mine, maw)" % slug)
+			push_error("[Lab] unite inconnue '%s' (connues : fan, aimed, mine, maw, leech)" % slug)
 	return data
 
 
@@ -163,6 +189,8 @@ func _describe(slug: String) -> String:
 			return "MINE — dort, s'eveille a 4.5, s'engage a 2.2, couronne apres 0.7 s"
 		"maw":
 			return "MAW — puits d'aspiration a 3.0, 1.6 s, se rearme apres 2.5 s"
+		"leech":
+			return "LEECH — poursuit, s'accroche a 0.9, vole 35 pct de vitesse pendant 2.5 s"
 		_:
 			return "unite inconnue"
 
@@ -190,6 +218,7 @@ func _build_pool_from(scene: PackedScene, data: EnemyData) -> void:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
+	_log_player_speed()
 	for i in _units.size():
 		var unit := _units[i]
 		if unit.active:
@@ -201,6 +230,29 @@ func _physics_process(delta: float) -> void:
 		if _clock >= _respawn_at[i]:
 			unit.activate(Vector2(_column(i), SPAWN_Y))
 			_respawn_at[i] = -1.0
+
+
+## Relève la vitesse réelle du chasseur, et combien d'unités sont accrochées.
+##
+## À lire avec `--demo` : sans commande, le chasseur est immobile et un frein sur
+## une vitesse nulle ne se voit pas. Avec, il balaie l'horizontale à régime
+## constant, et toute prise se lit immédiatement sur le ratio.
+func _log_player_speed() -> void:
+	if _clock < _speed_log_at:
+		return
+	_speed_log_at = _clock + SPEED_LOG_EVERY
+	var accrochees := 0
+	for unit in _units:
+		if unit.active and unit.is_attached():
+			accrochees += 1
+	# ⚠️ ON MESURE LE DÉPLACEMENT RÉEL, PAS `speed_ratio()`. Ce dernier lit la
+	# vitesse COMMANDÉE, et le frein d'une sangsue s'applique au déplacement : le
+	# ratio reste à 0,85 pendant que le chasseur avance à 40 %. Premier relevé fait
+	# avec la mauvaise grandeur, et il annonçait « aucun effet ».
+	var parcouru := _player.plane_position.distance_to(_last_player_position) / SPEED_LOG_EVERY
+	_last_player_position = _player.plane_position
+	print("[Lab] t=%.2f parcouru %.2f u/s (commande %.3f)   accrochees=%d"
+		% [_clock, parcouru, _player.speed_ratio(), accrochees])
 
 
 ## Colonnes centrées : l'unité du milieu tombe sur l'axe, les autres de part et

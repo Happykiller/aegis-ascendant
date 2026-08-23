@@ -30,8 +30,17 @@ enum Fire { SINGLE, NONE, FAN, AIMED, RADIAL }
 ## Ce que l'unité fait qui n'est PAS une balle. Une menace peut se passer de
 ## projectile : le puits gravitationnel ne blesse pas, il mange l'esquive.
 ## ⚠️ Même règle d'APPEND.
-enum Effect { NONE, GRAVITY_WELL }
+enum Effect { NONE, GRAVITY_WELL, LEECH }
 @export var effect: Effect = Effect.NONE
+
+## Qui pilote la position. `PATH` échantillonne `EnemyPath`, fonction pure de l'âge —
+## c'est le cas des neuf familles écrites avant cet axe, et l'indice 0 le garantit.
+## `HOMING` poursuit le joueur (`EnemyHoming`) : sa position accumule, donc elle ne
+## peut pas être une trajectoire. C'est le seul mode qui regarde le joueur pour se
+## DÉPLACER (ADR-0022).
+## ⚠️ Même règle d'APPEND que les autres enums.
+enum Motion { PATH, HOMING }
+@export var motion: Motion = Motion.PATH
 
 @export var display_name: String = "enemy"
 @export var max_health: float = 20.0
@@ -88,6 +97,31 @@ enum Effect { NONE, GRAVITY_WELL }
 @export var pull_radius: float = 0.0
 @export var pull_speed_max: float = 0.0
 
+## HOMING : vitesse de virage (radians/s).
+##
+## ⚠️ C'est elle qui rend la poursuite ESQUIVABLE. Un poursuivant qui vire
+## instantanément touche toujours, et le joueur n'a plus que le tir à lui opposer.
+## Bornée, il peut le semer par un crochet — la même raison qui borne le virage des
+## missiles du boss (`TargetableProjectile.turn_rate`).
+@export var homing_turn_rate: float = 0.0
+## HOMING : secondes de poursuite avant que l'unité ne rompe et file droit.
+##
+## ⚠️ CE N'EST PAS UN RÉGLAGE DE DIFFICULTÉ, C'EST UNE SÉCURITÉ DE POOL. Une
+## trajectoire finit toujours par sortir du champ — c'est ce qui libère son entrée.
+## Une poursuite, non : un poursuivant qui rate sa proie tourne indéfiniment à
+## l'intérieur des bornes et gèle sa place à vie. Passé ce délai il cesse de virer,
+## donc il sort par un bord comme tout le monde.
+@export var chase_time: float = 8.0
+
+## LEECH : part de la vitesse du joueur volée tant que l'unité est accrochée, et
+## drain de bouclier par seconde.
+##
+## ⚠️ Le drain est CADENCÉ PAR L'INVULNÉRABILITÉ du chasseur (1,2 s après impact),
+## pas par une valeur d'ici : le bouclier ne peut pas se vider en continu. La menace
+## réelle de la sangsue est le frein, pas les dégâts.
+@export var drag_factor: float = 0.0
+@export var drain_per_second: float = 0.0
+
 # --- Coque articulée (EnemyPose) ---------------------------------------------
 
 ## Préfixe des pièces mobiles à ouvrir pendant le télégraphe : "Segment" pour la
@@ -140,6 +174,8 @@ func validate() -> PackedStringArray:
 	errors.append_array(_validate_reaction())
 	errors.append_array(_validate_effect())
 	errors.append_array(_validate_pose())
+	errors.append_array(_validate_motion())
+	errors.append_array(_validate_leech())
 	return errors
 
 
@@ -177,6 +213,40 @@ func _validate_reaction() -> PackedStringArray:
 		errors.append("active_time must be > 0 when the unit reacts")
 	if rearm_time < 0.0:
 		errors.append("rearm_time must be >= 0 (zero means single use)")
+	return errors
+
+
+func _validate_motion() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if motion != Motion.HOMING:
+		return errors
+	if homing_turn_rate <= 0.0:
+		# Sans virage, la poursuite est une ligne droite : l'unité rate le joueur à
+		# la première esquive et ne revient jamais. Silencieux, et ruineux.
+		errors.append("homing_turn_rate must be > 0 for HOMING")
+	if chase_time <= 0.0:
+		# Zéro voudrait dire « ne poursuit jamais » ; l'absence de borne, elle,
+		# voudrait dire « gèle une entrée de pool à vie ».
+		errors.append("chase_time must be > 0 for HOMING (it is the pool's safety net)")
+	return errors
+
+
+func _validate_leech() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if effect != Effect.LEECH:
+		return errors
+	if drag_factor <= 0.0:
+		errors.append("drag_factor must be > 0 for LEECH")
+	elif drag_factor > PlayerFighterController.MAX_EXTERNAL_DRAG:
+		# Le pilote garde 40 % de sa mobilité quoi qu'il arrive — même invariant que
+		# le puits gravitationnel, et pour la même raison : en deçà, l'esquive devient
+		# une loterie et la menace cesse d'en être une.
+		errors.append("drag_factor above %.2f leaves no room to manoeuvre"
+			% PlayerFighterController.MAX_EXTERNAL_DRAG)
+	if drain_per_second < 0.0:
+		errors.append("drain_per_second must be >= 0")
+	if not EnemyReaction.is_reactive(self):
+		errors.append("LEECH requires a trigger_radius (it must catch the player first)")
 	return errors
 
 
