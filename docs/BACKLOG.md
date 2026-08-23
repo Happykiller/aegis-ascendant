@@ -250,12 +250,18 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   qui instancie un `LeviathanCombat` (`extends Node`) par méthode. Un Node construit à la main hors
   arbre n'a **aucun parent pour le récupérer**, là où les unités `RefCounted` meurent avec le cas de
   test — et Godot ne rapporte la pile qu'à la sortie, donc le bruit ne désigne jamais son coupable.
-  ⚠️ **Résolu POUR LE RUNNER DE TESTS seulement.** Vérifié le 2026-08-23 : le **jeu** fuit encore,
-  mais uniquement quand on quitte **pendant la plongée du boss** — `8 ObjectDB / 4 resources`, là
-  où un lancement en phase d'armure sort parfaitement propre. Suspect désigné : la chambre du noyau
-  (`_build_core_chamber`), un `MeshInstance3D` + `SphereMesh` + `StandardMaterial3D` construits au
-  vol. Non corrigé : la plongée est en attente d'arbitrage, et corriger une phase qu'on supprime
-  serait du travail perdu.
+  ⚠️ **Résolu POUR LE RUNNER DE TESTS seulement.** Le **jeu** fuit encore — cause identifiée par la
+  session du bestiaire, `--verbose` à l'appui : le **flux musical Ogg encore en lecture** au moment
+  où le processus s'arrête (`OggPacketSequence`, `AudioStreamOggVorbis`,
+  `AudioStreamPlaybackOggVorbis`, `OggPacketSequencePlayback`, plus `main_theme.ogg` en ressource).
+  Bénin en soi, mais c'est du bruit permanent au journal — celui qui noiera la prochaine vraie fuite,
+  exactement comme les 789 objets du runner.
+  → Correctif probable : un `stop()` du flux à la sortie, dans `AudioManager`. Non fait.
+  ⚠️ **Et ce compte n'est PAS reproductible** : cinq lancements du même binaire avec les mêmes
+  drapeaux ont rendu `0/0`, `4/2` et `8/4` selon l'instant du `quit` — le flux joue, ou fond, ou
+  s'est tu. Toute conclusion tirée d'un lancement unique est donc sans valeur, y compris celle,
+  fausse, qui a d'abord accusé la chambre du noyau du boss (`_build_core_chamber`) : elle avait été
+  bâtie sur une seule mesure, dans un pipe qui avalait des lignes par-dessus le marché.
   `tests/test_case.gd` expose désormais `track()` / `free_tracked()`, ce dernier appelé par le
   runner après chaque méthode. La sortie du check ne porte **plus une seule ligne de fuite**.
   ⚠️ Restent 3 `ERROR: Condition "!is_inside_tree()" is true`, **préexistantes et sans rapport** :
