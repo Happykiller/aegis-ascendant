@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+; Choir Mine. Meme squelette de quatre noeuds que les autres familles : le
+; controleur lit HealthComponent, VisualRoot et VisualRoot/Hull par leur nom.
+;
+; Pas de plume de reacteur ici, et ce n'est pas un oubli : la coque ne declare
+; aucun Engine_C (BRIEF-0042), donc EnemyController n'en pose pas. Une tuyere
+; allumee la ferait lire comme un vaisseau en approche.
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_ctrl"]
+[ext_resource type="Resource" path="res://resources/enemies/choir_mine.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/health_component.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/choir_mine.glb" id="4_hull"]
+
+[node name="ChoirMine" type="Node3D"]
+script = ExtResource("1_ctrl")
+data = ExtResource("2_data")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Hull" parent="VisualRoot" instance=ExtResource("4_hull")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)

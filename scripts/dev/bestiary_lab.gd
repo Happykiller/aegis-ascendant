@@ -18,6 +18,7 @@ extends Node3D
 
 const NEEDLE_SCOUT := preload("res://scenes/enemies/needle_scout.tscn")
 const BASE_DATA := preload("res://resources/enemies/needle_scout.tres")
+const CHOIR_MINE := preload("res://scenes/enemies/choir_mine.tscn")
 
 ## Combien d'exemplaires tournent en même temps. Assez pour lire une interaction
 ## (deux puits qui s'additionnent, un éveil isolé dans une rangée), pas assez pour
@@ -40,8 +41,23 @@ var _respawn_at: PackedFloat32Array = PackedFloat32Array()
 var _clock: float = 0.0
 
 
+## Familles réellement livrées : coque, Resource et réglages sont ceux du jeu.
+## Le banc les ouvre telles quelles — s'il en montait une version à lui, il
+## règlerait quelque chose que personne ne joue.
+const SHIPPED := {
+	"mine": CHOIR_MINE,
+}
+
 func _ready() -> void:
 	_slug = _read_slug()
+	var shipped: PackedScene = SHIPPED.get(_slug)
+	if shipped != null:
+		print("[Lab] unite='%s' LIVREE : coque et reglages du jeu" % _slug)
+		_apply_backdrop_flag()
+		_build_pool_from(shipped, null)
+		print("[Lab] %s" % _describe(_slug))
+		return
+	print("[Lab] COQUE PROVISOIRE : needle_scout.glb sert de silhouette")
 	var data := _build(_slug)
 	var errors := data.validate()
 	for error in errors:
@@ -49,7 +65,6 @@ func _ready() -> void:
 		# comportement qu'on réglerait pendant des heures sans qu'il soit jouable.
 		push_error("[Lab] montage '%s' invalide : %s" % [_slug, error])
 	print("[Lab] unite='%s' exemplaires=%d" % [_slug, UNIT_COUNT])
-	print("[Lab] COQUE PROVISOIRE : needle_scout.glb sert de silhouette (lot 1 a venir)")
 	print("[Lab] %s" % _describe(_slug))
 	_apply_backdrop_flag()
 	_build_pool(data)
@@ -151,12 +166,18 @@ func _describe(slug: String) -> String:
 
 
 func _build_pool(data: EnemyData) -> void:
+	_build_pool_from(NEEDLE_SCOUT, data)
+
+
+## `data` nul = on garde celle que la scène livrée porte déjà.
+func _build_pool_from(scene: PackedScene, data: EnemyData) -> void:
 	_respawn_at.resize(UNIT_COUNT)
 	for i in UNIT_COUNT:
-		var unit := NEEDLE_SCOUT.instantiate() as EnemyController
+		var unit := scene.instantiate() as EnemyController
 		# La donnée est posée AVANT l'entrée dans l'arbre : `_ready()` la valide et
 		# en déduit si l'unité est réactive.
-		unit.data = data
+		if data != null:
+			unit.data = data
 		add_child(unit)
 		unit.setup(_bullets, _player)
 		unit.reaction_changed.connect(_on_reaction_changed.bind(i))

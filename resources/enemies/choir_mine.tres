@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+; Choir Mine — spec §11.1. Elle ne manoeuvre pas : c'est le joueur qui avance.
+;
+; Les rayons et durees ont ete regles au banc d'essai (--goto-lab=mine) puis
+; verifies en capture. `open_angle_deg` n'est PAS un gout : c'est le debattement
+; mecanique mesure sur la coque livree (BRIEF-0042-report.md) — la premiere
+; interpenetration plaque/voisine survient a 57 degres, la limite sure est 56, et
+; 45 laisse 12,9 mm de marge.
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+[ext_resource type="Resource" path="res://resources/weapons/mine_burst.tres" id="2_shot"]
+
+[resource]
+script = ExtResource("1_data")
+path = 9
+fire = 4
+display_name = "Choir Mine"
+max_health = 12.0
+move_speed = 1.1
+fire_interval = 1.9
+projectile = ExtResource("2_shot")
+hitbox_radius = 0.58
+score_value = 90
+burst_count = 14
+alert_radius = 4.5
+trigger_radius = 2.2
+windup_time = 0.7
+active_time = 0.15
+rearm_time = 0.0
+moving_part_prefix = "Segment"
+open_angle_deg = 45.0
