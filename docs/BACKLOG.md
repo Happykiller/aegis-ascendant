@@ -16,6 +16,18 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Les plans datés font foi sur « ce qui reste »
+
+Ce backlog est un inventaire ; il ne dit pas **quel document est le plus récent**. Les plans de
+travail vivent dans **`docs/plans/AAAA-MM-JJ-<sujet>.md`**, datés dans leur nom **et** dans leur
+en-tête (auteur, périmètre, état, ce qu'ils supersèdent). En cas de désaccord entre ce fichier et un
+plan plus récent, **le plan gagne**.
+
+| Plan | Sujet | État |
+|---|---|---|
+| [`2026-08-23-boss-pale-leviathan.md`](plans/2026-08-23-boss-pale-leviathan.md) | Boss final : ce qui reste après la refonte en cycles | à appliquer |
+| [`2026-08-23-bestiaire-ennemis.md`](plans/2026-08-23-bestiaire-ennemis.md) | Familles d'ennemis, coques et comportements | à appliquer |
+
 ## Comment reprendre
 
 1. `cd ~/aegis-ascendant`
