@@ -192,18 +192,23 @@ func _build_shield_power_panel() -> void:
 	_pickup_targets[Pickup.Kind.SHIELD] = _shield_value
 	_pickup_targets[Pickup.Kind.POWER] = _power_value
 
+## Le score est une information de CONSULTATION, pas de pilotage : on le lit entre deux
+## vagues, jamais pendant un rideau de balles. Il occupait pourtant autant de largeur que
+## le bloc bouclier/puissance, qui lui se lit en jeu — d'où un poids visuel inversé par
+## rapport à l'usage. Tout le panneau est ramené à ~0,75 (430x130 -> 322x98, valeur 58 -> 44),
+## le bord droit restant collé à la marge (gardé par `test_hud_layout.gd`).
 func _build_score_panel() -> void:
-	var panel := _panel(Vector2(1, 0), Vector2(-MARGIN, MARGIN), Vector2(430, 130))
-	_label(panel, "SCORE", _LABEL_FONT, 15, TEXT_LIGHT, Vector2(16, 18), 398, HORIZONTAL_ALIGNMENT_RIGHT)
+	var panel := _panel(Vector2(1, 0), Vector2(-MARGIN, MARGIN), Vector2(322, 98))
+	_label(panel, "SCORE", _LABEL_FONT, 13, TEXT_LIGHT, Vector2(12, 14), 298, HORIZONTAL_ALIGNMENT_RIGHT)
 	# The score pickup icon sits to the left of the score value (guide).
-	_pickup_icon(panel, _PICKUP_SCORE, Vector2(16, 50), 40)
-	_score_value = _label(panel, "00000000", _VALUE_FONT, 58, SCORE_WHITE, Vector2(16, 48), 398,
+	_pickup_icon(panel, _PICKUP_SCORE, Vector2(12, 38), 30)
+	_score_value = _label(panel, "00000000", _VALUE_FONT, 44, SCORE_WHITE, Vector2(12, 36), 298,
 		HORIZONTAL_ALIGNMENT_RIGHT)
 	_score_value.add_theme_constant_override("outline_size", 0)
 	_score_value.add_theme_color_override("font_shadow_color", Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.55))
 	_score_value.add_theme_constant_override("shadow_offset_x", 0)
 	_score_value.add_theme_constant_override("shadow_offset_y", 0)
-	_score_value.add_theme_constant_override("shadow_outline_size", 6)
+	_score_value.add_theme_constant_override("shadow_outline_size", 5)
 	_pickup_targets[Pickup.Kind.SCORE] = _score_value
 
 func _build_lives_panel() -> void:
