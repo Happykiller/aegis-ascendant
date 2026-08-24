@@ -41,6 +41,8 @@ const PLATE_SLOTS := 4
 ## La coque réelle les porte à 3,10 m ; cette valeur ne sert qu'à garder une géométrie
 ## cohérente là où il n'y a rien à mesurer.
 const DEFAULT_PLATE_DIST := 2.6
+## Vitesse de rattrapage de l'orientation du croissant, en fraction d'écart par seconde.
+const SHELL_FACING_RATE := 1.6
 const SPINE_SLOTS := 4
 const NODE_COUNT := 3
 ## Durée de chute d'une pièce détachée, en secondes.
@@ -99,6 +101,10 @@ var _missiles: Array[TargetableProjectile] = []
 
 ## Rotation de la coquille, en radians — le tempo du temps 1.
 var _shell_rotation: float = 0.0
+## Orientation vers laquelle le croissant se tient, hors balancement. Suivie en douceur :
+## le joueur traverse l'écran, la coquille ne doit pas sauter avec lui.
+var _shell_facing: float = 0.0
+var _shell_facing_set: bool = false
 var _active_piece: int = -1
 var _shell_ring: Node3D
 var _shell_ring_rest: Transform3D = Transform3D.IDENTITY
@@ -279,6 +285,8 @@ func _arm_cycle(cycle: int) -> void:
 			_spine_beams[i].extinguish()
 	_local_damage = 0.0
 	_active_piece = -1
+	# Le croissant se recentre : moins de plaques, donc un milieu différent.
+	_shell_facing_set = false
 	_shell_open = 0.0
 
 ## Relève la disposition RÉELLE des plaques, une seule fois au montage.
@@ -544,6 +552,23 @@ func _sync_targets(origin: Vector2) -> void:
 	if _flux_target != null:
 		_flux_target.position = origin + _flux_offset()
 
+## Azimut moyen des plaques encore debout, au repos — le « milieu » du croissant.
+##
+## Moyenne CIRCULAIRE : la moyenne arithmétique de −170° et +170° vaut 0°, soit le point
+## diamétralement opposé au bon. Le croissant vit à cheval sur le repli de l'angle dès
+## que la coquille a tourné, donc ce piège est la règle et non l'exception.
+func _crescent_bearing() -> float:
+	var x := 0.0
+	var y := 0.0
+	for plate in _plates:
+		if not plate.is_up():
+			continue
+		x += cos(plate.base_angle)
+		y += sin(plate.base_angle)
+	if absf(x) < 0.0001 and absf(y) < 0.0001:
+		return 0.0
+	return atan2(y, x)
+
 ## Direction du joueur vue du boss, en radians dans le plan de jeu. Sans joueur monté
 ## (tests, écran-titre), la convention du projet : il est en dessous, à −90°.
 func _player_bearing(origin: Vector2) -> float:
@@ -562,8 +587,28 @@ func _flux_offset() -> Vector2:
 # --- Temps 1 — BRISER L'ARMURE ------------------------------------------------
 
 func _run_armor(delta: float, origin: Vector2) -> void:
+	# ⚠️ LE CROISSANT FAIT FACE AU JOUEUR, IL NE TOURNE PLUS EN ROND. L'armure ne couvre
+	# que 198° : en rotation continue, son vide se présentait 27 % du temps au premier
+	# cycle et 37 % au deuxième — deux à trois secondes par tour avec RIEN à tirer, ce
+	# qui est précisément le « lancinant » du playtest. Ce n'était pas une question de
+	# vitesse, c'était de la géométrie : aucun réglage de période ne l'enlevait.
+	#
+	# Un boss tourne sa protection vers la menace. Le croissant est donc tenu face au
+	# joueur et balance autour de lui : les plaques défilent toujours — mesuré, les
+	# quatre passent en tête à ±60° — mais le vide ne passe jamais devant.
+	var facing := wrapf(_player_bearing(origin) - _crescent_bearing(), -PI, PI)
+	if not _shell_facing_set:
+		_shell_facing = facing
+		_shell_facing_set = true
+	else:
+		_shell_facing = wrapf(_shell_facing
+			+ wrapf(facing - _shell_facing, -PI, PI) * minf(delta * SHELL_FACING_RATE, 1.0),
+			-PI, PI)
+	var sway := 0.0
 	if tuning.shell_orbit_period > 0.0:
-		_shell_rotation = wrapf(_shell_rotation + TAU * delta / tuning.shell_orbit_period, -PI, PI)
+		sway = deg_to_rad(tuning.shell_sway_deg) \
+			* sin(TAU * _age / tuning.shell_orbit_period)
+	_shell_rotation = wrapf(_shell_facing + sway, -PI, PI)
 	var arc := tuning.effective_arc_deg(_plates_up())
 	# La direction du joueur, MESURÉE. L'arc était centré sur 0, qui pointe le flanc
 	# tribord du boss : avec des angles de plaque fictifs ça ne se voyait pas, avec les

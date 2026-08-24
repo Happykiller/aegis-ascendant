@@ -77,8 +77,21 @@ extends Resource
 ## ⚠️ 1270 → 460. Le grief du playtest est le TEMPS passé à arroser sans décision : la
 ## première salve d'armure tombe de ~22 s à ~8 s, et une plaque cède toutes les 2 s.
 @export var plate_health: float = 460.0
-## Durée d'un tour complet de la coquille — le tempo du temps 1.
+## Durée d'un aller-retour complet du balancement de la coquille — le tempo du temps 1.
 @export var shell_orbit_period: float = 9.0
+## Amplitude du balancement de la coquille, en degrés de part et d'autre du joueur.
+##
+## ⚠️ LA COQUILLE NE TOURNE PLUS EN ROND, ELLE FAIT FACE. L'armure ne couvre que 198°
+## (un CROISSANT — le nœud s'appelle `Shell_Crescent`) : en rotation continue, son vide
+## se présentait au joueur 27 % du temps au premier cycle et 37 % au deuxième, soit deux
+## à trois secondes par tour sans rien à tirer. C'est exactement le « lancinant » du
+## playtest, et aucun réglage de vitesse ne l'enlevait — c'est de la géométrie.
+##
+## Le croissant est donc tenu face au joueur et balance autour de lui. Mesuré sur les
+## azimuts réels : à ±60° les quatre plaques passent en tête à tour de rôle et le vide
+## ne se présente JAMAIS, sur les trois cycles. Le plafond sûr est ±131° (4 plaques),
+## ±114° (3) et ±117° (2) : 60 laisse la marge à tous.
+@export var shell_sway_deg: float = 60.0
 ## Arc face au joueur où une plaque peut être exposée, **au premier cycle**.
 ## ⚠️ C'est un PLANCHER, pas une constante : voir `effective_arc_deg()`. Quand il ne
 ## reste que trois puis deux plaques, l'écart entre elles grandit, et un arc fixe
@@ -277,12 +290,23 @@ func validate() -> PackedStringArray:
 			break
 
 	# --- INVARIANT 1 : le temps 1 offre toujours une cible ---------------
-	# Une seule plaque est vulnérable à la fois, celle qui est surlignée. Sans un arc au
-	# moins égal à l'écart entre deux plaques, il existe des instants sans aucune cible.
-	# `effective_arc_deg()` le garantit par construction — on vérifie ici qu'il tient
-	# vraiment, y compris au dernier cycle, où il ne reste que deux plaques opposées.
+	# Une seule plaque est vulnérable à la fois, celle qui est surlignée, et l'arc doit
+	# rester assez large pour qu'il y en ait toujours une.
+	#
+	# ⚠️ CE SEUIL NE SUFFIT PAS À LUI SEUL, et sa justification d'origine était fausse :
+	# il compare l'arc à `360/alive`, l'écart de plaques d'une répartition RÉGULIÈRE que
+	# la coque n'a jamais portée — les siennes sont espacées de 54° sur un croissant. Ce
+	# qui garantit vraiment une cible en permanence, c'est le balancement face au joueur
+	# (`shell_sway_deg`), et cela se vérifie sur la géométrie réelle, donc dans
+	# `test_leviathan_combat.gd` et non ici. Le seuil est conservé comme plancher : il
+	# élargit l'arc quand les plaques se raréfient, ce qui reste souhaitable.
 	if shell_orbit_period <= 0.0:
 		errors.append("shell_orbit_period must be > 0")
+	# Sous 30°, les plaques du bord ne viennent jamais en tête et l'armure se joue comme
+	# si elle n'en comptait qu'une ou deux ; au-delà de 110°, le balancement approche le
+	# plafond mesuré (±114° à trois plaques) et le vide finit par passer devant.
+	if shell_sway_deg < 30.0 or shell_sway_deg > 110.0:
+		errors.append("shell_sway_deg must be in [30, 110], got %.0f" % shell_sway_deg)
 	elif plate_arc_deg <= 0.0 or plate_arc_deg > 360.0:
 		errors.append("plate_arc_deg must be in (0, 360]")
 	else:

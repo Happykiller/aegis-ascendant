@@ -423,3 +423,50 @@ func test_the_hitbox_sits_under_the_mesh_it_highlights() -> void:
 			var gap := plate.target.position.distance_to(mesh_at)
 			assert_true(gap < 0.25,
 				"pose %d, Plate_%02d : hitbox a %.2f m du maillage" % [step, plate.index + 1, gap])
+
+
+# --- LE DEFAUT CORRIGE : le vide du croissant passait devant le joueur ----
+
+## ⚠️ CE QUE CE TEST GARDE, ET QU'AUCUN AUTRE NE PEUT GARDER. L'armure ne couvre pas le
+## tour du boss : c'est un CROISSANT de 198 deg. En rotation continue, son vide se
+## presentait au joueur 27 % du temps au premier cycle et 37 % au deuxieme — deux a trois
+## secondes par tour sans AUCUNE cible. Aucun test ne pouvait le voir tant que les angles
+## de plaque etaient fictifs : sur une repartition reguliere de 360 deg, le trou n'existe
+## pas. Le defaut ne s'est revele qu'une fois la geometrie mesuree.
+##
+## Il se garde ici et pas dans `validate()` : le tuning ne connait pas les azimuts de la
+## coque, et le seuil `arc >= 360/alive` qui y vit compare l'arc a une repartition que la
+## coque n'a jamais portee.
+func test_the_crescent_never_shows_its_gap_to_the_player() -> void:
+	var rig := _rig_with_hull()
+	var combat: LeviathanCombat = rig[1]
+	var t := combat.tuning
+	# Deux allers-retours complets, echantillonnes finement : un pas grossier pourrait
+	# enjamber le creux au lieu de le trouver.
+	var steps := 240
+	var blind := 0
+	for k in steps:
+		combat.tick(2.0 * t.shell_orbit_period / float(steps))
+		var armed := 0
+		for plate in combat.plates():
+			if plate.target != null and plate.target.enabled:
+				armed += 1
+		if armed == 0:
+			blind += 1
+		assert_true(armed <= 1, "jamais plus d'une plaque vulnerable a la fois")
+	assert_eq(blind, 0, "%d/%d instants sans aucune cible" % [blind, steps])
+
+## Le balancement doit faire DEFILER les plaques, pas en designer une seule a vie : sinon
+## on a supprime le temps mort en supprimant le mouvement, et les trois autres plaques ne
+## servent plus a rien.
+func test_the_sway_brings_every_plate_to_the_front_in_turn() -> void:
+	var rig := _rig_with_hull()
+	var combat: LeviathanCombat = rig[1]
+	var t := combat.tuning
+	var seen := {}
+	for k in 240:
+		combat.tick(2.0 * t.shell_orbit_period / 240.0)
+		for plate in combat.plates():
+			if plate.target != null and plate.target.enabled:
+				seen[plate.index] = true
+	assert_eq(seen.size(), 4, "les quatre plaques passent en tete, pas seulement une")
