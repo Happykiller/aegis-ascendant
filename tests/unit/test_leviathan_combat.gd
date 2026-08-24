@@ -67,11 +67,22 @@ func test_it_starts_on_the_full_armour() -> void:
 	assert_eq(combat.plates().size(), 4, "quatre plaques")
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "armure intacte")
 
-func test_the_plates_are_spread_evenly_for_the_cycle() -> void:
+## ⚠️ CE TEST GARDAIT LE DEFAUT. Il affirmait `base_angle == TAU*i/4` — « reparties
+## regulierement » — c'est-a-dire exactement ce que le code faisait, et non ce qu'il
+## devait faire. La coque porte ses quatre plaques sur un CROISSANT de 198 deg
+## (`Shell_Crescent`, silhouette validee par BRIEF-0041), pas sur un tour complet. Le
+## test etait donc vert pendant que la hitbox se posait jusqu'a 5,05 m du maillage.
+##
+## Sans coque montee, le repli regulier reste la bonne reponse : c'est le seul cas ou il
+## n'y a rien a mesurer. C'est ce que ce test garde desormais — le repli, et rien de plus.
+func test_without_a_hull_the_plates_fall_back_to_an_even_spread() -> void:
 	var combat := _make()
 	for i in combat.plates().size():
-		assert_almost_eq(combat.plates()[i].base_angle, TAU * i / 4.0, 0.001,
-			"reparties regulierement")
+		var expected := wrapf(TAU * i / 4.0, -PI, PI)
+		var actual: float = combat.plates()[i].base_angle
+		assert_almost_eq(wrapf(actual - expected, -PI, PI), 0.0, 0.001,
+			"repli regulier a defaut de coque")
+		assert_almost_eq(combat.plates()[i].radius, 2.6, 0.001, "rayon de repli")
 
 func test_the_shell_turns_and_swaps_which_plate_is_exposed() -> void:
 	var combat := _make()
@@ -339,3 +350,76 @@ func test_a_module_without_tuning_ticks_without_crashing() -> void:
 	var combat := track(CombatScript.new()) as LeviathanCombat
 	combat.tick(0.5)
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "degrade proprement, sans planter")
+
+
+# --- LE DEFAUT CORRIGE : la hitbox etait ailleurs que le maillage ---------
+
+## Une coque synthetique aux cotes REELLES de `pale_leviathan.glb`, mesurees dans le
+## fichier : `Shell_Ring` a (0, 0,4, 0), `Shell_Crescent` a (0, 0,54, 3,86), et les quatre
+## plaques a leurs translations locales. Le `BossController` fait tourner la coque de
+## `FACING_PLAYER = (0, PI, 0)` : on le reproduit, sans quoi on mesure le repere du
+## FICHIER en croyant mesurer celui du JEU — l'erreur qui a coute BRIEF-0045.
+func _fake_hull() -> Node3D:
+	var hull := Node3D.new()
+	hull.rotation = Vector3(0.0, PI, 0.0)
+	var ring := Node3D.new()
+	ring.name = "Shell_Ring"
+	ring.position = Vector3(0.0, 0.4, 0.0)
+	hull.add_child(ring)
+	var crescent := Node3D.new()
+	crescent.name = "Shell_Crescent"
+	crescent.position = Vector3(0.0, 0.54, 3.86)
+	ring.add_child(crescent)
+	var local := [
+		Vector3(-2.737, 0.16, -5.315), Vector3(-2.786, 0.16, -2.501),
+		Vector3(-0.538, 0.16, -0.807), Vector3(2.153, 0.16, -1.63),
+	]
+	for i in 4:
+		var plate := Node3D.new()
+		plate.name = "Plate_%02d" % (i + 1)
+		plate.position = local[i]
+		crescent.add_child(plate)
+	return hull
+
+func _rig_with_hull() -> Array:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: LeviathanCombat = rig[1]
+	var hull := _fake_hull()
+	boss.add_child(hull)
+	combat.setup(hull, null, null)
+	return [boss, combat, hull]
+
+func test_the_plate_angles_come_from_the_hull_not_from_a_convention() -> void:
+	var rig := _rig_with_hull()
+	var combat: LeviathanCombat = rig[1]
+	# Azimuts du plan de jeu, mesures dans le .glb puis convertis (angle_plan = 180 - a_fichier).
+	# Ils tombent sur les `PLATES` du script Blender, ce qui les confirme deux fois.
+	var expected := [-28.0, 26.0, 80.0, 134.0]
+	for i in combat.plates().size():
+		var got: float = rad_to_deg(combat.plates()[i].base_angle)
+		assert_almost_eq(wrapf(got - expected[i], -180.0, 180.0), 0.0, 0.5,
+			"Plate_%02d lue sur la coque" % [i + 1])
+		assert_almost_eq(combat.plates()[i].radius, 3.10, 0.01,
+			"Plate_%02d est a 3,10 m de l'axe" % [i + 1])
+
+## ⚠️ LE TEST QUI MANQUAIT, ET AUCUN AUTRE NE POUVAIT LE REMPLACER. Une hitbox ne se
+## dessine pas : ni une capture, ni un rendu, ni un test de mecanique ne montrent qu'elle
+## a glisse. Elle se posait a `TAU*i/alive` pendant que le maillage restait a sa place
+## sculptee — jusqu'a 5,05 m d'ecart sur une coque de 11 m. La plaque qui BRILLE n'etait
+## pas celle qu'on pouvait TOUCHER, et le joueur n'avait aucun moyen de le savoir.
+func test_the_hitbox_sits_under_the_mesh_it_highlights() -> void:
+	var rig := _rig_with_hull()
+	var boss: BossController = rig[0]
+	var combat: LeviathanCombat = rig[1]
+	# Plusieurs poses d'orbite : un seul instant pourrait coincider par hasard.
+	for step in 6:
+		combat.tick(combat.tuning.shell_orbit_period / 6.0)
+		for plate in combat.plates():
+			if plate.node == null:
+				continue
+			var mesh_at := boss.plane_position + GameplayPlane.to_plane(
+				CombatScript._relative_to(plate.node, boss).origin)
+			var gap := plate.target.position.distance_to(mesh_at)
+			assert_true(gap < 0.25,
+				"pose %d, Plate_%02d : hitbox a %.2f m du maillage" % [step, plate.index + 1, gap])

@@ -37,6 +37,10 @@ extends Node
 ## l'écran ne l'explique — c'est ce que faisait le `BossController` générique.
 
 const PLATE_SLOTS := 4
+## Distance de repli des plaques au centre, quand aucune coque n'est montée (tests).
+## La coque réelle les porte à 3,10 m ; cette valeur ne sert qu'à garder une géométrie
+## cohérente là où il n'y a rien à mesurer.
+const DEFAULT_PLATE_DIST := 2.6
 const SPINE_SLOTS := 4
 const NODE_COUNT := 3
 ## Durée de chute d'une pièce détachée, en secondes.
@@ -144,6 +148,12 @@ var _plate_fall: PackedFloat32Array = PackedFloat32Array()
 ## cette pose comme « repos », et l'armure reformée repousserait de travers, un peu plus à
 ## chaque cycle.
 var _plate_rest: Array[Transform3D] = []
+## Disposition RÉELLE des emplacements de plaque, relevée une fois au montage.
+## `_plate_angle` et `_plate_dist` sont dans le plan de jeu (hitbox, exposition) ;
+## `_plate_radial` est un rayon 3D dans le repère du parent (axe de chute).
+var _plate_angle: PackedFloat32Array = PackedFloat32Array()
+var _plate_dist: PackedFloat32Array = PackedFloat32Array()
+var _plate_radial: Array[Vector3] = []
 
 var _fan_timer: float = 0.0
 var _missile_timer: float = 0.0
@@ -203,7 +213,10 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 		var node: Node3D = _hull.find_child("Plate_%02d" % (i + 1), true, false) as Node3D if _hull != null else null
 		_plate_rest.append(node.transform if node != null else Transform3D.IDENTITY)
 	_build_flux()
+	# ⚠️ AVANT `_measure_plate_layout()` : la mesure a besoin de `Shell_Ring`, qui est le
+	# centre du cercle des plaques et l'origine du repère de leur axe de chute.
 	_bind_shell_visual()
+	_measure_plate_layout()
 	_build_spines()
 	_collect_debris()
 	_arm_cycle(0)
@@ -223,9 +236,13 @@ func _arm_cycle(cycle: int) -> void:
 	_release_plates()
 	_plates.clear()
 	for i in alive:
-		var plate := LeviathanPlate.make(i, TAU * i / float(alive), tuning.plate_health,
+		# ⚠️ L'ANGLE VIENT DE LA COQUE. Il valait `TAU·i/alive` — une redistribution
+		# régulière qui n'était appliquée QU'À LA HITBOX : le maillage, lui, retrouve sa
+		# pose sculptée deux lignes plus bas. On déplaçait la cible sans déplacer la pièce.
+		var plate := LeviathanPlate.make(i, _plate_angle[i], tuning.plate_health,
 			tuning.plate_hitbox_radius, Callable(self, "_on_plate_hit").bind(i))
-		plate.orient_fall()
+		plate.radius = _plate_dist[i]
+		plate.orient_fall(_plate_radial[i] if i < _plate_radial.size() else Vector3.ZERO)
 		if _hull != null:
 			plate.node = _hull.find_child("Plate_%02d" % (i + 1), true, false) as Node3D
 			if plate.node == null:
@@ -263,6 +280,72 @@ func _arm_cycle(cycle: int) -> void:
 	_local_damage = 0.0
 	_active_piece = -1
 	_shell_open = 0.0
+
+## Relève la disposition RÉELLE des plaques, une seule fois au montage.
+##
+## ⚠️ MESURÉ, PAS CONVENU — et c'est un correctif, pas un raffinement. Le code posait
+## `base_angle = TAU·i/alive`, soit quatre plaques réparties sur 360°. La coque en porte
+## quatre sur un CROISSANT de 198° — son nœud s'appelle `Shell_Crescent`, et `BRIEF-0041`
+## a validé cette silhouette. Azimuts réels dans le plan de jeu : −28 / 26 / 80 / 134°,
+## tous à 3,10 m de l'axe (rayon constant : elles sont bien sur un cercle).
+##
+## Écart mesuré entre ce que le code croyait et ce que la coque porte : 152 / 64 / 80 /
+## 136°, soit jusqu'à **5,05 m** entre la hitbox et le maillage sur une coque de 11 m. La
+## plaque qui BRILLE n'était donc pas celle qu'on pouvait TOUCHER. Rien ne pouvait le
+## montrer : une hitbox ne se dessine pas, et aucun test ne comparait les deux — ils
+## vérifiaient que `base_angle` valait `TAU·i/4`, c'est-à-dire que le bug était bien là.
+func _measure_plate_layout() -> void:
+	_plate_angle.resize(PLATE_SLOTS)
+	_plate_dist.resize(PLATE_SLOTS)
+	_plate_radial.clear()
+	# Le centre du cercle des plaques est l'axe de la COQUILLE, pas l'origine du boss :
+	# c'est autour de lui que `_pose_shell()` les fait tourner. Mesuré sur la coque, les
+	# quatre sont à 3,100 m de cet axe — un rayon constant, donc c'est bien le bon centre.
+	var centre := Vector2.ZERO
+	if _shell_ring != null and _boss != null:
+		centre = GameplayPlane.to_plane(_relative_to(_shell_ring, _boss).origin)
+	for i in PLATE_SLOTS:
+		# Repli : la répartition régulière d'avant. Les tests font tourner toute la boucle
+		# sans coque, et une plaque sans nœud doit rester cohérente avec elle-même.
+		var ang := wrapf(TAU * float(i) / float(PLATE_SLOTS), -PI, PI)
+		var dist := DEFAULT_PLATE_DIST
+		var radial := Vector3(cos(ang), 0.0, sin(ang))
+		var node: Node3D = _hull.find_child("Plate_%02d" % (i + 1), true, false) as Node3D \
+			if _hull != null else null
+		if node != null and _boss != null:
+			var here := _relative_to(node, _boss)
+			var rel := GameplayPlane.to_plane(here.origin) - centre
+			if rel.length_squared() > 0.01:
+				ang = rel.angle()
+				dist = rel.length()
+			# L'axe de chute vit dans le repère du PARENT de la plaque — `rest_basis
+			# .rotated()` compose à gauche — et NON en monde. Un axe juste exprimé dans le
+			# mauvais repère fait basculer la pièce de travers sans qu'aucun test bronche.
+			var host := node.get_parent() as Node3D
+			if host != null and _shell_ring != null:
+				var to_host := _relative_to(host, _boss)
+				var arm := to_host.basis.inverse() \
+					* (here.origin - _relative_to(_shell_ring, _boss).origin)
+				arm.y = 0.0
+				if arm.length_squared() > 0.0001:
+					radial = arm.normalized()
+		_plate_angle[i] = ang
+		_plate_dist[i] = dist
+		_plate_radial.append(radial)
+
+## Transformation de `node` dans le repère de `ancestor`, composée à la main.
+##
+## ⚠️ NE PAS employer `global_transform` ici. Il n'a de valeur que pour un nœud DANS
+## l'arbre de scène, et les tests n'y montent jamais rien : ils bâtissent des arbres
+## locaux. La mesure serait alors silencieusement remplacée par son repli — le test
+## passerait au vert en ne gardant rien, ce qui est le défaut même qu'on répare ici.
+static func _relative_to(node: Node3D, ancestor: Node3D) -> Transform3D:
+	var t := Transform3D.IDENTITY
+	var cur := node
+	while cur != null and cur != ancestor:
+		t = cur.transform * t
+		cur = cur.get_parent() as Node3D
+	return t
 
 func _build_flux() -> void:
 	_flux_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.flux_hitbox_radius,
@@ -457,9 +540,17 @@ func _origin() -> Vector2:
 func _sync_targets(origin: Vector2) -> void:
 	for plate in _plates:
 		var a := plate.angle_at(_shell_rotation)
-		plate.target.position = origin + Vector2(cos(a), sin(a)) * 2.6
+		plate.target.position = origin + Vector2(cos(a), sin(a)) * plate.radius
 	if _flux_target != null:
 		_flux_target.position = origin + _flux_offset()
+
+## Direction du joueur vue du boss, en radians dans le plan de jeu. Sans joueur monté
+## (tests, écran-titre), la convention du projet : il est en dessous, à −90°.
+func _player_bearing(origin: Vector2) -> float:
+	if _player == null:
+		return -PI * 0.5
+	var to_player := _player.plane_position - origin
+	return to_player.angle() if to_player.length_squared() > 0.01 else -PI * 0.5
 
 ## Dérive du flux dans le noyau : assez pour qu'on suive, pas assez pour qu'on cherche.
 func _flux_offset() -> Vector2:
@@ -474,13 +565,17 @@ func _run_armor(delta: float, origin: Vector2) -> void:
 	if tuning.shell_orbit_period > 0.0:
 		_shell_rotation = wrapf(_shell_rotation + TAU * delta / tuning.shell_orbit_period, -PI, PI)
 	var arc := tuning.effective_arc_deg(_plates_up())
+	# La direction du joueur, MESURÉE. L'arc était centré sur 0, qui pointe le flanc
+	# tribord du boss : avec des angles de plaque fictifs ça ne se voyait pas, avec les
+	# vrais on exposerait un côté que le joueur ne regarde jamais.
+	var aim := _player_bearing(origin)
 	var active := -1
 	var best := INF
 	for plate in _plates:
 		plate.tick(delta, tuning.shell_break_time)
-		if not plate.is_exposed(_shell_rotation, arc):
+		if not plate.is_exposed(_shell_rotation, arc, aim):
 			continue
-		var offset := absf(plate.angle_at(_shell_rotation))
+		var offset := absf(plate.offset_from(_shell_rotation, aim))
 		if offset < best:
 			best = offset
 			active = plate.index

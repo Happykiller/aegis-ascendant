@@ -50,6 +50,12 @@ var rest_transform: Transform3D = Transform3D.IDENTITY
 ## Un commentaire qui décrit une intention non câblée est pire qu'aucun commentaire — il
 ## empêche de chercher là où c'est cassé. L'axe est désormais posé par `orient_fall()`.
 var fall_axis: Vector3 = Vector3.RIGHT
+## Distance du centre du boss, en metres — MESUREE sur la coque au montage.
+##
+## ⚠️ Elle valait 2,6 en dur dans `_sync_targets()` alors que les plaques sont a 3,10 m
+## de l'axe. Une hitbox posee 50 cm en deca du maillage se touche encore par hasard : ce
+## genre d'ecart ne casse rien franchement, il rend juste le tir capricieux.
+var radius: float = 2.6
 var target: BulletTarget
 var elapsed: float = 0.0
 
@@ -69,8 +75,19 @@ static func make(p_index: int, p_base_angle: float, p_health: float,
 ##
 ## L'anneau est dans le plan XZ de la coque (Y = haut) : le rayon au point d'angle `a`
 ## vaut `(cos a, 0, sin a)`, et la tangente `(-sin a, 0, cos a)`.
-func orient_fall() -> void:
-	fall_axis = Vector3(-sin(base_angle), 0.0, cos(base_angle)).normalized()
+## `radial` est le rayon qui va du centre de rotation de la coquille vers la plaque,
+## EXPRIME DANS LE REPERE DE SON PARENT — c'est la que `rest_basis.rotated()` compose.
+## Nul (le defaut), on retombe sur l'ancienne deduction depuis `base_angle`, ce dont les
+## tests ont besoin : ils font vivre des plaques sans aucune coque montee.
+func orient_fall(radial: Vector3 = Vector3.ZERO) -> void:
+	var arm := radial
+	arm.y = 0.0
+	if arm.length_squared() <= 0.0001:
+		arm = Vector3(cos(base_angle), 0.0, sin(base_angle))
+	# La charniere est tangentielle : `radial x UP` fait basculer la plaque VERS
+	# L'EXTERIEUR pour un angle positif, ce que `_tick_plate_falls` applique. Sous elle il
+	# y a la coquille puis le pont — une bascule vers l'interieur les traverserait.
+	fall_axis = arm.normalized().cross(Vector3.UP).normalized()
 
 ## Angle courant de la plaque, orbite de la coquille comprise.
 func angle_at(shell_rotation: float) -> float:
@@ -79,13 +96,22 @@ func angle_at(shell_rotation: float) -> float:
 ## La plaque est-elle dans l'arc face au joueur ? C'est **toute** la mécanique de la
 ## phase 1 : hors de l'arc, le corps la masque et le tir se réfléchit.
 ##
-## L'arc est centré sur 0 (la direction de la caméra), et `arc_deg` est sa largeur
-## TOTALE — d'où le demi-arc dans la comparaison. Se tromper là-dessus doublerait
-## silencieusement la fenêtre de tir de la phase.
-func is_exposed(shell_rotation: float, arc_deg: float) -> bool:
+## `arc_deg` est la largeur TOTALE de l'arc — d'où le demi-arc dans la comparaison. Se
+## tromper là-dessus doublerait silencieusement la fenêtre de tir de la phase.
+##
+## ⚠️ L'arc est centré sur `centre_rad`, la direction du JOUEUR, et non sur 0. Tant que
+## `base_angle` valait `TAU·i/alive`, centrer sur 0 était sans conséquence : les angles
+## étaient fictifs des deux côtés. Sur la géométrie réelle, 0 pointe le flanc tribord du
+## boss, à 90° de celui qui tire — on exposait un côté que le joueur ne voit jamais.
+func is_exposed(shell_rotation: float, arc_deg: float, centre_rad: float = 0.0) -> bool:
 	if state != State.ALIVE:
 		return false
-	return absf(angle_at(shell_rotation)) <= deg_to_rad(arc_deg) * 0.5
+	return absf(offset_from(shell_rotation, centre_rad)) <= deg_to_rad(arc_deg) * 0.5
+
+## Écart angulaire entre la plaque et la direction visée, dans ]−PI ; PI]. C'est lui qui
+## départage les plaques exposées : la plus proche du joueur est celle qui encaisse.
+func offset_from(shell_rotation: float, centre_rad: float) -> float:
+	return wrapf(angle_at(shell_rotation) - centre_rad, -PI, PI)
 
 ## Vrai tant que la plaque protège le corps et tire son éventail. Une plaque tombée
 ## cesse les deux à la fois : le rideau s'allège d'un quart, et le joueur le sent.
