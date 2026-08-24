@@ -497,9 +497,27 @@ PLATE_SEG = 8
 #
 # Courbes de Bezier quadratiques (racine, controle, pointe). Aucune paire n'est
 # le miroir d'une autre : longueurs, epaisseurs, nombres de vertebres et
-# courbures different. Les pointes de `Spike_01` et `Spike_03` fixent a elles
-# seules les 11,0 m imposes — l'enveloppe est equilibree, la silhouette ne l'est
-# pas.
+# courbures different. Les pointes de `Spike_01` et `Spike_02` portent les bornes
+# +X et -X (5,527 et -5,502 au maillage) — l'enveloppe est equilibree, la
+# silhouette ne l'est pas. `HALF_W` n'est plus une coordonnee de pointe depuis
+# BRIEF-0081 : c'est la demi-largeur du CONTRAT, que le maillage approche par en
+# dessous (11,029 m pour 11,00 vise).
+#
+# ⚠️ BRIEF-0081 — LES QUATRE EPINES VISENT LE JOUEUR. `BossController` applique
+# `FACING_PLAYER = Vector3(0, PI, 0)` : l'axe lu ICI (plan XY de Blender) EST
+# l'angle vu en jeu, et le joueur est a -90 deg. Les quatre axes
+# `racine -> Muzzle_Spike_NN` valent -28,9 / -139,1 / -104,4 / -68,5 deg, tous
+# dans [-160 ; -20]. Avant ce brief, `Spike_01` et `Spike_02` pointaient a
+# +68,7 et +109,0 : deux membres sur quatre tiraient vers l'arriere.
+#
+# ⚠️ Ce qui rend l'eventail possible, c'est la RACINE de `Spike_03`, reculee de
+# 24,7 deg d'azimut (195,3 -> 220,0 deg, rayon inchange a 4,168 m). BRIEF-0080
+# avait mesure l'impasse a racine gelee : `Spike_02` retournee venait se coller
+# a `Spike_03` (jour 159 mm, ecart angulaire 5,4 deg — un doublet parallele).
+# Le couloir babord rouvert, le jour minimal remonte a 1023 mm et l'eventail
+# minimal a 34,7 deg, SANS un millimetre de largeur en plus (11,029 m, soit
+# 2,7 mm de MOINS qu'avant). Le mat suit la racine : `_build_masts()` relit
+# `root`, il n'y a rien d'autre a deplacer.
 #
 # ⚠️ Les racines sont a z ~ 1,10 et a r >= 4,15 : c'est un mat dorsal qui les
 # tient, au-dessus du pont et EN DEHORS de la piste de la coquille. Sans cette
@@ -523,36 +541,55 @@ PLATE_SEG = 8
 #   * les vertebres passent de 5-7 a 7-10, donc des ecailles plus courtes et un
 #     dard qui lit segmente meme detache, seul a l'ecran (phase 3).
 # L'INEGALITE est voulue et forte : `Spike_01` mesure 5,81 m de corde, `Spike_04`
-# 2,73 m — moins de la moitie. Deux bras longs a babord-arriere / tribord-avant,
-# un moyen, un mognon : la silhouette est desequilibree alors que l'enveloppe
-# reste centree au millimetre (contrainte de pivot d'`export_hull`, +/- 2 cm).
+# 2,68 m — moins de la moitie. Un bras long, un moyen, un court, un mognon : la
+# silhouette est desequilibree alors que l'enveloppe reste centree au millimetre
+# (contrainte de pivot d'`export_hull`, +/- 2 cm).
 
 SPIKES: tuple[dict, ...] = (
-    {   # babord-arriere : de loin la plus longue, l'aiguille. Elle porte le +X.
+    {   # babord : de loin la plus longue, l'aiguille. Elle porte le +X.
+        # Axe -28,9 deg en jeu : elle part vers le flanc puis vient border
+        # l'avant. `ctrl.z` a 1,55 est l'ARCHE qui paye la provision de pointage
+        # a +/-40 deg — a plat (1,16) le maillon de pointe mord la coque des
+        # -40 deg de pointage et le build refuse d'exporter (mesure BRIEF-0081).
         "name": "Spike_01",
         "root": (4.14, -0.52, 1.12),
-        "ctrl": (5.42, 1.92, 1.16),
-        "tip": (HALF_W, 5.10, 1.00),
+        "ctrl": (5.85, 0.50, 1.55),
+        "tip": (5.35, -6.20, 1.10),
         "r0": 0.320, "sides": 9, "vertebrae": 10, "flat": 0.60, "taper": 1.45,
         "splits": (0.30, 0.62), "port": 0.44,
     },
-    {   # tribord-arriere : la faux longue, tres cambree
+    {   # tribord : la faux longue, tres cambree. Elle porte le -X.
+        # Axe -139,1 deg en jeu : sa racine est la plus arriere des quatre, elle
+        # contourne donc le flanc par l'exterieur avant de border l'avant. Meme
+        # arche que `Spike_01`, et pour la meme raison.
         "name": "Spike_02",
         "root": (-4.10, 1.05, 1.10),
-        "ctrl": (-5.24, 3.20, 1.14),
-        "tip": (-4.88, 6.05, 0.96),
+        "ctrl": (-5.95, 1.10, 1.55),
+        "tip": (-5.20, -3.80, 1.10),
         "r0": 0.310, "sides": 9, "vertebrae": 9, "flat": 0.64, "taper": 1.40,
         "splits": (0.32, 0.64), "port": 0.46,
     },
-    {   # tribord-avant : la lame droite. Elle porte le -X.
+    {   # tribord-avant : la lame droite, la seule dont la RACINE ait bouge.
+        # Azimut 220,0 deg (contre 195,3), rayon 4,168 m inchange : elle laisse
+        # a `Spike_02` le couloir exterieur babord et prend la voie interieure.
+        # Axe -104,4 deg en jeu. Pas d'arche : sa courbe ne revient pas sur la
+        # coque au pointage (mesure), son `ctrl.z` reste a 1,14.
+        #
+        # ⚠️ L'AZIMUT 220 N'EST PAS ARRONDI DEPUIS 215 : entre 205 et 218 deg, le
+        # mat de cette epine entre dans le creux de degagement des plaques et le
+        # harnais tombe de 71,3 a 39,9 mm (mesure par pas de 5 deg, BRIEF-0081).
+        # A 220 il remonte a 65,9 mm, et le jour Spike_02-Spike_03 passe de
+        # 1156 a 1488 mm. Deplacer cette racine sans rejouer ces deux mesures,
+        # c'est reprendre 30 mm de marge a la coquille sans le savoir.
         "name": "Spike_03",
-        "root": (-4.02, -1.10, 1.12),
-        "ctrl": (-5.36, -2.72, 1.14),
-        "tip": (-HALF_W, -5.34, 0.98),
+        "root": (-3.193, -2.679, 1.12),
+        "ctrl": (-3.40, -4.90, 1.14),
+        "tip": (-5.25, -6.80, 0.98),
         "r0": 0.316, "sides": 9, "vertebrae": 9, "flat": 0.58, "taper": 1.42,
         "splits": (0.31, 0.63), "port": 0.42,
     },
-    {   # babord-avant : le mognon, moins de la moitie de `Spike_01`
+    {   # babord-avant : le mognon, moins de la moitie de `Spike_01`. Seule des
+        # quatre a n'avoir jamais bouge : elle visait deja le joueur (-68,5 deg).
         "name": "Spike_04",
         "root": (3.74, -2.60, 1.10),
         "ctrl": (4.46, -3.86, 1.12),
