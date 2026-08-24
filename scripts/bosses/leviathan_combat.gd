@@ -138,6 +138,12 @@ var _spine_rest: Array[Transform3D] = []
 ## sommet de la boîte englobante le plus éloigné de cette origine.
 var _spine_tip: Array[Vector3] = []
 var _spine_beams: Array[Beam] = []
+## Direction de tir de chaque épine, dans le plan. Relevée à chaque pointage.
+##
+## Elle existe pour être VÉRIFIABLE : le faisceau n'est monté que dans l'arbre de scène,
+## donc jamais en test, et sans cela la seule propriété qui compte ici — le tir prolonge
+## l'axe de la pièce — ne pourrait être gardée nulle part. Préallouée, jamais réallouée.
+var _spine_aim: PackedVector2Array = PackedVector2Array()
 var _spine_state: PackedInt32Array = PackedInt32Array()
 var _spine_timer: PackedFloat32Array = PackedFloat32Array()
 
@@ -405,6 +411,7 @@ func _build_spines() -> void:
 	_spine_beams.clear()
 	_spine_state.resize(SPINE_SLOTS)
 	_spine_timer.resize(SPINE_SLOTS)
+	_spine_aim.resize(SPINE_SLOTS)
 	for i in SPINE_SLOTS:
 		var node: Node3D = null
 		if _hull != null:
@@ -420,8 +427,12 @@ func _build_spines() -> void:
 		# Le calcul reste en repli, pour une coque qui n'aurait pas la bouche.
 		var muzzle := _hull.find_child("Muzzle_Spike_%02d" % (i + 1), true, false) as Node3D \
 			if _hull != null else null
-		if muzzle != null and node != null and node.is_inside_tree():
-			_spine_tip.append(node.global_transform.affine_inverse() * muzzle.global_position)
+		if muzzle != null and node != null and _boss != null:
+			# Composé à la main : `global_transform` exige l'arbre de scène, que les tests
+			# ne montent jamais. La pointe retomberait sur son repli sans que rien ne le
+			# dise — même piège que pour la disposition des plaques.
+			_spine_tip.append(_relative_to(node, _boss).affine_inverse()
+				* _relative_to(muzzle, _boss).origin)
 		else:
 			_spine_tip.append(_far_corner(node))
 		var beam: Beam = null
@@ -681,27 +692,30 @@ func _aim_spine(index: int, origin: Vector2) -> void:
 	var direction := _spine_direction(index)
 	var muzzle := origin + direction * 3.2
 	var node: Node3D = _spine_nodes[index] if index < _spine_nodes.size() else null
-	if node != null and node.is_inside_tree():
+	if node != null and _boss != null:
 		# La bouche est la POINTE de l'épine — mesurée sur le maillage, pas l'origine du
 		# nœud, qui est à sa base contre le corps.
-		muzzle = GameplayPlane.to_plane(node.global_transform * _spine_tip[index])
-		# ⚠️ LE TIR NE SUIT PAS L'AXE DE L'ÉPINE, et c'est une dette, pas un choix.
-		# Sur cette coque, DEUX épines sur quatre pointent vers l'arrière du boss —
-		# `Spike_01` et `Spike_02`, mesurées à +68,7° et +109,0° dans le plan de jeu quand
-		# le joueur est à −90°. Prolonger leur axe enverrait le faisceau à l'opposé de la
-		# cible. Le tir part donc de la pointe et vise le joueur, comme une tourelle montée
-		# sur un bras : la pièce montre une direction, le tir en prend une autre.
+		var here := _relative_to(node, _boss)
+		var base := origin + GameplayPlane.to_plane(here.origin)
+		muzzle = origin + GameplayPlane.to_plane(here * _spine_tip[index])
+		# ⚠️ LE TIR SUIT L'AXE DE L'ÉPINE, enfin. Il partait de la pointe mais visait le
+		# joueur : la pièce montrait une direction, le faisceau en prenait une autre, et
+		# c'est le grief du playtest — « les lasers, ça sort d'un peu n'importe où ».
+		# Deux épines sur quatre pointaient alors vers l'arrière ; prolonger leur axe
+		# aurait tiré à l'opposé de la cible. `BRIEF-0081` a reforgé la coque : les
+		# quatre visent le joueur (−28,9 / −139,1 / −104,4 / −68,5° dans le plan), donc
+		# l'axe est enfin une direction de tir défendable.
 		#
-		# ⚠️ ET LE PLAN DE JEU N'EST PAS LE REPÈRE DU FICHIER. `BossController` applique
-		# `FACING_PLAYER = (0, π, 0)` à la coque : un axe mesuré dans le `.glb` est vu
-		# **retourné de 180°** en jeu. Un brief de reforge (`BRIEF-0045`) a été commandé sur
-		# des angles relevés dans le fichier et présentés comme ceux du plan — il a fait
-		# retourner les deux épines qui allaient bien. Annulé. La convention à employer est
-		# écrite dans `docs/forge/briefs/BRIEF-0045-*.md`.
-		var aim := _player.plane_position if _player != null else muzzle + Vector2(0.0, -1.0)
-		var to_player := aim - muzzle
-		if to_player.length_squared() > 0.01:
-			direction = to_player.normalized()
+		# La direction se MESURE — base vers pointe — au lieu de se déduire d'un angle.
+		# Elle ne dépend ainsi d'aucune convention de repère, et c'est ce qui a coûté
+		# `BRIEF-0045` : `BossController` applique `FACING_PLAYER = (0, PI, 0)`, donc tout
+		# axe relevé dans le `.glb` est vu retourné de 180° en jeu. Un vecteur mesuré
+		# entre deux points du même repère ne peut pas se tromper de repère.
+		var axis := muzzle - base
+		if axis.length_squared() > 0.01:
+			direction = axis.normalized()
+	if index < _spine_aim.size():
+		_spine_aim[index] = direction
 	var reach := muzzle + direction * tuning.spine_range
 	var firing := _spine_state[index] == Spine.FIRING
 	if index < _spine_beams.size() and _spine_beams[index] != null:

@@ -379,6 +379,26 @@ func _fake_hull() -> Node3D:
 		plate.name = "Plate_%02d" % (i + 1)
 		plate.position = local[i]
 		crescent.add_child(plate)
+	# Les quatre epines et leurs bouches. Sans elles le module remplit le journal de
+	# « coque sans 'Spike_NN' » : du bruit qu'on finit par ne plus lire, et c'est ce
+	# bruit-la qui noie la prochaine vraie erreur.
+	var roots := [
+		Vector3(3.60, 0.30, 2.10), Vector3(-3.60, 0.30, 2.10),
+		Vector3(-3.60, 0.30, -2.10), Vector3(3.60, 0.30, -2.10),
+	]
+	var tips := [
+		Vector3(4.70, 0.30, -1.60), Vector3(-4.70, 0.30, -1.60),
+		Vector3(-4.20, 0.30, -4.90), Vector3(4.20, 0.30, -4.90),
+	]
+	for i in 4:
+		var spike := Node3D.new()
+		spike.name = "Spike_%02d" % (i + 1)
+		spike.position = roots[i]
+		hull.add_child(spike)
+		var muzzle := Node3D.new()
+		muzzle.name = "Muzzle_Spike_%02d" % (i + 1)
+		muzzle.position = tips[i] - roots[i]
+		spike.add_child(muzzle)
 	return hull
 
 func _rig_with_hull() -> Array:
@@ -470,3 +490,34 @@ func test_the_sway_brings_every_plate_to_the_front_in_turn() -> void:
 			if plate.target != null and plate.target.enabled:
 				seen[plate.index] = true
 	assert_eq(seen.size(), 4, "les quatre plaques passent en tete, pas seulement une")
+
+
+# --- LE GRIEF D'ORIGINE : « les lasers, ca sort d'un peu n'importe ou » ---
+
+## ⚠️ CE QUE CE TEST GARDE. Le faisceau partait de la pointe de l'epine mais visait le
+## JOUEUR : la piece montrait une direction, le tir en prenait une autre. C'etait une
+## dette assumee — deux epines sur quatre pointaient vers l'arriere, et prolonger leur axe
+## aurait tire a l'oppose de la cible. BRIEF-0081 a reforge la coque (les quatre visent le
+## joueur), donc l'axe est enfin une direction de tir defendable.
+##
+## La direction se MESURE, base vers pointe, au lieu de se deduire d'un angle : elle ne
+## depend alors d'aucune convention de repere. C'est ce qui a coute BRIEF-0045, ou des
+## angles releves dans le `.glb` avaient ete pris pour ceux du jeu, a 180 degres pres.
+func test_the_beam_extends_the_spine_instead_of_tracking_the_player() -> void:
+	var rig := _rig_with_hull()
+	var boss: BossController = rig[0]
+	var combat: LeviathanCombat = rig[1]
+	var origin: Vector2 = boss.plane_position
+	for i in 4:
+		combat._aim_spine(i, origin)
+		# Le faisceau lui-meme n'est monte que dans l'arbre de scene, donc jamais ici :
+		# c'est `_spine_aim` qui porte la direction, releve a chaque pointage.
+		var fired: Vector2 = combat._spine_aim[i]
+		var node: Node3D = combat._spine_nodes[i]
+		var here := CombatScript._relative_to(node, boss)
+		var base := GameplayPlane.to_plane(here.origin)
+		var tip := GameplayPlane.to_plane(here * combat._spine_tip[i])
+		var axis := (tip - base).normalized()
+		assert_almost_eq(fired.dot(axis), 1.0, 0.01,
+			"epine %d : le faisceau prolonge l'axe (ecart %.1f deg)"
+				% [i, rad_to_deg(fired.angle_to(axis))])
