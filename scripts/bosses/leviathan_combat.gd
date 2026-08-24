@@ -239,10 +239,15 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 
 ## (Re)dresse l'armure du cycle : `plates_for_cycle` plaques et autant de tourelles.
 ##
-## ⚠️ Les plaques sont REDISTRIBUÉES à chaque cycle, pas simplement éteintes. Trois
-## plaques laissées à leurs anciennes places laisseraient un trou de 180° dans l'armure ;
-## réparties à 120°, elles couvrent encore le corps. C'est aussi ce qui rend
-## `effective_arc_deg()` nécessaire : moins de plaques, arc plus large.
+## ⚠️ CE COMMENTAIRE DÉCRIVAIT UNE INTENTION QUE LE CODE N'A JAMAIS EUE. Il annonçait des
+## plaques « REDISTRIBUÉES à chaque cycle », réparties à 120° quand il n'en reste que
+## trois. Rien de tel n'arrivait au maillage : `plate.node.transform = rest_transform`
+## le remet à sa place sculptée, et seule la HITBOX se déplaçait. On bougeait la cible
+## sans bouger la pièce, ce qui est la cause du défaut corrigé ici.
+##
+## Les emplacements sont ceux de la coque, définitivement. Quand des plaques tombent, les
+## survivantes ne se réarrangent pas : le croissant se creuse, et c'est le balancement
+## face au joueur (`shell_sway_deg`) qui garantit qu'il y a toujours une cible.
 func _arm_cycle(cycle: int) -> void:
 	var alive := tuning.plates_for_cycle(cycle)
 	_release_plates()
