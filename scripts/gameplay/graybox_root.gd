@@ -849,6 +849,12 @@ func _on_player_hit(_world_position: Vector3) -> void:
 func _on_player_destroyed(world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.HEAVY, 0.9)
 	_sfx(&"player_death")
+	# ⚠️ L'ÉCRAN SE VIDE DE CE QUI VENAIT DE TUER. Sans ça, le chasseur renaît 1,2 s plus
+	# tard au centre bas dans le rideau qui l'a eu, et ses 2 s d'invulnérabilité expirent
+	# au milieu — c'est la mort en chaîne que tous les jeux du genre neutralisent ainsi.
+	# Les tirs du JOUEUR survivent : ils n'ont jamais tué personne.
+	if _bullets != null:
+		_bullets.clear_team(BulletManager.Team.ENEMY)
 
 ## Le dernier chasseur est perdu.
 ##

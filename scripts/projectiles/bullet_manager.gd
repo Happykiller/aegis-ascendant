@@ -165,6 +165,23 @@ func step(delta: float) -> void:
 			_multimeshes[team].visible_instance_count = _visible_counts[team]
 	_resolve_hits()
 
+## Efface d'un coup toutes les balles d'une équipe, et rend combien sont tombées.
+##
+## ⚠️ C'EST UN GARDE-FOU CONTRE LA MORT EN CHAÎNE, pas une commodité. Le joueur qui meurt
+## réapparaît 1,2 s plus tard **au centre bas**, avec 2 s d'invulnérabilité — mais tout ce
+## qui volait à l'instant de sa mort vole toujours. Il renaît donc parfois au milieu d'un
+## rideau, et son invulnérabilité expire là où il ne peut rien faire. Le genre traite ce
+## cas depuis toujours : on annule les balles, PUIS on donne l'invulnérabilité.
+##
+## Pas de boucle critique ici : c'est un événement rare, on peut parcourir le budget entier.
+func clear_team(team: int) -> int:
+	var cleared := 0
+	for i in MAX_BULLETS:
+		if _alive[i] == 1 and _teams[i] == team:
+			_release(i)
+			cleared += 1
+	return cleared
+
 func _release(i: int) -> void:
 	_alive[i] = 0
 	_team_counts[_teams[i]] -= 1

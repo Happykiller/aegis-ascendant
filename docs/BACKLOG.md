@@ -258,14 +258,65 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   procédurale, aller-retour vérifié en capture, **−0,200 ms** contre le fond habituel.
 - [x] **Impacts sur la lune** — trois bolides dorés, flash et gerbe, sur des jalons fixes de la
   phase (11 / 26 / 40 s). Préalloués, hors `VFXManager` (question d'échelle).
-- [ ] **Assets du survol** — lot 3 : lune à cratères, astéroïdes. ⚠️ **Remesurer d'abord le
-  différentiel sur la Quadro T1000** : les chiffres viennent de la RTX 4080, et c'est le poste du
-  bureau qui contraint (13,05 ms fond complet sur les 16,67 du budget).
+- [ ] **Assets du survol** — lot 3 : lune à cratères, astéroïdes. **Brief écrit**
+  (`BRIEF-0085`, au **brouillon** volontairement). ⚠️ **Remesurer d'abord le différentiel sur la
+  Quadro T1000** : les chiffres viennent de la RTX 4080, et c'est le poste du bureau qui contraint
+  (13,05 ms fond complet sur les 16,67 du budget). C'est cette mesure qui fige les budgets du brief.
+- [ ] **⚠️ Le dôme de protection n'a AUCUN rendu** — relevé le 2026-08-25 en regardant la capture.
+  `_project_aura()` couvre bien les voisins, et une unité couverte montre qu'elle encaisse sans
+  perdre de PV — mais **la portée de la bulle ne se voit nulle part**. `BRIEF-0046` l'avait pourtant
+  écrit noir sur blanc : « le dôme est généré par le code, à partir du rayon d'aura ; il doit montrer
+  la portée RÉELLE » — ce code n'a jamais été écrit. Sans lui, le joueur voit que ses tirs ne portent
+  pas mais ne peut pas savoir **où** la bulle s'arrête, donc ne peut pas jouer contre. C'est la suite
+  immédiate du Shield Carrier.
+- [x] **Shield Carrier en jeu** — son comportement est codé et testé depuis le 23/08
+  (`Effect.SHIELD_AURA`), et l'unité est désormais **complète** : coque forgée (`BRIEF-0046`, 4 788
+  triangles, UV 19/19), `.tres`, `.tscn`, fiche codex et **deux exemplaires dans la vague du champ
+  d'astéroïdes** — le premier à 15,5 s pour enseigner le mécanisme seul, le second à 31 s pour le
+  faire payer. ⚠️ Il lui manque son dôme (ligne au-dessus).
 - [ ] **Intensité de la gerbe d'impact** — se juge **en mouvement**, pas en capture : une image
   fixe fige la seule chose qui fait lire des débris qui s'envolent.
 - [ ] **Solides et décoratifs dans le même cadre** — l'arbitrage « astéroïdes solides, lune décor »
   ouvre un sujet de lisibilité : rien ne distinguera à l'œil un rocher qui tue d'un rocher qui
   traverse. À trancher au brief du lot 3.
+
+## Évolutions issues de la bible du genre (2026-08-25)
+
+Tirées de [`docs/design/bible/`](design/bible/README.md), **classées par retour sur
+investissement** : gain perçu par le joueur, divisé par le coût et le risque. ⚠️ Ce classement
+n'est pas une feuille de route — les trois dernières lignes attendent une décision, pas du temps.
+
+| # | Évolution | Coût | Gain | État |
+|---|---|---|---|---|
+| 1 | **Vider l'écran des tirs ennemis à la mort** | ~20 lignes | supprime la mort en chaîne, que tout le genre neutralise ainsi | ✅ **fait** |
+| 2 | **Une respiration avant le boss final** | ~10 lignes | le genre la nomme comme structurante ; l'arc enchaîne aujourd'hui champ → boss sans transition | à faire |
+| 3 | **Le Shield Carrier en jeu** | coque + intégration | le rôle « priorité de cible », structurant, dont nous n'avons **aucune** expérience de terrain | en cours (forge) |
+| 4 | **Peut-on toucher un ennemi collé au nez ?** | une observation | si non, c'est une frustration que le genre nomme explicitement | à vérifier en jouant |
+| 5 | **Renfort visuel des salves groupées** | moyen | le *chunking* : une salve radiale de 14 projectiles est le cas type | à juger en jouant d'abord |
+| 6 | **Les couloirs comme convention de vague** | faible | outil de composition (motif Toaplan, 5-7 couloirs) ; gain différé | piste |
+| 7 | **Conflit d'objectifs dans le score** | ? | **décision produit d'abord** : rejoue-t-on l'arc pour le score, ou le traverse-t-on une fois ? | question ouverte |
+
+### Ce que la bible dit de NE PAS faire
+
+- **Pas de bombe, de laser ni d'options** parce que le genre les emploie. `ADR-0010` a supprimé une
+  transformation de vaisseau pour flow cassé ; ajouter des systèmes parce qu'ils existent ailleurs
+  refait cette erreur.
+- **Pas de rang / difficulté dynamique** avant la question n°7. C'est un mécanisme puissant qui se
+  règle en aveugle et se mesure mal — et le projet sait ce que coûte un calibrage qui devient faux
+  en silence (`ADR-0024`, `ADR-0026`).
+- **Pas de régimes de comportement selon la performance** : cela ajouterait un cinquième axe à
+  `EnemyData`, qui en a déjà quatre (`ADR-0022`). À ne pas ouvrir sans raison jouée.
+
+### Une hypothèse de la bible démentie par le code
+
+La bible listait **deux** garde-fous anti-spirale de la mort à vérifier. Vérification faite le
+2026-08-25 :
+
+- **Le nettoyage des balles manquait** → corrigé (ligne 1 du tableau).
+- **La perte de puissance à la mort n'existe pas** — et c'est **volontaire, pas un oubli** :
+  `_destroy()` et `_respawn()` ne touchent pas à `_power_level`. Nous sommes donc **plus généreux**
+  que le genre, conformément à la spec §5.3 (« forgiving »). ⚠️ Rien à corriger : le vecteur de
+  spirale que le genre redoute n'existe pas chez nous.
 
 ## P0 bis — Dettes du chantier du boss (clos le 2026-08-25)
 
