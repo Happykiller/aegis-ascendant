@@ -96,6 +96,37 @@ noms, les 29 `moving_part` et leurs pivots, `box_project_uv(0.18)`,
 `_triangulate_ngons()`, le harnais de degagement bloquant, le determinisme.
 
 
+CE QUE BRIEF-0083 CHANGE — la gueule cesse de « changer » et s'OUVRE
+====================================================================
+Playtest du 2026-08-25 : « on n'a pas la sensation que le noyau s'ouvre et
+qu'on rentre dedans, plus qu'il change ». Le diagnostic etait exact : rien ne
+s'ouvrait. `Shell_Ring` se translatait et grossissait de 18 %, et la seule
+piece qui portait un mecanisme de gueule — `Maw_Lip` — n'etait **referencee
+nulle part dans le code du combat**. Elle est remplacee par un IRIS DE SIX
+VOLETS `Shutter_01..06`, a recul puis coulissement (voir la section suivante).
+
+Quatre chiffres tiennent la piece, et tous sont des maximums qu'une voisine
+autorise, pas des reglages :
+
+  * **recul 1 500 mm** — au-dela de 1 290 les noeuds gravitiques sortent enfin
+    de la piste de `Shell_Ring` ; en deca, ils la traversent ;
+  * **glissement 600 mm**, et seulement APRES le recul : la coquille bouche
+    tout ce qui depasse r = 2,18 sur toute la hauteur du volet ;
+  * **passage libre 4,378 m** ouvert contre 3,207 fermes — seuil 4,200, soit
+    2,4 largeurs de Specter-9 (**1,752 m** en espace MONDE ; le 1,29 m qui a
+    circule est une agregation en espace local, sans les transformations de
+    noeuds, alors que les ailes sont portees par des noeuds transformes) ;
+    ⚠️ ce chiffre est celui de l'IRIS. Le trou que le joueur VOIT est borne par
+    la coque a **3,499 m** (denture fixe de la levre du puits), par le noyau
+    tant qu'il n'est pas escamote, et par les `Ring_01..05` — trois pieces hors
+    du perimetre de ce brief, toutes mesurees au compte-rendu ;
+  * **+2 366 triangles** pour six volets, `Maw_Lip` deduite (plafond : 2 500).
+
+⚠️ Ce que ce brief NE change pas, et qui doit le rester : 26 des 30 maillages
+du depot sortent BIT A BIT identiques ; seuls `Node_01..03` bougent (de 5 cm,
+et la mesure qui l'exige est au commentaire de `NODE_R`).
+
+
 LE PLAN VIENT DE LA MECANIQUE, PAS SEULEMENT DE LA PLANCHE
 ==========================================================
 La camera de jeu regarde le plan **de dessus** (20 deg d'ecart a la verticale).
@@ -114,12 +145,12 @@ lecture du combat est donc posee dans ce plan :
 Consequences directes sur les debattements, et ce sont elles qui ont fixe les
 chiffres — pas l'oeil :
 
-  * `Maw_Lip` s'ouvre en se **relevant vers l'arriere** (+90 deg autour de X
-    Godot fait monter ce qui est en avant du pivot). Sa charniere est donc
-    posee DERRIERE la gueule, hors du puits : a 90 deg la levre se dresse a
-    l'exterieur de l'ouverture, et la vue de dessus sur le tunnel est totale.
-    Une charniere posee devant, ou au centre, aurait plonge la levre dans la
-    coque ou l'aurait laissee en travers du puits ;
+  * `Shutter_01..06` **recule puis coulisse** — deux TRANSLATIONS, jamais une
+    rotation (BRIEF-0083). Le recul se fait en -Z d'auteur, c'est-a-dire -Y en
+    jeu : les volets s'enfoncent LOIN de la camera, dans l'epaisseur du pont, ce
+    qui interdit toute lecture « petale qui se souleve » — le geste du Choir
+    Harvester, dont il faut se distinguer au premier coup d'oeil. Le
+    coulissement est radial sortant, dans le plan de la levre ;
   * `Plate_0X` se **souleve vers l'exterieur** (charniere tangentielle sur son
     bord interne). Elle ne peut pas tomber vers le bas : sous elle il y a la
     coquille, puis le pont. Le geste lit comme une ecaille qu'on arrache, ce que
@@ -139,20 +170,39 @@ CONTRAT DE NOMS (le code du combat sera ecrit contre lui)
 =========================================================
     Body                                   maillage porteur, statique
     Shell_Ring -> Shell_Crescent -> Plate_01..04     orbite / bascule / chute
-    Core -> Maw_Lip -> Node_01..03                   rotation / ouverture / repli
+    Core -> Shutter_01..06                           recul + coulissement (iris)
+    Shutter_01/02/03 -> Node_01/02/03                repli (un noeud par volet)
     Core -> Ring_01..05                              tunnel, vitesses distinctes
     Core -> Heart                                    statique, mais noeud a part
     Spike_0X -> Spike_0X_Mid -> Spike_0X_Tip         epaule / coude / pointe
+
+⚠️ BRIEF-0083 : `Maw_Lip` a disparu du contrat — six `Shutter_NN` la remplacent,
+et `Node_01..03` changent de parent (le volet qui les porte, plus la levre). Le
+reste du contrat est INTACT, nom pour nom et parent pour parent : c'est la seule
+chose qui casserait le combat entier sans qu'aucun test ne le voie.
 
 ⚠️ `Heart` est declare « statique » au contrat, et il l'est : rien ne l'anime.
 Il passe pourtant par `ak.moving_part()`, seule primitive du kit qui sache
 poser un `parent`. C'est deliberé, et c'est la meme decision que pour le `Core`
 du Choir Harvester.
 
-⚠️ **Piege d'integration a connaitre** : `Maw_Lip`, `Ring_01..05` et `Heart` sont
-enfants de `Core`. Cacher le noeud `Core` (`visible = false`) cacherait donc TOUT
-le puits avec lui. Pour escamoter le noyau a la phase 4, agir sur son
-**maillage** (materiau, echelle) et non sur la visibilite du noeud.
+⚠️ **Piege d'integration a connaitre** : `Shutter_01..06`, `Ring_01..05` et
+`Heart` sont enfants de `Core`. Cacher le noeud `Core` (`visible = false`)
+cacherait donc TOUT l'iris et tout le puits avec lui. Pour escamoter le noyau
+pendant la plongee, agir sur son **maillage** (materiau, echelle) et non sur la
+visibilite du noeud — `leviathan_combat.gd` met deja `Core` a l'echelle.
+
+⚠️ **Ce que le code doit ecrire pour animer l'iris** (rien d'autre) :
+
+    var dir := Vector3(shutter.position.x, 0.0, shutter.position.z).normalized()
+    shutter.position = rest + Vector3(0, -sink, 0) + dir * slide
+
+`sink` va de 0 a IRIS_SINK, PUIS `slide` de 0 a IRIS_SLIDE — dans cet ordre, et
+sans recouvrement : mener les deux de front rend une diagonale, donc un
+ecartement immediat vu de dessus, donc la lecture « petale » qu'on refuse. La
+direction se lit dans la POSITION du noeud parce que le pivot est pose sur la
+bissectrice du volet ; elle est la meme dans le repere du fichier et dans celui
+du jeu (`FACING_PLAYER` est une rotation de 180 deg autour de Y).
 """
 
 from __future__ import annotations
@@ -327,39 +377,146 @@ HEART_Z = -1.24
 HEART_R = 0.12
 
 # ==========================================================================
-# La levre de la gueule (`Maw_Lip`, legendee OUTER RIM sur la planche)
+# L'IRIS DE LA GUEULE — six volets coulissants (`Shutter_01..06`, BRIEF-0083)
 # ==========================================================================
 #
-# Secteur arriere de l'ouverture, arque contre le noyau, griffes en surplomb.
-# Sa charniere est une droite parallele a X posee DERRIERE l'ouverture : a
-# +90 deg (Godot `rotation.x`) toute la piece se dresse a l'exterieur du puits,
-# qui se degage entierement en vue de dessus.
+# ⚠️ CE QUI REMPLACE `Maw_Lip`, ET POURQUOI. La levre monobloc (secteur arriere
+# de 96 deg, charniere derriere, +90 deg autour de X) ne servait a rien : elle
+# n'etait referencee nulle part dans le code du combat, et l'ouverture du noyau
+# se jouait entierement sur `Shell_Ring`, qui se TRANSLATE et GROSSIT de 18 %.
+# D'ou le verdict de playtest — « on n'a pas la sensation que le noyau s'ouvre,
+# plus qu'il change » : rien ne s'ecarte, aucune piece n'a de mecanisme.
 #
-# ⚠️ BRIEF-0041 : la levre ne peut plus passer AU-DESSUS du noyau, puisque celui-ci
-# est devenu une boule qui monte a z = +1,56. Elle devient ce que la planche
-# montre vraiment (panneau VORTEX OPEN) : un COLLIER arque qui epouse le flanc de
-# la boule, entre r = 1,66 et r = 2,06. Les deux bornes sont dures :
-#   * en deca de 1,66 la levre entre dans le noyau (rayon de la sphere a
-#     l'altitude de la crete : 1,24 m a z = 1,10) ;
-#   * au-dela de 2,10 elle entre dans la piste de la coquille (`Shell_Ring`
-#     commence a r = 2,20) et se ferait raboter a chaque tour d'orbite.
-LIP_A = 42.0              # azimut de depart (deg)
-LIP_B = 138.0             # azimut de fin — 96 deg de secteur, centre sur +Y
-LIP_SEG = 14
-#: (rayon, z du dessus). L'epaisseur descend de LIP_T sous cette nappe.
-LIP_PROFILE: tuple[tuple[float, float], ...] = (
+# La levre devient donc **un iris de six volets**, et le geste est une
+# CONTRAINTE DE DISTINCTION, pas une preference : le Choir Harvester s'ouvre
+# deja avec des `Petal_01..N` qui **pivotent vers l'exterieur**, comme une
+# fleur. Les volets du Leviathan ne pivotent JAMAIS. Ils font l'inverse :
+#
+#     1. ils RECULENT dans l'epaisseur de la coque   (translation -Z d'auteur,
+#        soit -Y en jeu : ils s'enfoncent LOIN de la camera) ;
+#     2. puis ils COULISSENT lateralement vers l'exterieur radial, dans le plan
+#        de la levre, jusqu'a disparaitre sous le pont.
+#
+# Deux translations pures, aucune rotation. C'est un diaphragme mecanique, pas
+# une corolle. Le code anime ; ce script pose la matiere et les pivots.
+#
+# ⚠️ POURQUOI SIX SECTEURS DE 60 deg ET NON UN IRIS QUI SE FERME SUR L'AXE.
+# Le noyau est une BOULE de 3,12 m de diametre dont le pole (z = +1,56) est le
+# point le plus haut de toute la coque — c'est l'acquis de BRIEF-0041, et c'est
+# lui qui fixe la hauteur au contrat (3,162 m pour 3,20 autorises). Un volet qui
+# se refermerait SUR l'axe passerait donc au-dessus du pole : la coque sortirait
+# du contrat de hauteur des le premier centimetre. Les volets se ferment donc
+# CONTRE la boule, pas sur l'axe : au repos, boule + collier = un disque plein
+# de 4,12 m vu de dessus, et la gueule lit comme scellee. Ce que le joueur voit
+# s'ouvrir, c'est le collier qui recule et s'ecarte pendant que le combat
+# escamote la boule (cf. le piege d'integration en tete de fichier : agir sur le
+# MAILLAGE du noyau, `leviathan_combat.gd` le met deja a l'echelle).
+#
+# La bande radiale et le profil sont ceux de l'ancienne `Maw_Lip`, AU MILLIMETRE
+# (r de 1,66 a 2,06 ; z de 0,84 a 1,19 ; epaisseur 0,14) : la ou la levre etait,
+# l'iris est exactement la meme matiere. Il l'etend simplement aux 360 deg.
+#
+#   * en deca de r = 1,66 le volet entre dans le noyau — et il doit RESTER
+#     dehors sur TOUTE sa course d'enfoncement, ou il traverse l'equateur de la
+#     boule (rayon 1,56 a z = 0,40). Les 10 cm de jeu sont le vrai plancher ;
+#   * au-dela de r = 2,10 il entre dans la piste de `Shell_Ring`.
+IRIS_N = 6
+#: Azimuts des centres de volet. ⚠️ Le calage n'est pas libre : les bornes
+#: tombent a 0/60/.../300 deg pour que les trois noeuds gravitiques (58, 92 et
+#: 124 deg) atterrissent sur TROIS volets differents. Cale a 0/60 pres, deux
+#: noeuds se retrouvaient sur le meme volet et le troisieme seul.
+IRIS_AZ = tuple(30.0 + 60.0 * k for k in range(IRIS_N))
+#: Demi-ouverture d'un volet. 30 deg exactement serait jointif au sens propre —
+#: donc a marge NULLE, et le harnais de degagement refuserait d'exporter (il
+#: exige une marge strictement positive entre deux pieces mobiles). On retire
+#: donc un demi-jeu de chaque cote : 8,7 mm au rayon interne, 10,8 au rayon
+#: externe. C'est une COUTURE, pas un jour : le chanfrein de 5 mm la creuse
+#: exactement comme les joints de tuile du reste de la coque.
+IRIS_SEAM = 0.60          # deg de jeu TOTAL entre deux volets voisins
+IRIS_HALF = 30.0 - IRIS_SEAM * 0.5
+IRIS_SEG = 7              # segments angulaires par volet (budget : 8 coutait 46 tris de trop)
+#: (rayon, z du dessus) — **la table de `LIP_PROFILE`, inchangee**.
+IRIS_PROFILE: tuple[tuple[float, float], ...] = (
     (2.06, 0.84), (1.98, 1.00), (1.86, 1.12), (1.74, 1.19), (1.66, 1.18),
 )
-LIP_T = 0.14
-#: ⚠️ La charniere doit rester DERRIERE toute la matiere de la levre (y_max =
-#: 2,06 a l'azimut 90 deg), sans quoi un point plongerait des les premiers degres
-#: d'ouverture. Elle doit aussi rester EN DECA de r = 2,20 (piste de coquille).
-LIP_PIVOT = (0.0, 2.16, 0.82)
-#: Griffes du surplomb : elles mordent vers la boule sans la toucher (le rayon
-#: du noyau a leur altitude vaut 1,19 m ; elles s'arretent a 1,46).
-LIP_FANGS = (52.0, 70.0, 90.0, 110.0, 128.0)
-LIP_FANG_R = (1.68, 1.46)     # (base, pointe) en rayon
-LIP_FANG_Z = (1.12, 1.08)
+IRIS_T = 0.14             # epaisseur de la nappe (ex-`LIP_T`)
+
+#: ⚠️ PIVOT D'UN VOLET. Une translation est indifferente au point d'origine :
+#: ce que le pivot decide ici, ce n'est pas la trajectoire, c'est la DIRECTION
+#: que le code va lire. Il est pose sur la BISSECTRICE du volet, sous la nappe,
+#: a mi-course de sa glissiere — le patin. Consequence voulue :
+#: `normalize(Vector3(pos.x, 0, pos.z))` du noeud rend exactement la direction
+#: de coulissement, dans le repere du fichier COMME dans celui du jeu (une
+#: rotation de 180 deg autour de Y laisse la bissectrice sur elle-meme). C'est
+#: le meme procede que `harvester_combat._bind_iris()` pour l'axe des petales :
+#: aucune donnee supplementaire a transporter.
+IRIS_PIVOT_R = 1.86
+IRIS_PIVOT_Z = 0.98       # dessous de la nappe a r = 1,86 (1,12 - 0,14)
+
+#: ⚠️ COURSE, ET CE QUI LA BORNE. Les deux valeurs ne sont pas choisies « pour
+#: que ca bouge bien » : chacune est le maximum qu'une piece voisine autorise.
+#:   * l'ENFONCEMENT est borne par `Ring_01`, qui tourne a z = -0,12 entre
+#:     r = 1,50 et 1,74 : le bord d'attaque du volet (dessous a z = +1,04)
+#:     descend juste au-dessus de lui ;
+#:   * le COULISSEMENT est borne par le plafond de piste (`SHELL_TRACK`, 0,24 a
+#:     r >= 2,10) puis par le pont lui-meme : a fond de course le volet doit
+#:     etre AVALE par l'epaisseur du pont (dessus a 0,18), sans quoi la coquille
+#:     le raboterait a chaque tour d'orbite.
+#: A fond de course, le volet occupe r 2,26 -> 2,66 et z -0,80 -> -0,31 : il est
+#: integralement DANS le volume creux du pont, sans qu'aucune de ses surfaces ne
+#: croise une surface de coque (marge mesuree : 253 mm). Il est donc invisible,
+#: sans z-fighting, et hors de la piste de la coquille.
+IRIS_SINK = 1.50          # m, translation -Z d'auteur (= -Y en jeu)
+IRIS_SLIDE = 0.60         # m, translation radiale sortante, dans le plan
+#: ⚠️ Part de la course consacree au RECUL. Au-dela, le volet coulisse. Les deux
+#: temps ne se recouvrent pas : ce n'est pas un choix de style, c'est une
+#: mesure. Le coulissement est IMPOSSIBLE tant que le volet n'est pas descendu
+#: sous la coquille — `Shell_Crescent` commence a r = 2,24 entre z = 0,75 et
+#: 1,16, `Shell_Ring` a r = 2,18 entre 0,28 et 0,68 : ils bouchent tout ce qui
+#: est au-dela de r = 2,18 sur toute la hauteur du volet. Un glissement de
+#: 300 mm amorce des le repos entre le volet dans le croissant (marge 0,0 mm,
+#: mesuree). Il faut donc RECULER D'ABORD — et la deuxieme raison est plus
+#: sournoise : les noeuds gravitiques depassent de 32 cm au-dessus de la nappe,
+#: si bien qu'ils sortent de la piste de `Shell_Ring` seulement au-dela de
+#: 1,29 m d'enfoncement (marge 20 mm a 1,30 ; 215 mm a 1,50).
+IRIS_KNEE = 0.70
+#: Enfoncement en deca duquel le volet doit rester ENTIEREMENT hors de la coque
+#: (c'est la part VISIBLE et franche de la course : le volet se decolle avant de
+#: rentrer dans son logement). Au-dela il traverse la levre du puits — par
+#: construction, comme une glissiere reelle. La denture fixe de cette levre
+#: (`_build_rim_teeth`, crete a z = 0,65) est ce qui borne ce chiffre : le
+#: dessous du volet est a z = 0,845 au droit de la derniere dent. Le harnais
+#: bloque sur cette part-la, et publie le contact reel.
+IRIS_FREE_SINK = 0.10
+#: ⚠️ RAYON MINIMAL DU PASSAGE LIBRE, a l'ouverture maximale. Le seuil est un
+#: DIAMETRE de 4,20 m, soit 2,4 largeurs de chasseur. Il valait 3,00 m tant que
+#: le Specter-9 etait cru large de 1,29 m — chiffre agrege en espace LOCAL, sans
+#: les transformations de noeuds, alors que ses ailes sont portees par des
+#: noeuds transformes. La vraie mesure, en espace monde, est **1,752 m** : le
+#: seuil de 3,00 ne laissait que 1,71 largeur, l'inverse de l'intention ecrite
+#: (« sans que ca ait l'air serre »).
+IRIS_BORE_MIN = 2.10
+
+#: Dents du bord d'attaque : elles mordent vers la boule sans jamais la
+#: toucher. ⚠️ Leur rayon de pointe est un PLANCHER DUR : le volet s'enfonce de
+#: 1,04 m, il croise donc l'equateur du noyau (rayon 1,56 a z = 0,40) en cours
+#: de route. Les anciennes griffes de `Maw_Lip` allaient a r = 1,46 — elles
+#: auraient traverse la boule des le premier tiers de l'enfoncement.
+IRIS_TOOTH_AZ = (-14.0, 0.0, 14.0)   # deg, relatifs au centre du volet
+IRIS_TOOTH_R = (1.74, 1.62)          # (base, pointe) en rayon
+IRIS_TOOTH_Z = 1.115
+#: Patin de glissiere, SOUS la nappe (invisible de dessus au repos, et c'est
+#: voulu : rien ne doit depasser du dessus, qui passe sous la piste a fond de
+#: course). C'est lui qui touche le premier la levre du puits en s'enfoncant.
+#: ⚠️ Il s'arrete a r = 1,98 : au-dela, il descendrait sur la denture fixe de la
+#: levre du puits (`_build_rim_teeth`, crete a z = 0,65), qui est la piece la
+#: plus proche de l'iris au repos.
+IRIS_SHOE_R = (1.74, 1.98)
+IRIS_SHOE = (3.6, 0.050)             # (demi-ouverture deg, profondeur sous la nappe)
+#: Butee de fin de course, posee sur le dessus a l'extremite BASSE du profil
+#: (z = 0,96 au rayon 2,00) : la seule saillie superieure, et la plus basse.
+IRIS_STOP_R = 2.00
+IRIS_STOP = (0.13, 0.05, 0.045)      # (demi-largeur, demi-longueur, hauteur)
 
 #: Noeuds gravitiques : azimut sur la levre, longueur, inclinaison sortante.
 #:
@@ -376,9 +533,28 @@ LIP_FANG_Z = (1.12, 1.08)
 #: le repli le redresse alors presque a la verticale, au-dessus du vide. La levre
 #: ayant remonte contre la boule, la pointe ne sort qu'a r = 2,04 — sous la piste
 #: de `Shell_Ring`, qui ne monte de toute facon qu'a z = 0,68.
+#:
+#: ⚠️ BRIEF-0083 — LEUR PARENT CHANGE, LEUR POSITION NON. `Maw_Lip` ayant
+#: disparu, chaque noeud devient l'enfant du VOLET sur lequel il est plante : il
+#: recule et coulisse avec lui, ce qu'un noeud reste accroche au noyau n'aurait
+#: pas fait (il serait reste suspendu au-dessus du vide une fois l'iris ouvert).
+#: Les azimuts 58 / 92 / 124 tombent sur `Shutter_01` (centre 30), `Shutter_02`
+#: (90) et `Shutter_03` (150) — un noeud par volet, aucun orphelin. Ni le rayon,
+#: ni l'altitude, ni la longueur, ni l'inclinaison ne bougent : au repos les
+#: trois noeuds sont exactement la ou ils etaient.
 NODE_AZ = (58.0, 92.0, 124.0)
-NODE_R = 1.78             # rayon d'implantation, sur la crete de la levre
-NODE_Z = 1.15
+#: ⚠️ BRIEF-0083 — SEULE CORRECTION APPORTEE AU PLACEMENT, ET ELLE EST MESUREE.
+#: Le rayon passe de 1,78 a 1,83 et l'altitude de 1,15 a 1,134 (le noeud reste
+#: enfonce de 4 mm dans la nappe du volet, comme avant). Motif : le repli de
+#: -60 deg couche le noeud vers l'INTERIEUR — direction heritee de la levre a
+#: charniere arriere, qui n'existe plus — et le volet l'emmene desormais 1,50 m
+#: plus bas, c'est-a-dire au droit de l'EQUATEUR du noyau (rayon 1,555 a
+#: l'altitude critique). A 1,78 la marge tombait a 7,0 mm (mesure) contre
+#: 97,2 mm au depot. Les 5 cm equilibrent les deux marges qui l'encadrent —
+#: le noyau en dedans, la piste de `Shell_Ring` en dehors — sans toucher ni la
+#: longueur, ni l'inclinaison, ni le debattement du noeud.
+NODE_R = 1.83             # rayon d'implantation, sur la crete du volet
+NODE_Z = 1.134
 NODE_LEN = (0.42, 0.46, 0.40)
 NODE_TILT = 55.0          # deg au-dessus du plan, penche vers l'exterieur
 NODE_W = 0.16             # demi-largeur de l'embase
@@ -1263,53 +1439,135 @@ def build_heart() -> ak.MovingPart:
     return ak.moving_part("Heart", bm, (0.0, 0.0, HEART_Z), parent="Core")
 
 
-def build_maw_lip() -> ak.MovingPart:
-    """La levre mobile de la gueule (OUTER RIM sur la planche).
+def iris_top(r: float) -> float:
+    """z du DESSUS du volet a un rayon absolu.
 
-    Sa charniere est posee DERRIERE l'ouverture, et toute sa matiere est en
-    avant d'elle : a +90 deg (Godot `rotation.x`) chaque point monte, aucun ne
-    plonge, et la piece entiere se retrouve **hors du puits** — le tunnel est
-    alors degage en vue de dessus, ce que le rendu de recette verifie.
+    ⚠️ `IRIS_PROFILE` est ecrite de l'exterieur vers l'interieur (rayons
+    DECROISSANTS), comme l'etait `LIP_PROFILE` : `lerp_table` la lirait a
+    l'envers et rendrait la borne au lieu de l'interpolation. On la retourne.
+    """
+    return lerp_table([(rr, zz) for rr, zz in reversed(IRIS_PROFILE)], r)
+
+
+def shutter_pivot(index: int) -> Vector:
+    """Pivot d'un volet : sur sa bissectrice, sous la nappe, a mi-glissiere.
+
+    C'est le PATIN. Une translation ne depend pas de son origine — ce que ce
+    point fixe, c'est la direction que le code lira dans le noeud : pose sur la
+    bissectrice, il rend `normalize(Vector3(pos.x, 0, pos.z))` egal a la
+    direction de coulissement, dans le repere du fichier comme dans celui du
+    jeu (`FACING_PLAYER` est une rotation de 180 deg autour de Y : elle laisse
+    une bissectrice sur elle-meme, au signe pres).
+    """
+    a = math.radians(IRIS_AZ[index])
+    return Vector((IRIS_PIVOT_R * math.cos(a), IRIS_PIVOT_R * math.sin(a),
+                   IRIS_PIVOT_Z))
+
+
+def build_shutter(index: int) -> ak.MovingPart:
+    """Un volet de l'iris : secteur de 60 deg de l'ancienne levre, motorise.
+
+    La matiere est celle de `Maw_Lip` au millimetre (`IRIS_PROFILE` EST
+    `LIP_PROFILE`) : meme bande radiale, meme profil, meme epaisseur, meme
+    tranche interne emissive. Ce qui change, c'est qu'il y en a six, qu'ils
+    couvrent 360 deg au lieu de 96, et que chacun est une piece a course
+    RECTILIGNE — un diaphragme, l'exact oppose des petales du Choir Harvester.
+
+    Trois details portent la lecture « mecanisme » sous une camera a 20 deg de
+    la verticale, et aucun n'est gratuit :
+      * les six COUTURES radiales, creusees par le chanfrein : elles disent
+        d'avance ou la matiere va se separer ;
+      * le PATIN sous la nappe : c'est la piece qui touche la levre du puits en
+        premier, et la seule qui explique par quoi le volet est tenu ;
+      * les DENTS du bord d'attaque, heritees des griffes de la levre mais
+        ramenees a r = 1,62 — au-dela, elles traverseraient l'equateur du noyau
+        pendant l'enfoncement.
     """
     bm = bmesh.new()
-    angles = [math.radians(LIP_A + (LIP_B - LIP_A) * i / LIP_SEG)
-              for i in range(LIP_SEG + 1)]
+    center = IRIS_AZ[index]
+    angles = [math.radians(center - IRIS_HALF + 2.0 * IRIS_HALF * i / IRIS_SEG)
+              for i in range(IRIS_SEG + 1)]
 
     tops, bots = [], []
-    for r, z in LIP_PROFILE:
+    for r, z in IRIS_PROFILE:
         tops.append(ak.add_ring(bm, [(r * math.cos(a), r * math.sin(a), z)
                                      for a in angles]))
-        bots.append(ak.add_ring(bm, [(r * math.cos(a), r * math.sin(a), z - LIP_T)
+        bots.append(ak.add_ring(bm, [(r * math.cos(a), r * math.sin(a), z - IRIS_T)
                                      for a in angles]))
-    for i in range(len(LIP_PROFILE) - 1):
-        band = ak.bridge_rings(bm, tops[i], tops[i + 1], "AA_Trim", closed=False)
+    # Dessus : ivoire sur les deux bandes internes (la couronne qu'on voit),
+    # anthracite sur les deux externes (le blindage qui plonge sous la piste).
+    for i in range(len(IRIS_PROFILE) - 1):
+        ak.bridge_rings(bm, tops[i], tops[i + 1],
+                        "AA_Hull" if i < 2 else "AA_Trim", closed=False)
         ak.bridge_rings(bm, bots[i + 1], bots[i], "AA_Greeble", closed=False)
-        if i == 1:
-            ak.inset_panel(bm, band[2:-2], "AA_Panel", thickness=0.050, depth=-0.030)
+    # Tranche externe : le dos du volet.
     ak.bridge_rings(bm, bots[0], tops[0], "AA_Hull", closed=False)
-    # ⚠️ BRIEF-0041 — LA COUTURE MAGENTA NE SE MODELISE PLUS. Elle etait faite de
-    # 14 reglettes de 2,6 cm posees sur la crete : 1 344 sommets emissifs, le
-    # deuxieme poste du budget magenta de toute la coque, pour 0,1 m2 de surface.
-    # Le chanfrein herite du materiau des faces adjacentes, donc chaque reglette
-    # arrivait a l'export cerclee de magenta. Elle devient ce qu'elle aurait
-    # toujours du etre : la TRANCHE INTERNE de la levre, deja modelisee, a qui
-    # l'on assigne le materiau. Meme lecture, 56 sommets, zero triangle ajoute.
+    # ⚠️ Tranche interne : le BORD D'ATTAQUE, et c'est la seule surface emissive
+    # de la piece. Au repos les six arcs dessinent un cercle magenta continu
+    # autour de la boule ; des que l'iris s'ecarte, il se casse en six morceaux
+    # qui s'eloignent. C'est ce signal-la, et pas la course elle-meme, qui dit
+    # au joueur que la gueule s'ouvre — la course, vue de dessus, est en grande
+    # partie un enfoncement, donc peu lisible dans l'axe de la camera.
     ak.bridge_rings(bm, bots[-1], tops[-1], "AA_Emissive_Engine", closed=False)
-    # tranches laterales du secteur
-    for j, mat in ((0, "AA_Greeble"), (LIP_SEG, "AA_Greeble")):
+    # Flancs du secteur : ce sont eux qu'on decouvre quand l'iris s'ecarte.
+    for j, mat in ((0, "AA_Greeble"), (IRIS_SEG, "AA_Greeble")):
         ring = [tops[i][j] for i in range(len(tops))]
         ring += [bots[i][j] for i in reversed(range(len(bots)))]
         ak.cap_ring(bm, ring if j else list(reversed(ring)), mat)
 
-    # --- griffes du surplomb ------------------------------------------------
-    # Elles mordent vers la boule sans la toucher (cf. `LIP_FANG_R`).
-    for deg in LIP_FANGS:
-        a = math.radians(deg)
+    # --- dents du bord d'attaque -------------------------------------------
+    for deg in IRIS_TOOTH_AZ:
+        a = math.radians(center + deg)
         d = Vector((math.cos(a), math.sin(a), 0.0))
-        seg_box(bm, tuple(d * LIP_FANG_R[0] + Vector((0.0, 0.0, LIP_FANG_Z[0]))),
-                tuple(d * LIP_FANG_R[1] + Vector((0.0, 0.0, LIP_FANG_Z[1]))),
-                0.085, 0.055, "AA_Trim")
-    return ak.moving_part("Maw_Lip", bm, LIP_PIVOT, parent="Core")
+        seg_box(bm, tuple(d * IRIS_TOOTH_R[0] + Vector((0.0, 0.0, IRIS_TOOTH_Z))),
+                tuple(d * IRIS_TOOTH_R[1] + Vector((0.0, 0.0, IRIS_TOOTH_Z - 0.03))),
+                0.070, 0.045, "AA_Trim")
+
+    # --- patin de glissiere, SOUS la nappe ----------------------------------
+    #
+    # ⚠️ Il est bati en RINGS, pas avec `seg_box`. `_align_y()` emploie la
+    # rotation la plus courte de +Y vers la direction demandee : sur une pente
+    # de 49 deg elle fait BASCULER la section de la boite, et les coins bas
+    # descendaient 5 cm plus bas que la ligne demandee — droit sur la denture
+    # fixe de la levre du puits (marge tombee a 21,6 mm, mesuree). Un balayage
+    # de sections suit le profil exactement, sans surprise d'orientation.
+    a = math.radians(center)
+    d = Vector((math.cos(a), math.sin(a), 0.0))
+    half = math.radians(IRIS_SHOE[0])
+    sections = []
+    for r, z in IRIS_PROFILE:
+        if not (IRIS_SHOE_R[0] - 1e-6 <= r <= IRIS_SHOE_R[1] + 1e-6):
+            continue
+        top, bot = z - IRIS_T + 0.004, z - IRIS_T - IRIS_SHOE[1]
+        al, ar = a - half, a + half
+        sections.append(ak.add_ring(bm, [
+            (r * math.cos(al), r * math.sin(al), top),
+            (r * math.cos(ar), r * math.sin(ar), top),
+            (r * math.cos(ar), r * math.sin(ar), bot),
+            (r * math.cos(al), r * math.sin(al), bot),
+        ]))
+    for i in range(len(sections) - 1):
+        ak.bridge_rings(bm, sections[i], sections[i + 1], "AA_Greeble")
+    ak.cap_ring(bm, list(reversed(sections[0])), "AA_Greeble")
+    ak.cap_ring(bm, sections[-1], "AA_Greeble")
+
+    # --- butee de fin de course, sur le dessus ------------------------------
+    zs = iris_top(IRIS_STOP_R)
+    oriented_box(bm, tuple(d * IRIS_STOP_R + Vector((0.0, 0.0, zs + IRIS_STOP[2] * 0.4))),
+                 (IRIS_STOP[0] * 2.0, IRIS_STOP[1] * 2.0, IRIS_STOP[2]),
+                 _align_y(d), "AA_Panel")
+
+    return ak.moving_part(f"Shutter_{index + 1:02d}", bm,
+                          tuple(shutter_pivot(index)), parent="Core")
+
+
+def shutter_of_node(index: int) -> str:
+    """Le volet qui porte le noeud `index` — decide par l'azimut, pas a la main."""
+    az = NODE_AZ[index] % 360.0
+    for k, center in enumerate(IRIS_AZ):
+        if abs(((az - center + 180.0) % 360.0) - 180.0) <= 30.0:
+            return f"Shutter_{k + 1:02d}"
+    raise ak.ContractError(f"noeud a {az} deg : aucun volet ne le porte")
 
 
 def node_base(index: int) -> Vector:
@@ -1355,7 +1613,11 @@ def build_node(index: int) -> ak.MovingPart:
     tip = bm.verts.new(tuple(base + axis * length))
     ak.fan_to_point(bm, rings[-1], tip, "AA_Trim")
     ak.cap_ring(bm, list(reversed(rings[0])), "AA_Greeble")
-    return ak.moving_part(f"Node_{index + 1:02d}", bm, tuple(base), parent="Maw_Lip")
+    # ⚠️ BRIEF-0083 : le parent est le VOLET qui le porte, plus la levre — elle
+    # n'existe plus. Le noeud recule et coulisse avec son volet ; laisse enfant
+    # du noyau, il serait reste suspendu au-dessus du vide, iris ouvert.
+    return ak.moving_part(f"Node_{index + 1:02d}", bm, tuple(base),
+                          parent=shutter_of_node(index))
 
 
 def build_ring(index: int) -> ak.MovingPart:
@@ -1799,8 +2061,11 @@ _TO_GODOT = Matrix(((-1.0, 0.0, 0.0), (0.0, 0.0, 1.0), (0.0, 1.0, 0.0)))
 ORBIT_STEPS = 12          # echantillons de l'orbite 360 deg de la coquille
 CRESCENT_DEG = 65.0
 PLATE_DEG = -80.0
-LIP_DEG = 90.0
 NODE_DEG = -60.0
+#: Echantillons de la course de l'iris. ⚠️ Ce n'est PAS un angle : les volets ne
+#: tournent pas. Chaque pose est une translation composee — enfoncement d'abord,
+#: coulissement ensuite, dans cet ordre, comme le code l'ecrira.
+IRIS_STEPS = 6
 SPIKE_DEG = 40.0
 FLEX_DEG = 25.0
 
@@ -1810,7 +2075,11 @@ FLEX_DEG = 25.0
 #: rayon du pivot. C'est licite : une rotation autour d'un axe passant par le
 #: pivot conserve la distance au pivot, donc rien de ce qui est exclu ne peut
 #: rencontrer ce qui ne l'est pas.
-SKIP_LIP = 0.14
+#:
+#: ⚠️ AUCUN RAYON D'EXCLUSION POUR LES VOLETS, et c'est une decision, pas un
+#: oubli : l'argument qui rend un `skip` licite est l'invariance par ROTATION
+#: autour du pivot. Une translation ne conserve aucune distance : rien ne
+#: justifierait d'ecarter de la matiere. Les volets sont donc mesures entiers.
 SKIP_NODE = 0.24
 SKIP_PLATE = 0.16
 SKIP_CRESCENT = 0.18
@@ -2019,21 +2288,68 @@ def _shell_poses(with_crescent: bool, with_plates: bool, plate_axes: dict) -> li
     return poses
 
 
-def _maw_poses(with_lip: bool, with_nodes: bool) -> list:
+def iris_travel(t: float, sink: float = IRIS_SINK,
+                slide: float = IRIS_SLIDE) -> tuple[float, float]:
+    """Course d'un volet a l'avancement `t` (0 = ferme, 1 = ouvert a fond).
+
+    ⚠️ LES DEUX TEMPS NE SE RECOUVRENT PAS, et ce n'est pas un choix de style :
+    c'est une mesure (cf. `IRIS_KNEE`). Le volet RECULE d'abord (t de 0 a
+    IRIS_KNEE), il ne COULISSE qu'ensuite. Mener les deux de front ferait
+    decrire a la piece une diagonale — donc, vu de dessus, un ecartement
+    immediat, exactement la lecture « petale » qu'il s'agit d'eviter — et la
+    ferait entrer dans le croissant des les premiers centimetres.
+
+    Rend `(enfoncement, coulissement)` en metres, dans le repere d'auteur.
+    """
+    knee = IRIS_KNEE
+    if t <= knee:
+        return sink * (t / knee), 0.0
+    return sink, slide * ((t - knee) / (1.0 - knee))
+
+
+def _iris_matrix(index: int, t: float) -> Matrix:
+    """Translation d'un volet, en repere GODOT, telle que le code l'ecrira.
+
+    -Z d'auteur (l'enfoncement) devient -Y en jeu : le volet s'ecarte de la
+    camera, il ne se souleve pas vers elle. Le coulissement est radial sortant
+    dans le plan, direction donnee par la bissectrice — donc par la position du
+    noeud lui-meme.
+    """
+    sink, slide = iris_travel(t)
+    a = math.radians(IRIS_AZ[index])
+    author = Vector((slide * math.cos(a), slide * math.sin(a), -sink))
+    return Matrix.Translation(_TO_GODOT @ author)
+
+
+def _maw_poses(with_iris: bool, with_nodes: bool,
+               travel: float = 1.0, spins: int = ORBIT_STEPS) -> list:
+    """Poses du noyau : rotation du noyau x course d'iris x repli des noeuds."""
     poses = []
-    for s in range(ORBIT_STEPS):
-        spin = _orbit_angles(s)
-        for lip in ((0.0, 0.3, 0.6, 1.0) if with_lip else (0.0,)):
+    steps = ([i / IRIS_STEPS for i in range(IRIS_STEPS + 1)]
+             if with_iris else (0.0,))
+    for s in range(spins):
+        spin = _orbit_angles(s) if spins > 1 else 0.0
+        for t in steps:
             for node in ((0.0, 0.5, 1.0) if with_nodes else (0.0,)):
                 angles = {"Core": (0.0, spin, 0.0)}
-                if with_lip:
-                    angles["Maw_Lip"] = (_rad(LIP_DEG) * lip, 0.0, 0.0)
+                if with_iris:
+                    for k in range(IRIS_N):
+                        angles[f"Shutter_{k + 1:02d}"] = _iris_matrix(
+                            k, t * travel)
+                    # Les anneaux tournent a leurs vitesses propres : sans ca,
+                    # leur ouverture resterait sous le meme volet a chaque pose
+                    # et le bord d'attaque plongerait dans un trou permanent.
+                    for i in range(len(RINGS)):
+                        angles[f"Ring_{i + 1:02d}"] = (
+                            0.0, spin * (1.0 + 0.37 * i), 0.0)
                 if with_nodes:
                     for i in range(3):
                         angles[f"Node_{i + 1:02d}"] = (_rad(NODE_DEG) * node, 0.0, 0.0)
+                sink, slide = iris_travel(t * travel)
                 poses.append((
-                    f"noyau {math.degrees(spin):3.0f} deg / levre "
-                    f"{LIP_DEG * lip:2.0f} deg / noeuds {NODE_DEG * node:+3.0f} deg",
+                    f"noyau {math.degrees(spin):3.0f} deg / iris "
+                    f"recul {sink * 1000:4.0f} mm + glissement {slide * 1000:4.0f} mm"
+                    f" / noeuds {NODE_DEG * node:+3.0f} deg",
                     angles))
     return poses
 
@@ -2077,30 +2393,66 @@ def _ring_poses() -> list:
     return poses
 
 
-def _maw_footprint(rig: Rig, aperture: float) -> tuple[float, str]:
-    """Degagement du puits EN VUE DE DESSUS, levre grande ouverte.
+def _iris_bore(rig: Rig, t: float) -> tuple[float, str]:
+    """RAYON du passage libre au centre, a l'avancement d'iris `t`.
 
-    Le critere de recette est visuel (« a `Maw_Lip` 90 deg, le tunnel et `Heart`
-    sont entierement degages en vue de dessus »). On le double d'un chiffre : la
-    distance horizontale minimale entre la levre ouverte et l'axe du puits,
-    moins le rayon de l'ouverture. Positif = aucune matiere au-dessus du tunnel.
+    C'est la mesure du critere « passage central libre >= 3,0 m de diametre » :
+    la distance HORIZONTALE minimale entre l'axe du puits et la matiere des
+    volets (dents et noeuds compris), toutes rotations de noyau confondues. Elle
+    est prise dans le plan de jeu — l'axe du puits est la verticale du repere
+    Godot, donc `hypot(x, z)`.
+
+    ⚠️ Le noyau est EXCLU de la mesure, et il faut le dire : la boule de 3,12 m
+    occupe le centre au repos et c'est le combat qui l'escamote (elle est deja
+    mise a l'echelle par `leviathan_combat.gd`). Ce qu'on mesure ici est le
+    passage que L'IRIS laisse — le seul dont ce brief reponde.
     """
     worst, where = 9.9, ""
     for s in range(ORBIT_STEPS):
         spin = _orbit_angles(s)
-        posed = rig.pose({"Core": (0.0, spin, 0.0),
-                          "Maw_Lip": (_rad(LIP_DEG), 0.0, 0.0),
-                          "Node_01": (_rad(NODE_DEG), 0.0, 0.0),
-                          "Node_02": (_rad(NODE_DEG), 0.0, 0.0),
-                          "Node_03": (_rad(NODE_DEG), 0.0, 0.0)})
+        angles = {"Core": (0.0, spin, 0.0)}
+        for k in range(IRIS_N):
+            angles[f"Shutter_{k + 1:02d}"] = _iris_matrix(k, t)
+        for i in range(3):
+            angles[f"Node_{i + 1:02d}"] = (_rad(NODE_DEG), 0.0, 0.0)
+        posed = rig.pose(angles)
         for name, verts in posed.items():
-            if name == "Core":
+            if name == "Core" or name.startswith("Ring_"):
                 continue
             for v in verts:
-                d = math.hypot(v.x, v.z) - aperture
+                d = math.hypot(v.x, v.z)
                 if d < worst:
                     worst, where = d, f"{name} a noyau {math.degrees(spin):3.0f} deg"
     return worst, where
+
+
+def _iris_first_touch(rig: Rig, body_solid: Solid) -> tuple[float, float]:
+    """Enfoncement auquel un volet entre dans la coque, et la marge juste avant.
+
+    Ce n'est pas un defaut : a fond de course les volets sont AVALES par
+    l'epaisseur du pont — c'est leur logement, et c'est ce que demande le brief
+    (« reculent dans l'epaisseur de la coque »). Ce qu'on veut savoir, c'est
+    jusqu'ou la course reste VISIBLE et franche, hors matiere. On balaie donc
+    l'enfoncement par pas de 2 cm et on rend la derniere valeur qui degage.
+    """
+    last, margin = 0.0, 9.9
+    step = 0.02
+    depth = 0.0
+    while depth <= IRIS_SINK + 1e-9:
+        t = min(depth / IRIS_SINK, 1.0) * IRIS_KNEE
+        angles = {"Core": (0.0, 0.0, 0.0)}
+        for k in range(IRIS_N):
+            angles[f"Shutter_{k + 1:02d}"] = _iris_matrix(k, t)
+        posed = rig.pose(angles)
+        worst = 9.9
+        for k in range(IRIS_N):
+            name = f"Shutter_{k + 1:02d}"
+            worst = min(worst, body_solid.distance_to(posed[name], rig.tris[name]))
+        if worst <= 0.0:
+            break
+        last, margin = depth, worst
+        depth += step
+    return last, margin
 
 
 def _clearance_table(body, parts: dict) -> list:
@@ -2150,10 +2502,18 @@ def _clearance_table(body, parts: dict) -> list:
                  f"chute 0 -> {PLATE_DEG:.0f} deg x orbite x bascule",
                  margin, where))
 
-    # --- 4/5/6 : le noyau, la levre, les noeuds -----------------------------
-    maw_parts = [parts["Core"], parts["Maw_Lip"]] + \
-                [parts[f"Node_{i + 1:02d}"] for i in range(3)]
-    maw_skips = {"Maw_Lip": [(_TO_GODOT @ Vector(LIP_PIVOT), SKIP_LIP)]}
+    # --- 4/5/6 : le noyau, l'iris, les noeuds -------------------------------
+    #
+    # ⚠️ L'iris est mesure SANS aucun rayon d'exclusion (cf. `SKIP_NODE`) : ses
+    # volets ne tournent pas, rien ne justifierait d'ecarter de la matiere. Les
+    # `Ring_01..05` entrent dans le meme gabarit parce que le bord d'attaque
+    # d'un volet descend a leur altitude en s'enfoncant — c'est `Ring_01` qui
+    # borne `IRIS_SINK`, et ce sera vrai a chaque fois qu'on y touchera.
+    maw_parts = [parts["Core"]] \
+        + [parts[f"Shutter_{k + 1:02d}"] for k in range(IRIS_N)] \
+        + [parts[f"Node_{i + 1:02d}"] for i in range(3)] \
+        + [parts[f"Ring_{i + 1:02d}"] for i in range(len(RINGS))]
+    maw_skips = {}
     for i in range(3):
         maw_skips[f"Node_{i + 1:02d}"] = [
             (_TO_GODOT @ node_base(i), SKIP_NODE)]
@@ -2163,27 +2523,69 @@ def _clearance_table(body, parts: dict) -> list:
                                   only=("Core",))
     rows.append(("Core / coque", "rotation 360 deg", margin, where))
 
-    lip_skip = [(_TO_GODOT @ Vector(LIP_PIVOT), SKIP_LIP)]
-    margin, where = maw.clearance(_maw_poses(True, False), body_around(lip_skip),
-                                  only=("Maw_Lip",))
-    m2, w2 = maw.self_clearance(_maw_poses(True, False), [("Maw_Lip", "Core")])
-    if m2 < margin:
-        margin, where = m2, w2 + " (contre le noyau)"
-    rows.append(("Maw_Lip / coque et noyau", f"ouverture 0 -> {LIP_DEG:.0f} deg",
-                 margin, where))
+    # 5a. La part VISIBLE de la course : le volet se decolle, entierement hors
+    #     de la coque. C'est elle qui doit degager, et le build bloque dessus.
+    free_travel = IRIS_FREE_SINK / IRIS_SINK * IRIS_KNEE
+    iris_names = tuple(f"Shutter_{k + 1:02d}" for k in range(IRIS_N))
+    margin, where = maw.clearance(
+        _maw_poses(True, False, travel=free_travel), body_solid, only=iris_names)
+    rows.append((f"Shutter_01..06 / coque (recul libre {IRIS_FREE_SINK * 1000:.0f} mm)",
+                 "course visible, hors logement", margin, where))
+
+    # 5b. La course COMPLETE, mesuree contre le noyau, les anneaux du puits et
+    #     les volets voisins — c'est-a-dire contre tout ce qui n'est pas le
+    #     logement. Le volet finit dans l'epaisseur du pont, par construction ;
+    #     il ne doit toucher NI la boule, NI un anneau, NI son voisin.
+    full = _maw_poses(True, False)
+    margin, where = 9.9, ""
+    pairs = [(f"Shutter_{k + 1:02d}", "Core") for k in range(IRIS_N)]
+    pairs += [(f"Shutter_{k + 1:02d}", f"Shutter_{(k + 1) % IRIS_N + 1:02d}")
+              for k in range(IRIS_N)]
+    pairs += [(f"Shutter_{k + 1:02d}", f"Ring_{i + 1:02d}")
+              for k in range(IRIS_N) for i in range(2)]
+    margin, where = maw.self_clearance(full, pairs)
+    rows.append(("Shutter_01..06 / noyau, anneaux, volets voisins",
+                 f"recul {IRIS_SINK * 1000:.0f} mm puis glissement "
+                 f"{IRIS_SLIDE * 1000:.0f} mm", margin, where))
+
+    # 5c. ⚠️ L'IRIS CONTRE LA COQUILLE — la mesure que le harnais n'avait jamais
+    #     faite pour la gueule, et celle qui a fixe toute la course. `Shell_Ring`
+    #     (r >= 2,18, z 0,28-0,68) et `Shell_Crescent` (r >= 2,24, z 0,75-1,16)
+    #     bouchent l'exterieur sur toute la hauteur du volet : sans ce controle,
+    #     n'importe quel glissement amorce trop tot passe la porte de qualite et
+    #     se decouvre en jeu, la coquille traversant l'iris a chaque orbite.
+    shell_solids = []
+    # ⚠️ Pas de 30 deg, pas 60 : l'iris est 6 fois symetrique, un pas de 60 deg
+    # le ramenerait sur lui-meme et ne mesurerait qu'UNE alignement sur deux.
+    for st in range(ORBIT_STEPS):
+        sp = shell.pose({"Shell_Ring": (0.0, _orbit_angles(st), 0.0)})
+        for sn in ("Shell_Ring", "Shell_Crescent"):
+            shell_solids.append((f"{sn} a {math.degrees(_orbit_angles(st)):3.0f} deg",
+                                 Solid(sp[sn], shell.tris[sn])))
+    margin, where = 9.9, "aucune pose"
+    for label, angles in _maw_poses(True, True, spins=1):
+        posed = maw.pose(angles)
+        for name in iris_names + tuple(f"Node_{i + 1:02d}" for i in range(3)):
+            for slabel, solid in shell_solids:
+                d = solid.distance_to(posed[name], maw.tris[name])
+                if d < margin:
+                    margin, where = d, f"{label} / {name} vs {slabel}"
+    rows.append(("Shutter_01..06 + Node_01..03 / coquille",
+                 "course complete x orbite de la coquille", margin, where))
 
     node_skip = [(_TO_GODOT @ node_base(i), SKIP_NODE) for i in range(3)]
-    margin, where = maw.clearance(_maw_poses(True, True), body_around(node_skip),
-                                  only=tuple(f"Node_{i + 1:02d}" for i in range(3)))
+    margin, where = maw.clearance(
+        _maw_poses(True, True, travel=free_travel), body_around(node_skip),
+        only=tuple(f"Node_{i + 1:02d}" for i in range(3)))
     m2, w2 = maw.self_clearance(
         _maw_poses(True, True),
-        [(f"Node_{i + 1:02d}", "Maw_Lip") for i in range(3)]
+        [(f"Node_{i + 1:02d}", shutter_of_node(i)) for i in range(3)]
         + [(f"Node_{i + 1:02d}", "Core") for i in range(3)]
         + [("Node_01", "Node_02"), ("Node_02", "Node_03")])
     if m2 < margin:
-        margin, where = m2, w2 + " (contre levre/noyau/voisin)"
-    rows.append(("Node_01..03 / levre, noyau, coque",
-                 f"retraction 0 -> {NODE_DEG:.0f} deg x levre x noyau",
+        margin, where = m2, w2 + " (contre volet/noyau/voisin)"
+    rows.append(("Node_01..03 / volet, noyau, coque",
+                 f"retraction 0 -> {NODE_DEG:.0f} deg x iris x noyau",
                  margin, where))
 
     # --- 7 : les anneaux du puits -------------------------------------------
@@ -2250,11 +2652,39 @@ def _clearance_table(body, parts: dict) -> list:
     print(f"  [i  ] flexion VERTICALE (rotation.x) encaissee sans morsure : "
           f"+/-{vertical_limit:.0f} deg  ({vertical_where})")
 
-    # --- recette de la phase 4 : le puits vu de dessus ----------------------
-    margin, where = _maw_footprint(maw, SHAFT[0][1])
-    rows.append(("Maw_Lip ouverte / aplomb du puits (vue de dessus)",
-                 f"levre {LIP_DEG:.0f} deg, noeuds {NODE_DEG:.0f} deg",
-                 margin, where))
+    # --- recette de la plongee : le passage libre au centre -----------------
+    #
+    # Le critere du brief est un DIAMETRE, pas une marge : >= 3,0 m au centre a
+    # l'ouverture maximale, pour un chasseur large de 1,29 m. On mesure donc le
+    # rayon du passage que laisse l'iris, ouvert puis ferme, et on publie les
+    # deux — la difference EST la course utile.
+    bore_open, where_open = _iris_bore(maw, 1.0)
+    bore_shut, _ = _iris_bore(maw, 0.0)
+    rows.append(("Iris ouvert / passage central libre",
+                 f"diametre {bore_open * 2.0:.3f} m (ferme : "
+                 f"{bore_shut * 2.0:.3f} m) — seuil {IRIS_BORE_MIN * 2.0:.3f}",
+                 bore_open - IRIS_BORE_MIN, where_open))
+
+    # ⚠️ CE QUE L'IRIS NE COMMANDE PAS. Le passage que le JOUEUR voit n'est pas
+    # celui que l'iris laisse : la coque a sa propre ouverture, bornee par la
+    # denture fixe de la levre du puits (`_build_rim_teeth`, qui mord jusqu'a
+    # r = 1,75). On la publie a chaque build, sans quoi on croira que le seuil
+    # d'iris decrit le trou visible — il ne le decrit pas.
+    hull_bore = 9.9
+    for vert in Solid(*_soup(body)).verts:
+        if vert.y >= -0.10:
+            hull_bore = min(hull_bore, math.hypot(vert.x, vert.z))
+    print(f"  [i  ] gueule : ouverture de la COQUE {hull_bore * 2.0:.3f} m "
+          f"(denture fixe de la levre du puits) — l'iris, lui, degage "
+          f"{bore_open * 2.0:.3f} m")
+
+    depth, dmargin = _iris_first_touch(maw, body_solid)
+    print(f"  [i  ] iris : recul libre hors coque {depth * 1000:4.0f} mm "
+          f"(marge {dmargin * 1000:.1f} mm au dernier pas) ; au-dela le volet "
+          f"entre dans son logement — recul total {IRIS_SINK * 1000:.0f} mm")
+    print(f"  [i  ] iris : passage libre ferme {bore_shut * 2.0:.3f} m, "
+          f"ouvert {bore_open * 2.0:.3f} m "
+          f"(+{(bore_open - bore_shut) * 2.0 * 1000:.0f} mm)")
     return rows
 
 
@@ -2323,7 +2753,7 @@ def main() -> None:
         build_crescent(),
         *[build_plate(i) for i in range(len(PLATES))],
         build_core(),
-        build_maw_lip(),
+        *[build_shutter(k) for k in range(IRIS_N)],
         *[build_node(i) for i in range(3)],
         *[build_ring(i) for i in range(len(RINGS))],
         build_heart(),

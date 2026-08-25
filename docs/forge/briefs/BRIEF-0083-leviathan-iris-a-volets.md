@@ -1,6 +1,6 @@
 # BRIEF-0083 — L'iris à volets coulissants du Pale Leviathan
 
-- **Statut** : brouillon
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-25

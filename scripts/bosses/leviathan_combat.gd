@@ -108,7 +108,36 @@ var _shell_facing_set: bool = false
 var _active_piece: int = -1
 var _shell_ring: Node3D
 var _shell_ring_rest: Transform3D = Transform3D.IDENTITY
+## Nombre de volets de l'iris et d'anneaux du puits — le contrat de `BRIEF-0083`.
+const IRIS_BLADES := 6
+const BORE_RINGS := 5
+## Course du recul et du glissement, en mètres (mesures de la forge).
+const IRIS_RECOIL := 1.5
+const IRIS_SLIDE := 0.6
+## Part de l'ouverture consacrée au recul avant que le glissement commence.
+const IRIS_RECOIL_SHARE := 0.55
+## Ouverture à partir de laquelle le puits est dégagé.
+const IRIS_BORE_OPEN := 0.35
+
 var _heart_node: Node3D
+## Les six volets de l'iris (`BRIEF-0083`), et leur pose au repos. Enfants de `Core`.
+var _shutters: Array[Node3D] = []
+var _shutter_rest: Array[Transform3D] = []
+## Les pièces qui BOUCHENT le puits, à escamoter quand l'iris s'ouvre.
+##
+## ⚠️ SANS ÇA, L'IRIS S'OUVRE SUR RIEN. Mesuré par la forge sur le `.glb` et visible sur sa
+## planche de recette (vignette 5 contre vignette 6) : volets grands ouverts, le trou que
+## le joueur voit reste bouché par `Ring_01..05` à 0,193 m et par le maillage de `Core`.
+## Le mécanisme joue, et l'écran ne montre aucune ouverture — exactement le grief
+## d'origine (« ça change, ça ne s'ouvre pas »).
+var _bore_fillers: Array[MeshInstance3D] = []
+## Maillage propre de `Core`, mis de côté pendant l'escamotage.
+##
+## ⚠️ ON RETIRE LE MAILLAGE, ON NE CACHE PAS LE NŒUD. Les six volets sont ENFANTS de
+## `Core` : `visible = false` sur le nœud escamoterait l'iris avec le noyau, et le
+## mécanisme qu'on vient de fabriquer disparaîtrait au moment précis où il doit se voir.
+var _core_mesh: Mesh
+var _core_instance: MeshInstance3D
 var _highlight: StandardMaterial3D
 ## Le flux d'énergie, dans le noyau ouvert : sa propre identité visuelle.
 ##
@@ -390,6 +419,7 @@ func _bind_shell_visual() -> void:
 		# visuel du « cœur » a d'abord été posé sur `Heart` : son battement n'a jamais rien
 		# fait à l'écran, et le halo du flux non plus. On animait une pièce invisible.
 		_heart_node = _hull.find_child("Core", true, false) as Node3D
+		_bind_iris()
 	if _highlight == null:
 		# Additif, non éclairé : un halo qui s'AJOUTE à la texture au lieu de la
 		# remplacer. Il monte vers le blanc chaud au sommet de son battement, sans quoi
@@ -620,6 +650,14 @@ func _flux_offset() -> Vector2:
 # --- Temps 1 — BRISER L'ARMURE ------------------------------------------------
 
 func _run_armor(delta: float, origin: Vector2) -> void:
+	# ⚠️ ELLE NE SE REFERMAIT JAMAIS. `_shell_open` ne faisait que monter (pendant la
+	# plongée) et n'était remis à zéro qu'au montage du combat : dès le premier cycle, la
+	# coquille restait ouverte pour TOUJOURS, y compris pendant les armures suivantes que
+	# la bannière annonce pourtant comme reformées. Invisible tant que rien n'était monté
+	# dessus ; avec l'iris, elle laisserait les six volets écartés sur un boss censé être
+	# clos, et la silhouette fermée exigée par le brief n'existerait qu'au premier cycle.
+	if tuning.shell_open_time > 0.0:
+		_shell_open = maxf(_shell_open - delta / tuning.shell_open_time, 0.0)
 	# ⚠️ LE CROISSANT FAIT FACE AU JOUEUR, IL NE TOURNE PLUS EN ROND. L'armure ne couvre
 	# que 198° : en rotation continue, son vide se présentait 27 % du temps au premier
 	# cycle et 37 % au deuxième — deux à trois secondes par tour avec RIEN à tirer, ce
@@ -816,12 +854,81 @@ func _leave_dive() -> void:
 ## viser et couche les pièces abattues. Un seul écrivain sur la pose (le module), comme
 ## le Harvester : deux auteurs sur une même rotation finissent par se marcher dessus.
 ## `.transform =` réassigne un type valeur — aucune allocation par image.
+## Résout les six volets, les bouche-trous du puits et le maillage du noyau.
+##
+## Nuls quand la coque est absente (tests) : l'iris est du RENDU, la mécanique du combat
+## n'en dépend pas — c'est ce qui permet de piloter le module sans 3D.
+func _bind_iris() -> void:
+	_shutters.clear()
+	_shutter_rest.clear()
+	_bore_fillers.clear()
+	_core_mesh = null
+	_core_instance = null
+	if _hull == null:
+		return
+	for i in IRIS_BLADES:
+		var blade := _hull.find_child("Shutter_%02d" % (i + 1), true, false) as Node3D
+		if blade == null:
+			push_error("[Leviathan] coque sans 'Shutter_%02d' (contrat BRIEF-0083)" % (i + 1))
+			continue
+		_shutters.append(blade)
+		_shutter_rest.append(blade.transform)
+	for i in BORE_RINGS:
+		var ring := _hull.find_child("Ring_%02d" % (i + 1), true, false) as MeshInstance3D
+		if ring != null:
+			_bore_fillers.append(ring)
+	_core_instance = _heart_node as MeshInstance3D
+	if _core_instance != null:
+		_core_mesh = _core_instance.mesh
+
+## Pose l'iris pour une ouverture donnée. **Recul PUIS glissement, jamais l'inverse.**
+##
+## ⚠️ L'ORDRE N'EST PAS UN EFFET DE STYLE, il est mesuré. Glisser avant d'être descendu
+## fait entrer le volet dans `Shell_Crescent` : la forge a relevé une marge de 0,0 mm dès
+## 300 mm de glissement à recul nul. Les deux temps sont donc strictement séquentiels.
+##
+## Le recul se fait en −Y local, c'est-à-dire vers le cœur (`Heart` vit à Y = −1,64) et
+## donc à l'opposé de la caméra, qui regarde le plan par le dessus. La direction de
+## glissement est LUE sur la pose au repos — `normalize(x, 0, z)` — et non écrite en dur :
+## un repère se mesure, il ne se convient pas (la leçon de `BRIEF-0045`).
+func _pose_iris() -> void:
+	if _shutters.is_empty():
+		return
+	var back := clampf(_shell_open / IRIS_RECOIL_SHARE, 0.0, 1.0) * IRIS_RECOIL
+	var slide := clampf((_shell_open - IRIS_RECOIL_SHARE) / (1.0 - IRIS_RECOIL_SHARE), 0.0, 1.0) * IRIS_SLIDE
+	for i in _shutters.size():
+		var rest := _shutter_rest[i]
+		var radial := Vector3(rest.origin.x, 0.0, rest.origin.z)
+		# Un volet pile sur l'axe n'a pas de direction radiale : il ne glisse pas.
+		radial = radial.normalized() if radial.length_squared() > 0.0001 else Vector3.ZERO
+		_shutters[i].transform = Transform3D(rest.basis,
+			rest.origin + Vector3(0.0, -back, 0.0) + radial * slide)
+
+## Escamote ce qui bouche le puits, dès que l'iris s'écarte vraiment.
+##
+## Voir `_bore_fillers` : sans cet escamotage, les volets s'ouvrent sur la masse du noyau
+## et l'écran ne montre aucune ouverture.
+func _pose_bore() -> void:
+	var open := _shell_open > IRIS_BORE_OPEN
+	for filler in _bore_fillers:
+		filler.visible = not open
+	if _core_instance != null:
+		_core_instance.mesh = null if open else _core_mesh
+
 func _pose_shell() -> void:
 	if _shell_ring != null:
 		var basis := _shell_ring_rest.basis * Basis(Vector3.UP, _shell_rotation)
 		var opened := _shell_ring_rest.origin + Vector3(0.0, 0.0, tuning.shell_open_offset * _shell_open)
 		_shell_ring.transform = Transform3D(basis.scaled(Vector3.ONE * (1.0 + 0.18 * _shell_open)), opened)
-	if _heart_node != null:
+	_pose_iris()
+	_pose_bore()
+	# ⚠️ PAS DE BATTEMENT QUAND LE NOYAU EST ESCAMOTE. `scale` porte sur le NŒUD `Core`, et
+	# les six volets en sont les enfants : le battement les ferait respirer de ±22 cm sur
+	# leur rayon de 1,86 m, en pleine ouverture, alors qu'il n'anime plus aucun maillage
+	# visible. Un mécanisme qui tremble ne se lit plus comme un mécanisme.
+	if _heart_node != null and _core_instance != null and _core_instance.mesh == null:
+		_heart_node.scale = Vector3.ONE
+	elif _heart_node != null:
 		# ⚠️ Le cœur ne bat QUE dans le noyau ouvert. Un cœur qui palpite au centre
 		# pendant le temps 1 attire l'œil autant que le halo de la plaque à viser, et les
 		# deux sont roses : on désignait deux cibles à la fois, dont une intouchable.
