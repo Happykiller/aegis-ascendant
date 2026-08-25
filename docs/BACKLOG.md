@@ -1,7 +1,13 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
-> Point de reprise au **2026-08-25**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
-> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **398 tests verts**.
+> Point de reprise au **2026-08-25**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → ASTEROID_FIELD →
+> FINAL_BOSS → DOCKING → VICTORY`**, **420 tests verts**.
+>
+> ⚠️ **Une phase de plus depuis ce matin.** `ASTEROID_FIELD` (**ADR-0027**) s'insère entre les deux
+> boss : la traversée qui les sépare, jouée avec les trois unités que le bestiaire avait livrées
+> sans qu'aucune rencontre ne les emploie. Elle revient sur le découpage d'`ADR-0010`, qui avait
+> *supprimé* une phase de milieu de niveau. **Lot 1 du plan livré** (la phase existe et se joue) ;
+> les lots 2 à 4 — bascule de décor, assets de survol, équilibrage — restent à faire.
 >
 > Le boss final, refondu en cycles par `ADR-0021`, a enfin été **joué** (2026-08-25) :
 > l'équilibrage est **acquis**, le grief « lancinant » ne s'est pas reproduit. Restait une
@@ -37,7 +43,7 @@ plan plus récent, **le plan gagne**.
 | Plan | Sujet | État |
 |---|---|---|
 | [`2026-08-25-bestiaire-ennemis.md`](plans/2026-08-25-bestiaire-ennemis.md) | Familles d'ennemis, coques et comportements — **repris** après la fin du régime à deux sessions | à appliquer |
-| [`2026-08-25-phase-inter-boss-survol-de-lune.md`](plans/2026-08-25-phase-inter-boss-survol-de-lune.md) | Une phase de jeu entre les deux boss : unités du bestiaire + survol de lune | à appliquer — **rien commencé** |
+| [`2026-08-25-phase-inter-boss-survol-de-lune.md`](plans/2026-08-25-phase-inter-boss-survol-de-lune.md) | Une phase de jeu entre les deux boss : unités du bestiaire + survol de lune | **lot 1 livré** (ADR-0027) ; lots 2-4 à faire |
 
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
@@ -225,9 +231,15 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 
 ## P0 — Rendre la démo irréprochable
 
-- [ ] **Contenu de la phase chasseur** — une seule vague de ~10 Needle Scouts puis mini-boss.
-  Ajouter 1-2 vagues et une **2ᵉ famille d'ennemis** pour 2-3 min de jeu et laisser la puissance
-  monter à 5. (ex-tâches **H5** / **H6** ; `TASKS_HORIZONTAL.md` est archivé — H5 est livré, le Crescent Interceptor existe).
+- [x] **Contenu de la phase chasseur** — une **seconde vague** existe : le champ d'astéroïdes
+  (`resources/encounters/wave_asteroid_field_01.tres`, 36 unités sur 40 s), inséré entre les deux
+  boss par **ADR-0027** et joué avec Choir Mine / Null Maw / Leech Drone. L'arc gagne 45 à 60 s et
+  passe la cible « 2-3 min de jeu ». ⚠️ Reste ouvert : **laisser la puissance monter à 5** — le
+  champ ne distribue aucun bonus de puissance particulier, c'est le `PickupManager` qui décide.
+  (ex-tâches **H5** / **H6** ; `TASKS_HORIZONTAL.md` est archivé.)
+- [ ] **Rythme du champ d'astéroïdes** — la composition de la vague est une **hypothèse de
+  conception**, pas une mesure : densité des barrages, superposition puits/sangsues, pic à 32 s.
+  Elle se juge en jouant (`ADR-0019`). C'est le lot 4 du plan.
 - [ ] **Écran titre** — texte nu. Le `title_backdrop.svg` et les emblèmes de faction de la forge
   **ne sont pas utilisés**. (ex-tâche **H3**).
 - [x] **Écrans** — **pause** et **victoire / rapport** reforgés dans le langage d'interface de
@@ -239,6 +251,10 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
 - [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».
   Outil : sous-agent `balance-prober` (rend la chronologie de l'arc).
+- [ ] **Décor du champ d'astéroïdes** — lots 2 et 3 du plan inter-boss : la bascule de décor
+  (nébuleuse masquée, survol révélé, doublure procédurale) **puis** les assets de forge, lune et
+  astéroïdes. ⚠️ Dans cet ordre : c'est la mesure GPU du lot 2 qui dit ce que le lot 3 peut se
+  payer. Il reste moins de 4 ms sur les 16,67 (13,05 ms mesurés fond complet).
 
 ## P0 bis — Dettes du chantier du boss (clos le 2026-08-25)
 

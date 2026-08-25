@@ -1,8 +1,8 @@
 ---
-titre: L'arc d'une partie — cinq phases, un seul vaisseau
+titre: L'arc d'une partie — six phases, un seul vaisseau
 type: daf
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-25
 ---
 
 # L'arc d'une partie
@@ -13,20 +13,35 @@ Le joueur **pilote le chasseur Specter-9 du début à la fin**. Aucune transform
 changement de véhicule en cours de niveau. C'est la décision **ADR-0010** (2026-07-19), prise après
 usage : le changement de vaisseau cassait le flow et la lisibilité de l'arme du joueur.
 
-## Les cinq phases
+## Les six phases
 
 ```
-FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS → DOCKING → VICTORY
+FIGHTER_WAVES → MINI_BOSS → ASTEROID_FIELD → FINAL_BOSS → DOCKING → VICTORY
 ```
 
-Vérifié dans le code : `scripts/gameplay/graybox_root.gd` (`enum Phase`, ligne 43). Le niveau entier
+Vérifié dans le code : `scripts/gameplay/graybox_root.gd` (`enum Phase`). Le niveau entier
 est piloté par ce director, en dur — un `EncounterDirector` data-driven reste à écrire
 (`docs/BACKLOG.md`, P1).
+
+`ASTEROID_FIELD` est la dernière arrivée (**ADR-0027**, 2026-08-25) : la traversée qui sépare les
+deux boss, jouée avec les trois unités que le bestiaire avait livrées sans qu'aucune rencontre ne
+les emploie (Choir Mine, Null Maw, Leech Drone). Elle dure 45 à 60 s. Son décor propre — survol de
+lune et astéroïdes — reste à faire : il **remplacera** le fond spatial au lieu de s'y ajouter,
+faute de budget GPU (voir l'ADR).
+
+⚠️ **`MusicContext.LevelPhase` reflète `Phase` PAR VALEUR.** Les deux enums se modifient ensemble ;
+`tests/unit/test_music_director.gd` est le seul garde-fou et il est là pour ça.
 
 À ne pas confondre avec la machine d'états **applicative** `GameState.State`
 (`BOOT, LOADING, FIGHTER_COMBAT, GAME_OVER, VICTORY, CODEX`, dans `scripts/core/game_state.gd`) :
 elle gouverne les écrans, pas la progression du niveau. Les cinq phases ci-dessus se déroulent
 **entièrement à l'intérieur** de `FIGHTER_COMBAT`.
+
+Chaque phase a son `_start_*()` dans le director, et c'est la fin de la précédente qui l'appelle :
+la vague nettoyée ouvre sur le mini-boss, sa défaite sur le champ d'astéroïdes, le champ nettoyé
+sur le boss final. Deux `WaveSpawner` distincts portent les deux vagues — le second est monté et
+**peuplé** au même instant que le premier, mais dort jusqu'à `begin()` (spec §26.1 : zéro
+`instantiate()` en cours de partie).
 
 Le **docking est la séquence de clôture**, pas un milieu de niveau : la citadelle arrive après la
 défaite du boss final, le chasseur s'y ancre en autopilote, puis l'écran de victoire.

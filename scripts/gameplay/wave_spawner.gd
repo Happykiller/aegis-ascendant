@@ -15,6 +15,12 @@ signal progress_changed(ratio: float)
 ## gravitationnels — ADR-0022). Facultatif : laissé vide, la vague se comporte
 ## exactement comme avant, les trajectoires restant des fonctions du seul âge.
 @export var player_path: NodePath
+## Une vague qui démarre au montage, ou une vague qui attend son tour. Les deux
+## préallouent leur pool dans `_ready()` — c'est la seule chose que la spec §26.1
+## exige, et c'est ce qui permet à une SECONDE vague d'exister sans qu'un seul
+## `instantiate()` ne tombe pendant la partie (ADR-0027). `false` : le spawner est
+## monté, peuplé, et dort jusqu'à `begin()`.
+@export var autostart: bool = true
 
 var _clock: float = 0.0
 var _next_spawn: int = 0
@@ -44,7 +50,22 @@ func _ready() -> void:
 		add_child(enemy)               # _ready runs now: enemy starts deactivated
 		enemy.setup(bullet_manager, player)
 		_pool.append(enemy)
-	print("[WaveSpawner] pool ready: %d enemies" % _pool.size())
+	print("[WaveSpawner] pool ready: %d enemies (%s)" % [_pool.size(), name])
+	if not autostart:
+		set_physics_process(false)
+
+## Démarre une vague montée en veille (`autostart = false`). L'horloge part de zéro
+## ici et pas au montage : les `time_offset` de la WaveData se comptent depuis
+## l'entrée en phase, pas depuis le début du niveau.
+func begin() -> void:
+	if _pool.is_empty():
+		# La vague n'a pas passé sa validation : l'erreur est déjà remontée dans
+		# `_ready()`. On ne bloque pas l'arc dessus — un niveau qui ne s'enchaîne
+		# plus cacherait la panne derrière un symptôme sans rapport.
+		push_error("[WaveSpawner] begin() on an empty pool: %s" % name)
+		wave_cleared.emit()
+		return
+	set_physics_process(true)
 
 ## Pure scheduling, testable headless: flattens entries into per-enemy spawn
 ## times/positions, sorted by time. Returns {times, positions, entries}.
@@ -79,5 +100,7 @@ func _physics_process(delta: float) -> void:
 			return
 	_cleared = true
 	set_physics_process(false)
-	print("[WaveSpawner] wave_cleared")
+	# Le niveau porte DEUX vagues (ADR-0027) : sans le nom du nœud, le journal ne dit
+	# pas laquelle vient de se clore.
+	print("[WaveSpawner] wave_cleared (%s)" % name)
 	wave_cleared.emit()

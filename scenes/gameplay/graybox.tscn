@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/graybox_root.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/fx/retro_post.gd" id="99_retro_post"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/projectiles/bullet_manager.tscn" id="3_bullets"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="4_spawner"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_graybox_01.tres" id="5_wave"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_asteroid_field_01.tres" id="16_field"]
 [ext_resource type="Environment" path="res://resources/graphics/space_environment.tres" id="6_env"]
 [ext_resource type="PackedScene" path="res://scenes/vfx/space_backdrop.tscn" id="7_backdrop"]
 [ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
@@ -100,6 +101,17 @@ script = ExtResource("4_spawner")
 wave = ExtResource("5_wave")
 bullet_manager_path = NodePath("../BulletManager")
 player_path = NodePath("../PlayerFighter")
+
+; Champ d'asteroides (ADR-0027) : un SECOND spawner, monte et peuple au meme
+; instant que le premier, mais endormi jusqu'a `begin()`. C'est ce qui permet
+; a la phase entre les deux boss d'exister sans un seul instantiate() en cours
+; de partie (spec 26.1) — et ca ne touche pas a la classe qui marche deja.
+[node name="AsteroidFieldSpawner" type="Node" parent="."]
+script = ExtResource("4_spawner")
+wave = ExtResource("16_field")
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+autostart = false
 
 [node name="PickupManager" type="Node3D" parent="."]
 script = ExtResource("12_pickups")

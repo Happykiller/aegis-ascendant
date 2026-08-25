@@ -37,7 +37,8 @@ const CUES: Dictionary = {
 	State.VICTORY: &"victory",
 }
 
-## Wave progress at which the fighter section escalates.
+## Wave progress at which the fighter section escalates — et, au même seuil, la
+## traversée du champ d'astéroïdes (ADR-0027).
 const _SKIRMISH_AT := 0.25
 const _FLEET_BATTLE_AT := 0.70
 ## Boss health under which the fight tips into its second half, then into the finale.
@@ -73,6 +74,17 @@ static func resolve(ctx: MusicContext) -> int:
 				return State.SKIRMISH
 			return State.FLEET_BATTLE
 		MusicContext.LevelPhase.MINI_BOSS:
+			return State.FLEET_BATTLE
+		MusicContext.LevelPhase.ASTEROID_FIELD:
+			# La traversée entre les deux boss (ADR-0027). Elle ouvre sur Fortress
+			# Awakening — un lit qui existait, rendu et bouclé, mais que plus aucune
+			# phase ne réclamait depuis qu'ADR-0010 a supprimé la forteresse. Ses
+			# « impacts espacés » à 108 BPM sont exactement ce que la phase raconte :
+			# on traverse, on ne charge pas.
+			# Puis la pression remonte sur la fin de vague, au MÊME seuil que la
+			# section de chasseurs : le boss final ne doit pas s'ouvrir sur un calme.
+			if ctx.wave_progress < _FLEET_BATTLE_AT:
+				return State.FORTRESS_AWAKENING
 			return State.FLEET_BATTLE
 		MusicContext.LevelPhase.FINAL_BOSS:
 			if ctx.boss_health_ratio <= _FINAL_CHARGE_AT:

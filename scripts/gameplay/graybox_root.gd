@@ -1,7 +1,7 @@
 extends Node3D
 ## Level director: sequences the level's phases (spec §5, §6, §37) and wires the
 ## player, HUD, VFX, camera, pickups and encounters together.
-##   FIGHTER_WAVES -> MINI_BOSS -> FINAL_BOSS -> DOCKING -> VICTORY
+##   FIGHTER_WAVES -> MINI_BOSS -> ASTEROID_FIELD -> FINAL_BOSS -> DOCKING -> VICTORY
 ## Le joueur reste le chasseur de bout en bout (ADR-0010) : plus de transformation en
 ## forteresse ; le docking clot le niveau apres la defaite du boss final.
 
@@ -41,7 +41,11 @@ const _SHIELD_IMPACT_TINT := Color(0.247, 0.851, 0.91)
 const _ALARM_TRIGGER_RATIO := 0.25
 const _ALARM_REARM_RATIO := 0.35
 
-enum Phase { FIGHTER_WAVES, MINI_BOSS, FINAL_BOSS, DOCKING, VICTORY }
+## ⚠️ `MusicContext.LevelPhase` REFLÈTE cet enum PAR VALEUR, et `test_music_director.gd`
+## le vérifie : les deux se modifient ensemble ou la musique se décale en silence.
+## `ASTEROID_FIELD` s'insère entre les deux boss (ADR-0027) — la traversée qui sépare
+## le Harvester du Leviathan.
+enum Phase { FIGHTER_WAVES, MINI_BOSS, ASTEROID_FIELD, FINAL_BOSS, DOCKING, VICTORY }
 
 ## Temps laissé à la mort du dernier chasseur avant que le rapport ne se lève. L'explosion
 ## dure ~0,7 s (VfxExplosion.HEAVY) et la secousse doit retomber : couper plus tôt
@@ -54,6 +58,9 @@ var _defeated: bool = false
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
+## La vague du champ d'astéroïdes (ADR-0027) : montée et peuplée au même instant que
+## la première, mais endormie. C'est `_start_asteroid_field()` qui la réveille.
+@onready var _field_spawner: WaveSpawner = get_node_or_null("AsteroidFieldSpawner")
 @onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
 @onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
@@ -70,6 +77,8 @@ var _final_boss: BossController
 ## Le module du boss final, gardé pour lire sa progression de combat (la musique la suit).
 var _leviathan: LeviathanCombat
 var _alarm_armed: bool = true
+## `--no-wave` : aucune vague ne se joue, ni celle des chasseurs ni celle du champ.
+var _waves_disabled: bool = false
 ## One instance for the whole run: resolving the musical state must not allocate.
 var _music: MusicContext = MusicContext.new()
 var _engine_running: bool = false
@@ -86,6 +95,12 @@ func _ready() -> void:
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 		_wave_spawner.progress_changed.connect(_on_wave_progress)
+	# Deux vagues, deux fins distinctes : celle des chasseurs ouvre sur le mini-boss,
+	# celle du champ sur le boss final. La progression, elle, alimente la MÊME jauge
+	# musicale — c'est toujours « où en est la vague en cours ».
+	if _field_spawner != null:
+		_field_spawner.wave_cleared.connect(_on_asteroid_field_cleared)
+		_field_spawner.progress_changed.connect(_on_wave_progress)
 	if _player != null:
 		_player.hit_taken.connect(_on_player_hit)
 		_player.destroyed_at.connect(_on_player_destroyed)
@@ -114,8 +129,13 @@ func _ready() -> void:
 		var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
 		if we != null and we.environment != null:
 			we.environment.glow_enabled = false
-	if "--no-wave" in args and _wave_spawner != null:
-		_wave_spawner.set_physics_process(false)
+	if "--no-wave" in args:
+		# Coupe les DEUX vagues : le champ d'astéroïdes enchaînerait sinon sur le boss
+		# final au premier `begin()`, et la bissection perf mesurerait autre chose que
+		# ce qu'elle croit.
+		_waves_disabled = true
+		if _wave_spawner != null:
+			_wave_spawner.set_physics_process(false)
 	# L'écran de victoire ne s'atteignait qu'en jouant l'arc entier — donc en pratique
 	# il ne se REGARDAIT jamais, et il a vécu longtemps avec la police par défaut sans
 	# que personne le voie (ADR-0006). Le score est semé pour que le rapport s'affiche
@@ -143,6 +163,10 @@ func _ready() -> void:
 		_pickups.spawn(Pickup.Kind.SCORE, Vector2(3.0, 0.0))
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
+	elif "--skip-to-field" in args:
+		if _wave_spawner != null:
+			_wave_spawner.set_physics_process(false)
+		_start_asteroid_field()
 	elif "--skip-to-final" in args:
 		if _wave_spawner != null:
 			_wave_spawner.set_physics_process(false)
@@ -324,6 +348,38 @@ func _on_mini_boss_defeated(world_position: Vector3) -> void:
 		_boss.queue_free()
 		_boss = null
 	print("[Level] mini-boss defeated — score %d" % _game_state.score)
+	_start_asteroid_field()
+
+# --- Champ d'astéroïdes (ADR-0027) -------------------------------------------
+#
+# La traversée qui sépare les deux boss. Aucun boss, aucun décor dédié à ce stade :
+# une seconde vague, jouée avec les trois unités que le bestiaire avait livrées sans
+# qu'aucune rencontre ne les emploie. Le décor viendra par-dessus (lot 2 du plan),
+# sans rien changer à cet enchaînement.
+
+func _start_asteroid_field() -> void:
+	# AVANT `_set_phase` : celui-ci résout déjà la musique, et il la résoudrait sur la
+	# progression de la vague PRÉCÉDENTE — donc sur Fleet Battle, à 1,0, alors que la
+	# traversée est censée s'ouvrir sur son propre lit.
+	_music.wave_progress = 0.0
+	_set_phase(Phase.ASTEROID_FIELD)
+	print("[Level] ASTEROID FIELD")
+	if _wave_spawner != null:
+		_wave_spawner.set_physics_process(false)
+	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
+	if _field_spawner == null or _waves_disabled:
+		# Rien à traverser. On le DIT et on enchaîne : un arc qui s'arrête sur un nœud
+		# absent se lit comme un boss qui ne vient pas, et se cherche au mauvais endroit.
+		if _field_spawner == null:
+			push_error("[Level] AsteroidFieldSpawner missing — straight to the final boss")
+		_start_final_boss()
+		return
+	_field_spawner.begin()
+
+func _on_asteroid_field_cleared() -> void:
+	if _phase != Phase.ASTEROID_FIELD:
+		return
+	print("[Level] asteroid field cleared — final boss incoming")
 	_start_final_boss()
 
 # --- Final boss + docking close (ADR-0010; docking was the mid-level §6.5) ----

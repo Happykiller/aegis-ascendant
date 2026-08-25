@@ -1,0 +1,213 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=26 format=3]
+
+; ============================================================================
+; Champ d'astéroïdes — la traversée entre les deux boss (ADR-0027).
+;
+; Elle emploie les TROIS unités du bestiaire qui n'apparaissaient dans aucune
+; vague : Choir Mine, Null Maw, Leech Drone. Elles ne se remplacent pas l'une
+; l'autre, elles se superposent — c'est tout l'intérêt de les jouer ensemble :
+;
+;   Choir Mine   posée, elle NE POURSUIT PAS : le barrage est ce qu'on traverse.
+;   Null Maw     ne blesse pas : elle mange l'esquive. Une zone interdite.
+;   Leech Drone  poursuit et FREINE : elle punit celui qui reste au milieu.
+;
+; ⚠️ DURÉE. Les mines et les puits dérivent à 1,1 u/s depuis y = 9,5, et ne
+; quittent le champ qu'à y = -9,5 (BOUNDS + DESPAWN_MARGIN) : 17,3 s de
+; présence si le joueur n'en détruit aucun. Le dernier barrage part donc à
+; 37 s et le dernier spawn à 40,1 s, ce qui borne la phase entre ~42 s (tout
+; nettoyé) et ~55 s (rien nettoyé). Cible tenue : 45-60 s.
+;
+; ⚠️ DENSITÉ. Une mine tire 14 projectiles à 2,2 u. Les colonnes du rideau
+; central sont ÉCHELONNÉES de 1,5 s les unes des autres, pas simultanées :
+; ce qui borne la population instantanée à ~8 mines, et laisse au joueur le
+; temps de lire un couloir avant que le suivant ne se ferme.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/choir_mine.tscn" id="3_mine"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/null_maw.tscn" id="4_maw"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/leech_drone.tscn" id="5_leech"]
+
+; --- Entrée dans le champ : trois colonnes de mines, largement ouvertes -------
+; On apprend la mine avant d'en subir un rideau : trois couloirs de 8 unités,
+; deux mines par colonne à 3 s d'écart. Rien ici n'oblige à tirer.
+[sub_resource type="Resource" id="m1"]
+script = ExtResource("2_entry")
+time_offset = 1.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(-8, 9.5)
+count = 2
+spacing = 3.0
+
+[sub_resource type="Resource" id="m2"]
+script = ExtResource("2_entry")
+time_offset = 2.5
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(0, 9.5)
+count = 2
+spacing = 3.0
+
+[sub_resource type="Resource" id="m3"]
+script = ExtResource("2_entry")
+time_offset = 4.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(8, 9.5)
+count = 2
+spacing = 3.0
+
+; --- Les deux puits : le centre se ferme --------------------------------------
+; pull_radius = 4,5 chacun. Posés à x = ±5, ils ne laissent qu'une unité de
+; couloir au centre — mais les bords (|x| > 9,5) restent entièrement libres.
+; Le joueur a le choix : payer l'aspiration, ou faire le tour.
+[sub_resource type="Resource" id="w1"]
+script = ExtResource("2_entry")
+time_offset = 10.0
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(-5, 9.5)
+count = 1
+spacing = 0.0
+
+[sub_resource type="Resource" id="w2"]
+script = ExtResource("2_entry")
+time_offset = 11.5
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(5, 9.5)
+count = 1
+spacing = 0.0
+
+; --- Et c'est là que les sangsues arrivent par les bords ----------------------
+; Exactement là où le puits pousse le joueur à se réfugier. La superposition
+; est le sujet de la phase, pas un hasard de timeline.
+[sub_resource type="Resource" id="l1"]
+script = ExtResource("2_entry")
+time_offset = 13.0
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(-10, 9.5)
+count = 2
+spacing = 1.2
+
+[sub_resource type="Resource" id="l2"]
+script = ExtResource("2_entry")
+time_offset = 15.0
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(10, 9.5)
+count = 2
+spacing = 1.2
+
+; --- Le rideau : quatre colonnes, échelonnées de 1,5 s ------------------------
+; Elles se ferment de la gauche vers la droite. Un joueur qui suit le mouvement
+; se retrouve poussé vers le bord droit — où l'attend l3.
+[sub_resource type="Resource" id="m4"]
+script = ExtResource("2_entry")
+time_offset = 20.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(-11, 9.5)
+count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="m5"]
+script = ExtResource("2_entry")
+time_offset = 21.5
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(-4, 9.5)
+count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="m6"]
+script = ExtResource("2_entry")
+time_offset = 23.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(4, 9.5)
+count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="m7"]
+script = ExtResource("2_entry")
+time_offset = 24.5
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(11, 9.5)
+count = 2
+spacing = 1.4
+
+[sub_resource type="Resource" id="l3"]
+script = ExtResource("2_entry")
+time_offset = 26.0
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(0, 9.5)
+count = 3
+spacing = 1.0
+
+; --- Tenaille finale : deux puits en pince, et de quoi les traverser ----------
+[sub_resource type="Resource" id="w3"]
+script = ExtResource("2_entry")
+time_offset = 30.0
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(-8, 9.5)
+count = 1
+spacing = 0.0
+
+[sub_resource type="Resource" id="w4"]
+script = ExtResource("2_entry")
+time_offset = 30.0
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(8, 9.5)
+count = 1
+spacing = 0.0
+
+; Le couloir central est le seul chemin que les deux puits laissent ouvert —
+; ces deux mines le referment. C'est le pic de la phase.
+[sub_resource type="Resource" id="m8"]
+script = ExtResource("2_entry")
+time_offset = 32.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(0, 9.5)
+count = 2
+spacing = 1.6
+
+[sub_resource type="Resource" id="l4"]
+script = ExtResource("2_entry")
+time_offset = 34.0
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(-12, 9.5)
+count = 2
+spacing = 0.9
+
+[sub_resource type="Resource" id="l5"]
+script = ExtResource("2_entry")
+time_offset = 35.0
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(12, 9.5)
+count = 2
+spacing = 0.9
+
+; --- Sortie du champ ----------------------------------------------------------
+; Deux dernières mines encadrent la sortie, puis la meute part. Rien après
+; 40,1 s : ce qui reste à l'écran est ce que le joueur a choisi de laisser.
+[sub_resource type="Resource" id="m9"]
+script = ExtResource("2_entry")
+time_offset = 37.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(-6, 9.5)
+count = 1
+spacing = 0.0
+
+[sub_resource type="Resource" id="m10"]
+script = ExtResource("2_entry")
+time_offset = 37.0
+enemy_scene = ExtResource("3_mine")
+spawn_plane_position = Vector2(6, 9.5)
+count = 1
+spacing = 0.0
+
+[sub_resource type="Resource" id="l6"]
+script = ExtResource("2_entry")
+time_offset = 38.5
+enemy_scene = ExtResource("5_leech")
+spawn_plane_position = Vector2(0, 9.5)
+count = 3
+spacing = 0.8
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("m1"), SubResource("m2"), SubResource("m3"), SubResource("w1"), SubResource("w2"), SubResource("l1"), SubResource("l2"), SubResource("m4"), SubResource("m5"), SubResource("m6"), SubResource("m7"), SubResource("l3"), SubResource("w3"), SubResource("w4"), SubResource("m8"), SubResource("l4"), SubResource("l5"), SubResource("m9"), SubResource("m10"), SubResource("l6")]

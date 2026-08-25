@@ -3,14 +3,19 @@ titre: Une phase de jeu entre les deux boss — survol de lune et champ d'astér
 date: 2026-08-25
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: arc de jeu (graybox_root), vagues, fond spatial, assets 3D de décor
-etat: à appliquer — rien n'est commencé
+etat: lot 1 LIVRÉ (ADR-0027, 2026-08-25) ; lots 2 à 4 à appliquer
 supersede: rien. Complète docs/plans/2026-08-25-bestiaire-ennemis.md sur son point 3.1
 ---
 
 # Une phase de jeu entre les deux boss
 
 > **Rédigé le 2026-08-25** à partir de la demande de l'opérateur, et de l'état **mesuré** du
-> moteur. Rien n'est commencé : ce document est un point de départ, pas un compte-rendu.
+> moteur.
+>
+> ✅ **Lot 1 livré le 2026-08-25** — la phase existe, s'enchaîne et se joue. Voir
+> **`ADR-0027`**. Les trois décisions ouvertes en bas de page ont été **tranchées** par
+> l'opérateur : oui pour l'ADR, **45-60 s** de durée, **astéroïdes solides / lune décor**.
+> Les lots 2 à 4 restent entiers.
 
 ## Contexte — pourquoi ce chantier
 
@@ -35,6 +40,10 @@ Demande de l'opérateur, mot pour mot :
 C'est donc **du contenu**, pas de la dette : la première fois depuis longtemps.
 
 ## Ce que le moteur permet déjà — relevé, pas supposé
+
+> ⚠️ **Relevé du 2026-08-25 AVANT le lot 1.** Les deux premières lignes ne décrivent plus
+> le code : `Phase` porte désormais `ASTEROID_FIELD`, et un second `WaveSpawner` endormi
+> existe. Conservé tel quel — c'est l'état sur lequel la conception a été faite.
 
 | Élément | État |
 |---|---|
@@ -75,7 +84,7 @@ bascule existe déjà — `_show_core_interior()` masque le fond et le boss à l
 
 ## Les lots, dans l'ordre
 
-### Lot 1 — La phase existe et se joue *(aucun asset requis)*
+### Lot 1 — La phase existe et se joue *(aucun asset requis)* — ✅ **LIVRÉ**
 
 Le contenu avant la beauté : une phase jouable avec le décor actuel, pour valider le **rythme**
 avant d'investir dans les assets.
@@ -98,6 +107,22 @@ avant d'investir dans les assets.
 **Vérifiable** : `./scripts/check.sh` vert, puis `./scripts/play.sh` — le journal doit montrer
 `MINI_BOSS → ASTEROID_FIELD → FINAL_BOSS` et `[WaveSpawner] pool ready` **deux fois, au
 montage seulement**. Une seconde occurrence en cours de vague serait une réallocation.
+
+#### Ce qui a été fait, et les écarts au plan
+
+| Point du plan | Livré |
+|---|---|
+| `ASTEROID_FIELD` entre `MINI_BOSS` et `FINAL_BOSS` | ✅ dans les **deux** enums, gardés alignés par `test_music_director.gd` |
+| `_start_asteroid_field()` sur le modèle de `_start_mini_boss()` | ✅ + `_on_asteroid_field_cleared()` qui enchaîne sur le boss final |
+| Seconde `WaveData` avec les trois unités | ✅ `resources/encounters/wave_asteroid_field_01.tres` — 36 unités, 20 entrées, dernier spawn à 40,1 s |
+| Second `WaveSpawner` endormi | ✅ `@export var autostart` + `begin()`. La classe existante n'est qu'**étendue** |
+| Entrée dans `MusicDirector` | ✅ **`FORTRESS_AWAKENING` réemployé** — écart au plan, qui ne disait pas lequel : ce lit était rendu et **orphelin** depuis qu'`ADR-0010` a supprimé la forteresse. Un test neuf refuse désormais qu'un cue rendu n'ait plus aucune phase pour l'atteindre |
+| — | ➕ `--skip-to-field` ; `--no-wave` coupe les **deux** vagues et laisse l'arc passer, au lieu de bloquer sur une phase qui ne finit jamais |
+| — | ➕ `tests/unit/test_asteroid_field_wave.gd` : la borne de durée est **calculée** depuis les vitesses réelles, pas affirmée en commentaire |
+
+⚠️ **La durée réelle n'est pas le dernier spawn.** Les mines et les puits dérivent à 1,1 u/s
+et mettent **17,3 s** à traverser le champ : la phase va de ~42 s (joueur qui nettoie tout) à
+~54 s (joueur qui ne détruit rien). C'est ce trajet que le test borne.
 
 ### Lot 2 — Le décor bascule *(aucun asset non plus)*
 
@@ -135,16 +160,18 @@ de 2,46 m, et rien ne l'avait signalé.
 La phase change la durée de l'arc et la montée en puissance. Elle se juge en jouant, pas au
 journal. Le Shield Carrier (`BRIEF-0046`, prêt) trouverait ici son emploi naturel.
 
-## Ce qui demande une décision de l'opérateur
+## Ce qui demandait une décision de l'opérateur — ✅ **tranché le 2026-08-25**
 
-1. **Un ADR est-il requis ?** L'arc est acté par `ADR-0010` (« un seul vaisseau, appontage
-   final ») qui avait **supprimé** une phase. En rajouter une le modifie : à mon sens oui, un
-   ADR court, au moment du lot 1.
-2. **Combien de temps doit durer la phase ?** Le P0 vise « 2-3 min de jeu » pour tout l'arc ;
-   le boss final fait déjà ~40 s.
-3. **La lune est-elle décor pur, ou objet de gameplay ?** Le plan ci-dessus la traite comme du
-   **décor** — aucune collision, aucune hitbox. Un survol dont on peut heurter le relief est un
-   autre jeu, et un autre chantier.
+1. **Un ADR est-il requis ?** → **Oui.** `ADR-0027`, écrit au lot 1.
+2. **Combien de temps doit durer la phase ?** → **45 à 60 s**, contre les ~40 s du boss final.
+   Encodé comme borne dans `test_asteroid_field_wave.gd`.
+3. **La lune est-elle décor pur, ou objet de gameplay ?** → **Mixte** : les **astéroïdes
+   seront solides** (quelques rochers proches, obstacles à éviter), la **lune reste du décor**
+   — ni collision ni hitbox sur la surface survolée.
+   ⚠️ Cet arbitrage porte sur les **lots 2-3** et n'a rien changé au lot 1. Il ajoute au lot 3
+   un sujet que le plan n'avait pas : des astéroïdes de premier plan qui **collisionnent**
+   sont des entités de gameplay, pas du décor — donc une hitbox, un pooling, et un
+   équilibrage. À traiter comme tel au moment du brief.
 
 ## Vérification, de bout en bout
 

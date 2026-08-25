@@ -15,6 +15,7 @@ func test_level_phases_stay_aligned_with_the_director() -> void:
 	# every state resolution silently shifts — catch it here instead of in the mix.
 	assert_eq(MusicContext.LevelPhase.FIGHTER_WAVES, GrayboxRoot.Phase.FIGHTER_WAVES, "FIGHTER_WAVES")
 	assert_eq(MusicContext.LevelPhase.MINI_BOSS, GrayboxRoot.Phase.MINI_BOSS, "MINI_BOSS")
+	assert_eq(MusicContext.LevelPhase.ASTEROID_FIELD, GrayboxRoot.Phase.ASTEROID_FIELD, "ASTEROID_FIELD")
 	assert_eq(MusicContext.LevelPhase.FINAL_BOSS, GrayboxRoot.Phase.FINAL_BOSS, "FINAL_BOSS")
 	assert_eq(MusicContext.LevelPhase.DOCKING, GrayboxRoot.Phase.DOCKING, "DOCKING")
 	assert_eq(MusicContext.LevelPhase.VICTORY, GrayboxRoot.Phase.VICTORY, "VICTORY")
@@ -31,6 +32,38 @@ func test_fighter_waves_escalate_with_progress() -> void:
 func test_mini_boss_keeps_fleet_battle() -> void:
 	assert_eq(MusicDirector.resolve(_ctx(MusicContext.LevelPhase.MINI_BOSS)),
 		MusicDirector.State.FLEET_BATTLE, "mini-boss shares the Fleet Battle bed")
+
+func test_the_asteroid_field_opens_on_its_own_bed_then_tightens() -> void:
+	# La traversée entre les deux boss (ADR-0027). Elle réemploie Fortress Awakening,
+	# rendu depuis 2026-07-12 et orphelin depuis qu'ADR-0010 a supprimé la forteresse.
+	var ctx := _ctx(MusicContext.LevelPhase.ASTEROID_FIELD)
+	ctx.wave_progress = 0.0
+	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.FORTRESS_AWAKENING,
+		"la traversée s'ouvre sur son propre lit")
+	ctx.wave_progress = 0.5
+	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.FORTRESS_AWAKENING,
+		"elle le tient sur toute la première moitié")
+	ctx.wave_progress = 0.9
+	assert_eq(MusicDirector.resolve(ctx), MusicDirector.State.FLEET_BATTLE,
+		"la pression remonte avant le boss final")
+
+func test_every_musical_bed_is_reachable_from_a_phase() -> void:
+	# Fortress Awakening avait une piste rendue, bouclée et payée — et plus AUCUNE
+	# phase ne la réclamait depuis ADR-0010. Personne ne l'avait vu, parce qu'un cue
+	# orphelin ne casse rien : il ne joue simplement jamais. Ce test le dirait.
+	var reached := {}
+	for phase in MusicContext.LevelPhase.values():
+		var ctx := _ctx(phase)
+		for progress in [0.0, 0.3, 0.6, 0.9, 1.0]:
+			ctx.wave_progress = progress
+			ctx.boss_health_ratio = progress
+			ctx.hostiles_clear = progress > 0.5
+			reached[MusicDirector.resolve(ctx)] = true
+	for state in MusicDirector.CUES:
+		if state == MusicDirector.State.TITLE:
+			continue # revendiqué par l'écran-titre, jamais résolu depuis un combat
+		assert_true(reached.has(state),
+			"l'état %d a un cue mais aucune phase ne l'atteint" % state)
 
 func test_docking_is_the_closing_bed() -> void:
 	assert_eq(MusicDirector.resolve(_ctx(MusicContext.LevelPhase.DOCKING)),
