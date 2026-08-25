@@ -199,6 +199,49 @@ func test_a_missed_dive_costs_a_cycle_but_never_the_fight() -> void:
 
 # --- La plongee -----------------------------------------------------------
 
+func test_the_flux_follows_the_dive_anchor_not_the_boss_body() -> void:
+	# ⚠️ LE DEFAUT QUE CETTE GARDE EMPECHE. Depuis que la plongee bascule vers une zone
+	# dediee, le boss reste DEHORS : sa coque n'est plus la ou se trouve le joueur. Laisser
+	# le flux au centre du corps du boss le posait hors de l'arene interieure — on tirerait
+	# dans le vide, sans erreur, sans test rouge, et sans que rien a l'ecran le dise.
+	var combat := _make()
+	var anchor := Vector2(3.0, -5.0)
+	combat.dive_anchor = anchor
+	_kill_armour(combat)
+	combat.tick(0.016)                                    # bascule armure -> plongee
+	combat.tick(combat.tuning.dive_enter_time + 0.02)     # entree consommee
+	# ⚠️ L'ENVELOPPE DE DERIVE N'EST PAS UN CERCLE. `_flux_offset()` rend
+	# `Vector2(cos t, sin 0,7t) * rayon` : une figure de Lissajous dont le coin atteint
+	# `sqrt(2) * rayon`, soit 2,26 m et non 1,60. Une borne posee au rayon nu echoue une
+	# fois sur deux selon l'instant du tick — un test intermittent qui accuserait le code.
+	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	var to_anchor := combat._flux_target.position - anchor
+	assert_true(to_anchor.length() <= drift + 0.01,
+		"le flux vit sur l'ancre de plongee, a sa derive pres : %.2f m" % to_anchor.length())
+	assert_true(combat._flux_target.position.length() > drift + 0.01,
+		"et surtout PAS sur le corps du boss, reste dehors")
+
+func test_without_an_anchor_the_flux_stays_on_the_boss() -> void:
+	# La valeur au repos (`Vector2.INF`) doit rendre EXACTEMENT le comportement d'avant :
+	# c'est ce qui permet aux tests, qui ne montent aucune zone, de rester comparables.
+	var combat := _make()
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	assert_true(combat._flux_target.position.length() <= drift + 0.01,
+		"sans ancre, le flux reste au corps du boss")
+
+func test_the_anchor_is_ignored_outside_the_dive() -> void:
+	# Une ancre posee trop tot ne doit pas deplacer une cible qui n'existe pas encore dans
+	# l'arene : hors plongee, la seule verite est le corps du boss.
+	var combat := _make()
+	combat.dive_anchor = Vector2(9.0, 9.0)
+	combat.tick(0.5)
+	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	assert_true(combat._flux_target.position.length() <= drift + 0.01,
+		"pendant l'armure, l'ancre ne dit rien")
+
 func test_the_flux_is_only_a_target_inside_the_core() -> void:
 	var combat := _make()
 	combat._on_flux_hit(9999.0)

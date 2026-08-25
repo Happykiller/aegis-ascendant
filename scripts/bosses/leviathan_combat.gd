@@ -566,7 +566,7 @@ func _sync_targets(origin: Vector2) -> void:
 		var a := plate.angle_at(_shell_rotation)
 		plate.target.position = origin + Vector2(cos(a), sin(a)) * plate.radius
 	if _flux_target != null:
-		_flux_target.position = origin + _flux_offset()
+		_flux_target.position = _flux_origin(origin) + _flux_offset()
 
 ## Azimut moyen des plaques encore debout, au repos — le « milieu » du croissant.
 ##
@@ -592,6 +592,23 @@ func _player_bearing(origin: Vector2) -> float:
 		return -PI * 0.5
 	var to_player := _player.plane_position - origin
 	return to_player.angle() if to_player.length_squared() > 0.01 else -PI * 0.5
+
+## Où vit le flux pendant la plongée, dans le plan de jeu.
+##
+## ⚠️ LE BOSS RESTE DEHORS QUAND LE JOUEUR ENTRE. Depuis que la plongée bascule vers une
+## zone dédiée (`CoreInterior`), la cible n'est plus au centre du corps du boss mais sur le
+## réacteur de cette zone, monté à l'origine du monde. Laisser le flux sur le boss le
+## plaçait hors de l'arène intérieure : on tirait dans le vide sans que rien ne le signale.
+##
+## `Vector2.INF` — la valeur au repos — veut dire « aucune zone montée » : on retombe alors
+## sur le corps du boss, ce qui est exactement le comportement d'avant. Les tests, qui ne
+## montent aucune zone, ne changent donc pas de régime.
+var dive_anchor: Vector2 = Vector2.INF
+
+func _flux_origin(origin: Vector2) -> Vector2:
+	if _phase != Phase.DIVE or not dive_anchor.is_finite():
+		return origin
+	return dive_anchor
 
 ## Dérive du flux dans le noyau : assez pour qu'on suive, pas assez pour qu'on cherche.
 func _flux_offset() -> Vector2:

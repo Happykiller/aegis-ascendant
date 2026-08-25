@@ -450,10 +450,16 @@ func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> voi
 ## grammaire que l'appontage — un autopilote et un cadrage — parce que le joueur l'a
 ## déjà apprise à la fin du niveau.
 
-## Le noyau ouvert, construit au vol : une sphère retournée autour du boss. Bâtie par
-## code et non posée dans `graybox.tscn` — la scène est éditée par une autre session, et
-## un `.tscn` se fusionne très mal à deux.
-var _core_chamber: MeshInstance3D
+## L'intérieur du noyau : une **zone dédiée**, montée à l'origine du monde et à l'échelle
+## du plan de jeu. Bâtie par code et non posée dans `graybox.tscn` — la scène est éditée
+## par une autre session, et un `.tscn` se fusionne très mal à deux.
+var _core_interior: CoreInterior
+## Où était le chasseur juste avant d'entrer : on l'y repose en ressortant, sans quoi il
+## réapparaît dehors à la place qu'il occupait DANS l'arène intérieure — deux repères qui
+## n'ont rien à voir.
+var _outside_plane: Vector2 = Vector2.ZERO
+## Etat du fond spatial avant l'entree, pour le rendre tel quel et non « allume ».
+var _backdrop_was_visible: bool = true
 
 func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 	_sfx(&"boss_phase_shift")
@@ -465,8 +471,12 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 		_BANNER_MAGENTA, 1.2)
 	if _hud != null:
 		_hud.set_boss_limbs(PackedStringArray())   # plus de plaques : la rangée s'éteint
-	_build_core_chamber()
+	_build_core_interior()
 	if _player != null:
+		# ⚠️ AVANT `begin_autopilot`, pas apres. L'autopilote emmene le chasseur a la gueule :
+		# relever sa position une fois dedans memoriserait le point d'aspiration, pas
+		# l'endroit d'ou le joueur est parti — et il ressortirait ailleurs qu'il n'est entre.
+		_outside_plane = _player.plane_position
 		# ⚠️ Pendant l'autopilote le chasseur est GUIDÉ, invulnérable et il ne tire pas
 		# (`player_fighter_controller.gd:133`). C'est acceptable — et voulu — pour les
 		# 1,4 s de l'entrée : le joueur regarde le corps s'ouvrir. Mais il faut lui rendre
@@ -481,11 +491,26 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 		_player.plane_lift = 2.2
 	_dive_camera(true)
 
+## ⚠️ C'EST ICI QUE L'ON CHANGE DE LIEU, et c'est tout l'objet de la refonte. Le zoom de
+## `dive_started` a fini sa course : l'écran est rempli par l'ouverture, donc la bascule
+## passe inaperçue. On masque l'extérieur, on montre l'arène, on y pose le chasseur — et
+## **la caméra revient à son cadrage normal**, parce que l'arène est bâtie à l'échelle du
+## plan de jeu. C'est ce dernier point qui règle « on perd de vue le vaisseau » : dans le
+## noyau, le jeu se lit exactement comme partout ailleurs.
 func _on_leviathan_dive_entered(_cycle: int) -> void:
 	if _player != null:
 		_player.end_autopilot()
-	if _core_chamber != null:
-		_core_chamber.visible = true
+	_show_core_interior(true)
+	if _player != null and _core_interior != null:
+		_player.plane_position = _core_interior.entry_plane_position()
+		# Dedans, le chasseur revole DANS le plan : plus besoin de le soulever pour qu'il
+		# cesse de disparaître derrière la cible, il n'y a plus de sphère devant lui.
+		_player.plane_lift = 0.0
+	# La cible suit le lieu : le flux vit désormais sur le réacteur de l'arène et non au
+	# centre du corps du boss, resté dehors.
+	if _leviathan != null and _core_interior != null:
+		_leviathan.dive_anchor = _core_interior.reactor_plane_position()
+	_dive_camera(false)
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
 	# L'éjection est une secousse, pas un fondu : on est recraché.
@@ -495,8 +520,12 @@ func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
 	if _player != null:
 		_player.end_autopilot()
 		_player.plane_lift = 0.0   # on ressort, le chasseur redescend dans le plan
+		_player.plane_position = _outside_plane
+	if _leviathan != null:
+		_leviathan.dive_anchor = Vector2.INF   # le flux redevient une affaire de boss
+	_show_core_interior(false)
 	_dive_camera(false)
-	_clear_core_chamber()
+	_clear_core_interior()
 	if not flux_down:
 		_banner("EJECTE", _BANNER_IVORY, 1.0)
 
@@ -512,64 +541,64 @@ func _on_leviathan_armour_reformed(_cycle: int, plates: int) -> void:
 ## Glisse la caméra vers le noyau, ou la ramène. ⚠️ Passe par la POSE DE REPOS du
 ## `CameraDirector` : écrire `Camera3D.transform` directement serait écrasé par le shake
 ## à l'image suivante.
+## Le zoom d'entrée : on plonge dans l'ouverture jusqu'à ce qu'elle remplisse l'écran.
+##
+## ⚠️ IL NE CADRE PLUS LA PHASE, IL LA COUVRE. Il glissait à mi-chemin du boss et y restait
+## pendant toute la plongée — d'où « on perd de vue le vaisseau qui est dans la sphère » :
+## un cadrage bâtard, ni le plan de jeu ni un gros plan. Il sert maintenant de RIDEAU : il
+## va jusqu'au bout, la bascule de lieu se fait derrière, et le cadrage normal reprend une
+## fois dedans (`dive_entered` appelle `_dive_camera(false)`).
 func _dive_camera(inside: bool) -> void:
 	var director := get_node_or_null("CameraDirector") as CameraDirector
 	if director == null:
 		return
 	if not inside:
-		director.restore_rest(0.7)
+		director.restore_rest(0.5)
 		return
 	var home := director.home_transform()
-	# ⚠️ ON CADRE LE BOSS, PAS LE CENTRE DU MONDE. Un simple rapprochement vers l'origine
-	# laissait le noyau en haut du cadre, à moitié coupé, et le chasseur hors champ —
-	# le boss combat à une douzaine d'unités devant, pas au centre. Vu en capture.
-	# L'orientation d'origine est conservée : seule la distance change, donc la lecture
-	# du plan de jeu reste la même une fois dedans.
-	# Le cadrage se règle À L'ŒIL, en capture : deux essais l'encadrent. Viser le centre du
-	# monde laissait le noyau coupé en haut ; se poser à l'aplomb du boss le renvoyait en
-	# bas de l'écran. On glisse donc À MI-CHEMIN vers lui, en se rapprochant du plan.
 	var focus := _final_boss.global_position if _final_boss != null else Vector3.ZERO
+	# On va CHERCHER la gueule, et on s'en approche assez pour qu'elle déborde du cadre.
+	# La descente en Y est ce qui donne la plongée ; l'orientation d'origine est conservée
+	# pour que le plan de jeu reste lisible jusqu'au dernier instant.
+	var enter := _leviathan.tuning.dive_enter_time if _leviathan != null and _leviathan.tuning != null else 1.4
 	director.push_rest(Transform3D(home.basis, Vector3(
-		focus.x * 0.5,
-		home.origin.y * 0.58,
-		focus.z * 0.38 + home.origin.z * 0.58)), 1.2)
+		focus.x,
+		home.origin.y * 0.22,
+		focus.z + (home.origin.z - focus.z) * 0.18)), maxf(enter - 0.15, 0.2))
 
-func _build_core_chamber() -> void:
-	if _core_chamber != null or _final_boss == null or _leviathan == null:
+func _build_core_interior() -> void:
+	if _core_interior != null:
 		return
-	var sphere := SphereMesh.new()
-	sphere.radius = _leviathan.tuning.chamber_radius if _leviathan.tuning != null else 7.0
-	sphere.height = sphere.radius * 2.0
-	sphere.flip_faces = true   # on la regarde de l'INTÉRIEUR
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# ⚠️ LA CHAMBRE RECULE POUR QUE LA CIBLE AVANCE. Elle était rouge-violet saturé
-	# (R−G 41,9), le flux aussi (31,5) : dix points d'écart, donc aucun contraste de teinte
-	# entre ce qu'il faut tirer et la pièce où l'on se trouve. Elle passe à un violet
-	# profond et DÉSATURÉ, très sombre — elle délimite le lieu, elle ne le décore plus.
-	# Le flux, lui, vire au blanc chaud (`_flux_glow` dans le module).
-	material.albedo_color = Color(0.09, 0.05, 0.12)
-	material.emission_enabled = true
-	material.emission = Color(0.20, 0.10, 0.26)
-	material.emission_energy_multiplier = 0.35
-	# ⚠️ SURTOUT PAS `CULL_DISABLED`. Avec les faces retournées, seules les faces
-	# INTERNES doivent être rendues : la caméra reste dehors, elle regarde donc le fond
-	# de la sphère par son ouverture, et le boss comme le chasseur restent visibles
-	# devant. En rendant les deux faces, la coque de la sphère se referme sur le cadre —
-	# vu en capture : un disque bordeaux plein écran, plus de boss, plus de joueur.
-	material.cull_mode = BaseMaterial3D.CULL_BACK
-	_core_chamber = MeshInstance3D.new()
-	_core_chamber.mesh = sphere
-	_core_chamber.material_override = material
-	_core_chamber.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_core_chamber.visible = false   # révélée quand le chasseur est dedans
-	_final_boss.add_child(_core_chamber)
+	_core_interior = CoreInterior.new()
+	_core_interior.name = "CoreInterior"
+	add_child(_core_interior)
+	if _core_interior.is_stand_in():
+		# ⚠️ À DIRE, TOUJOURS. Une doublure procédurale qui passerait pour l'asset livré
+		# ferait juger le décor de la forge sur autre chose que la forge.
+		print("[Level] core interior: DOUBLURE procedurale (decor BRIEF-0082 absent)")
 
-func _clear_core_chamber() -> void:
-	if _core_chamber == null:
+## Bascule extérieur / intérieur. Le fond spatial et le corps du boss disparaissent : on
+## n'est plus dans l'espace, on est DANS quelque chose. C'est la moitié de la sensation.
+func _show_core_interior(inside: bool) -> void:
+	if _core_interior != null:
+		_core_interior.visible = inside
+	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
+	if backdrop != null:
+		# ⚠️ ON RESTAURE CE QU'IL Y AVAIT, pas « visible ». `--no-backdrop` eteint le fond
+		# pour juger une silhouette ; un `visible = true` au sortir de la plongee le
+		# rallumerait au milieu d'une mesure, et l'on conclurait sur deux images qui ne se
+		# comparent pas.
+		if inside:
+			_backdrop_was_visible = backdrop.visible
+		backdrop.visible = _backdrop_was_visible if not inside else false
+	if _final_boss != null:
+		_final_boss.visible = not inside
+
+func _clear_core_interior() -> void:
+	if _core_interior == null:
 		return
-	_core_chamber.queue_free()
-	_core_chamber = null
+	_core_interior.queue_free()
+	_core_interior = null
 
 ## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
 ## secousse, bascule musicale, et la rangée de pastilles reconfigurée pour les sous-cibles
