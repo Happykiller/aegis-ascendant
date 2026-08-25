@@ -272,7 +272,20 @@ func test_the_shell_opens_for_the_dive_and_closes_after() -> void:
 func test_killing_the_flux_still_plays_the_ejection() -> void:
 	# On ne coupe pas la plongee en deux : le joueur voit sa victoire, il n'est pas
 	# telepote dans l'ecran suivant.
+	#
+	# ⚠️ CE TEST TUAIT LE FLUX EN UNE SEULE PLONGEE. Le plafond par passage (ADR-0026) le
+	# rend impossible — et c'est tout son objet : trois cycles sont desormais le meilleur
+	# cas, garanti par construction. On draine donc les deux premiers passages avant de
+	# verifier ce qui est reellement en jeu ici, l'ejection du DERNIER.
 	var combat := _make()
+	for _cycle in 2:
+		_kill_armour(combat)
+		combat.tick(0.016)
+		combat.tick(combat.tuning.dive_enter_time + 0.01)
+		combat._on_flux_hit(combat.tuning.flux_health)   # sature le passage
+		combat.tick(combat.tuning.dive_time + 0.01)
+		combat.tick(combat.tuning.dive_eject_time + 0.01)
+		combat.tick(2.0)
 	_kill_armour(combat)
 	combat.tick(0.016)                                   # bascule
 	combat.tick(combat.tuning.dive_enter_time + 0.01)
@@ -564,3 +577,50 @@ func test_the_beam_extends_the_spine_instead_of_tracking_the_player() -> void:
 		assert_almost_eq(fired.dot(axis), 1.0, 0.01,
 			"epine %d : le faisceau prolonge l'axe (ecart %.1f deg)"
 				% [i, rad_to_deg(fired.angle_to(axis))])
+
+# --- Le plafond de degats par plongee (ADR-0026) ---------------------------
+
+func test_one_dive_can_never_kill_more_than_its_share() -> void:
+	# ⚠️ LE DEFAUT QUE CE PLAFOND SUPPRIME. Trois playtests ont donne 6, 4 puis 2 plongees
+	# pour le meme joueur : les degats places par passage vont de 600 a plus de 1200, et
+	# aucune valeur de flux_health ne peut satisfaire « survit a 2 » ET « tombe au 3e ».
+	# Le boss est mort en DEUX cycles, la panne exacte que l'invariant 5 nommait.
+	var combat := _make()
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	# Un tir absurde, tres au-dela de ce qu'un joueur peut placer.
+	combat._on_flux_hit(999999.0)
+	var share: float = combat.tuning.flux_damage_per_dive()
+	assert_true(combat.fight_ratio() > 0.0, "une seule plongee ne peut pas tuer le boss")
+	assert_almost_eq(combat.tuning.flux_health - share, _flux_left(combat), 0.5,
+		"une plongee retire AU PLUS un tiers de la reserve")
+
+func test_a_saturated_dive_stops_counting_but_the_fight_goes_on() -> void:
+	var combat := _make()
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat._on_flux_hit(999999.0)
+	var after_first := _flux_left(combat)
+	combat._on_flux_hit(999999.0)   # on continue de tirer : ca ne compte plus
+	assert_almost_eq(_flux_left(combat), after_first, 0.001,
+		"le flux sature ne perd plus rien pendant CE passage")
+
+func test_three_perfect_dives_are_exactly_enough() -> void:
+	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.
+	var combat := _make()
+	for cycle in 3:
+		_kill_armour(combat)
+		combat.tick(0.016)
+		combat.tick(combat.tuning.dive_enter_time + 0.02)
+		combat._on_flux_hit(999999.0)
+		combat.tick(combat.tuning.dive_time + 0.01)
+		combat.tick(combat.tuning.dive_eject_time + 0.01)
+		combat.tick(2.0)
+	assert_eq(combat.phase(), LeviathanCombat.Phase.DEFEATED,
+		"trois passages parfaits suffisent, et pas deux")
+
+## Reserve restante du flux — lue sur le module, pas recalculee.
+func _flux_left(combat: LeviathanCombat) -> float:
+	return combat._flux_health

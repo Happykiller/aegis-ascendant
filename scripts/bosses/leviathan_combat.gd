@@ -97,6 +97,8 @@ var _interlude: float = 0.0
 var _plates: Array[LeviathanPlate] = []
 var _flux_target: BulletTarget
 var _flux_health: float = 0.0
+## Dégâts déjà encaissés par le flux PENDANT la plongée en cours — le plafond d'un passage.
+var _dive_damage: float = 0.0
 var _missiles: Array[TargetableProjectile] = []
 
 ## Rotation de la coquille, en radians — le tempo du temps 1.
@@ -827,6 +829,7 @@ func _set_dive(next: Dive) -> void:
 			# et le joueur n'a aucune raison de croire qu'il l'est.
 			_flux_target.enabled = true
 			_local_damage = 0.0
+			_dive_damage = 0.0
 			_publish_structure()
 			dive_entered.emit(_cycle)
 		Dive.EJECT:
@@ -1145,11 +1148,34 @@ func _drop_spine(index: int) -> void:
 	if index < _spine_beams.size() and _spine_beams[index] != null:
 		_spine_beams[index].extinguish()
 
+## Encaissement du flux, PLAFONNE A UN PASSAGE.
+##
+## ⚠️ TROIS CYCLES NE PEUVENT PAS ETRE GARANTIS PAR UN NOMBRE DE PV, et trois playtests
+## l'ont démontré. Les dégâts réellement placés par plongée sont allés de **600 à plus de
+## 1200** pour le même joueur à la même puissance — du simple au double. Pour tomber
+## toujours au troisième passage il faudrait `flux_health > 2 × 1200` **et**
+## `flux_health ≤ 3 × 600` : c'est contradictoire, aucune valeur ne satisfait les deux.
+##
+## La refonte de la plongée en arène dédiée (`ADR-0025`) a encore doublé la mise : le
+## réacteur est droit devant le chasseur, ligne de tir dégagée, on ne le rate plus. Le
+## boss est alors tombé en **deux** cycles — la panne exacte que l'invariant 5 nommait,
+## « il meurt trop tôt et les cycles ne servent à rien ».
+##
+## On plafonne donc la casse : **au plus un tiers de la réserve par passage**. Trois
+## cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage ; mieux
+## jouer raccourcit chaque plongée sans jamais en supprimer une. Moins bien jouer en
+## ouvre une de plus, ce qui reste la sanction juste.
 func _on_flux_hit(damage: float) -> void:
 	if _phase != Phase.DIVE or _dive != Dive.INSIDE or _flux_health <= 0.0:
 		return
-	_account(damage)
-	_flux_health = maxf(_flux_health - damage, 0.0)
+	var room := maxf(tuning.flux_damage_per_dive() - _dive_damage, 0.0)
+	var applied := minf(damage, room)
+	if applied <= 0.0:
+		# Le flux est déjà saturé pour ce passage : les tirs portent, ils ne comptent plus.
+		return
+	_dive_damage += applied
+	_account(applied)
+	_flux_health = maxf(_flux_health - applied, 0.0)
 	if _flux_health <= 0.0:
 		# Le flux tombe : on ne coupe pas la plongée en deux, l'éjection reste jouée.
 		_set_dive(Dive.EJECT)
