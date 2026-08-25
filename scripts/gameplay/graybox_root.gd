@@ -450,6 +450,13 @@ func _on_leviathan_pull(speed_max: float, radius: float, centre: Vector2) -> voi
 ## grammaire que l'appontage — un autopilote et un cadrage — parce que le joueur l'a
 ## déjà apprise à la fin du niveau.
 
+## Distance de la caméra à la gueule au bout du zoom, en mètres. Déduite du champ de
+## vision (62° verticaux) et du passage libre mesuré de l'iris (4,378 m) : 3,64 m serait le
+## minimum pour qu'il remplisse l'écran, 4,5 lui en laisse 81 % et garde la lèvre visible.
+const DIVE_FRAME_DISTANCE := 4.5
+## Hauteur de la gueule au-dessus du plan, dans la coque du boss.
+const DIVE_MAW_HEIGHT := 1.5
+
 ## L'intérieur du noyau : une **zone dédiée**, montée à l'origine du monde et à l'échelle
 ## du plan de jeu. Bâtie par code et non posée dans `graybox.tscn` — la scène est éditée
 ## par une autre session, et un `.tscn` se fusionne très mal à deux.
@@ -510,7 +517,7 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 	# centre du corps du boss, resté dehors.
 	if _leviathan != null and _core_interior != null:
 		_leviathan.dive_anchor = _core_interior.reactor_plane_position()
-	_dive_camera(false)
+	_dive_camera(false, true)
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
 	# L'éjection est une secousse, pas un fondu : on est recraché.
@@ -548,23 +555,38 @@ func _on_leviathan_armour_reformed(_cycle: int, plates: int) -> void:
 ## un cadrage bâtard, ni le plan de jeu ni un gros plan. Il sert maintenant de RIDEAU : il
 ## va jusqu'au bout, la bascule de lieu se fait derrière, et le cadrage normal reprend une
 ## fois dedans (`dive_entered` appelle `_dive_camera(false)`).
-func _dive_camera(inside: bool) -> void:
+func _dive_camera(inside: bool, snap: bool = false) -> void:
 	var director := get_node_or_null("CameraDirector") as CameraDirector
 	if director == null:
 		return
 	if not inside:
-		director.restore_rest(0.5)
+		# ⚠️ COUPE FRANCHE A L'ENTREE, GLISSEMENT A LA SORTIE. En glissant à l'entrée, la
+		# caméra revenait de la gueule — à une douzaine d'unités de là — vers l'origine où
+		# l'arène est montée, pendant une demi-seconde. Or à cet instant le fond spatial et
+		# le corps du boss sont déjà masqués : elle traversait donc un monde vide et la
+		# capture ne montrait QUE le HUD sur du noir. La coupe est invisible parce que le
+		# zoom vient de remplir l'écran ; le glissement, lui, ne l'était pas du tout.
+		director.restore_rest(0.0 if snap else 0.5)
 		return
 	var home := director.home_transform()
 	var focus := _final_boss.global_position if _final_boss != null else Vector3.ZERO
-	# On va CHERCHER la gueule, et on s'en approche assez pour qu'elle déborde du cadre.
-	# La descente en Y est ce qui donne la plongée ; l'orientation d'origine est conservée
-	# pour que le plan de jeu reste lisible jusqu'au dernier instant.
+	# ⚠️ ON SE POSE A UNE DISTANCE CALCULEE, PAS A UNE FRACTION DE LA HAUTEUR D'ORIGINE.
+	# Premier essai : `home.origin.y * 0.22`, soit Y = 3,08 pour une caméra d'origine à 14.
+	# La coque du boss fait 3,162 m de haut : la caméra finissait DANS la coque, et la
+	# capture ne montrait qu'un amas de plaques — ni gueule, ni ouverture, ni plongée.
+	# Une fraction d'une hauteur ne dit rien de ce qu'on cadre.
+	#
+	# Le cadrage se déduit du champ de vision : à 62° verticaux, encadrer un puits de
+	# 4,378 m demande 3,64 m au minimum. On se pose à `DIVE_FRAME_DISTANCE`, ce qui lui
+	# laisse ~81 % de la hauteur d'écran — assez pour qu'il déborde presque, assez peu
+	# pour qu'on voie encore la lèvre s'écarter autour.
+	# On recule le long de l'axe ARRIERE de la caméra d'origine, donc l'orientation et la
+	# lecture du plan de jeu sont conservées, et le cadrage suit si la caméra est retouchée.
+	var backward := home.basis.z.normalized()
+	var maw := focus + Vector3(0.0, DIVE_MAW_HEIGHT, 0.0)
 	var enter := _leviathan.tuning.dive_enter_time if _leviathan != null and _leviathan.tuning != null else 1.4
-	director.push_rest(Transform3D(home.basis, Vector3(
-		focus.x,
-		home.origin.y * 0.22,
-		focus.z + (home.origin.z - focus.z) * 0.18)), maxf(enter - 0.15, 0.2))
+	director.push_rest(Transform3D(home.basis, maw + backward * DIVE_FRAME_DISTANCE),
+		maxf(enter - 0.15, 0.2))
 
 func _build_core_interior() -> void:
 	if _core_interior != null:
