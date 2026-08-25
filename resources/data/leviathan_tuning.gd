@@ -42,7 +42,22 @@ extends Resource
 @export_group("Hypotheses de dimensionnement")
 ## Cadence soutenue du joueur à puissance 3. **La même hypothèse que le mini-boss**
 ## (`harvester_tuning.gd`), pour que les deux combats se comparent.
+##
+## ⚠️ C'est la cadence contre une cible LARGE — les quatre plaques de l'armure, qu'aucune
+## balle ne rate. 420 dps, ce sont les quatre canons de puissance 3 qui portent tous
+## (4 × 10 PV à 10,42 salves/s = 417). Elle ne vaut PAS contre le flux : voir
+## `flux_reference_dps`.
 @export var reference_dps: float = 420.0
+## Cadence du même joueur contre le FLUX, une cible de 1,80 m qui dérive de 1,60 m.
+##
+## ⚠️ POURQUOI DEUX HYPOTHÈSES ET NON UNE. Le combat a longtemps dimensionné ses deux
+## cibles avec `reference_dps`, et c'est ce qui l'a fait dérailler : sur une plaque large
+## les canons d'aile (±16°) et de bout d'aile (±31°) portent, sur le flux ils partent à
+## côté. Seuls les canons de nez comptent — deux à puissance 3, soit **208 dps**.
+## Playtest du 2026-08-25 à puissance MAXIMALE : six plongées au lieu de trois, 177 dps
+## réellement placés dans le flux. L'hypothèse à 420 était optimiste d'un facteur ~2,4, et
+## l'invariant 5 la validait sans broncher parce qu'il se comparait à elle-même.
+@export var flux_reference_dps: float = 208.0
 ## Vitesse maximale du chasseur (`resources/data/player_stats.gd`). Recopiée ici parce
 ## que `validate()` doit pouvoir juger l'aspiration **sans instancier le joueur**.
 @export var reference_player_max_speed: float = 14.0
@@ -147,10 +162,19 @@ extends Resource
 
 @export_group("Temps 2 - Plonger dans le noyau")
 ## Le flux d'énergie au centre du noyau — la seule chose qui tue vraiment ce boss.
-## Dimensionné pour tomber au TROISIÈME passage si le joueur tire correctement :
-## 5300 PV / (3 × 5 s de fenêtre) = 353 dps requis, contre 357 disponibles à 0,85
-## d'occupation. Serré exprès : le dernier plongeon doit se jouer.
-@export var flux_health: float = 5300.0
+##
+## Dimensionné pour tomber au TROISIÈME passage : 2400 PV / 3 = 800 PV par plongée, contre
+## 884 atteignables (`flux_reference_dps` × `occupancy_dive` × `dive_time`). Le joueur
+## mesuré au playtest du 2026-08-25 place ~883 PV par plongée : il tue donc le flux au
+## cours du **troisième** passage, avec de la marge, jamais au deuxième (il lui en faudrait
+## 1200).
+##
+## ⚠️ IL VALAIT 5300, ET C'ÉTAIT LE DÉFAUT LE PLUS COÛTEUX DU RÉGLAGE. Le chiffre était
+## calibré contre `reference_dps` — la cadence sur une cible large — et tombait à **99 %**
+## du plafond que l'invariant 5 autorise (bande permise : 55 à 100 %). Il n'y avait pas de
+## marge, il y avait 1 % : la moindre imperfection ouvrait un cycle de plus. À puissance
+## maximale, le playtest en a ouvert **trois**.
+@export var flux_health: float = 2400.0
 ## Large : le flux remplit le noyau, on ne le rate pas. Ce n'est pas un test d'adresse,
 ## c'est une récompense — le joueur a brisé une armure pour arriver là.
 @export var flux_hitbox_radius: float = 1.80
@@ -356,8 +380,13 @@ func validate() -> PackedStringArray:
 	# dur, le joueur repart pour un tour de plus à chaque fois sans comprendre pourquoi.
 	if dive_time <= 0.0:
 		errors.append("dive_time must be > 0 — it is the whole point of the dive")
-	elif reference_dps > 0.0:
-		var reachable := reference_dps * occupancy_dive * dive_time
+	elif flux_reference_dps <= 0.0:
+		errors.append("flux_reference_dps must be > 0 — the flux is not sized against the armour's dps")
+	else:
+		# ⚠️ `flux_reference_dps`, PAS `reference_dps`. Se comparer à la cadence sur cible
+		# large revient à se donner raison : c'est ce qui a laissé passer un flux 2,2 fois
+		# trop gros, validé à 99 % du plafond autorisé.
+		var reachable := flux_reference_dps * occupancy_dive * dive_time
 		var needed := flux_damage_per_dive()
 		if needed > reachable:
 			errors.append("flux needs %.0f damage per dive but only %.0f is reachable in %.1f s — the fight cannot end in %d cycles"

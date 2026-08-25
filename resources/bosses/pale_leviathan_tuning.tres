@@ -10,9 +10,15 @@
 ; Ossature : 3 cycles de BRISER L'ARMURE (4 puis 3 puis 2 plaques, ~8 / 6 / 4 s) suivis
 ; chacun d'une PLONGEE dans le noyau (~7,4 s). Total ~40 s. Le flux tombe au troisieme
 ; passage si le joueur tire correctement ; sinon un cycle de plus s'ouvre.
+;
+; DEUX cadences de reference, et ce n'est pas un doublon (ADR-0024) : `reference_dps` vaut
+; contre les plaques, larges, ou toutes les balles portent ; `flux_reference_dps` contre le
+; flux, 1,80 m qui derive, ou seuls les canons de nez comptent. Les confondre a produit un
+; flux 2,2 fois trop gros — six plongees au playtest, a puissance maximale.
 [resource]
 script = ExtResource("1_tuning")
 reference_dps = 420.0
+flux_reference_dps = 208.0
 reference_player_max_speed = 14.0
 target_duration = 40.0
 cycle_count = 3
@@ -25,7 +31,7 @@ spine_windup_time = 1.0
 spine_beam_time = 0.9
 spine_damage = 24.0
 spine_interval = 3.2
-flux_health = 5300.0
+flux_health = 2400.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 dive_time = 5.0

@@ -7,7 +7,11 @@
 > l'équilibrage est **acquis**, le grief « lancinant » ne s'est pas reproduit. Restait une
 > **progression invisible** — le HUD montrait la cible courante, qui se remplit à chaque
 > bascule, au lieu de l'avancement du combat. Corrigé par **`ADR-0023`**, vérifié en capture.
-> Ce qui n'est toujours pas jugé : le **nombre** de cycles (la partie en a produit quatre).
+> Seconde partie le même jour, droit au boss à puissance max : **six plongées au lieu de
+> trois**. Le flux était dimensionné avec la cadence de l'**armure** — cible large où toutes
+> les balles portent — alors que seuls les canons de nez touchent une cible de 1,80 m qui
+> dérive. **`ADR-0024`** lui donne sa propre hypothèse et ramène `flux_health` de 5300 à 2400.
+> ⚠️ **Ce correctif n'a pas encore été rejoué** : c'est le point bloquant courant.
 >
 > ⚠️ Une autre session travaille en parallèle sur le **bestiaire ennemi** (`ADR-0022`,
 > `scripts/enemies/`, `wave_spawner`, assets). Périmètres disjoints, mais `C:\tmp` et le
@@ -74,9 +78,10 @@ combat — un quatrième cycle est possible, et il est arrivé (`ADR-0023`).
 - ✅ **`/jouer` — FAIT le 2026-08-25.** Équilibrage acquis (« mieux équilibré »), mais la
   progression était invisible (« phase 1 phase 2 phase 1 phase 2, en boucle ») : la jauge
   montrait la cible courante et se remplissait six fois. Traité par **`ADR-0023`**.
-- **Le NOMBRE de cycles** : la partie en a produit quatre. Permis, et désormais nommé
-  `DERNIER ASSAUT` au lieu de `CYCLE 4 / 3`. Reste à savoir si un quatrième tour est
-  agréable maintenant qu'on voit où l'on en est.
+- ✅ **Le NOMBRE de cycles — traité par `ADR-0024`.** Mesuré à puissance maximale : six
+  plongées. `flux_health` 5300 → 2400, et le flux reçoit sa propre cadence de référence
+  (208 au lieu de 420) — se mesurer à la cadence de l'armure revenait à se donner raison.
+- ⚠️ **Rejouer après `ADR-0024`** : trois cycles sont attendus par le calcul, pas constatés.
 - **Alignement halo ↔ hitbox** : non jugeable à l'arrêt.
 - **Cadrage de la plongée** : réglé à l'œil en trois captures. Le chasseur est visible dans le
   noyau (`plane_lift`), mais sa lisibilité en mouvement reste à confirmer.

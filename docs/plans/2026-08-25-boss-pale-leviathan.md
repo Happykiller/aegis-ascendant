@@ -40,16 +40,25 @@ régression.
 
 Le combat est maintenant **lisible et équilibré**. Ce qui n'est **pas** jugé :
 
-- **Le nombre de cycles.** La partie en a produit **quatre** (le flux n'est pas tombé au
-  troisième passage). C'est permis et désormais nommé `DERNIER ASSAUT` au lieu de
-  `CYCLE 4 / 3`. Reste à savoir si un quatrième tour est agréable **maintenant qu'on voit
-  où l'on en est** — c'était peut-être toute la question.
+- ✅ **Le nombre de cycles — TRANCHÉ le jour même.** Seconde partie, lancée droit au boss à
+  `--power=5` : **six plongées au lieu de trois**, boss abattu, arc terminé. Cause mesurée et
+  corrigée par **`ADR-0024`** : le flux était dimensionné avec la cadence de l'armure
+  (`reference_dps` = 420, cible large où toutes les balles portent) alors que seuls les
+  canons de nez touchent une cible de 1,80 m qui dérive. Il a désormais sa propre hypothèse
+  (`flux_reference_dps` = 208) et `flux_health` passe de **5300 à 2400**.
+- ⚠️ **Le correctif d'`ADR-0024` n'a PAS été rejoué.** Trois cycles sont attendus par le
+  calcul et par la mesure ; ils ne sont pas constatés. **C'est le point bloquant courant.**
+- ⚠️ **Tension ouverte, assumée par `ADR-0024`** : la jauge répartit 63 % sur l'armure et
+  37 % sur le flux, pour un temps réparti à 45 % / 55 %. La barre avance donc plus vite
+  pendant l'armure que pendant la plongée. Résoudre demanderait plus de dégâts placés dans le
+  flux — cible plus grosse ou fenêtre plus longue : un choix de conception, pas un réglage.
 - **Alignement halo ↔ hitbox** : jamais jugeable à l'arrêt, toujours ouvert.
 - **Cadrage de la plongée en mouvement.**
 
-⚠️ **Ne pas retoucher l'équilibrage sans une nouvelle partie.** Leviers disponibles si et
-seulement si le verdict les demande : `shell_orbit_period` 9→7, `plate_health` 460→380,
-`flux_health` 5300→plus bas (le garde-fou d'`validate()` refusera d'aller trop loin).
+⚠️ **Ne plus retoucher l'équilibrage sans une nouvelle partie.** Leviers restants si le
+verdict les demande : `shell_orbit_period` 9→7, `plate_health` 460→380. Le garde-fou de
+`validate()` refusera d'aller trop loin — mais **seulement s'il se compare à la bonne
+hypothèse**, ce qui est précisément ce qui a manqué jusqu'à `ADR-0024`.
 
 ### 2. Correction du kit Blender — **débloquée, c'est le prochain chantier**
 
