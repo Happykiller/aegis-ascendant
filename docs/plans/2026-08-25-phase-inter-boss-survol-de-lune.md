@@ -3,7 +3,7 @@ titre: Une phase de jeu entre les deux boss — survol de lune et champ d'astér
 date: 2026-08-25
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: arc de jeu (graybox_root), vagues, fond spatial, assets 3D de décor
-etat: lots 1 et 2 LIVRÉS (ADR-0027, 2026-08-25) ; lots 3 et 4 à appliquer
+etat: lots 1 et 2 LIVRÉS ; lot 3 partiel (impacts livrés, assets à forger) ; lot 4 à appliquer
 supersede: rien. Complète docs/plans/2026-08-25-bestiaire-ennemis.md sur son point 3.1
 ---
 
@@ -12,8 +12,8 @@ supersede: rien. Complète docs/plans/2026-08-25-bestiaire-ennemis.md sur son po
 > **Rédigé le 2026-08-25** à partir de la demande de l'opérateur, et de l'état **mesuré** du
 > moteur.
 >
-> ✅ **Lots 1 et 2 livrés le 2026-08-25** — la phase existe et se joue, et son décor
-> bascule. Voir **`ADR-0027`**. Les trois décisions ouvertes en bas de page ont été **tranchées** par
+> ✅ **Lots 1 et 2 livrés le 2026-08-25**, et **la moitié du lot 3** : les impacts sur la
+> lune sont là, seuls les assets de forge restent. Voir **`ADR-0027`**. Les trois décisions ouvertes en bas de page ont été **tranchées** par
 > l'opérateur : oui pour l'ADR, **45-60 s** de durée, **astéroïdes solides / lune décor**.
 > Les lots 2 à 4 restent entiers.
 
@@ -161,9 +161,25 @@ limbe ; un rocher frôlait le chasseur, ce qu'un décor sans collision ne doit p
 ⚠️ Et **un quatrième que le test a trouvé avant le rendu** : le ciel du survol, posé à la
 hauteur du fond habituel, aurait masqué tous ses propres rochers en silence.
 
-### Lot 3 — Les assets *(forge, briefs à écrire)*
+### Lot 3 — Les assets *(forge, briefs à écrire)* — ⏳ **impacts livrés, assets en attente**
 
 À n'engager **qu'une fois le budget GPU du lot 2 connu**.
+
+> ✅ **Les impacts sont faits** (voir `ADR-0027`) : trois bolides dorés percutent la lune à
+> 11 s, 26 s et 40 s, avec flash et gerbe d'éclats. C'était du **code**, pas de l'asset —
+> il n'y avait aucune raison de l'attendre. ⚠️ Ils n'empruntent PAS `VFXManager`, dimensionné
+> pour le combat au premier plan : à trois fois cette distance, la même explosion serait un
+> point.
+>
+> ⏳ **La lune et les astéroïdes attendent**, et la garde tient toujours : la mesure qui
+> autorise leur budget doit être refaite **sur la Quadro T1000**. Ce qu'on sait aujourd'hui
+> vient de la RTX 4080.
+>
+> 💡 **Et le budget a beaucoup changé depuis** : le ciel du survol est passé de 0,738 à
+> **0,323 ms** en cessant de calculer une nébuleuse qu'il n'affiche pas (`deep_sky`). La
+> phase 2 coûte désormais **un tiers** du fond spatial habituel. Il y a donc plus de marge
+> pour les assets qu'au moment où ce plan a été écrit — reste à la mesurer là où elle
+> compte.
 
 > **Le lot 2 a posé la géométrie du lieu** : ciel à Y = −45, lune de rayon 60 centrée
 > (0, −78, 34), rochers entre −13 et −34, plafond à −3. Les assets s'y substituent, ils ne

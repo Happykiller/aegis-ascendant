@@ -57,9 +57,12 @@ confirmer que le jeu est bien monté (`[TitleMenu] ready`, `[Level] ready`, ou l
 Deux faits utiles à l'opérateur, tirés de la sortie :
 
 - **le build est-il neuf ?** — `[play] build à jour` ou `[play] build périmé (… ) : export debug` ;
-- **quelle machine** — la ligne Vulkan donne le GPU. ⚠️ Sur ce poste c'est une **Quadro T1000**,
-  pas la RTX 4080 : à build identique le temps GPU par image est **×14**. Ne jamais lire 12 ms
-  comme une régression.
+- **quelle machine** — la ligne Vulkan donne le GPU, et **c'est elle qui tranche, jamais une
+  supposition**. ⚠️ Le projet tourne sur **deux postes** : une **RTX 4080** et une **Quadro
+  T1000**, et à build identique le temps GPU par image est **×14** entre elles. Ne jamais lire
+  12 ms comme une régression sans avoir lu la ligne Vulkan de CE lancement — et ne jamais
+  transposer un chiffre d'un poste à l'autre. C'est la T1000 qui **contraint** le budget ;
+  c'est donc là que se prend toute mesure qui doit autoriser une dépense.
 
 ### 3. Pendant la partie, ne rien affirmer
 
@@ -93,6 +96,9 @@ script.
 | Drapeau | Effet |
 |---|---|
 | `--goto-graybox` | saute l'accueil, droit au combat |
+| `--skip-to-field` | droit au **champ d'astéroïdes**, la phase entre les deux boss (ADR-0027) |
+| `--skip-to-boss` / `--skip-to-final` / `--skip-to-dock` | droit au mini-boss, au boss final, à l'appontage |
+| `--no-flyby` | la phase inter-boss garde le fond spatial habituel — le témoin de sa mesure |
 | `--goto-codex` | ouvre le bestiaire |
 | `--codex-entry=N` | ouvre une fiche précise du bestiaire (0 = Specter-9) |
 | `--pause-demo` | ouvre le menu de pause à l'entrée du niveau |

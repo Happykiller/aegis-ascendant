@@ -8,8 +8,9 @@
 > sans qu'aucune rencontre ne les emploie. Elle revient sur le découpage d'`ADR-0010`, qui avait
 > *supprimé* une phase de milieu de niveau. **Lots 1 et 2 du plan livrés** : la phase se joue, et
 > son décor bascule — le survol de lune REMPLACE la nébuleuse au lieu de s'y ajouter, pour
-> **−0,200 ms/image** (mesuré RTX 4080 ; à refaire sur la T1000, c'est elle qui contraint).
-> Restent les lots 3 (assets de forge) et 4 (rythme).
+> **−0,622 ms/image** — la phase 2 coûte **un tiers** du fond habituel (0,323 contre 0,945 ms,
+> mesuré RTX 4080 ; à refaire sur la T1000, c'est elle qui contraint). Les **impacts** de lune
+> sont livrés aussi. Restent les **assets** du lot 3 et le lot 4 (rythme).
 >
 > Le boss final, refondu en cycles par `ADR-0021`, a enfin été **joué** (2026-08-25) :
 > l'équilibrage est **acquis**, le grief « lancinant » ne s'est pas reproduit. Restait une
@@ -255,9 +256,13 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   Outil : sous-agent `balance-prober` (rend la chronologie de l'arc).
 - [x] **Bascule de décor du champ d'astéroïdes** — lot 2 : `MoonFlyby` monté au montage, doublure
   procédurale, aller-retour vérifié en capture, **−0,200 ms** contre le fond habituel.
-- [ ] **Assets du survol** — lot 3 : lune à cratères, astéroïdes, impacts scriptés. ⚠️ **Remesurer
-  d'abord le différentiel sur la Quadro T1000** : les −0,200 ms viennent de la RTX 4080, et c'est
-  le poste du bureau qui contraint (13,05 ms fond complet sur les 16,67 du budget).
+- [x] **Impacts sur la lune** — trois bolides dorés, flash et gerbe, sur des jalons fixes de la
+  phase (11 / 26 / 40 s). Préalloués, hors `VFXManager` (question d'échelle).
+- [ ] **Assets du survol** — lot 3 : lune à cratères, astéroïdes. ⚠️ **Remesurer d'abord le
+  différentiel sur la Quadro T1000** : les chiffres viennent de la RTX 4080, et c'est le poste du
+  bureau qui contraint (13,05 ms fond complet sur les 16,67 du budget).
+- [ ] **Intensité de la gerbe d'impact** — se juge **en mouvement**, pas en capture : une image
+  fixe fige la seule chose qui fait lire des débris qui s'envolent.
 - [ ] **Solides et décoratifs dans le même cadre** — l'arbitrage « astéroïdes solides, lune décor »
   ouvre un sujet de lisibilité : rien ne distinguera à l'œil un rocher qui tue d'un rocher qui
   traverse. À trancher au brief du lot 3.

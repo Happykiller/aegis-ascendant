@@ -124,3 +124,72 @@ func test_hiding_the_flyby_also_stops_its_clock() -> void:
 	flyby.reveal(false)
 	assert_false(flyby.visible, "caché")
 	assert_false(flyby.is_processing(), "et sa dérive s'arrête")
+
+# --- Les impacts (lot 3) ----------------------------------------------------
+
+func test_every_impact_lands_on_the_moon() -> void:
+	# Un point demandé hors du disque de la lune donnerait un flash dans le vide. La
+	# hauteur n'est pas un réglage : elle se déduit du rayon, et doit le vérifier.
+	for i in FlybyScript.IMPACT_SPOTS.size():
+		var spot: Vector2 = FlybyScript.IMPACT_SPOTS[i]
+		var at := FlybyScript.surface_point(spot.x, spot.y)
+		assert_true(at != Vector3.INF, "impact %d hors de la lune" % i)
+		assert_almost_eq(at.distance_to(FlybyScript.MOON_CENTER), FlybyScript.MOON_RADIUS,
+			0.001, "impact %d posé sur la surface" % i)
+
+func test_no_impact_ever_reaches_into_the_play_field() -> void:
+	# ⚠️ L'INVARIANT PORTE SUR LA TRAJECTOIRE, PAS SUR LA POSE DE REPOS. Un bolide part
+	# d'en haut : c'est le seul morceau du décor qui MONTE, et rien à l'écran ne dirait
+	# qu'il traverse la zone de combat — on le lirait comme un ennemi qu'on ne peut pas
+	# toucher. Première écriture : chute de 26 unités depuis un point à −23,3, donc un
+	# départ à +2,7. Trouvé ici.
+	for i in FlybyScript.IMPACT_SPOTS.size():
+		var spot: Vector2 = FlybyScript.IMPACT_SPOTS[i]
+		var at := FlybyScript.surface_point(spot.x, spot.y)
+		var up := (at - FlybyScript.MOON_CENTER).normalized()
+		for step in 25:
+			var t := FlybyScript.BOLIDE_FALL * float(step) / 24.0
+			var bolide := FlybyScript.bolide_position(at, up, t)
+			assert_true(bolide.y <= FlybyScript.CEILING_Y,
+				"bolide %d à %.1f (t = %.2f s)" % [i, bolide.y, t])
+
+func test_the_shards_fly_up_then_fall_back() -> void:
+	# Une gerbe qui monte sans retomber laisse des éclats plantés dans le ciel jusqu'à la
+	# fin de la phase ; une gerbe qui ne monte pas n'est pas une gerbe.
+	var at := FlybyScript.surface_point(
+		FlybyScript.IMPACT_SPOTS[0].x, FlybyScript.IMPACT_SPOTS[0].y)
+	var up := (at - FlybyScript.MOON_CENTER).normalized()
+	var velocity := up * FlybyScript.SHARD_SPEED
+	var peak := FlybyScript.shard_position(at, velocity, up, 1.6)
+	var landing := FlybyScript.shard_position(at, velocity, up, FlybyScript.SHARD_LIFE)
+	assert_true(peak.distance_to(FlybyScript.MOON_CENTER) > FlybyScript.MOON_RADIUS + 3.0,
+		"la gerbe s'élève (%.1f au-dessus)" % (peak.distance_to(FlybyScript.MOON_CENTER) - FlybyScript.MOON_RADIUS))
+	assert_true(landing.distance_to(FlybyScript.MOON_CENTER) < peak.distance_to(FlybyScript.MOON_CENTER),
+		"et elle redescend avant de s'éteindre")
+	# Et jamais dans le champ, elle non plus.
+	for step in 20:
+		var t := FlybyScript.SHARD_LIFE * float(step) / 19.0
+		assert_true(FlybyScript.shard_position(at, velocity, up, t).y <= FlybyScript.CEILING_Y,
+			"éclat à t = %.2f s" % t)
+
+func test_the_impacts_are_scheduled_inside_the_phase() -> void:
+	# Un jalon posé après la fin de la traversée ne se joue jamais : le décor se cache
+	# avant. Bornes : la phase va de ~42 s (tout nettoyé) à ~54 s.
+	var previous := 0.0
+	for i in FlybyScript.IMPACT_TIMES.size():
+		var at: float = FlybyScript.IMPACT_TIMES[i]
+		assert_true(at > previous, "les jalons montent (%d : %.1f s)" % [i, at])
+		assert_true(at <= 42.0, "jalon %d à %.1f s, avant la fin la plus courte" % [i, at])
+		previous = at
+
+func test_the_impact_kit_is_preallocated_and_asleep() -> void:
+	# Spec §26.1 : rien ne s'alloue en jeu. Et au repos tout dort AU CENTRE DE LA LUNE —
+	# invisible ne suffit pas, un kit posé à l'origine se tiendrait en plein plan de jeu.
+	var flyby := _make()
+	assert_eq(flyby._shards.size(), FlybyScript.SHARD_COUNT, "les éclats sont montés")
+	assert_eq(flyby._shard_velocities.size(), FlybyScript.SHARD_COUNT, "une vitesse chacun")
+	assert_true(flyby._bolide != null and flyby._flash != null, "bolide et flash montés")
+	assert_false(flyby._bolide.visible, "le bolide dort")
+	assert_false(flyby._flash.visible, "le flash dort")
+	for shard in flyby._shards:
+		assert_false(shard.visible, "%s dort" % shard.name)

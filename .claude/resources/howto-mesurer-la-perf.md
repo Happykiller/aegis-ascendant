@@ -36,6 +36,25 @@ prouve, et l'exiger dans le log** : c'est le test d'exécutable périmé le moin
 
 **Budget : 16,7 ms par image à 60 Hz.** (6,9 ms à 144 Hz.)
 
+## Une mesure unique ne vaut rien tant qu'on ne connaît pas sa dispersion
+
+Le 2026-08-25, un témoin mesuré trois fois donnait **0,942 / 0,948 / 0,946 ms** — puis, un
+tir isolé plus tôt, **1,535 ms**. Même build, même scène, même instant. Pris seul, ce
+chiffre aurait fait conclure à une régression de 60 %.
+
+**Trois tirs de chaque côté, alternés** : c'est le coût minimal d'un différentiel qu'on
+publie. Si les deux séries se recouvrent, il n'y a pas d'effet à annoncer.
+
+## ⚠️ Un uniforme à zéro n'économise rien
+
+Un shader calcule ce qu'il calcule. Baisser un `uniform float strength` à 0,12 **atténue le
+résultat** — les champs de bruit, eux, tournent en entier. Mesuré le 2026-08-25 sur le ciel
+du survol de lune : la nébuleuse « éteinte » à 0,12 coûtait toujours **0,738 ms** ; un vrai
+chemin (`uniform bool deep_sky` + `if` qui saute les cinq champs) l'a ramenée à **0,323 ms**.
+
+Pour éteindre un poste de dépense, il faut un **branchement**, pas un facteur. Un
+branchement sur uniform est cohérent sur toute la surface, donc quasi gratuit.
+
 ## Isoler le coût d'un effet : mesurer avec, puis sans
 
 C'est la seule façon d'attribuer un coût. Exemple réel (nébuleuse en domain warping) :

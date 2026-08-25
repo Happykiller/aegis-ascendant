@@ -37,7 +37,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend
   0,84 ms sur RTX 4080 et 12,0 ms sur Quadro T1000 — ×14 à code identique. ⚠️ **`deploy-win.sh` ne
   ré-exporte pas** : sans `export-win.sh` d'abord, on mesure le binaire de la fois d'avant, sans
-  la moindre erreur — et c'est le journal, pas le chiffre, qui le dit.
+  la moindre erreur — et c'est le journal, pas le chiffre, qui le dit. ⚠️ **Trois tirs de chaque
+  côté** : un témoin a donné 1,535 ms une fois pour 0,945 trois fois. ⚠️ **Un uniforme à zéro
+  n'économise rien** — pour éteindre une dépense de shader il faut un branchement, pas un facteur.
 - [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
   exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
   tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par

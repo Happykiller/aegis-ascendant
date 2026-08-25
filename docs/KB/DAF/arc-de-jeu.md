@@ -13,6 +13,16 @@ Le joueur **pilote le chasseur Specter-9 du début à la fin**. Aucune transform
 changement de véhicule en cours de niveau. C'est la décision **ADR-0010** (2026-07-19), prise après
 usage : le changement de vaisseau cassait le flow et la lisibilité de l'arme du joueur.
 
+## Le vocabulaire de l'opérateur — « niveau » et « phase »
+
+Fixé le 2026-08-25, après une ambiguïté en session : **le jeu n'a qu'un NIVEAU** (le premier), et
+ce niveau contient des **phases**. Quand l'opérateur dit « la phase 2 », il parle du **champ
+d'astéroïdes** ; « la phase 1 », ce sont les vagues de chasseurs et le mini-boss qui les clôt.
+
+⚠️ Ne pas confondre avec l'`enum Phase` du director, qui en compte six et nomme aussi le docking
+et la victoire : le décompte de l'opérateur est celui des **sections jouées**, pas des états du
+code. Un « niveau 2 » n'existe pas — si on l'entend, c'est de la phase 2 qu'il s'agit.
+
 ## Les six phases
 
 ```

@@ -66,6 +66,57 @@ const MOON_CENTER := Vector3(0.0, -78.0, 34.0)
 const WRAP_MIN_Z := -45.0
 const WRAP_MAX_Z := 40.0
 
+## --- Les impacts (lot 3) ----------------------------------------------------
+##
+## « On pourrait assister à des astéroïdes qui la percuteraient, faisant s'envoler des
+## débris. » C'est du **VFX scripté sur des jalons**, pas de la simulation : trois impacts
+## à des instants fixes de la traversée, pour que la scène se joue à chaque partie de la
+## même façon — un semis aléatoire rendrait toute capture incomparable.
+##
+## ⚠️ ILS N'EMPRUNTENT PAS `VFXManager`. Celui-ci est dimensionné pour le combat, au
+## premier plan : ses explosions ont des tailles fixes par catégorie et aucune échelle. Un
+## impact se produit ici sur une lune de 60 unités de rayon, à trois fois la distance du
+## plan de jeu — la même explosion y serait un point. Le décor porte donc ses propres
+## effets, à sa propre échelle, et préalloués comme tout le reste.
+
+## Instants de la phase où un bolide touche. Choisis entre les pics de la vague : le
+## joueur doit avoir une seconde pour REGARDER.
+const IMPACT_TIMES: PackedFloat32Array = [11.0, 26.0, 40.0]
+## Où ils tombent, en (x, z) monde. ⚠️ La HAUTEUR ne se choisit pas, elle se déduit de la
+## sphère (`surface_point`) : une altitude écrite à la main placerait le flash au-dessus du
+## sol ou dedans, et rien ne le dirait.
+const IMPACT_SPOTS: PackedVector2Array = [
+	Vector2(-6.0, 10.0), Vector2(12.0, 2.0), Vector2(-14.0, -2.0),
+]
+## Hauteur de chute du bolide, et sa durée. Assez long pour qu'on voie venir le coup.
+## ⚠️ BORNÉE PAR LE PLAFOND, et pas par le goût : le point d'impact le plus HAUT est à
+## −23,3, donc une chute de 26 faisait partir le bolide à +2,7 — au-dessus du plan de jeu,
+## qu'il aurait traversé à chaque fois. Trouvé par `test_moon_flyby.gd`, jamais à l'écran.
+const BOLIDE_DROP := 18.0
+const BOLIDE_FALL := 2.4
+## Durées de vie du flash et des éclats.
+const FLASH_LIFE := 0.9
+const SHARD_LIFE := 3.0
+## ⚠️ Le compte et la taille sont ceux de la DISTANCE, pas du goût : la gerbe se joue à
+## trente unités de la caméra, où un éclat de 0,5 pèse une quinzaine de pixels. À huit
+## morceaux de cette taille, « des débris qui s'envolent » rendait deux losanges perdus sur
+## la surface. L'intensité finale, elle, se juge EN MOUVEMENT — une capture fige la seule
+## chose qui fait lire une gerbe.
+const SHARD_COUNT := 14
+## Le chaud du décor. ⚠️ DORÉ, PAS CORAIL — et c'est une règle de charte, pas un goût.
+## Le fond « ne touche jamais au cyan réservé au tir allié ni au corail réservé au tir
+## ennemi » (`space_background.gdshader`, règles de lisibilité). L'essai précédent
+## reprenait l'orange des explosions (1 / 0,46 / 0,16) : à l'écran, un objet de cette
+## teinte qui DESCEND se lit comme un projectile ennemi à esquiver — et il est dans le
+## décor, donc rien ne peut être fait contre lui. Un doré chaud reste incandescent sans
+## revendiquer une menace.
+const IMPACT_WARM := Color(1.0, 0.80, 0.45)
+
+## Vitesse d'éjection des éclats, et le rappel qui les fait retomber. Ce n'est pas une
+## gravité juste — c'est celle qui rend la gerbe lisible en trois secondes.
+const SHARD_SPEED := 9.0
+const SHARD_PULL := 5.0
+
 var _decor: Node3D
 var _moon: Node3D
 ## Vrai quand la doublure procédurale a pris le relais faute de décor livré. Le niveau le
@@ -77,6 +128,20 @@ var _is_stand_in: bool = false
 ## (spec §26.2), et un `Vector3` est un type valeur.
 var _drifters: Array[Node3D] = []
 var _drift_velocities: PackedVector3Array = PackedVector3Array()
+
+## Horloge de la phase, repartie à zéro à chaque révélation, et le prochain impact à jouer.
+var _clock: float = 0.0
+var _next_impact: int = 0
+## L'impact en cours : son âge, son point, et la verticale locale de la surface à cet
+## endroit (les éclats partent d'ici et y retombent).
+var _impact_age: float = -1.0
+var _impact_at: Vector3 = Vector3.ZERO
+var _impact_up: Vector3 = Vector3.UP
+## Le bolide, le flash et les éclats : préalloués au montage, rejoués à chaque impact.
+var _bolide: MeshInstance3D
+var _flash: MeshInstance3D
+var _shards: Array[MeshInstance3D] = []
+var _shard_velocities: PackedVector3Array = PackedVector3Array()
 
 func _ready() -> void:
 	reveal(false)
@@ -90,6 +155,12 @@ func is_stand_in() -> bool:
 func reveal(on: bool) -> void:
 	visible = on
 	set_process(on)
+	if on:
+		# La phase commence ici : les jalons d'impact se comptent depuis l'entrée dans le
+		# champ, pas depuis le montage du niveau.
+		_clock = 0.0
+		_next_impact = 0
+	_end_impact()
 
 func _process(delta: float) -> void:
 	if _moon != null:
@@ -97,6 +168,8 @@ func _process(delta: float) -> void:
 	for i in _drifters.size():
 		var body := _drifters[i]
 		body.position = drifted(body.position, _drift_velocities[i], delta)
+	_clock += delta
+	_advance_impacts(delta)
 
 ## Position suivante d'un corps qui dérive, rebouclée sur la bande. Pure et statique,
 ## donc vérifiable sans arbre de scène — la même raison qui a sorti `EnemyHoming` du
@@ -119,6 +192,7 @@ func _build() -> void:
 		_is_stand_in = true
 	add_child(_decor)
 	_collect_bodies()
+	_build_impact_kit()
 
 ## Relève la lune et les corps qui dérivent. Le décor livré comme la doublure exposent le
 ## même contrat de noms : `Moon`, et des `Asteroid_*`. ⚠️ Un contrat de noms respecté n'est
@@ -185,10 +259,11 @@ func _sky() -> MeshInstance3D:
 	material.set_shader_parameter("deep_color", Color(0.006, 0.008, 0.020))
 	material.set_shader_parameter("star_color", Color(0.86, 0.90, 1.0))
 	material.set_shader_parameter("star_brightness", 2.6)
-	# Ce qui fait le change de décor : les trois couches de nuages tombent.
-	material.set_shader_parameter("nebula_strength", 0.12)
-	material.set_shader_parameter("dust_strength", 0.08)
-	material.set_shader_parameter("accent_strength", 0.0)
+	# ⚠️ CE QUI FAIT LE CHANGE DE DÉCOR, ET CE QUI LE PAIE. `deep_sky` n'atténue pas la
+	# nébuleuse : il SAUTE les cinq champs de bruit du shader. Régler `nebula_strength`
+	# à 0,12 laissait tourner les trois `warped_fbm` pour n'en garder que 12 % —
+	# on payait le décor qu'on venait d'enlever.
+	material.set_shader_parameter("deep_sky", true)
 	material.set_shader_parameter("scroll_speed", -0.5)
 	var plane := PlaneMesh.new()
 	plane.size = SKY_SIZE
@@ -312,3 +387,163 @@ func _rock(rock_name: String, radius: float, at: Vector3) -> MeshInstance3D:
 	mesh.scale = Vector3(1.0, 0.62, 0.84)
 	mesh.rotation = Vector3(0.4, 1.1, -0.3)
 	return mesh
+
+# --- Impacts ----------------------------------------------------------------
+
+## Le point de la calotte à l'aplomb de (x, z), et rien d'autre : la hauteur est une
+## CONSÉQUENCE du rayon, jamais un réglage. Rend `Vector3.INF` si (x, z) tombe hors du
+## disque de la lune — un impact demandé à côté de l'astre est une erreur de données, pas
+## une position à inventer.
+static func surface_point(x: float, z: float) -> Vector3:
+	var dx := x - MOON_CENTER.x
+	var dz := z - MOON_CENTER.z
+	var flat := dx * dx + dz * dz
+	if flat >= MOON_RADIUS * MOON_RADIUS:
+		return Vector3.INF
+	return Vector3(x, MOON_CENTER.y + sqrt(MOON_RADIUS * MOON_RADIUS - flat), z)
+
+## Position du bolide à `t` secondes de sa chute : il tombe DROIT sur son point, le long
+## de la verticale locale de la surface. Pure — donc testable sans arbre de scène.
+static func bolide_position(target: Vector3, up: Vector3, t: float) -> Vector3:
+	# Chute accélérée : le dernier quart du trajet passe deux fois plus vite que le
+	# premier, ce qui donne le coup au lieu d'une descente d'ascenseur.
+	var progress := clampf(t / BOLIDE_FALL, 0.0, 1.0)
+	return target + up * BOLIDE_DROP * (1.0 - progress * progress)
+
+## Position d'un éclat à `t` secondes de son éjection : sa vitesse propre, moins le rappel
+## qui le ramène vers la surface. Pure, pour la même raison.
+static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
+	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
+
+## Monte le bolide, le flash et les éclats. Rien n'est alloué passé ce point.
+func _build_impact_kit() -> void:
+	# ⚠️ AU REPOS, TOUT DORT AU CENTRE DE LA LUNE. Invisible ne suffit pas : posé à
+	# l'origine, ce kit se serait tenu en plein milieu du plan de jeu, prêt à s'y afficher
+	# à la moindre erreur de visibilité.
+	# ⚠️ INCANDESCENT, ET PAS QU'UN CAILLOU. Première capture : un rocher de rayon 1,1
+	# à la teinte du décor (albédo 0,10) était **invisible** à 30 unités sur fond noir —
+	# l'impact tombait de nulle part. Le joueur doit VOIR venir le coup : le bolide
+	# s'allume, comme tout ce qui brûle dans ce jeu.
+	# ⚠️ PETIT. À 1,9 de rayon il rendait un disque de 114 px posé sur la lune : plus gros
+	# que le choc qu'il allait produire, et sans profondeur puisqu'il n'est pas ombré.
+	_bolide = _rock("Bolide", 0.85, MOON_CENTER)
+	var bolide_material := StandardMaterial3D.new()
+	bolide_material.albedo_color = IMPACT_WARM
+	bolide_material.emission_enabled = true
+	bolide_material.emission = IMPACT_WARM
+	bolide_material.emission_energy_multiplier = 3.4
+	bolide_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_bolide.material_override = bolide_material
+	_bolide.visible = false
+	add_child(_bolide)
+
+	var flash_mesh := SphereMesh.new()
+	flash_mesh.radius = 1.0
+	flash_mesh.height = 2.0
+	flash_mesh.radial_segments = 12
+	flash_mesh.rings = 6
+	var flash_material := StandardMaterial3D.new()
+	# Émissif et non éclairé : un impact est une SOURCE, pas une surface.
+	# ⚠️ ET IL PARLE LA LANGUE DU JEU. Le premier essai était crème (1 / 0,93 / 0,78) et
+	# se lisait comme un disque de papier posé sur la lune. Tout ce qui explose ici est
+	# d'un orange saturé (`VfxExplosion._TINT`, ADR-0009) : un choc d'une autre couleur
+	# n'est pas une variation, c'est un objet qu'on ne reconnaît pas.
+	flash_material.albedo_color = IMPACT_WARM
+	flash_material.emission_enabled = true
+	flash_material.emission = IMPACT_WARM
+	flash_material.emission_energy_multiplier = 9.0
+	flash_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_flash = MeshInstance3D.new()
+	_flash.name = "ImpactFlash"
+	_flash.mesh = flash_mesh
+	_flash.material_override = flash_material
+	_flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_flash.position = MOON_CENTER
+	_flash.visible = false
+	add_child(_flash)
+
+	var shard_material := StandardMaterial3D.new()
+	# Plus CLAIRS que la lune, pas plus sombres : des éclats noirs sur une surface sombre
+	# se lisaient comme des trous. Ce sont des morceaux arrachés, ils prennent la lumière.
+	shard_material.albedo_color = Color(0.42, 0.39, 0.40)
+	shard_material.roughness = 1.0
+	for i in SHARD_COUNT:
+		var box := BoxMesh.new()
+		box.size = Vector3(0.72, 0.40, 1.0)
+		var shard := MeshInstance3D.new()
+		shard.name = "Shard_%02d" % i
+		shard.mesh = box
+		shard.material_override = shard_material
+		shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		shard.position = MOON_CENTER
+		shard.visible = false
+		add_child(shard)
+		_shards.append(shard)
+		# Les vitesses sont semées à la MAIN autour de la verticale, une fois pour toutes :
+		# une gerbe tirée au sort changerait à chaque partie, et aucune capture ne se
+		# comparerait à la précédente.
+		# ⚠️ L'ANGLE EST DÉCALÉ, ET C'EST TOUT LE SUJET. À `TAU * i / N` exactement, les
+		# quatorze morceaux formaient une COURONNE régulière sur la surface : on lisait un
+		# motif, pas une explosion. Le décalage est déterministe (une sinusoïde de l'indice,
+		# pas un tirage) : la gerbe est irrégulière et pourtant identique à chaque partie,
+		# donc deux captures restent comparables.
+		var angle := TAU * float(i) / float(SHARD_COUNT) + sin(float(i) * 12.9898) * 0.55
+		var spread := 0.30 + 0.55 * absf(sin(float(i) * 4.1372))
+		_shard_velocities.append(Vector3(cos(angle) * spread, 1.0, sin(angle) * spread)
+			.normalized() * SHARD_SPEED * (0.55 + 0.55 * absf(sin(float(i) * 7.233))))
+
+## Déclenche l'impact prévu, s'il est l'heure, et fait vivre celui qui est en cours.
+func _advance_impacts(delta: float) -> void:
+	if _impact_age < 0.0 and _next_impact < IMPACT_TIMES.size() \
+			and _clock >= IMPACT_TIMES[_next_impact]:
+		_begin_impact(_next_impact)
+		_next_impact += 1
+	if _impact_age < 0.0:
+		return
+	_impact_age += delta
+	var falling := _impact_age < BOLIDE_FALL
+	if _bolide != null:
+		_bolide.visible = falling
+		if falling:
+			_bolide.position = bolide_position(_impact_at, _impact_up, _impact_age)
+	var since := _impact_age - BOLIDE_FALL
+	if since < 0.0:
+		return
+	if _flash != null:
+		# Le flash naît large et s'éteint en s'affaissant : c'est la forme d'un choc, pas
+		# d'une bulle qui gonfle.
+		var life := clampf(since / FLASH_LIFE, 0.0, 1.0)
+		_flash.visible = life < 1.0
+		if _flash.visible:
+			_flash.position = _impact_at
+			_flash.scale = Vector3.ONE * (1.2 + 5.0 * life) * (1.0 - life * 0.55)
+	for i in _shards.size():
+		var alive := since < SHARD_LIFE
+		_shards[i].visible = alive
+		if alive:
+			_shards[i].position = shard_position(
+				_impact_at, _shard_velocities[i], _impact_up, since)
+			_shards[i].rotate_y(delta * 2.2)
+	if since >= maxf(FLASH_LIFE, SHARD_LIFE):
+		_end_impact()
+
+func _begin_impact(index: int) -> void:
+	var spot := IMPACT_SPOTS[index]
+	var at := surface_point(spot.x, spot.y)
+	if at == Vector3.INF:
+		# Point demandé hors du disque de la lune : on le DIT et on saute. Un impact posé
+		# « au mieux » se jouerait dans le vide, et se chercherait longtemps.
+		push_error("[MoonFlyby] impact %d hors de la lune : (%.1f, %.1f)" % [index, spot.x, spot.y])
+		return
+	_impact_at = at
+	_impact_up = (at - MOON_CENTER).normalized()
+	_impact_age = 0.0
+
+func _end_impact() -> void:
+	_impact_age = -1.0
+	if _bolide != null:
+		_bolide.visible = false
+	if _flash != null:
+		_flash.visible = false
+	for shard in _shards:
+		shard.visible = false

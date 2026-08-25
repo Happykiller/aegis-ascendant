@@ -112,6 +112,51 @@ survol était posé à la hauteur du fond habituel (−5) et les rochers en dess
 tous été masqués par leur propre ciel, en silence. `test_moon_flyby.gd` mesure désormais
 que chaque corps vit **entre le ciel et le plan de jeu**, et que rien ne monte dans le champ.
 
+## Le ciel du survol ne coûte plus ce qu'il ne montre pas
+
+⚠️ **Un uniforme à 0,12 n'économise RIEN.** Le premier survol réglait `nebula_strength` à
+0,12, `dust_strength` à 0,08 et `accent_strength` à 0 — en croyant éteindre la nébuleuse.
+Le shader calcule ses cinq champs de bruit **inconditionnellement** (trois `warped_fbm`,
+plus deux `fbm`) et ne fait que multiplier le résultat par ces facteurs : on payait
+intégralement un décor qu'on venait de retirer. Les 0,2 ms gagnés alors ne venaient pas du
+ciel mais des **quatre sprites de repères** masqués avec lui.
+
+`space_background.gdshader` porte désormais un **chemin** et non un réglage : l'uniforme
+`deep_sky` saute les champs de bruit et ne garde que les étoiles, qui sont factorisées dans
+un `starfield()` commun aux deux ciels. Le chemin par défaut est inchangé.
+
+| Décor pendant la phase 2 | GPU / image |
+|---|---|
+| Survol, chemin `deep_sky` | **0,323 ms** |
+| Fond spatial habituel | **0,945 ms** |
+| **Différentiel** | **−0,622 ms (−66 %)** |
+
+Trois tirs de chaque, alternés, dispersion **± 0,003 ms**. ⚠️ Un quatrième tir isolé du
+témoin avait donné **1,535 ms** — une valeur aberrante qui, prise seule, aurait fait
+conclure n'importe quoi. **Une mesure unique ne vaut rien tant qu'on ne connaît pas sa
+dispersion.**
+
+## Les impacts, livrés au lot 3
+
+Trois bolides percutent la lune à des instants fixes de la traversée (11 s, 26 s, 40 s).
+C'est du **VFX scripté sur des jalons**, pas de la simulation : la scène se joue à
+l'identique à chaque partie, sans quoi aucune capture ne se comparerait à la précédente.
+
+⚠️ **Ils n'empruntent pas `VFXManager`.** Celui-ci est dimensionné pour le combat au
+premier plan : tailles fixes par catégorie, aucune échelle. Un impact se produit sur une
+lune de 60 unités de rayon, à trois fois la distance du plan de jeu — la même explosion y
+serait un point. Le décor porte ses propres effets, à sa propre échelle, tous préalloués.
+
+Deux corrections **de charte**, pas de goût :
+
+- Le bolide était d'abord un caillou du décor : **invisible** à trente unités sur fond noir.
+  Il s'allume désormais — le joueur doit voir venir le coup.
+- Mais **pas en corail** : le premier essai reprenait l'orange des explosions, et un objet
+  de cette teinte qui DESCEND se lit comme un projectile ennemi à esquiver — alors qu'il
+  appartient au décor et que rien ne peut être fait contre lui. Le fond « ne touche jamais
+  au cyan réservé au tir allié ni au corail réservé au tir ennemi » : bolide et flash sont
+  **dorés**.
+
 ## Ce qui reste à juger
 
 La phase existe et s'enchaîne ; **son rythme n'a pas été joué à la main.** La composition de
@@ -120,7 +165,9 @@ de conception, pas une mesure. Elle se juge en jouant — `ADR-0019` a montré c
 croire une mesure automatique sur une question de ressenti.
 
 Et **le décor n'est qu'une doublure** : la lune est une sphère grise à cuvettes, les rochers
-des ellipsoïdes. Ce qui est acquis, c'est la **mécanique** — la bascule aller-retour (vérifiée
+des ellipsoïdes, et **l'intensité de la gerbe d'impact se juge en MOUVEMENT** — une capture
+fige la seule chose qui fait lire des débris qui s'envolent. Ce qui est acquis, c'est la
+**mécanique** — la bascule aller-retour (vérifiée
 en capture : à t = 64 s le boss final se joue sous la nébuleuse revenue, sans résidu), la
 parallaxe, et le coût. La beauté est le lot 3.
 

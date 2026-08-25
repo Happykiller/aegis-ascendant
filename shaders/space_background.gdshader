@@ -44,6 +44,19 @@ uniform float star_brightness : hint_range(0.0, 4.0) = 1.7;
 // the ship and the bullets for attention.
 uniform float center_calm : hint_range(0.0, 1.0) = 0.35;
 
+// --- Ciel profond : le mode du survol de lune (ADR-0027) ---------------------
+//
+// ⚠️ CE N'EST PAS UN RÉGLAGE, C'EST UN CHEMIN. Baisser `nebula_strength` ne fait
+// qu'ATTÉNUER un résultat déjà calculé : les trois `warped_fbm`, le fbm de région
+// et celui de la bande galactique tournent quand même, et on les paie en entier.
+// Mesuré le 2026-08-25 : le survol réglé « nébuleuse à 0,12 » ne gagnait rien sur
+// le shader — ses 0,2 ms venaient des quatre sprites de repères masqués, pas d'ici.
+//
+// Ce drapeau SAUTE les cinq champs de bruit et ne garde que les étoiles. C'est un
+// branchement UNIFORME : cohérent sur toute la surface, donc quasi gratuit, et le
+// chemin par défaut reste bit à bit celui d'avant.
+uniform bool deep_sky = false;
+
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
 	p += dot(p, p + 45.32);
@@ -112,82 +125,103 @@ float star_layer(vec2 uv, float density, float seed, float threshold, float time
 	return (core + cross * 0.7) * twinkle * mix(0.55, 1.8, rare);
 }
 
+// Les cinq profondeurs d'étoiles, des lointaines qui rampent aux proches qui filent.
+// Commune aux deux ciels : le survol de lune garde exactement le même firmament, seuls
+// les nuages lui sont retirés.
+float starfield(vec2 p, float t, float time) {
+	float stars = 0.0;
+	stars += star_layer(p + vec2(0.0, t * 0.22), 26.0, 47.0, 0.940, time) * 0.55;
+	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.948, time) * 1.00;
+	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.958, time) * 0.72;
+	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.966, time) * 0.48;
+	stars += star_layer(p + vec2(0.0, t * 1.70), 140.0, 37.0, 0.978, time) * 0.30;
+	return stars;
+}
+
 void fragment() {
 	// The quad is 90 x 70, so square up the UV before sampling noise: otherwise
 	// every cloud and every star is stretched along X.
 	vec2 p = UV * vec2(1.286, 1.0);
 	float t = TIME * scroll_speed;
 
-	// --- Nebula: two masses, scrolling at different rates (parallax depth).
-	// The camera only frames ~0.6 x 0.47 of UV, so the noise must run at a high
-	// enough frequency to fit several cells in shot — below ~5x the clouds
-	// degenerate into flat wedges the size of the screen.
-	float flow_far;
-	float far_mass = warped_fbm(p * 5.0 + vec2(0.0, t * 0.30), flow_far);
-	float flow_near;
-	float near_mass = warped_fbm(p * 9.0 + vec2(11.0, t * 0.55), flow_near);
+	// Deux ciels, un seul calme central et un seul ALBEDO. ⚠️ Le chemin `deep_sky`
+	// n'ATTÉNUE pas la nébuleuse : il ne la calcule pas. C'est toute la différence,
+	// et c'est là qu'est la dépense (ADR-0027).
+	vec3 col;
+	if (deep_sky) {
+		col = deep_color + star_color * starfield(p, t, TIME) * star_brightness;
+	} else {
 
-	// A large-scale mask keeps whole regions thin, so the field breathes instead
-	// of being uniformly cloudy from edge to edge. It never fully clears: the
-	// floor keeps a haze everywhere.
-	float region = mix(0.30, 1.0, smoothstep(0.25, 0.75, fbm(p * 2.6 + vec2(0.0, t * 0.22))));
+		// Le ciel du survol : les étoiles, et rien d'autre. On sort avant les champs de
+		// bruit — c'est là qu'est la dépense.
 
-	float base_mass = far_mass * 0.75 + near_mass * 0.25;
-	float clouds = smoothstep(0.36, 0.82, base_mass) * region;
+		// --- Nebula: two masses, scrolling at different rates (parallax depth).
+		// The camera only frames ~0.6 x 0.47 of UV, so the noise must run at a high
+		// enough frequency to fit several cells in shot — below ~5x the clouds
+		// degenerate into flat wedges the size of the screen.
+		float flow_far;
+		float far_mass = warped_fbm(p * 5.0 + vec2(0.0, t * 0.30), flow_far);
+		float flow_near;
+		float near_mass = warped_fbm(p * 9.0 + vec2(11.0, t * 0.55), flow_near);
 
-	// --- Dust lanes: a warped ridge field that carves *into* the clouds.
-	float flow_dust;
-	float dust_raw = warped_fbm(p * 6.5 + vec2(4.0, t * 0.42), flow_dust);
-	float dust = smoothstep(0.44, 0.70, dust_raw);
-	clouds *= 1.0 - dust * dust_strength * 0.65;
+		// A large-scale mask keeps whole regions thin, so the field breathes instead
+		// of being uniformly cloudy from edge to edge. It never fully clears: the
+		// floor keeps a haze everywhere.
+		float region = mix(0.30, 1.0, smoothstep(0.25, 0.75, fbm(p * 2.6 + vec2(0.0, t * 0.22))));
 
-	// Colour follows the warp: cold indigo in the body, violet where the cloud
-	// is dense, a cool rim where it thins out into the void, and a parcimonious
-	// magenta accent burning on the densest ridges (ADR-0009: richer field).
-	vec3 col = deep_color;
-	vec3 cloud_col = mix(nebula_cold, nebula_deep, clamp(flow_far * 1.2, 0.0, 1.0));
-	cloud_col = mix(cloud_col, nebula_rim, pow(clamp(near_mass, 0.0, 1.0), 3.0) * 0.55);
-	float ridge = smoothstep(0.62, 0.95, base_mass) * pow(clamp(flow_near, 0.0, 1.0), 1.5);
-	cloud_col = mix(cloud_col, nebula_accent, ridge * accent_strength);
-	col = mix(col, cloud_col, clamp(clouds, 0.0, 1.0) * nebula_strength);
+		float base_mass = far_mass * 0.75 + near_mass * 0.25;
+		float clouds = smoothstep(0.36, 0.82, base_mass) * region;
 
-	// --- Distant galactic band: a broad diagonal veil with broken, noisy edges.
-	// It crawls independently of the nebula and is darkest through the combat lane.
-	float band_axis = p.y - (0.18 + p.x * 0.46 + t * 0.035);
-	float band_noise = fbm(p * 4.2 + vec2(18.0, t * 0.08));
-	float galaxy = smoothstep(0.24, 0.02, abs(band_axis + (band_noise - 0.5) * 0.16));
-	galaxy *= 0.30 + band_noise * 0.28;
-	col += landmark_color * galaxy * 0.32;
+		// --- Dust lanes: a warped ridge field that carves *into* the clouds.
+		float flow_dust;
+		float dust_raw = warped_fbm(p * 6.5 + vec2(4.0, t * 0.42), flow_dust);
+		float dust = smoothstep(0.44, 0.70, dust_raw);
+		clouds *= 1.0 - dust * dust_strength * 0.65;
 
-	// The moon and the distant planet that used to live here are now real drifting
-	// sprites (scenes/vfx/space_backdrop.tscn) — hand-authored art instead of the
-	// procedural corner-glow / ghost-ring that read poorly. This shader keeps only
-	// the infinite, seamless nebula + stars behind them.
+		// Colour follows the warp: cold indigo in the body, violet where the cloud
+		// is dense, a cool rim where it thins out into the void, and a parcimonious
+		// magenta accent burning on the densest ridges (ADR-0009: richer field).
+		col = deep_color;
+		vec3 cloud_col = mix(nebula_cold, nebula_deep, clamp(flow_far * 1.2, 0.0, 1.0));
+		cloud_col = mix(cloud_col, nebula_rim, pow(clamp(near_mass, 0.0, 1.0), 3.0) * 0.55);
+		float ridge = smoothstep(0.62, 0.95, base_mass) * pow(clamp(flow_near, 0.0, 1.0), 1.5);
+		cloud_col = mix(cloud_col, nebula_accent, ridge * accent_strength);
+		col = mix(col, cloud_col, clamp(clouds, 0.0, 1.0) * nebula_strength);
 
-	// --- Stars: five depths, the near ones racing, the far ones crawling. The far
-	// dense layer fills the void so the field never reads as empty.
-	float stars = 0.0;
-	stars += star_layer(p + vec2(0.0, t * 0.22), 26.0, 47.0, 0.940, TIME) * 0.55;
-	stars += star_layer(p + vec2(0.0, t * 0.35), 34.0, 0.0, 0.948, TIME) * 1.00;
-	stars += star_layer(p + vec2(0.0, t * 0.62), 58.0, 11.0, 0.958, TIME) * 0.72;
-	stars += star_layer(p + vec2(0.0, t * 1.05), 92.0, 23.0, 0.966, TIME) * 0.48;
-	stars += star_layer(p + vec2(0.0, t * 1.70), 140.0, 37.0, 0.978, TIME) * 0.30;
-	// Thick cloud occludes the starfield behind it — cheap, and sells the depth.
-	stars *= 1.0 - clamp(clouds, 0.0, 1.0) * 0.65;
-	col += star_color * stars * star_brightness;
+		// --- Distant galactic band: a broad diagonal veil with broken, noisy edges.
+		// It crawls independently of the nebula and is darkest through the combat lane.
+		float band_axis = p.y - (0.18 + p.x * 0.46 + t * 0.035);
+		float band_noise = fbm(p * 4.2 + vec2(18.0, t * 0.08));
+		float galaxy = smoothstep(0.24, 0.02, abs(band_axis + (band_noise - 0.5) * 0.16));
+		galaxy *= 0.30 + band_noise * 0.28;
+		col += landmark_color * galaxy * 0.32;
 
-	// --- Rare foreground debris. Large cells and a high threshold prevent a
-	// repeating field; stretched chips move faster than every star layer.
-	vec2 debris_uv = p + vec2(0.17, t * 2.8);
-	vec2 debris_grid = debris_uv * vec2(15.0, 11.0);
-	vec2 debris_cell = floor(debris_grid);
-	vec2 debris_f = fract(debris_grid) - 0.5;
-	float debris_seed = hash21(debris_cell + 71.0);
-	vec2 debris_offset = vec2(hash21(debris_cell + 13.0), hash21(debris_cell + 29.0)) - 0.5;
-	float chip = smoothstep(0.12, 0.04,
-		length((debris_f - debris_offset * 0.55) * vec2(0.55, 1.8)));
-	chip *= smoothstep(0.986, 0.998, debris_seed);
-	col += mix(vec3(0.10, 0.12, 0.17), landmark_color, debris_seed) * chip * 0.65;
+		// The moon and the distant planet that used to live here are now real drifting
+		// sprites (scenes/vfx/space_backdrop.tscn) — hand-authored art instead of the
+		// procedural corner-glow / ghost-ring that read poorly. This shader keeps only
+		// the infinite, seamless nebula + stars behind them.
+
+		// --- Stars: five depths, the near ones racing, the far ones crawling. The far
+		// dense layer fills the void so the field never reads as empty.
+		float stars = starfield(p, t, TIME);
+		// Thick cloud occludes the starfield behind it — cheap, and sells the depth.
+		stars *= 1.0 - clamp(clouds, 0.0, 1.0) * 0.65;
+		col += star_color * stars * star_brightness;
+
+		// --- Rare foreground debris. Large cells and a high threshold prevent a
+		// repeating field; stretched chips move faster than every star layer.
+		vec2 debris_uv = p + vec2(0.17, t * 2.8);
+		vec2 debris_grid = debris_uv * vec2(15.0, 11.0);
+		vec2 debris_cell = floor(debris_grid);
+		vec2 debris_f = fract(debris_grid) - 0.5;
+		float debris_seed = hash21(debris_cell + 71.0);
+		vec2 debris_offset = vec2(hash21(debris_cell + 13.0), hash21(debris_cell + 29.0)) - 0.5;
+		float chip = smoothstep(0.12, 0.04,
+			length((debris_f - debris_offset * 0.55) * vec2(0.55, 1.8)));
+		chip *= smoothstep(0.986, 0.998, debris_seed);
+		col += mix(vec3(0.10, 0.12, 0.17), landmark_color, debris_seed) * chip * 0.65;
+
+	}
 
 	// --- Keep the middle third calm: the fight reads there.
 	float from_center = abs(UV.x - 0.5) * 2.0;
