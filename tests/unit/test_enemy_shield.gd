@@ -57,3 +57,38 @@ func test_the_cover_holds_while_the_carrier_keeps_renewing_it() -> void:
 func test_the_grace_outlasts_a_slow_frame() -> void:
 	assert_true(EnemyController.AURA_GRACE > 1.0 / 30.0,
 		"la couverture tient plus qu'une image à 30 Hz (%f s)" % EnemyController.AURA_GRACE)
+
+# --- Le champ RENDU VISIBLE --------------------------------------------------
+#
+# ⚠️ POURQUOI CES TESTS EXISTENT. La mécanique du porteur a vécu deux jours en étant
+# complète et injouable : les voisins étaient bien couverts, mais la PORTÉE ne se voyait
+# nulle part. Le joueur constatait que ses tirs ne portaient pas sans pouvoir savoir où
+# la bulle s'arrêtait — il subissait au lieu de jouer contre.
+# `BRIEF-0046` avait mis le dôme hors du périmètre de la forge pour cette raison exacte :
+# « il doit montrer la portée RÉELLE, qui est une valeur de gameplay et non une dimension
+# de maillage. Si tu le sculptais, il mentirait au premier réglage. »
+# C'est ce mensonge-là que ces tests interdisent.
+
+func test_the_ring_straddles_the_real_reach() -> void:
+	for reach in [1.0, 4.5, 5.0, 12.0]:
+		var radii := EnemyController.aura_ring_radii(reach)
+		assert_true(radii.x < reach and radii.y > reach,
+			"l'anneau encadre la portée %.1f (%.2f .. %.2f)" % [reach, radii.x, radii.y])
+		assert_almost_eq((radii.x + radii.y) * 0.5, reach, 0.001,
+			"et il est CENTRÉ dessus : c'est le milieu du trait qui est la frontière")
+
+func test_the_ring_never_collapses_on_a_tiny_reach() -> void:
+	# Une portée plus petite que l'épaisseur du trait donnerait un rayon intérieur négatif,
+	# donc un tore retourné. Le garde-fou est muet mais il tient.
+	var radii := EnemyController.aura_ring_radii(0.05)
+	assert_true(radii.x > 0.0, "rayon intérieur positif (%.3f)" % radii.x)
+	assert_true(radii.y > radii.x, "et l'anneau garde une épaisseur")
+
+func test_the_shipped_carrier_shows_the_reach_it_actually_has() -> void:
+	# Le lien qui compte : la Resource et le visuel doivent dire le MÊME nombre. Le jour où
+	# quelqu'un règle `aura_radius` pour l'équilibrage, ce test dit si l'anneau a suivi.
+	var data: EnemyData = load("res://resources/enemies/shield_carrier.tres")
+	assert_true(data.aura_radius > 0.0, "le porteur livré a bien une portée")
+	var radii := EnemyController.aura_ring_radii(data.aura_radius)
+	assert_almost_eq((radii.x + radii.y) * 0.5, data.aura_radius, 0.001,
+		"l'anneau montre les %.1f unités de la Resource" % data.aura_radius)

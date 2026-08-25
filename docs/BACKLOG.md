@@ -262,7 +262,13 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   (`BRIEF-0085`, au **brouillon** volontairement). ⚠️ **Remesurer d'abord le différentiel sur la
   Quadro T1000** : les chiffres viennent de la RTX 4080, et c'est le poste du bureau qui contraint
   (13,05 ms fond complet sur les 16,67 du budget). C'est cette mesure qui fige les budgets du brief.
-- [ ] **⚠️ Le dôme de protection n'a AUCUN rendu** — relevé le 2026-08-25 en regardant la capture.
+- [x] **Le champ de protection se voit** — un **anneau** au ras du plan de jeu, centré sur la portée
+  réelle de la Resource, avec sa respiration. ⚠️ **Pas de dôme**, et c'est une décision : trois
+  essais de volume ont tous rendu un aplat magenta qui recouvrait le porteur et les étoiles. La
+  cause n'est pas le réglage mais la **surface** — le bloom et le `lift` de 1,25 du post-traitement
+  rétro ravivent tout violet, même à 11 % d'opacité. Un cercle fin porte mieux la seule information
+  utile : **où** la bulle s'arrête.
+- [x] ~~**⚠️ Le dôme de protection n'a AUCUN rendu**~~ — relevé le 2026-08-25 en regardant la capture.
   `_project_aura()` couvre bien les voisins, et une unité couverte montre qu'elle encaisse sans
   perdre de PV — mais **la portée de la bulle ne se voit nulle part**. `BRIEF-0046` l'avait pourtant
   écrit noir sur blanc : « le dôme est généré par le code, à partir du rayon d'aura ; il doit montrer

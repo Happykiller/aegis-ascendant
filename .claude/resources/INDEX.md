@@ -31,7 +31,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   sur la nébuleuse ; et un signal de mine parfait sur fond noir, noyé en jeu. ⚠️ Sur fond lumineux,
   mesurer la **teinte**, pas la luminance — un pic à 255 ne dit pas « lumineux », il dit « écrêté ». ⚠️ Effacer `capture.png` **avant** chaque lancement et exiger la ligne
   `saved` (sinon on juge un PNG périmé) ; les flags de jeu passent **après `++`** ; et
-  `--capture-after` compte des **images**, pas des secondes.
+  `--capture-after` compte des **images**, pas des secondes. ⚠️ **Ce qui doit rester discret doit être FIN, pas transparent** : le bloom et le `lift` du post-traitement ravivent toute grande surface teintée, même à 11 % d'opacité.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend

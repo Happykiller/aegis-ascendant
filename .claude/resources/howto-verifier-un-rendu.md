@@ -15,6 +15,23 @@ Le projet embarque un helper de capture (`scripts/debug/screen_capture.gd`) : il
 
 Puis lire l'image (outil `Read`) depuis `/mnt/c/tmp/aegis-ascendant/capture.png`.
 
+
+## ⚠️ Une grande surface teintée ne peut pas être discrète ici
+
+Mesuré le 2026-08-25 sur le champ du porteur de bouclier : trois essais de dôme — additif à 0,09
+d'alpha, hémisphère à énergie divisée par dix, puis mélange normal **sans émission** à 0,11 — ont
+rendu **le même aplat** magenta, recouvrant le porteur, les unités couvertes et les étoiles.
+
+La cause n'est pas le réglage, c'est la **surface**, et deux étages du rendu la reprennent :
+
+- le **bloom** du `WorldEnvironment` sature toute surface émissive un peu large ;
+- surtout, le **`lift` de 1,25** du post-traitement rétro remonte les noirs — un violet à 11 %
+  d'opacité en ressort vif.
+
+Conséquence pratique : **ce qui doit rester discret doit être FIN**, pas transparent. Un cercle, un
+liseré, un trait. Sur ce projet, baisser l'opacité d'une grande forme ne la rend pas discrète — ça
+la rend seulement plus pâle une fois relevée par le lift, ce qui n'est pas la même chose.
+
 ## Les trois pièges qui coûtent une itération chacun
 
 **0. Le PNG périmé — le plus vicieux, parce qu'il déguise les deux autres.** `capture.png` **reste

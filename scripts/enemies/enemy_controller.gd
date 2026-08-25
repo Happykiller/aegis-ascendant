@@ -109,6 +109,33 @@ var _shield_grace: float = 0.0
 ## à chaque image allouerait un tableau par porteur et par frame.
 var _neighbours: Array[EnemyController] = []
 
+## --- Le champ de protection, rendu VISIBLE -----------------------------------
+##
+## ⚠️ SANS LUI, LA MÉCANIQUE EST INJOUABLE. Le porteur couvre bien ses voisins et une
+## unité couverte montre qu'elle encaisse sans rien perdre — mais tant que la PORTÉE ne
+## se voit pas, le joueur constate que ses tirs ne portent pas sans pouvoir savoir **où**
+## la bulle s'arrête. Il ne peut donc pas jouer contre : il subit.
+## `BRIEF-0046` l'avait écrit et mis hors du périmètre de la forge, précisément pour ça :
+## « le dôme est généré par le code, à partir du rayon d'aura — il doit montrer la portée
+## RÉELLE, qui est une valeur de gameplay et non une dimension de maillage. Si tu le
+## sculptais, il mentirait au premier réglage. »
+##
+## D'où l'anneau au ras du plan de jeu : le combat se joue en 2D logique, et la frontière
+## qui compte est un CERCLE, pas une surface. Le dôme, lui, dit seulement qu'il y a un
+## volume — c'est l'anneau qu'on lit.
+
+## Demi-épaisseur de l'anneau, en unités monde.
+const AURA_RING_THICKNESS := 0.09
+## Violet du Chœur Nul. ⚠️ Ni cyan ni corail : ces deux teintes appartiennent au tir
+## allié et au tir ennemi, et un champ qui les emprunterait leur volerait leur lisibilité.
+const AURA_TINT := Color(0.78, 0.32, 0.98)
+## Respiration du champ, en secondes. La même que celle des pièces d'une unité passive :
+## le porteur n'a pas de télégraphe, il ne fait que tourner.
+const AURA_PULSE_PERIOD := 5.3
+
+var _aura_visual: Node3D
+var _aura_edge_material: StandardMaterial3D
+
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
 ## Enemies that carry a hull can flash and bank; ones that don't just skip it.
@@ -137,6 +164,11 @@ func _ready() -> void:
 		_vitals = EnemyVitals.bind(_hull)
 		_pose = EnemyPose.bind(_hull, data.moving_part_prefix, data.open_angle_deg,
 			data.open_spread)
+	# ⚠️ HORS du bloc de la coque, et volontairement : le champ est une valeur de gameplay,
+	# pas une pièce d'asset. Une unité dont le `.glb` manquerait doit quand même montrer sa
+	# portée — sinon le jour où un asset tombe, c'est la MÉCANIQUE qui disparaît avec lui.
+	if data.effect == EnemyData.Effect.SHIELD_AURA and data.aura_radius > 0.0:
+		_build_aura_visual()
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)
@@ -222,6 +254,7 @@ func _physics_process(delta: float) -> void:
 	_update_reaction(delta)
 	if data.effect == EnemyData.Effect.SHIELD_AURA:
 		_project_aura()
+		_pulse_aura()
 	_update_fire(delta)
 	if _pose != null:
 		_pose.pose(_pose_ratio())
@@ -505,3 +538,84 @@ func _on_damaged(_amount: float, remaining: float) -> void:
 func _on_died() -> void:
 	deactivate()
 	destroyed.emit(self)
+
+
+# --- Le champ visible --------------------------------------------------------
+
+## Rayons intérieur et extérieur de l'anneau, pour un rayon d'aura donné. Statique et
+## pure : c'est ce qui permet de VÉRIFIER que le visuel montre la portée réelle, sans
+## monter la moindre scène.
+static func aura_ring_radii(aura_radius: float) -> Vector2:
+	return Vector2(maxf(aura_radius - AURA_RING_THICKNESS, 0.01),
+		aura_radius + AURA_RING_THICKNESS)
+
+## Le champ, monté UNE fois. Rien ne s'alloue ensuite : la respiration ne touche qu'à des
+## facteurs de matériau (spec §26.2).
+func _build_aura_visual() -> void:
+	_aura_visual = Node3D.new()
+	_aura_visual.name = "AuraField"
+
+	# L'anneau : la seule chose que le joueur doit vraiment lire. Il est posé dans le plan
+	# de jeu, là où sa position a un sens pour l'esquive.
+	_aura_edge_material = _aura_material(0.85, 1.6)
+	var radii := aura_ring_radii(data.aura_radius)
+	var ring := TorusMesh.new()
+	ring.inner_radius = radii.x
+	ring.outer_radius = radii.y
+	ring.rings = 40
+	ring.ring_segments = 6
+	var edge := MeshInstance3D.new()
+	edge.name = "Edge"
+	edge.mesh = ring
+	edge.material_override = _aura_edge_material
+	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_aura_visual.add_child(edge)
+
+	# ⚠️ IL N'Y A PAS DE DÔME, ET C'EST UNE DÉCISION, PAS UN OUBLI. Trois essais l'ont
+	# condamné, tous regardés en capture : additif à 0,09 d'alpha, puis hémisphère à
+	# énergie divisée par dix, puis mélange normal SANS émission à 0,11. Les trois ont
+	# rendu le même aplat magenta qui recouvrait le porteur, les unités couvertes et les
+	# étoiles.
+	#
+	# La cause n'est pas le réglage, c'est la SURFACE. Deux étages du rendu la reprennent :
+	# le bloom du `WorldEnvironment`, qui sature toute surface émissive un peu large, et
+	# surtout le `lift` de 1,25 du post-traitement rétro, qui remonte les noirs — un violet
+	# à 11 % d'opacité en ressort vif. Une grande surface teintée ne peut pas être discrète
+	# dans cette chaîne de rendu.
+	#
+	# L'anneau, lui, dit exactement ce qu'on avait besoin de dire : OÙ la bulle s'arrête.
+	# C'est la seule information dont le joueur ait l'usage, et un cercle fin la porte
+	# mieux qu'un volume — sans rien cacher.
+
+	# ⚠️ Enfant du CONTRÔLEUR, pas de `VisualRoot` : celui-ci prend le roulis de la coque,
+	# et un champ de force qui s'incline avec le vaisseau qui le porte se lirait comme une
+	# pièce de la coque — donc comme quelque chose qu'on peut casser.
+	add_child(_aura_visual)
+
+## Additif et non éclairé : un champ est une SOURCE, et l'additif garantit qu'il éclaircit
+## toujours ce qu'il recouvre au lieu de l'assombrir — donc qu'il ne peut jamais cacher un
+## projectile.
+func _aura_material(alpha: float, energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = Color(AURA_TINT.r, AURA_TINT.g, AURA_TINT.b, alpha)
+	# L'additif n'est réservé qu'à ce qui BRILLE — l'anneau. Il garantit qu'une surface
+	# lumineuse éclaircit toujours ce qu'elle recouvre au lieu de l'assombrir, donc
+	# qu'elle ne peut jamais effacer un projectile. Appliqué à une grande surface, il
+	# fait exactement l'inverse : il la remplit.
+	if energy > 0.0:
+		material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		material.emission_enabled = true
+		material.emission = AURA_TINT
+		material.emission_energy_multiplier = energy
+	return material
+
+## La respiration. Elle ne change RIEN à la portée — seulement l'intensité : un champ dont
+## le rayon pulserait mentirait une fois sur deux.
+func _pulse_aura() -> void:
+	if _aura_edge_material == null:
+		return
+	var breath := 0.78 + 0.22 * sin(_age * TAU / AURA_PULSE_PERIOD)
+	_aura_edge_material.emission_energy_multiplier = 1.6 * breath
