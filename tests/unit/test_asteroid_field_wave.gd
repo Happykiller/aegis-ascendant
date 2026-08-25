@@ -13,6 +13,7 @@ const FieldWave: WaveData = preload("res://resources/encounters/wave_asteroid_fi
 const MineScene := "res://scenes/enemies/choir_mine.tscn"
 const MawScene := "res://scenes/enemies/null_maw.tscn"
 const LeechScene := "res://scenes/enemies/leech_drone.tscn"
+const CarrierScene := "res://scenes/enemies/shield_carrier.tscn"
 
 ## Durée décidée avec l'opérateur le 2026-08-25 : la traversée fait respirer entre
 ## deux boss sans creuser un ventre mou. Le boss final dure ~40 s.
@@ -45,7 +46,23 @@ func test_it_plays_the_three_units_the_bestiary_had_left_unused() -> void:
 	assert_true(int(counts.get(MineScene, 0)) > 0, "la Choir Mine entre en jeu")
 	assert_true(int(counts.get(MawScene, 0)) > 0, "la Null Maw entre en jeu")
 	assert_true(int(counts.get(LeechScene, 0)) > 0, "la Leech Drone entre en jeu")
-	assert_eq(counts.size(), 3, "et rien d'autre : la phase est celle du nouveau bestiaire")
+	assert_eq(counts.size(), 4, "et rien d'autre : la phase est celle du nouveau bestiaire")
+
+func test_the_shield_carrier_teaches_before_it_is_exploited() -> void:
+	# ⚠️ PREMIÈRE APPARITION DANS TOUT LE JEU. Le genre est explicite : un mécanisme
+	# s'installe SEUL avant d'être combiné. Deux porteurs, pas plus — le premier pour
+	# comprendre, le second pour payer le détour — et le premier arrive bien avant le
+	# rideau de mines, sinon la leçon se donne au pire moment.
+	var counts := _scene_paths()
+	assert_eq(int(counts.get(CarrierScene, 0)), 2, "deux porteurs, pas un essaim")
+	var times: Array[float] = []
+	for entry in FieldWave.entries:
+		if entry.enemy_scene.resource_path == CarrierScene:
+			times.append(entry.time_offset)
+	times.sort()
+	assert_true(times[0] < 20.0, "le premier enseigne tôt (%.1f s)" % times[0])
+	assert_true(times[1] - times[0] >= 10.0,
+		"et le second est loin derrière (%.1f s d'écart)" % (times[1] - times[0]))
 
 func test_the_phase_lasts_as_long_as_it_was_decided_to() -> void:
 	# Borne HAUTE : le pire cas, celui du joueur qui ne détruit rien. La vague ne se

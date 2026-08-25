@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=26 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=29 format=3]
 
 ; ============================================================================
 ; Champ d'astéroïdes — la traversée entre les deux boss (ADR-0027).
@@ -28,6 +28,7 @@
 [ext_resource type="PackedScene" path="res://scenes/enemies/choir_mine.tscn" id="3_mine"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/null_maw.tscn" id="4_maw"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/leech_drone.tscn" id="5_leech"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/shield_carrier.tscn" id="6_carrier"]
 
 ; --- Entrée dans le champ : trois colonnes de mines, largement ouvertes -------
 ; On apprend la mine avant d'en subir un rideau : trois couloirs de 8 unités,
@@ -95,6 +96,21 @@ spawn_plane_position = Vector2(10, 9.5)
 count = 2
 spacing = 1.2
 
+; --- Le porteur de bouclier : la LEÇON, avant l'application -------------------
+; ⚠️ PREMIÈRE APPARITION DANS TOUT LE JEU, et elle doit ENSEIGNER. Il arrive quand
+; les deux puits sont descendus à mi-champ : son aura de 5 unités les couvre, le
+; joueur tire dessus et RIEN NE TOMBE. La réponse est à cinq mètres au-dessus, elle
+; est deux fois plus large que tout ce qu'il a rencontré, et elle ne tire pas.
+; Le genre est explicite là-dessus : un mécanisme s'installe SEUL avant d'être
+; combiné. C'est pour ça qu'il n'y a rien d'autre de neuf à cet instant.
+[sub_resource type="Resource" id="sc1"]
+script = ExtResource("2_entry")
+time_offset = 15.5
+enemy_scene = ExtResource("6_carrier")
+spawn_plane_position = Vector2(0, 9.5)
+count = 1
+spacing = 0.0
+
 ; --- Le rideau : quatre colonnes, échelonnées de 1,5 s ------------------------
 ; Elles se ferment de la gauche vers la droite. Un joueur qui suit le mouvement
 ; se retrouve poussé vers le bord droit — où l'attend l3.
@@ -155,6 +171,17 @@ spawn_plane_position = Vector2(8, 9.5)
 count = 1
 spacing = 0.0
 
+; Le second porteur : l'APPLICATION. Il arrive AVANT les mines qu'il va couvrir,
+; pas après — le joueur a le temps de le voir et de choisir. C'est là que le détour
+; se paie : aller le chercher au centre, c'est traverser la tenaille des deux puits.
+[sub_resource type="Resource" id="sc2"]
+script = ExtResource("2_entry")
+time_offset = 31.0
+enemy_scene = ExtResource("6_carrier")
+spawn_plane_position = Vector2(0, 9.5)
+count = 1
+spacing = 0.0
+
 ; Le couloir central est le seul chemin que les deux puits laissent ouvert —
 ; ces deux mines le referment. C'est le pic de la phase.
 [sub_resource type="Resource" id="m8"]
@@ -210,4 +237,4 @@ spacing = 0.8
 
 [resource]
 script = ExtResource("1_wave")
-entries = [SubResource("m1"), SubResource("m2"), SubResource("m3"), SubResource("w1"), SubResource("w2"), SubResource("l1"), SubResource("l2"), SubResource("m4"), SubResource("m5"), SubResource("m6"), SubResource("m7"), SubResource("l3"), SubResource("w3"), SubResource("w4"), SubResource("m8"), SubResource("l4"), SubResource("l5"), SubResource("m9"), SubResource("m10"), SubResource("l6")]
+entries = [SubResource("m1"), SubResource("m2"), SubResource("m3"), SubResource("w1"), SubResource("w2"), SubResource("l1"), SubResource("l2"), SubResource("sc1"), SubResource("m4"), SubResource("m5"), SubResource("m6"), SubResource("m7"), SubResource("l3"), SubResource("w3"), SubResource("w4"), SubResource("sc2"), SubResource("m8"), SubResource("l4"), SubResource("l5"), SubResource("m9"), SubResource("m10"), SubResource("l6")]

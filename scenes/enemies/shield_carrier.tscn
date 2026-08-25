@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3]
+
+; Shield Carrier. Meme squelette de quatre noeuds que les autres familles : le
+; controleur lit HealthComponent, VisualRoot et VisualRoot/Hull par leur nom.
+;
+; La coque declare un `Engine_C` (BRIEF-0046) : elle vole sous puissance et le jeu
+; lui accroche une plume — c'est ce qui la distingue des deux mines, qui derivent.
+; Elle declare aussi un `Muzzle_C` alors qu'elle ne tire JAMAIS : EnemyController lit
+; ce point a l'initialisation de toute coque, et son absence degraderait au centre.
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_controller.gd" id="1_ctrl"]
+[ext_resource type="Resource" path="res://resources/enemies/shield_carrier.tres" id="2_data"]
+[ext_resource type="Script" path="res://scripts/gameplay/health_component.gd" id="3_health"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/shield_carrier.glb" id="4_hull"]
+
+[node name="ShieldCarrier" type="Node3D"]
+script = ExtResource("1_ctrl")
+data = ExtResource("2_data")
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+
+[node name="VisualRoot" type="Node3D" parent="."]
+
+[node name="Hull" parent="VisualRoot" instance=ExtResource("4_hull")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)

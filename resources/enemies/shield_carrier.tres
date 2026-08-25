@@ -1,0 +1,53 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+; Shield Carrier — l'unite qui NE MENACE JAMAIS. Elle ne tire pas, ne poursuit pas,
+; ne touche pas. Elle rend INVULNERABLES les autres ennemis de sa bulle, et c'est la
+; seule chose qu'elle fait.
+;
+; ⚠️ C'est de la PRIORITE DE CIBLE a l'etat pur : tant qu'elle vit, la vague est un
+; mur, et le joueur doit comprendre en une seconde que c'est ELLE qu'il faut abattre
+; d'abord, pas ce qu'il a devant le canon. Toute sa coque sert cette lecture (BRIEF-0046) :
+; masse tri-lobee deux fois plus large que tout le reste du bestiaire, aucune pointe,
+; aucun fut, et un dome lumineux tourne vers le HAUT — une SOURCE, pas un combattant.
+;
+; ⚠️ LE PORTEUR NE SE COUVRE JAMAIS LUI-MEME (EnemyData.aura_radius) : sans cette regle
+; il serait immortel et la cible prioritaire deviendrait une cible impossible.
+;
+; PAS DE trigger_radius, et validate() l'exige : une aura qui se declencherait serait une
+; aura qu'on peut attendre. Celle-ci tient tant que le porteur vit. Consequence heureuse
+; du cote de la coque : EnemyController fait osciller les pieces d'une unite NON reactive
+; sur PASSIVE_POSE_PERIOD (5,3 s) — les trois berceaux respirent donc en permanence, et
+; c'est exactement ce que le brief demandait, « une machine en fonctionnement plutot
+; qu'une epave qui plane ».
+;
+; path = HOVER_STRAFE, et ce n'est pas un detail : les deux mines ATTENDENT, posees ;
+; celle-ci VOLE. Elle se stabilise haut dans le champ, devant les unites qu'elle couvre,
+; et balaie lentement. Le joueur doit la voir arriver et comprendre qu'elle accompagne.
+;
+; max_health = 42 : quatre fois la Choir Mine. Elle doit couter un vrai detour — sinon
+; la priorite de cible ne se paie pas et ne s'apprend pas — sans etre une eponge.
+;
+; open_angle_deg = 40 et open_spread = 0 sont MESURES sur la coque livree
+; (BRIEF-0046-report.md), pas choisis : 40 degres est l'angle ou l'enveloppe apparente
+; culmine (+19,5 % de diametre a la camera de jeu, plateau a 50 puis decroissance), et
+; au-dela de 0,05 de coulissement la coquille decolle du flanc et ouvre un jour de 30 mm.
+; Il n'y a AUCUNE butee mecanique : aucune interpenetration jusqu'a 90 degres.
+
+[ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+path = 3
+fire = 1
+effect = 3
+display_name = "Shield Carrier"
+max_health = 42.0
+move_speed = 2.2
+hold_y = 4.5
+hold_time = 9.0
+hitbox_radius = 0.85
+score_value = 400
+aura_radius = 5.0
+moving_part_prefix = "Cradle"
+open_angle_deg = 40.0
+open_spread = 0.0

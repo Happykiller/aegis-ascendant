@@ -50,6 +50,7 @@ const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/leech_drone.tres"),
 	preload("res://resources/codex/choir_mine.tres"),
 	preload("res://resources/codex/null_maw.tres"),
+	preload("res://resources/codex/shield_carrier.tres"),
 	preload("res://resources/codex/choir_harvester.tres"),
 	preload("res://resources/codex/pale_leviathan.tres"),
 ]

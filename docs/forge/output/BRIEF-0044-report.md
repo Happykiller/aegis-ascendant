@@ -207,6 +207,18 @@ et c'est elle qui donne à la coque son avant et son arrière.
 Rasterisation avec z-buffer depuis la caméra de jeu : ce qui est occulté ne compte pas
 (compter l'aire des triangles surestimerait tout le dessous des doigts).
 
+> ⚠️ **LES POURCENTAGES CI-DESSOUS SONT FAUX** — relevé le 2026-08-25, pendant `BRIEF-0046`.
+> Le rastériseur « aire vue » de ce harnais n'employait pas de vraies coordonnées barycentriques
+> (`w0 = 1 + u.x·(AC.y − AB.y)/det` : `u.y` n'y figure pas). Il rejetait donc le centre de gravité
+> d'un triangle sur deux, et **amputait des pixels** — 40 % de ceux d'une lentille sur la coque
+> suivante. **Le maillage, lui, n'est pas en cause** : seule la mesure l'est. Les autres chiffres
+> de ce rapport (dimensions, triangles, débattements) sont indépendants de ce code et restent
+> valables.
+>
+> Le correctif est écrit et démontré dans `tools/blender/build_shield_carrier.py` ; il n'a **pas**
+> été porté ici — la coque devrait être remesurée pour que ce tableau redevienne vrai.
+
+
 | Matériau | part de l'aire vue | rôle |
 |---|---|---|
 | `AA_Greeble` | 42,6 % | dessous, poignets, chapes, creux — jamais vu de face |

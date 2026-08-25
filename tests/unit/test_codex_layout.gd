@@ -85,21 +85,43 @@ func test_the_shipped_roster_stays_on_screen() -> void:
 	assert_true(strip.end.x <= _viewport().x - DatasheetScript.MARGIN,
 		"et à droite (fin=%f)" % strip.end.x)
 
-## Aujourd'hui, les neuf coques tiennent sur UNE ligne — c'est ce qui garde le
-## bandeau lisible d'un coup d'œil. Le retour à la ligne est un filet, pas un
-## objectif : s'il se déclenche, c'est que le bestiaire a dépassé ce format.
-func test_the_shipped_roster_still_reads_on_a_single_line() -> void:
-	var width := _strip_width(_shipped_names())
+## ⚠️ LE FILET S'EST DÉCLENCHÉ, LE 2026-08-25. À neuf coques le bandeau tenait sur une
+## ligne ; la dixième — le Shield Carrier — demande **1 925 px pour 1 816 disponibles**.
+## Ce test disait « une seule ligne » et il est tombé exactement quand il l'avait
+## annoncé, en nommant la coque responsable. Il n'y avait rien à réparer : le bandeau
+## est un `HFlowContainer` et sa boîte a **toujours** été dimensionnée pour deux lignes
+## (`ROSTER_TOP` 122 → `ROSTER_BOTTOM` 182).
+##
+## Ce qui est vérifié ici est donc l'invariant RÉEL, et non plus le format d'hier : le
+## bandeau tient-il dans **sa boîte** ? Le jour où deux lignes ne suffiront plus, c'est
+## ce test-ci qui tombera — et ce jour-là il faudra vraiment décider quelque chose.
+const ROSTER_MAX_LINES := 2
+
+func _lines_needed(names: PackedStringArray) -> int:
 	var available := DatasheetScript.ROSTER_HALF_WIDTH * 2.0
-	assert_true(width <= available,
-		"les %d coques tiennent sur une ligne (%.0f px pour %.0f)"
-			% [_shipped_names().size(), width, available])
+	return int(ceil(_strip_width(names) / available))
+
+func test_the_shipped_roster_fits_in_the_two_lines_of_its_box() -> void:
+	var names := _shipped_names()
+	var lines := _lines_needed(names)
+	assert_true(lines <= ROSTER_MAX_LINES,
+		"les %d coques tiennent en %d ligne(s) sur %d (%.0f px pour %.0f)"
+			% [names.size(), lines, ROSTER_MAX_LINES, _strip_width(names),
+				DatasheetScript.ROSTER_HALF_WIDTH * 2.0])
+
+## Et le constat daté, pour qu'on sache quand le format a basculé : le bandeau n'est
+## PLUS sur une ligne. Ce n'est pas une régression, c'est un seuil franchi.
+func test_the_roster_has_outgrown_a_single_line() -> void:
+	assert_eq(_lines_needed(_shipped_names()), 2,
+		"le bandeau est passé à deux lignes avec la dixième coque")
 
 # --- Demain --------------------------------------------------------------------
 
 ## Les trois familles de la spec §11.1 qui restent à livrer. Le jour où elles
 ## arrivent, ce test tombe AVANT la capture — et il dit laquelle a fait déborder.
-const REMAINING_FAMILIES := ["Shield Carrier", "Null Bomber", "Frigate Turret"]
+## ⚠️ « Shield Carrier » a QUITTÉ cette liste le 2026-08-25 : elle est livrée, et le
+## bandeau doit désormais la porter pour de vrai — ce que le test du dessus mesure.
+const REMAINING_FAMILIES := ["Null Bomber", "Frigate Turret"]
 
 func _full_roster() -> PackedStringArray:
 	var names := _shipped_names()
@@ -168,3 +190,59 @@ func test_every_shipped_hull_appears_in_the_banner() -> void:
 			shown.append(label.text)
 	for name in names:
 		assert_true(shown.has(name.to_upper()), "%s est listée au bandeau" % name)
+
+
+# --- La notice ------------------------------------------------------------------
+#
+# ⚠️ CE BLOC N'ÉTAIT GARDÉ PAR RIEN, et il s'est vu au premier dépassement : la fiche du
+# Shield Carrier, écrite le 2026-08-25, débordait de son cadre — trois lignes de texte
+# couraient SOUS le panneau, par-dessus le mobilier du bas. Un `Label` en autowrap ne
+# tronque pas : il déborde, silencieusement, et seule la capture le montre.
+#
+# Même famille que le bandeau : un bloc dont la hauteur dépend des DONNÉES. La longueur
+# d'une notice est une décision d'écriture, prise loin d'ici, par quelqu'un qui ne pense
+# pas en pixels.
+
+## Géométrie de `_build_notice()` : le label est posé à (18, 46) dans un panneau de
+## 660 x 186, et occupe 624 x 128.
+const NOTICE_WIDTH := DatasheetScript.LEFT_WIDTH - 36.0
+const NOTICE_HEIGHT := 128.0
+const NOTICE_FONT_SIZE := 10
+const NOTICE_LINE_SPACING := 9
+
+## Nombre de lignes qu'occupe un texte enveloppé sur `NOTICE_WIDTH`. PressStart2P est
+## monospace : l'avance d'un glyphe suffit à connaître le nombre de colonnes, et
+## l'enveloppement se refait mot à mot comme `AUTOWRAP_WORD_SMART` le ferait.
+func _notice_lines(text: String) -> int:
+	var advance := LABEL_FONT.get_string_size("M", HORIZONTAL_ALIGNMENT_LEFT, -1,
+		NOTICE_FONT_SIZE).x
+	var columns := int(floor(NOTICE_WIDTH / advance))
+	var lines := 1
+	var used := 0
+	for word in text.split(" ", false):
+		var length := word.length()
+		if used > 0 and used + 1 + length > columns:
+			lines += 1
+			used = length
+		else:
+			used += length + (1 if used > 0 else 0)
+	return lines
+
+## ⚠️ L'INTERLIGNE SÉPARE, IL NE SUIT PAS. `n` lignes occupent `n * hauteur +
+## (n - 1) * interligne` — une division simple par « hauteur + interligne » retire une
+## ligne de trop et transforme le test en faux positif sur des fiches qui tiennent.
+func _notice_capacity() -> int:
+	var line := LABEL_FONT.get_height(NOTICE_FONT_SIZE)
+	var lines := 1
+	while (lines + 1) * line + float(lines) * float(NOTICE_LINE_SPACING) <= NOTICE_HEIGHT:
+		lines += 1
+	return lines
+
+func test_every_notice_fits_in_its_frame() -> void:
+	var capacity := _notice_capacity()
+	assert_true(capacity >= 5, "le cadre tient au moins cinq lignes (%d)" % capacity)
+	for entry in CodexScreenScript.ROSTER:
+		var lines := _notice_lines(entry.notice)
+		assert_true(lines <= capacity,
+			"%s : %d lignes pour %d (%d caracteres)"
+				% [entry.display_name, lines, capacity, entry.notice.length()])

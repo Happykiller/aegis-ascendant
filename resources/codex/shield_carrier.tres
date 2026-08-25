@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/shield_carrier.glb" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/enemies/shield_carrier.tres" id="3_data"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Shield Carrier"
+camp = 1
+designation = "NX-071"
+hull_class = "PORTEUR DE CHAMP A TROIS BERCEAUX"
+builder = "INCONNU - CHASSIS DE SOUTIEN"
+status = "MENACE NULLE - PRIORITE ABSOLUE"
+notice = "La seule unite du Choeur Nul qui ne fasse RIEN au pilote: ni arme, ni poursuite, ni contact. Son projecteur tient une bulle de cinq metres ou les AUTRES appareils deviennent intouchables: tant qu'elle vole, la vague est un mur. Elle ne se couvre pas elle-meme, et cette faille suffit. La detruire coute un detour; l'ignorer coute la vague."
+mass_t = 0.42
+crew = 0
+hull_scene = ExtResource("2_hull")
+frame_distance = 0.0
+enemy_data = ExtResource("3_data")

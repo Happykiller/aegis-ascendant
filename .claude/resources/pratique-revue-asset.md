@@ -1,5 +1,23 @@
 # Bonne pratique — regarder un asset avant de l'intégrer
 
+
+## ⚠️ L'instrument de mesure fait partie du livrable
+
+Le 2026-08-25, la forge a signalé de elle-même que le rastériseur « aire vue » **hérité** d'un
+script précédent ne calculait pas de vraies coordonnées barycentriques : il rejetait le centre de
+gravité d'un triangle sur deux et amputait jusqu'à 40 % des pixels d'une pièce. Conséquence : les
+répartitions de matériaux de `BRIEF-0044-report.md` sont **fausses**, et personne ne l'aurait su —
+un pourcentage plausible ne se vérifie pas tout seul.
+
+Trois réflexes qui en découlent :
+
+- **Un harnais de mesure recopié se relit**, il ne se réutilise pas de confiance. C'est du code, il
+  a des bugs, et ses bugs produisent des chiffres qui **ont l'air justes**.
+- **Un correctif d'instrument doit être PORTÉ**, ou son absence écrite noir sur blanc. Ici il ne
+  l'a pas été (hors périmètre de la forge) : le rapport périmé porte donc un avertissement en tête.
+- **Quand un chiffre publié devient faux, on le marque là où il est lu**, pas seulement dans un
+  journal. Quelqu'un rouvrira ce rapport sans lire l'historique.
+
 ## La règle
 
 **Un livrable de la forge n'est pas un asset validé tant qu'il n'a pas été rendu et regardé.**
