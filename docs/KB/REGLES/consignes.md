@@ -21,6 +21,22 @@ tant que personne ne la lève.
   suivante dans le mur sans qu'elle le questionne. D'où l'obligation de recaler `docs/BACKLOG.md`
   quand ses chiffres ne correspondent plus au réel.
 
+- **Ce qui est clos doit descendre aux archives.** Verdict du 2026-08-25 : « j'ai un souci avec
+  tous ces plans, roadmaps, fichiers qu'on crée et qu'on archive jamais, ou marque comme done ».
+  Mesuré dans la foulée : **32 briefs livrés sur 37 portaient encore « assigné »**, deux
+  documents de pilotage étaient morts depuis cinq et six semaines dans `docs/`, et le backlog
+  contenait **deux copies divergentes** de ses sections P0-P4 — celle qu'on lisait en premier
+  était la périmée. Un état tenu à la main rouille : `./scripts/audit-docs.sh` le **dérive** du
+  dépôt et range (`--fix`), et `/cloture` l'appelle. ⚠️ **Avant d'archiver un plan, verser ce
+  qu'il laisse ouvert dans `docs/BACKLOG.md`** — un plan qu'on archive ne doit rien emporter.
+- **Un calibrage mesure une situation, pas une intention.** `ADR-0024` avait dimensionné le flux
+  du boss contre la plongée d'alors ; `ADR-0025` a rendu la cible facile à toucher, et le
+  calibrage est devenu faux **en silence** — aucun test rouge, invariant toujours vert. C'est le
+  playtest suivant qui a payé (le boss est tombé en 2 cycles au lieu de 3). Quand la situation
+  change sous un réglage, le réglage est à refaire — et si aucun nombre ne peut tenir, c'est la
+  **règle** qu'il faut changer (`ADR-0026` : plafonner, pour que trois cycles soient vrais par
+  construction et non par calibrage).
+
 ## Sur l'outillage
 
 - **`/jouer` nu démarre normalement**, à l'écran-titre, l'arc depuis le début. Les drapeaux

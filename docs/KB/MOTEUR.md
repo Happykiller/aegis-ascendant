@@ -32,6 +32,12 @@ soit une expertise à part. Aucun d'eux n'écrit du code de gameplay.
 | `balance-prober` | Joue l'arc en temps réel et rend sa chronologie. Sert l'équilibrage sans toucher aux Resources | `.claude/agents/balance-prober.md` |
 | `spec-auditor` | Audite le code contre **une section** de la spec (fan-out : une instance par section), en tenant compte des ADR qui priment | `.claude/agents/spec-auditor.md` |
 
+## Scripts d'outillage
+
+| Script | Quand l'utiliser |
+| --- | --- |
+| `./scripts/audit-docs.sh` | Faire le point sur les plans et les briefs, ou clore un chantier. Il **dérive** l'état du dépôt — un brief est livré s'il a une sortie dans `docs/forge/output/` ou une ligne dans `ASSET_PROVENANCE.csv` — au lieu de lire un champ `Statut` qui a été tenu **5 fois sur 37**. `--fix` archive les livrés et les plans clos, `--strict` sort en erreur s'il reste de la dérive. Appelé par `/cloture` (étape 2 bis). ⚠️ Il ne décide pas : fermer un chantier reste une décision de l'opérateur, et **un plan qu'on archive ne doit rien emporter** — verser ses restes dans `docs/BACKLOG.md` d'abord |
+
 ## Hooks
 
 | Événement | Ce qu'il automatise | Fichier |

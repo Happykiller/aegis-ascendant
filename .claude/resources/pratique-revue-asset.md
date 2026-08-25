@@ -194,3 +194,49 @@ Deux faits en tombent, tous deux actionnables :
   silhouette lit « machine » là où la référence lit « carapace ».
 
 Le même relevé sert de **critère chiffré** au brief correctif, au lieu d'un adjectif.
+
+## ⚠️ Mesurer un `.glb` sans appliquer les transformations de nœuds donne un chiffre FAUX
+
+Agréger les bornes (`accessors[].min/max`) de tous les maillages d'un `.glb` donne une enveloppe
+en espace **local**. Si des pièces sont portées par des nœuds transformés, le résultat est
+faux — et il est **plausible**, donc personne ne le questionne.
+
+Vécu le 2026-08-25, et le chiffre faux est parti dans deux briefs de forge :
+
+| Specter-9 | Largeur |
+|---|---|
+| Bornes agrégées en espace **local** | **1,29 m** ← faux |
+| Enveloppe **monde**, transformations composées | **1,752 m** |
+
+**+36 %.** Ses ailes sont portées par des nœuds transformés. Un décor d'intérieur dimensionné
+sur 1,29 aurait été d'un tiers trop étroit — l'erreur exacte que ce brief existait pour
+empêcher. Ce sont les **deux forges** qui l'ont relevée, chacune de son côté ; la session
+principale l'avait écrite sans la vérifier.
+
+Le même piège guette **dans le code** : `Node3D.position` est locale. `global_position` est
+juste dans l'arbre, mais ne veut rien dire hors de l'arbre — le régime des tests. Composer les
+transformations jusqu'à la racine du décor est juste dans les deux cas.
+
+```python
+# Il faut composer la chaine de parente, pas agreger les bornes.
+def world_bbox(js):
+    stack = [(i, IDENTITY) for i in js["scenes"][0]["nodes"]]
+    while stack:
+        i, par = stack.pop()
+        M = mul(par, mat_of(js["nodes"][i]))     # translation/rotation/scale du noeud
+        ...                                       # transformer les 8 coins, PAS le min/max brut
+        for c in js["nodes"][i].get("children", []):
+            stack.append((c, M))
+```
+
+## Un contrat de noms respecté ne prouve RIEN sur l'échelle
+
+La coque du boss final livre `Ring_01..05` et `Tunnel_End` — les noms exacts que le document de
+conception réclamait pour « cinq anneaux internes que le chasseur franchit ». Mesurés :
+**0,24 à 0,33 m**, pour un chasseur de **2,46 m**. Elles existaient par le **nom**, jamais à
+l'**échelle**, et **rien** ne l'a signalé : ni le compte de triangles, ni le contrat d'export,
+ni le rendu — le puits n'est jamais vu de près dans le jeu.
+
+**La règle qui en découle, et elle est bon marché** : toute planche de recette d'un décor ou
+d'une coque porte **une vue avec le chasseur posé à l'échelle**, depuis son `.glb` réel et non
+une maquette. C'est la vue qui aurait attrapé les anneaux de 30 cm, et elle coûte un rendu.

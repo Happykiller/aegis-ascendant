@@ -101,3 +101,31 @@ qui ment et une qui tranche.
 | `--no-backdrop` | désactive le fond (isoler son coût, cf. [howto-mesurer-la-perf](howto-mesurer-la-perf.md)) |
 | `--no-plumes` | désactive les plumes de réacteur (isoler leur coût, ADR-0017) |
 | `--capture --capture-after=N` | PNG après N images, puis quitte |
+
+## Un cadrage se CALCULE : une fraction d'une hauteur ne dit rien de ce qu'on voit
+
+Deux captures perdues le 2026-08-25, sur la même fonction de caméra, et aucune des deux erreurs
+ne produit d'erreur, d'assertion ou de test rouge — seulement une image que personne ne regarde.
+
+**1. Le cadrage posé en fraction.** `home.origin.y * 0.22` plaçait la caméra à **Y = 3,08** pour
+une caméra d'origine à 14. La coque du boss fait **3,162 m** de haut : la caméra finissait
+*dans* le boss, et la capture ne montrait qu'un amas de plaques.
+
+La distance se déduit du **champ de vision**, pas d'un ratio :
+
+```
+distance = (taille_visee / 2) / tan(fov_vertical / 2)
+```
+
+À 62° verticaux, encadrer un puits de 4,378 m demande **3,64 m au minimum** ; se poser à 4,50 m
+lui laisse 81 % de la hauteur d'écran et garde la lèvre visible autour. Et reculer le long de
+l'axe **arrière de la caméra d'origine** (`home.basis.z`) plutôt qu'en dur : le cadrage suit si
+la caméra est retouchée un jour.
+
+**2. La transition glissée dans un monde masqué.** À la bascule vers l'arène intérieure, la
+caméra revenait *en glissant* de la gueule du boss — une douzaine d'unités — vers l'origine où
+l'arène est montée, en une demi-seconde. Or à cet instant le fond spatial et le corps du boss
+sont **déjà masqués** : elle traversait du vide. Capture entièrement noire, HUD seul.
+
+⚠️ **Un PNG de 15 Ko à 1920×1080 est presque uniforme.** La taille du fichier est le test le
+moins cher qui soit : elle a signalé l'écran noir avant même l'ouverture de l'image.
