@@ -20,9 +20,19 @@ bug** — c'est le throttle, pas le moteur (perf réelle > 1000 FPS).
 reste vrai que la fenêtre soit affichée ou non. Le helper de capture l'imprime :
 
 ```bash
+./scripts/export-win.sh debug          # ⚠️ SANS CETTE LIGNE, ON MESURE LA FOIS D'AVANT
 ./scripts/deploy-win.sh -- ++ --novsync --goto-graybox --capture --capture-after=400
 # -> [ScreenCapture] saved (0) — GPU 0.753 ms/frame
 ```
+
+⚠️ **`deploy-win.sh` COPIE le build, il ne le reconstruit pas.** Il n'échoue pas si `build/` est
+périmé : il déploie l'exécutable de la fois d'avant, le jeu démarre, la capture se sauve, le
+chiffre GPU s'imprime — et **tout est faux sans qu'aucune erreur ne le dise**. Payé le
+2026-08-25 : trois mesures d'un décor de survol prises sur un binaire antérieur à son écriture.
+Le symptôme qui a sauvé la mesure était dans le JOURNAL, pas dans le chiffre — la ligne que le
+nouveau code devait imprimer n'y était pas. **Faire imprimer au code neuf une ligne qui le
+prouve, et l'exiger dans le log** : c'est le test d'exécutable périmé le moins cher.
+`./scripts/play.sh`, lui, exporte si périmé — mais il pose le `++` et sert à JOUER, pas à mesurer.
 
 **Budget : 16,7 ms par image à 60 Hz.** (6,9 ms à 144 Hz.)
 

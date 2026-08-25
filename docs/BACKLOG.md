@@ -3,11 +3,13 @@
 > Point de reprise au **2026-08-25**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → ASTEROID_FIELD →
 > FINAL_BOSS → DOCKING → VICTORY`**, **420 tests verts**.
 >
-> ⚠️ **Une phase de plus depuis ce matin.** `ASTEROID_FIELD` (**ADR-0027**) s'insère entre les deux
+> ⚠️ **Une phase de plus, et son décor.** `ASTEROID_FIELD` (**ADR-0027**) s'insère entre les deux
 > boss : la traversée qui les sépare, jouée avec les trois unités que le bestiaire avait livrées
 > sans qu'aucune rencontre ne les emploie. Elle revient sur le découpage d'`ADR-0010`, qui avait
-> *supprimé* une phase de milieu de niveau. **Lot 1 du plan livré** (la phase existe et se joue) ;
-> les lots 2 à 4 — bascule de décor, assets de survol, équilibrage — restent à faire.
+> *supprimé* une phase de milieu de niveau. **Lots 1 et 2 du plan livrés** : la phase se joue, et
+> son décor bascule — le survol de lune REMPLACE la nébuleuse au lieu de s'y ajouter, pour
+> **−0,200 ms/image** (mesuré RTX 4080 ; à refaire sur la T1000, c'est elle qui contraint).
+> Restent les lots 3 (assets de forge) et 4 (rythme).
 >
 > Le boss final, refondu en cycles par `ADR-0021`, a enfin été **joué** (2026-08-25) :
 > l'équilibrage est **acquis**, le grief « lancinant » ne s'est pas reproduit. Restait une
@@ -251,10 +253,14 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
 - [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».
   Outil : sous-agent `balance-prober` (rend la chronologie de l'arc).
-- [ ] **Décor du champ d'astéroïdes** — lots 2 et 3 du plan inter-boss : la bascule de décor
-  (nébuleuse masquée, survol révélé, doublure procédurale) **puis** les assets de forge, lune et
-  astéroïdes. ⚠️ Dans cet ordre : c'est la mesure GPU du lot 2 qui dit ce que le lot 3 peut se
-  payer. Il reste moins de 4 ms sur les 16,67 (13,05 ms mesurés fond complet).
+- [x] **Bascule de décor du champ d'astéroïdes** — lot 2 : `MoonFlyby` monté au montage, doublure
+  procédurale, aller-retour vérifié en capture, **−0,200 ms** contre le fond habituel.
+- [ ] **Assets du survol** — lot 3 : lune à cratères, astéroïdes, impacts scriptés. ⚠️ **Remesurer
+  d'abord le différentiel sur la Quadro T1000** : les −0,200 ms viennent de la RTX 4080, et c'est
+  le poste du bureau qui contraint (13,05 ms fond complet sur les 16,67 du budget).
+- [ ] **Solides et décoratifs dans le même cadre** — l'arbitrage « astéroïdes solides, lune décor »
+  ouvre un sujet de lisibilité : rien ne distinguera à l'œil un rocher qui tue d'un rocher qui
+  traverse. À trancher au brief du lot 3.
 
 ## P0 bis — Dettes du chantier du boss (clos le 2026-08-25)
 

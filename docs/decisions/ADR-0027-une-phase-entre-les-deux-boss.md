@@ -47,13 +47,29 @@ forteresse). En rajouter une revient sur ce découpage : c'est la raison d'être
    la forteresse. Ses « impacts espacés » à 108 BPM disent exactement ce que la phase
    raconte : on traverse, on ne charge pas. La pression remonte sur la fin de vague, au même
    seuil que la section de chasseurs — le boss final ne doit pas s'ouvrir sur un calme.
-5. **Le décor de survol REMPLACERA le fond, il ne s'y ajoutera pas** (lots 2-3, à venir).
+5. **Le décor de survol REMPLACE le fond, il ne s'y ajoute pas** (lot 2 livré, lot 3 à venir).
    Mesures du 2026-08-25 sur le poste réel (Quadro T1000) : **13,05 ms** par image avec le
    fond complet, **2,73 ms** fond masqué, pour un budget de 16,67 ms. Il ne reste pas 4 ms —
    empiler une lune et des astéroïdes volumétriques par-dessus la nébuleuse ne tient pas. Ce
    que le propriétaire demande (« qu'on n'ait pas le même décor qu'avant le premier boss »)
    et ce que le budget impose désignent la même solution : on échange un poste de dépense
    contre un autre.
+
+   ✅ **Mesuré le 2026-08-25**, une fois le survol monté — même phase, même instant
+   (t = 30 s), même machine, seul le décor change (`--no-flyby` garde le fond habituel) :
+
+   | Décor pendant la phase | GPU / image |
+   |---|---|
+   | Survol de lune | **0,738 ms** |
+   | Fond spatial habituel | **0,938 ms** |
+   | **Différentiel** | **−0,200 ms (−21 %)** |
+
+   L'échange est donc gagnant, et pas seulement neutre. ⚠️ **Ces chiffres viennent de la
+   RTX 4080, pas du poste qui contraint.** Le budget qui a dicté la décision a été relevé
+   sur une **Quadro T1000**, où le même build coûte plus de dix fois plus. Le SIGNE du
+   différentiel se transpose (on remplace un shader de nébuleuse plein écran par un ciel
+   étoilé allégé plus un peu de géométrie), **son ampleur non** : la mesure qui autorisera
+   le budget du lot 3 doit être refaite là-bas.
 6. **Les astéroïdes seront solides, la lune restera du décor** (arbitrage du propriétaire).
    Quelques rochers proches deviendront des obstacles ; la surface survolée n'aura ni
    collision ni hitbox. Un survol dont on peut heurter le relief est un autre jeu.
@@ -74,9 +90,41 @@ forteresse). En rajouter une revient sur ce découpage : c'est la raison d'être
   n'ait plus aucune phase pour l'atteindre. Fortress Awakening avait dormi six semaines sans
   que rien ne le signale : **un cue orphelin ne casse rien, il ne joue simplement jamais.**
 
+## Le décor, tel qu'il est livré au lot 2
+
+`MoonFlyby` (`scripts/vfx/moon_flyby.gd`) est monté **au montage du niveau** et caché —
+contrairement à `CoreInterior`, qui se construit à la plongée : un survol se monte une fois
+pour toutes, et la spec §26.1 n'aime pas plus les décors alloués en jeu que les ennemis.
+Une **doublure procédurale** tient le rôle tant que la forge n'a pas livré, et le journal
+l'annonce à chaque montage.
+
+Trois choses ont été corrigées **parce qu'on a regardé** (ADR-0006), et aucune n'aurait
+produit d'erreur :
+
+| Vu en capture | Cause | Correctif |
+|---|---|---|
+| La lune rendait **rose pâle**, le chasseur blanc s'y perdait | trois lumières chaudes plus `warmth`/`saturation` du post-traitement : un gris neutre ressort rosé | albédo descendu de 0,30 à 0,115, teinte refroidie |
+| Les cratères **flottaient au-dessus** de la surface, et se détachaient franchement au limbe | des palets de 0,6 d'épaisseur posés à `R − 0,2` dépassaient de la sphère | pastilles de 0,12, tangentes, rayons divisés par deux |
+| Un rocher **frôlait le chasseur** | placé dans le couloir de vol | écarté — au lot 2 le décor est pur, il ne doit rien promettre qu'il ne tienne |
+
+⚠️ **Et un défaut que le TEST a trouvé avant le rendu** : à la première écriture, le ciel du
+survol était posé à la hauteur du fond habituel (−5) et les rochers en dessous. Ils auraient
+tous été masqués par leur propre ciel, en silence. `test_moon_flyby.gd` mesure désormais
+que chaque corps vit **entre le ciel et le plan de jeu**, et que rien ne monte dans le champ.
+
 ## Ce qui reste à juger
 
 La phase existe et s'enchaîne ; **son rythme n'a pas été joué à la main.** La composition de
 la vague (densité des barrages, superposition puits/sangsues, pic à 32 s) est une hypothèse
 de conception, pas une mesure. Elle se juge en jouant — `ADR-0019` a montré ce que coûte de
 croire une mesure automatique sur une question de ressenti.
+
+Et **le décor n'est qu'une doublure** : la lune est une sphère grise à cuvettes, les rochers
+des ellipsoïdes. Ce qui est acquis, c'est la **mécanique** — la bascule aller-retour (vérifiée
+en capture : à t = 64 s le boss final se joue sous la nébuleuse revenue, sans résidu), la
+parallaxe, et le coût. La beauté est le lot 3.
+
+⚠️ **Un sujet de conception ouvert par l'arbitrage, à trancher au lot 3** : des astéroïdes
+solides et des astéroïdes décoratifs partageront le même cadre. Rien ne les distinguera à
+l'œil si on n'y pourvoit pas — et le joueur qui essaie d'éviter un rocher qui le traverse,
+ou qui traverse un rocher qui le tue, subira la même injustice dans les deux sens.

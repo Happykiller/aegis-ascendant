@@ -3,7 +3,7 @@ titre: Une phase de jeu entre les deux boss — survol de lune et champ d'astér
 date: 2026-08-25
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: arc de jeu (graybox_root), vagues, fond spatial, assets 3D de décor
-etat: lot 1 LIVRÉ (ADR-0027, 2026-08-25) ; lots 2 à 4 à appliquer
+etat: lots 1 et 2 LIVRÉS (ADR-0027, 2026-08-25) ; lots 3 et 4 à appliquer
 supersede: rien. Complète docs/plans/2026-08-25-bestiaire-ennemis.md sur son point 3.1
 ---
 
@@ -12,8 +12,8 @@ supersede: rien. Complète docs/plans/2026-08-25-bestiaire-ennemis.md sur son po
 > **Rédigé le 2026-08-25** à partir de la demande de l'opérateur, et de l'état **mesuré** du
 > moteur.
 >
-> ✅ **Lot 1 livré le 2026-08-25** — la phase existe, s'enchaîne et se joue. Voir
-> **`ADR-0027`**. Les trois décisions ouvertes en bas de page ont été **tranchées** par
+> ✅ **Lots 1 et 2 livrés le 2026-08-25** — la phase existe et se joue, et son décor
+> bascule. Voir **`ADR-0027`**. Les trois décisions ouvertes en bas de page ont été **tranchées** par
 > l'opérateur : oui pour l'ADR, **45-60 s** de durée, **astéroïdes solides / lune décor**.
 > Les lots 2 à 4 restent entiers.
 
@@ -124,7 +124,7 @@ montage seulement**. Une seconde occurrence en cours de vague serait une réallo
 et mettent **17,3 s** à traverser le champ : la phase va de ~42 s (joueur qui nettoie tout) à
 ~54 s (joueur qui ne détruit rien). C'est ce trajet que le test borne.
 
-### Lot 2 — Le décor bascule *(aucun asset non plus)*
+### Lot 2 — Le décor bascule *(aucun asset non plus)* — ✅ **LIVRÉ**
 
 - Un nœud `MoonFlyby` monté comme `CoreInterior` l'est : bâti au montage, caché, révélé à
   l'entrée de la phase, avec une **doublure procédurale** tant que les assets n'existent pas.
@@ -135,9 +135,39 @@ et mettent **17,3 s** à traverser le champ : la phase va de ~42 s (joueur qui n
 - **Mesurer le GPU avec et sans**, à ce stade et pas plus tard : c'est le chiffre qui dira
   combien d'asset le lot 3 peut se payer.
 
+#### Ce qui a été fait
+
+`MoonFlyby` monte au **montage du niveau** (et non à l'entrée en phase comme
+`CoreInterior` : une allocation de décor en pleine partie est ce que la spec §26.1
+proscrit), avec doublure procédurale annoncée au journal. La bascule passe par un
+`_set_backdrop_hidden()` **unique**, partagé avec la plongée du noyau — la précaution
+`--no-backdrop` vivait en un exemplaire, elle n'a pas été recopiée. `--no-flyby` fournit
+le témoin de mesure ; `--skip-to-field` sert l'aller.
+
+**Mesure, sur ce poste (RTX 4080), t = 30 s, même scène :** survol **0,738 ms** contre
+**0,938 ms** pour le fond habituel — **−0,200 ms, −21 %**. L'échange est gagnant.
+⚠️ **Mais le poste qui contraint est la Quadro T1000**, celle des 13,05 ms ci-dessus. Le
+signe se transpose, l'ampleur non : **refaire cette mesure au bureau avant d'engager le
+lot 3**.
+
+**Vérifié en capture, aller ET retour** : à t = 8 s et 30 s le survol est là (lune en bas
+de cadre, deux rochers en parallaxe, ciel étoilé sans nébuleuse) ; à t = 64 s le boss final
+se joue sous la **nébuleuse revenue**, sans résidu.
+
+⚠️ **Trois défauts corrigés parce qu'on a REGARDÉ**, aucun n'aurait produit d'erreur : la
+lune rendait rose pâle et noyait le chasseur (les lumières et le post-traitement réchauffent
+tout gris neutre) ; les cratères flottaient au-dessus de la surface et se détachaient au
+limbe ; un rocher frôlait le chasseur, ce qu'un décor sans collision ne doit pas promettre.
+⚠️ Et **un quatrième que le test a trouvé avant le rendu** : le ciel du survol, posé à la
+hauteur du fond habituel, aurait masqué tous ses propres rochers en silence.
+
 ### Lot 3 — Les assets *(forge, briefs à écrire)*
 
 À n'engager **qu'une fois le budget GPU du lot 2 connu**.
+
+> **Le lot 2 a posé la géométrie du lieu** : ciel à Y = −45, lune de rayon 60 centrée
+> (0, −78, 34), rochers entre −13 et −34, plafond à −3. Les assets s'y substituent, ils ne
+> la redéfinissent pas — et `test_moon_flyby.gd` tient les bornes.
 
 - **La lune** — surface à cratères, occupant le bas ou le côté du cadre, dérivant lentement.
   Le sujet technique est le rapport **détail perçu / coût** : une sphère très subdivisée est
@@ -172,6 +202,10 @@ journal. Le Shield Carrier (`BRIEF-0046`, prêt) trouverait ici son emploi natur
    un sujet que le plan n'avait pas : des astéroïdes de premier plan qui **collisionnent**
    sont des entités de gameplay, pas du décor — donc une hitbox, un pooling, et un
    équilibrage. À traiter comme tel au moment du brief.
+   ⚠️ Et un second, apparu en regardant le lot 2 : **solides et décoratifs partageront le
+   cadre**. Rien ne les distinguera à l'œil si on n'y pourvoit pas, et l'injustice joue dans
+   les deux sens — croire qu'on peut éviter un rocher qui traverse, ou traverser un rocher
+   qui tue.
 
 ## Vérification, de bout en bout
 

@@ -79,6 +79,13 @@ var _leviathan: LeviathanCombat
 var _alarm_armed: bool = true
 ## `--no-wave` : aucune vague ne se joue, ni celle des chasseurs ni celle du champ.
 var _waves_disabled: bool = false
+## Le décor du champ d'astéroïdes (ADR-0027). Bâti au MONTAGE et caché, contrairement à
+## `CoreInterior` qui se construit à la plongée : un survol se monte une fois pour toutes,
+## et la spec §26.1 n'aime pas plus les décors alloués en jeu que les ennemis.
+var _moon_flyby: MoonFlyby
+## `--no-flyby` : la phase se joue sous le fond spatial habituel. Bissection de perf — le
+## témoin d'un différentiel, c'est la même chose sans le réglage.
+var _flyby_disabled: bool = false
 ## One instance for the whole run: resolving the musical state must not allocate.
 var _music: MusicContext = MusicContext.new()
 var _engine_running: bool = false
@@ -125,6 +132,8 @@ func _ready() -> void:
 		var bd := get_node_or_null("SpaceBackdrop") as Node3D
 		if bd != null:
 			bd.visible = false
+	if "--no-flyby" in args:
+		_flyby_disabled = true
 	if "--no-glow" in args:
 		var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
 		if we != null and we.environment != null:
@@ -161,6 +170,9 @@ func _ready() -> void:
 		_pickups.spawn(Pickup.Kind.POWER, Vector2(-3.0, 0.0))
 		_pickups.spawn(Pickup.Kind.SHIELD, Vector2(0.0, 0.0))
 		_pickups.spawn(Pickup.Kind.SCORE, Vector2(3.0, 0.0))
+	# ⚠️ AVANT les sauts de phase : `--skip-to-field` entre dans le champ depuis ce même
+	# bloc, et il lui faut son décor déjà monté.
+	_build_moon_flyby()
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
 	elif "--skip-to-field" in args:
@@ -367,6 +379,7 @@ func _start_asteroid_field() -> void:
 	if _wave_spawner != null:
 		_wave_spawner.set_physics_process(false)
 	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
+	_show_moon_flyby(true)
 	if _field_spawner == null or _waves_disabled:
 		# Rien à traverser. On le DIT et on enchaîne : un arc qui s'arrête sur un nœud
 		# absent se lit comme un boss qui ne vient pas, et se cherche au mauvais endroit.
@@ -375,6 +388,27 @@ func _start_asteroid_field() -> void:
 		_start_final_boss()
 		return
 	_field_spawner.begin()
+
+## Monte le survol, caché. ⚠️ La doublure procédurale s'annonce dans le journal : un décor
+## en doublure ne doit jamais passer pour l'asset final (ADR-0006, et la leçon d'`ADR-0025`
+## où un contrat de noms respecté cachait des anneaux de 30 cm).
+func _build_moon_flyby() -> void:
+	if _flyby_disabled:
+		return
+	_moon_flyby = MoonFlyby.new()
+	_moon_flyby.name = "MoonFlyby"
+	add_child(_moon_flyby)
+	if _moon_flyby.is_stand_in():
+		print("[Level] moon flyby: DOUBLURE procedurale (decor de survol non livre)")
+
+## Bascule le décor de la phase. Le fond spatial CÈDE LA PLACE au lieu de s'y ajouter :
+## c'est la décision d'`ADR-0027`, et elle vient autant du budget GPU que de la demande
+## (« qu'on n'ait pas le même décor qu'avant le premier boss »).
+func _show_moon_flyby(on: bool) -> void:
+	if _moon_flyby == null:
+		return
+	_moon_flyby.reveal(on)
+	_set_backdrop_hidden(on)
 
 func _on_asteroid_field_cleared() -> void:
 	if _phase != Phase.ASTEROID_FIELD:
@@ -406,6 +440,11 @@ func _on_player_docked() -> void:
 	_start_victory()
 
 func _start_final_boss() -> void:
+	# Le survol s'éteint ici et pas dans `_on_asteroid_field_cleared` : c'est le SEUL
+	# point par lequel tous les chemins passent — la vague nettoyée, mais aussi
+	# `--skip-to-final` et l'échappement de `--no-wave`. Un décor qui survivrait à sa
+	# phase se retrouverait sous le boss final.
+	_show_moon_flyby(false)
 	_set_phase(Phase.FINAL_BOSS)
 	print("[Level] FINAL BOSS")
 	_final_boss = FinalBossScene.instantiate() as BossController
@@ -521,8 +560,32 @@ var _core_interior: CoreInterior
 ## réapparaît dehors à la place qu'il occupait DANS l'arène intérieure — deux repères qui
 ## n'ont rien à voir.
 var _outside_plane: Vector2 = Vector2.ZERO
-## Etat du fond spatial avant l'entree, pour le rendre tel quel et non « allume ».
+## Etat du fond spatial avant qu'on le masque, pour le rendre tel quel et non « allume ».
 var _backdrop_was_visible: bool = true
+## Le fond est-il masqué en ce moment ? Sans ce drapeau, un second masquage relèverait
+## `false` comme « état d'avant » et le fond ne reviendrait jamais.
+var _backdrop_hidden: bool = false
+
+## Masque le fond spatial, ou le RESTAURE tel qu'il était.
+##
+## ⚠️ ON RESTAURE CE QU'IL Y AVAIT, pas « visible ». `--no-backdrop` éteint le fond pour
+## juger une silhouette ; un `visible = true` au sortir rallumerait le fond au milieu d'une
+## mesure, et l'on conclurait sur deux images qui ne se comparent pas.
+##
+## Deux décors s'en servent désormais — l'arène du noyau (`ADR-0025`) et le survol de lune
+## (`ADR-0027`) : la précaution vit ici, en un seul endroit, plutôt qu'en deux copies.
+func _set_backdrop_hidden(hidden: bool) -> void:
+	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
+	if backdrop == null:
+		return
+	if hidden:
+		if not _backdrop_hidden:
+			_backdrop_was_visible = backdrop.visible
+			_backdrop_hidden = true
+		backdrop.visible = false
+		return
+	backdrop.visible = _backdrop_was_visible
+	_backdrop_hidden = false
 
 func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 	_sfx(&"boss_phase_shift")
@@ -660,15 +723,7 @@ func _build_core_interior() -> void:
 func _show_core_interior(inside: bool) -> void:
 	if _core_interior != null:
 		_core_interior.visible = inside
-	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
-	if backdrop != null:
-		# ⚠️ ON RESTAURE CE QU'IL Y AVAIT, pas « visible ». `--no-backdrop` eteint le fond
-		# pour juger une silhouette ; un `visible = true` au sortir de la plongee le
-		# rallumerait au milieu d'une mesure, et l'on conclurait sur deux images qui ne se
-		# comparent pas.
-		if inside:
-			_backdrop_was_visible = backdrop.visible
-		backdrop.visible = _backdrop_was_visible if not inside else false
+	_set_backdrop_hidden(inside)
 	if _final_boss != null:
 		_final_boss.visible = not inside
 

@@ -25,9 +25,13 @@ est piloté par ce director, en dur — un `EncounterDirector` data-driven reste
 
 `ASTEROID_FIELD` est la dernière arrivée (**ADR-0027**, 2026-08-25) : la traversée qui sépare les
 deux boss, jouée avec les trois unités que le bestiaire avait livrées sans qu'aucune rencontre ne
-les emploie (Choir Mine, Null Maw, Leech Drone). Elle dure 45 à 60 s. Son décor propre — survol de
-lune et astéroïdes — reste à faire : il **remplacera** le fond spatial au lieu de s'y ajouter,
-faute de budget GPU (voir l'ADR).
+les emploie (Choir Mine, Null Maw, Leech Drone). Elle dure 45 à 60 s.
+
+Elle a **son propre décor** : `MoonFlyby` (`scripts/vfx/moon_flyby.gd`) — un survol de lune, monté
+au montage du niveau et révélé à l'entrée en phase. ⚠️ Il **remplace** le fond spatial au lieu de
+s'y ajouter : c'est ce que demandait l'opérateur et ce qu'impose le budget GPU, et l'échange est
+gagnant (−0,200 ms/image mesuré). Les assets restent à forger — une doublure procédurale tient le
+rôle et **le dit dans le journal**.
 
 ⚠️ **`MusicContext.LevelPhase` reflète `Phase` PAR VALEUR.** Les deux enums se modifient ensemble ;
 `tests/unit/test_music_director.gd` est le seul garde-fou et il est là pour ça.

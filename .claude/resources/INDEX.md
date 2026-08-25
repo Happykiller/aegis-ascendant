@@ -35,7 +35,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend
-  0,84 ms sur RTX 4080 et 12,0 ms sur Quadro T1000 — ×14 à code identique.
+  0,84 ms sur RTX 4080 et 12,0 ms sur Quadro T1000 — ×14 à code identique. ⚠️ **`deploy-win.sh` ne
+  ré-exporte pas** : sans `export-win.sh` d'abord, on mesure le binaire de la fois d'avant, sans
+  la moindre erreur — et c'est le journal, pas le chiffre, qui le dit.
 - [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
   exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
   tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par
