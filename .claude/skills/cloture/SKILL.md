@@ -12,16 +12,25 @@ trois est fausse, la session n'est pas close — et tu le dis au lieu de conclur
 
 ## Périmètre de ce projet
 
-> Relevé le 2026-08-23, **corrigé le 2026-08-25**. À corriger dès que le projet change de forme.
+> Relevé le 2026-08-23, **rétabli le 2026-08-25** après une correction erronée. À corriger dès
+> que le projet change de forme, et **en le vérifiant sur la machine**.
 >
-> ⚠️ Il était **faux** : il annonçait `/home/admin/aegis-ascendant` et le remote `github-perso`,
-> pour un dépôt qui vit en `/home/happykiller/aegis-ascendant` sur `github-happykiller`. Ce
-> document dit lui-même qu'« un périmètre faux fait oublier un dépôt, et un dépôt oublié est une
-> session non close qui se croit close » — il en était l'exemple.
+> ⚠️ **CE BLOC A ÉTÉ FAUSSÉ PAR UNE « CORRECTION ».** Il annonçait le bon chemin
+> (`/home/admin/aegis-ascendant`) et le bon remote (`github-perso`) ; une passe l'a remplacé par
+> `/home/happykiller/aegis-ascendant` sur `github-happykiller`. Vérifié le 2026-08-25 :
+> **`/home/happykiller` n'existe pas**, et l'alias SSH `github-happykiller` non plus — seul
+> `github-perso` est déclaré dans `~/.ssh/config`. Toute la session avait pourtant poussé sans
+> encombre : la clôture aurait donc cherché un dépôt fantôme pendant que le vrai était à jour.
+>
+> **La leçon est celle que ce document énonçait déjà, retournée contre lui** : un périmètre ne se
+> corrige pas de mémoire. Les quatre commandes de l'étape 1 le donnent en trois secondes —
+> `pwd`, `git remote -v`, `find . -name .git`, `ls` du chemin annoncé. Une correction non vérifiée
+> est plus dangereuse qu'une erreur laissée en place, parce qu'elle porte l'autorité d'une
+> relecture.
 
 | Dépôt | Chemin | Branche de travail | Remarque |
 | --- | --- | --- | --- |
-| `aegis-ascendant` | `/home/happykiller/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-happykiller:Happykiller/aegis-ascendant.git` (identité `github-happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/happykiller` comme un dépôt Git |
+| `aegis-ascendant` | `/home/admin/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-perso:Happykiller/aegis-ascendant.git` (alias SSH `github-perso`, compte `Happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/admin` comme un dépôt Git |
 
 | Stack | Fichier compose | Services |
 | --- | --- | --- |
