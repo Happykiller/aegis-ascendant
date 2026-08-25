@@ -2,7 +2,7 @@
 titre: Base de connaissance — Aegis Ascendant
 type: index
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-25
 ---
 
 # Base de connaissance — Aegis Ascendant
@@ -22,6 +22,7 @@ au premier commit ; elle les référence.
 | [`REGLES/`](REGLES/README.md) | Process, workflows, consignes, normes, **lois** — les deux dernières sont contraignantes |
 | [`MOTEUR.md`](MOTEUR.md) | Cartographie de `.claude/` : quel skill, quel sous-agent, quel hook, et **quand s'en servir** |
 | [`HISTORY.md`](HISTORY.md) | Index chronologique des sujets abordés, pour ne pas refaire deux fois le même chemin |
+| [`../design/bible/`](../design/bible/README.md) | **Bible de référence du genre** : ce que le shoot'em up a établi, et où nous nous situons dessus. Hors KB — c'est du savoir externe, pas de la mémoire de projet — mais on y aiguille depuis ici |
 
 ## KB ou `.claude/resources/` ? La frontière
 
