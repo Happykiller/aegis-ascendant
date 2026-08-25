@@ -68,6 +68,9 @@ var _alert_time: float = 0.0
 # Boss bar + banner (kept from the old HUD, restyled).
 var _boss_panel: Panel
 var _boss_name: Label
+## Compteur de cycle du boss final, à droite du titre. Caché par défaut : `show_boss` sert
+## TOUS les boss, et seul le Pale Leviathan combat en cycles.
+var _boss_cycle: Label
 var _boss_fill: ColorRect
 var _boss_full_width: float = 0.0
 var _limb_pips: Array[ColorRect] = []
@@ -231,6 +234,12 @@ func _build_boss_panel() -> void:
 	_boss_panel.visible = false
 	_boss_name = _label(_boss_panel, "BOSS", _LABEL_FONT, 18, Color("f16bc0"), Vector2(0, 8), 800,
 		HORIZONTAL_ALIGNMENT_CENTER)
+	# À DROITE du titre, et non sous la barre : les deux rangées du bas sont prises par les
+	# jauges d'appendice. Le titre étant centré, la droite du panneau est libre — « PALE
+	# LEVIATHAN » en corps 18 s'arrête bien avant 556 px.
+	_boss_cycle = _label(_boss_panel, "", _LABEL_FONT, 11, Color("f2e6c8"), Vector2(556, 12),
+		230.0, HORIZONTAL_ALIGNMENT_RIGHT)
+	_boss_cycle.visible = false
 	var bg := ColorRect.new()
 	bg.color = Color(0.09, 0.03, 0.07, 0.7)
 	bg.position = Vector2(12, 36)
@@ -334,6 +343,7 @@ func show_boss(display_name: String) -> void:
 		label.visible = false
 	for track in _limb_tracks:
 		track.visible = false
+	_boss_cycle.visible = false
 	_boss_name.text = display_name.to_upper()
 	_boss_fill.size.x = _boss_full_width
 	_boss_panel.visible = true
@@ -417,6 +427,12 @@ func set_boss_limb_active(index: int) -> void:
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
+
+## Affiche l'avancement en cycles d'un boss qui en a. Une chaîne vide éteint le compteur —
+## c'est l'état par défaut, tous les autres boss du jeu se battant d'une seule traite.
+func set_boss_cycle(text: String) -> void:
+	_boss_cycle.text = text
+	_boss_cycle.visible = not text.is_empty()
 
 func show_banner(text: String, color: Color = ACCENT, hold: float = 1.6) -> void:
 	_banner.text = text

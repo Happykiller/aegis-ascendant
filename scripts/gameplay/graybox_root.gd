@@ -394,18 +394,24 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.dive_ended.connect(_on_leviathan_dive_ended)
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 
-## La jauge du boss montre la santé de la PHASE EN COURS (ADR-0020). ⚠️ Elle cumulait les
-## quatre phases : briser toute l'armure ne valait que 30 % de barre, et le joueur lisait
-## « 70 % » après vingt secondes d'effort. Elle se remplit à nouveau à chaque bascule —
-## « il lui reste une deuxième barre », l'idiome que tout joueur de shmup sait lire.
+## La jauge du boss montre la PROGRESSION DU COMBAT — `fight_ratio()`, qui ne remonte
+## jamais — et non la santé de la cible courante.
+##
+## ⚠️ ELLE A MONTRÉ `structure_ratio()`, et c'était le défaut le plus coûteux du combat.
+## Cette mesure vaut « ce qu'on peut casser MAINTENANT » : elle se remplit à nouveau à
+## chaque bascule. Le joueur voyait donc armure 100→0, noyau 100→0, armure 100→0, noyau
+## 100→0… Playtest du 2026-08-25, sur un combat pourtant jugé mieux équilibré : « phase 1
+## phase 2 phase 1 phase 2, j'ai l'impression que c'était en boucle ». Il ne se trompait
+## pas — il décrivait exactement ce que le HUD lui affichait.
+## La mesure qui prouvait l'avancement existait déjà, juste et testée ; son UNIQUE
+## consommateur était la musique. L'oreille savait que le combat montait, l'œil n'avait
+## rien. L'état de la cible courante n'est pas perdu pour autant : il vit sur la rangée de
+## pastilles, qui suit les plaques du cycle.
 func _on_leviathan_structure(ratio: float) -> void:
+	var progress := _leviathan.fight_ratio() if _leviathan != null else ratio
 	if _hud != null:
-		_hud.set_boss_health(ratio)
-	# ⚠️ La musique suit la progression du COMBAT, le HUD celle de la PHASE. Depuis que la
-	# jauge se remplit à nouveau en phase 2, lui passer `ratio` faisait culminer la
-	# partition à mi-combat puis retomber d'un cran : `music 9 -> 8 -> 9` au journal du
-	# playtest, un sommet dramatique atteint quand l'armure tombe et perdu ensuite.
-	_music.boss_health_ratio = _leviathan.fight_ratio() if _leviathan != null else ratio
+		_hud.set_boss_health(progress)
+	_music.boss_health_ratio = progress
 	_update_music()
 
 ## Une sous-cible a bougé. Le niveau relaie : le HUD ne connaît pas le Leviathan, le
@@ -451,7 +457,12 @@ var _core_chamber: MeshInstance3D
 
 func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 	_sfx(&"boss_phase_shift")
-	_banner("DANS LE NOYAU" if cycle == 0 else "ENCORE", _BANNER_MAGENTA, 1.2)
+	# ⚠️ CETTE BANNIÈRE A DIT « ENCORE » à chaque plongée sauf la première — le mot nomme
+	# la répétition, dans le seul moment du combat qui pouvait nommer l'avancement. Elle
+	# compte désormais les passages : deux, trois, quatre. Un nombre qui monte se lit comme
+	# du terrain gagné ; « encore » se lit comme du surplace.
+	_banner("DANS LE NOYAU" if cycle == 0 else "NOYAU — PASSAGE %d" % (cycle + 1),
+		_BANNER_MAGENTA, 1.2)
 	if _hud != null:
 		_hud.set_boss_limbs(PackedStringArray())   # plus de plaques : la rangée s'éteint
 	_build_core_chamber()
@@ -580,7 +591,9 @@ func _on_leviathan_phase(phase: int) -> void:
 			_leviathan_cycle_beat()
 		LeviathanCombat.Phase.DEFEATED:
 			# La mort est portée par `defeated` → `_on_final_boss_defeated` (finale Helios).
-			pass
+			# Seul le compteur est éteint ici : le panneau, lui, survit à la phase.
+			if _hud != null:
+				_hud.set_boss_cycle("")
 
 ## Règle la musique sur l'avancement du combat. `boss_phase` porte le CYCLE : la
 ## partition monte à chaque tour, et le dernier cycle sonne comme le dernier.
@@ -588,11 +601,28 @@ func _leviathan_cycle_beat() -> void:
 	if _leviathan == null:
 		return
 	var cycles: int = _leviathan.tuning.cycle_count if _leviathan.tuning != null else 1
-	_music.boss_phase = mini(_leviathan.cycle(), maxi(cycles - 1, 0))
+	var cycle := _leviathan.cycle()
+	_music.boss_phase = mini(cycle, maxi(cycles - 1, 0))
 	_music.boss_phase_count = cycles
 	_update_music()
-	print("[Level] leviathan cycle %d/%d — %s" % [_leviathan.cycle() + 1, cycles,
+	var label := _leviathan_cycle_label(cycle, cycles)
+	if _hud != null:
+		_hud.set_boss_cycle(label)
+	print("[Level] leviathan %s — %s" % [label,
 		"noyau" if _leviathan.phase() == LeviathanCombat.Phase.DIVE else "armure"])
+
+## Le cycle courant, tel que le joueur doit le lire.
+##
+## ⚠️ AU-DELÀ DE `cycle_count`, NE JAMAIS AFFICHER « 4 / 3 ». Le combat n'est pas borné à
+## trois tours et ne l'a jamais été : `plates_for_cycle()` rend le plancher de plaques
+## indéfiniment, et le boss ne meurt qu'une fois le flux assez frappé. L'invariant 5 de
+## `LeviathanTuning` garantit seulement que trois tours SUFFIRAIENT à un joueur tirant
+## 85 % du temps dans le noyau à la cadence de référence — c'est une hypothèse de
+## dimensionnement, pas une fin de combat. Le playtest du 2026-08-25 a produit un quatrième
+## tour, et le journal a affiché « cycle 4/3 » : un compteur qui dépasse son total dit au
+## joueur que le jeu s'est trompé. On nomme le dépassement au lieu de le compter.
+func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
+	return "DERNIER ASSAUT" if cycle >= cycles else "CYCLE %d / %d" % [cycle + 1, cycles]
 
 func _physics_process(_delta: float) -> void:
 	_update_engine_hum()

@@ -3,9 +3,13 @@ titre: Pale Leviathan — ce qui reste à faire
 date: 2026-08-23
 auteur: session Claude « boss » (aegis-ascendant-47)
 perimetre: scripts/bosses/, graybox_root.gd, resources/data/leviathan_tuning.gd, tools/blender/build_pale_leviathan.py, docs/forge/briefs/BRIEF-008x
-etat: à appliquer
+etat: SUPERSEDE par docs/plans/2026-08-25-boss-pale-leviathan.md
 supersede: rien — premier plan daté de ce chantier
 ---
+
+> ⚠️ **PLAN PÉRIMÉ — ne pas l'appliquer.** Son unique point bloquant (« rejouer le combat »)
+> a été traité le 2026-08-25, et son résultat change la suite. Voir
+> [`2026-08-25-boss-pale-leviathan.md`](2026-08-25-boss-pale-leviathan.md).
 
 # Pale Leviathan — ce qui reste à faire
 

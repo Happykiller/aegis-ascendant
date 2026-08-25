@@ -1,12 +1,13 @@
 # Backlog & pistes d'amélioration — Aegis Ascendant
 
-> Point de reprise au **2026-08-23**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
-> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **269 tests verts**.
+> Point de reprise au **2026-08-25**. Arc jouable **`FIGHTER_WAVES → MINI_BOSS → FINAL_BOSS →
+> DOCKING → VICTORY`** (ADR-0010 a supprimé la phase forteresse), **398 tests verts**.
 >
-> Le boss final a été **refondu deux fois le même jour** après playtest : `ADR-0020` (quatre
-> phases → deux) puis `ADR-0021` (**trois cycles armure/noyau**, épines devenues tourelles
-> laser, entrée du chasseur dans le noyau). Il attend **une partie jouée** : durée ressentie,
-> lisibilité des cycles et alignement halo/hitbox ne se jugent pas à la capture.
+> Le boss final, refondu en cycles par `ADR-0021`, a enfin été **joué** (2026-08-25) :
+> l'équilibrage est **acquis**, le grief « lancinant » ne s'est pas reproduit. Restait une
+> **progression invisible** — le HUD montrait la cible courante, qui se remplit à chaque
+> bascule, au lieu de l'avancement du combat. Corrigé par **`ADR-0023`**, vérifié en capture.
+> Ce qui n'est toujours pas jugé : le **nombre** de cycles (la partie en a produit quatre).
 >
 > ⚠️ Une autre session travaille en parallèle sur le **bestiaire ennemi** (`ADR-0022`,
 > `scripts/enemies/`, `wave_spawner`, assets). Périmètres disjoints, mais `C:\tmp` et le
@@ -25,7 +26,8 @@ plan plus récent, **le plan gagne**.
 
 | Plan | Sujet | État |
 |---|---|---|
-| [`2026-08-23-boss-pale-leviathan.md`](plans/2026-08-23-boss-pale-leviathan.md) | Boss final : ce qui reste après la refonte en cycles | à appliquer |
+| [`2026-08-25-boss-pale-leviathan.md`](plans/2026-08-25-boss-pale-leviathan.md) | Boss final : après la première partie jouée en cycles | **à appliquer** |
+| ~~[`2026-08-23-boss-pale-leviathan.md`](plans/2026-08-23-boss-pale-leviathan.md)~~ | Boss final, avant la partie jouée | supersédé |
 | [`2026-08-23-bestiaire-ennemis.md`](plans/2026-08-23-bestiaire-ennemis.md) | Familles d'ennemis, coques et comportements | à appliquer |
 
 ## Comment reprendre
@@ -62,10 +64,19 @@ Deux invariants neufs : l'**arc d'exposition s'élargit** quand il reste moins d
 quoi il existe des instants sans aucune cible dès le cycle 2), et le **flux est dimensionné**
 pour tomber au troisième passage — ni au premier, ni jamais.
 
+⚠️ **Le second invariant dit moins qu'il n'en a l'air**, et la partie du 2026-08-25 l'a
+montré : il compare les PV du flux à ce qu'un joueur atteindrait en tirant 85 % du temps dans
+le noyau à la cadence de référence. C'est une hypothèse de **dimensionnement**, pas une fin de
+combat — un quatrième cycle est possible, et il est arrivé (`ADR-0023`).
+
 #### Reste à juger — PAR UNE PARTIE
 
-- **`/jouer`** : les cycles sont-ils lisibles ? La plongée fait-elle son effet ? Est-ce enfin
-  nerveux ? C'est LA question, et aucune capture n'y répond.
+- ✅ **`/jouer` — FAIT le 2026-08-25.** Équilibrage acquis (« mieux équilibré »), mais la
+  progression était invisible (« phase 1 phase 2 phase 1 phase 2, en boucle ») : la jauge
+  montrait la cible courante et se remplissait six fois. Traité par **`ADR-0023`**.
+- **Le NOMBRE de cycles** : la partie en a produit quatre. Permis, et désormais nommé
+  `DERNIER ASSAUT` au lieu de `CYCLE 4 / 3`. Reste à savoir si un quatrième tour est
+  agréable maintenant qu'on voit où l'on en est.
 - **Alignement halo ↔ hitbox** : non jugeable à l'arrêt.
 - **Cadrage de la plongée** : réglé à l'œil en trois captures. Le chasseur est visible dans le
   noyau (`plane_lift`), mais sa lisibilité en mouvement reste à confirmer.

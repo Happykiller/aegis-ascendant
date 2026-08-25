@@ -2,7 +2,7 @@
 titre: HISTORY — index chronologique des sujets abordés
 type: index
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-25
 ---
 
 # Historique des sujets
@@ -23,5 +23,6 @@ acté, pas ce qui a été exploré.
 | 2026-07-22 | Bestiaire, et la luminosité qui manquait | Le post-traitement rétro **pivotait son contraste à 0,5 sur une image entièrement sombre** : il n'était qu'un assombrisseur. +25,8 % mesurés sur la coque du joueur | [ADR-0015](../decisions/ADR-0015-bestiaire-catalogue-de-coques.md), [ADR-0016](../decisions/ADR-0016-luminosite-le-contraste-pivotait-a-0-5.md) |
 | 2026-07-23 → 24 | Le Pale Leviathan : conception, silhouette, câblage, puis **coupe au playtest** | Boss à 4 phases sur conditions matérielles ; combat ramené de ~3 min à ~67 s ; lisibilité HUD + coquille qui tourne | [ADR-0017](../decisions/ADR-0017-plume-d-echappement.md), [ADR-0018](../decisions/ADR-0018-le-boss-final-se-demonte.md), [ADR-0019](../decisions/ADR-0019-le-leviathan-coupe-au-playtest.md) |
 | 2026-08-23 | Reprise après un mois : revue d'état, fuites de test, mise en place de la KB | Dépôt à jour et vert (279 tests) ; **789 objets fuités** attribués à un seul fichier de test et supprimés ; backlog recalé ; création de `docs/KB/` et du skill `/cloture` | [REGLES/normes.md](REGLES/normes.md), `.claude/resources/pratique-verifier-par-test.md`, [MOTEUR.md](MOTEUR.md) |
+| 2026-08-25 | Première **partie jouée** du boss en cycles, et la jauge qui bouclait | Équilibrage d'`ADR-0021` **acquis** ; mais le HUD recevait `structure_ratio()` (la cible courante, qui se remplit à chaque bascule) au lieu de `fight_ratio()` — six remplissages lus comme une boucle. La mesure juste existait et n'allait qu'à la **musique** | [ADR-0023](../decisions/ADR-0023-la-jauge-du-boss-montre-le-combat.md), [plan 2026-08-25](../plans/2026-08-25-boss-pale-leviathan.md), `tests/unit/test_leviathan_hud_relay.gd` |
 
 > Découper par année (`HISTORY/README.md` + `HISTORY/2026.md`) au-delà de ~200 lignes.
