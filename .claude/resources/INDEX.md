@@ -48,6 +48,9 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 - [Intégrer un asset image généré par ChatGPT](howto-assets-image-genere.md) — ChatGPT **peint le
   damier** au lieu d'une vraie transparence (RGB opaque). Exiger un **fond noir pur** pour les objets
   lumineux ; reconstruire l'alpha avec `tools/bg-key-alpha.py` (ne pas refaire le keying à la main).
+  ⚠️ Et **un brief de forge doit dire que la texture viendra d'ailleurs** : trois mains, pas deux —
+  sinon la forge modélise en géométrie ce que l'opérateur allait peindre, et ses UV n'accueillent
+  rien.
 
 ## Bonnes pratiques — apprises à nos dépens
 

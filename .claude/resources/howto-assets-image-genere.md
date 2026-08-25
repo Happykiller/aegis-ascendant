@@ -35,6 +35,33 @@ python3 tools/bg-key-alpha.py --mode light src.png assets/imported/backgrounds/o
 python3 tools/bg-key-alpha.py --mode sat  src.png assets/imported/backgrounds/out.png --lo 14 --hi 40 --preview p.png
 ```
 
+## ⚠️ Un brief de forge doit DIRE que la texture viendra d'ailleurs
+
+Relevé par l'opérateur le 2026-08-25, sur le chantier du survol de lune : `BRIEF-0085` demandait
+tout le relief **en géométrie** et ne mentionnait nulle part la texture qu'il allait générer. Le
+circuit existe pourtant depuis longtemps — c'est ce fichier — mais il n'était écrit que du côté
+*intégration*, jamais du côté *commande*.
+
+Ce chantier a **trois mains**, et un brief qui n'en nomme que deux fait travailler la forge dans le
+vide :
+
+| Qui | Quoi |
+|---|---|
+| L'opérateur | **génère les textures** et les dépose dans `assets/source/` |
+| La forge | la **géométrie** et surtout des **UV faites pour recevoir la carte** |
+| Le concepteur | détoure, dérive, câble le matériau, mesure, intègre |
+
+Deux conséquences à écrire dans tout brief concerné :
+
+- **`ak.box_project_uv()` ne suffit plus.** Il convient à une coque vue de loin sans carte de détail ;
+  il donne des îlots arbitraires, coutures et échelles inégales. Une carte plaquée dessus s'étire
+  visiblement — et **personne ne le voit avant le rendu final**. Exiger un dépliage continu, la
+  **densité de texels mesurée**, les coutures **hors champ**, et une **planche de damier UV** rendue
+  à la perspective du jeu.
+- **Dire où passe la frontière géométrie / texture, et pourquoi.** Une carte ne remplace pas un
+  relief là où il compte : la silhouette du limbe et tout ce qui doit porter une **ombre réelle**
+  restent géométriques. Le reste — grain, petits accidents — va à la texture.
+
 ## Intégration (rappels qui évitent une reprise)
 
 - Les PNG passent en **Git LFS** (`.gitattributes`) ; committer aussi le `.import` et les `.uid`.

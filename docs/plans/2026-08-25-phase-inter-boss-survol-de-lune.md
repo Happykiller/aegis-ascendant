@@ -175,6 +175,14 @@ hauteur du fond habituel, aurait masqué tous ses propres rochers en silence.
 > autorise leur budget doit être refaite **sur la Quadro T1000**. Ce qu'on sait aujourd'hui
 > vient de la RTX 4080.
 >
+> 📄 **Le brief est écrit et prêt** : `BRIEF-0085-survol-de-lune-decor.md`, laissé au statut
+> **brouillon** — il porte lui-même la garde, et ses budgets (12 000 triangles pour la
+> calotte, 2 500 par rocher) sont **provisoires** tant que le bureau n'a pas mesuré. Il
+> consigne la géométrie du lieu que le lot 2 a posée, le contrat de noms lu par le code, et
+> les trois fautes que la doublure a rendues visibles : la teinte qui vire au rose sous les
+> lumières du jeu, les cratères qui se détachent au limbe au lieu de creuser, et le corail
+> qu'un décor ne doit jamais emprunter.
+>
 > 💡 **Et le budget a beaucoup changé depuis** : le ciel du survol est passé de 0,738 à
 > **0,323 ms** en cessant de calculer une nébuleuse qu'il n'affiche pas (`deep_sky`). La
 > phase 2 coûte désormais **un tiers** du fond spatial habituel. Il y a donc plus de marge
@@ -204,7 +212,17 @@ de 2,46 m, et rien ne l'avait signalé.
 ### Lot 4 — Équilibrage et ressenti
 
 La phase change la durée de l'arc et la montée en puissance. Elle se juge en jouant, pas au
-journal. Le Shield Carrier (`BRIEF-0046`, prêt) trouverait ici son emploi naturel.
+journal. Le Shield Carrier (`BRIEF-0046`) trouverait ici son emploi naturel.
+
+⚠️ **Et il manquait pour une raison précise, relevée le 2026-08-25** : son comportement est
+**entièrement codé** — `Effect.SHIELD_AURA`, la garde de validation, le relais dans
+`EnemyController`, les tests, le banc d'essai — mais l'unité n'a **ni Resource, ni scène, ni
+coque**. `BRIEF-0046` était prêt depuis le 23/08 et n'avait jamais été exécuté. C'est lui,
+et non l'équilibrage, qui bloquait ce lot : il a été confié à la forge.
+
+Une fois la coque livrée, l'intégration reste à faire de mon côté : `.tres`, `.tscn`, fiche
+codex, et **son entrée dans la vague du champ d'astéroïdes** — une ou deux unités, pas plus.
+Elle ne menace rien et change tout : tant qu'elle vit, la vague est un mur.
 
 ## Ce qui demandait une décision de l'opérateur — ✅ **tranché le 2026-08-25**
 
