@@ -12,11 +12,16 @@ trois est fausse, la session n'est pas close — et tu le dis au lieu de conclur
 
 ## Périmètre de ce projet
 
-> Relevé le 2026-08-23. À corriger dès que le projet change de forme.
+> Relevé le 2026-08-23, **corrigé le 2026-08-25**. À corriger dès que le projet change de forme.
+>
+> ⚠️ Il était **faux** : il annonçait `/home/admin/aegis-ascendant` et le remote `github-perso`,
+> pour un dépôt qui vit en `/home/happykiller/aegis-ascendant` sur `github-happykiller`. Ce
+> document dit lui-même qu'« un périmètre faux fait oublier un dépôt, et un dépôt oublié est une
+> session non close qui se croit close » — il en était l'exemple.
 
 | Dépôt | Chemin | Branche de travail | Remarque |
 | --- | --- | --- | --- |
-| `aegis-ascendant` | `/home/admin/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-perso:Happykiller/aegis-ascendant.git` (identité perso). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/admin` comme un dépôt Git |
+| `aegis-ascendant` | `/home/happykiller/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-happykiller:Happykiller/aegis-ascendant.git` (identité `github-happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/happykiller` comme un dépôt Git |
 
 | Stack | Fichier compose | Services |
 | --- | --- | --- |
@@ -101,6 +106,29 @@ Exécute `/capitalize`. En clôture il travaille en autonomie : ce qui passe ses
 
 Si `/capitalize` n'existe pas dans ce projet, ne l'improvise pas : signale-le, propose de lancer
 `factory-ghost`, et poursuis la clôture sans le volet capitalisation.
+
+## Étape 2 bis — ranger ce qui est clos
+
+```bash
+./scripts/audit-docs.sh          # rapport
+./scripts/audit-docs.sh --fix    # archive les briefs livrés et les plans clos
+```
+
+Un chantier fini laisse derrière lui des documents qui pilotent encore. Cet audit **dérive**
+l'état du dépôt — un brief est livré s'il a une sortie ou une ligne de provenance — et déplace
+ce qui est clos dans `archive/`.
+
+⚠️ **Pourquoi dériver au lieu de déclarer.** Le champ `Statut` des briefs existe depuis le
+premier jour et a été tenu **5 fois sur 37** : au 2026-08-25, **32 briefs livrés** portaient
+encore « assigné », `docs/` gardait deux documents morts depuis cinq et six semaines, et le
+backlog contenait **deux copies divergentes** de ses sections P0-P4 — celle qu'on lisait en
+premier était la périmée. Un état tenu à la main rouille toujours ; celui-ci se lit dans le
+dépôt et personne n'a rien à maintenir.
+
+**Ce que l'audit ne fait PAS** : décider. Il liste les briefs réellement ouverts et les plans
+vivants. Fermer un chantier reste une décision de l'opérateur — et **avant d'archiver un plan,
+verser ce qu'il laisse ouvert dans `docs/BACKLOG.md`** : un plan qu'on archive ne doit rien
+emporter avec lui.
 
 ## Étape 3 — committer, dépôt par dépôt
 
