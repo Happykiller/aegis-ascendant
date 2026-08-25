@@ -37,6 +37,7 @@ plan plus récent, **le plan gagne**.
 | Plan | Sujet | État |
 |---|---|---|
 | [`2026-08-25-bestiaire-ennemis.md`](plans/2026-08-25-bestiaire-ennemis.md) | Familles d'ennemis, coques et comportements — **repris** après la fin du régime à deux sessions | à appliquer |
+| [`2026-08-25-phase-inter-boss-survol-de-lune.md`](plans/2026-08-25-phase-inter-boss-survol-de-lune.md) | Une phase de jeu entre les deux boss : unités du bestiaire + survol de lune | à appliquer — **rien commencé** |
 
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
