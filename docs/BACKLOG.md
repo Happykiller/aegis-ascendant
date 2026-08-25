@@ -11,7 +11,13 @@
 > trois**. Le flux était dimensionné avec la cadence de l'**armure** — cible large où toutes
 > les balles portent — alors que seuls les canons de nez touchent une cible de 1,80 m qui
 > dérive. **`ADR-0024`** lui donne sa propre hypothèse et ramène `flux_health` de 5300 à 2400.
-> ⚠️ **Ce correctif n'a pas encore été rejoué** : c'est le point bloquant courant.
+> Rejoué : il donnait **deux** cycles, parce que la refonte de la plongée en **zone dédiée**
+> (`ADR-0025` — la gueule s'ouvre par un iris à volets, on entre dans une arène avec
+> passerelle et réacteur) avait doublé la capacité à toucher le flux. Et la mesure a montré
+> qu'**aucun nombre de PV ne pouvait donner trois cycles** : les dégâts par plongée vont de
+> 600 à plus de 1200 pour le même joueur. **`ADR-0026`** plafonne les dégâts à un tiers par
+> passage — trois cycles par **construction**. ✅ Vérifié en partie : trois cycles exactement,
+> zéro dépassement, zéro erreur. **Le combat tourne comme `ADR-0021` le décrit.**
 >
 > ⚠️ Une autre session travaille en parallèle sur le **bestiaire ennemi** (`ADR-0022`,
 > `scripts/enemies/`, `wave_spawner`, assets). Périmètres disjoints, mais `C:\tmp` et le

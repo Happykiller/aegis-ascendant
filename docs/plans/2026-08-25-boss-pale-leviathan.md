@@ -46,8 +46,16 @@ Le combat est maintenant **lisible et équilibré**. Ce qui n'est **pas** jugé 
   (`reference_dps` = 420, cible large où toutes les balles portent) alors que seuls les
   canons de nez touchent une cible de 1,80 m qui dérive. Il a désormais sa propre hypothèse
   (`flux_reference_dps` = 208) et `flux_health` passe de **5300 à 2400**.
-- ⚠️ **Le correctif d'`ADR-0024` n'a PAS été rejoué.** Trois cycles sont attendus par le
-  calcul et par la mesure ; ils ne sont pas constatés. **C'est le point bloquant courant.**
+- ✅ **RÉSOLU, et pas comme prévu.** `ADR-0024` a été rejoué et a donné **deux** cycles :
+  l'arène dédiée (`ADR-0025`) avait doublé la capacité à toucher le flux — réacteur droit
+  devant, ligne de tir dégagée — donc le calibrage portait sur une plongée disparue. Et la
+  mesure a montré qu'**aucun nombre de PV ne pouvait marcher** : les dégâts par plongée vont
+  de 600 à plus de 1200 pour le même joueur, ce qui rend les deux bornes contradictoires.
+  **`ADR-0026`** plafonne donc les dégâts à un tiers par passage : trois cycles deviennent
+  vrais **par construction**. Vérifié en partie — trois cycles exactement, zéro dépassement.
+- ✅ **La plongée est vérifiée en capture aux deux moments** : la gueule ouverte sur un puits
+  sombre avec le chasseur aspiré dedans, puis l'arène vue du dessus, réacteur au centre.
+  Reste le **ressenti**, qu'aucune capture ne donne.
 - ⚠️ **Tension ouverte, assumée par `ADR-0024`** : la jauge répartit 63 % sur l'armure et
   37 % sur le flux, pour un temps réparti à 45 % / 55 %. La barre avance donc plus vite
   pendant l'armure que pendant la plongée. Résoudre demanderait plus de dégâts placés dans le
@@ -59,6 +67,21 @@ Le combat est maintenant **lisible et équilibré**. Ce qui n'est **pas** jugé 
 verdict les demande : `shell_orbit_period` 9→7, `plate_health` 460→380. Le garde-fou de
 `validate()` refusera d'aller trop loin — mais **seulement s'il se compare à la bonne
 hypothèse**, ce qui est précisément ce qui a manqué jusqu'à `ADR-0024`.
+
+### 1bis. Ce que la refonte laisse ouvert
+
+- **Le ressenti du plafond** (`ADR-0026`) : un passage saturé continue d'encaisser des tirs
+  qui ne comptent plus. Invisible si les 5 s s'écoulent de toute façon, frustrant sinon.
+- **La tension jauge / temps** (`ADR-0024`) : 63 % de la barre pour 45 % du temps.
+- **La mort en phase d'armure** à puissance maximale, vue une fois sur deux parties.
+- **`shaft_radius()` rend toujours la borne de sa table** (abscisses décroissantes contre un
+  `lerp_table()` qui teste `x <= table[0][0]`) : c'est la CAUSE des `Ring_01..05` à 19 cm,
+  trouvée par la forge de `BRIEF-0083` et **non corrigée**. ⚠️ La corriger redonnerait aux
+  anneaux un rayon interne de 1,496 m, soit un passage de 2,99 m — sous la cible de 4,2.
+  Les deux décisions se prennent ensemble.
+- **`bmesh.ops.inset_region` inset une RÉGION, pas des faces** : N faces contiguës ne donnent
+  qu'**un seul** liseré. Trouvaille de la forge de `BRIEF-0082`, totalement silencieuse —
+  contrat vert, budget respecté, relief absent. Concerne probablement d'autres coques.
 
 ### 2. Correction du kit Blender — **débloquée, c'est le prochain chantier**
 
