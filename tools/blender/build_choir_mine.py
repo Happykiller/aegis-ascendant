@@ -87,7 +87,14 @@ CONTRACT = ak.HullContract(
     width_x=1.15,       # Godot X — impose par le brief
     length_z=1.15,      # Godot Z — impose par le brief
     max_height_y=0.55,  # Godot Y — derogation assumee (brief) : 0,45 a 0,55
-    tri_budget=6_000,   # moitie du plafond « ennemi leger » d'ADR-0011
+    # Releve de 6 000 a 7 000 par BRIEF-0084. Le plafond normatif de la classe
+    # « ennemi leger » (ADR-0011) est 12 000 : ce chiffre n'a jamais ete qu'un
+    # garde-fou volontairement serre. La mine passe de 5 632 a 6 232 triangles
+    # le jour ou `ak.inset_panel()` cesse d'etre un no-op : 67 de ses 115 faces
+    # insettees portaient une normale nulle, donc leurs panneaux n'existaient
+    # pas — seul le materiau changeait. On paie du detail reel, pas de la
+    # geometrie ajoutee. Le garde-fou reste : 7 000, soit 58 % du plafond ADR.
+    tri_budget=7_000,
     required_materials=ak.MATERIAL_ORDER,  # les 7 : cf. plan de materiaux
     required_attach_points=("Muzzle_C",),  # et surtout PAS de Engine_C
 )

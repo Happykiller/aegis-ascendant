@@ -1,6 +1,6 @@
 # BRIEF-0084 — Réparer `inset_panel()` dans le kit, et régénérer toutes les coques
 
-- **Statut** : brouillon
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-25

@@ -73,7 +73,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"   # 1.1.0 : inset_panel() corrige (BRIEF-0084)
 
 # --------------------------------------------------------------------------
 # Repere d'auteur
@@ -493,36 +493,157 @@ def add_lathe(
     return bands
 
 
+def _edge_disjoint_lots(
+    faces: list[bmesh.types.BMFace],
+) -> list[list[bmesh.types.BMFace]]:
+    """Decoupe une liste de faces en LOTS SANS ARETE COMMUNE, dans l'ordre recu.
+
+    Glouton et deterministe : on parcourt les faces dans l'ordre donne, on
+    garde celles dont aucune arete n'est deja prise par le lot en cours, on
+    renvoie les autres au tour suivant. Une grille reguliere se resout en deux
+    lots (un damier), un anneau de N faces en deux lots (trois si N est impair).
+
+    Propriete voulue : une liste DEJA sans arete commune rend UN seul lot, egal
+    a la liste d'entree, dans le meme ordre. C'est ce qui garantit qu'un appel
+    `per_face=True` sur des faces disjointes produit exactement la meme
+    geometrie, dans le meme ordre de creation, donc le meme `.glb` a l'octet
+    pres, que l'appel de region equivalent.
+    """
+    pending = list(faces)
+    lots: list[list[bmesh.types.BMFace]] = []
+    while pending:
+        lot: list[bmesh.types.BMFace] = []
+        taken: set = set()
+        rest: list[bmesh.types.BMFace] = []
+        for face in pending:
+            edges = set(face.edges)
+            if edges & taken:
+                rest.append(face)
+            else:
+                lot.append(face)
+                taken |= edges
+        lots.append(lot)
+        pending = rest
+    return lots
+
+
 def inset_panel(
     bm: bmesh.types.BMesh,
     faces: list[bmesh.types.BMFace],
     material: str,
     thickness: float = 0.012,
     depth: float = -0.008,
+    per_face: bool = False,
 ) -> list[bmesh.types.BMFace]:
     """Decoupe/enfonce un panneau : `inset_region` puis materiau sur le fond.
 
     C'est le detail par la geometrie exige par l'ADR-0008 : le bord du panneau
     reste en `AA_Hull`, le fond enfonce prend `material`. `depth < 0` creuse.
+
+    *** DEUX PIEGES, tous deux TOTALEMENT SILENCIEUX (BRIEF-0084) ***
+
+    1. **La normale de face vaut (0,0,0) sur un maillage frais.** Une face creee
+       par `bm.faces.new()` — donc TOUTE face sortie de `add_box`, `bridge_rings`,
+       `cap_ring`, `add_lathe`… — n'a pas de normale tant que personne ne l'a
+       calculee. `inset_region` lit cette normale : elle est nulle, l'inset se
+       replie sur lui-meme et rend un lisere d'aire NULLE ; `cleanup()` ressoude
+       ensuite les sommets confondus et il ne reste **que le changement de
+       materiau** — un panneau qui se voit et qui n'existe pas. Mesure de
+       reproduction sur 16 quads de 1 m (thickness 0,10 / depth -0,05) : lisere
+       0,000000 m2 et 64 -> 32 triangles apres `cleanup()`, contre 1,744132 m2
+       et 64 -> 64 une fois les normales calculees ; creux mesure 0,000 m contre
+       -0,050 m.
+
+       Le kit appelle donc `bm.normal_update()` LUI-MEME, juste avant
+       l'operateur. C'est idempotent : un script qui l'appelle deja de son cote
+       obtient exactement la meme geometrie qu'avant (verifie a l'octet sur
+       `core_interior.glb` et `leech_drone.glb`, inchanges).
+
+       ⚠️ La mise a jour doit etre GLOBALE, pas ciblee sur les faces passees.
+       Tentee en `BMFace.normal_update()` face par face — moins cher, sans effet
+       de bord sur le reste du maillage — elle rend un panneau FAUX des que la
+       region compte plus d'une face : `inset_region` deplace les sommets
+       INTERIEURS de la region le long de leur normale de SOMMET, que seul
+       `bm.normal_update()` calcule. Mesure sur la grille de 16 quads : les 9
+       sommets interieurs restent a z = 0,000 au lieu de descendre a -0,050, et
+       le fond du panneau se voile au lieu d'etre plat. Le defaut est, lui
+       aussi, parfaitement silencieux (meme topologie, meme compte de
+       triangles).
+
+       ⚠️ Corollaire a connaitre : l'inset creuse le long de la normale, donc
+       dans le sens du winding de la face. Une boucle capee a l'envers se
+       SOULEVE au lieu de se creuser (cf. `build_aegis_citadel.py:1179`). Tant
+       que les normales etaient nulles ce defaut passait inapercu — il ne
+       passera plus.
+
+    2. **`inset_region` inset une REGION, pas des faces.** N faces qui partagent
+       des aretes ne rendent qu'UN lisere, autour de leur union. Mesure : 16
+       quads contigus rendent 16 faces de lisere (le pourtour de la grille) et
+       1,744132 m2, la ou une plaque par face en rend 64 et 6,439875 m2, soit
+       **3,7 x plus de lisere** et 160 triangles au lieu de 64.
+
+       Ce n'est PAS toujours un defaut, et c'est pour cela que le comportement
+       n'a pas ete change d'office : la quasi-totalite des appels du depot
+       veulent exactement une region — une plaque de carapace de 20 cellules
+       (`build_choir_harvester.py:674`), un petale de trois plaques
+       (`build_null_maw.py:500`), un sillon dorsal continu ou un puits de
+       verriere (`build_specter_9.py:1283`), une plaque de 1 a 3 bandes
+       (`build_aegis_citadel.py:474`). Les rendre face par face ne corrigerait
+       rien : cela transformerait chaque plaque en damier de tuiles.
+
+       Quand on veut UNE PLAQUE PAR FACE, c'est `per_face=True` (ou son alias
+       lisible `inset_panels()`) : la liste est alors decoupee en lots sans
+       arete commune et l'operateur est appele une fois par lot. C'est le cas
+       de `build_core_interior.py`, dont les 240 plaques de pont ne donnaient
+       qu'un lisere autour de l'arene entiere.
+
+    Retourne les faces de bordure (le lisere), a colorer par `set_material()`.
     """
     faces = [f for f in faces if f is not None and f.is_valid]
     if not faces:
         return []
-    res = bmesh.ops.inset_region(
-        bm,
-        faces=faces,
-        use_boundary=True,
-        use_even_offset=True,
-        thickness=thickness,
-        depth=depth,
-    )
-    # inset_region retourne les faces de *bordure* ; les faces d'origine
-    # (passees en entree) restent le fond du panneau.
     idx = mat_index(material)
-    for face in faces:
-        if face.is_valid:
-            face.material_index = idx
-    return res["faces"]
+    rims: list[bmesh.types.BMFace] = []
+    lots = _edge_disjoint_lots(faces) if per_face else [faces]
+    for lot in lots:
+        lot = [f for f in lot if f.is_valid]
+        if not lot:
+            continue
+        # Piege 1 : sans cela l'operateur lit des normales nulles et ne creuse
+        # rien. Global et non cible : le fond du panneau descend le long des
+        # normales de SOMMET (voir le docstring).
+        bm.normal_update()
+        res = bmesh.ops.inset_region(
+            bm,
+            faces=lot,
+            use_boundary=True,
+            use_even_offset=True,
+            thickness=thickness,
+            depth=depth,
+        )
+        # inset_region retourne les faces de *bordure* ; les faces d'origine
+        # (passees en entree) restent le fond du panneau.
+        for face in lot:
+            if face.is_valid:
+                face.material_index = idx
+        rims += res["faces"]
+    return rims
+
+
+def inset_panels(
+    bm: bmesh.types.BMesh,
+    faces: list[bmesh.types.BMFace],
+    material: str,
+    thickness: float = 0.012,
+    depth: float = -0.008,
+) -> list[bmesh.types.BMFace]:
+    """UNE PLAQUE PAR FACE — alias lisible de `inset_panel(..., per_face=True)`.
+
+    Le pluriel est la pour qu'on ait a CHOISIR : `inset_panel` (une region, un
+    lisere) et `inset_panels` (une plaque par face) sont deux gestes differents
+    et le mauvais des deux est silencieux (voir le piege 2 de `inset_panel`).
+    """
+    return inset_panel(bm, faces, material, thickness, depth, per_face=True)
 
 
 def set_material(faces: list[bmesh.types.BMFace], material: str) -> None:
