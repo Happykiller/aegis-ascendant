@@ -54,6 +54,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
 
 ## Bonnes pratiques — apprises à nos dépens
 
+- [Ce qui ne compile pas en Godot 4.7](pratique-godot-ce-qui-ne-compile-pas.md) — deux pièges d'API,
+  dont un **muet** : un `return` au milieu de `fragment()` ne rend que « Shader compilation failed »,
+  sans ligne ni cause. Et `const X := PackedFloat32Array([...])` n'est pas une expression constante —
+  c'est `const X: PackedFloat32Array = [...]` qu'il faut écrire.
+
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
   ⚠️ **Un correctif de brief ne se propage pas aux autres livrables du même brief** : deux coques,
