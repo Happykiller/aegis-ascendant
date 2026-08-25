@@ -81,9 +81,30 @@ func _anchor_or(anchor_name: String, fallback: Vector2) -> Vector2:
 		if not _is_stand_in:
 			push_warning("[CoreInterior] décor sans ancrage '%s' (contrat BRIEF-0082)" % anchor_name)
 		return fallback
+	return _plane_of(node)
+
+## Position d'un nœud du décor dans le plan de jeu, en REMONTANT la chaîne de parenté.
+##
+## ⚠️ NE JAMAIS LIRE `position` SEULE : elle est LOCALE. Un ancrage imbriqué sous un pivot
+## rendrait une coordonnée fausse, plausible, et parfaitement silencieuse — la cible de la
+## phase se poserait à côté du réacteur sans que rien ne le signale.
+## Ce n'est pas une précaution théorique : le 2026-08-25, le Specter-9 a été mesuré ainsi,
+## bornes agrégées en espace local, et rendu **1,29 m** de large au lieu de **1,752 m** —
+## ses ailes sont portées par des nœuds transformés. Le chiffre faux est parti dans un
+## brief de forge avant d'être rattrapé.
+## `global_position` ne suffit pas non plus : hors de l'arbre — le régime des tests — il ne
+## veut rien dire. On compose donc les transformations jusqu'au décor, ce qui est juste
+## dans les deux cas.
+func _plane_of(node: Node3D) -> Vector2:
+	var local := Transform3D.IDENTITY
+	var walk: Node = node
+	while walk != null and walk != _decor:
+		var as_3d := walk as Node3D
+		if as_3d != null:
+			local = as_3d.transform * local
+		walk = walk.get_parent()
 	# Le plan de jeu est (X, −Z) : même projection que les bouches de canon du chasseur.
-	var world := node.global_position if node.is_inside_tree() else node.position
-	return Vector2(world.x, -world.z)
+	return Vector2(local.origin.x, -local.origin.z)
 
 # --- Doublure procédurale ---------------------------------------------------
 #

@@ -46,8 +46,15 @@ func test_a_missing_decor_degrades_instead_of_breaking_the_fight() -> void:
 	# mieux qu'un combat qui plante — et tant que la forge n'a pas livre, la mecanique doit
 	# rester jouable et testable.
 	var interior := _make()
-	assert_true(interior.is_stand_in() or ResourceLoader.exists(InteriorScript.DECOR_PATH),
-		"soit le decor est la, soit la doublure a pris le relais — jamais rien")
+	# ⚠️ CETTE ASSERTION ETAIT TRIVIALEMENT VRAIE dans sa premiere forme (« la doublure OU le
+	# fichier existe ») : elle passait sans jamais rien prouver. Le contrat reel a deux
+	# branches, et il faut les tester toutes les deux.
+	if ResourceLoader.exists(InteriorScript.DECOR_PATH):
+		assert_false(interior.is_stand_in(),
+			"le decor livre existe : c'est LUI qui doit etre monte, jamais la doublure")
+	else:
+		assert_true(interior.is_stand_in(),
+			"pas de decor : la doublure prend le relais, le combat reste jouable")
 
 func test_the_arena_is_hidden_until_the_fighter_enters() -> void:
 	# Elle est montee a l'origine du monde : visible d'emblee, elle s'afficherait par-dessus

@@ -1,6 +1,6 @@
 # BRIEF-0082 — L'intérieur du noyau du Pale Leviathan : passerelle et réacteur
 
-- **Statut** : brouillon
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-25
