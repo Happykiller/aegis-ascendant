@@ -126,6 +126,10 @@ var _neighbours: Array[EnemyController] = []
 
 ## Demi-épaisseur de l'anneau, en unités monde.
 const AURA_RING_THICKNESS := 0.09
+
+## Le champ peint (`TEX-0008`). Chargé à l'exécution : sans lui, le tore procédural reprend
+## la main — le bestiaire doit rester jouable sans ses images.
+const AURA_SPRITE := "res://assets/imported/vfx/champ_porteur.png"
 ## Violet du Chœur Nul. ⚠️ Ni cyan ni corail : ces deux teintes appartiennent au tir
 ## allié et au tir ennemi, et un champ qui les emprunterait leur volerait leur lisibilité.
 const AURA_TINT := Color(0.78, 0.32, 0.98)
@@ -558,15 +562,33 @@ func _build_aura_visual() -> void:
 	# L'anneau : la seule chose que le joueur doit vraiment lire. Il est posé dans le plan
 	# de jeu, là où sa position a un sens pour l'esquive.
 	_aura_edge_material = _aura_material(0.85, 1.6)
-	var radii := aura_ring_radii(data.aura_radius)
-	var ring := TorusMesh.new()
-	ring.inner_radius = radii.x
-	ring.outer_radius = radii.y
-	ring.rings = 40
-	ring.ring_segments = 6
 	var edge := MeshInstance3D.new()
 	edge.name = "Edge"
-	edge.mesh = ring
+	# ⚠️ UN PANNEAU PEINT S'IL EXISTE, LE TORE SINON. Le tore rendait un anneau magenta
+	# parfait, tracé au compas — « je veux un rendu plus crédible » (opérateur, 2026-08-26).
+	# `TEX-0008` lui donne un liseré irrégulier et une trame hexagonale.
+	#
+	# ⚠️ ET C'EST L'UN DES RARES CAS OÙ UN PANNEAU EST LE BON OUTIL. La règle posée le même
+	# jour — « une surface se texture, un VOLUME se peuple » — ne s'applique pas ici : ce
+	# champ n'est pas un volume, c'est une FRONTIÈRE. Son bord porte une règle de jeu (les
+	# unités couvertes sont invulnérables), et un système de particules le rendrait flou.
+	if ResourceLoader.exists(AURA_SPRITE):
+		var quad := QuadMesh.new()
+		quad.size = Vector2(data.aura_radius * 2.0, data.aura_radius * 2.0)
+		quad.orientation = PlaneMesh.FACE_Y   # à plat dans le plan de jeu, comme le tore
+		edge.mesh = quad
+		_aura_edge_material.albedo_texture = load(AURA_SPRITE) as Texture2D
+		_aura_edge_material.albedo_color = Color(1.0, 1.0, 1.0, 0.95)
+		_aura_edge_material.emission_texture = _aura_edge_material.albedo_texture
+		_aura_edge_material.emission = Color.WHITE
+	else:
+		var radii := aura_ring_radii(data.aura_radius)
+		var ring := TorusMesh.new()
+		ring.inner_radius = radii.x
+		ring.outer_radius = radii.y
+		ring.rings = 40
+		ring.ring_segments = 6
+		edge.mesh = ring
 	edge.material_override = _aura_edge_material
 	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_aura_visual.add_child(edge)

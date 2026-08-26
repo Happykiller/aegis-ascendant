@@ -68,6 +68,16 @@ const SHARD_PATH := "res://assets/imported/models/vfx/impact_shard.glb"
 # depuis une tuile de 1024 étalée sur huit mètres de monde.
 const BOLIDE_SPRITE := "res://assets/imported/vfx/bolide_incandescent.png"
 const TRAIL_SPRITE := "res://assets/imported/vfx/trainee_flamme.png"
+## ⚠️ UN ÉLÉMENT, PAS L'EFFET. L'onde d'impact n'est plus un anneau ni un panneau peint : c'est
+## un `GPUParticles3D` qui répète cette bouffée des dizaines de fois, à des tailles, rotations
+## et durées propres. Règle posée par l'opérateur le 2026-08-26 : « une surface se texture,
+## un VOLUME se peuple » — un effet volumétrique sur un seul quad est un carton, il n'a ni
+## profondeur, ni parallaxe, ni variation dans le temps.
+const DUST_SPRITE := "res://assets/imported/vfx/bouffee_poussiere.png"
+
+## Combien de bouffées, et combien de temps elles vivent.
+const DUST_COUNT := 52
+const DUST_LIFE := 1.7
 
 ## Côté du quad, en mètres. ⚠️ MESURÉ SUR L'IMAGE, pas choisi : le bolide occupe 64,6 % de
 ## son cadre et la traînée 88,6 %. Pour une roche de 2,5 m il faut donc un quad de
@@ -320,6 +330,11 @@ var _impact_up: Vector3 = Vector3.UP
 ## exactement le genre de défaut muet que ce fichier collectionne.
 var _painted_bolide: bool = false
 var _painted_trail: bool = false
+## Le nuage de poussière de l'impact. `null` tant que sa bouffée n'a pas été livrée — et
+## l'anneau procédural reprend alors la main.
+var _dust: GPUParticles3D
+## Le nuage a-t-il déjà été lancé pour CET impact ? Voir le piège d'`emitting` plus bas.
+var _dust_fired: bool = false
 
 var _dressed_moon: bool = false
 var _dressed_rocks: bool = false
@@ -795,6 +810,88 @@ func _build_trail_cone() -> MeshInstance3D:
 	add_child(cone)
 	return cone
 
+## Le nuage de poussière de l'impact : des dizaines de bouffées projetées en éventail.
+##
+## ⚠️ POURQUOI DES PARTICULES ET NON UN PANNEAU. Un effet volumétrique peint sur un seul quad
+## n'a ni profondeur, ni parallaxe, ni variation dans le temps : c'est un carton, et il ne
+## tient que vu de face. Le volume vient du NOMBRE et de la DISPERSION — chaque bouffée a sa
+## taille, sa rotation, sa vitesse et sa durée. La texture n'est plus l'effet, elle en est
+## l'élément.
+##
+## Calqué sur `scripts/fx/vfx_explosion.gd`, qui fait déjà ses étincelles et ses débris ainsi.
+##
+## ⚠️ EN MÉLANGE ALPHA ET NON ADDITIF, contrairement à la traînée : de la poussière MASQUE le
+## sol, elle ne s'ajoute pas à la lumière. Un additif en ferait un nuage lumineux — soit
+## exactement le « cercle jaune » qu'on corrige.
+func _build_dust() -> GPUParticles3D:
+	if not ResourceLoader.exists(DUST_SPRITE):
+		return null
+	var node := GPUParticles3D.new()
+	node.name = "ImpactDust"
+	node.one_shot = true
+	node.explosiveness = 1.0
+	node.amount = DUST_COUNT
+	node.lifetime = DUST_LIFE
+	# Coordonnées MONDE : le nuage reste où l'impact a eu lieu, il ne suit pas le décor qui
+	# dérive sous lui.
+	node.local_coords = false
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.position = MOON_CENTER
+	node.emitting = false
+
+	var mat := ParticleProcessMaterial.new()
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	mat.emission_sphere_radius = 0.8
+	# ⚠️ SPREAD LARGE : à 82°, l'éventail rase la surface au lieu de monter en colonne. Une
+	# colonne verticale serait vue en enfilade depuis la caméra en plongée — la faute qui a
+	# coûté deux itérations sur la traînée.
+	mat.spread = 82.0
+	mat.initial_velocity_min = 4.0
+	mat.initial_velocity_max = 13.0
+	mat.damping_min = 3.0
+	mat.damping_max = 7.0
+	mat.scale_min = 1.1
+	mat.scale_max = 3.4
+	mat.angle_min = -180.0
+	mat.angle_max = 180.0
+	mat.angular_velocity_min = -26.0
+	mat.angular_velocity_max = 26.0
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(0.4, 1.0))
+	grow.add_point(Vector2(1.0, 1.25))
+	var grow_tex := CurveTexture.new()
+	grow_tex.curve = grow
+	mat.scale_curve = grow_tex
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.18, 1.0])
+	ramp.colors = PackedColorArray([
+		Color(1.0, 0.95, 0.86, 0.0),
+		Color(0.92, 0.88, 0.82, 0.85),
+		Color(0.62, 0.60, 0.60, 0.0),
+	])
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	mat.color_ramp = ramp_tex
+	node.process_material = mat
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(2.6, 2.6)
+	var draw := StandardMaterial3D.new()
+	draw.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	draw.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	draw.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	# ⚠️ Sans `billboard_keep_scale`, le billboard JETTE l'échelle du nœud — piège n°1 de
+	# `pratique-geometries-invisibles.md`, payé en trois captures vides.
+	draw.billboard_keep_scale = true
+	draw.vertex_color_use_as_albedo = true
+	draw.albedo_texture = load(DUST_SPRITE) as Texture2D
+	draw.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	quad.material = draw
+	node.draw_pass_1 = quad
+	add_child(node)
+	return node
+
 ## Un panneau incandescent portant une image, ou `null` si elle n'a pas été livrée.
 ##
 ## `additive` : la traînée s'AJOUTE au ciel (le noir de l'image n'y contribue rien, donc
@@ -1095,6 +1192,7 @@ func _build_impact_kit() -> void:
 	else:
 		_trail = _build_trail_cone()
 
+	_dust = _build_dust()
 	_plume = _cone("ImpactPlume", 1.0, 1.0, 1.0, 1.5)
 	# ⚠️ SANS COUVERCLES : un tube plein, vu d'au-dessus, redevient le disque jaune qu'on
 	# corrige. C'est l'ANNEAU qui dit l'onde de choc.
@@ -1207,7 +1305,21 @@ func _advance_impacts(delta: float) -> void:
 	var since := _impact_age - BOLIDE_FALL
 	if since < 0.0:
 		return
-	if _plume != null:
+	# ⚠️ LE NUAGE PART UNE SEULE FOIS, ET ON TIENT LE DRAPEAU NOUS-MÊMES. `emitting` retombe
+	# à `false` dès la salve ÉMISE — pas éteinte — donc le relire pour savoir si on a déjà
+	# tiré rendrait « non » dès l'image suivante, et le nuage repartirait en boucle. Piège
+	# documenté dans `pratique-geometries-invisibles.md`, déjà payé ailleurs.
+	if _dust != null and not _dust_fired:
+		_dust_fired = true
+		_dust.position = _impact_at
+		var dust_mat := _dust.process_material as ParticleProcessMaterial
+		if dust_mat != null:
+			# L'éventail part le long de la verticale LOCALE de la lune, et la poussière
+			# retombe dessus : un impact près du limbe ne projette pas vers le haut du monde.
+			dust_mat.direction = _impact_up
+			dust_mat.gravity = -_impact_up * 4.5
+		_dust.restart()
+	if _plume != null and _dust == null:
 		# La gerbe part du POINT D'IMPACT et monte le long de la verticale locale. Son
 		# origine étant en son milieu, elle se pose à la moitié de sa hauteur.
 		var plume_life := since / PLUME_LIFE
@@ -1249,6 +1361,7 @@ func _begin_impact(index: int) -> void:
 	_impact_at = at
 	_impact_up = (at - MOON_CENTER).normalized()
 	_impact_age = 0.0
+	_dust_fired = false
 
 func _end_impact() -> void:
 	_impact_age = -1.0
@@ -1260,5 +1373,7 @@ func _end_impact() -> void:
 		_trail.visible = false
 	if _plume != null:
 		_plume.visible = false
+	if _dust != null:
+		_dust.emitting = false
 	for shard in _shards:
 		shard.visible = false
