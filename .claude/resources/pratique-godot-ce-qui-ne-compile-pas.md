@@ -55,3 +55,40 @@ depuis un littéral, et c'est l'annotation qui déclenche la conversion.
 Le dépôt en avait déjà un exemple sous les yeux — `const _LEVIATHAN_PLATE_LABELS: PackedStringArray
 = ["P 1", …]` dans `graybox_root.gd`. Lire une forme qui marche avant d'en inventer une coûte moins
 cher que le cycle de parse.
+
+
+## Deux fautes qui COMPILENT et se voient seulement en jeu (26/08/2026)
+
+Ce fichier collectionnait ce qui ne compile pas. Ces deux-là compilent très bien, passent la
+porte de qualité, et cassent à l'exécution — ce qui est pire.
+
+### Un nom de propriété faux n'échoue qu'à l'EXÉCUTION
+
+`_health.maximum` sur un `HealthComponent` qui expose `max_health`. GDScript ne le vérifie
+pas à la compilation : `check.sh` reste **vert**, et l'erreur ne sort que si le chemin est
+exécuté.
+
+⚠️ **Et le symptôme ne ressemble pas à une erreur.** L'accès invalide interrompt la fonction
+au milieu — donc la moitié du travail est faite et l'autre pas. Vécu : une sangsue censée
+détoner survivait, passait en épuisée, puis se réarmait et repartait. L'opérateur a rapporté
+« les sangsues n'explosent pas, elles repartent » : un comportement plausible, entièrement
+faux, et introuvable sans le journal.
+
+**La parade** : un test qui exerce le chemin, même trivial. Le plus bête suffit —
+`assert_true("max_health" in objet)` aurait économisé une partie entière.
+
+### ⚠️ Une lambda capture par VALEUR
+
+```gdscript
+var vu := false
+signal_quelconque.connect(func() -> void: vu = true)   # ❌ modifie une COPIE
+assert_true(vu)                                        # échoue sur du code CORRECT
+```
+
+Le test affirme alors que rien ne s'est passé, sur un mécanisme qui fonctionne — et l'on
+part corriger le code au lieu du test. Passer par un conteneur :
+
+```gdscript
+var vu := [false]
+signal_quelconque.connect(func() -> void: vu[0] = true)   # ✅
+```

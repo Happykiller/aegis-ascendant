@@ -62,6 +62,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   dont un **muet** : un `return` au milieu de `fragment()` ne rend que « Shader compilation failed »,
   sans ligne ni cause. Et `const X := PackedFloat32Array([...])` n'est pas une expression constante —
   c'est `const X: PackedFloat32Array = [...]` qu'il faut écrire.
+  ⚠️ **Et deux fautes qui COMPILENT** (26/08/2026), donc pires : un **nom de propriété faux**
+  n'échoue qu'à l'exécution — `check.sh` reste vert, la fonction s'interrompt AU MILIEU, et
+  le symptôme ressemble à un comportement plausible (une unité censée exploser « repart ») ;
+  et une **lambda capture par VALEUR**, si bien qu'un test affirme que rien ne s'est passé
+  sur du code parfaitement correct.
 
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.

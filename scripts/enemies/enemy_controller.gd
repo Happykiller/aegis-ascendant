@@ -691,7 +691,14 @@ func _detonate() -> void:
 		var reach := data.hitbox_radius + DETONATION_REACH
 		if plane_position.distance_to(_player.plane_position) <= reach:
 			_player.take_contact_damage(data.detonation_damage)
-	_health.apply_damage(_health.maximum * 2.0)
+	# ⚠️ `health` ET NON `maximum` — cette propriété N'EXISTE PAS sur `HealthComponent`, et
+	# la faute était MUETTE pour la porte de qualité : `check.sh` restait vert, l'erreur ne
+	# sortait qu'en jeu, dans un chemin qu'aucun test n'exerçait. Symptôme relevé par
+	# l'opérateur : « les sangsues n'explosent pas, une fois collées à moi elles repartent ».
+	# Elles ne repartaient pas par choix — l'accès invalide interrompait la fonction AVANT
+	# les dégâts, l'unité survivait, passait en épuisée, et son `rearm_time` de 1,5 s la
+	# renvoyait dormante. Un test couvre désormais la détonation.
+	_health.apply_damage(_health.health + 1.0)
 
 ## A non-lethal hit: the killing blow is reported by `destroyed` instead.
 func _on_damaged(_amount: float, remaining: float) -> void:
