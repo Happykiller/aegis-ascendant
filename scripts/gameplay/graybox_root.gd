@@ -86,6 +86,15 @@ var _moon_flyby: MoonFlyby
 ## `--no-flyby` : la phase se joue sous le fond spatial habituel. Bissection de perf — le
 ## témoin d'un différentiel, c'est la même chose sans le réglage.
 var _flyby_disabled: bool = false
+## Le voile de raccord entre deux décors (lot 5 du plan inter-boss). Monté au MONTAGE et
+## caché, comme le survol : un raccord alloué au moment où il sert arriverait en retard.
+var _transition: PhaseTransition
+## L'approche du boss final : le dernier puits gravitique qui monte (`BossApproach`).
+## Pas une phase de l'enum — `MusicContext.LevelPhase` le reflète PAR VALEUR et
+## `test_music_director.gd` le vérifie, donc y insérer une entrée décalerait la musique
+## en silence. L'approche se joue DANS `ASTEROID_FIELD`, sur son propre lit musical.
+var _approach_active: bool = false
+var _approach_time: float = 0.0
 ## One instance for the whole run: resolving the musical state must not allocate.
 var _music: MusicContext = MusicContext.new()
 var _engine_running: bool = false
@@ -173,6 +182,7 @@ func _ready() -> void:
 	# ⚠️ AVANT les sauts de phase : `--skip-to-field` entre dans le champ depuis ce même
 	# bloc, et il lui faut son décor déjà monté.
 	_build_moon_flyby()
+	_build_transition()
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
 	elif "--skip-to-field" in args:
@@ -378,16 +388,29 @@ func _start_asteroid_field() -> void:
 	print("[Level] ASTEROID FIELD")
 	if _wave_spawner != null:
 		_wave_spawner.set_physics_process(false)
-	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
-	_show_moon_flyby(true)
 	if _field_spawner == null or _waves_disabled:
 		# Rien à traverser. On le DIT et on enchaîne : un arc qui s'arrête sur un nœud
 		# absent se lit comme un boss qui ne vient pas, et se cherche au mauvais endroit.
 		if _field_spawner == null:
 			push_error("[Level] AsteroidFieldSpawner missing — straight to the final boss")
+		_show_moon_flyby(true)
 		_start_final_boss()
 		return
-	_field_spawner.begin()
+	# Le décor ne commute plus : il change SOUS un voile fermé (lot 5). La bannière est
+	# posée au même instant — elle vit sur le HUD, au-dessus du voile, et s'inscrit donc
+	# sur l'écran éteint avant que le survol n'apparaisse dessous.
+	_veil(_reveal_asteroid_field, _begin_asteroid_field)
+
+## Le décor bascule ici, et nulle part ailleurs : appelé quand le voile est plein.
+func _reveal_asteroid_field() -> void:
+	_show_moon_flyby(true)
+	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
+
+## La vague ne part qu'une fois le voile rouvert. Peupler l'écran derrière un voile
+## fermé offrirait au joueur des mines déjà à mi-course quand il retrouve la vue.
+func _begin_asteroid_field() -> void:
+	if _field_spawner != null:
+		_field_spawner.begin()
 
 ## Monte le survol, caché. ⚠️ La doublure procédurale s'annonce dans le journal : un décor
 ## en doublure ne doit jamais passer pour l'asset final (ADR-0006, et la leçon d'`ADR-0025`
@@ -400,6 +423,35 @@ func _build_moon_flyby() -> void:
 	add_child(_moon_flyby)
 	if _moon_flyby.is_stand_in():
 		print("[Level] moon flyby: DOUBLURE procedurale (decor de survol non livre)")
+	# ⚠️ La géométrie et la MATIÈRE sont deux livraisons distinctes (`ADR-0028`) : la forge
+	# livre l'une, l'opérateur l'autre. Une doublure texturée n'est plus tout à fait une
+	# doublure, et un journal qui ne le dirait pas laisserait croire à l'une ou à l'autre.
+	print("[Level] moon flyby: surface %s"
+		% ("texturee (TEX-0001/0002)" if _moon_flyby.has_surface_maps() else "en aplat"))
+
+## Monte le voile de raccord, caché. Bâti par code et non posé dans `graybox.tscn` : la
+## scène est éditée par une autre session, et un `.tscn` se fusionne très mal à deux —
+## même raison que pour `CoreInterior`.
+func _build_transition() -> void:
+	_transition = PhaseTransition.new()
+	_transition.name = "PhaseTransition"
+	add_child(_transition)
+
+## Joue un raccord : `on_midpoint` est appelé voile fermé (c'est là qu'on change le
+## décor), `on_finished` voile rouvert (c'est là qu'on rend la main à l'arc).
+##
+## ⚠️ SANS VOILE, LES DEUX APPELS PARTENT QUAND MÊME, dans l'ordre. Une mise en scène doit
+## tolérer d'être absente : `--skip-to-*` et les tests montent le niveau sans passer par
+## les chemins qui la construisent, et un arc qui s'arrêterait là se lirait comme un boss
+## qui ne vient pas — exactement le défaut que `_start_asteroid_field()` évite déjà.
+func _veil(on_midpoint: Callable, on_finished: Callable) -> void:
+	if _transition == null:
+		on_midpoint.call()
+		on_finished.call()
+		return
+	_transition.midpoint.connect(on_midpoint, CONNECT_ONE_SHOT)
+	_transition.finished.connect(on_finished, CONNECT_ONE_SHOT)
+	_transition.play()
 
 ## Bascule le décor de la phase. Le fond spatial CÈDE LA PLACE au lieu de s'y ajouter :
 ## c'est la décision d'`ADR-0027`, et elle vient autant du budget GPU que de la demande
@@ -414,7 +466,49 @@ func _on_asteroid_field_cleared() -> void:
 	if _phase != Phase.ASTEROID_FIELD:
 		return
 	print("[Level] asteroid field cleared — final boss incoming")
-	_start_final_boss()
+	_start_boss_approach()
+
+# --- L'approche du Leviathan : le dernier puits monte (lot 5, option D) -------
+#
+# Le champ nettoyé, l'arc NE RELANCE PAS immédiatement. Un dernier puits gravitique reste,
+# grossit et dérive vers le haut du cadre — là d'où le boss descendra. C'est la
+# respiration que la bible réclame (« ralentir avant la fin », ❌ non tenu au 2026-08-25)
+# et, du même geste, la seule mécanique du Leviathan que la phase 2 enseignait déjà sans
+# que rien ne le dise : `GravityWell.pull_at()` est appelée par le Null Maw ET par le boss.
+
+func _start_boss_approach() -> void:
+	# Sans joueur à aspirer, l'approche n'a aucun sujet : elle serait trois secondes
+	# d'écran vide. `--no-wave` saute aussi, pour la même raison qu'il saute la vague.
+	if _player == null or _waves_disabled:
+		_veil(_leave_asteroid_field, _start_final_boss)
+		return
+	_approach_active = true
+	_approach_time = 0.0
+	print("[Level] BOSS APPROACH — le dernier puits monte")
+
+## Fait monter le puits, image par image, et rend la main au voile quand il a fini.
+##
+## ⚠️ Aucune allocation ici : `BossApproach` et `GravityWell` sont des bibliothèques de
+## fonctions pures, et `add_pull` s'ajoute à ce que les autres puits ont déjà posé cette
+## image — une affectation les effacerait en silence.
+func _advance_boss_approach(delta: float) -> void:
+	_approach_time += delta
+	if _player != null:
+		_player.add_pull(GravityWell.pull_at(
+			_player.plane_position,
+			BossApproach.centre_at(_approach_time, BossApproach.DURATION),
+			BossApproach.radius_at(_approach_time, BossApproach.DURATION),
+			BossApproach.speed_at(_approach_time, BossApproach.DURATION)))
+	if not BossApproach.is_over(_approach_time, BossApproach.DURATION):
+		return
+	_approach_active = false
+	_veil(_leave_asteroid_field, _start_final_boss)
+
+## Le survol s'éteint sous le voile fermé. ⚠️ `_start_final_boss()` garde SA propre
+## extinction : c'est le seul point par lequel tous les chemins passent, `--skip-to-final`
+## compris, et un décor qui survivrait à sa phase se retrouverait sous le boss.
+func _leave_asteroid_field() -> void:
+	_show_moon_flyby(false)
 
 # --- Final boss + docking close (ADR-0010; docking was the mid-level §6.5) ----
 
@@ -786,8 +880,10 @@ func _leviathan_cycle_beat() -> void:
 func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 	return "DERNIER ASSAUT" if cycle >= cycles else "CYCLE %d / %d" % [cycle + 1, cycles]
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	_update_engine_hum()
+	if _approach_active:
+		_advance_boss_approach(delta)
 
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 
