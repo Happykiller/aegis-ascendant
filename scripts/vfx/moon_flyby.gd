@@ -34,6 +34,44 @@ const DECOR_PATH := "res://assets/imported/models/backgrounds/moon_flyby.glb"
 ## tomber dans le noir uni de l'arène du noyau — on est toujours dehors.
 const SkyShader := preload("res://shaders/space_background.gdshader")
 
+## --- La matière de la surface (ADR-0028) ---------------------------------------
+##
+## ⚠️ CES CARTES SONT OPTIONNELLES, ET CE N'EST PAS UNE COMMODITÉ. Le décor doit rester
+## jouable et mesurable AVANT que la matière existe — c'est la même raison qui charge
+## `DECOR_PATH` à l'exécution plutôt qu'en `preload`. Une texture absente dégrade en
+## couleur unie, exactement comme aujourd'hui.
+##
+## Le mécanisme est celui d'`ADR-0011`, déjà en service sur les coques
+## (`scripts/fx/hull_detail.gd`) : la carte de MULTIPLICATION va en `albedo_texture`, la
+## couleur de palette reste dans `albedo_color`, et Godot calcule
+## `albedo = albedo_texture × albedo_color`. La teinte froide et sombre de la lune est donc
+## conservée telle quelle — seuls les creux s'assombrissent. Aucune couleur n'arrive par la
+## texture, ce qui garde la réserve cyan/corail hors de portée par construction.
+const MOON_MAPS := "res://assets/imported/textures/backgrounds/moon_regolith_height_1024"
+const ROCK_MAPS := "res://assets/imported/textures/backgrounds/asteroid_rock_height_1024"
+
+## Combien de mètres de surface couvre une tuile. ⚠️ VALEURS DÉCIDÉES, pas mesurées — et
+## c'est ICI qu'elles se rattrapent, pas dans l'image (`TEX-0001`, `TEX-0002`). Une tuile
+## qui lit trop grosse ou trop fine est un chiffre à changer, jamais une texture à
+## régénérer : le dépôt fait déjà ce geste dans `hull_detail.gd` et `citadel_detail.gd`.
+##
+## ⚠️ 55 m ET NON 12, CORRIGÉ EN REGARDANT (2026-08-26). À 12 m la calotte prenait 31 tuiles
+## de circonférence et rendait un **papier de verre uniforme** : pas un cratère visible, et
+## le quadrillage de la répétition qui commençait à se lire. C'est mot pour mot la leçon de
+## `hull_detail.gd` — « le detail fin ne se noie pas seulement, il MENT ». À 55 m la calotte
+## en prend 6,9, et un cratère moyen de `TEX-0001` (≈ 1/20 de tuile) fait ~2,8 m, soit une
+## vingtaine de pixels à l'écran : il redevient un cratère.
+##
+## Les rochers gardent 8 m : ils sont petits, proches, et leur texture s'y lit déjà —
+## vérifié sur la même capture.
+const MOON_METRES_PER_TILE := 55.0
+const ROCK_METRES_PER_TILE := 8.0
+
+## Force du relief. La lune est vue de TRÈS loin : une normale trop marquée y produit un
+## moiré, la même leçon que la coque du Specter-9 passée de 1,5 à 0,7 parce qu'elle prenait
+## un aspect martelé.
+const SURFACE_NORMAL_SCALE := 0.8
+
 ## Plafond du décor. Le plan de jeu est en Y = 0 ; les repères du fond existant vivent
 ## entre −3 et −4,2. Rien du survol ne passe au-dessus.
 const CEILING_Y := -3.0
@@ -138,6 +176,12 @@ var _impact_age: float = -1.0
 var _impact_at: Vector3 = Vector3.ZERO
 var _impact_up: Vector3 = Vector3.UP
 ## Le bolide, le flash et les éclats : préalloués au montage, rejoués à chaque impact.
+## La matière a-t-elle été trouvée ? ⚠️ Le journal le dit au montage, comme la doublure :
+## une surface en aplat qui se croit texturée est exactement le genre de défaut muet que
+## le projet paie deux fois (`ADR-0006`, `ADR-0025`).
+var _dressed_moon: bool = false
+var _dressed_rocks: bool = false
+
 var _bolide: MeshInstance3D
 var _flash: MeshInstance3D
 var _shards: Array[MeshInstance3D] = []
@@ -149,6 +193,11 @@ func _ready() -> void:
 
 func is_stand_in() -> bool:
 	return _is_stand_in
+
+## La matière de surface est-elle en place ? Lu par le niveau, qui le journalise : une
+## calotte en aplat et une calotte texturée ne se distinguent pas dans un journal muet.
+func has_surface_maps() -> bool:
+	return _dressed_moon and _dressed_rocks
 
 ## Montre ou cache le survol. ⚠️ Coupe AUSSI `_process` : un décor invisible qui continue
 ## de faire dériver ses rochers dépense pour rien pendant les trois quarts de la partie.
@@ -193,6 +242,47 @@ func _build() -> void:
 	add_child(_decor)
 	_collect_bodies()
 	_build_impact_kit()
+
+## Habille une surface avec un jeu de cartes dérivées, s'il existe.
+##
+## Retourne faux quand les cartes ne sont pas là — et c'est un chemin NORMAL, pas une
+## erreur : le décor se joue en couleur unie tant que la matière n'a pas été livrée.
+##
+## ⚠️ `tiles` est en TUILES, pas en mètres : c'est l'appelant qui connaît la taille réelle
+## de la pièce et fait la division. Une constante « mètres par tuile » posée ici ne saurait
+## pas si elle habille une lune de 60 m ou un caillou de 3 m — et c'est exactement l'erreur
+## qui fait lire une feuille comme du bruit sur une forteresse.
+static func dress(material: StandardMaterial3D, prefix: String, tiles: Vector2) -> bool:
+	var mul_path := prefix + "_mul.png"
+	if not ResourceLoader.exists(mul_path):
+		return false
+	# La MULTIPLICATION, pas une couleur : `albedo_color` garde la teinte de palette.
+	material.albedo_texture = load(mul_path) as Texture2D
+	var nrm_path := prefix + "_nrm.png"
+	if ResourceLoader.exists(nrm_path):
+		material.normal_enabled = true
+		material.normal_texture = load(nrm_path) as Texture2D
+		material.normal_scale = SURFACE_NORMAL_SCALE
+	var rough_path := prefix + "_rough.png"
+	if ResourceLoader.exists(rough_path):
+		material.roughness_texture = load(rough_path) as Texture2D
+	var ao_path := prefix + "_ao.png"
+	if ResourceLoader.exists(ao_path):
+		material.ao_enabled = true
+		material.ao_texture = load(ao_path) as Texture2D
+	material.uv1_scale = Vector3(tiles.x, tiles.y, 1.0)
+	return true
+
+## Combien de tuiles il faut pour couvrir une sphère de ce rayon, en u et en v.
+##
+## Une `SphereMesh` déplie u sur la CIRCONFÉRENCE (2πr) et v sur le DEMI-MÉRIDIEN (πr) :
+## les deux ne valent pas la même longueur, donc une échelle uniforme étirerait la tuile
+## du simple au double. Pure et statique — c'est le genre de calcul qui a l'air évident et
+## qu'on rate en silence.
+static func sphere_tiles(radius: float, metres_per_tile: float) -> Vector2:
+	if metres_per_tile <= 0.0:
+		return Vector2.ONE
+	return Vector2(TAU * radius / metres_per_tile, PI * radius / metres_per_tile)
 
 ## Relève la lune et les corps qui dérivent. Le décor livré comme la doublure exposent le
 ## même contrat de noms : `Moon`, et des `Asteroid_*`. ⚠️ Un contrat de noms respecté n'est
@@ -300,6 +390,10 @@ func _moon_body() -> Node3D:
 	material.albedo_color = Color(0.115, 0.115, 0.140)
 	material.roughness = 1.0
 	material.metallic = 0.0
+	# La matière, si elle a été livrée (`TEX-0001`). Sans elle, la calotte reste l'aplat
+	# ci-dessus — le décor doit se jouer et se mesurer avant que la surface existe.
+	_dressed_moon = dress(material, MOON_MAPS,
+		sphere_tiles(MOON_RADIUS, MOON_METRES_PER_TILE))
 	var body := MeshInstance3D.new()
 	body.name = "Surface"
 	body.mesh = sphere
@@ -378,6 +472,11 @@ func _rock(rock_name: String, radius: float, at: Vector3) -> MeshInstance3D:
 	# DERRIÈRE les mines et le chasseur.
 	material.albedo_color = Color(0.100, 0.098, 0.118)
 	material.roughness = 1.0
+	# ⚠️ MÊME ÉCHELLE MONDE SUR LES TROIS ROCHERS, et c'est le rayon de CHACUN qui la
+	# donne : une tuile calée sur le petit se lirait comme du gravier sur le gros. C'est
+	# le défaut n°1 du projet, et `TEX-0002` le porte déjà comme contrainte dure.
+	_dressed_rocks = dress(material, ROCK_MAPS,
+		sphere_tiles(radius, ROCK_METRES_PER_TILE)) or _dressed_rocks
 	var mesh := MeshInstance3D.new()
 	mesh.name = rock_name
 	mesh.mesh = sphere
