@@ -1,0 +1,115 @@
+{
+  "id": "TEX-0006",
+  "slug": "trainee-de-flamme",
+  "schema_version": "1.0",
+  "date": "2026-08-26",
+
+  "texture_type": "sprite",
+
+  "purpose": {
+    "description": "La traînée de flamme derrière le bolide : filaments, braises et dégradé thermique",
+    "game_context": "Phase 2 de l'arc (ADR-0027). Étirée derrière la tête du bolide pendant sa chute de 2,4 s, longue de ~14 unités monde soit plusieurs centaines de pixels. Elle remplace un cône à dégradé lisse, qui se lit comme un ruban de papier.",
+    "priority": "Les FILAMENTS. Un dégradé, même thermique, n'a aucune structure interne : c'est ce qui distingue une flamme d'un ruban coloré, et c'est la seule chose qu'un shader simple ne peut pas inventer."
+  },
+
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": false,
+    "transparent_background": false,
+    "background": "pure_black",
+    "view": "free",
+    "lighting": "baked",
+    "color_mode": "color",
+    "alpha_usage": "none",
+    "output_usage": "emissive"
+  },
+
+  "world_scale": {
+    "texture_width_m": 14.0,
+    "texture_height_m": 14.0,
+    "reference_element": "La traînée fait 14 unités monde de long, pour une tête de ~2,5 m à son extrémité chaude",
+    "confidence": "measured",
+    "rationale": "TRAIL_LENGTH vaut 14,0 dans scripts/vfx/moon_flyby.gd, et la tête ~2,5 m : le rapport longueur/largeur de l'image doit refléter ça, sinon la flamme paraît trapue une fois étirée."
+  },
+
+  "composition": {
+    "main_elements": [
+      "un coeur blanc-jaune étroit, à l'extrémité chaude",
+      "des filaments orange qui s'en détachent et s'effilent",
+      "des braises isolées, de plus en plus dispersées vers la queue"
+    ],
+    "density": "medium",
+    "distribution": "specified",
+    "edge_behavior": "La queue se DISSIPE dans le noir, sans bord net. L'extrémité chaude est franche.",
+    "empty_space": "Le noir domine : c'est lui qui laisse voir les filaments individuellement"
+  },
+
+  "visual": {
+    "subject": "La traînée d'un météore : un sillage de flamme filamentée qui s'effiloche et se disperse en braises",
+    "materials": ["plasma", "braise"],
+    "details": ["filaments effilés", "braises isolées", "turbulence à la naissance du sillage"],
+    "style": "peint, énergique, la matière se disperse au lieu de s'arrêter",
+    "color_palette": {
+      "dominant": ["noir"],
+      "secondary": ["blanc-jaune au coeur", "orange", "rouge profond vers la queue"],
+      "forbidden": ["cyan #3FD9E8", "corail #FF5A3D", "magenta", "violet", "bleu"]
+    },
+    "surface_character": "Gazeuse et turbulente, jamais lisse",
+    "age_and_damage": ""
+  },
+
+  "data_semantics": { "enabled": false, "meaning": "", "black": "", "gray": "", "white": "" },
+
+  "lighting": {
+    "enabled": true,
+    "direction": "La chaleur décroît de l'extrémité vers la queue",
+    "character": "Auto-éclairée",
+    "shadows": "none"
+  },
+
+  "constraints": {
+    "must_have": [
+      "des filaments SÉPARÉS, qu'on puisse compter",
+      "une dispersion croissante vers la queue — la matière s'écarte au lieu de s'arrêter",
+      "un gradient thermique franc : blanc, orange, rouge, noir"
+    ],
+    "must_not_have": [
+      "fond autre que noir pur", "forme de cône plein", "bord net à la queue",
+      "fumée grise", "météore ou roche (elle est dans TEX-0005)",
+      "cyan", "corail", "magenta", "bleu",
+      "texte", "lettres", "chiffres", "logo", "filigrane", "signature"
+    ],
+    "seamless_requirements": [],
+    "readability_requirements": [
+      "étirée sur plusieurs centaines de pixels, les filaments doivent rester distincts",
+      "sur fond de surface lunaire claire, la traînée doit encore se lire"
+    ]
+  },
+
+  "integration_notes": {
+    "engine_usage": "Panneau étiré le long de la course du bolide, en remplacement du cône à dégradé (scripts/vfx/moon_flyby.gd)",
+    "shader_usage": "Non éclairé, mélange ADDITIF, alpha détouré du noir",
+    "post_processing": "python3 tools/bg-key-alpha.py --mode black <source>",
+    "additional_notes": "⚠️ Le dégradé thermique procédural actuel FONCTIONNE déjà (vérifié en capture : rouge sombre à la queue, orange, blanc au contact). Ce qui lui manque est uniquement la STRUCTURE — filaments et braises. Ne pas refaire ce qui marche : cette image apporte la matière, pas la couleur."
+  },
+
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "obligatoire",
+    "source_path": "assets/source/vfx/trainee_flamme_1024.png",
+    "derived_dir": "assets/imported/vfx",
+    "derived_files": ["trainee_flamme.png"],
+    "verify": [
+      "la marge est-elle du NOIR PUR et non un gris sombre ?",
+      "capture regardée à 1:1, jamais une réduction",
+      "les filaments restent-ils distincts une fois la traînée étirée ?"
+    ],
+    "provenance_csv_line": "trainee_flamme,assets/source/vfx/trainee_flamme_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-26,docs/forge/textures/TEX-0006-trainee-de-flamme.json,,\"Trainee de flamme du bolide d impact de la phase 2 (ADR-0027). Remplace un cone a degrade lisse : le degrade thermique procedural etait juste, il lui manquait la STRUCTURE (filaments, braises).\""
+  },
+
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "La traînée de flamme d'un météore, seule, sur un fond NOIR PUR. Elle part d'une extrémité chaude en bas à droite et s'effiloche vers le haut à gauche, en diagonale.\n\nÀ son extrémité, un coeur étroit chauffé à blanc-jaune. De là se détachent des FILAMENTS orange, distincts les uns des autres, qui s'effilent et s'écartent en remontant. Plus loin ils virent au rouge profond, se dispersent en braises isolées, et finissent par se dissoudre dans le noir sans aucun bord net.\n\n⚠️ Ce qui compte, ce sont les filaments SÉPARÉS, qu'on pourrait compter. Une flamme lisse ou un dégradé continu ne convient pas : c'est la structure interne qui fait lire du feu plutôt qu'un ruban de couleur. Le noir doit dominer l'image, c'est lui qui laisse voir chaque filament.\n\nAucun météore, aucune roche, aucune fumée grise : seulement le sillage.\n\nÉviter absolument : fond autre que noir pur, cône plein, forme lisse, bord net à la queue, fumée grise, roche, météore, sol, horizon, cyan, turquoise, corail, magenta, violet, bleu, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+  }
+}

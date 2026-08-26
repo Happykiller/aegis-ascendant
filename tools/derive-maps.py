@@ -176,6 +176,18 @@ def to_mul(h: np.ndarray, floor: float) -> np.ndarray:
 # --------------------------------------------------------------------------
 
 
+def to_glow(h: np.ndarray, gamma: float) -> np.ndarray:
+    """Masque d'emission des CREVASSES : clair au fond, eteint sur les plaques.
+
+    ⚠️ C'est l'inverse de la hauteur, DURCI. Une simple inversion allumerait toute la
+    surface a mi-teinte et rendrait une roche uniformement tiede ; le gamma ecrase les
+    plaques vers zero et ne laisse briller que le fond des fissures. C'est ce qui fait
+    lire une roche FISSUREE plutot qu'une roche qui rougeoie partout.
+    """
+    creux = 1.0 - np.clip(h, 0.0, 1.0)
+    return np.clip(np.power(creux, max(gamma, 0.01)), 0.0, 1.0)
+
+
 def tiling_error(h: np.ndarray) -> tuple[float, float]:
     """Discontinuité aux deux raccords, en % de la dynamique de l'image.
 
@@ -230,6 +242,16 @@ def main() -> int:
     ap.add_argument("--ao-radius", type=int, default=12)
     ap.add_argument("--ao-strength", type=float, default=2.5)
     ap.add_argument("--mul", action="store_true", help="produire aussi la carte de multiplication")
+    ap.add_argument(
+        "--glow",
+        action="store_true",
+        help="produire aussi <name>_glow.png : l'INVERSE contraste de la hauteur, donc "
+        "clair dans les crevasses. Sert de carte d'emission a une roche fissuree — "
+        "la lave se loge dans les creux, jamais sur les plaques.",
+    )
+    ap.add_argument("--glow-gamma", type=float, default=2.6,
+                    help="durcit le masque de lueur : plus haut, plus les fissures sont "
+                         "fines et les plaques eteintes (defaut 2.6)")
     ap.add_argument("--mul-floor", type=float, default=0.55, help="noirceur max des creux")
     ap.add_argument(
         "--mask",
@@ -297,6 +319,12 @@ def main() -> int:
     _save(ao, os.path.join(args.out, f"{name}_ao.png"), "L")
     if args.mul:
         _save(to_mul(h, args.mul_floor), os.path.join(args.out, f"{name}_mul.png"), "L")
+    if args.glow:
+        glow = to_glow(h, args.glow_gamma)
+        _save((glow * 255.0).astype(np.uint8), os.path.join(args.out, f"{name}_glow.png"), "L")
+        allume = float((glow > 0.35).mean()) * 100.0
+        print(f"  lueur  : {allume:.1f} % de la surface au-dessus de 0,35 "
+              "(au-dela de ~15 %, ce n'est plus une fissure, c'est une braise)")
 
     if args.preview:
         _preview(h, nrm, rough, ao, args.preview)

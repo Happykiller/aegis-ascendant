@@ -99,6 +99,15 @@ elle sert telle quelle. Les dérivées sont produites par l'outil, jamais géné
 | [`TEX-0002-asteroid-rock-height.json`](TEX-0002-asteroid-rock-height.json) | roche des trois astéroïdes | **à commander** |
 | [`TEX-0003-moon-regolith-albedo.json`](TEX-0003-moon-regolith-albedo.json) | ejectas clairs de la lune | conditionnelle — `--mul` couvre le reste |
 | [`TEX-0004-asteroid-rock-albedo.json`](TEX-0004-asteroid-rock-albedo.json) | variation d'albédo de la roche | conditionnelle |
+| [`TEX-0005-bolide-incandescent.json`](TEX-0005-bolide-incandescent.json) | la tête du bolide qui brûle | **à commander** |
+| [`TEX-0006-trainee-de-flamme.json`](TEX-0006-trainee-de-flamme.json) | son sillage filamenté | **à commander** |
+
+⚠️ **TEX-0005 et 0006 sont des `sprite`, pas des `surface_tile`**, et c'est la première fois. La
+raison est mesurée : la tête du bolide rend à **130 px** à l'écran, et tout ce qui est échantillonné
+depuis une tuile de 1024 étalée sur 8 m de monde y arrive soit en dalle plate, soit en bouillie une
+fois le bloom passé dessus. À cette taille, une image **autorisée à la taille d'affichage** bat
+n'importe quelle dérivation. C'est un cas où la règle « une texture PBR se génère en une seule
+carte » ne s'applique pas : ce n'est pas de la matière de surface, c'est un objet peint.
 
 ⚠️ **Les conditionnelles ne se commandent pas sur plan.** Elles se décident sur une capture regardée
 (`ADR-0006`) : si les creux se lisent déjà, elles ajoutent du coût pour rien.

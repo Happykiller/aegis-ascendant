@@ -227,7 +227,11 @@ const BOLIDE_FROM := Vector3(-0.707, 0.0, -0.707)
 ## ⚠️ Au-delà de ~1,3, il faudrait revenir changer la taille DANS le script de la forge et
 ## rebâtir, pas étirer le nœud — les UV portent l'échelle monde, et un étirement ferait
 ## dériver le grain de la roche.
-const BOLIDE_FIT := 0.65
+## ⚠️ REMONTÉ À 1,3 le 2026-08-26, sur la cible donnée par l'opérateur. « Gros cube jaune »
+## ne visait pas la TAILLE mais l'absence de matière — j'avais rapetissé quand il fallait
+## détailler. Sa cible montre une tête franchement grosse, faite de plaques sombres et de
+## fissures brûlantes. La taille revient donc, la matière avec.
+const BOLIDE_FIT := 1.3
 
 ## La traînée : un cône effilé DERRIÈRE le bolide, le long de sa course RÉELLE — pas de la
 ## verticale. C'est elle qui porte la lisibilité, pas la tête.
@@ -730,6 +734,11 @@ static func bolide_heading(target: Vector3, up: Vector3) -> Vector3:
 static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
 	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
 
+## Pose une carte sur un matériau si elle existe, sans rien casser si elle manque.
+static func _apply_map(material: StandardMaterial3D, slot: String, path: String) -> void:
+	if ResourceLoader.exists(path):
+		material.set(slot, load(path) as Texture2D)
+
 ## Fait s'éteindre une pièce LE LONG DE SA LONGUEUR, par un dégradé d'opacité.
 ##
 ## ⚠️ C'EST CE QUI SÉPARE UNE TRAÎNÉE D'UN MORCEAU DE CARTON. Sans lui, un cône additif à
@@ -742,9 +751,18 @@ static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: f
 ## échantillonné sur U, aurait fait varier l'opacité AUTOUR de la circonférence — donc des
 ## bandes dans le mauvais sens, ce qui a l'air d'un bug de texture et non d'un axe inversé.
 func _fade_along_length(node: MeshInstance3D) -> void:
+	# ⚠️ UN DÉGRADÉ THERMIQUE, PAS UNE SIMPLE OPACITÉ. Une traînée d'une seule teinte se lit
+	# comme un ruban de papier : ce qui dit le FEU, c'est la température qui décroît le long
+	# du sillage — blanc au contact, orange derrière, rouge sombre à la queue. C'est ce que
+	# montre la cible de l'opérateur, et c'est ce qu'une opacité seule ne peut pas rendre.
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1.0, 1.0, 1.0, 0.0))   # la queue se dissipe
-	ramp.set_color(1, Color(1.0, 1.0, 1.0, 1.0))   # la tête est pleine
+	ramp.offsets = PackedFloat32Array([0.0, 0.45, 0.80, 1.0])
+	ramp.colors = PackedColorArray([
+		Color(0.75, 0.10, 0.02, 0.0),   # la queue : rouge sombre, dissipée
+		Color(0.95, 0.28, 0.05, 0.55),  # le rouge du sillage
+		Color(1.00, 0.62, 0.18, 0.9),   # l'orange
+		Color(1.00, 0.96, 0.86, 1.0),   # le blanc du contact
+	])
 	var tex := GradientTexture2D.new()
 	tex.gradient = ramp
 	tex.width = 4
@@ -754,6 +772,11 @@ func _fade_along_length(node: MeshInstance3D) -> void:
 	var material := node.material_override as StandardMaterial3D
 	if material != null:
 		material.albedo_texture = tex
+		# ⚠️ BLANC : `albedo = albedo_texture × albedo_color`. Garder la teinte chaude ici
+		# la multiplierait par celle du dégradé et écraserait tout vers l'orange — le blanc
+		# du contact deviendrait un jaune, et la rampe thermique n'existerait plus.
+		material.albedo_color = Color.WHITE
+		material.emission = Color(1.0, 0.55, 0.20)
 
 ## Le maillage d'une coque forgée, ou `null` si elle n'a pas encore été livrée.
 ##
@@ -882,15 +905,33 @@ func _build_impact_kit() -> void:
 	# que le choc qu'il allait produire, et sans profondeur puisqu'il n'est pas ombré.
 	_bolide = _forged("Bolide", BOLIDE_PATH, 0.85 * BOLIDE_SCALE)
 	var bolide_material := StandardMaterial3D.new()
-	bolide_material.albedo_color = IMPACT_WARM
+	# ⚠️ UNE ROCHE FISSURÉE, PAS UNE BRAISE UNIFORME. C'est la cible donnée par l'opérateur :
+	# des plaques SOMBRES séparées par des fissures incandescentes. Un aplat chaud — ce
+	# qu'il y avait — n'a ni matière ni forme ; l'incandescence doit se loger dans les CREUX
+	# et nulle part ailleurs.
+	bolide_material.albedo_color = Color(0.11, 0.10, 0.11)
+	_apply_map(bolide_material, "albedo_texture", ROCK_MAPS + "_mul.png")
+	_apply_map(bolide_material, "normal_texture", ROCK_MAPS + "_nrm.png")
+	bolide_material.normal_enabled = bolide_material.normal_texture != null
+	# La tuile de roche couvre 8 m ; le bolide en fait ~2,3. Sans retuilage on n'en verrait
+	# qu'un quart — deux ou trois plaques géantes, pas un réseau de fissures.
+	bolide_material.uv1_scale = Vector3.ONE * 4.0
 	bolide_material.emission_enabled = true
-	bolide_material.emission = IMPACT_WARM
-	# ⚠️ 1,4 ET NON 3,4, SUR MESURE DE LA FORGE. `glow_hdr_threshold` vaut 1,6 : au-dessus,
-	# le bloom ajoute un halo EN PIXELS D'ÉCRAN, donc à 8 px il noie la silhouette et
-	# arrondit le contour. On paierait une coque à 32 triangles pour rendre un disque.
-	# Sous le seuil, la géométrie se voit — et c'est elle, plus la traînée, qui porte la
-	# lecture. Relevé au §5 de `BRIEF-0086-report.md`.
-	bolide_material.emission_energy_multiplier = 0.9
+	# Le masque est DÉRIVÉ de la hauteur de `TEX-0002` (`derive-maps.py --glow`) : l'inverse
+	# durci de la hauteur, donc clair au fond des crevasses et éteint sur les plaques —
+	# 11,1 % de la surface allumée, mesuré. Rien de généré, tout dérivé.
+	_apply_map(bolide_material, "emission_texture", ROCK_MAPS + "_glow.png")
+	bolide_material.emission = Color(1.0, 0.42, 0.10)
+	# ⚠️ 1,2 ET NON 3,2 — MESURÉ, PAS ESTIMÉ. À 3,2 la tête rendait une luminance MOYENNE de
+	# 165/255 avec 11 % de pixels écrêtés : les plaques sombres disparaissaient et il ne
+	# restait qu'un aplat crème. Le contraste local était pourtant bon (13,67, quasiment
+	# celui de la lune) — la matière ÉTAIT là, l'exposition la noyait.
+	#
+	# C'est la nuance que « ce qui doit rester discret doit être FIN » ne dit pas : une
+	# fissure fine reste fine, mais si le fond qu'elle traverse est lui-même surexposé, il
+	# n'y a plus de contraste pour la porter. Ce qui brûle a besoin de quelque chose de
+	# SOMBRE autour, sinon rien ne brûle.
+	bolide_material.emission_energy_multiplier = 1.2
 	# ⚠️ ÉCLAIRÉ, ET NON PLUS EN APLAT. Non éclairée, la coque rendait sa couleur pleine sur
 	# toute sa surface : à vingt pixels, un aplat n'a pas de forme — on paie 32 triangles
 	# pour dessiner un rectangle. Éclairée, ses facettes prennent la lumière et la
