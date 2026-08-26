@@ -252,6 +252,9 @@ func _build() -> void:
 		_is_stand_in = true
 	add_child(_decor)
 	_collect_bodies()
+	_silence_shadows()
+	# APRÈS `_collect_bodies` : c'est lui qui relève `Moon` et les `Asteroid_*` par leur nom.
+	_dress_decor()
 	_build_impact_kit()
 
 ## Habille une surface avec un jeu de cartes dérivées, s'il existe.
@@ -294,6 +297,76 @@ static func sphere_tiles(radius: float, metres_per_tile: float) -> Vector2:
 	if metres_per_tile <= 0.0:
 		return Vector2.ONE
 	return Vector2(TAU * radius / metres_per_tile, PI * radius / metres_per_tile)
+
+## Éteint les ombres sur tout le décor. ⚠️ LA DOUBLURE LE FAIT EXPLICITEMENT SUR CHAQUE
+## MAILLAGE (`SHADOW_CASTING_SETTING_OFF`) ; un `.glb` importé, lui, arrive avec les ombres
+## ACTIVES par défaut, et le geste ne se reportait pas tout seul.
+##
+## Ce n'est pas un réglage de goût, c'est une conséquence de la géométrie du lieu : les
+## rochers vivent entre Y = −13 et −34, donc à ~30 unités de la caméra — DANS les 40 de
+## `directional_shadow_max_distance` — alors que la lune est à 96 et hors de portée. Le
+## décor se retrouvait donc à moitié dans la carte d'ombres et à moitié dehors.
+func _silence_shadows() -> void:
+	if _decor == null:
+		return
+	for mesh in _meshes_under(_decor):
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## Habille le décor LIVRÉ par la forge — jamais la doublure, qui s'habille en se construisant.
+##
+## ⚠️ `uv1_scale` RESTE À 1, ET C'EST LE PIÈGE DE CE CHANTIER. Les UV du `.glb` portent
+## **déjà** l'échelle : `BRIEF-0085` a déplié la calotte à 55 m par tuile et l'a mesuré
+## (43,0 → 56,3 m/tuile sur la bande vue, anisotropie 1,30). Y appliquer `sphere_tiles()`,
+## qui sert la doublure, tuilerait **6,9 fois de trop** — et le défaut ne produirait ni
+## erreur ni test rouge, seulement un régolithe qui redevient du papier de verre. C'est la
+## même faute que les 12 m corrigés le 2026-08-26, à un étage plus haut.
+##
+## Les trois rochers PARTAGENT un matériau (`Asteroid_Rock`) : on le dérive une seule fois.
+func _dress_decor() -> void:
+	if _is_stand_in or not maps_enabled or _decor == null:
+		return
+	# ⚠️ Un tableau, jamais `null` : GDScript refuse `null` pour un `Array[T]` typé, et la
+	# faute ne se voit qu'à la compilation d'un script DÉPENDANT — le message parle alors
+	# d'un fichier qu'on n'a pas touché.
+	var moon_material: Array[StandardMaterial3D] = []
+	if _moon != null:
+		_dressed_moon = _dress_meshes_of(_moon, MOON_MAPS, moon_material)
+	var rock_material: Array[StandardMaterial3D] = []
+	for body in _drifters:
+		_dressed_rocks = _dress_meshes_of(body, ROCK_MAPS, rock_material) or _dressed_rocks
+
+## Pose les cartes sur chaque surface d'un nœud et de ses descendants.
+##
+## `shared` mutualise le matériau entre plusieurs nœuds : trois rochers taillés dans la même
+## roche n'ont aucune raison d'en porter trois copies. Passer un tableau vide et le
+## réutiliser d'un appel à l'autre suffit à les lier.
+func _dress_meshes_of(root: Node3D, prefix: String,
+		shared: Array[StandardMaterial3D]) -> bool:
+	var done := false
+	for mesh in _meshes_under(root):
+		for i in mesh.mesh.get_surface_count():
+			var tuned: StandardMaterial3D
+			if not shared.is_empty():
+				tuned = shared[0]
+			else:
+				var base := mesh.mesh.surface_get_material(i) as StandardMaterial3D
+				# ⚠️ On DUPLIQUE : le matériau vient de l'import et serait partagé par toute
+				# la session. Le muter en place ferait déborder ce décor hors de sa scène.
+				tuned = (base.duplicate() as StandardMaterial3D) if base != null else StandardMaterial3D.new()
+				if not dress(tuned, prefix, Vector2.ONE):
+					return false
+				shared.append(tuned)
+			mesh.set_surface_override_material(i, tuned)
+			done = true
+	return done
+
+static func _meshes_under(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
+	var mesh := node as MeshInstance3D
+	if mesh != null and mesh.mesh != null:
+		out.append(mesh)
+	for child in node.get_children():
+		_meshes_under(child, out)
+	return out
 
 ## Relève la lune et les corps qui dérivent. Le décor livré comme la doublure exposent le
 ## même contrat de noms : `Moon`, et des `Asteroid_*`. ⚠️ Un contrat de noms respecté n'est
