@@ -274,7 +274,10 @@ func _physics_process(delta: float) -> void:
 	if _pose != null:
 		_pose.pose(_pose_ratio())
 	if _vitals != null:
-		_vitals.update(delta, _threat)
+		# La cadence du sursis passe à part : elle ne peut pas voyager DANS la menace, dont
+		# les signes vitaux dérivent déjà leur propre période.
+		_vitals.update(delta, _threat,
+			EnemyReaction.arming_beats(_state, _state_time, data))
 
 ## Où va la coque cette image. Trois régimes, et un seul par unité.
 ##

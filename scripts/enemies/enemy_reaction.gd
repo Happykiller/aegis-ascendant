@@ -47,8 +47,22 @@ const ALERT_CEILING := 0.6
 
 ## Battements par seconde du sursis, au début et à la fin. Il ACCÉLÈRE : c'est ce qui le
 ## fait lire comme un compte à rebours et non comme une lueur qui monte.
-const ARMING_BEATS_MIN := 2.0
-const ARMING_BEATS_MAX := 7.0
+##
+## ⚠️ CES VALEURS EXISTENT PARCE QUE LE HALÈTEMENT ORDINAIRE EST TROP LENT ICI. `EnemyVitals`
+## contracte sa période de 7,0 s à 7,0 × 0,21 = 1,47 s au plus affolé — soit **moins d'un
+## battement par seconde**. Sur un sursis d'UNE seconde, le joueur en verrait les deux tiers
+## d'un seul. Ce halètement a été réglé pour une respiration, pas pour un compte à rebours :
+## le sursis a donc besoin de sa propre cadence.
+const ARMING_BEATS_MIN := 2.5
+const ARMING_BEATS_MAX := 9.0
+
+## Cadence du clignotement d'armement, en battements par seconde. Zéro hors du sursis : les
+## autres unités gardent le halètement ordinaire, intact.
+static func arming_beats(state: int, time_in_state: float, data: EnemyData) -> float:
+	if state != State.ARMING or data.arm_grace <= 0.0:
+		return 0.0
+	return lerpf(ARMING_BEATS_MIN, ARMING_BEATS_MAX,
+		clampf(time_in_state / data.arm_grace, 0.0, 1.0))
 
 
 ## Ce qui vient après. `time_in_state` est le temps écoulé DANS l'état courant.
@@ -119,11 +133,14 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 			#
 			# ⚠️ Et il n'y a PAS de confusion possible avec l'engagement : c'est la COQUE qui
 			# le signale, et elle reste fermée pendant tout le sursis (`open_ratio`).
+			# ⚠️ UNE RAMPE PROPRE, ET SURTOUT PAS UNE OSCILLATION. Ma première version
+			# faisait osciller cette valeur pour « faire clignoter ». Erreur : `EnemyVitals`
+			# DÉRIVE SA PROPRE PÉRIODE DE BATTEMENT de cette menace. Une menace qui oscille
+			# fait donc osciller la PÉRIODE — deux oscillateurs qui se battent, et un signal
+			# brouillé au lieu d'un clignotement. Le battement se pilote à part, par
+			# `arming_beats()`.
 			var grace := maxf(data.arm_grace, 0.001)
-			var progress := clampf(time_in_state / grace, 0.0, 1.0)
-			var beats := lerpf(ARMING_BEATS_MIN, ARMING_BEATS_MAX, progress)
-			var throb := 0.35 + 0.65 * (0.5 + 0.5 * sin(time_in_state * beats * TAU))
-			return ALERT_CEILING + (1.0 - ALERT_CEILING) * progress * throb
+			return ALERT_CEILING + (1.0 - ALERT_CEILING) * clampf(time_in_state / grace, 0.0, 1.0)
 		State.WINDUP:
 			return ALERT_CEILING + (1.0 - ALERT_CEILING) * windup_ratio(state, time_in_state, data)
 		State.ACTIVE:

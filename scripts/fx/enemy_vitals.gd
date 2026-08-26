@@ -32,6 +32,11 @@ const ALARM_RUSH := 0.21
 const THREAT_GAIN := 2.4
 const ALARM_AMPLITUDE := 0.35
 
+## Amplitude du clignotement d'ARMEMENT. Bien plus creusée que le halètement : à 0,35 la
+## coque « respire fort », à 0,8 elle CLIGNOTE — et c'est ce qu'un compte à rebours doit
+## faire.
+const ARMING_AMPLITUDE := 0.80
+
 ## Régime d'une coque ENDORMIE, en fraction du nominal. Une mine qui dort doit
 ## lire comme éteinte : sans cette atténuation, son réveil part du même niveau
 ## qu'un ennemi ordinaire et n'a plus aucune amplitude pour se faire remarquer.
@@ -97,13 +102,25 @@ static func _meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshIn
 
 ## Une image de vie. `threat` va de 0 (endormie) à 1 (engagée).
 ## Zéro allocation : on écrit un flottant (spec §31).
-func update(delta: float, threat: float) -> void:
+## `beat_hz` : cadence IMPOSÉE, en battements par seconde. Zéro = le halètement ordinaire.
+##
+## ⚠️ IL EXISTE PARCE QUE LE HALÈTEMENT ORDINAIRE NE SAIT PAS COMPTER UNE SECONDE. Sa période
+## se contracte de 7,0 s à 1,47 s au plus affolé : parfait pour dire « elle monte en régime »
+## sur la durée d'une rencontre, inutilisable pour un compte à rebours d'une seconde, où le
+## joueur n'en verrait pas un battement entier. Le sursis de la mine impose donc le sien.
+func update(delta: float, threat: float, beat_hz: float = 0.0) -> void:
 	_age += delta
 	var breath := 1.0 + BREATH_AMPLITUDE * sin((_age + _phase) * TAU / BREATH_PERIOD)
 	# La période du battement se contracte avec la menace : même geste, tempo qui
 	# s'emballe. `lerpf` ne peut pas atteindre zéro, donc pas de division par zéro.
 	var alarm_period := BREATH_PERIOD * lerpf(1.0, ALARM_RUSH, threat)
-	var alarm := 1.0 + ALARM_AMPLITUDE * threat * sin(_age * TAU / alarm_period)
+	var amplitude := ALARM_AMPLITUDE
+	if beat_hz > 0.0:
+		alarm_period = 1.0 / beat_hz
+		# Plus creusé que le halètement : un compte à rebours doit se voir du premier coup
+		# d'œil, pas se deviner en comparant deux images.
+		amplitude = ARMING_AMPLITUDE
+	var alarm := 1.0 + amplitude * threat * sin(_age * TAU / alarm_period)
 	_material.emission_energy_multiplier = _base_energy * breath * alarm \
 		* lerpf(DORMANT_DIM, THREAT_GAIN, threat)
 	# La teinte ne bouge qu'au-delà du simple éveil : le magenta dit « elle t'a vu »,

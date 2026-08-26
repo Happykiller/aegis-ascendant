@@ -207,3 +207,46 @@ func test_a_unit_without_grace_engages_on_contact_as_before() -> void:
 	data.arm_grace = 0.0
 	assert_eq(EnemyReaction.next_state(EnemyReaction.State.ALERT, 0.0, 5.0, data),
 		EnemyReaction.State.WINDUP, "sans sursis, le contact engage immediatement")
+
+## ⚠️ LA CADENCE VOYAGE À PART DE LA MENACE, et ce test garde la raison. Première version :
+## je faisais osciller `threat_ratio` pour « faire clignoter ». Or `EnemyVitals` DÉRIVE SA
+## PROPRE PÉRIODE de cette menace — une menace qui oscille fait donc osciller la période,
+## deux oscillateurs se battent, et le signal devient illisible au lieu de clignoter.
+func test_the_threat_ramp_stays_monotonic_during_the_reprieve() -> void:
+	var data := _mine_with_grace()
+	var precedent := -1.0
+	for i in 40:
+		var t := data.arm_grace * float(i) / 39.0
+		var v := EnemyReaction.threat_ratio(EnemyReaction.State.ARMING, t, 5.0, data)
+		assert_true(v >= precedent - 0.0001,
+			"la menace ne redescend jamais pendant le sursis (t=%.3f)" % t)
+		precedent = v
+
+## Le battement ACCÉLÈRE — c'est ce qui le fait lire comme un compte à rebours.
+func test_the_arming_blink_accelerates() -> void:
+	var data := _mine_with_grace()
+	var debut := EnemyReaction.arming_beats(EnemyReaction.State.ARMING, 0.0, data)
+	var fin := EnemyReaction.arming_beats(EnemyReaction.State.ARMING, data.arm_grace, data)
+	assert_true(fin > debut * 2.0,
+		"il plus que double sur la seconde (%.1f -> %.1f Hz)" % [debut, fin])
+	assert_true(debut >= 2.0,
+		"et il part déjà assez vite pour se voir (%.1f Hz)" % debut)
+
+## ⚠️ Assez rapide pour tenir dans UNE seconde. Le halètement ordinaire descend à 1,47 s par
+## battement au plus affolé : sur un sursis d'une seconde le joueur n'en verrait pas un seul.
+func test_the_blink_fits_inside_the_reprieve() -> void:
+	var data := _mine_with_grace()
+	var debut := EnemyReaction.arming_beats(EnemyReaction.State.ARMING, 0.0, data)
+	assert_true(debut * data.arm_grace >= 2.0,
+		"au moins deux battements tiennent dans le sursis (%.1f)" % (debut * data.arm_grace))
+
+## Hors du sursis, aucune cadence imposée : les huit autres familles gardent leur halètement.
+func test_no_imposed_cadence_outside_the_reprieve() -> void:
+	var data := _mine_with_grace()
+	for state in [EnemyReaction.State.DORMANT, EnemyReaction.State.ALERT,
+			EnemyReaction.State.WINDUP, EnemyReaction.State.ACTIVE]:
+		assert_eq(EnemyReaction.arming_beats(state, 0.5, data), 0.0,
+			"aucune cadence imposée hors du sursis")
+	data.arm_grace = 0.0
+	assert_eq(EnemyReaction.arming_beats(EnemyReaction.State.ARMING, 0.5, data), 0.0,
+		"ni pour une unité sans sursis")
