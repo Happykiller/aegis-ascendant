@@ -13,6 +13,27 @@ la lune (phase 2, `ADR-0027`) par deux petites coques forgées : un **bolide** e
 Demande de l'opérateur, en jouant le 2026-08-26 : « les astéroïdes qui se crashent sur la lune sont
 un simple cercle jaune, faut les 3D, texture, etc ».
 
+## 🔴 ERRATUM DU 2026-08-26 — le « 8 pixels » de ce brief était FAUX
+
+**La distance était mesurée au mauvais endroit.** J'avais pris celle du **centre de la lune**
+(96,5 unités, 4,7 px/m). Or le bolide ne vit pas au centre de la lune : il tombe sur sa **surface**,
+et le premier point d'impact est à **38,1 unités** de la caméra — deux fois et demie plus près.
+
+| Point | Distance | Cadre visible | px/m | Un bolide de 1,7 m |
+|---|---|---|---|---|
+| Centre de la lune *(ce que j'ai utilisé)* | 96,5 | 115,9 m | 4,66 | 7,9 px |
+| **Point d'impact réel** | **38,1** | **45,8 m** | **11,78** | **20 px** |
+
+**Ce que ça change, et ce que ça ne change pas.** La consigne « le budget va dans la silhouette,
+pas dans le détail fin » reste **juste** — à vingt pixels comme à huit, un détail de 40 cm ne
+s'échantillonne pas. Les coques livrées sont bonnes et restent en jeu. Ce qui était faux, c'est la
+conclusion que j'en ai tirée côté code : j'ai **grossi** le bolide pour compenser une petitesse qui
+n'existait pas, et il rendait un aplat doré de 36 px — « un gros cube jaune », mot de l'opérateur.
+
+⚠️ **La leçon dépasse ce brief : mesurer la distance de l'OBJET, pas celle du décor derrière lui.**
+Un décor lointain et ce qui vole devant lui ne sont pas à la même échelle d'écran, et l'erreur ne
+se voit pas dans le calcul — elle se voit en jeu, tard.
+
 ## ⚠️ Lis ça d'abord : la géométrie ne suffira PAS, et il faut le savoir avant de modéliser
 
 Le bolide actuel est une sphère de **0,85 de rayon**, posée sur une lune à **96 unités de la

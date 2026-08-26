@@ -180,21 +180,27 @@ const SHARD_PULL := 5.0
 # l'opérateur en jouant : « les astéroïdes qui se crashent sur la lune sont un simple
 # cercle jaune ». C'est exact, et la cause est une MESURE, pas un goût :
 #
-#   la lune est à 96 unités de la caméra ; le cadre visible y fait ~115 m de haut pour
-#   540 px de rendu utile après le post-process rétro, soit **4,7 px par mètre**.
-#   Un bolide de 1,7 m de diamètre occupe donc **8 PIXELS**.
+# ⚠️ ET UN PREMIER CALCUL FAUX, CORRIGÉ LE 2026-08-26 — la distance n'est pas celle qu'on
+# croit. J'avais mesuré au **centre de la lune** (96,5 unités, 4,7 px/m, donc 8 px pour le
+# bolide) et bâti tous les réglages là-dessus. Or le bolide ne vit pas au centre de la
+# lune : il tombe sur sa SURFACE, et le premier point d'impact est à **38,1 unités** de la
+# caméra — deux fois et demie plus près.
 #
-# À huit pixels, une sphère incandescente EST un cercle jaune, et aucune quantité de
-# géométrie n'y changera rien — c'est ce que dit `BRIEF-0086` à la forge. Ce qui se lit à
-# cette distance, c'est ce qui **couvre des pixels** : une traînée longue et une gerbe
-# large. Les deux sont ici.
+#   au point d'impact : cadre visible 45,8 m pour 540 px, soit **11,8 px par mètre**.
+#   Un bolide de 1,7 m y occupe **20 PIXELS**, pas 8.
+#
+# Conséquence directe : il n'avait AUCUN besoin d'être grossi, et l'agrandir en a fait un
+# aplat doré de 36 px — « un gros cube jaune », mot de l'opérateur. La leçon générale est
+# plus large que ce bolide : **mesurer la distance de l'OBJET, pas celle du décor derrière
+# lui**. Le même faux chiffre est parti dans `BRIEF-0086`, où la forge a bâti sa recette
+# de silhouette sur « 8 pixels ».
+#
+# Ce qui reste vrai, et qui a bien réglé la lisibilité : ce sont la TRAÎNÉE et l'ONDE qui
+# couvrent des pixels, pas la tête.
 
-## Le bolide grossit — mais MOINS QUE MON PREMIER ESSAI. À 0,85 de rayon il pesait 8 px,
-## sous le seuil où une silhouette existe ; à 3× il pesait une tache dorée informe, saturée
-## par le bloom et le `lift` du post-traitement. C'est la leçon du ghost prise à l'envers :
-## ce qui doit se voir n'a pas besoin d'être GROS, il a besoin d'être LONG — c'est la
-## traînée qui porte la lecture, la tête n'en est que la pointe.
-const BOLIDE_SCALE := 1.8
+## Taille de la DOUBLURE géométrique, quand la coque forgée n'est pas là. ⚠️ Elle n'agit
+## que sur ce chemin de repli : la coque livrée, elle, porte sa propre taille.
+const BOLIDE_SCALE := 1.0
 
 ## ⚠️ LE BOLIDE ARRIVE EN BIAIS, ET C'EST LA CORRECTION QUI DÉCIDE DE TOUT. Il tombait le
 ## long de la verticale locale de la lune ; or la caméra REGARDE D'EN HAUT. Une chute
@@ -211,12 +217,17 @@ const BOLIDE_SCALE := 1.8
 const BOLIDE_SLANT := 26.0
 const BOLIDE_FROM := Vector3(-0.707, 0.0, -0.707)
 
-## Ajustement de taille de la coque forgée. La doublure faisait 3,06 × 1,90 × 2,57 m, la
-## coque livrée 2,70 × 1,38 × 1,10 : 1,13 retrouve la même masse à l'écran.
+## Ajustement de taille de la coque forgée.
+##
+## ⚠️ 0,65 ET NON 1,13 — corrigé le 2026-08-26 sur la mesure refaite au bon endroit. À 1,13
+## la coque de 2,70 m rendait 36 px de long ; non éclairée et émissive, ça fait un APLAT
+## doré, pas un caillou. À 0,65 elle fait 1,76 m, soit ~21 px : la taille pour laquelle
+## l'effet avait été conçu, et où la silhouette a une chance de se lire.
+##
 ## ⚠️ Au-delà de ~1,3, il faudrait revenir changer la taille DANS le script de la forge et
 ## rebâtir, pas étirer le nœud — les UV portent l'échelle monde, et un étirement ferait
-## dériver le grain de la roche (mesuré à 8,0 m par tuile, comme les astéroïdes du survol).
-const BOLIDE_FIT := 1.13
+## dériver le grain de la roche.
+const BOLIDE_FIT := 0.65
 
 ## La traînée : un cône effilé DERRIÈRE le bolide, le long de sa course RÉELLE — pas de la
 ## verticale. C'est elle qui porte la lisibilité, pas la tête.
@@ -879,8 +890,12 @@ func _build_impact_kit() -> void:
 	# arrondit le contour. On paierait une coque à 32 triangles pour rendre un disque.
 	# Sous le seuil, la géométrie se voit — et c'est elle, plus la traînée, qui porte la
 	# lecture. Relevé au §5 de `BRIEF-0086-report.md`.
-	bolide_material.emission_energy_multiplier = 1.4
-	bolide_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bolide_material.emission_energy_multiplier = 0.9
+	# ⚠️ ÉCLAIRÉ, ET NON PLUS EN APLAT. Non éclairée, la coque rendait sa couleur pleine sur
+	# toute sa surface : à vingt pixels, un aplat n'a pas de forme — on paie 32 triangles
+	# pour dessiner un rectangle. Éclairée, ses facettes prennent la lumière et la
+	# silhouette existe ; l'émission ne sert plus qu'à dire qu'elle brûle, et reste sous le
+	# seuil de bloom (1,6) pour ne pas la renoyer dans un halo.
 	_bolide.material_override = bolide_material
 	_bolide.visible = false
 	add_child(_bolide)
