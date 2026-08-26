@@ -243,6 +243,20 @@ static func drifted(from: Vector3, velocity: Vector3, delta: float) -> Vector3:
 	return next
 
 func _build() -> void:
+	# ⚠️ LE CIEL APPARTIENT AU MÉCANISME, PAS À LA DOUBLURE — et il a vécu au mauvais
+	# endroit jusqu'au 2026-08-26. Il était construit dans `_build_stand_in()` ; dès que le
+	# `.glb` de la forge est arrivé, la doublure n'a plus été construite du tout, **et le
+	# ciel avec elle**. La phase 2 se jouait sur du NOIR ABSOLU, sans une étoile.
+	#
+	# Rien ne pouvait le signaler : le décor livré est conforme, la porte de qualité est
+	# verte, le journal ne parle pas d'un nœud qui n'existe pas, et `BRIEF-0085` mettait
+	# le ciel hors périmètre à juste titre (c'est un shader, pas de la géométrie). Chacun
+	# avait raison de son côté, et personne ne construisait le ciel.
+	#
+	# Relevé par l'opérateur en jouant : « lors de la phase 2 il n'y a pas de fond étoilé,
+	# tout noir c'est moche ». Mesuré ensuite : la bande de ciel restait absolument noire
+	# même multipliée par quatre en luminosité.
+	add_child(_sky())
 	if ResourceLoader.exists(DECOR_PATH):
 		var packed := load(DECOR_PATH) as PackedScene
 		if packed != null:
@@ -405,7 +419,6 @@ static func drift_speed_at(y: float) -> float:
 func _build_stand_in() -> Node3D:
 	var root := Node3D.new()
 	root.name = "StandIn"
-	root.add_child(_sky())
 	root.add_child(_moon_body())
 	# Trois rochers, trois profondeurs, trois tailles. Le « vraiment énorme » se joue par
 	# la parallaxe et le cadrage : un bloc proche qui traverse lentement dit mieux

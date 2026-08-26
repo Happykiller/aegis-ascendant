@@ -95,7 +95,11 @@ func test_every_rock_drifts_and_the_moon_is_found() -> void:
 	# `_collect_bodies` ne voit pas resterait planté, sans que rien ne le dise.
 	var flyby := _make()
 	var rocks := 0
-	for child in flyby.get_child(0).get_children():
+	# ⚠️ `_decor` ET NON `get_child(0)`. Lire un nœud par sa POSITION casse dès qu'un frère
+	# apparaît devant lui — et l'échec ment alors sur sa cause : le 2026-08-26, sortir le
+	# ciel de la doublure a fait annoncer « 0 rocher » par ce test sur un décor qui en
+	# portait trois. On cherche un défaut de décor pendant que le défaut est dans la lecture.
+	for child in flyby._decor.get_children():
 		if (child as Node3D) != null and child.name.begins_with("Asteroid"):
 			rocks += 1
 	assert_true(rocks >= 3, "au moins trois rochers (%d)" % rocks)
