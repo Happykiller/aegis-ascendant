@@ -67,6 +67,40 @@ C'est la seule façon d'attribuer un coût. Exemple réel (nébuleuse en domain 
 
 Verdict : soutenable. Sans cette isolation, on n'aurait eu qu'un chiffre absolu ininterprétable.
 
+## ⚠️ `--novsync` fausse un différentiel dès que la scène est vivante (26/08/2026)
+
+L'exemple du haut de cette page mesure en `--novsync`, et c'est bon pour une scène **statique**. Dès
+que le contenu évolue avec le temps de jeu — une vague qui fait apparaître ses unités selon une
+timeline — `--novsync` **détruit la comparabilité**, et le piège est silencieux :
+
+> `--capture-after` compte des **images**. À cadence libre, chaque configuration atteint l'image 480
+> à un **temps de jeu différent** : la plus rapide y arrive plus tôt, donc avec **moins d'ennemis à
+> l'écran**. On croit comparer un décor, on compare deux scènes.
+
+L'effet joue dans le **mauvais sens** : la configuration la moins chère est mesurée sur une scène
+plus vide, donc paraît encore moins chère. Le différentiel est gonflé par sa propre cause.
+
+**La parade : mesurer à 60 Hz** (sans `--novsync`). Une image vaut alors 1/60 s depuis le montage de
+la scène, l'image 480 vaut 8 s de jeu dans **toutes** les configurations, et une vague déterministe
+y présente exactement les mêmes unités. Le temps GPU reste valide — il mesure le travail du GPU, pas
+la présentation.
+
+Appliqué au survol de lune, trois tirs alternés par configuration sur Quadro T1000 :
+
+| Configuration | Plage |
+|---|---|
+| survol + textures | 5,28 – 5,94 ms |
+| survol sans texture (`--no-surface-maps`) | 4,88 – 6,12 ms |
+| fond spatial habituel (`--no-flyby`) | 12,59 – 14,24 ms |
+
+Deux lectures, et **une seule est publiable** : les deux premières séries se **recouvrent
+entièrement** — il n'y a pas d'effet à annoncer sur les textures, seulement un coût sous le plancher
+de bruit. La troisième ne recouvre ni l'une ni l'autre : là, l'écart est réel.
+
+⚠️ **Et la série la plus chère montait régulièrement** (12,59 → 13,53 → 14,24) : la dérive thermique
+Max-Q décrite plus bas. Sa vraie valeur est vers le **bas** de sa plage — ce qui rend ici l'écart
+plus net, mais l'inverse serait vrai si la série qui monte était celle qu'on veut voir gagner.
+
 ## Conséquence pour la Definition of Done
 
 Un effet visuel n'est « terminé » que si son **coût GPU est mesuré et énoncé**, pas seulement

@@ -113,9 +113,50 @@ diagnostic instantané *en capture*, invisible partout ailleurs.
 
 ---
 
+## 6. Un `CanvasLayer` sans ligne `layer` vit à 1 — et le `layer = 5` de la scène n'est pas le HUD
+
+**Coûté le 2026-08-26**, sur le voile de transition entre deux décors. Le voile avait été posé à la
+couche **3** avec, en commentaire, l'intention explicite : « sous le HUD, sinon la jauge et le score
+disparaîtraient en pleine transition, ce qui se lit comme un plantage ». C'est exactement ce qui
+s'est produit.
+
+La lecture qui a induit en erreur — `grep layer scenes/gameplay/graybox.tscn` rend deux lignes :
+
+```
+layer = -1     ← RetroPost
+layer = 5      ← Scanlines   (et NON le HUD, comme je l'ai cru)
+```
+
+⚠️ **`FighterHUD` n'a AUCUNE ligne `layer`**, ni dans `graybox.tscn` ni dans `fighter_hud.tscn`. Il
+vit donc à la **valeur par défaut d'un `CanvasLayer` : 1**. Un `grep layer` ne peut pas le montrer —
+il cherche une ligne qui n'existe pas, et l'absence ne saute pas aux yeux dans une liste de résultats.
+
+L'empilement réel, qu'il faut reconstruire et non lire :
+
+| Couche | Nœud |
+|---|---|
+| −1 | `RetroPost` — le post-traitement rétro |
+| **0** | la seule place libre pour un voile |
+| **1** | `FighterHUD` — **implicite** |
+| 5 | `Scanlines` |
+
+**Deux bornes, une seule valeur.** Au-dessus de `RetroPost`, sinon son `lift` de 1,25 **remonte les
+noirs** et le voile ressort délavé au lieu d'éteindre l'écran. Sous le HUD, sinon l'interface
+s'éteint avec le décor.
+
+**Comment ça s'est vu** : une capture regardée, en un coup d'œil. Aucun test, aucune assertion,
+aucune ligne de journal ne pouvait le dire — le voile *fonctionnait*, il couvrait simplement une
+chose de trop. Le poids du PNG l'avait même signalé avant l'ouverture : 166 Ko avec le HUD éteint
+contre 17 Ko une fois corrigé (un écran noir plus une interface en aplats se compresse mieux qu'un
+écran noir plus une interface *à demi* éteinte, dont les dégradés coûtent cher).
+
+**La parade** : ne jamais déduire une couche d'un `grep`. Les reconstituer toutes, y compris les
+implicites, et **verrouiller par un test** qui écrit les deux bornes et leur raison — c'est fait
+dans `test_phase_transition.gd`.
+
 ## Le corollaire de méthode
 
-Ces cinq pièges ont en commun de ne produire **aucun signal** : ni erreur, ni avertissement, ni
+Ces six pièges ont en commun de ne produire **aucun signal** : ni erreur, ni avertissement, ni
 test rouge. La seule chose qui les révèle est **une capture prise à la bonne image**, ce qui suppose
 de savoir *quand* regarder :
 

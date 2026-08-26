@@ -109,7 +109,8 @@ qui ment et une qui tranche.
 
 | Flag | Effet |
 |---|---|
-| `--goto-graybox` | saute l'écran titre |
+| `--goto-graybox` | saute l'écran titre — ⚠️ **obligatoire devant tout `--skip-to-*`** (voir ci-dessous) |
+| `--skip-to-field` / `--skip-to-boss` / `--skip-to-final` / `--skip-to-dock` | entre directement dans une phase du niveau |
 | `--pause-demo` | ouvre le menu de pause à l'entrée du niveau |
 | `--victory-demo` | saute droit au rapport de mission, score semé (sinon il faut jouer l'arc entier — c'est ainsi que cet écran a vécu longtemps avec la police par défaut sans que personne le voie) |
 | `--demo` | pilote automatique + tir continu (utile pour voir des projectiles) |
@@ -119,6 +120,30 @@ qui ment et une qui tranche.
 | `--no-plumes` | désactive les plumes de réacteur (isoler leur coût, ADR-0017) |
 | `--no-surface-maps` | le survol de lune garde sa géométrie mais perd ses textures (isoler leur coût, ADR-0028) |
 | `--capture --capture-after=N` | PNG après N images, puis quitte |
+
+## ⚠️ `--skip-to-*` seul ne quitte pas l'écran-titre
+
+**Coûté le 2026-08-26** : un lancement complet — export, porte de qualité, déploiement — pour un
+journal qui s'arrête à `[TitleStage] ready`. Aucune erreur, sortie en `code 0`, et pas une ligne
+`[Level]`.
+
+La cause est une **répartition de lecture**, et elle n'est écrite nulle part ailleurs :
+
+| Drapeau | Lu par |
+|---|---|
+| `--goto-graybox` | `scripts/ui/title_menu.gd` — **l'écran-titre** |
+| `--skip-to-field`, `--skip-to-boss`, `--skip-to-final`, `--skip-to-dock` | `scripts/gameplay/graybox_root.gd` — **le niveau** |
+
+Un `--skip-to-*` seul demande donc à une scène **qui n'est pas chargée** de sauter une phase : le
+jeu reste sagement au menu, et rien ne signale que le drapeau n'a trouvé personne pour le lire.
+C'est le même silence que le `++` oublié, à un étage plus haut.
+
+```bash
+./scripts/play.sh -- --skip-to-field                  # ❌ reste à l'écran-titre
+./scripts/play.sh -- --goto-graybox --skip-to-field   # ✅
+```
+
+**Le symptôme à guetter dans le journal** : `[TitleStage] ready` **sans** `[Level] ready` derrière.
 
 ## Un cadrage se CALCULE : une fraction d'une hauteur ne dit rien de ce qu'on voit
 

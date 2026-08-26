@@ -173,3 +173,37 @@ Même mesure, autre trouvaille : le pivot des plaques était invisible parce que
 modules culmine plus loin qu'elles** (r = 0,578 m contre 0,496 fermées, 0,477 à 45°). Le pivot les
 faisait *rentrer* sous l'enveloppe. Avant d'animer une pièce pour changer une silhouette, vérifier
 qu'elle est bien **celle qui porte la silhouette**.
+
+
+## Un seuil absolu peut être aveugle à la nature de l'image (26/08/2026)
+
+`derive-maps.py --check-tiling` a rendu **COUTURE VISIBLE** sur une texture de régolithe lunaire
+parfaitement utilisable (7,9 % d'écart au bord X). Suivre le verdict aurait fait régénérer une image
+juste — et le prompt qui l'a produite était bon.
+
+**Ce que la métrique fait réellement**, lu dans `tiling_error()` : elle compare la **colonne 0 à la
+colonne −1**, soit **un pixel de large**. Sur une texture à grain fin dense, deux colonnes de grain
+sont indépendantes par construction : l'écart mesuré est la **variance locale du grain**, pas une
+discontinuité de raccord. Le seuil, lui, est absolu et ne connaît pas le grain.
+
+**Le témoin qui tranche, et il est gratuit** : comparer l'écart au bord à l'écart entre deux colonnes
+**adjacentes à l'intérieur** de la même image. C'est le même geste que partout ailleurs sur cette
+page — le témoin, c'est la même chose sans la variable.
+
+```python
+ex = abs(a[:, 0] - a[:, -1]).mean() / dyn * 100     # le bord
+ix = abs(a[:, 1:] - a[:, :-1]).mean() / dyn * 100   # l'intérieur, témoin
+# ex ≈ ix  -> c'est du grain.   ex >> ix  -> c'est une couture.
+```
+
+Mesuré sur quatre textures livrées le même jour, et **le verdict s'inverse dans les deux sens** :
+
+| Texture | Bord | Intérieur | Outil | Réel |
+|---|---|---|---|---|
+| régolithe (hauteur) | 7,9 % | 6,3 % | ❌ couture | **grain** — rapport 1,25 |
+| roche (hauteur) | 3,8 % | 2,3 % | ✅ OK | écart réel, mais faible |
+| roche (albédo) | 5,1 % | 2,9 % | ❌ couture | écart réel — rapport 1,76 |
+
+⚠️ **Et le témoin chiffré ne dispense pas de regarder.** La jonction 2×2 de la première texture ne
+montre **aucune ligne** : c'est ça qui a confirmé. Un rapport favorable sur une image jamais ouverte
+n'aurait rien valu de plus que le verdict de l'outil.

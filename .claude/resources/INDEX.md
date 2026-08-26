@@ -31,7 +31,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   sur la nébuleuse ; et un signal de mine parfait sur fond noir, noyé en jeu. ⚠️ Sur fond lumineux,
   mesurer la **teinte**, pas la luminance — un pic à 255 ne dit pas « lumineux », il dit « écrêté ». ⚠️ Effacer `capture.png` **avant** chaque lancement et exiger la ligne
   `saved` (sinon on juge un PNG périmé) ; les flags de jeu passent **après `++`** ; et
-  `--capture-after` compte des **images**, pas des secondes. ⚠️ **Ce qui doit rester discret doit être FIN, pas transparent** : le bloom et le `lift` du post-traitement ravivent toute grande surface teintée, même à 11 % d'opacité.
+  `--capture-after` compte des **images**, pas des secondes. ⚠️ **Un `--skip-to-*` seul ne quitte pas l'écran-titre** : il est lu par le NIVEAU, qui n'est pas chargé — il faut `--goto-graybox` devant. Symptôme : `[TitleStage] ready` sans `[Level] ready`, sortie en `code 0`, un lancement complet pour rien. ⚠️ **Ce qui doit rester discret doit être FIN, pas transparent** : le bloom et le `lift` du post-traitement ravivent toute grande surface teintée, même à 11 % d'opacité.
 - [Mesurer le coût d'un effet](howto-mesurer-la-perf.md) — le **FPS d'un lancement automatisé est
   inexploitable** (Windows bride la présentation). Utiliser le **temps GPU par image**, et isoler un
   effet en comparant avec/sans. ⚠️ Un chiffre n'a de sens **qu'avec sa machine** : le même build rend
@@ -40,6 +40,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   la moindre erreur — et c'est le journal, pas le chiffre, qui le dit. ⚠️ **Trois tirs de chaque
   côté** : un témoin a donné 1,535 ms une fois pour 0,945 trois fois. ⚠️ **Un uniforme à zéro
   n'économise rien** — pour éteindre une dépense de shader il faut un branchement, pas un facteur.
+  ⚠️ **`--novsync` fausse un différentiel dès que la scène est vivante** : à cadence libre chaque
+  configuration atteint l'image N à un **temps de jeu différent**, donc avec moins d'ennemis à
+  l'écran — et le biais gonfle l'écart dans le sens qu'on veut voir. Mesurer à **60 Hz** quand on
+  compare des configurations.
 - [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
   exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
   tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par
@@ -77,7 +81,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   **sur la vue qui montre l'axe réglé** : le bestiaire présente les coques de trois quarts avant,
   la plume y part en enfilade — une itération de réglage perdue sur une image incapable de répondre.
 - [Les géométries Godot qui disparaissent sans une erreur](pratique-geometries-invisibles.md) —
-  **cinq** pièges qui ne produisent **ni erreur, ni test rouge, ni ligne au journal**, et ne se
+  **six** pièges qui ne produisent **ni erreur, ni test rouge, ni ligne au journal**, et ne se
   diagnostiquent qu'en capture. ⚠️ Les deux derniers datent du 23/08/2026 : un nœud posé en
   coordonnées **monde** subit quand même la transformation de son premier ancêtre `Node3D` (Godot
   traverse les `Node` intermédiaires) — d'où **aucun laser à l'écran** alors que le tir fonctionnait,
@@ -85,7 +89,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   disque plein écran à la place de la scène. Les trois premiers : le **billboard jette l'échelle**
   du nœud (`billboard_keep_scale`), `GPUParticles3D.emitting` retombe à faux dès la salve **émise**
   (pas éteinte), et une géométrie
-  déformée au vertex garde l'**AABB** de son maillage au repos. Coût du premier : trois captures vides.
+  déformée au vertex garde l'**AABB** de son maillage au repos. Coût du premier : trois captures vides. ⚠️ Le sixième (26/08/2026) est en 2D : un **`CanvasLayer` sans ligne `layer` vit à 1**, et le `layer = 5` qu'on lit dans `graybox.tscn` est celui des **scanlines**, pas du HUD. Un `grep layer` ne peut pas montrer une ligne qui n'existe pas — reconstituer l'empilement, implicites compris, et le verrouiller par un test.
 - [Poser le détail en fraction, jamais en coordonnée absolue](pratique-detail-en-fraction-de-corde.md)
   — deux reforges de plan, deux fois le même dégât : les bandeaux posés à des abscisses absolues se
   retrouvent **hors de la coque** quand la silhouette bouge, et rien ne le signale. ⚠️ Cas vicieux :
@@ -107,7 +111,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   maison passe d'abord sur un témoin connu** : une mesure de calibre a rendu *1 cm* sur des écailles
   d'*1 m*, et ce chiffre partait dans un compte-rendu — une mesure fausse est plus dangereuse
   qu'aucune mesure, elle porte l'autorité du chiffre. ⚠️ Et une mesure que son propre correctif rend
-  vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**.
+  vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**. ⚠️ **Un seuil absolu peut être aveugle à la nature de l'image** : `--check-tiling` compare deux colonnes d'UN pixel, donc sur une texture à grain fin il mesure la variance du grain et crie à la couture. Le témoin gratuit : l'écart entre deux colonnes **adjacentes à l'intérieur**. Vécu sur quatre textures, le verdict s'inverse **dans les deux sens**.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil. ⚠️ **Un test qui construit un
   `Node` le fuit** (mode `--script` : pas d'arbre, donc pas de parent pour le récupérer) — passer par
