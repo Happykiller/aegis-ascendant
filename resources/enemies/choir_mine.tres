@@ -28,20 +28,50 @@
 [ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
 [ext_resource type="Resource" path="res://resources/weapons/mine_burst.tres" id="2_shot"]
 
+; ============================================================================
+; REGLAGES DU 2026-08-26, demandes par l operateur en jouant.
+;
+; « les mines devraient avoir beaucoup plus de PV et j aimerais que la zone de
+;   detection soit bien plus grande — la je la juge a 1 fois la taille du
+;   vaisseau, je dirais 4-5 fois. Et on pourrait imaginer que si on rentre dans
+;   cette zone les mines reagissent, mais si on ressort en moins d 1 s elle se
+;   referme. »
+;
+; La ZONE : trigger_radius passe de 2,2 a 5,5, soit 11 m de diametre pour un
+; chasseur de 2,46 m — 4,5 fois sa taille, la cible demandee. alert_radius suit a
+; 8,0 : validate() impose alert > trigger, et sans marge d eveil l unite passerait
+; de l inertie a l engagement dans la meme image.
+;
+; LES PV : 12 -> 44. A puissance 5 le joueur les evaporait avant qu elles ne
+; s ouvrent ; la mine redevient quelque chose qu on contourne ou qu on paie.
+;
+; LE SURSIS : arm_grace = 1,0. Il n annule PAS le telegraphe — l invariant
+; d EnemyReaction tient, ce qui s allume part toujours. Il insere une etape AVANT
+; lui : la mine reagit a l entree, et se referme si on ressort a temps.
+;
+; ⚠️ CONSEQUENCE D EQUILIBRAGE A JUGER EN JEU, PAS AU JOURNAL. La vague du champ
+; (wave_asteroid_field_01.tres) a ete composee autour d un rayon de 2,2 : ses
+; « trois couloirs de 8 unites » sont desormais entierement couverts par une seule
+; mine. Et le sursis joue dans l autre sens — un joueur rapide peut traverser sans
+; jamais rien declencher. Zone plus large + sortie possible peut rendre la phase
+; PLUS FACILE, pas plus dure. C est le genre d effet qui ne se voit qu en jouant.
+; ============================================================================
+
 [resource]
 script = ExtResource("1_data")
 path = 9
 fire = 4
 display_name = "Choir Mine"
-max_health = 12.0
+max_health = 44.0
 move_speed = 1.1
 fire_interval = 1.9
 projectile = ExtResource("2_shot")
 hitbox_radius = 0.58
 score_value = 90
 burst_count = 14
-alert_radius = 4.5
-trigger_radius = 2.2
+alert_radius = 8.0
+trigger_radius = 5.5
+arm_grace = 1.0
 windup_time = 0.7
 active_time = 0.15
 rearm_time = 0.0

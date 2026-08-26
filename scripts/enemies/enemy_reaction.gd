@@ -13,6 +13,7 @@ class_name EnemyReaction
 ##
 ##   DORMANT  coque éteinte, inerte. On peut la tuer de loin : la prudence paie.
 ##   ALERT    elle a senti quelque chose. Son noyau s'allume — l'avertissement est GRATUIT.
+##   ARMING   elle a mordu, mais s'accorde un SURSIS : sortir avant l'échéance la referme.
 ##   WINDUP   l'engagement. Télégraphe de 300 à 800 ms (spec §11.2), sans retour possible.
 ##   ACTIVE   la charge : couronne de balles, aspiration, aura.
 ##   SPENT    vidée. Ou bien elle meurt là, ou bien elle se réarme après un temps mort.
@@ -21,8 +22,18 @@ class_name EnemyReaction
 ## qu'on peut annuler en reculant apprend au joueur à ignorer les télégraphes ; et
 ## une mine qui se rendort à dix centimètres du contact est une promesse rompue.
 ## Le contrat est : ce qui s'allume part.
+##
+## ⚠️ ET C'EST PRÉCISÉMENT POURQUOI `ARMING` EXISTE (2026-08-26). Demande de l'opérateur :
+## « si on rentre dans cette zone les mines réagissent, mais si on ressort en moins d'1 s
+## elle se referme ». Rendre le télégraphe annulable aurait cassé le contrat ci-dessus ; on
+## insère donc une étape AVANT lui. La mine réagit — son noyau monte en régime — mais **sa
+## coque ne s'ouvre pas** : l'ouverture mécanique reste le signe de l'engagement, et
+## l'engagement reste sans retour.
+##
+## Une unité sans `arm_grace` (toutes sauf la mine) passe directement d'ALERT à WINDUP : le
+## comportement d'avant, bit pour bit.
 
-enum State { DORMANT, ALERT, WINDUP, ACTIVE, SPENT }
+enum State { DORMANT, ALERT, ARMING, WINDUP, ACTIVE, SPENT }
 
 ## Marge de sortie de l'éveil, en fraction du rayon d'alerte. Sans elle, un joueur
 ## posé pile sur le rayon ferait clignoter la coque à chaque image — une hystérésis
@@ -43,10 +54,20 @@ static func next_state(state: int, time_in_state: float, distance: float,
 			return State.ALERT if distance <= data.alert_radius else State.DORMANT
 		State.ALERT:
 			if distance <= data.trigger_radius:
-				return State.WINDUP
+				return State.ARMING if data.arm_grace > 0.0 else State.WINDUP
 			if distance > data.alert_radius * RELEASE_FACTOR:
 				return State.DORMANT
 			return State.ALERT
+		State.ARMING:
+			# ⚠️ LE SURSIS EST TESTÉ EN PREMIER, ET C'EST UN CHOIX. À l'échéance exacte, si
+			# le joueur est sorti dans la même image, il s'en tire. L'inverse ferait gagner
+			# la mine sur une égalité que le joueur ne peut ni voir ni mesurer — et une
+			# règle de faveur qui se joue à l'image près se lit comme de l'injustice.
+			if distance > data.trigger_radius:
+				return State.ALERT
+			if time_in_state >= data.arm_grace:
+				return State.WINDUP
+			return State.ARMING
 		State.WINDUP:
 			return State.ACTIVE if time_in_state >= data.windup_time else State.WINDUP
 		State.ACTIVE:
@@ -80,6 +101,11 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 		State.ALERT:
 			var span := maxf(data.alert_radius - data.trigger_radius, 0.001)
 			return clampf(1.0 - (distance - data.trigger_radius) / span, 0.0, 1.0) * ALERT_CEILING
+		State.ARMING:
+			# Elle monte, sans atteindre le régime de l'engagement : le joueur doit pouvoir
+			# distinguer « elle m'a senti » de « c'est parti ».
+			var grace := maxf(data.arm_grace, 0.001)
+			return ALERT_CEILING + (0.9 - ALERT_CEILING) * clampf(time_in_state / grace, 0.0, 1.0)
 		State.WINDUP:
 			return ALERT_CEILING + (1.0 - ALERT_CEILING) * windup_ratio(state, time_in_state, data)
 		State.ACTIVE:

@@ -122,3 +122,64 @@ func test_the_threat_rises_as_the_player_closes_in() -> void:
 		"endormie, elle ne montre rien")
 	assert_eq(EnemyReaction.threat_ratio(EnemyReaction.State.ACTIVE, 0.1, 1.0, data), 1.0,
 		"en charge, elle est à fond")
+
+# --- Le sursis de la mine (ARMING, 2026-08-26) -------------------------------
+#
+# ⚠️ CES TESTS GARDENT UN INVARIANT ÉCRIT ET LA DEMANDE QUI SEMBLAIT LE CONTREDIRE.
+# L'opérateur voulait qu'une mine « se referme si on ressort en moins d'1 s ». Le fichier
+# posait pourtant, noir sur blanc : « WINDUP NE REVIENT PAS EN ARRIÈRE ». Les deux tiennent
+# ensemble parce que le sursis est une étape AVANT le télégraphe, pas dedans — et c'est
+# exactement ce qu'un test doit empêcher quelqu'un de « simplifier » plus tard.
+
+func _mine_with_grace() -> EnemyData:
+	var data := EnemyData.new()
+	data.alert_radius = 8.0
+	data.trigger_radius = 5.5
+	data.arm_grace = 1.0
+	data.windup_time = 0.7
+	data.active_time = 0.15
+	return data
+
+func test_entering_the_zone_arms_without_engaging() -> void:
+	var data := _mine_with_grace()
+	assert_eq(EnemyReaction.next_state(EnemyReaction.State.ALERT, 0.0, 5.0, data),
+		EnemyReaction.State.ARMING, "elle mord, mais ne s'engage pas encore")
+
+func test_leaving_in_time_closes_the_mine_again() -> void:
+	var data := _mine_with_grace()
+	assert_eq(EnemyReaction.next_state(EnemyReaction.State.ARMING, 0.6, 9.0, data),
+		EnemyReaction.State.ALERT, "sortie avant l'échéance : elle se referme")
+
+func test_staying_past_the_grace_commits() -> void:
+	var data := _mine_with_grace()
+	assert_eq(EnemyReaction.next_state(EnemyReaction.State.ARMING, 1.0, 5.0, data),
+		EnemyReaction.State.WINDUP, "à l'échéance, l'engagement part")
+
+## ⚠️ L'INVARIANT LUI-MÊME : une fois le télégraphe lancé, s'éloigner ne sauve plus.
+func test_the_telegraph_still_never_reverses() -> void:
+	var data := _mine_with_grace()
+	assert_eq(EnemyReaction.next_state(EnemyReaction.State.WINDUP, 0.1, 999.0, data),
+		EnemyReaction.State.WINDUP, "fuir pendant le télégraphe ne l'annule pas")
+
+## La coque NE S'OUVRE PAS pendant le sursis. Une mine qui bâillerait dès l'entrée aurait
+## déjà tout dit, et le joueur n'aurait plus rien à lire dans les 700 ms qui décident.
+func test_the_shell_stays_shut_during_the_reprieve() -> void:
+	var data := _mine_with_grace()
+	assert_eq(EnemyReaction.open_ratio(EnemyReaction.State.ARMING, 0.9, data), 0.0,
+		"le sursis ne s'annonce pas par l'ouverture mécanique")
+
+## Le joueur doit distinguer « elle m'a senti » de « c'est parti ».
+func test_the_reprieve_reads_between_alert_and_commitment() -> void:
+	var data := _mine_with_grace()
+	var arming := EnemyReaction.threat_ratio(EnemyReaction.State.ARMING, 0.9, 5.0, data)
+	var alert := EnemyReaction.threat_ratio(EnemyReaction.State.ALERT, 0.0, 5.6, data)
+	assert_true(arming > alert, "le sursis monte au-dessus du simple éveil")
+	assert_true(arming < 1.0, "sans atteindre le régime de l'engagement")
+
+## ⚠️ Toute unité SANS sursis garde le comportement d'avant, bit pour bit. C'est ce qui
+## rend ce changement sûr pour les huit autres familles du bestiaire.
+func test_a_unit_without_grace_engages_on_contact_as_before() -> void:
+	var data := _mine_with_grace()
+	data.arm_grace = 0.0
+	assert_eq(EnemyReaction.next_state(EnemyReaction.State.ALERT, 0.0, 5.0, data),
+		EnemyReaction.State.WINDUP, "sans sursis, le contact engage immediatement")

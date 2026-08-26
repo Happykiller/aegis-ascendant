@@ -83,6 +83,13 @@ enum Motion { PATH, HOMING }
 ## Distance à laquelle elle s'engage — sans retour possible. Toujours < alert_radius,
 ## faute de quoi l'unité passerait de l'inertie à la détonation sans un mot.
 @export var trigger_radius: float = 0.0
+## Sursis avant l'engagement, en secondes. À zéro (le défaut, toutes les unités sauf la
+## mine), franchir `trigger_radius` engage IMMÉDIATEMENT — le comportement d'origine.
+##
+## ⚠️ AU-DESSUS DE ZÉRO, L'UNITÉ S'ACCORDE UNE FENÊTRE DE RETRAIT. Elle réagit dès l'entrée
+## mais ne s'engage qu'à l'échéance ; ressortir avant la referme. Ça n'annule PAS le
+## télégraphe — l'invariant d'`EnemyReaction` tient — ça insère une étape avant lui.
+@export var arm_grace: float = 0.0
 ## Durée du télégraphe (s). La spec §11.2 impose 300 à 800 ms : en deçà le joueur
 ## n'a pas le temps de lire, au-delà la menace cesse d'en être une.
 @export var windup_time: float = 0.6
@@ -223,6 +230,12 @@ func _validate_reaction() -> PackedStringArray:
 		errors.append("active_time must be > 0 when the unit reacts")
 	if rearm_time < 0.0:
 		errors.append("rearm_time must be >= 0 (zero means single use)")
+	if arm_grace < 0.0:
+		errors.append("arm_grace must be >= 0 (zero means: no reprieve, engage on contact)")
+	if arm_grace > 0.0 and arm_grace >= active_time + windup_time + rearm_time + 4.0:
+		# Un sursis plus long que le cycle entier de l'unité la rendrait inoffensive sans
+		# que rien ne le dise : elle se rearmerait avant d'avoir jamais tiré.
+		errors.append("arm_grace is longer than the whole reaction cycle — the unit would never fire")
 	return errors
 
 

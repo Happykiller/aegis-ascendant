@@ -73,7 +73,9 @@ const TRAIL_SPRITE := "res://assets/imported/vfx/trainee_flamme.png"
 ## son cadre et la traînée 88,6 %. Pour une roche de 2,5 m il faut donc un quad de
 ## 2,5 / 0,646 ≈ 3,9 ; pour un sillage de 14 m, 14 / 0,886 ≈ 15,8.
 const BOLIDE_SPRITE_SIZE := 3.9
-const TRAIL_SPRITE_SIZE := 15.8
+## ⚠️ 11,0 ET NON 15,8 — l'opérateur en jouant : « la traînée recouvre tout le météore et
+## même elle est avant lui ». Elle était à la fois trop longue et mal placée.
+const TRAIL_SPRITE_SIZE := 11.0
 
 ## ⚠️ LE CONTENU DES DEUX IMAGES COURT SUR LEUR DIAGONALE — extrémité chaude en bas à
 ## droite, dissipation vers le haut à gauche — et non sur leur axe vertical. Sans cette
@@ -82,9 +84,13 @@ const TRAIL_SPRITE_SIZE := 15.8
 const SPRITE_DIAGONAL := -45.0
 
 ## Où se trouve l'extrémité CHAUDE de la traînée dans son image, en fraction du côté depuis
-## le centre. ⚠️ Mesurée : le sujet occupe 88,6 % du cadre et sa pointe est près du coin bas
-## droit. Sans ce recul, la flamme naîtrait au milieu du panneau — donc à côté du bolide.
-const TRAIL_HEAD_OFFSET := 0.42
+## le centre. Sans ce recul, la flamme naîtrait au milieu du panneau — donc à côté du bolide.
+##
+## ⚠️ 0,523 ET NON 0,42 : la première valeur était ESTIMÉE à l'œil sur le coin de l'image,
+## la seconde est MESURÉE (centre de masse du centile le plus brûlant, à (1083, 1099) sur
+## 1254). L'écart de 0,10 côté valait 1,6 m de décalage vers l'avant — assez pour que la
+## flamme passe DEVANT le météore, ce que l'opérateur a vu immédiatement.
+const TRAIL_HEAD_OFFSET := 0.523
 
 ## Combien de mètres de surface couvre une tuile. ⚠️ VALEURS DÉCIDÉES, pas mesurées — et
 ## c'est ICI qu'elles se rattrapent, pas dans l'image (`TEX-0001`, `TEX-0002`). Une tuile
