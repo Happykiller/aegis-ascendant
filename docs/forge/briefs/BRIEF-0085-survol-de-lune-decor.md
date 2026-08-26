@@ -103,6 +103,28 @@ si ça manque.
 | `Moon_Cap` | **continu, densité de texels homogène**, coutures hors champ + planche de contrôle au damier UV |
 | `Asteroid_01..03` | projection en boîte, **même échelle monde sur les trois** — une tuile calée sur le petit rocher se lit comme du gravier sur le gros |
 
+### ⚠️ Les textures sont DÉJÀ LIVRÉES, et leur échelle est posée
+
+Elles tournent en jeu depuis le 2026-08-26, sur la **doublure** que tu remplaces. Ton dépliage doit
+donc les accueillir **à ces échelles-là** — ce n'est plus un paramètre libre :
+
+| Pièce | Échelle monde d'une tuile | D'où elle vient |
+|---|---|---|
+| `Moon_Cap` | **55 m** par tuile | Réglée en regardant. À 12 m la surface rendait un papier de verre uniforme, sans un cratère visible |
+| `Asteroid_01..03` | **8 m** par tuile | Vérifiée en capture : les facettes et les fractures s'y lisent |
+
+Ce que ça t'impose concrètement : à 55 m par tuile, la calotte de rayon 60 prend environ **6,9
+tuiles de circonférence** et **3,4 de méridien**. C'est cette densité que ton dépliage doit rendre
+**homogène** — un îlot deux fois plus dense qu'un autre y ferait deux grains de régolithe
+différents sur la même lune, ce qui se voit immédiatement.
+
+⚠️ **La conséquence sur TES cratères géométriques.** À 55 m, le plus grand cratère de la texture
+fait ~9 m de diamètre — donc il **chevauche** la fourchette de 3 à 10 m que ce brief te demandait.
+Tranche, et dis-le au rapport : soit tu remontes tes cratères géométriques vers le haut de la
+fourchette pour qu'ils restent distincts de ceux de la carte, soit tu les espaces. Deux familles de
+cratères de même taille, l'une en relief et l'autre peinte, se liraient comme un bruit et non comme
+une échelle.
+
 ⚠️ Ce brief est antérieur à `ADR-0028` : cette section a été **ajoutée après coup**, le 2026-08-26,
 pour le mettre en conformité. Le partage en trois mains qu'il avait inventé est précisément ce que
 l'ADR institue.
