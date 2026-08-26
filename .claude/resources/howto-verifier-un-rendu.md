@@ -145,6 +145,59 @@ C'est le même silence que le `++` oublié, à un étage plus haut.
 
 **Le symptôme à guetter dans le journal** : `[TitleStage] ready` **sans** `[Level] ready` derrière.
 
+## ⚠️ Mesurer la distance de l'OBJET, pas du décor derrière lui (26/08/2026)
+
+**La leçon la plus chère de la session : cinq itérations sur un seul effet, et un brief de forge
+entier bâti sur le chiffre faux.**
+
+Un bolide tombe sur la lune. Pour dimensionner son rendu, j'ai calculé sa taille à l'écran depuis
+la distance de **la lune** — son centre, à 96,5 unités. Or le bolide ne vit pas au centre de la
+lune : il tombe sur sa **surface**, et le point d'impact est à **38,1 unités**, deux fois et demie
+plus près.
+
+| Point mesuré | Distance | Cadre visible | px/m | Un objet de 1,7 m |
+|---|---|---|---|---|
+| centre de la lune *(faux)* | 96,5 | 115,9 m | 4,66 | **7,9 px** |
+| **point d'impact** *(juste)* | **38,1** | **45,8 m** | **11,78** | **20 px** |
+
+**Ce que le faux chiffre a fait faire** : conclure que l'objet était trop petit pour porter une
+silhouette, donc l'agrandir — il rendait alors un aplat de 36 px, « un gros cube jaune ». Et écrire
+un brief demandant à la forge une recette de silhouette « pour 8 pixels », qu'elle a suivie
+consciencieusement.
+
+**La formule**, à appliquer au bon point :
+
+```
+px_par_metre = 540 / (2 × distance × tan(fov_vertical / 2))
+```
+
+⚠️ **540 et non 1080** : le rendu final passe par le post-process rétro. Et `fov = 62°` sur ce
+projet — vérifier dans `graybox.tscn` plutôt que de le supposer.
+
+⚠️ **Un décor lointain et ce qui vole devant lui ne sont pas à la même échelle d'écran.** L'erreur
+ne produit ni exception ni test rouge : elle se voit en jeu, tard, et par quelqu'un d'autre.
+
+## ⚠️ Juger une capture RÉDUITE pardonne exactement le défaut cherché
+
+Deux itérations perdues le 26/08/2026 : un effet de traînée déclaré bon — « la différence est
+franche » — sur des captures que j'avais **moi-même ramenées à 960 px** avant de les regarder.
+L'opérateur a rendu la même scène en pleine résolution : un carton découpé, arêtes polygonales,
+capuchon hexagonal, halo brun de bloom.
+
+`ADR-0006` dit « rendu et regardé ». **Regarder une réduction n'est pas regarder le rendu** : c'est
+regarder un flou qui pardonne, et il efface précisément ce qu'on cherche — un contour dur, une
+facette, une couture, une saturation.
+
+```bash
+python3 tools/inspect-capture.py <capture.png> [--at X,Y] [--size 700x500] [--zoom N]
+```
+
+Il découpe **à l'échelle 1:1**, vise par défaut la zone la plus lumineuse (donc l'effet), agrandit
+au **plus proche voisin** quand on le demande — les vrais pixels grossis, jamais des pixels
+inventés — et rend le taux d'écrêtage. **Il ne sait pas redimensionner**, et c'est tout l'intérêt.
+
+⚠️ La réduction reste permise pour **localiser** un sujet dans le cadre. Jamais pour **juger**.
+
 ## Un cadrage se CALCULE : une fraction d'une hauteur ne dit rien de ce qu'on voit
 
 Deux captures perdues le 2026-08-25, sur la même fonction de caméra, et aucune des deux erreurs

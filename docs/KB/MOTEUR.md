@@ -2,7 +2,7 @@
 titre: MOTEUR — cartographie de .claude/
 type: index
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-26
 ---
 
 # Le cerveau moteur — ce que Claude sait *faire* ici
@@ -37,6 +37,8 @@ soit une expertise à part. Aucun d'eux n'écrit du code de gameplay.
 | Script | Quand l'utiliser |
 | --- | --- |
 | `./scripts/audit-docs.sh` | Faire le point sur les plans et les briefs, ou clore un chantier. Il **dérive** l'état du dépôt — un brief est livré s'il a une sortie dans `docs/forge/output/` ou une ligne dans `ASSET_PROVENANCE.csv` — au lieu de lire un champ `Statut` qui a été tenu **5 fois sur 37**. `--fix` archive les livrés et les plans clos, `--strict` sort en erreur s'il reste de la dérive. Appelé par `/cloture` (étape 2 bis). ⚠️ Il ne décide pas : fermer un chantier reste une décision de l'opérateur, et **un plan qu'on archive ne doit rien emporter** — verser ses restes dans `docs/BACKLOG.md` d'abord |
+| `python3 tools/inspect-capture.py <png>` | Juger un rendu **à l'échelle 1:1** : découpe, vise l'effet, agrandit au plus proche voisin. Il **ne sait pas redimensionner** — une réduction efface le contour dur, la facette, la couture ou la saturation qu'on cherche | 2026-08-26 |
+| `./scripts/release.sh [vX.Y.Z]` | Fabriquer le livrable Windows en **un seul .exe** (preset « Windows Release », `embed_pck`) et publier la release GitHub. Vérifie le PRODUIT — taille, absence de `.pck` à côté — et non le code de retour de Godot, qui rend 0 sur un export partiel | 2026-08-26 |
 
 ## Hooks
 

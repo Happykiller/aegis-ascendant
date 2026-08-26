@@ -186,3 +186,28 @@ Deux pièges de plomberie qui font perdre la sortie :
 
 Et si un lancement précédent a été interrompu, **l'exe reste verrouillé** (`cp: Permission denied`) :
 tuer le processus et laisser Windows relâcher le handle avant de redéployer.
+
+
+## ⚠️ RÉCIDIVE — la règle a été enfreinte par son propre auteur (26/08/2026)
+
+Ce fichier interdit déjà, noir sur blanc : « `git add -A` quand l'arbre contient du travail dont on
+n'est pas l'auteur ». Elle a été enfreinte le 2026-08-26, **par la session qui l'avait lue le matin
+même**.
+
+Le geste : lancer un sous-agent `asset-forge` en arrière-plan, puis committer son propre travail
+avec `git add -A` pendant que l'agent écrivait encore. Résultat — le commit `69bbdd2`, censé porter
+une refonte de VFX, a emporté **677 lignes du script Blender de la forge**, dans un état
+intermédiaire qu'elle a remplacé dix minutes plus tard.
+
+**Ce que la récidive apprend, et qui n'était pas dans la règle** : le second écrivain n'est plus
+seulement « l'autre agent sous un autre compte ». C'est aussi, et surtout, **le sous-agent qu'on
+vient soi-même de lancer**. La règle visait un risque venu de l'extérieur ; le cas le plus fréquent
+vient de l'intérieur, et il est invisible parce qu'on ne se pense pas comme deux.
+
+**Le réflexe** : tant qu'un `Agent` tourne en tâche de fond, stager **nommément** les fichiers qu'on
+a écrits soi-même. `git status --porcelain` avant chaque commit, et tout fichier qu'on ne reconnaît
+pas appartient à quelqu'un d'autre.
+
+⚠️ Le contenu final était correct — la forge a repoussé sa version. Ce qui reste est **l'historique**,
+qui attribue à un commit de VFX un fichier qui n'a rien à y faire. Un `git log --follow` sur ce
+script mènera un jour quelqu'un à un commit qui ne parle pas de lui.

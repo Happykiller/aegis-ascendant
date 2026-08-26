@@ -130,6 +130,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   (`--amend`, `rebase`, `reset --hard`) : `--amend` vise `HEAD`, donc le commit de l'AUTRE s'il a
   committé en dernier, et un pathspec n'y change rien. Vécu : un commit détruit, sauvé par hasard
   parce qu'un `reset --soft` laisse le contenu dans l'index.
+  ⚠️ **RÉCIDIVE (26/08/2026), et elle déplace la règle** : le second écrivain n'est pas seulement
+  l'autre agent sous un autre compte — c'est aussi **le sous-agent qu'on vient soi-même de lancer**.
+  Un `git add -A` pendant qu'`asset-forge` travaillait a emporté 677 lignes de son script en cours
+  dans un commit de VFX. On ne se pense pas comme deux, et c'est là que ça casse.
 
 ## Process — étendre le ghost
 
@@ -161,6 +165,8 @@ Elles ont été refaites à la main, et ratées. Elles sont dans le dépôt : le
 | `./scripts/check.sh` | la porte de qualité — import + parse + tests ; **détecte un LFS non tiré** (sinon Godot importe les pointeurs comme des textures et l'erreur ment). ⚠️ **Toujours lui, jamais `test_runner.gd` seul** : le runner nu ne fait pas l'import, donc tout `class_name` neuf rend `Identifier not declared` — une itération perdue à chercher une faute qui n'existe pas |
 | `./scripts/deploy-win.sh` | le déploiement Windows ; **résout `powershell.exe` par chemin absolu** si le PATH interop de WSL ne l'expose pas |
 | `python3 tools/preview-svg.py <svg…>` | intégrer un asset de la forge **sans l'avoir regardé** (ADR-0006) |
+| `python3 tools/inspect-capture.py <png> [--at X,Y] [--zoom N]` | **juger une capture RÉDUITE** — la réduction pardonne exactement le défaut cherché (contour dur, facette, couture, saturation). Il découpe à **1:1**, agrandit au plus proche voisin, et **ne sait pas redimensionner**. Coût de l'oubli : un effet déclaré bon deux fois sur des images incapables de le montrer |
+| `./scripts/release.sh [vX.Y.Z]` | livrer un ZIP là où **un exe unique** suffit, et publier un export **partiel** — Godot rend 0 dessus, et un exe trop léger se lance sur un écran vide. Le script vérifie le PRODUIT (taille, absence de `.pck` à côté), pas le code de retour |
 | `python3 tools/bg-key-alpha.py --mode …` | réécrire à la main le détourage d'un PNG ChatGPT (fausse transparence → alpha) |
 | `python3 tools/derive-maps.py <hauteur>` | demander une **normal map** à un générateur (gradients faux, relief éclairé à l'envers) ; mesure aussi la **couture** de tuilage, qu'un « seamless » demandé ne garantit pas |
 | `./scripts/build-hull.sh [--check\|--all] <coque>` | régénérer une coque **sans** `-t 1` — le `.glb` sera valide et pourtant non reproductible ; `--check` mesure le déterminisme, que le contrat d'`export_hull()` ne vérifie pas. ⚠️ **`--check` ne contrôle QUE LE PREMIER `.glb` d'un script** (`grep … | head -1`) : un script qui en produit deux laisse le second sans garde, en silence (relevé 26/08/2026 sur `build_impact_debris.py`). ⚠️ Et **`ak.export_hull()` refuse tout matériau hors `MATERIAL_ORDER`** — donc hors palettes de faction : une pièce neutre (roche, décor) ne peut pas passer par le contrat du kit sans se voir imposer une couleur qui ne lui appartient pas |

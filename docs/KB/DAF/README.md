@@ -2,7 +2,7 @@
 titre: DAF — Dossier d'Architecture Fonctionnelle
 type: index
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-26
 ---
 
 # DAF — architecture fonctionnelle
@@ -11,6 +11,7 @@ Ce que le jeu fait, pour qui, et sous quels invariants.
 
 | Page | Ce qu'elle couvre | Statut | MAJ |
 |---|---|---|---|
+| [signaux.md](signaux.md) | Un effet qui change l'état du jeu **sans le montrer** se lit comme un défaut ; et un signal **mal lu** est pire qu'un signal absent — il enseigne une règle fausse. Cinq mécaniques prises en défaut le même jour | actif | 2026-08-26 |
 | [arc-de-jeu.md](arc-de-jeu.md) | La boucle complète d'une partie, ses cinq phases, et l'écart entre la doc de 07/2026 et le code | actif | 2026-08-23 |
 
 ## Les domaines fonctionnels, et où ils sont décrits

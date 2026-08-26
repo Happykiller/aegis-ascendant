@@ -34,3 +34,33 @@ acté, pas ce qui a été exploré.
 | 2026-08-25 | Le porteur de bouclier, de la coque au champ visible | Son comportement etait code et teste depuis deux jours, mais l'unite n'avait **ni Resource, ni scene, ni coque** : c'est `BRIEF-0046`, jamais execute, qui bloquait le lot 4 — pas l'equilibrage. Coque forgee, integree, deux exemplaires dans la vague (le premier ENSEIGNE le mecanisme seul, le second le fait payer). ⚠️ Puis le vrai manque : la **portee ne se voyait pas**, donc on subissait la bulle au lieu de jouer contre. C'est un ANNEAU et non un dome — trois essais de volume ont tous rendu un aplat, condamnes par leur SURFACE (bloom + `lift` de 1,25 du post-traitement) et non par leur reglage | [ADR-0027](../decisions/ADR-0027-une-phase-entre-les-deux-boss.md), `BRIEF-0046`, `tests/unit/test_enemy_shield.gd`, [howto-verifier-un-rendu](../../.claude/resources/howto-verifier-un-rendu.md) |
 
 > Découper par année (`HISTORY/README.md` + `HISTORY/2026.md`) au-delà de ~200 lignes.
+
+## 2026-08-26 — la phase 2 devient regardable, et cinq mécaniques cessent d'être muettes
+
+Journée de rendu et de lisibilité, à haute densité de corrections.
+
+**Ce qui a été livré** : le raccord entre les phases (un voile, plus de clignotement) et la
+respiration avant le boss final — le seul ❌ que la bible de design portait. Le décor de survol
+forgé remplace sa doublure, habillé de textures livrées par l'opérateur. L'impact du bolide est
+refait cinq fois avant de trouver sa forme : une roche peinte, un sillage filamenté, un nuage de
+particules. Et un dépôt public de releases, avec un livrable Windows **en un seul fichier**.
+
+**Ce que ça a coûté, et qui est désormais écrit** :
+
+- [howto-verifier-un-rendu](../../.claude/resources/howto-verifier-un-rendu.md) — **mesurer la
+  distance de l'OBJET, pas du décor derrière lui** (96,5 unités contre 38,1 : 7,9 px contre 20).
+  Cinq itérations, plus un brief de forge entier bâti sur le chiffre faux. Et **juger à 1:1** :
+  une capture réduite pardonne exactement le défaut cherché.
+- [DAF/signaux](DAF/signaux.md) — **la loi des signaux**, tirée de cinq mécaniques prises en défaut
+  le même jour : un effet qui ne se montre pas se lit comme un défaut, et un signal **mal lu** est
+  pire qu'un signal absent.
+- [ADR-0028](../decisions/ADR-0028-la-texture-est-une-etape.md) — la texture devient une **étape**
+  du process, avec son contrat d'expression de besoin. Et sa règle jumelle, née le même jour :
+  **une surface se texture, un VOLUME se peuple**.
+- [pratique-godot-ce-qui-ne-compile-pas](../../.claude/resources/pratique-godot-ce-qui-ne-compile-pas.md)
+  — deux fautes qui **compilent** : un nom de propriété faux (`check.sh` reste vert, la fonction
+  s'interrompt au milieu, le symptôme ressemble à un comportement plausible) et une **lambda qui
+  capture par valeur**.
+- [pratique-ecrivain-unique](../../.claude/resources/pratique-ecrivain-unique.md) — **récidive** :
+  le second écrivain n'est pas seulement l'autre agent, c'est **le sous-agent qu'on vient de
+  lancer**.
