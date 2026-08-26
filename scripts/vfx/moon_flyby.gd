@@ -50,6 +50,11 @@ const SkyShader := preload("res://shaders/space_background.gdshader")
 const MOON_MAPS := "res://assets/imported/textures/backgrounds/moon_regolith_height_1024"
 const ROCK_MAPS := "res://assets/imported/textures/backgrounds/asteroid_rock_height_1024"
 
+## Les coques du bolide et de l'éclat (`BRIEF-0086`). Chargées à l'exécution comme le
+## décor : le mécanisme doit rester jouable et mesurable avant que la forge ait livré.
+const BOLIDE_PATH := "res://assets/imported/models/vfx/bolide.glb"
+const SHARD_PATH := "res://assets/imported/models/vfx/impact_shard.glb"
+
 ## Combien de mètres de surface couvre une tuile. ⚠️ VALEURS DÉCIDÉES, pas mesurées — et
 ## c'est ICI qu'elles se rattrapent, pas dans l'image (`TEX-0001`, `TEX-0002`). Une tuile
 ## qui lit trop grosse ou trop fine est un chiffre à changer, jamais une texture à
@@ -194,6 +199,13 @@ const BOLIDE_SCALE := 1.8
 ## centimètre de plus qu'avant.
 const BOLIDE_SLANT := 26.0
 const BOLIDE_FROM := Vector3(-0.707, 0.0, -0.707)
+
+## Ajustement de taille de la coque forgée. La doublure faisait 3,06 × 1,90 × 2,57 m, la
+## coque livrée 2,70 × 1,38 × 1,10 : 1,13 retrouve la même masse à l'écran.
+## ⚠️ Au-delà de ~1,3, il faudrait revenir changer la taille DANS le script de la forge et
+## rebâtir, pas étirer le nœud — les UV portent l'échelle monde, et un étirement ferait
+## dériver le grain de la roche (mesuré à 8,0 m par tuile, comme les astéroïdes du survol).
+const BOLIDE_FIT := 1.13
 
 ## La traînée : un cône effilé DERRIÈRE le bolide, le long de sa course RÉELLE — pas de la
 ## verticale. C'est elle qui porte la lisibilité, pas la tête.
@@ -681,6 +693,42 @@ static func bolide_heading(target: Vector3, up: Vector3) -> Vector3:
 static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
 	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
 
+## Le maillage d'une coque forgée, ou `null` si elle n'a pas encore été livrée.
+##
+## ⚠️ Un SEUL maillage partagé par les quatorze éclats. Instancier la scène quatorze fois
+## allouerait quatorze copies d'une géométrie de vingt triangles, pour rien.
+static func _forged_mesh(path: String) -> Mesh:
+	if not ResourceLoader.exists(path):
+		return null
+	var packed := load(path) as PackedScene
+	if packed == null:
+		return null
+	var root := packed.instantiate()
+	var found: Mesh = null
+	for mesh in _meshes_under(root):
+		found = mesh.mesh
+		break
+	root.queue_free()
+	return found
+
+## Une pièce forgée posée au repos, ou la doublure géométrique si elle manque.
+##
+## ⚠️ L'AXE LONG DE LA COQUE EST Z, ET `basis_from_up()` ALIGNE Y. La pointer telle quelle
+## sur sa course la coucherait EN TRAVERS — relevé par la forge avant l'intégration, et
+## c'est le genre de défaut qui se voit à peine à huit pixels tout en annulant le travail.
+## On la fait donc tourner d'un quart de tour pour amener son axe long sur Y, une fois pour
+## toutes, dans un pivot : ainsi la base d'orientation reste la même que pour la traînée.
+func _forged(piece_name: String, path: String, radius: float) -> MeshInstance3D:
+	var mesh := _forged_mesh(path)
+	if mesh == null:
+		return _rock(piece_name, radius, MOON_CENTER)
+	var node := MeshInstance3D.new()
+	node.name = piece_name
+	node.mesh = mesh
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.position = MOON_CENTER
+	return node
+
 ## Un cône incandescent, préalloué. `bottom` et `top` sont les rayons à la base et au
 ## sommet ; la hauteur vaut 1 et se pose ensuite par l'échelle, ce qui évite de reconstruire
 ## un maillage à chaque image.
@@ -770,12 +818,17 @@ func _build_impact_kit() -> void:
 	# s'allume, comme tout ce qui brûle dans ce jeu.
 	# ⚠️ PETIT. À 1,9 de rayon il rendait un disque de 114 px posé sur la lune : plus gros
 	# que le choc qu'il allait produire, et sans profondeur puisqu'il n'est pas ombré.
-	_bolide = _rock("Bolide", 0.85 * BOLIDE_SCALE, MOON_CENTER)
+	_bolide = _forged("Bolide", BOLIDE_PATH, 0.85 * BOLIDE_SCALE)
 	var bolide_material := StandardMaterial3D.new()
 	bolide_material.albedo_color = IMPACT_WARM
 	bolide_material.emission_enabled = true
 	bolide_material.emission = IMPACT_WARM
-	bolide_material.emission_energy_multiplier = 3.4
+	# ⚠️ 1,4 ET NON 3,4, SUR MESURE DE LA FORGE. `glow_hdr_threshold` vaut 1,6 : au-dessus,
+	# le bloom ajoute un halo EN PIXELS D'ÉCRAN, donc à 8 px il noie la silhouette et
+	# arrondit le contour. On paierait une coque à 32 triangles pour rendre un disque.
+	# Sous le seuil, la géométrie se voit — et c'est elle, plus la traînée, qui porte la
+	# lecture. Relevé au §5 de `BRIEF-0086-report.md`.
+	bolide_material.emission_energy_multiplier = 1.4
 	bolide_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_bolide.material_override = bolide_material
 	_bolide.visible = false
@@ -820,12 +873,16 @@ func _build_impact_kit() -> void:
 	# se lisaient comme des trous. Ce sont des morceaux arrachés, ils prennent la lumière.
 	shard_material.albedo_color = Color(0.42, 0.39, 0.40)
 	shard_material.roughness = 1.0
+	var shard_mesh := _forged_mesh(SHARD_PATH)
 	for i in SHARD_COUNT:
-		var box := BoxMesh.new()
-		box.size = Vector3(0.72, 0.40, 1.0)
 		var shard := MeshInstance3D.new()
 		shard.name = "Shard_%02d" % i
-		shard.mesh = box
+		if shard_mesh != null:
+			shard.mesh = shard_mesh
+		else:
+			var box := BoxMesh.new()
+			box.size = Vector3(0.72, 0.40, 1.0)
+			shard.mesh = box
 		shard.material_override = shard_material
 		shard.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		shard.position = MOON_CENTER
@@ -859,6 +916,13 @@ func _advance_impacts(delta: float) -> void:
 		_bolide.visible = falling
 		if falling:
 			_bolide.position = bolide_position(_impact_at, _impact_up, _impact_age)
+			# ⚠️ L'AXE LONG DE LA COQUE EST +Z (`BRIEF-0086`), et `looking_at` fait pointer
+			# −Z vers sa cible : on vise donc l'OPPOSÉ de la course pour que le corps soit
+			# aligné dessus. Pointer `basis_from_up()` dessus, qui aligne Y, le coucherait
+			# en travers — un défaut à peine visible à huit pixels, et qui annulerait
+			# pourtant la silhouette qu'on vient de payer.
+			_bolide.basis = Basis.looking_at(-bolide_heading(_impact_at, _impact_up)) \
+				.scaled(Vector3.ONE * BOLIDE_FIT)
 	if _trail != null:
 		_trail.visible = falling
 		if falling:
