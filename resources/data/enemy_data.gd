@@ -137,6 +137,9 @@ enum Motion { PATH, HOMING }
 ## réelle de la sangsue est le frein, pas les dégâts.
 @export var drag_factor: float = 0.0
 @export var drain_per_second: float = 0.0
+## Dégâts de la détonation, pour une unité qui se fait sauter au bout de sa charge
+## (`Effect.LEECH`). Zéro = elle se contente de mordre puis s'éteint.
+@export var detonation_damage: float = 0.0
 
 # --- Coque articulée (EnemyPose) ---------------------------------------------
 

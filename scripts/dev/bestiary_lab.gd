@@ -146,8 +146,8 @@ func _build(slug: String) -> EnemyData:
 			data.burst_count = 14
 			# ⚠️ MEMES VALEURS QUE `resources/enemies/choir_mine.tres` — elles doivent
 			# bouger ENSEMBLE, sinon le banc d'essai ment sur l'unite qu'il presente.
-			data.alert_radius = 8.0
-			data.trigger_radius = 5.5
+			data.alert_radius = 10.5
+			data.trigger_radius = 7.5
 			data.arm_grace = 1.0
 			data.max_health = 44.0
 			data.windup_time = 0.7

@@ -45,6 +45,10 @@
 ; LES PV : 12 -> 44. A puissance 5 le joueur les evaporait avant qu elles ne
 ; s ouvrent ; la mine redevient quelque chose qu on contourne ou qu on paie.
 ;
+; ⚠️ RAYON REMONTE UNE SECONDE FOIS le 2026-08-26 — « les mines explosives c est ok,
+; par contre augmente encore le rayon de sensibilite ». trigger 5,5 -> 7,5, soit 15 m
+; de diametre pour un chasseur de 2,46 m : SIX fois sa taille. alert suit a 10,5.
+;
 ; LE SURSIS : arm_grace = 1,0. Il n annule PAS le telegraphe — l invariant
 ; d EnemyReaction tient, ce qui s allume part toujours. Il insere une etape AVANT
 ; lui : la mine reagit a l entree, et se referme si on ressort a temps.
@@ -69,8 +73,8 @@ projectile = ExtResource("2_shot")
 hitbox_radius = 0.58
 score_value = 90
 burst_count = 14
-alert_radius = 8.0
-trigger_radius = 5.5
+alert_radius = 10.5
+trigger_radius = 7.5
 arm_grace = 1.0
 windup_time = 0.7
 active_time = 0.15

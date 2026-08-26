@@ -45,6 +45,18 @@
 ; trigger 0,9 -> 2,6 (elle mord a une longueur de vaisseau) et alert 3,0 -> 5,5
 ; (validate() impose alert > trigger, et il faut une marge d eveil pour que le
 ; joueur voie venir la morsure).
+;
+; ⚠️ ET ELLE EXPLOSE le 2026-08-26 — « les ennemis rapides qui se collent à nous, ok,
+; mais je ne vois pas d effet, ils pourraient exploser comme des kamikazes ». Elle
+; garde sa morsure (freinage + drain) ET detone a la fin de sa charge si personne ne
+; l a abattue : 18 de degats, a 1,6 unite de portee en plus de son rayon.
+;
+; La portee est COURTE, et c est le sujet : elle punit celui qui l a laissee mordre,
+; pas celui qui est parti. Le joueur qui s arrache a la morsure a merite de s en tirer.
+;
+; Ce que ca ajoute sans doubler la mine : la mine PUNIT LE PASSAGE et se contourne ;
+; la sangsue PUNIT L ATTENTE et se tue. C est le joueur qui choisit s il tire ou s il
+; fuit, pas la rencontre.
 ; ============================================================================
 
 [resource]
@@ -67,5 +79,6 @@ active_time = 2.5
 rearm_time = 1.5
 drag_factor = 0.35
 drain_per_second = 6.0
+detonation_damage = 18.0
 moving_part_prefix = "Claw"
 open_angle_deg = 51.0

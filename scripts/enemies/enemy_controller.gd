@@ -133,6 +133,19 @@ var _neighbours: Array[EnemyController] = []
 ## vite pour que la mine soit prête au prochain passage.
 const OPEN_RATE := 2.2
 
+## Portée de la détonation d'une sangsue, en plus de son propre rayon. Courte, et c'est le
+## sujet : elle punit celui qui l'a laissée mordre, pas celui qui est parti.
+const DETONATION_REACH := 1.6
+
+## Le rayon tracteur du puits gravitique. ⚠️ Plus LARGE que les liens du porteur (0,55) :
+## il ne désigne pas une unité lointaine, il dit une force qui s'exerce sur TOI, et c'est
+## le seul lien de l'écran qui te concerne directement.
+const TRACTOR_WIDTH := 0.9
+## Violet profond du Null Choir. ⛔ Ni cyan ni corail : ils appartiennent au tir allié et
+## au tir ennemi, et un rayon de cette taille dans l'une de ces teintes se lirait comme un
+## projectile qu'on peut esquiver — alors qu'il n'y a rien à esquiver, seulement à fuir.
+const TRACTOR_TINT := Color(0.62, 0.28, 0.86)
+
 const AURA_RING_THICKNESS := 0.09
 
 ## Le champ peint (`TEX-0008`). Chargé à l'exécution : sans lui, le tore procédural reprend
@@ -149,6 +162,11 @@ var _aura_visual: Node3D
 var _aura_edge_material: StandardMaterial3D
 ## Les liens tendus du porteur vers les unités qu'il couvre. Préalloués : voir `_draw_link`.
 var _links: Array[MeshInstance3D] = []
+## L'horloge du défilement. Une seule pour tous les liens d'un porteur : ils battent
+## ensemble, ce qui les lit comme UN champ et non comme des câbles indépendants.
+var _link_age: float = 0.0
+## Le rayon tracteur, pour un puits gravitique. `null` pour toutes les autres familles.
+var _tractor: MeshInstance3D
 
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
@@ -183,6 +201,10 @@ func _ready() -> void:
 	# portée — sinon le jour où un asset tombe, c'est la MÉCANIQUE qui disparaît avec lui.
 	if data.effect == EnemyData.Effect.SHIELD_AURA and data.aura_radius > 0.0:
 		_build_aura_visual()
+	if data.effect == EnemyData.Effect.GRAVITY_WELL and data.pull_radius > 0.0:
+		_tractor = FlowLink.build(TRACTOR_TINT, TRACTOR_WIDTH, 2.6)
+		_tractor.name = "Tractor"
+		add_child(_tractor)
 	if _bullet_manager == null and not bullet_manager_path.is_empty():
 		setup(get_node(bullet_manager_path) as BulletManager)
 	_set_active(false)
@@ -412,12 +434,25 @@ func _update_reaction(delta: float) -> void:
 			_fire_salvo()
 		elif previous == EnemyReaction.State.ACTIVE:
 			_on_discharged()
+			# ⚠️ LA SANGSUE SE FAIT SAUTER AU BOUT DE SA MORSURE. Demande de l'opérateur —
+			# « elles mordent puis explosent ». Elle s'accroche, freine et draine ; si le
+			# joueur ne l'abat pas avant la fin de sa charge, elle détone.
+			#
+			# Ce que ça ajoute au rôle de l'unité, et pourquoi ce n'est pas redondant avec
+			# la mine : la mine PUNIT LE PASSAGE, la sangsue PUNIT L'ATTENTE. L'une se
+			# contourne, l'autre se tue — et c'est le joueur qui choisit s'il tire ou s'il
+			# fuit, pas la rencontre.
+			if data.effect == EnemyData.Effect.LEECH:
+				_detonate()
+			if _tractor != null:
+				_tractor.visible = false
 	_threat = EnemyReaction.threat_ratio(_state, _state_time, distance, data)
 	if _state != EnemyReaction.State.ACTIVE or _player == null:
 		return
 	match data.effect:
 		EnemyData.Effect.GRAVITY_WELL:
 			_pull_player()
+			_aim_tractor()
 		EnemyData.Effect.LEECH:
 			_leech_player(delta)
 
@@ -496,6 +531,7 @@ func _project_aura() -> void:
 	if _neighbours.is_empty():
 		_resolve_neighbours()
 	var reach := data.aura_radius * data.aura_radius
+	_link_age += get_physics_process_delta_time()
 	var linked := 0
 	for other in _neighbours:
 		if other.active and other.plane_position.distance_squared_to(plane_position) <= reach:
@@ -516,26 +552,12 @@ const LINK_COUNT := 8
 ## qui disparaissait par morceaux à l'anticrénelage. Il était là, il ne se voyait pas — ce
 ## qui, pour un signe dont le seul rôle est de DÉSIGNER, revient à ne pas exister.
 ## À 0,22 il pèse ~7 px : fin, mais continu.
-const LINK_WIDTH := 0.22
+const LINK_WIDTH := 0.55
 
 func _build_links() -> void:
-	var quad := QuadMesh.new()
-	# Unitaire : `billboard_basis` porte la largeur ET la longueur, un quad déjà
-	# dimensionné les multiplierait une seconde fois.
-	quad.size = Vector2(1.0, 1.0)
-	var material := _aura_material(0.7, 2.1)
 	for i in LINK_COUNT:
-		var link := MeshInstance3D.new()
+		var link := FlowLink.build(AURA_TINT, LINK_WIDTH, 2.1)
 		link.name = "Link_%02d" % i
-		link.mesh = quad
-		link.material_override = material
-		link.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		link.visible = false
-		# ⚠️ `top_level` : le lien est posé en coordonnées MONDE et ne doit PAS subir la
-		# transformation du porteur, qui bouge sous lui. Sans ça les liens dériveraient
-		# avec la coque — piège n°4 de `pratique-geometries-invisibles.md`, déjà payé sur
-		# les lasers du boss, où le tir partait du vide.
-		link.top_level = true
 		_aura_visual.add_child(link)
 		_links.append(link)
 
@@ -560,21 +582,11 @@ func _draw_link(index: int, target: Vector2) -> int:
 	var link := _links[index]
 	var from := GameplayPlane.to_world(plane_position)
 	var to := GameplayPlane.to_world(target)
-	var span := from.distance_to(to)
-	if span < 0.05:
-		link.visible = false
-		return index + 1
-	link.visible = true
-	link.position = (from + to) * 0.5
-	# ⚠️ FACE À LA CAMÉRA, ET NON SIMPLEMENT ALIGNÉ SUR LA CORDE. Premier essai avec
-	# `basis_from_up()` : l'axe long suivait bien la corde, mais l'orientation du ruban
-	# AUTOUR de cet axe restait arbitraire — selon la position de l'unité, on le voyait par
-	# la TRANCHE, donc quasiment pas. Un lien invisible ne désigne rien.
-	#
-	# `billboard_basis()` pose le ruban dans le plan de la caméra avec son axe long sur la
-	# projection écran de la corde : il garde toute sa largeur quel que soit l'angle. C'est
-	# la même correction que sur la traînée du bolide, et pour la même raison.
-	link.basis = MoonFlyby.billboard_basis(_camera_basis(), to - from, 0.0, span, LINK_WIDTH)
+	# ⚠️ LE SENS DU DÉFILEMENT EST L'ESSENTIEL, et c'est pour ça que `to` vient EN PREMIER.
+	# Les points remontent du protégé VERS le porteur : « c'est lui qui les tient », donc
+	# « tue-le ». L'opérateur avait lu le trait plein dans l'autre sens — « on me ralentit »
+	# — et un signe qui enseigne une règle fausse est pire qu'un signe absent.
+	FlowLink.aim(link, to, from, _camera_basis(), LINK_WIDTH, _link_age)
 	return index + 1
 
 ## La base de la caméra active, ou une base valide hors arbre de scène (tests, banc).
@@ -642,6 +654,44 @@ func _build_plume() -> void:
 	_plume.position = _attach_point("Engine_C")
 	_plume.snap_throttle(PLUME_THROTTLE)
 	add_child(_plume)
+
+## Le rayon tracteur du Null Maw, tendu du joueur VERS le puits.
+##
+## ⚠️ IL MANQUAIT TOTALEMENT. Relevé par l'opérateur : « les mines attractives et
+## immobilisantes, il leur manque du visuel ». Il avait raison — `pull_radius` n'avait
+## AUCUN rendu : le puits aspirait le chasseur sans qu'aucun signe ne le dise, et le joueur
+## sentait ses commandes lui échapper sans savoir pourquoi. Le même défaut de famille que
+## le freinage des sangsues, à un autre endroit.
+##
+## ⚠️ LE SENS DU DÉFILEMENT DIT LA MÉCANIQUE : les points vont du JOUEUR vers le PUITS,
+## donc « tu es tiré là-dedans ». L'inverse aurait dit « il te repousse » — la faute exacte
+## qui a fait mal lire le lien du porteur.
+func _aim_tractor() -> void:
+	if _tractor == null or _player == null:
+		return
+	var reach := data.pull_radius
+	if plane_position.distance_to(_player.plane_position) > reach:
+		_tractor.visible = false
+		return
+	_link_age += get_physics_process_delta_time()
+	FlowLink.aim(_tractor, GameplayPlane.to_world(_player.plane_position),
+		GameplayPlane.to_world(plane_position), _camera_basis(), TRACTOR_WIDTH, _link_age)
+
+## La détonation de la sangsue, à la fin de sa morsure.
+##
+## ⚠️ ELLE NE FRAPPE QUE SI LE JOUEUR EST ENCORE LÀ. Une explosion qui touche à travers tout
+## l'écran serait une punition qu'on ne peut ni voir venir ni éviter — et le joueur qui vient
+## de s'arracher à la morsure a précisément mérité de s'en sortir.
+##
+## Elle passe par `_on_died()` et non par une destruction directe : c'est ce chemin qui
+## prévient la vague, rend le score et joue l'explosion. Une unité qui disparaît par un
+## autre chemin laisserait la vague l'attendre indéfiniment.
+func _detonate() -> void:
+	if _player != null:
+		var reach := data.hitbox_radius + DETONATION_REACH
+		if plane_position.distance_to(_player.plane_position) <= reach:
+			_player.take_contact_damage(data.detonation_damage)
+	_health.apply_damage(_health.maximum * 2.0)
 
 ## A non-lethal hit: the killing blow is reported by `destroyed` instead.
 func _on_damaged(_amount: float, remaining: float) -> void:
