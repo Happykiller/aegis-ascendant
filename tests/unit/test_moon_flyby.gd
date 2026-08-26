@@ -262,3 +262,53 @@ func test_the_orientation_survives_a_vertical_up() -> void:
 		assert_almost_eq(basis.y.dot(up), 1.0, 0.001, "l'axe Y suit bien `up`")
 		assert_almost_eq(basis.x.length(), 1.0, 0.001, "et la base reste normée")
 		assert_true(absf(basis.x.dot(basis.y)) < 0.001, "et orthogonale")
+
+# --- Les impacts peints (TEX-0005 / TEX-0006, 2026-08-26) --------------------
+#
+# ⚠️ CES TESTS GARDENT CE QUE CINQ ITÉRATIONS ONT COÛTÉ. L'impact a été refait cinq fois —
+# sphère incandescente, traînée verticale, cône additif, coque agrandie, émission
+# procédurale — avant qu'une mesure ne dise pourquoi : la tête rend à 130 px, et à cette
+# taille une image autorisée à la taille d'affichage bat toute dérivation. Ce qui suit tient
+# les deux invariants géométriques qu'aucune capture ne vérifierait toute seule.
+
+func test_a_panel_lies_in_the_camera_plane() -> void:
+	var view := Basis.IDENTITY
+	var basis := FlybyScript.billboard_basis(view, Vector3(0.3, 0.8, -0.5), 0.0, 3.0, 2.0)
+	# Le panneau fait face à la caméra : son axe Z est celui qui pointe vers elle.
+	assert_almost_eq(basis.z.normalized().dot(view.z.normalized()), 1.0, 0.001,
+		"le panneau fait face à la caméra")
+	assert_true(absf(basis.x.dot(basis.y)) < 0.001, "et sa base reste orthogonale")
+
+## Sans rotation, l'axe long doit suivre la PROJECTION de la course dans le plan caméra —
+## c'est tout l'intérêt : un effet aligné sur une direction du monde est vu en enfilade dès
+## que la caméra plonge, et s'écrase en tache. C'était le défaut de l'itération n°2.
+func test_the_long_axis_follows_the_projected_course() -> void:
+	var view := Basis.IDENTITY
+	var course := Vector3(0.6, 0.8, -0.9)     # la composante Z est la profondeur
+	var basis := FlybyScript.billboard_basis(view, course, 0.0, 1.0, 1.0)
+	var attendu := Vector2(course.x, course.y).normalized()
+	var obtenu := Vector2(basis.y.x, basis.y.y).normalized()
+	assert_almost_eq(obtenu.dot(attendu), 1.0, 0.001,
+		"l'axe long suit la course une fois sa profondeur retirée")
+
+## ⚠️ LE CAS DÉGÉNÉRÉ N'EST PAS THÉORIQUE : une course parallèle à l'axe de vue se projette
+## en un POINT, et normaliser un vecteur nul rend `NaN` — qui se propage jusqu'à faire
+## disparaître le panneau sans une seule erreur au journal. Même piège que `basis_from_up`.
+func test_a_course_along_the_view_axis_does_not_produce_nan() -> void:
+	var view := Basis.IDENTITY
+	for course in [view.z, -view.z, view.z * 3.0]:
+		var basis := FlybyScript.billboard_basis(view, course, 0.0, 2.0, 2.0)
+		for axe in [basis.x, basis.y, basis.z]:
+			assert_true(axe.is_finite(), "aucun NaN dans la base")
+			assert_true(axe.length() > 0.001, "aucun axe effondré")
+
+## La rotation redresse les images, dont le sujet court sur la DIAGONALE et non sur l'axe
+## vertical. Sans elle, le sillage part de travers par rapport à la course.
+func test_the_roll_turns_the_panel_without_breaking_it() -> void:
+	var view := Basis.IDENTITY
+	var course := Vector3(0.0, 1.0, -0.2)
+	var droit := FlybyScript.billboard_basis(view, course, 0.0, 1.0, 1.0)
+	var tourne := FlybyScript.billboard_basis(view, course, FlybyScript.SPRITE_DIAGONAL, 1.0, 1.0)
+	assert_true(droit.y.dot(tourne.y) < 0.95, "la rotation change bien l'orientation")
+	assert_almost_eq(tourne.y.length(), 1.0, 0.001, "et la base reste normée")
+	assert_true(absf(tourne.x.dot(tourne.y)) < 0.001, "et orthogonale")

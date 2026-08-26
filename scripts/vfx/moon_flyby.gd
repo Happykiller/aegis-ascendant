@@ -55,6 +55,37 @@ const ROCK_MAPS := "res://assets/imported/textures/backgrounds/asteroid_rock_hei
 const BOLIDE_PATH := "res://assets/imported/models/vfx/bolide.glb"
 const SHARD_PATH := "res://assets/imported/models/vfx/impact_shard.glb"
 
+# --- Le bolide PEINT (TEX-0005 / TEX-0006) -----------------------------------
+#
+# ⚠️ POURQUOI DES IMAGES ET NON DES PRIMITIVES ÉCLAIRÉES. Cinq itérations ont échoué à
+# construire cet impact avec de la géométrie et des cartes dérivées : « un simple cercle
+# jaune », puis une traînée vue en enfilade, puis « un carton découpé », puis « un gros cube
+# jaune », puis une émission procédurale que le bloom noyait. La mesure a fini par dire
+# pourquoi : la tête rend à **130 × 120 px**, et son contraste local était DÉJÀ de 13,67 —
+# quasiment celui de la lune. La matière était là ; c'est la technique qui ne convenait pas.
+#
+# À cette taille, une image **autorisée à la taille d'affichage** bat toute dérivation
+# depuis une tuile de 1024 étalée sur huit mètres de monde.
+const BOLIDE_SPRITE := "res://assets/imported/vfx/bolide_incandescent.png"
+const TRAIL_SPRITE := "res://assets/imported/vfx/trainee_flamme.png"
+
+## Côté du quad, en mètres. ⚠️ MESURÉ SUR L'IMAGE, pas choisi : le bolide occupe 64,6 % de
+## son cadre et la traînée 88,6 %. Pour une roche de 2,5 m il faut donc un quad de
+## 2,5 / 0,646 ≈ 3,9 ; pour un sillage de 14 m, 14 / 0,886 ≈ 15,8.
+const BOLIDE_SPRITE_SIZE := 3.9
+const TRAIL_SPRITE_SIZE := 15.8
+
+## ⚠️ LE CONTENU DES DEUX IMAGES COURT SUR LEUR DIAGONALE — extrémité chaude en bas à
+## droite, dissipation vers le haut à gauche — et non sur leur axe vertical. Sans cette
+## rotation, le sillage partirait de travers par rapport à la course, ce qui se voit
+## immédiatement et n'a l'air que d'un « effet mal placé ».
+const SPRITE_DIAGONAL := -45.0
+
+## Où se trouve l'extrémité CHAUDE de la traînée dans son image, en fraction du côté depuis
+## le centre. ⚠️ Mesurée : le sujet occupe 88,6 % du cadre et sa pointe est près du coin bas
+## droit. Sans ce recul, la flamme naîtrait au milieu du panneau — donc à côté du bolide.
+const TRAIL_HEAD_OFFSET := 0.42
+
 ## Combien de mètres de surface couvre une tuile. ⚠️ VALEURS DÉCIDÉES, pas mesurées — et
 ## c'est ICI qu'elles se rattrapent, pas dans l'image (`TEX-0001`, `TEX-0002`). Une tuile
 ## qui lit trop grosse ou trop fine est un chiffre à changer, jamais une texture à
@@ -278,6 +309,12 @@ var _impact_up: Vector3 = Vector3.UP
 ## La matière a-t-elle été trouvée ? ⚠️ Le journal le dit au montage, comme la doublure :
 ## une surface en aplat qui se croit texturée est exactement le genre de défaut muet que
 ## le projet paie deux fois (`ADR-0006`, `ADR-0025`).
+## Les impacts se jouent-ils avec les images de l'opérateur (`TEX-0005`/`TEX-0006`) ou avec
+## leur repli géométrique ? Le niveau le journalise : une doublure qui se croit peinte est
+## exactement le genre de défaut muet que ce fichier collectionne.
+var _painted_bolide: bool = false
+var _painted_trail: bool = false
+
 var _dressed_moon: bool = false
 var _dressed_rocks: bool = false
 
@@ -312,6 +349,10 @@ func is_stand_in() -> bool:
 ## calotte en aplat et une calotte texturée ne se distinguent pas dans un journal muet.
 func has_surface_maps() -> bool:
 	return _dressed_moon and _dressed_rocks
+
+## Les impacts se jouent-ils avec les images peintes, ou avec leur repli géométrique ?
+func has_painted_impacts() -> bool:
+	return _painted_bolide and _painted_trail
 
 ## Montre ou cache le survol. ⚠️ Coupe AUSSI `_process` : un décor invisible qui continue
 ## de faire dériver ses rochers dépense pour rien pendant les trois quarts de la partie.
@@ -734,6 +775,57 @@ static func bolide_heading(target: Vector3, up: Vector3) -> Vector3:
 static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
 	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
 
+## Le cône thermique — REPLI de la traînée peinte (`TEX-0006`). Il reste au dépôt parce que
+## le décor doit se jouer sans ses images, et parce que son dégradé thermique est juste :
+## ce qui lui manquait n'était pas la couleur mais la STRUCTURE — les filaments et les
+## braises, qu'un shader simple n'invente pas.
+func _build_trail_cone() -> MeshInstance3D:
+	var cone := _cone("ImpactTrail", TRAIL_RADIUS, 0.0, 1.0, 1.3)
+	# Sans capuchons : le disque plat du bout se lisait comme un hexagone découpé.
+	var mesh := cone.mesh as CylinderMesh
+	mesh.cap_top = false
+	mesh.cap_bottom = false
+	_fade_along_length(cone)
+	add_child(cone)
+	return cone
+
+## Un panneau incandescent portant une image, ou `null` si elle n'a pas été livrée.
+##
+## `additive` : la traînée s'AJOUTE au ciel (le noir de l'image n'y contribue rien, donc
+## aucun détourage n'est nécessaire). Le bolide, lui, est en alpha : ses plaques sont
+## SOMBRES MAIS OPAQUES, et un additif les rendrait transparentes — on verrait les étoiles
+## à travers la roche.
+func _sprite_panel(panel_name: String, path: String, size: float, additive: bool,
+		energy: float) -> MeshInstance3D:
+	if not ResourceLoader.exists(path):
+		return null
+	var quad := QuadMesh.new()
+	quad.size = Vector2(size, size)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load(path) as Texture2D
+	material.albedo_color = Color.WHITE
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.emission_enabled = true
+	material.emission_texture = material.albedo_texture
+	material.emission = Color.WHITE
+	# ⚠️ SOUS LE SEUIL DE BLOOM (1,6). C'est le dépassement qui a noyé les plaques du bolide
+	# à l'itération précédente : le halo des fissures débordait et remplissait la roche.
+	material.emission_energy_multiplier = energy
+	if additive:
+		material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	# Un panneau qui écrirait la profondeur masquerait ce qui passe derrière lui.
+	material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var node := MeshInstance3D.new()
+	node.name = panel_name
+	node.mesh = quad
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.position = MOON_CENTER
+	node.visible = false
+	return node
+
 ## Pose une carte sur un matériau si elle existe, sans rien casser si elle manque.
 static func _apply_map(material: StandardMaterial3D, slot: String, path: String) -> void:
 	if ResourceLoader.exists(path):
@@ -880,6 +972,48 @@ static func plume_fade(life: float) -> float:
 		return t / 0.15
 	return 1.0 - (t - 0.15) / 0.85
 
+## La base de la caméra active, ou une base de repli hors arbre de scène.
+##
+## ⚠️ `get_camera_3d()` rend `null` en mode `--script` (pas d'arbre), et une base nulle ferait
+## disparaître les panneaux sans une erreur. Le repli n'est pas « joli », il est VALIDE —
+## c'est tout ce qu'on lui demande.
+func _camera_basis() -> Basis:
+	if is_inside_tree():
+		var cam := get_viewport().get_camera_3d()
+		if cam != null:
+			return cam.global_transform.basis
+	return Basis.IDENTITY
+
+## Base d'un panneau posé DANS LE PLAN DE LA CAMÉRA, dont l'axe long suit la projection
+## écran de `heading`.
+##
+## ⚠️ C'est ce qui règle le défaut de l'itération n°2 : un effet aligné sur une direction du
+## MONDE est vu en enfilade dès que la caméra plonge, et s'écrase en tache. Un panneau posé
+## dans le plan de la caméra garde toute sa longueur à l'écran, quel que soit l'angle.
+##
+## `roll` tourne le panneau autour de l'axe de vue : les deux images de l'opérateur portent
+## leur sujet sur la DIAGONALE, il faut donc les redresser (`SPRITE_DIAGONAL`).
+##
+## Pure et statique, et elle reçoit la base de la caméra en paramètre plutôt que d'aller la
+## chercher : en mode `--script` il n'y a pas d'arbre de scène, donc pas de caméra.
+static func billboard_basis(camera_basis: Basis, heading: Vector3, roll: float,
+		length: float, width: float) -> Basis:
+	var toward_camera := camera_basis.z.normalized()
+	# `heading` projeté dans le plan de la caméra : on retire sa composante de profondeur.
+	var axis := heading - toward_camera * heading.dot(toward_camera)
+	# ⚠️ CAS DÉGÉNÉRÉ, ET IL EST SILENCIEUX : une course parallèle à l'axe de vue se projette
+	# en un point. Normaliser un vecteur nul rend `NaN`, qui se propage jusqu'à faire
+	# disparaître le panneau sans une seule erreur au journal — même piège que
+	# `basis_from_up()`. On retombe alors sur la verticale écran, qui est toujours valide.
+	if axis.length_squared() < 0.000001:
+		axis = camera_basis.y
+	axis = axis.normalized()
+	var side := axis.cross(toward_camera).normalized()
+	var a := deg_to_rad(roll)
+	var turned_side := side * cos(a) + axis * sin(a)
+	var turned_axis := axis * cos(a) - side * sin(a)
+	return Basis(turned_side * width, turned_axis * length, toward_camera)
+
 ## Une base orientée dont l'axe Y suit `up`. ⚠️ Les cônes de Godot (`CylinderMesh`) sont
 ## bâtis le long de +Y : sans cette base, traînée et gerbe pointeraient vers le haut du
 ## MONDE et non vers la verticale locale de la lune — un détail qui ne se voit qu'aux
@@ -903,53 +1037,58 @@ func _build_impact_kit() -> void:
 	# s'allume, comme tout ce qui brûle dans ce jeu.
 	# ⚠️ PETIT. À 1,9 de rayon il rendait un disque de 114 px posé sur la lune : plus gros
 	# que le choc qu'il allait produire, et sans profondeur puisqu'il n'est pas ombré.
-	_bolide = _forged("Bolide", BOLIDE_PATH, 0.85 * BOLIDE_SCALE)
-	var bolide_material := StandardMaterial3D.new()
-	# ⚠️ UNE ROCHE FISSURÉE, PAS UNE BRAISE UNIFORME. C'est la cible donnée par l'opérateur :
-	# des plaques SOMBRES séparées par des fissures incandescentes. Un aplat chaud — ce
-	# qu'il y avait — n'a ni matière ni forme ; l'incandescence doit se loger dans les CREUX
-	# et nulle part ailleurs.
-	bolide_material.albedo_color = Color(0.11, 0.10, 0.11)
-	_apply_map(bolide_material, "albedo_texture", ROCK_MAPS + "_mul.png")
-	_apply_map(bolide_material, "normal_texture", ROCK_MAPS + "_nrm.png")
-	bolide_material.normal_enabled = bolide_material.normal_texture != null
-	# La tuile de roche couvre 8 m ; le bolide en fait ~2,3. Sans retuilage on n'en verrait
-	# qu'un quart — deux ou trois plaques géantes, pas un réseau de fissures.
-	bolide_material.uv1_scale = Vector3.ONE * 4.0
-	bolide_material.emission_enabled = true
-	# Le masque est DÉRIVÉ de la hauteur de `TEX-0002` (`derive-maps.py --glow`) : l'inverse
-	# durci de la hauteur, donc clair au fond des crevasses et éteint sur les plaques —
-	# 11,1 % de la surface allumée, mesuré. Rien de généré, tout dérivé.
-	_apply_map(bolide_material, "emission_texture", ROCK_MAPS + "_glow.png")
-	bolide_material.emission = Color(1.0, 0.42, 0.10)
-	# ⚠️ 1,2 ET NON 3,2 — MESURÉ, PAS ESTIMÉ. À 3,2 la tête rendait une luminance MOYENNE de
-	# 165/255 avec 11 % de pixels écrêtés : les plaques sombres disparaissaient et il ne
-	# restait qu'un aplat crème. Le contraste local était pourtant bon (13,67, quasiment
-	# celui de la lune) — la matière ÉTAIT là, l'exposition la noyait.
-	#
-	# C'est la nuance que « ce qui doit rester discret doit être FIN » ne dit pas : une
-	# fissure fine reste fine, mais si le fond qu'elle traverse est lui-même surexposé, il
-	# n'y a plus de contraste pour la porter. Ce qui brûle a besoin de quelque chose de
-	# SOMBRE autour, sinon rien ne brûle.
-	bolide_material.emission_energy_multiplier = 1.2
-	# ⚠️ ÉCLAIRÉ, ET NON PLUS EN APLAT. Non éclairée, la coque rendait sa couleur pleine sur
-	# toute sa surface : à vingt pixels, un aplat n'a pas de forme — on paie 32 triangles
-	# pour dessiner un rectangle. Éclairée, ses facettes prennent la lumière et la
-	# silhouette existe ; l'émission ne sert plus qu'à dire qu'elle brûle, et reste sous le
-	# seuil de bloom (1,6) pour ne pas la renoyer dans un halo.
-	_bolide.material_override = bolide_material
+	# Les images d'abord ; la coque forgée et le cône restent le REPLI, comme le décor.
+	_bolide = _sprite_panel("Bolide", BOLIDE_SPRITE, BOLIDE_SPRITE_SIZE, false, 1.2)
+	_painted_bolide = _bolide != null
+	if _bolide == null:
+		_bolide = _forged("Bolide", BOLIDE_PATH, 0.85 * BOLIDE_SCALE)
+	# ⚠️ LE REPLI SEULEMENT. Ce matériau habille la coque forgée quand l'image n'est pas là ;
+	# l'appliquer sur le panneau peint écraserait le sprite qu'on vient de poser.
+	if not _painted_bolide:
+		var bolide_material := StandardMaterial3D.new()
+		# ⚠️ UNE ROCHE FISSURÉE, PAS UNE BRAISE UNIFORME. C'est la cible donnée par l'opérateur :
+		# des plaques SOMBRES séparées par des fissures incandescentes. Un aplat chaud — ce
+		# qu'il y avait — n'a ni matière ni forme ; l'incandescence doit se loger dans les CREUX
+		# et nulle part ailleurs.
+		bolide_material.albedo_color = Color(0.11, 0.10, 0.11)
+		_apply_map(bolide_material, "albedo_texture", ROCK_MAPS + "_mul.png")
+		_apply_map(bolide_material, "normal_texture", ROCK_MAPS + "_nrm.png")
+		bolide_material.normal_enabled = bolide_material.normal_texture != null
+		# La tuile de roche couvre 8 m ; le bolide en fait ~2,3. Sans retuilage on n'en verrait
+		# qu'un quart — deux ou trois plaques géantes, pas un réseau de fissures.
+		bolide_material.uv1_scale = Vector3.ONE * 4.0
+		bolide_material.emission_enabled = true
+		# Le masque est DÉRIVÉ de la hauteur de `TEX-0002` (`derive-maps.py --glow`) : l'inverse
+		# durci de la hauteur, donc clair au fond des crevasses et éteint sur les plaques —
+		# 11,1 % de la surface allumée, mesuré. Rien de généré, tout dérivé.
+		_apply_map(bolide_material, "emission_texture", ROCK_MAPS + "_glow.png")
+		bolide_material.emission = Color(1.0, 0.42, 0.10)
+		# ⚠️ 1,2 ET NON 3,2 — MESURÉ, PAS ESTIMÉ. À 3,2 la tête rendait une luminance MOYENNE de
+		# 165/255 avec 11 % de pixels écrêtés : les plaques sombres disparaissaient et il ne
+		# restait qu'un aplat crème. Le contraste local était pourtant bon (13,67, quasiment
+		# celui de la lune) — la matière ÉTAIT là, l'exposition la noyait.
+		#
+		# C'est la nuance que « ce qui doit rester discret doit être FIN » ne dit pas : une
+		# fissure fine reste fine, mais si le fond qu'elle traverse est lui-même surexposé, il
+		# n'y a plus de contraste pour la porter. Ce qui brûle a besoin de quelque chose de
+		# SOMBRE autour, sinon rien ne brûle.
+		bolide_material.emission_energy_multiplier = 1.2
+		# ⚠️ ÉCLAIRÉ, ET NON PLUS EN APLAT. Non éclairée, la coque rendait sa couleur pleine sur
+		# toute sa surface : à vingt pixels, un aplat n'a pas de forme — on paie 32 triangles
+		# pour dessiner un rectangle. Éclairée, ses facettes prennent la lumière et la
+		# silhouette existe ; l'émission ne sert plus qu'à dire qu'elle brûle, et reste sous le
+		# seuil de bloom (1,6) pour ne pas la renoyer dans un halo.
+		_bolide.material_override = bolide_material
+		_bolide.material_override = bolide_material
 	_bolide.visible = false
 	add_child(_bolide)
-	# ⚠️ ÉNERGIE SOUS LE SEUIL DE BLOOM (1,6) : à 3,0 le halo dessinait un anneau BRUN
-	# autour de la traînée, et son cœur saturait en aplat. Un effet censé être une lueur
-	# devenait une forme pleine à contour dur.
-	_trail = _cone("ImpactTrail", TRAIL_RADIUS, 0.0, 1.0, 1.3)
-	# ⚠️ SANS CAPUCHONS : le disque plat du bout se lisait comme un hexagone découpé.
-	var trail_mesh := _trail.mesh as CylinderMesh
-	trail_mesh.cap_top = false
-	trail_mesh.cap_bottom = false
-	_fade_along_length(_trail)
-	add_child(_trail)
+	_trail = _sprite_panel("ImpactTrail", TRAIL_SPRITE, TRAIL_SPRITE_SIZE, true, 1.3)
+	_painted_trail = _trail != null
+	if _trail != null:
+		add_child(_trail)
+	else:
+		_trail = _build_trail_cone()
+
 	_plume = _cone("ImpactPlume", 1.0, 1.0, 1.0, 1.5)
 	# ⚠️ SANS COUVERCLES : un tube plein, vu d'au-dessus, redevient le disque jaune qu'on
 	# corrige. C'est l'ANNEAU qui dit l'onde de choc.
@@ -1027,31 +1166,38 @@ func _advance_impacts(delta: float) -> void:
 		return
 	_impact_age += delta
 	var falling := _impact_age < BOLIDE_FALL
+	var course := bolide_heading(_impact_at, _impact_up)
+	var view := _camera_basis()
 	if _bolide != null:
 		_bolide.visible = falling
 		if falling:
 			_bolide.position = bolide_position(_impact_at, _impact_up, _impact_age)
-			# ⚠️ L'AXE LONG DE LA COQUE EST +Z (`BRIEF-0086`), et `looking_at` fait pointer
-			# −Z vers sa cible : on vise donc l'OPPOSÉ de la course pour que le corps soit
-			# aligné dessus. Pointer `basis_from_up()` dessus, qui aligne Y, le coucherait
-			# en travers — un défaut à peine visible à huit pixels, et qui annulerait
-			# pourtant la silhouette qu'on vient de payer.
-			_bolide.basis = Basis.looking_at(-bolide_heading(_impact_at, _impact_up)) \
-				.scaled(Vector3.ONE * BOLIDE_FIT)
+			if _painted_bolide:
+				_bolide.basis = billboard_basis(view, course, SPRITE_DIAGONAL, 1.0, 1.0)
+			else:
+				# Repli : l'axe long de la coque forgée est +Z (`BRIEF-0086`), et
+				# `looking_at` fait pointer −Z vers sa cible — on vise donc l'OPPOSÉ de la
+				# course pour que le corps soit aligné dessus.
+				_bolide.basis = Basis.looking_at(-course).scaled(Vector3.ONE * BOLIDE_FIT)
 	if _trail != null:
 		_trail.visible = falling
 		if falling:
 			# Le cône s'étire DERRIÈRE la tête, le long de la verticale de chute, et son
 			# origine est en son milieu : d'où le demi-décalage.
-			var span := trail_length(_impact_age)
-			# ⚠️ `heading` ET NON `up` : la traînée suit la COURSE RÉELLE. Alignée sur la
-			# verticale, elle était vue en enfilade depuis la caméra en plongée et se
-			# lisait comme une tache, pas comme un trait.
-			var heading := bolide_heading(_impact_at, _impact_up)
-			_trail.basis = basis_from_up(heading)
-			_trail.scale = Vector3(1.0, maxf(span, 0.001), 1.0)
-			_trail.position = bolide_position(_impact_at, _impact_up, _impact_age) \
-				+ heading * span * 0.5
+			var head := bolide_position(_impact_at, _impact_up, _impact_age)
+			if _painted_trail:
+				# ⚠️ L'EXTRÉMITÉ CHAUDE DE L'IMAGE N'EST PAS SON CENTRE : elle est près d'un
+				# coin. On recule donc le panneau le long de la course pour que ce point
+				# tombe sur la tête du bolide, sinon la flamme naît à côté du caillou.
+				_trail.basis = billboard_basis(view, course, SPRITE_DIAGONAL, 1.0, 1.0)
+				_trail.position = head + course * (TRAIL_SPRITE_SIZE * TRAIL_HEAD_OFFSET)
+			else:
+				# Repli : le cône suit la COURSE RÉELLE et non la verticale — alignée sur
+				# elle, la traînée était vue en enfilade et se lisait comme une tache.
+				var span := trail_length(_impact_age)
+				_trail.basis = basis_from_up(course)
+				_trail.scale = Vector3(1.0, maxf(span, 0.001), 1.0)
+				_trail.position = head + course * span * 0.5
 	var since := _impact_age - BOLIDE_FALL
 	if since < 0.0:
 		return

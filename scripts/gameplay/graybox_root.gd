@@ -433,8 +433,9 @@ func _build_moon_flyby() -> void:
 	# ⚠️ La géométrie et la MATIÈRE sont deux livraisons distinctes (`ADR-0028`) : la forge
 	# livre l'une, l'opérateur l'autre. Une doublure texturée n'est plus tout à fait une
 	# doublure, et un journal qui ne le dirait pas laisserait croire à l'une ou à l'autre.
-	print("[Level] moon flyby: surface %s"
-		% ("texturee (TEX-0001/0002)" if _moon_flyby.has_surface_maps() else "en aplat"))
+	print("[Level] moon flyby: surface %s, impacts %s"
+		% ["texturee (TEX-0001/0002)" if _moon_flyby.has_surface_maps() else "en aplat",
+		   "peints (TEX-0005/0006)" if _moon_flyby.has_painted_impacts() else "en repli geometrique"])
 
 ## Monte le voile de raccord, caché. Bâti par code et non posé dans `graybox.tscn` : la
 ## scène est éditée par une autre session, et un `.tscn` se fusionne très mal à deux —
