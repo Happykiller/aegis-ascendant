@@ -1,6 +1,6 @@
 # BRIEF-0086 — Le bolide et ses éclats : donner un corps aux impacts sur la lune
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-26

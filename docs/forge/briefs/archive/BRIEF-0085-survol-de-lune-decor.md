@@ -1,6 +1,6 @@
 # BRIEF-0085 — Le décor de survol : lune à cratères et champ d'astéroïdes
 
-- **Statut** : ✅ **PRÊT À ENGAGER** — la garde GPU est levée, mesure faite le 2026-08-26 (voir §Contexte)
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-25

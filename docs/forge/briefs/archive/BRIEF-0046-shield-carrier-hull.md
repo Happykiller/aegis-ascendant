@@ -1,6 +1,6 @@
 # BRIEF-0046 — Coque 3D du Shield Carrier
 
-- **Statut** : intégré (coque livrée le 2026-08-25, `.tres` / `.tscn` / codex / vague câblés dans la foulée)
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-23
