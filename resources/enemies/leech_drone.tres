@@ -27,6 +27,26 @@
 
 [ext_resource type="Script" path="res://resources/data/enemy_data.gd" id="1_data"]
 
+; ============================================================================
+; ⚠️ CORRIGE LE 2026-08-26 — LA SANGSUE NE MORDAIT JAMAIS.
+;
+; Releve par l operateur en jouant : « il y a les autres petits ennemis rapides
+; qui viennent se mettre autour de moi sans rien faire ? ». Il avait raison, et
+; c etait arithmetique :
+;
+;   trigger_radius valait 0,9 unite — moins d une DEMI-LONGUEUR du chasseur
+;   (2,46 m) — pour une unite qui vole a 9,0 contre 14,0 au joueur.
+;
+; Une poursuivante plus LENTE que sa proie ne peut pas la rattraper. Elle
+; gravitait donc a son rayon d eveil (3,0), n atteignait JAMAIS l etat actif, et
+; ne freinait jamais personne. Le freinage etait cable, teste, documente — et
+; injouable, parce qu une seule valeur le rendait inatteignable.
+;
+; trigger 0,9 -> 2,6 (elle mord a une longueur de vaisseau) et alert 3,0 -> 5,5
+; (validate() impose alert > trigger, et il faut une marge d eveil pour que le
+; joueur voie venir la morsure).
+; ============================================================================
+
 [resource]
 script = ExtResource("1_data")
 motion = 1
@@ -40,8 +60,8 @@ hitbox_radius = 0.45
 score_value = 160
 homing_turn_rate = 2.2
 chase_time = 8.0
-alert_radius = 3.0
-trigger_radius = 0.9
+alert_radius = 5.5
+trigger_radius = 2.6
 windup_time = 0.35
 active_time = 2.5
 rearm_time = 1.5

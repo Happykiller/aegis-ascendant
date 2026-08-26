@@ -43,6 +43,9 @@ var _external_pull: Vector2 = Vector2.ZERO
 ## cycle de vie que l'aspiration : posée par les agresseurs, consommée en tête de
 ## `_physics_process`, quel que soit l'état du chasseur.
 var _external_drag: float = 0.0
+## Le freinage de l'image précédente, gardé pour l'AFFICHER. `consume_drag()` le remet à
+## zéro par contrat ; sans cette copie, la plume ne saurait jamais qu'on freine.
+var _shown_drag: float = 0.0
 var _fire_timer: float = 0.0
 ## Demo/attract mode (cmdline `--demo`): auto-fire + gentle strafe, for captures
 ## and hands-off showcase. Never active in a normal run.
@@ -144,6 +147,12 @@ func _physics_process(delta: float) -> void:
 	# l'appontage.
 	var pull := consume_pull()
 	var drag := consume_drag()
+	# ⚠️ RETENU POUR L'AFFICHAGE, et c'est le sujet du correctif. Le freinage changeait la
+	# vitesse sans qu'AUCUN signal ne le dise : l'opérateur a joué au milieu des sangsues
+	# sans comprendre qu'elles agissaient — « elles viennent se mettre autour de moi sans
+	# rien faire ? ». Un effet qui modifie l'état du jeu et ne se montre pas se lit comme
+	# des commandes molles, donc comme un défaut du jeu et non comme une menace.
+	_shown_drag = drag
 	if not _alive:
 		_respawn_timer -= delta
 		if _respawn_timer <= 0.0:
@@ -422,8 +431,28 @@ func _update_plumes(input: Vector2) -> void:
 	if plume == null:
 		return
 	var ratio := EnginePlume.throttle_from(input, speed_ratio(), plume)
+	# LE SIGNAL DU FREINAGE : les tuyères s'étranglent. C'est le bon endroit pour le dire —
+	# c'est le JOUEUR qui subit, donc c'est sur SON vaisseau que ça doit se lire, pas sur la
+	# sangsue qui est ailleurs à l'écran.
+	#
+	# ⚠️ Et c'est la plume et non une teinte : le cyan appartient à la propulsion alliée
+	# (`space_background.gdshader`, DA §6). Le colorer pour dire « on te freine » volerait
+	# une couleur qui signifie déjà autre chose.
+	ratio *= drag_throttle(_shown_drag)
 	for jet in _engine_plumes:
 		jet.set_throttle(ratio)
+
+## Ce qu'il reste de poussée visible sous un freinage donné.
+##
+## Pure et statique : le rapport entre ce que le joueur subit et ce qu'il voit est une règle
+## de lisibilité, pas un détail d'affichage — elle se vérifie sans arbre de scène.
+##
+## ⚠️ ELLE EXAGÈRE VOLONTAIREMENT. Un frein de 0,35 (une sangsue) coupe 35 % de la vitesse
+## mais n'étranglerait la plume que d'autant, ce qui ne se voit pas. On l'amplifie pour que
+## la première sangsue soit déjà lisible — le signal doit apparaître AVANT que le joueur ne
+## se demande si ses commandes répondent mal.
+static func drag_throttle(drag: float) -> float:
+	return clampf(1.0 - clampf(drag, 0.0, 1.0) * 1.6, 0.12, 1.0)
 
 func _build_muzzle_flashes() -> void:
 	var quad := QuadMesh.new()

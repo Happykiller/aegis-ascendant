@@ -195,8 +195,9 @@ func _build(slug: String) -> EnemyData:
 			data.effect = EnemyData.Effect.LEECH
 			data.drag_factor = 0.35
 			data.drain_per_second = 6.0
-			data.alert_radius = 3.0
-			data.trigger_radius = 0.9
+			# ⚠️ MEMES VALEURS QUE `resources/enemies/leech_drone.tres`.
+			data.alert_radius = 5.5
+			data.trigger_radius = 2.6
 			data.windup_time = 0.35
 			data.active_time = 2.5
 			data.rearm_time = 1.5

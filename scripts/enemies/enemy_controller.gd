@@ -139,6 +139,8 @@ const AURA_PULSE_PERIOD := 5.3
 
 var _aura_visual: Node3D
 var _aura_edge_material: StandardMaterial3D
+## Les liens tendus du porteur vers les unités qu'il couvre. Préalloués : voir `_draw_link`.
+var _links: Array[MeshInstance3D] = []
 
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _visual_root: Node3D = $VisualRoot
@@ -476,10 +478,100 @@ func _project_aura() -> void:
 	if _neighbours.is_empty():
 		_resolve_neighbours()
 	var reach := data.aura_radius * data.aura_radius
+	var linked := 0
 	for other in _neighbours:
 		if other.active and other.plane_position.distance_squared_to(plane_position) <= reach:
 			other.cover(AURA_GRACE)
+			linked = _draw_link(linked, other.plane_position)
+	_hide_links_from(linked)
 
+
+## Préalloue les liens. Leur nombre borne combien d'unités le porteur peut DÉSIGNER à la
+## fois — pas combien il en couvre : la couverture, elle, reste sans limite.
+##
+## ⚠️ Huit suffisent, et c'est mesuré sur la vague : `wave_asteroid_field_01.tres` ne pose
+## jamais plus de six unités à portée d'un porteur. Au-delà, l'écran serait un buisson de
+## traits et le message — « tue le porteur » — se perdrait dans sa propre insistance.
+const LINK_COUNT := 8
+## ⚠️ 0,22 ET NON 0,055 — MESURÉ, PAS ESTIMÉ. Le porteur dérive dans le plan de jeu, à
+## ~30 px par mètre : à 0,055 m le lien faisait **1,7 pixel**, donc un trait sous le pixel
+## qui disparaissait par morceaux à l'anticrénelage. Il était là, il ne se voyait pas — ce
+## qui, pour un signe dont le seul rôle est de DÉSIGNER, revient à ne pas exister.
+## À 0,22 il pèse ~7 px : fin, mais continu.
+const LINK_WIDTH := 0.22
+
+func _build_links() -> void:
+	var quad := QuadMesh.new()
+	# Unitaire : `billboard_basis` porte la largeur ET la longueur, un quad déjà
+	# dimensionné les multiplierait une seconde fois.
+	quad.size = Vector2(1.0, 1.0)
+	var material := _aura_material(0.7, 2.1)
+	for i in LINK_COUNT:
+		var link := MeshInstance3D.new()
+		link.name = "Link_%02d" % i
+		link.mesh = quad
+		link.material_override = material
+		link.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		link.visible = false
+		# ⚠️ `top_level` : le lien est posé en coordonnées MONDE et ne doit PAS subir la
+		# transformation du porteur, qui bouge sous lui. Sans ça les liens dériveraient
+		# avec la coque — piège n°4 de `pratique-geometries-invisibles.md`, déjà payé sur
+		# les lasers du boss, où le tir partait du vide.
+		link.top_level = true
+		_aura_visual.add_child(link)
+		_links.append(link)
+
+## Tend un lien entre le porteur et une unité qu'il couvre, et rend l'indice suivant.
+##
+## ⚠️ POURQUOI CES LIENS EXISTENT. L'opérateur, en jouant : « le champ de force ne me choque
+## pas, mais à part quand je rentre dedans et voir mon vaisseau qui clignote et mes PV qui
+## ne diminuent pas, je ne comprends pas ce que ça fait ». Il avait raison de ne pas
+## comprendre — le champ ne lui fait RIEN. Il couvre les unités VOISINES, et rien ne le
+## disait : un grand cercle lumineux dans lequel on vole PROMET une conséquence, et n'en
+## délivrait aucune.
+##
+## C'est la règle de la bible appliquée à un élément de jeu — rien ne doit ressembler à un
+## obstacle s'il n'en est pas un. Le lien dit « tue le PORTEUR » sans un mot, et transforme
+## un cercle décoratif en information.
+##
+## ⚠️ AUCUNE ALLOCATION : les liens sont préalloués au montage, et on ne fait que les
+## repositionner. Un lien créé par image couverte allouerait dans la boucle physique.
+func _draw_link(index: int, target: Vector2) -> int:
+	if index >= _links.size():
+		return index
+	var link := _links[index]
+	var from := GameplayPlane.to_world(plane_position)
+	var to := GameplayPlane.to_world(target)
+	var span := from.distance_to(to)
+	if span < 0.05:
+		link.visible = false
+		return index + 1
+	link.visible = true
+	link.position = (from + to) * 0.5
+	# ⚠️ FACE À LA CAMÉRA, ET NON SIMPLEMENT ALIGNÉ SUR LA CORDE. Premier essai avec
+	# `basis_from_up()` : l'axe long suivait bien la corde, mais l'orientation du ruban
+	# AUTOUR de cet axe restait arbitraire — selon la position de l'unité, on le voyait par
+	# la TRANCHE, donc quasiment pas. Un lien invisible ne désigne rien.
+	#
+	# `billboard_basis()` pose le ruban dans le plan de la caméra avec son axe long sur la
+	# projection écran de la corde : il garde toute sa largeur quel que soit l'angle. C'est
+	# la même correction que sur la traînée du bolide, et pour la même raison.
+	link.basis = MoonFlyby.billboard_basis(_camera_basis(), to - from, 0.0, span, LINK_WIDTH)
+	return index + 1
+
+## La base de la caméra active, ou une base valide hors arbre de scène (tests, banc).
+func _camera_basis() -> Basis:
+	if is_inside_tree():
+		var cam := get_viewport().get_camera_3d()
+		if cam != null:
+			return cam.global_transform.basis
+	return Basis.IDENTITY
+
+## Éteint les liens qui n'ont pas servi cette image — sinon un lien resterait tendu vers
+## une unité morte, ce qui désignerait une protection qui n'existe plus.
+func _hide_links_from(index: int) -> void:
+	for i in range(index, _links.size()):
+		_links[i].visible = false
 
 ## Voisins résolus une fois pour toutes : le pool est préinstancié avant la première
 ## activation, donc le groupe ne change plus en cours de partie.
@@ -592,6 +684,7 @@ func _build_aura_visual() -> void:
 	edge.material_override = _aura_edge_material
 	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_aura_visual.add_child(edge)
+	_build_links()
 
 	# ⚠️ IL N'Y A PAS DE DÔME, ET C'EST UNE DÉCISION, PAS UN OUBLI. Trois essais l'ont
 	# condamné, tous regardés en capture : additif à 0,09 d'alpha, puis hémisphère à

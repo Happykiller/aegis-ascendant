@@ -45,6 +45,11 @@ const RELEASE_FACTOR := 1.25
 ## intensité pour changer de couleur (`EnemyVitals`).
 const ALERT_CEILING := 0.6
 
+## Battements par seconde du sursis, au début et à la fin. Il ACCÉLÈRE : c'est ce qui le
+## fait lire comme un compte à rebours et non comme une lueur qui monte.
+const ARMING_BEATS_MIN := 2.0
+const ARMING_BEATS_MAX := 7.0
+
 
 ## Ce qui vient après. `time_in_state` est le temps écoulé DANS l'état courant.
 static func next_state(state: int, time_in_state: float, distance: float,
@@ -102,10 +107,23 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 			var span := maxf(data.alert_radius - data.trigger_radius, 0.001)
 			return clampf(1.0 - (distance - data.trigger_radius) / span, 0.0, 1.0) * ALERT_CEILING
 		State.ARMING:
-			# Elle monte, sans atteindre le régime de l'engagement : le joueur doit pouvoir
-			# distinguer « elle m'a senti » de « c'est parti ».
+			# ⚠️ UN BATTEMENT QUI ACCÉLÈRE, ET NON UNE SIMPLE MONTÉE. Première version : une
+			# rampe de 0,6 à 0,9. Verdict de l'opérateur en jouant — « l'activation des mines
+			# pendant la phase suspense est trop subtile ». Il avait raison : une valeur qui
+			# monte lentement, sur une coque qui reste fermée, ne se voit pas.
+			#
+			# Le sursis est un COMPTE À REBOURS, et un compte à rebours se lit à sa cadence.
+			# `EnemyVitals` accélère déjà son halètement avec le régime ; on lui donne en
+			# plus une oscillation propre dont la fréquence monte, et dont l'amplitude croît
+			# jusqu'au plein régime. Le joueur voit sa dernière seconde s'épuiser.
+			#
+			# ⚠️ Et il n'y a PAS de confusion possible avec l'engagement : c'est la COQUE qui
+			# le signale, et elle reste fermée pendant tout le sursis (`open_ratio`).
 			var grace := maxf(data.arm_grace, 0.001)
-			return ALERT_CEILING + (0.9 - ALERT_CEILING) * clampf(time_in_state / grace, 0.0, 1.0)
+			var progress := clampf(time_in_state / grace, 0.0, 1.0)
+			var beats := lerpf(ARMING_BEATS_MIN, ARMING_BEATS_MAX, progress)
+			var throb := 0.35 + 0.65 * (0.5 + 0.5 * sin(time_in_state * beats * TAU))
+			return ALERT_CEILING + (1.0 - ALERT_CEILING) * progress * throb
 		State.WINDUP:
 			return ALERT_CEILING + (1.0 - ALERT_CEILING) * windup_ratio(state, time_in_state, data)
 		State.ACTIVE:
