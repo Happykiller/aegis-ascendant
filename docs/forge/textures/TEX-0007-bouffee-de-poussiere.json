@@ -1,0 +1,139 @@
+{
+  "id": "TEX-0007",
+  "slug": "bouffee-de-poussiere",
+  "schema_version": "1.0",
+  "date": "2026-08-26",
+  "texture_type": "sprite",
+  "purpose": {
+    "description": "UNE bouffée de poussière — l'élément que le système de particules répète pour faire l'onde d'impact",
+    "game_context": "Phase 2 de l'arc (ADR-0027). ⚠️ CE N'EST PAS L'ONDE ENTIÈRE. L'onde est un GPUParticles3D qui émet des dizaines de ces bouffées en éventail radial depuis le point d'impact, chacune avec sa taille, sa rotation, sa durée et sa vitesse propres. Une bouffée seule rend à 30-80 px selon son âge.",
+    "priority": "Être un ÉLÉMENT crédible et neutre : douce, sans contour, sans direction propre. C'est le nombre et la dispersion qui feront le volume, pas cette image."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": false,
+    "transparent_background": false,
+    "background": "pure_black",
+    "view": "orthographic_top",
+    "lighting": "baked",
+    "color_mode": "color",
+    "alpha_usage": "none",
+    "output_usage": "emissive"
+  },
+  "world_scale": {
+    "texture_width_m": 3.0,
+    "texture_height_m": 3.0,
+    "reference_element": "Une bouffée fait 1 à 3 m selon son âge, dans une onde qui atteint 22 m de diamètre",
+    "confidence": "decided",
+    "rationale": "Rattrapable par la taille des particules à l'intégration, comme toute échelle de tuile. Ce qui compte ici n'est pas la taille mais l'absence de contour : une bouffée à bord net trahirait la répétition."
+  },
+  "composition": {
+    "main_elements": [
+      "une seule bouffée de poussière, isolée au centre"
+    ],
+    "density": "low",
+    "distribution": "random",
+    "edge_behavior": "AUCUN bord. La bouffée se dissout dans le noir de tous les côtés.",
+    "empty_space": "Large marge noire : la bouffée n'occupe que le tiers central"
+  },
+  "visual": {
+    "subject": "Une bouffée de poussière de régolithe en suspension, éclairée doucement",
+    "materials": [
+      "poussière",
+      "roche pulvérisée"
+    ],
+    "details": [
+      "grain fin en suspension",
+      "densité irrégulière",
+      "quelques filaments qui s'étirent"
+    ],
+    "style": "doux, volumétrique, sans aucun contour",
+    "color_palette": {
+      "dominant": [
+        "gris de poussière",
+        "blanc cassé froid"
+      ],
+      "secondary": [],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "magenta",
+        "orange",
+        "bord net",
+        "forme reconnaissable"
+      ]
+    },
+    "surface_character": "Vaporeuse, plus dense au cœur, translucide partout",
+    "age_and_damage": ""
+  },
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
+  "lighting": {
+    "enabled": true,
+    "direction": "Éclairage rasant venant du haut de l'image, comme la lumière de la scène",
+    "character": "La poussière est ÉCLAIRÉE, pas lumineuse — seul le cœur du cratère rougeoie faiblement",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "une densité IRRÉGULIÈRE — un dégradé radial parfait se répéterait de façon visible",
+      "aucune direction propre : elle sera tournée au hasard par le système de particules"
+    ],
+    "must_not_have": [
+      "bord net",
+      "cercle",
+      "anneau",
+      "forme reconnaissable",
+      "symétrie parfaite",
+      "couleur vive",
+      "orange",
+      "flamme",
+      "étincelle",
+      "cyan",
+      "corail",
+      "magenta",
+      "fond autre que noir pur",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature"
+    ],
+    "seamless_requirements": [],
+    "readability_requirements": [
+      "⚠️ répétée cinquante fois à des tailles et rotations différentes, elle ne doit JAMAIS se laisser reconnaître comme la même image"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Passe de dessin d'un GPUParticles3D émettant en éventail radial depuis le point d'impact, sur le modèle de `scripts/fx/vfx_explosion.gd` (étincelles + débris). Remplace l'anneau `_plume` de `scripts/vfx/moon_flyby.gd`.",
+    "shader_usage": "Non éclairé, mélange ALPHA détouré du noir, couleur pilotée par une rampe de vie (claire à la naissance, éteinte à la fin).",
+    "post_processing": "python3 tools/bg-key-alpha.py --mode black <source> --lo 1 --hi 10",
+    "additional_notes": "⚠️ LES DÉBRIS N'ONT PAS BESOIN D'IMAGE : `assets/imported/models/vfx/impact_shard.glb` (BRIEF-0086) sert de passe de dessin pour les morceaux solides. Une seule texture suffit donc à cet effet. ⚠️ Et le piège du moteur est déjà documenté : `GPUParticles3D.emitting` retombe à `false` dès la salve ÉMISE, pas éteinte (`.claude/resources/pratique-geometries-invisibles.md`)."
+  },
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "obligatoire",
+    "source_path": "assets/source/vfx/bouffee_poussiere_1024.png",
+    "derived_dir": "assets/imported/vfx",
+    "derived_files": [
+      "bouffee_poussiere.png"
+    ],
+    "verify": [
+      "le fond est-il du NOIR PUR ?",
+      "⚠️ LE TEST QUI COMPTE : coller la même image cinquante fois, à des tailles et rotations differentes — reconnait-on le motif ? Si oui, elle est trop typée.",
+      "capture regardée à 1:1 en jeu, jamais une réduction"
+    ],
+    "provenance_csv_line": "bouffee_poussiere,assets/source/vfx/bouffee_poussiere_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-26,docs/forge/textures/TEX-0007-bouffee-de-poussiere.json,,\"Element de particule pour l onde d impact de la phase 2 (ADR-0027). ⚠️ PAS l onde entiere : l onde est un GPUParticles3D qui repete cette bouffee. Peindre un effet volumetrique sur un seul quad rend un carton — le volume vient du nombre et de la dispersion, pas de l image.\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "UNE SEULE bouffée de poussière en suspension, isolée au centre d'un fond NOIR PUR.\n\nC'est de la poussière de roche soulevée : vaporeuse, plus dense en son cœur, translucide partout, et elle se DISSOUT dans le noir de tous les côtés sans jamais montrer de bord. Sa densité est irrégulière, avec quelques filaments qui s'étirent — pas un dégradé radial régulier.\n\n⚠️ Elle ne doit avoir AUCUNE forme reconnaissable et aucune direction propre : cette image sera répétée des dizaines de fois, à des tailles et des rotations différentes, pour composer un nuage. Si on peut reconnaître le motif d'une bouffée à l'autre, elle est ratée.\n\nGris de poussière et blanc cassé froid, éclairés doucement. Aucune couleur vive. La bouffée n'occupe que le tiers central de l'image, le reste est noir.\n\nÉviter absolument : bord net, cercle, anneau, symétrie parfaite, dégradé radial régulier, forme reconnaissable, couleur vive, orange, flamme, étincelle, cyan, turquoise, corail, magenta, fond autre que noir pur, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+  }
+}

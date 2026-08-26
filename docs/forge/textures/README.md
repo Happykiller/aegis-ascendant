@@ -101,8 +101,38 @@ elle sert telle quelle. Les dérivées sont produites par l'outil, jamais géné
 | [`TEX-0004-asteroid-rock-albedo.json`](TEX-0004-asteroid-rock-albedo.json) | variation d'albédo de la roche | conditionnelle |
 | [`TEX-0005-bolide-incandescent.json`](TEX-0005-bolide-incandescent.json) | la tête du bolide qui brûle | ✅ livrée, intégrée |
 | [`TEX-0006-trainee-de-flamme.json`](TEX-0006-trainee-de-flamme.json) | son sillage filamenté | ✅ livrée, intégrée |
-| [`TEX-0007-onde-impact-lunaire.json`](TEX-0007-onde-impact-lunaire.json) | la poussière projetée à l'impact | **à commander** |
+| [`TEX-0007-bouffee-de-poussiere.json`](TEX-0007-bouffee-de-poussiere.json) | **un élément** de particule pour l'onde d'impact | **à commander** |
 | [`TEX-0008-champ-du-porteur.json`](TEX-0008-champ-du-porteur.json) | le champ du Shield Carrier | **à commander** |
+
+## ⚠️ Une surface se texture. Un VOLUME se peuple.
+
+Relevé par l'opérateur le 2026-08-26, et c'est la règle qui manquait à ce contrat :
+
+> « avoir des textures pour des surfaces je trouve ça normal et bien, mais pour des effets de
+> nuage, particule, comme la traînée, jet de régolithe à l'impact, flammes, etc, je veux pas voir
+> une texture plate et moche genre carton »
+
+| Nature | Technique | Ce que la texture devient |
+|---|---|---|
+| **Surface** — lune, rochers, coque, tête du bolide | une image sur la géométrie | l'habillage d'une forme qui existe déjà |
+| **Volume** — poussière, flamme, braises, éjectas | un **système de particules** | **un ÉLÉMENT** répété des dizaines de fois |
+
+Un effet volumétrique peint sur **un seul quad** est un carton : ni profondeur, ni parallaxe, ni
+variation dans le temps. Il ne tient que vu de face et en mouvement rapide, et s'effondre dès qu'on
+le regarde. Le volume vient du **nombre et de la dispersion**, pas de l'image.
+
+**Conséquence sur la rédaction d'une demande** : pour un volume, ne jamais demander l'effet entier.
+Demander **une bouffée**, **une braise**, **un éclat** — neutre, sans bord, sans direction propre.
+Et poser le test qui tranche : *répétée cinquante fois à des tailles et rotations différentes,
+reconnaît-on le motif ?* Si oui, elle est trop typée.
+
+Le dépôt a déjà le motif technique : `scripts/fx/vfx_explosion.gd` (étincelles + débris en
+`GPUParticles3D`), avec son piège documenté — `emitting` retombe à `false` dès la salve **émise**,
+pas éteinte.
+
+⚠️ **Et la règle ne s'applique PAS à tout** : `TEX-0008` (le champ du porteur) est une **frontière**,
+pas un volume. Un panneau y est correct — et même souhaitable, puisque son bord doit rester lisible
+au pixel près.
 
 ⚠️ **TEX-0005 et 0006 sont des `sprite`, pas des `surface_tile`**, et c'est la première fois. La
 raison est mesurée : la tête du bolide rend à **130 px** à l'écran, et tout ce qui est échantillonné
