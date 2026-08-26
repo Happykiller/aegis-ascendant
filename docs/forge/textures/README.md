@@ -65,6 +65,35 @@ Un fichier qui viole l'une d'elles ne part pas au générateur.
 | 5 | `color_palette.forbidden` contient **toujours** cyan `#3FD9E8` et corail `#FF5A3D` | Réservés au tir allié et au tir ennemi (`space_background.gdshader`, DA §6, bible *Lisibilité*). Un décor qui les emploie **vole leur lisibilité aux projectiles**. A déjà coûté une itération sur le bolide d'impact (`ADR-0027`) |
 | 6 | `world_scale` est **réel ou déclaré** — jamais plausible | `confidence: "measured"` ou `"decided"` + `rationale`. Une échelle inventée cadre la densité de détail sur du vide : une feuille calée sur un chasseur de 2 m lit comme du bruit sur une forteresse de 20 m |
 
+### ⚠️ Le fond se demande EN PREMIER, et se refuse plutôt que se rattraper
+
+Relevé le 2026-08-26 : les images revenaient **avec un fond** dès que le sujet n'occupait pas tout
+le cadre, obligeant à une seconde passe. La consigne était pourtant là — mais **enterrée à la fin**,
+dans « Éviter absolument ». Un générateur pondère ce qu'il lit **en premier**.
+
+Deux corrections, appliquées à tous les `x_prompt_fr` :
+
+1. **La consigne de fond ouvre le prompt**, avant même le sujet.
+2. **Elle nomme les intrus**, parce que « fond noir » ne les interdit pas : dégradé, vignettage,
+   halo de fond, étoiles, nébuleuse, atmosphère, sol, décor.
+
+**Le contrôle** : les quatre coins doivent être à **0-2 sur 255**. Au-dessus, le générateur a ajouté
+un fond — **le renvoyer plutôt que de le rattraper**.
+
+#### ⛔ Et ne JAMAIS demander un détourage pour un élément volumétrique
+
+Le rattrapage courant (« supprimez l'arrière-plan, contours nets et lisses, fond transparent ») est
+acceptable pour un **objet solide** — une tête de bolide a un bord défini.
+
+Il est **catastrophique pour une bouffée, une flamme, un nuage** : leur bord doit se **dissoudre
+progressivement dans le rien**. Un détourage à contour net leur coupe la lueur au ras et rend
+exactement le **carton** que la règle « une surface se texture, un volume se peuple » cherche à
+éviter.
+
+Pour ceux-là, la recette du dépôt est meilleure : fond noir + `bg-key-alpha.py --mode black`, qui
+reconstruit un alpha **doux** dérivé de la luminance et préserve le dégradé de disparition. Si un
+damier a malgré tout été peint, `--mode sat` est le rattrapage (moins propre, résidu possible).
+
 ### Deux limites qui ne sont pas des règles
 
 - **`grayscale` n'est pas un dogme.** `ADR-0013 §3` autorise la couleur **quand elle est motivée**

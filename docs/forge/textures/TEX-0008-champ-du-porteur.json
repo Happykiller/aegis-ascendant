@@ -3,15 +3,12 @@
   "slug": "champ-du-porteur",
   "schema_version": "1.0",
   "date": "2026-08-26",
-
   "texture_type": "sprite",
-
   "purpose": {
     "description": "Le champ protecteur du Shield Carrier : la zone dans laquelle les unités alliées sont invulnérables",
     "game_context": "Phase 2 de l'arc. Le porteur dérive dans le plan de jeu en couvrant les unités autour de lui ; tirer sur elles ne produit rien tant qu'il vit. Le champ est posé À PLAT dans le plan de jeu et vu depuis une caméra en plongée, donc quasiment de face. Il rend à ~300 px de diamètre.",
     "priority": "⚠️ CE CERCLE PORTE UNE RÈGLE, il n'est pas décoratif. Le joueur doit lire SANS AMBIGUÏTÉ où il s'arrête — dedans ses tirs ne font rien, dehors si. « Plus crédible » ne doit jamais vouloir dire « plus flou »."
   },
-
   "technical": {
     "resolution": "1024x1024",
     "aspect_ratio": "1:1",
@@ -24,7 +21,6 @@
     "alpha_usage": "none",
     "output_usage": "emissive"
   },
-
   "world_scale": {
     "texture_width_m": 10.0,
     "texture_height_m": 10.0,
@@ -32,7 +28,6 @@
     "confidence": "measured",
     "rationale": "aura_radius = 5,0 dans resources/enemies/shield_carrier.tres. Le porteur dérive dans le plan de jeu, à 14,7 à 20,2 unités de la caméra selon sa position, soit 22 à 30 px/m — donc 200 à 300 px de diamètre. On dimensionne sur le cas le plus grand."
   },
-
   "composition": {
     "main_elements": [
       "une BORDURE nette et continue, qui dit exactement où le champ s'arrête",
@@ -44,30 +39,52 @@
     "edge_behavior": "Le bord est FRANC vers l'extérieur et se dissipe vers l'intérieur — l'inverse d'un halo",
     "empty_space": "L'intérieur est majoritairement VIDE : ce sont les unités protégées qu'on doit y voir, pas le champ"
   },
-
   "visual": {
     "subject": "Une bulle de confinement énergétique vue de face : un liseré vif, une membrane presque transparente, une trame qui se densifie au bord",
-    "materials": ["énergie confinée", "membrane"],
-    "details": ["liseré de bordure net", "trame hexagonale ténue", "nervures qui courent le long du bord", "légères irrégularités de tension"],
+    "materials": [
+      "énergie confinée",
+      "membrane"
+    ],
+    "details": [
+      "liseré de bordure net",
+      "trame hexagonale ténue",
+      "nervures qui courent le long du bord",
+      "légères irrégularités de tension"
+    ],
     "style": "technologique et sobre, lisible à distance, jamais opaque",
     "color_palette": {
-      "dominant": ["noir", "magenta profond très sombre"],
-      "secondary": ["magenta vif #D93D9C sur le seul liseré", "violet froid pour la trame"],
-      "forbidden": ["cyan #3FD9E8", "corail #FF5A3D", "or", "surface pleine", "dégradé radial plein"]
+      "dominant": [
+        "noir",
+        "magenta profond très sombre"
+      ],
+      "secondary": [
+        "magenta vif #D93D9C sur le seul liseré",
+        "violet froid pour la trame"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "or",
+        "surface pleine",
+        "dégradé radial plein"
+      ]
     },
     "surface_character": "Membrane tendue, presque transparente sauf à sa limite",
     "age_and_damage": ""
   },
-
-  "data_semantics": { "enabled": false, "meaning": "", "black": "", "gray": "", "white": "" },
-
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
   "lighting": {
     "enabled": false,
     "direction": "",
     "character": "Auto-lumineuse, aucune lumière extérieure",
     "shadows": "none"
   },
-
   "constraints": {
     "must_have": [
       "un bord CONTINU et sans ambiguïté — c'est la frontière d'une règle de jeu",
@@ -75,10 +92,21 @@
       "une trame qui se densifie vers le bord, pour dire où est la limite sans la peindre en plein"
     ],
     "must_not_have": [
-      "disque plein", "dégradé radial qui remplit le cercle", "bord flou ou dégradé",
-      "halo débordant largement à l'extérieur", "aspect de fumée ou de nuage",
-      "cyan", "corail", "or", "fond autre que noir pur",
-      "texte", "lettres", "chiffres", "logo", "filigrane", "signature"
+      "disque plein",
+      "dégradé radial qui remplit le cercle",
+      "bord flou ou dégradé",
+      "halo débordant largement à l'extérieur",
+      "aspect de fumée ou de nuage",
+      "cyan",
+      "corail",
+      "or",
+      "fond autre que noir pur",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature"
     ],
     "seamless_requirements": [],
     "readability_requirements": [
@@ -87,30 +115,30 @@
       "le champ ne doit pas se confondre avec un projectile ennemi (corail) ni avec un tir allié (cyan)"
     ]
   },
-
   "integration_notes": {
     "engine_usage": "Panneau à plat dans le plan de jeu, en remplacement du `TorusMesh` de `_build_aura_visual()` (scripts/enemies/enemy_controller.gd, ~ligne 554), dimensionné par `aura_ring_radii()`",
     "shader_usage": "Non éclairé, mélange ADDITIF (une membrane d'énergie ajoute de la lumière, elle ne masque pas). Détourage inutile en additif.",
     "post_processing": "aucun",
     "additional_notes": "⚠️ RAPPEL MESURÉ DU GHOST : « une grande surface teintée ne peut pas être discrète ici ». Trois essais de dôme sur CE MÊME porteur (2026-08-25) — additif à 0,09 d'alpha, hémisphère à énergie divisée par dix, mélange normal sans émission à 0,11 — ont tous rendu le même APLAT magenta, parce que le bloom et le `lift` de 1,25 du post-traitement relèvent les noirs. La conclusion tenait en une phrase : **ce qui doit rester discret doit être FIN, pas transparent**. D'où un liseré et une trame, jamais une surface."
   },
-
   "x_delivery": {
     "status": "à commander",
     "priority": "obligatoire",
     "source_path": "assets/source/vfx/champ_porteur_1024.png",
     "derived_dir": "assets/imported/vfx",
-    "derived_files": ["champ_porteur.png"],
+    "derived_files": [
+      "champ_porteur.png"
+    ],
     "verify": [
-      "le fond est-il du NOIR PUR ?",
+      "⚠️ LE FOND D'ABORD : les quatre coins doivent être à 0-2 sur 255. Au-dessus, le générateur a ajouté un fond — le renvoyer plutôt que de le rattraper.",
+      "Un détourage par le générateur est acceptable ici : le sujet a un bord défini.",
       "capture regardée à 1:1, et surtout AVEC des unités couvertes : les voit-on encore ?",
       "le bord reste-t-il net une fois le bloom passé dessus ?"
     ],
     "provenance_csv_line": "champ_porteur,assets/source/vfx/champ_porteur_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-26,docs/forge/textures/TEX-0008-champ-du-porteur.json,,\"Champ protecteur du Shield Carrier (phase 2, ADR-0027). Remplace un TorusMesh magenta que l operateur jugeait peu credible. ⚠️ Ce cercle porte une REGLE DE JEU (invulnerabilite des unites couvertes) : son bord doit rester lisible au pixel pres. Peinte a la taille d affichage, 10 m pour ~300 px.\""
   },
-
   "x_prompt_fr": {
     "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
-    "text": "Une bulle de champ de force circulaire, vue DE FACE, isolée au centre d'un fond NOIR PUR.\n\nCe qui la définit est sa BORDURE : un liseré magenta vif, fin, net et continu, qui dit exactement où le champ s'arrête. Juste à l'intérieur de ce liseré court une trame hexagonale ténue, qui se densifie près du bord et s'efface en allant vers le centre. Quelques nervures d'énergie parcourent la bordure, avec de légères irrégularités de tension.\n\n⚠️ L'INTÉRIEUR DOIT RESTER PRESQUE VIDE. Ce n'est pas un disque, pas un dégradé radial qui remplit le cercle, pas un nuage : c'est une membrane qu'on voit surtout à sa limite. Ce qui est à l'intérieur doit rester visible à travers.\n\nMagenta profond très sombre en général, magenta vif sur le seul liseré, violet froid pour la trame. Auto-lumineuse, sur fond noir pur, sans halo qui déborde largement à l'extérieur.\n\nÉviter absolument : disque plein, dégradé radial remplissant le cercle, bord flou, halo large, fumée, nuage, cyan, turquoise, corail, orange, or, fond autre que noir pur, perspective, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+    "text": "⚠️ FOND : NOIR PUR ABSOLU (#000000) sur toute la surface que le sujet n'occupe pas. Pas de dégradé, pas de vignettage, pas de halo de fond, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor — RIEN d'autre que le sujet sur du noir. Le sujet est isolé au centre, avec une large marge noire tout autour.\n\nUne bulle de champ de force circulaire, vue DE FACE, isolée au centre d'un fond NOIR PUR.\n\nCe qui la définit est sa BORDURE : un liseré magenta vif, fin, net et continu, qui dit exactement où le champ s'arrête. Juste à l'intérieur de ce liseré court une trame hexagonale ténue, qui se densifie près du bord et s'efface en allant vers le centre. Quelques nervures d'énergie parcourent la bordure, avec de légères irrégularités de tension.\n\n⚠️ L'INTÉRIEUR DOIT RESTER PRESQUE VIDE. Ce n'est pas un disque, pas un dégradé radial qui remplit le cercle, pas un nuage : c'est une membrane qu'on voit surtout à sa limite. Ce qui est à l'intérieur doit rester visible à travers.\n\nMagenta profond très sombre en général, magenta vif sur le seul liseré, violet froid pour la trame. Auto-lumineuse, sur fond noir pur, sans halo qui déborde largement à l'extérieur.\n\nÉviter absolument : disque plein, dégradé radial remplissant le cercle, bord flou, halo large, fumée, nuage, cyan, turquoise, corail, orange, or, fond autre que noir pur, perspective, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
   }
 }

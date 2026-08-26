@@ -126,7 +126,8 @@
       "bouffee_poussiere.png"
     ],
     "verify": [
-      "le fond est-il du NOIR PUR ?",
+      "⚠️ LE FOND D'ABORD : les quatre coins doivent être à 0-2 sur 255. Au-dessus, le générateur a ajouté un fond — le renvoyer plutôt que de le rattraper.",
+      "⚠️ NE PAS DEMANDER DE DÉTOURAGE au générateur pour cet élément : `bg-key-alpha.py --mode black` reconstruit un alpha DOUX depuis la luminance, ce qu'un détourage à contour net détruirait.",
       "⚠️ LE TEST QUI COMPTE : coller la même image cinquante fois, à des tailles et rotations differentes — reconnait-on le motif ? Si oui, elle est trop typée.",
       "capture regardée à 1:1 en jeu, jamais une réduction"
     ],
@@ -134,6 +135,6 @@
   },
   "x_prompt_fr": {
     "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
-    "text": "UNE SEULE bouffée de poussière en suspension, isolée au centre d'un fond NOIR PUR.\n\nC'est de la poussière de roche soulevée : vaporeuse, plus dense en son cœur, translucide partout, et elle se DISSOUT dans le noir de tous les côtés sans jamais montrer de bord. Sa densité est irrégulière, avec quelques filaments qui s'étirent — pas un dégradé radial régulier.\n\n⚠️ Elle ne doit avoir AUCUNE forme reconnaissable et aucune direction propre : cette image sera répétée des dizaines de fois, à des tailles et des rotations différentes, pour composer un nuage. Si on peut reconnaître le motif d'une bouffée à l'autre, elle est ratée.\n\nGris de poussière et blanc cassé froid, éclairés doucement. Aucune couleur vive. La bouffée n'occupe que le tiers central de l'image, le reste est noir.\n\nÉviter absolument : bord net, cercle, anneau, symétrie parfaite, dégradé radial régulier, forme reconnaissable, couleur vive, orange, flamme, étincelle, cyan, turquoise, corail, magenta, fond autre que noir pur, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+    "text": "⚠️ FOND : NOIR PUR ABSOLU (#000000) sur toute la surface que le sujet n'occupe pas. Pas de dégradé, pas de vignettage, pas de halo de fond, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor — RIEN d'autre que le sujet sur du noir. Le sujet est isolé au centre, avec une large marge noire tout autour.\n\nUNE SEULE bouffée de poussière en suspension, isolée au centre d'un fond NOIR PUR.\n\nC'est de la poussière de roche soulevée : vaporeuse, plus dense en son cœur, translucide partout, et elle se DISSOUT dans le noir de tous les côtés sans jamais montrer de bord. Sa densité est irrégulière, avec quelques filaments qui s'étirent — pas un dégradé radial régulier.\n\n⚠️ Elle ne doit avoir AUCUNE forme reconnaissable et aucune direction propre : cette image sera répétée des dizaines de fois, à des tailles et des rotations différentes, pour composer un nuage. Si on peut reconnaître le motif d'une bouffée à l'autre, elle est ratée.\n\nGris de poussière et blanc cassé froid, éclairés doucement. Aucune couleur vive. La bouffée n'occupe que le tiers central de l'image, le reste est noir.\n\nÉviter absolument : bord net, cercle, anneau, symétrie parfaite, dégradé radial régulier, forme reconnaissable, couleur vive, orange, flamme, étincelle, cyan, turquoise, corail, magenta, fond autre que noir pur, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
   }
 }

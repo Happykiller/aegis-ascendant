@@ -39,6 +39,7 @@ Ne jamais les demander. Les contourner.
 |---|---|---|
 | « une normal map » | une image violette **qui y ressemble**, aux gradients faux → relief éclairé à l'envers, et ça *a l'air* correct | une **hauteur en niveaux de gris** (clair = saillant). `tools/derive-maps.py` en dérive normale, rugosité, AO |
 | « fond transparent, PNG alpha » | un **damier peint** dans une image RGB opaque | un **fond noir pur** (objet lumineux) ou **uni très clair** (objet opaque), puis `tools/bg-key-alpha.py` |
+| « supprime l'arrière-plan, contours nets » sur un **nuage** | le bord de la lueur est **coupé au ras** — un carton | fond noir + `--mode black`, qui rend un alpha **doux** : un volume doit se dissoudre, pas être découpé |
 | « seamless, sans couture » | souvent une couture quand même, invisible sur l'image seule | on demande le seamless **et** on le **mesure** : `derive-maps.py --check-tiling` |
 | « en 2048 × 2048 » | un **1024 agrandi** : du détail inventé par l'interpolation, jamais du détail en plus | son **format natif** : `1024×1024`, `1536×1024` ou `1024×1536`, et on ne redimensionne pas |
 
@@ -53,6 +54,11 @@ Règles tirées des prompts qui ont fonctionné (`docs/forge/output/*_generation
 
 - **Les couleurs en mots, jamais en hexadécimal.** « blanc cassé », « bleu profond », « cyan
   électrique » — un code hexa est ignoré ou mal interprété.
+- **⚠️ OUVRIR SUR LE FOND, avant même le sujet.** Un générateur pondère ce qu'il lit en premier, et
+  « fond noir » ne lui interdit pas ce qu'il ajoute spontanément. Nommer les intrus : dégradé,
+  vignettage, halo de fond, étoiles, nébuleuse, atmosphère, sol, décor. *Coût de l'oubli : deux
+  passes de génération par image, relevé par l'opérateur le 26/08/2026.* Contrôle : les quatre coins
+  à **0-2 sur 255**, sinon on renvoie l'image au lieu de la rattraper.
 - **Dire le cadrage, pas seulement le sujet.** Pour une texture : « vue orthogonale de dessus,
   éclairage neutre et plat, aucune ombre portée, aucune perspective, aucun vignettage ». Sans ça on
   reçoit une jolie photo d'un panneau, inutilisable en tuile.
