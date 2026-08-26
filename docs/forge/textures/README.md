@@ -99,8 +99,10 @@ elle sert telle quelle. Les dérivées sont produites par l'outil, jamais géné
 | [`TEX-0002-asteroid-rock-height.json`](TEX-0002-asteroid-rock-height.json) | roche des trois astéroïdes | **à commander** |
 | [`TEX-0003-moon-regolith-albedo.json`](TEX-0003-moon-regolith-albedo.json) | ejectas clairs de la lune | conditionnelle — `--mul` couvre le reste |
 | [`TEX-0004-asteroid-rock-albedo.json`](TEX-0004-asteroid-rock-albedo.json) | variation d'albédo de la roche | conditionnelle |
-| [`TEX-0005-bolide-incandescent.json`](TEX-0005-bolide-incandescent.json) | la tête du bolide qui brûle | **à commander** |
-| [`TEX-0006-trainee-de-flamme.json`](TEX-0006-trainee-de-flamme.json) | son sillage filamenté | **à commander** |
+| [`TEX-0005-bolide-incandescent.json`](TEX-0005-bolide-incandescent.json) | la tête du bolide qui brûle | ✅ livrée, intégrée |
+| [`TEX-0006-trainee-de-flamme.json`](TEX-0006-trainee-de-flamme.json) | son sillage filamenté | ✅ livrée, intégrée |
+| [`TEX-0007-onde-impact-lunaire.json`](TEX-0007-onde-impact-lunaire.json) | la poussière projetée à l'impact | **à commander** |
+| [`TEX-0008-champ-du-porteur.json`](TEX-0008-champ-du-porteur.json) | le champ du Shield Carrier | **à commander** |
 
 ⚠️ **TEX-0005 et 0006 sont des `sprite`, pas des `surface_tile`**, et c'est la première fois. La
 raison est mesurée : la tête du bolide rend à **130 px** à l'écran, et tout ce qui est échantillonné
