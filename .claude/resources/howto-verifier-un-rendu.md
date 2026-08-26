@@ -117,6 +117,7 @@ qui ment et une qui tranche.
 | `--goto-codex` | ouvre le bestiaire ; `--codex-entry=N` choisit la coque |
 | `--no-backdrop` | désactive le fond (isoler son coût, cf. [howto-mesurer-la-perf](howto-mesurer-la-perf.md)) |
 | `--no-plumes` | désactive les plumes de réacteur (isoler leur coût, ADR-0017) |
+| `--no-surface-maps` | le survol de lune garde sa géométrie mais perd ses textures (isoler leur coût, ADR-0028) |
 | `--capture --capture-after=N` | PNG après N images, puis quitte |
 
 ## Un cadrage se CALCULE : une fraction d'une hauteur ne dit rien de ce qu'on voit

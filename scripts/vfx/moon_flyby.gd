@@ -182,6 +182,17 @@ var _impact_up: Vector3 = Vector3.UP
 var _dressed_moon: bool = false
 var _dressed_rocks: bool = false
 
+## `--no-surface-maps` : le décor se joue en aplat, sans aucune carte. C'est le TÉMOIN du
+## différentiel de coût des textures.
+##
+## ⚠️ UN INTERRUPTEUR, PAS UN FACTEUR. Baisser `normal_scale` à zéro atténuerait le résultat
+## en payant les échantillonnages en entier — la leçon mesurée du ciel du survol, où une
+## nébuleuse « éteinte » à 0,12 coûtait toujours 0,738 ms contre 0,323 pour un vrai
+## branchement. Ici on ne pose simplement aucune texture : rien à échantillonner.
+##
+## ⚠️ À poser AVANT l'entrée dans l'arbre : `_ready()` bâtit le décor.
+var maps_enabled: bool = true
+
 var _bolide: MeshInstance3D
 var _flash: MeshInstance3D
 var _shards: Array[MeshInstance3D] = []
@@ -392,7 +403,7 @@ func _moon_body() -> Node3D:
 	material.metallic = 0.0
 	# La matière, si elle a été livrée (`TEX-0001`). Sans elle, la calotte reste l'aplat
 	# ci-dessus — le décor doit se jouer et se mesurer avant que la surface existe.
-	_dressed_moon = dress(material, MOON_MAPS,
+	_dressed_moon = maps_enabled and dress(material, MOON_MAPS,
 		sphere_tiles(MOON_RADIUS, MOON_METRES_PER_TILE))
 	var body := MeshInstance3D.new()
 	body.name = "Surface"
@@ -475,8 +486,8 @@ func _rock(rock_name: String, radius: float, at: Vector3) -> MeshInstance3D:
 	# ⚠️ MÊME ÉCHELLE MONDE SUR LES TROIS ROCHERS, et c'est le rayon de CHACUN qui la
 	# donne : une tuile calée sur le petit se lirait comme du gravier sur le gros. C'est
 	# le défaut n°1 du projet, et `TEX-0002` le porte déjà comme contrainte dure.
-	_dressed_rocks = dress(material, ROCK_MAPS,
-		sphere_tiles(radius, ROCK_METRES_PER_TILE)) or _dressed_rocks
+	_dressed_rocks = (maps_enabled and dress(material, ROCK_MAPS,
+		sphere_tiles(radius, ROCK_METRES_PER_TILE))) or _dressed_rocks
 	var mesh := MeshInstance3D.new()
 	mesh.name = rock_name
 	mesh.mesh = sphere

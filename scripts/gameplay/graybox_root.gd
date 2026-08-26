@@ -86,6 +86,9 @@ var _moon_flyby: MoonFlyby
 ## `--no-flyby` : la phase se joue sous le fond spatial habituel. Bissection de perf — le
 ## témoin d'un différentiel, c'est la même chose sans le réglage.
 var _flyby_disabled: bool = false
+## `--no-surface-maps` : le survol garde sa géométrie mais perd sa matière. Second témoin
+## de bissection — `--no-flyby` isole le décor entier, celui-ci isole ses seules textures.
+var _surface_maps_disabled: bool = false
 ## Le voile de raccord entre deux décors (lot 5 du plan inter-boss). Monté au MONTAGE et
 ## caché, comme le survol : un raccord alloué au moment où il sert arriverait en retard.
 var _transition: PhaseTransition
@@ -143,6 +146,8 @@ func _ready() -> void:
 			bd.visible = false
 	if "--no-flyby" in args:
 		_flyby_disabled = true
+	if "--no-surface-maps" in args:
+		_surface_maps_disabled = true
 	if "--no-glow" in args:
 		var we := get_node_or_null("WorldEnvironment") as WorldEnvironment
 		if we != null and we.environment != null:
@@ -420,6 +425,8 @@ func _build_moon_flyby() -> void:
 		return
 	_moon_flyby = MoonFlyby.new()
 	_moon_flyby.name = "MoonFlyby"
+	# ⚠️ AVANT `add_child` : c'est `_ready()` qui bâtit le décor et pose la matière.
+	_moon_flyby.maps_enabled = not _surface_maps_disabled
 	add_child(_moon_flyby)
 	if _moon_flyby.is_stand_in():
 		print("[Level] moon flyby: DOUBLURE procedurale (decor de survol non livre)")

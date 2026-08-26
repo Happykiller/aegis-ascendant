@@ -1,6 +1,6 @@
 # BRIEF-0085 — Le décor de survol : lune à cratères et champ d'astéroïdes
 
-- **Statut** : brouillon — **ne pas engager avant la mesure GPU sur Quadro T1000** (voir §Contexte)
+- **Statut** : ✅ **PRÊT À ENGAGER** — la garde GPU est levée, mesure faite le 2026-08-26 (voir §Contexte)
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-25
@@ -121,16 +121,35 @@ parallaxe, impacts de bolides. Ce qui tient lieu de décor aujourd'hui est une *
 sphère grise à pastilles et trois ellipsoïdes — et le journal l'annonce à chaque montage. C'est elle
 que tu remplaces, **sans toucher au mécanisme**.
 
-### ⚠️ La garde qui tient ce brief au brouillon
+### ✅ La garde est LEVÉE — mesuré sur Quadro T1000 le 2026-08-26
 
-Le budget GPU de la phase a été mesuré **sur RTX 4080** : 0,323 ms par image contre 0,945 ms pour le
-fond spatial habituel. Or le poste qui **contraint** est une **Quadro T1000**, où le même build coûte
-plus de dix fois plus. **Personne ne doit engager ce brief avant que le différentiel ait été remesuré
-là-bas** — c'est ce chiffre, et lui seul, qui dit combien de géométrie ce décor peut se payer.
+Ce brief est resté au brouillon parce que son budget avait été mesuré **sur RTX 4080** (0,323 ms
+contre 0,945 pour le fond habituel), alors que le poste qui **contraint** est la **Quadro T1000**.
+La mesure a été refaite là-bas, dans la phase, à temps de jeu identique (8 s après l'entrée dans le
+champ, à 60 Hz — pas en `--novsync`, qui ferait atteindre la même image à des temps de jeu
+différents et donc avec des scènes différentes). **Trois tirs alternés par configuration**, comme
+l'impose `.claude/resources/howto-mesurer-la-perf.md` sur une machine dont le bruit atteint ~1,9 ms.
 
-Les budgets ci-dessous sont donc **provisoires** : ils supposent que la phase garde au moins la
-moitié de la marge qu'elle a libérée. Si la mesure du bureau les dément, ils se resserrent avant
-que tu commences, pas après.
+| Configuration | Relevés (ms/image) | Plage |
+|---|---|---|
+| Survol **avec** ses textures | 5,660 / 5,935 / 5,280 | **5,28 – 5,94** |
+| Survol **sans** texture (`--no-surface-maps`) | 5,804 / 6,122 / 4,882 | **4,88 – 6,12** |
+| Fond spatial habituel (`--no-flyby`) | 12,588 / 13,527 / 14,241 | **12,59 – 14,24** |
+
+**Ce que ça autorise.** Le survol coûte **moins de la moitié** du fond qu'il remplace. Même dans
+l'hypothèse la plus défavorable (fond au plus bas, survol au plus haut), l'économie est de
+**6,6 ms par image**, soit 40 % du budget 60 Hz. Les budgets ci-dessous ne se resserrent donc pas :
+ils supposaient que la phase garde « au moins la moitié de la marge libérée », elle la garde
+**entière**. Tu peux les tenir sans inquiétude, et un dépassement raisonnable se discute.
+
+⚠️ **Les textures, elles, ne coûtent rien de mesurable** : les deux premières séries se recouvrent
+entièrement, et la version texturée est même plus rapide deux fois sur trois. Ce n'est pas « elles
+sont gratuites », c'est « leur coût est sous le plancher de bruit de cette machine ». N'en conclus
+pas qu'on peut en empiler.
+
+⚠️ **La série du fond monte régulièrement** (12,59 → 13,53 → 14,24) : c'est la dérive thermique d'un
+châssis Max-Q, décrite dans le howto. Sa vraie valeur est plutôt vers le bas de la plage — ce qui
+rend l'écart encore plus net, pas moins.
 
 ## La géométrie du lieu — relevée, à respecter
 
@@ -174,7 +193,7 @@ d'une géométrie dont on montre moins d'un quart.
   `TEXCOORD_0` dans le `.glb` produit** — ne le suppose pas. Trois coques du dépôt sont sorties sans
   UV et le défaut est **totalement silencieux**.
 
-### Budgets provisoires
+### Budgets — confirmés par la mesure du 2026-08-26
 
 | Pièce | Triangles | Raison |
 |---|---|---|

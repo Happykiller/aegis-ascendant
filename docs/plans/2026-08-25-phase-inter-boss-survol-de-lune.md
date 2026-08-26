@@ -163,9 +163,19 @@ limbe ; un rocher frôlait le chasseur, ce qu'un décor sans collision ne doit p
 ⚠️ Et **un quatrième que le test a trouvé avant le rendu** : le ciel du survol, posé à la
 hauteur du fond habituel, aurait masqué tous ses propres rochers en silence.
 
-### Lot 3 — Les assets *(forge, briefs à écrire)* — ⏳ **impacts livrés, assets en attente**
+### Lot 3 — Les assets *(forge)* — 🟢 **DÉBLOQUÉ le 2026-08-26 : impacts et textures livrés, géométrie à forger**
 
-À n'engager **qu'une fois le budget GPU du lot 2 connu**.
+~~À n'engager **qu'une fois le budget GPU du lot 2 connu**.~~ → ✅ **Il l'est.**
+
+> 🟢 **MESURÉ SUR QUADRO T1000 LE 2026-08-26, trois tirs alternés par configuration.** Le survol
+> coûte **5,28–5,94 ms** par image contre **12,59–14,24 ms** pour le fond spatial qu'il remplace :
+> il en coûte **moins de la moitié**, et l'économie est d'au moins **6,6 ms**, soit 40 % du budget
+> 60 Hz. La garde de `BRIEF-0085` est **levée**, ses budgets de triangles sont confirmés — la phase
+> garde la marge entière, pas la moitié qu'ils supposaient.
+>
+> ⚠️ **Et les textures ne coûtent rien de mesurable** : avec et sans se recouvrent entièrement
+> (`--no-surface-maps`), la version texturée étant même plus rapide deux fois sur trois. Leur coût
+> est sous le plancher de bruit de la machine — ce qui n'autorise pas à en empiler.
 
 > ✅ **Les impacts sont faits** (voir `ADR-0027`) : trois bolides dorés percutent la lune à
 > 11 s, 26 s et 40 s, avec flash et gerbe d'éclats. C'était du **code**, pas de l'asset —

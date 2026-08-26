@@ -105,7 +105,7 @@ script.
 | `--victory-demo` | saute au rapport de mission, score semé |
 | `--demo` | pilote automatique + tir continu |
 | `--novsync` | débride la présentation |
-| `--no-backdrop` / `--no-glow` | bissection de perf (voir `godot-verifier`) |
+| `--no-backdrop` / `--no-glow` / `--no-surface-maps` | bissection de perf (voir `godot-verifier`) |
 
 ⚠️ **Ne pas passer `--demo` pour un test à la main** : le pilote automatique prend les commandes
 et la démo **boucle sans fin**. C'est l'outil de `balance-prober`, pas celui d'un joueur.
