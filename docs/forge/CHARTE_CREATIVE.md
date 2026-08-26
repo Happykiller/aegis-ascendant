@@ -88,6 +88,39 @@ cohérent, spectaculaire.
 - Audio : WAV source dans `assets/source/audio/`, OGG en livraison, pas de clipping.
 - **Provenance obligatoire** : une ligne par asset livré dans
   `assets/licenses/ASSET_PROVENANCE.csv` (voir en-tête du fichier).
+- **UV obligatoires** (`ADR-0028`) : tout maillage livré porte des UV, et `TEXCOORD_0` est
+  **compté** dans le `.glb` — jamais supposé. Un asset sans UV n'est pas « sans texture pour
+  l'instant » : il est **définitivement inhabitable** sans reforge, et le défaut est totalement
+  silencieux (aucune erreur d'import, aucun test rouge).
+
+### Textures — la voie de l'opérateur (`ADR-0028`)
+
+La texture est une **étape du process**, plus une simple permission. `ADR-0013` avait levé les
+interdits sans instituer d'étape ; `ADR-0028` la pose.
+
+**Le partage est en trois mains, et la forge n'en tient qu'une :**
+
+| Qui | Quoi |
+|---|---|
+| L'opérateur | **génère les images**, hors du dépôt, et les dépose dans `assets/source/` |
+| La forge | la **géométrie et les UV qui accueillent la texture** — jamais la texture elle-même |
+| Le concepteur | rédige la demande `TEX-NNNN`, dérive les cartes, câble le matériau, mesure, intègre |
+
+⚠️ **La forge ne livre donc AUCUNE texture** : ni peinte, ni générée, ni procédurale cuite dans le
+`.glb`. Un matériau provisoire pour ses propres rendus est bienvenu, mais il ne part pas dans le
+`.glb` autrement qu'en couleur unie.
+
+Une demande de texture est un **fichier JSON normalisé**, une par fichier :
+`docs/forge/textures/TEX-NNNN-<slug>.json`. Le contrat — schéma, six règles de validation, échelle
+monde déclarée `measured` ou `decided` — est dans
+[`docs/forge/textures/README.md`](textures/README.md). Le skill `/asset-image` en est l'étage de
+transformation en prompt.
+
+⚠️ **La réserve de couleurs s'applique aux textures comme au reste** : le cyan `#3FD9E8` appartient
+au tir allié, le corail `#FF5A3D` au tir ennemi (§3). Une texture qui les emploie vole leur
+lisibilité aux projectiles. Et le critère qui valide une texture n'est jamais la beauté de la
+surface : c'est une capture regardée, où **le chasseur et les balles se lisent encore par-dessus**
+(`ADR-0006`).
 
 ## 7. Échelles indicatives (graybox)
 

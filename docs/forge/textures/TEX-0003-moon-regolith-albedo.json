@@ -1,0 +1,112 @@
+{
+  "id": "TEX-0003",
+  "slug": "moon-regolith-albedo",
+  "schema_version": "1.0",
+  "date": "2026-08-26",
+
+  "texture_type": "surface_tile",
+
+  "purpose": {
+    "description": "Ejectas clairs rayonnant autour des cratères récents de la calotte lunaire",
+    "game_context": "Complète TEX-0001 sur le seul point qu'une carte de multiplication ne peut pas produire : ce qui est PLUS CLAIR que la surface. Le reste du contraste (creux assombris) vient déjà de derive-maps.py --mul.",
+    "priority": "Le contraste local prime sur la justesse de la teinte : à cette distance aucune ombre portée ne dessine le relief, donc c'est l'albédo qui le dessine."
+  },
+
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "albedo"
+  },
+
+  "world_scale": {
+    "texture_width_m": 12.0,
+    "texture_height_m": 12.0,
+    "reference_element": "MÊME cadrage et MÊME échelle que TEX-0001 — les deux cartes se superposent",
+    "confidence": "decided",
+    "rationale": "Imposée par TEX-0001 : deux cartes destinées au même dépliage doivent partager l'échelle, sinon les ejectas ne tombent pas sur les cratères."
+  },
+
+  "composition": {
+    "main_elements": [
+      "traînées d'ejectas claires rayonnant depuis 4 à 6 cratères récents",
+      "plaines sombres entre elles"
+    ],
+    "density": "low",
+    "distribution": "clustered",
+    "edge_behavior": "Les traînées traversent naturellement les quatre bords",
+    "empty_space": "Larges plages sombres : la moyenne de l'image doit rester SOMBRE malgré le contraste local"
+  },
+
+  "visual": {
+    "subject": "Variations d'albédo d'une surface lunaire : ejectas clairs autour des impacts récents, plaines sombres, poussière",
+    "materials": ["régolithe"],
+    "details": ["traînées radiales", "auréoles diffuses", "poussière"],
+    "style": "froid et désaturé, très sombre en moyenne, mais fortement contrasté localement",
+    "color_palette": {
+      "dominant": ["gris très sombre", "gris bleuté froid"],
+      "secondary": ["gris clair pour les ejectas"],
+      "forbidden": ["rose", "beige chaud", "ocre", "teinte chaude", "cyan #3FD9E8", "corail #FF5A3D"]
+    },
+    "surface_character": "Mate, poudreuse, sans aucun reflet",
+    "age_and_damage": "Les ejectas les plus clairs appartiennent aux cratères les plus récents"
+  },
+
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
+
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit : c'est une carte de réflectance, pas une photo",
+    "shadows": "none"
+  },
+
+  "constraints": {
+    "must_have": [
+      "des traînées d'ejectas claires rayonnant depuis les cratères les plus récents",
+      "une moyenne SOMBRE malgré le contraste local"
+    ],
+    "must_not_have": [
+      "teinte chaude", "rose", "beige", "reflet spéculaire", "éclairage directionnel cuit",
+      "perspective", "ombre portée", "vignettage", "cadre",
+      "texte", "lettres", "chiffres", "logo", "filigrane", "signature"
+    ],
+    "seamless_requirements": ["vérifié par tools/derive-maps.py --check-tiling"],
+    "readability_requirements": ["le chasseur blanc doit rester lisible par-dessus"]
+  },
+
+  "integration_notes": {
+    "engine_usage": "Multipliée par-dessus la carte de multiplication de TEX-0001, sur Moon_Cap",
+    "shader_usage": "albedo_texture. La couleur de palette du .glb reste la source de la teinte.",
+    "post_processing": "python3 tools/derive-maps.py <source> --out assets/imported/textures/backgrounds --mask --check-tiling",
+    "additional_notes": "⚠️ PIÈGE MESURÉ : la première capture de la doublure rendait ROSE PÂLE à 0,30 d'albédo — trois lumières chaudes plus le warmth/saturation du post-traitement réchauffent tout gris neutre, et le chasseur blanc s'y perdait. Partir froid et sombre, et juger sur le RENDU."
+  },
+
+  "x_delivery": {
+    "status": "conditionnelle — NE PAS GÉNÉRER sans capture qui la réclame",
+    "priority": "probablement inutile",
+    "condition": "Ne se commande que si, TEX-0001 intégrée et --mul appliquée, la capture en jeu montre que la lune manque de traînées claires. derive-maps.py --mul assombrit déjà les creux ; il ne peut pas éclaircir.",
+    "source_path": "assets/source/textures/backgrounds/moon_regolith_albedo_1024.png",
+    "derived_dir": "assets/imported/textures/backgrounds",
+    "derived_files": ["moon_regolith_albedo_mask.png"],
+    "verify": ["tuilage OK", "capture regardée : le chasseur et les mines restent lisibles"],
+    "provenance_csv_line": "moon_regolith_albedo,assets/source/textures/backgrounds/moon_regolith_albedo_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-26,docs/forge/textures/TEX-0003-moon-regolith-albedo.json,,\"Ejectas clairs de la calotte lunaire du survol (phase 2, ADR-0027). Complete TEX-0001 sur le seul point qu une carte de multiplication ne peut pas produire : ce qui est plus clair que la surface.\""
+  },
+
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "Carte d'albédo en niveaux de gris d'une surface lunaire : traînées d'ejectas claires rayonnant depuis quatre à six cratères récents, sur des plaines très sombres. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun vignettage.\n\nMotif répétable sans couture sur les quatre bords.\n\nÉchelle réelle : la tuile couvre environ 12 mètres de surface.\n\nL'image doit être TRÈS SOMBRE en moyenne, mais fortement contrastée localement : ce sont les traînées claires qui portent toute l'information. Gris froid, légèrement bleuté, mat et poudreux, sans aucun reflet.\n\nÉviter absolument : teinte chaude, rose, beige, ocre, reflet spéculaire, éclairage directionnel, ombre portée, perspective, vignettage, cadre, image globalement claire, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+  }
+}

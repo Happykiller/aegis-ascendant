@@ -82,6 +82,31 @@ Une carte ne remplace pas un relief là où il compte :
 **Dis dans le rapport où tu as placé la frontière**, et pourquoi. C'est le vrai sujet technique de ce
 brief.
 
+## Texture (ADR-0028)
+
+**L'asset dépend de deux demandes de texture**, toutes deux à commander :
+
+| Demande | Ce qu'elle habille |
+|---|---|
+| [`TEX-0001-moon-regolith-height.json`](../textures/TEX-0001-moon-regolith-height.json) | le grain et les petits cratères de `Moon_Cap` |
+| [`TEX-0002-asteroid-rock-height.json`](../textures/TEX-0002-asteroid-rock-height.json) | la roche des trois `Asteroid_*`, matériau **partagé** |
+
+Deux conditionnelles existent — `TEX-0003` (ejectas clairs) et `TEX-0004` — et **ne se commandent
+pas sur plan** : `derive-maps.py --mul` dérive déjà l'assombrissement des creux depuis la hauteur.
+Elles n'ajoutent que ce qui est *plus clair* que la surface, et seule une capture regardée peut dire
+si ça manque.
+
+**Dépliage attendu**, et c'est le sujet technique de ce brief (détaillé plus bas) :
+
+| Pièce | Dépliage |
+|---|---|
+| `Moon_Cap` | **continu, densité de texels homogène**, coutures hors champ + planche de contrôle au damier UV |
+| `Asteroid_01..03` | projection en boîte, **même échelle monde sur les trois** — une tuile calée sur le petit rocher se lit comme du gravier sur le gros |
+
+⚠️ Ce brief est antérieur à `ADR-0028` : cette section a été **ajoutée après coup**, le 2026-08-26,
+pour le mettre en conformité. Le partage en trois mains qu'il avait inventé est précisément ce que
+l'ADR institue.
+
 ## Contexte
 
 La phase 2 — le champ d'astéroïdes, entre les deux boss — a **son propre décor** : pendant qu'elle

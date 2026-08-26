@@ -14,12 +14,16 @@ livrables propres et traçables.
 1. Lire intégralement `docs/forge/CHARTE_CREATIVE.md` (bible créative : univers, palettes,
    silhouettes, interdits, formats).
 2. Lire intégralement le brief assigné (`docs/forge/briefs/BRIEF-NNNN-*.md`).
-3. Produire les livrables **exactement aux chemins prescrits par le brief**, dans le respect
+3. ⚠️ **Vérifier que le brief porte sa section `## Texture`** (`ADR-0028`). Elle est obligatoire et
+   tranche entre deux issues : soit l'asset dépend de demandes `docs/forge/textures/TEX-NNNN-*.json`
+   nommées, soit il n'en faut aucune **et le brief écrit pourquoi**. **Si la section manque, ne pas
+   deviner** : le dire dans le compte-rendu et livrer avec des UV de toute façon.
+4. Produire les livrables **exactement aux chemins prescrits par le brief**, dans le respect
    des critères d'acceptation.
-4. Ajouter une ligne dans `assets/licenses/ASSET_PROVENANCE.csv` pour **chaque fichier d'asset
+5. Ajouter une ligne dans `assets/licenses/ASSET_PROVENANCE.csv` pour **chaque fichier d'asset
    livré** (format en en-tête du CSV ; `source_tool` = `asset-forge (Claude)` pour une création
    interne ; le champ `prompt_file` pointe vers le brief).
-5. Rendre un compte-rendu final : liste des livrables (chemins), choix créatifs et leur
+6. Rendre un compte-rendu final : liste des livrables (chemins), choix créatifs et leur
    justification, limites connues, suggestions éventuelles.
 
 ## Interdictions absolues
@@ -34,6 +38,10 @@ livrables propres et traçables.
   `docs/forge/output/`), le CSV de provenance, et `tools/` uniquement si le brief le prescrit
   (scripts Blender/traitement).
 - **Aucun téléchargement d'asset** depuis Internet (images, modèles, sons) — tout est créé.
+- ⛔ **AUCUNE TEXTURE** (`ADR-0028`) : ni peinte, ni générée, ni procédurale cuite dans le `.glb`.
+  La matière vient de l'opérateur, qui génère les images hors du dépôt. Tu livres la **géométrie et
+  les UV qui l'accueilleront**, jamais la carte elle-même. Un matériau provisoire pour tes propres
+  rendus est bienvenu — il ne part pas dans le `.glb` autrement qu'en couleur unie.
 - Aucun fichier binaire opaque si un format texte fait l'affaire (préférer SVG à PNG).
 
 ## Standards de livraison
@@ -41,5 +49,16 @@ livrables propres et traçables.
 - Noms de fichiers en anglais, `snake_case` ; textes de jeu en anglais, documentation en français.
 - SVG : propre, sans metadata d'éditeur, viewBox carré pour les icônes, testable en petites tailles.
 - Toute couleur de gameplay provient de la charte (ou le brief l'exige explicitement).
+- ⚠️ **UV OBLIGATOIRES sur 100 % des primitives, et `TEXCOORD_0` COMPTÉ dans le `.glb`** —
+  compté, jamais supposé (`ADR-0028`). Trois coques du dépôt sont sorties sans UV et le défaut est
+  **totalement silencieux** : aucune erreur d'import, aucun test rouge. Une coque sans UV est
+  définitivement inhabitable sans reforge.
+- **Le dépliage suit l'usage**, et le brief le dit : projection en boîte (`ak.box_project_uv()`)
+  pour une pièce vue de loin, en donnant les tuiles/m ; dépliage **continu à densité de texels
+  homogène**, coutures **hors champ**, pour une surface qui portera une carte de détail — et dans
+  ce cas une **planche de contrôle au damier UV**, rendue à la perspective du jeu. Sans elle, un
+  étirement ne se découvre qu'après la texture générée, donc trop tard.
+- **Donner au compte-rendu la densité de texels mesurée** et l'emplacement des coutures dès qu'un
+  dépliage continu est demandé.
 - Si un critère du brief est impossible ou ambigu : le dire dans le compte-rendu, livrer la
   meilleure approximation, ne jamais inventer silencieusement hors-cadre.

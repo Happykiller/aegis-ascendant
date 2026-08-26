@@ -1,14 +1,26 @@
 ---
 name: asset-image
-description: Rédige des prompts d'images autosuffisants pour Aegis Ascendant (textures, planches, décors) et dit exactement comment nommer le livrable, où le déposer, quoi lancer ensuite et quelle ligne de provenance ajouter. Déclencher avec /asset-image.
+description: Écrit une expression de besoin d'image NORMALISÉE pour Aegis Ascendant (textures, planches, décors) — un fichier JSON par image, au contrat docs/forge/textures/README.md — d'où il dérive le prompt collable, le nom, le chemin de dépôt, la commande de suite et la ligne de provenance. Déclencher avec /asset-image.
 trigger: /asset-image
 ---
 
 # /asset-image — le prompt, le nom, le chemin, la suite
 
 Ce skill existe parce que l'opérateur génère les images **hors du dépôt**, dans une autre fenêtre.
-Un prompt qui suppose du contexte est donc un prompt raté : il faut que le bloc rendu se colle tel
-quel, et qu'au retour on sache sans réfléchir où poser le fichier et quoi lancer.
+Un prompt qui suppose du contexte est donc un prompt raté : il faut que la demande se traite seule,
+et qu'au retour on sache sans réfléchir où poser le fichier et quoi lancer.
+
+> ⚠️ **La sortie de ce skill est un FICHIER, pas un bloc de conversation** (changé le 2026-08-26, à
+> la demande de l'opérateur : « j'aimerai que quand on génère des prompts à traiter que l'ensemble
+> de la demande soit dans un fichier, plus facile à traiter en séparé »). Le format est le contrat
+> JSON de **[`docs/forge/textures/README.md`](../../../docs/forge/textures/README.md)** — **le lire
+> avant d'écrire quoi que ce soit**. Il porte le schéma, les six règles de validation, et la raison
+> de chacune.
+
+Le partage est simple, et c'est lui qui rend le contrat utile : **le JSON est stable, le prompt est
+jetable.** Ce skill est l'étage « transformation en prompt » de la chaîne — il produit le prompt,
+mais il le **range dans le fichier** (`x_prompt_fr`) au lieu de le laisser dans un chat qui se
+perd.
 
 Il existe aussi parce que le projet a **déjà payé** les mêmes pièges de génération : le damier peint
 à la place de la transparence (BRIEF-0028), la fausse normal map, la couture invisible en preview et
@@ -98,34 +110,58 @@ régénérer autrement sans repasser par le générateur.
 
 ---
 
-## 4. Le format de sortie — un bloc par image
+## 4. Le format de sortie — un fichier JSON par image
 
-Chaque image demandée produit **exactement** ce bloc. Rien à aller chercher ailleurs.
+⚠️ **Ne rends jamais le prompt seul dans la conversation.** Chaque image demandée produit
+**exactement un fichier** :
 
 ```
-### <n>/<total> — <nom_du_fichier_sans_extension>
-
-PROMPT — à coller tel quel :
-────────────────────────────────────────────────────────────
-<le prompt complet, en français, sujet + cadrage + échelle
- réelle + palette en mots, puis « Éviter absolument : … »>
-────────────────────────────────────────────────────────────
-
-FORMAT      : PNG, 1024 x 1024 (carre natif du generateur), niveaux de gris
-DÉPOSER     : assets/source/textures/citadel/citadel_panels_height_2048.png
-ENSUITE     : python3 tools/derive-maps.py \
-                assets/source/textures/citadel/citadel_panels_height_2048.png \
-                --out assets/imported/textures/citadel --mul \
-                --preview /tmp/citadel_panels.png
-VÉRIFIER    : la ligne « tuilage » doit dire OK ; ouvrir la preview
-              (le quart haut-gauche montre 2x2 tuiles — la couture s'y voit)
-PROVENANCE  : <ligne CSV prête à coller dans assets/licenses/ASSET_PROVENANCE.csv>
+docs/forge/textures/TEX-NNNN-<slug>.json
 ```
 
-La ligne de provenance suit l'en-tête du CSV
+Numéro pris à la suite de ceux qui existent. Le schéma complet, les six règles de validation et les
+extensions `x_` sont dans **[`docs/forge/textures/README.md`](../../../docs/forge/textures/README.md)** :
+c'est lui le contrat, pas cette page. Ce qui suit n'en est que le mode d'emploi.
+
+### Ce que le skill doit remplir, et dans quel ordre
+
+1. **`purpose`, `composition`, `visual`** — le besoin. C'est la partie qui demande de comprendre le
+   jeu : où la texture sert, ce qui doit se lire, ce qui compte le plus.
+2. **`technical`, `world_scale`** — les contraintes. Elles se **vérifient** contre les six règles ;
+   aucune ne s'invente.
+3. **`integration_notes`, `x_delivery`** — la suite : chemin de dépôt, commande `derive-maps.py`,
+   vérifications, ligne de provenance **prête à coller**.
+4. **`x_prompt_fr.text` en DERNIER** — le prompt se **dérive** des trois blocs précédents. L'écrire
+   en premier, c'est retomber dans le prompt libre que le contrat sert justement à éviter.
+
+### Trois erreurs que le contrat rend impossibles, si on le suit
+
+| Erreur | Ce que le champ impose |
+|---|---|
+| Demander du 2048 | `technical.resolution` n'accepte que les trois formats natifs — sinon on reçoit un 1024 agrandi |
+| Inventer une échelle | `world_scale.confidence` force à écrire `measured` ou `decided`, **avec** son `rationale` |
+| Oublier la réserve de couleurs | `visual.color_palette.forbidden` contient toujours cyan `#3FD9E8` et corail `#FF5A3D` |
+
+### Après avoir écrit le fichier
+
+Rends à l'opérateur **trois lignes**, pas le contenu :
+
+```
+ÉCRIT       : docs/forge/textures/TEX-0001-moon-regolith-height.json
+À GÉNÉRER   : 1024 x 1024, niveaux de gris, tuile répétable
+ENSUITE     : python3 tools/derive-maps.py <source> --out <dir> --mul --preview /tmp/<nom>.png
+```
+
+Le fichier se lit seul — le recopier dans la conversation le duplique et crée une seconde source de
+vérité qui divergera.
+
+### La ligne de provenance
+
+Elle vit dans `x_delivery.provenance_csv_line`, déjà échappée, et suit l'en-tête du CSV
 (`asset_id,file_path,asset_type,source_tool,source_url,author,license,generated_date,prompt_file,modified_by,notes`).
-Pour une image générée : `source_tool` = l'outil réel, `author` = `tiers (genere IA)`,
-`license` = `proprietary-internal`. Une ligne pour la **source**, une pour chaque **dérivée**
+Pour une image générée : `asset_type` = `raster_texture`, `source_tool` = l'outil réel,
+`author` = `tiers (genere IA)`, `license` = `proprietary-internal`, et `prompt_file` = **le chemin
+du TEX-NNNN**, plus jamais un brief. Une ligne pour la **source**, une pour chaque **dérivée**
 réellement versionnée.
 
 ---
