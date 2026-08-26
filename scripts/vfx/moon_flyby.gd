@@ -72,6 +72,17 @@ const SHARD_PATH := "res://assets/imported/models/vfx/impact_shard.glb"
 const MOON_METRES_PER_TILE := 55.0
 const ROCK_METRES_PER_TILE := 8.0
 
+## Combien de fois la tuile de roche se répète sur les rochers LIVRÉS, dont les UV portent
+## déjà l'échelle de 8 m par tuile (`BRIEF-0086`, mesuré à 0,125 tuile/m).
+##
+## ⚠️ 2,7 ramène la tuile à ~3 m de roche : un rocher de 10 m en montre alors trois, donc
+## une dizaine de fractures qui se lisent comme du DÉTAIL. À 1 (une seule tuile pour tout
+## le rocher), les trois grandes fractures de la carte devenaient la silhouette même du
+## caillou. C'est le symétrique exact de la lune, qu'il a fallu DÉ-tuiler de 12 à 55 m le
+## matin même : la même carte, deux objets, deux échelles opposées — et dans les deux cas
+## le défaut se voit et ne se calcule pas.
+const ROCK_RETILE := 2.7
+
 ## Force du relief. La lune est vue de TRÈS loin : une normale trop marquée y produit un
 ## moiré, la même leçon que la coque du Specter-9 passée de 1,5 à 0,7 parce qu'elle prenait
 ## un aspect martelé.
@@ -210,7 +221,11 @@ const BOLIDE_FIT := 1.13
 ## La traînée : un cône effilé DERRIÈRE le bolide, le long de sa course RÉELLE — pas de la
 ## verticale. C'est elle qui porte la lisibilité, pas la tête.
 const TRAIL_LENGTH := 14.0
-const TRAIL_RADIUS := 0.7
+## ⚠️ 0,35 ET NON 0,7. À 0,7 la traînée rendait un CARTON DÉCOUPÉ : un cône plat, opaque
+## de bout en bout, arêtes polygonales visibles et capuchon hexagonal en bout. Relevé par
+## l'opérateur sur une capture en PLEINE RÉSOLUTION, là où mes propres captures — jugées
+## réduites en 960 px — ne pouvaient pas le montrer.
+const TRAIL_RADIUS := 0.35
 
 ## L'onde de choc : un ANNEAU qui s'étale sur la surface, pas une colonne qui monte.
 ##
@@ -421,6 +436,17 @@ func _dress_decor() -> void:
 	var rock_material: Array[StandardMaterial3D] = []
 	for body in _drifters:
 		_dressed_rocks = _dress_meshes_of(body, ROCK_MAPS, rock_material) or _dressed_rocks
+	# ⚠️ LES ROCHERS SE RETUILENT, LA LUNE NON — et c'est une mesure, pas un goût.
+	# `TEX-0002` est calée sur 8 m de roche et porte 3 à 5 fractures majeures par tuile.
+	# Or les rochers livrés font 8 à 20 m : on n'en voyait donc qu'UNE SEULE TUILE, et les
+	# trois fractures devenaient les arêtes du rocher ENTIER — de larges plages tonales à
+	# bords droits, qui se lisent comme des plans superposés et non comme de la roche.
+	# Relevé par l'opérateur : « les astéroïdes n'ont pas de texture ». Ils en avaient une,
+	# à une échelle où elle ne pouvait pas se lire comme une matière.
+	#
+	# Le rattrapage est celui que le contrat annonçait : un chiffre, pas une régénération.
+	for material in rock_material:
+		material.uv1_scale = Vector3.ONE * ROCK_RETILE
 
 ## Pose les cartes sur chaque surface d'un nœud et de ses descendants.
 ##
@@ -693,6 +719,31 @@ static func bolide_heading(target: Vector3, up: Vector3) -> Vector3:
 static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
 	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
 
+## Fait s'éteindre une pièce LE LONG DE SA LONGUEUR, par un dégradé d'opacité.
+##
+## ⚠️ C'EST CE QUI SÉPARE UNE TRAÎNÉE D'UN MORCEAU DE CARTON. Sans lui, un cône additif à
+## opacité constante rend un aplat à contour franc : la matière s'arrête net au lieu de se
+## dissiper. Aucun réglage d'énergie ne le corrige — c'est la forme du signal qui est
+## fausse, pas son intensité.
+##
+## Le dégradé est VERTICAL dans l'UV (`fill_from`/`fill_to` sur l'axe Y) parce que la
+## coordonnée V d'un `CylinderMesh` court le long de sa hauteur ; un `GradientTexture1D`,
+## échantillonné sur U, aurait fait varier l'opacité AUTOUR de la circonférence — donc des
+## bandes dans le mauvais sens, ce qui a l'air d'un bug de texture et non d'un axe inversé.
+func _fade_along_length(node: MeshInstance3D) -> void:
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1.0, 1.0, 1.0, 0.0))   # la queue se dissipe
+	ramp.set_color(1, Color(1.0, 1.0, 1.0, 1.0))   # la tête est pleine
+	var tex := GradientTexture2D.new()
+	tex.gradient = ramp
+	tex.width = 4
+	tex.height = 64
+	tex.fill_from = Vector2(0.0, 0.0)
+	tex.fill_to = Vector2(0.0, 1.0)
+	var material := node.material_override as StandardMaterial3D
+	if material != null:
+		material.albedo_texture = tex
+
 ## Le maillage d'une coque forgée, ou `null` si elle n'a pas encore été livrée.
 ##
 ## ⚠️ Un SEUL maillage partagé par les quatorze éclats. Instancier la scène quatorze fois
@@ -833,9 +884,17 @@ func _build_impact_kit() -> void:
 	_bolide.material_override = bolide_material
 	_bolide.visible = false
 	add_child(_bolide)
-	_trail = _cone("ImpactTrail", TRAIL_RADIUS, 0.0, 1.0, 3.0)
+	# ⚠️ ÉNERGIE SOUS LE SEUIL DE BLOOM (1,6) : à 3,0 le halo dessinait un anneau BRUN
+	# autour de la traînée, et son cœur saturait en aplat. Un effet censé être une lueur
+	# devenait une forme pleine à contour dur.
+	_trail = _cone("ImpactTrail", TRAIL_RADIUS, 0.0, 1.0, 1.3)
+	# ⚠️ SANS CAPUCHONS : le disque plat du bout se lisait comme un hexagone découpé.
+	var trail_mesh := _trail.mesh as CylinderMesh
+	trail_mesh.cap_top = false
+	trail_mesh.cap_bottom = false
+	_fade_along_length(_trail)
 	add_child(_trail)
-	_plume = _cone("ImpactPlume", 1.0, 1.0, 1.0, 5.5)
+	_plume = _cone("ImpactPlume", 1.0, 1.0, 1.0, 1.5)
 	# ⚠️ SANS COUVERCLES : un tube plein, vu d'au-dessus, redevient le disque jaune qu'on
 	# corrige. C'est l'ANNEAU qui dit l'onde de choc.
 	var ring := _plume.mesh as CylinderMesh
