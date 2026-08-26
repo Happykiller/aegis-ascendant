@@ -134,9 +134,23 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 
 ## Ouverture mécanique de la coque, de 0 (fermée) à 1 (grande ouverte).
 ##
-## Elle suit le télégraphe et non la menace : une mine qui bâillerait dès qu'on
-## l'approche aurait déjà tout dit, et le joueur n'aurait plus rien à lire dans les
-## 700 ms qui décident. Elle s'ouvre pendant le WINDUP, exactement.
+## ⚠️ RÈGLE RÉVISÉE LE 2026-08-26, à la demande de l'opérateur : « le sursis les ouvre comme
+## si elles étaient armées, et se referme si on part à temps ».
+##
+## La règle d'origine disait : « elle suit le télégraphe et non la menace — une mine qui
+## bâillerait dès qu'on l'approche aurait déjà tout dit, et le joueur n'aurait plus rien à
+## lire dans les 700 ms qui décident ». La crainte était juste, et elle est **conservée** —
+## mais autrement : le sursis n'ouvre la coque qu'AUX DEUX TIERS, et c'est le télégraphe qui
+## l'ouvre EN GRAND. Il reste donc quelque chose à lire au moment qui décide.
+##
+## Ce que le renversement gagne : le sursis devient VISIBLE, et sa refermeture aussi. Un
+## joueur qui ressort à temps voit la coque se rabattre — le pardon se montre, au lieu de
+## se déduire d'une absence de tir.
+##
+## ⚠️ La refermeture doit être ANIMÉE, pas instantanée : `EnemyController` limite la vitesse
+## d'ouverture, sinon la coque claquerait d'une image à l'autre et se lirait comme un
+## clignotement de bug.
+const ARMING_OPEN := 0.65
 ##
 ## Ce qu'elle fait après la charge distingue les deux règles du jeu : une unité à
 ## usage unique reste ouverte — elle est finie, sa carcasse le montre. Une unité qui
@@ -144,8 +158,18 @@ static func threat_ratio(state: int, time_in_state: float, distance: float,
 ## loin, le moment où elle redevient dangereuse.
 static func open_ratio(state: int, time_in_state: float, data: EnemyData) -> float:
 	match state:
+		State.ARMING:
+			var grace := maxf(data.arm_grace, 0.001)
+			return ARMING_OPEN * clampf(time_in_state / grace, 0.0, 1.0)
 		State.WINDUP:
-			return windup_ratio(state, time_in_state, data)
+			var ratio := windup_ratio(state, time_in_state, data)
+			# ⚠️ Le télégraphe REPREND où le sursis s'est arrêté. Repartir de zéro ferait
+			# claquer la coque fermée à l'instant précis de l'engagement — le contraire de
+			# ce qu'elle doit annoncer. Une unité sans sursis, elle, s'ouvre de 0 à 1 comme
+			# avant : le comportement des huit autres familles est intact.
+			if data.arm_grace > 0.0:
+				return ARMING_OPEN + (1.0 - ARMING_OPEN) * ratio
+			return ratio
 		State.ACTIVE:
 			return 1.0
 		State.SPENT:

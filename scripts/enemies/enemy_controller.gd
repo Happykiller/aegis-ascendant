@@ -104,6 +104,9 @@ var _pose: EnemyPose
 ## image, et l'unité la consomme. Aucun ordre d'exécution à garantir entre eux, et
 ## rien à nettoyer quand le porteur meurt — la couverture s'éteint d'elle-même.
 var _shield_grace: float = 0.0
+## Ouverture LISSÉE de la coque : la cible vient d'`EnemyReaction`, celle-ci la suit à
+## vitesse bornée pour que le geste existe.
+var _open: float = 0.0
 ## Voisins couverts par l'aura, résolus UNE fois. Le pool est préinstancié avant la
 ## première activation, donc le groupe ne bouge plus : rappeler `get_nodes_in_group`
 ## à chaque image allouerait un tableau par porteur et par frame.
@@ -125,6 +128,11 @@ var _neighbours: Array[EnemyController] = []
 ## volume — c'est l'anneau qu'on lit.
 
 ## Demi-épaisseur de l'anneau, en unités monde.
+## Vitesse d'ouverture et de refermeture de la coque, en fraction par seconde. À 2,2 une
+## coque met ~0,3 s à se rabattre depuis le sursis : assez pour qu'on VOIE le geste, assez
+## vite pour que la mine soit prête au prochain passage.
+const OPEN_RATE := 2.2
+
 const AURA_RING_THICKNESS := 0.09
 
 ## Le champ peint (`TEX-0008`). Chargé à l'exécution : sans lui, le tore procédural reprend
@@ -227,6 +235,7 @@ func _set_active(value: bool) -> void:
 	_threat = 0.0
 	_salvo = 0
 	_shield_grace = 0.0
+	_open = 0.0
 	if _vitals != null:
 		_vitals.reset()
 	if _pose != null:
@@ -431,7 +440,13 @@ func _distance_to_player() -> float:
 ## une épave qui plane. Ni télégraphe ni état : un signe de vie.
 func _pose_ratio() -> float:
 	if _reactive:
-		return EnemyReaction.open_ratio(_state, _state_time, data)
+		var target := EnemyReaction.open_ratio(_state, _state_time, data)
+		# ⚠️ LA COQUE NE TÉLÉPORTE PAS. Sans cette limite, sortir du sursis ferait passer
+		# l'ouverture de 0,65 à 0 EN UNE IMAGE : la coque claquerait, et un claquement se
+		# lit comme un clignotement de bug, pas comme une machine qui se rabat. C'est aussi
+		# ce qui rend la refermeture LISIBLE — c'est le mouvement qui dit le pardon.
+		_open = move_toward(_open, target, OPEN_RATE * get_physics_process_delta_time())
+		return _open
 	return 0.5 + 0.5 * sin(_age * TAU / PASSIVE_POSE_PERIOD)
 
 

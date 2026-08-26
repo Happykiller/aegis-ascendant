@@ -161,12 +161,36 @@ func test_the_telegraph_still_never_reverses() -> void:
 	assert_eq(EnemyReaction.next_state(EnemyReaction.State.WINDUP, 0.1, 999.0, data),
 		EnemyReaction.State.WINDUP, "fuir pendant le télégraphe ne l'annule pas")
 
-## La coque NE S'OUVRE PAS pendant le sursis. Une mine qui bâillerait dès l'entrée aurait
-## déjà tout dit, et le joueur n'aurait plus rien à lire dans les 700 ms qui décident.
-func test_the_shell_stays_shut_during_the_reprieve() -> void:
+## ⚠️ RÈGLE RÉVISÉE LE 2026-08-26. Première version : la coque restait FERMÉE pendant le
+## sursis, pour préserver « une mine qui bâillerait dès qu'on l'approche aurait déjà tout
+## dit ». L'opérateur a tranché autrement — « le sursis les ouvre comme si elles étaient
+## armées, et se referme si on part à temps » — et la crainte d'origine reste satisfaite,
+## mais autrement : le sursis n'ouvre qu'AUX DEUX TIERS, le télégraphe ouvre EN GRAND.
+## Il reste donc quelque chose à lire au moment qui décide.
+func test_the_reprieve_opens_the_shell_partway() -> void:
 	var data := _mine_with_grace()
-	assert_eq(EnemyReaction.open_ratio(EnemyReaction.State.ARMING, 0.9, data), 0.0,
-		"le sursis ne s'annonce pas par l'ouverture mécanique")
+	assert_almost_eq(EnemyReaction.open_ratio(EnemyReaction.State.ARMING, 0.0, data), 0.0, 0.001,
+		"fermée à l'entrée")
+	assert_almost_eq(EnemyReaction.open_ratio(EnemyReaction.State.ARMING, 1.0, data),
+		EnemyReaction.ARMING_OPEN, 0.001, "aux deux tiers à l'échéance")
+	assert_true(EnemyReaction.ARMING_OPEN < 0.8,
+		"et PAS en grand : le télégraphe doit garder de quoi s'annoncer")
+
+## Le télégraphe REPREND où le sursis s'est arrêté. Repartir de zéro ferait claquer la coque
+## fermée à l'instant précis de l'engagement — le contraire de ce qu'elle doit annoncer.
+func test_the_telegraph_finishes_what_the_reprieve_started() -> void:
+	var data := _mine_with_grace()
+	assert_almost_eq(EnemyReaction.open_ratio(EnemyReaction.State.WINDUP, 0.0, data),
+		EnemyReaction.ARMING_OPEN, 0.001, "l'engagement part de l'ouverture du sursis")
+	assert_almost_eq(EnemyReaction.open_ratio(EnemyReaction.State.WINDUP, data.windup_time, data),
+		1.0, 0.001, "et finit grande ouverte")
+
+## ⚠️ Les huit autres familles n'ont pas de sursis : leur coque s'ouvre de 0 à 1 comme avant.
+func test_a_unit_without_grace_opens_from_shut() -> void:
+	var data := _mine_with_grace()
+	data.arm_grace = 0.0
+	assert_almost_eq(EnemyReaction.open_ratio(EnemyReaction.State.WINDUP, 0.0, data), 0.0, 0.001,
+		"sans sursis, le telegraphe part de la coque fermee")
 
 ## Le joueur doit distinguer « elle m'a senti » de « c'est parti ».
 func test_the_reprieve_reads_between_alert_and_commitment() -> void:
