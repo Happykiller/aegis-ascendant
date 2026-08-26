@@ -182,7 +182,28 @@ func clear_team(team: int) -> int:
 			cleared += 1
 	return cleared
 
+## Rend un projectile au pool. **IDEMPOTENT**, et ce n'est pas une précaution décorative.
+##
+## ⚠️ LA LIBÉRATION EST RÉENTRANTE PAR CONSTRUCTION, et le chemin est entièrement synchrone :
+##   1. `_resolve_hits` trouve qu'un tir ennemi atteint le joueur ;
+##   2. `target.hit_callback.call(...)` — le joueur encaisse et MEURT ;
+##   3. sa mort appelle `clear_team(ENEMY)`, le garde-fou contre la mort en chaîne
+##      (`graybox_root._on_player_destroyed`) — voulu, documenté, et non négociable ;
+##   4. `clear_team` libère tous les tirs ennemis vivants, DONT celui qu'on traite ;
+##   5. retour dans `_resolve_hits`, qui libère une seconde fois le même index.
+##
+## Sans cette garde, le même index part deux fois sur la pile libre. Vécu en jeu le
+## 2026-08-26 : « Out of bounds set index '600' ». ⚠️ **Et le dégât visible n'était pas le
+## pire.** L'écriture hors bornes interrompt la fonction AVANT `_free_top += 1`, donc la
+## pile est sauvée par accident — mais `_team_counts` a déjà été décrémenté à la ligne
+## d'avant. Le compte part à **−1**, et le budget par équipe cesse alors de borner quoi que
+## ce soit, sans une ligne au journal, longtemps après que l'erreur a défilé.
+##
+## Rendre `_release` idempotent supprime la catégorie entière plutôt que ce cas-ci : tout
+## futur rappel qui vide l'écran depuis un `hit_callback` est couvert d'avance.
 func _release(i: int) -> void:
+	if _alive[i] == 0:
+		return
 	_alive[i] = 0
 	_team_counts[_teams[i]] -= 1
 	_free_stack[_free_top] = i
