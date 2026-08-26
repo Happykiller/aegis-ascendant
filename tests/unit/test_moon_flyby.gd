@@ -197,3 +197,68 @@ func test_the_impact_kit_is_preallocated_and_asleep() -> void:
 	assert_false(flyby._flash.visible, "le flash dort")
 	for shard in flyby._shards:
 		assert_false(shard.visible, "%s dort" % shard.name)
+
+# --- Les impacts vus d'en haut (2026-08-26) ----------------------------------
+#
+# ⚠️ CES TESTS EXISTENT PARCE QUE LA CAMÉRA REGARDE D'EN HAUT, et que ce fait invalide
+# l'intuition. Relevé de l'opérateur en jouant : « les astéroïdes qui se crashent sur la
+# lune sont un simple cercle jaune ». La cause n'était pas le manque de géométrie mais
+# l'ORIENTATION : un bolide qui tombe le long de la verticale locale est vu en enfilade, et
+# une gerbe conique verticale se projette exactement en un disque. Ce qui se lit en plongée
+# est ce qui s'étale dans le plan qu'on voit.
+
+func test_the_bolide_comes_in_at_an_angle_or_the_trail_is_invisible() -> void:
+	var at := FlybyScript.surface_point(-6.0, 10.0)
+	var up := (at - FlybyScript.MOON_CENTER).normalized()
+	var heading := FlybyScript.bolide_heading(at, up)
+	# La composante HORIZONTALE de la course est ce qui la rend visible d'au-dessus.
+	var flat := Vector2(heading.x, heading.z).length()
+	assert_true(flat > 0.45,
+		"la course est franchement oblique (part horizontale %.2f) — verticale, elle serait vue en enfilade" % flat)
+
+## ⚠️ LA GARDE DU PLAFOND NE DOIT PAS AVOIR BOUGÉ. L'écart latéral est horizontal : si
+## quelqu'un lui donne un jour une composante Y, le bolide repasserait au-dessus du plan de
+## jeu — le défaut que `test_the_bolide_never_crosses_the_play_field` avait déjà attrapé.
+func test_the_slant_is_horizontal_and_does_not_lift_the_bolide() -> void:
+	assert_almost_eq(FlybyScript.BOLIDE_FROM.y, 0.0, 0.0001,
+		"l'écart latéral n'a aucune composante verticale")
+	var at := FlybyScript.surface_point(-6.0, 10.0)
+	var up := (at - FlybyScript.MOON_CENTER).normalized()
+	assert_almost_eq(FlybyScript.bolide_start(at, up).y,
+		at.y + up.y * FlybyScript.BOLIDE_DROP, 0.001,
+		"le départ est à la même hauteur qu'avant l'oblique")
+
+func test_the_trail_grows_instead_of_appearing_whole() -> void:
+	assert_almost_eq(FlybyScript.trail_length(0.0), 0.0, 0.0001,
+		"aucune traînée à la première image")
+	var early := FlybyScript.trail_length(FlybyScript.BOLIDE_FALL * 0.3)
+	var late := FlybyScript.trail_length(FlybyScript.BOLIDE_FALL * 0.9)
+	assert_true(early < late, "elle s'allonge")
+	assert_true(late <= FlybyScript.TRAIL_LENGTH + 0.001, "et plafonne")
+
+## L'onde s'ÉTALE : son rayon doit croître bien plus que sa hauteur, sinon elle redevient
+## la colonne verticale qu'on ne voit pas d'en haut.
+func test_the_shockwave_spreads_more_than_it_rises() -> void:
+	assert_true(FlybyScript.PLUME_RADIUS > FlybyScript.PLUME_HEIGHT * 3.0,
+		"l'anneau est bien plus large (%.1f) que haut (%.1f)"
+			% [FlybyScript.PLUME_RADIUS, FlybyScript.PLUME_HEIGHT])
+	var early := FlybyScript.plume_shape(0.2)
+	var late := FlybyScript.plume_shape(1.0)
+	assert_true(late.x > early.x, "le rayon grandit")
+	assert_almost_eq(late.x, FlybyScript.PLUME_RADIUS, 0.001, "jusqu'à sa pleine largeur")
+
+func test_the_shockwave_lights_up_then_dies() -> void:
+	assert_almost_eq(FlybyScript.plume_fade(0.0), 0.0, 0.0001, "elle naît éteinte")
+	assert_almost_eq(FlybyScript.plume_fade(0.15), 1.0, 0.01, "s'allume vite")
+	assert_almost_eq(FlybyScript.plume_fade(1.0), 0.0, 0.01, "et s'éteint à la fin")
+
+## ⚠️ Le produit vectoriel rend ZÉRO si l'axe de référence est colinéaire à `up` — la base
+## deviendrait invalide en silence, et l'effet pointerait n'importe où. Les impacts sont
+## près du sommet de la lune, donc `up` y est presque exactement +Y : le cas dégénéré n'est
+## pas théorique, c'est le cas NOMINAL.
+func test_the_orientation_survives_a_vertical_up() -> void:
+	for up in [Vector3.UP, Vector3.DOWN, Vector3(0.001, 1.0, 0.0).normalized()]:
+		var basis := FlybyScript.basis_from_up(up)
+		assert_almost_eq(basis.y.dot(up), 1.0, 0.001, "l'axe Y suit bien `up`")
+		assert_almost_eq(basis.x.length(), 1.0, 0.001, "et la base reste normée")
+		assert_true(absf(basis.x.dot(basis.y)) < 0.001, "et orthogonale")

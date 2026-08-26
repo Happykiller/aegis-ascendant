@@ -132,8 +132,11 @@ const IMPACT_SPOTS: PackedVector2Array = [
 ## qu'il aurait traversé à chaque fois. Trouvé par `test_moon_flyby.gd`, jamais à l'écran.
 const BOLIDE_DROP := 18.0
 const BOLIDE_FALL := 2.4
-## Durées de vie du flash et des éclats.
-const FLASH_LIFE := 0.9
+## Durées de vie du flash et des éclats. ⚠️ LE FLASH A ÉTÉ RÉDUIT (2026-08-26) : c'est LUI,
+## la sphère pleine au centre de l'impact, qui était « le simple cercle jaune » de la
+## plainte. Il ne raconte plus le choc — l'anneau et les éclats s'en chargent — il n'est
+## plus que l'étincelle blanche du premier contact, brève et petite.
+const FLASH_LIFE := 0.45
 const SHARD_LIFE := 3.0
 ## ⚠️ Le compte et la taille sont ceux de la DISTANCE, pas du goût : la gerbe se joue à
 ## trente unités de la caméra, où un éclat de 0,5 pèse une quinzaine de pixels. À huit
@@ -154,6 +157,60 @@ const IMPACT_WARM := Color(1.0, 0.80, 0.45)
 ## gravité juste — c'est celle qui rend la gerbe lisible en trois secondes.
 const SHARD_SPEED := 9.0
 const SHARD_PULL := 5.0
+
+# --- Ce qui rend un impact LISIBLE à 96 unités (2026-08-26) -------------------
+#
+# ⚠️ LE DIAGNOSTIC AVANT LES RÉGLAGES, parce qu'il change ce qu'il faut faire. Relevé de
+# l'opérateur en jouant : « les astéroïdes qui se crashent sur la lune sont un simple
+# cercle jaune ». C'est exact, et la cause est une MESURE, pas un goût :
+#
+#   la lune est à 96 unités de la caméra ; le cadre visible y fait ~115 m de haut pour
+#   540 px de rendu utile après le post-process rétro, soit **4,7 px par mètre**.
+#   Un bolide de 1,7 m de diamètre occupe donc **8 PIXELS**.
+#
+# À huit pixels, une sphère incandescente EST un cercle jaune, et aucune quantité de
+# géométrie n'y changera rien — c'est ce que dit `BRIEF-0086` à la forge. Ce qui se lit à
+# cette distance, c'est ce qui **couvre des pixels** : une traînée longue et une gerbe
+# large. Les deux sont ici.
+
+## Le bolide grossit — mais MOINS QUE MON PREMIER ESSAI. À 0,85 de rayon il pesait 8 px,
+## sous le seuil où une silhouette existe ; à 3× il pesait une tache dorée informe, saturée
+## par le bloom et le `lift` du post-traitement. C'est la leçon du ghost prise à l'envers :
+## ce qui doit se voir n'a pas besoin d'être GROS, il a besoin d'être LONG — c'est la
+## traînée qui porte la lecture, la tête n'en est que la pointe.
+const BOLIDE_SCALE := 1.8
+
+## ⚠️ LE BOLIDE ARRIVE EN BIAIS, ET C'EST LA CORRECTION QUI DÉCIDE DE TOUT. Il tombait le
+## long de la verticale locale de la lune ; or la caméra REGARDE D'EN HAUT. Une chute
+## verticale est donc vue en enfilade : premier essai avec traînée, elle s'écrasait en une
+## tache dorée informe au lieu d'un trait. Aucune longueur n'y aurait rien changé.
+##
+## Le trajet reçoit donc un écart LATÉRAL, qui le met en travers du cadre. Il arrive du
+## haut-gauche de l'écran — le sens de lecture, et l'inverse de la dérive du décor, si
+## bien qu'il tranche sur le mouvement de fond au lieu de s'y fondre.
+##
+## ⚠️ L'écart est HORIZONTAL (composante Y nulle) : il ne touche donc pas à la garde du
+## plafond que `test_moon_flyby.gd` tient sur la trajectoire — le bolide ne monte pas d'un
+## centimètre de plus qu'avant.
+const BOLIDE_SLANT := 26.0
+const BOLIDE_FROM := Vector3(-0.707, 0.0, -0.707)
+
+## La traînée : un cône effilé DERRIÈRE le bolide, le long de sa course RÉELLE — pas de la
+## verticale. C'est elle qui porte la lisibilité, pas la tête.
+const TRAIL_LENGTH := 14.0
+const TRAIL_RADIUS := 0.7
+
+## L'onde de choc : un ANNEAU qui s'étale sur la surface, pas une colonne qui monte.
+##
+## ⚠️ MÊME RAISON QUE LA TRAÎNÉE, ET C'EST LA PLAINTE D'ORIGINE. Vue d'au-dessus, une gerbe
+## conique verticale EST un cercle jaune — « les astéroïdes qui se crashent sur la lune
+## sont un simple cercle jaune ». Ce qui se lit en plongée, c'est ce qui s'étale dans le
+## plan qu'on voit : un anneau qui grandit, et les éclats qui partent en arc (ils
+## existaient déjà). L'anneau est un tube SANS COUVERCLES — plein, il redeviendrait le
+## disque qu'on cherche à éviter.
+const PLUME_LIFE := 1.4
+const PLUME_HEIGHT := 2.2
+const PLUME_RADIUS := 11.0
 
 var _decor: Node3D
 var _moon: Node3D
@@ -194,6 +251,10 @@ var _dressed_rocks: bool = false
 var maps_enabled: bool = true
 
 var _bolide: MeshInstance3D
+## La traînée derrière le bolide et la gerbe conique à l'impact — les deux seules pièces
+## du kit qui couvrent assez de pixels pour se lire à 96 unités.
+var _trail: MeshInstance3D
+var _plume: MeshInstance3D
 var _flash: MeshInstance3D
 var _shards: Array[MeshInstance3D] = []
 var _shard_velocities: PackedVector3Array = PackedVector3Array()
@@ -604,12 +665,99 @@ static func bolide_position(target: Vector3, up: Vector3, t: float) -> Vector3:
 	# Chute accélérée : le dernier quart du trajet passe deux fois plus vite que le
 	# premier, ce qui donne le coup au lieu d'une descente d'ascenseur.
 	var progress := clampf(t / BOLIDE_FALL, 0.0, 1.0)
-	return target + up * BOLIDE_DROP * (1.0 - progress * progress)
+	return target + (bolide_start(target, up) - target) * (1.0 - progress * progress)
+
+## D'où part le bolide : au-dessus de son point le long de la verticale locale, ET décalé
+## latéralement pour que sa course traverse le cadre.
+static func bolide_start(target: Vector3, up: Vector3) -> Vector3:
+	return target + up * BOLIDE_DROP + BOLIDE_FROM * BOLIDE_SLANT
+
+## Direction de la course, du départ vers le point d'impact — l'axe de la traînée.
+static func bolide_heading(target: Vector3, up: Vector3) -> Vector3:
+	return (bolide_start(target, up) - target).normalized()
 
 ## Position d'un éclat à `t` secondes de son éjection : sa vitesse propre, moins le rappel
 ## qui le ramène vers la surface. Pure, pour la même raison.
 static func shard_position(origin: Vector3, velocity: Vector3, up: Vector3, t: float) -> Vector3:
 	return origin + velocity * t - up * (0.5 * SHARD_PULL * t * t)
+
+## Un cône incandescent, préalloué. `bottom` et `top` sont les rayons à la base et au
+## sommet ; la hauteur vaut 1 et se pose ensuite par l'échelle, ce qui évite de reconstruire
+## un maillage à chaque image.
+##
+## ⚠️ ADDITIF ET NON ÉCLAIRÉ. Le décor n'a aucune lumière qui puisse rendre une gerbe
+## crédible à 96 unités, et un mélange normal sur fond noir donnerait une forme mate. En
+## additif, la gerbe s'ajoute au ciel : elle brûle au lieu de se poser dessus.
+func _cone(cone_name: String, bottom: float, top: float, height: float,
+		energy: float) -> MeshInstance3D:
+	var mesh := CylinderMesh.new()
+	mesh.bottom_radius = bottom
+	mesh.top_radius = top
+	mesh.height = height
+	# 24 segments et non 12 : l'anneau d'onde fait 11 unités de rayon, soit ~100 px de
+	# large à l'écran, où un dodécagone se lit comme un dodécagone.
+	mesh.radial_segments = 24
+	mesh.rings = 1
+	var material := StandardMaterial3D.new()
+	material.albedo_color = IMPACT_WARM
+	material.emission_enabled = true
+	material.emission = IMPACT_WARM
+	material.emission_energy_multiplier = energy
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	# Un additif qui écrit la profondeur masquerait ce qui passe derrière lui.
+	material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var node := MeshInstance3D.new()
+	node.name = cone_name
+	node.mesh = mesh
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.visible = false
+	node.position = MOON_CENTER
+	return node
+
+## Longueur de la traînée à `t` secondes de chute. Elle CROÎT avec la distance déjà
+## parcourue puis plafonne : une traînée à pleine longueur dès la première image se lit
+## comme un trait posé, pas comme quelque chose qui arrive.
+##
+## Pure et statique, comme `bolide_position` et pour la même raison — un effet qui ne se
+## joue que trois fois par phase, à onze secondes d'intervalle, ne se vérifie pas à l'œil.
+static func trail_length(t: float) -> float:
+	var progress := clampf(t / BOLIDE_FALL, 0.0, 1.0)
+	# La distance réellement parcourue suit `1 - (1-p)²` — l'inverse de la chute accélérée
+	# de `bolide_position`, donc la traînée s'allonge vite à la fin, quand ça compte.
+	var travelled := BOLIDE_DROP * progress * progress
+	return minf(travelled, TRAIL_LENGTH)
+
+## Rayon et hauteur de la gerbe à `life` (0 à 1). Elle monte VITE puis s'évase en
+## ralentissant : c'est le profil d'une éjection, où la matière part d'un coup et retombe.
+static func plume_shape(life: float) -> Vector2:
+	var t := clampf(life, 0.0, 1.0)
+	var rise := sqrt(t)                  # la hauteur part d'un coup
+	var spread := t * t                  # l'évasement vient après
+	return Vector2(PLUME_RADIUS * (0.15 + 0.85 * spread), PLUME_HEIGHT * rise)
+
+## Opacité de la gerbe. Elle tient sa pleine intensité brièvement puis s'éteint — un
+## fondu linéaire depuis la première image ferait un voile qui s'évapore, pas un choc.
+static func plume_fade(life: float) -> float:
+	var t := clampf(life, 0.0, 1.0)
+	if t < 0.15:
+		return t / 0.15
+	return 1.0 - (t - 0.15) / 0.85
+
+## Une base orientée dont l'axe Y suit `up`. ⚠️ Les cônes de Godot (`CylinderMesh`) sont
+## bâtis le long de +Y : sans cette base, traînée et gerbe pointeraient vers le haut du
+## MONDE et non vers la verticale locale de la lune — un détail qui ne se voit qu'aux
+## impacts loin du sommet, donc deux fois sur trois.
+static func basis_from_up(up: Vector3) -> Basis:
+	var y := up.normalized()
+	# Un axe de référence qui n'est jamais colinéaire à `y` : sinon le produit vectoriel
+	# rend zéro et la base devient invalide, en silence.
+	var seed := Vector3.RIGHT if absf(y.dot(Vector3.RIGHT)) < 0.9 else Vector3.FORWARD
+	var x := seed.cross(y).normalized()
+	return Basis(x, y, x.cross(y).normalized())
 
 ## Monte le bolide, le flash et les éclats. Rien n'est alloué passé ce point.
 func _build_impact_kit() -> void:
@@ -622,7 +770,7 @@ func _build_impact_kit() -> void:
 	# s'allume, comme tout ce qui brûle dans ce jeu.
 	# ⚠️ PETIT. À 1,9 de rayon il rendait un disque de 114 px posé sur la lune : plus gros
 	# que le choc qu'il allait produire, et sans profondeur puisqu'il n'est pas ombré.
-	_bolide = _rock("Bolide", 0.85, MOON_CENTER)
+	_bolide = _rock("Bolide", 0.85 * BOLIDE_SCALE, MOON_CENTER)
 	var bolide_material := StandardMaterial3D.new()
 	bolide_material.albedo_color = IMPACT_WARM
 	bolide_material.emission_enabled = true
@@ -632,6 +780,15 @@ func _build_impact_kit() -> void:
 	_bolide.material_override = bolide_material
 	_bolide.visible = false
 	add_child(_bolide)
+	_trail = _cone("ImpactTrail", TRAIL_RADIUS, 0.0, 1.0, 3.0)
+	add_child(_trail)
+	_plume = _cone("ImpactPlume", 1.0, 1.0, 1.0, 5.5)
+	# ⚠️ SANS COUVERCLES : un tube plein, vu d'au-dessus, redevient le disque jaune qu'on
+	# corrige. C'est l'ANNEAU qui dit l'onde de choc.
+	var ring := _plume.mesh as CylinderMesh
+	ring.cap_top = false
+	ring.cap_bottom = false
+	add_child(_plume)
 
 	var flash_mesh := SphereMesh.new()
 	flash_mesh.radius = 1.0
@@ -702,9 +859,36 @@ func _advance_impacts(delta: float) -> void:
 		_bolide.visible = falling
 		if falling:
 			_bolide.position = bolide_position(_impact_at, _impact_up, _impact_age)
+	if _trail != null:
+		_trail.visible = falling
+		if falling:
+			# Le cône s'étire DERRIÈRE la tête, le long de la verticale de chute, et son
+			# origine est en son milieu : d'où le demi-décalage.
+			var span := trail_length(_impact_age)
+			# ⚠️ `heading` ET NON `up` : la traînée suit la COURSE RÉELLE. Alignée sur la
+			# verticale, elle était vue en enfilade depuis la caméra en plongée et se
+			# lisait comme une tache, pas comme un trait.
+			var heading := bolide_heading(_impact_at, _impact_up)
+			_trail.basis = basis_from_up(heading)
+			_trail.scale = Vector3(1.0, maxf(span, 0.001), 1.0)
+			_trail.position = bolide_position(_impact_at, _impact_up, _impact_age) \
+				+ heading * span * 0.5
 	var since := _impact_age - BOLIDE_FALL
 	if since < 0.0:
 		return
+	if _plume != null:
+		# La gerbe part du POINT D'IMPACT et monte le long de la verticale locale. Son
+		# origine étant en son milieu, elle se pose à la moitié de sa hauteur.
+		var plume_life := since / PLUME_LIFE
+		_plume.visible = plume_life < 1.0
+		if _plume.visible:
+			var shape := plume_shape(plume_life)
+			_plume.basis = basis_from_up(_impact_up)
+			_plume.scale = Vector3(shape.x, maxf(shape.y, 0.001), shape.x)
+			_plume.position = _impact_at + _impact_up * shape.y * 0.5
+			var mat := _plume.material_override as StandardMaterial3D
+			if mat != null:
+				mat.albedo_color.a = plume_fade(plume_life)
 	if _flash != null:
 		# Le flash naît large et s'éteint en s'affaissant : c'est la forme d'un choc, pas
 		# d'une bulle qui gonfle.
@@ -712,7 +896,7 @@ func _advance_impacts(delta: float) -> void:
 		_flash.visible = life < 1.0
 		if _flash.visible:
 			_flash.position = _impact_at
-			_flash.scale = Vector3.ONE * (1.2 + 5.0 * life) * (1.0 - life * 0.55)
+			_flash.scale = Vector3.ONE * (0.5 + 1.4 * life) * (1.0 - life * 0.7)
 	for i in _shards.size():
 		var alive := since < SHARD_LIFE
 		_shards[i].visible = alive
@@ -720,7 +904,7 @@ func _advance_impacts(delta: float) -> void:
 			_shards[i].position = shard_position(
 				_impact_at, _shard_velocities[i], _impact_up, since)
 			_shards[i].rotate_y(delta * 2.2)
-	if since >= maxf(FLASH_LIFE, SHARD_LIFE):
+	if since >= maxf(maxf(FLASH_LIFE, SHARD_LIFE), PLUME_LIFE):
 		_end_impact()
 
 func _begin_impact(index: int) -> void:
@@ -741,5 +925,9 @@ func _end_impact() -> void:
 		_bolide.visible = false
 	if _flash != null:
 		_flash.visible = false
+	if _trail != null:
+		_trail.visible = false
+	if _plume != null:
+		_plume.visible = false
 	for shard in _shards:
 		shard.visible = false
