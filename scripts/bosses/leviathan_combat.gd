@@ -83,11 +83,19 @@ signal armour_reformed(cycle: int, plates: int)
 ## Le nombre de plaques accompagne le ratio parce que la rangée du HUD doit se dresser AVANT
 ## que l'armure existe : c'est elle qui montre la reconstruction, cuve par cuve.
 signal armour_regen(ratio: float, plates: int)
+## Le blindage rotatif s'ouvre ou se referme sur l'azimut du joueur. Émis au CHANGEMENT
+## seulement : c'est un état, pas une mesure, et le niveau s'en sert pour dire au joueur —
+## sans passer par l'interface — si son tir compte en ce moment.
+signal reactor_shield_changed(open: bool)
 
 ## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
 ## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
 const FLUX_DRIFT_SEED := 0.29
 const FLUX_ORGANIC_SHARE := 0.45
+
+## État courant du blindage. Faux au repos : hors plongée, il n'y a pas de corridor, et
+## annoncer « ouvert » ferait clignoter le signal à chaque entrée.
+var _reactor_open: bool = false
 
 @export var tuning: LeviathanTuning
 @export var projectile: ProjectileData
@@ -649,6 +657,47 @@ func _player_bearing(origin: Vector2) -> float:
 ## montent aucune zone, ne changent donc pas de régime.
 var dive_anchor: Vector2 = Vector2.INF
 
+## Le blindage rotatif : le flux n'est atteignable que si TOUS les anneaux ouvrent sur
+## l'azimut du joueur (`ReactorRings`).
+##
+## ⚠️ C'EST CE QUI TRANSFORME UNE CIBLE FIXE EN PUZZLE DE POSITIONNEMENT — le défaut nommé
+## au playtest : « le joueur entre dans le noyau puis se retrouve face à une cible quasiment
+## fixe ». Il ne s'agit pas d'attendre : un corridor existe en permanence quelque part sur
+## le cercle (simulé), il faut ALLER le chercher.
+##
+## Sans anneau réglé, le flux reste atteignable en permanence : le comportement d'avant,
+## que les tests existants continuent de mesurer.
+func _update_reactor_shield(origin: Vector2) -> void:
+	if _flux_target == null:
+		return
+	var open := true
+	if not tuning.reactor_rings.is_empty():
+		var bearing := rad_to_deg(_player_bearing(_flux_origin(origin)))
+		open = ReactorRings.is_open(tuning.reactor_rings, bearing, _age)
+	_flux_target.enabled = open
+	if open != _reactor_open:
+		_reactor_open = open
+		reactor_shield_changed.emit(open)
+
+## L'âge du combat, celui dont `ReactorRings` déduit l'ouverture. Public parce que le décor
+## doit poser ses anneaux sur LA MÊME horloge : une seconde source de temps ferait dériver
+## l'image par rapport à l'état réel, et le joueur tirerait dans un blindage qu'il croit
+## ouvert.
+func combat_age() -> float:
+	return _age
+
+## Le corridor est-il ouvert en ce moment, sur l'azimut du joueur ?
+func reactor_open() -> bool:
+	return _reactor_open
+
+## Azimut d'une ouverture, en degrés, le plus proche de celui du joueur — ce vers quoi il
+## doit aller. `ReactorRings.NO_OPENING` si le blindage est intégralement fermé.
+func nearest_opening_deg(origin: Vector2) -> float:
+	if tuning.reactor_rings.is_empty():
+		return ReactorRings.NO_OPENING
+	var bearing := rad_to_deg(_player_bearing(_flux_origin(origin)))
+	return ReactorRings.nearest_opening(tuning.reactor_rings, bearing, _age)
+
 ## Rayon maximal de la dérive du flux autour de son ancre.
 ##
 ## ⚠️ CE N'EST PAS UN CERCLE DE RAYON `flux_drift_radius`. La figure de base est une
@@ -856,6 +905,7 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 				_set_dive(Dive.INSIDE)
 		Dive.INSIDE:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
+			_update_reactor_shield(origin)
 			if _dive_elapsed >= tuning.dive_time:
 				_set_dive(Dive.EJECT)
 		Dive.EJECT:
@@ -873,13 +923,17 @@ func _set_dive(next: Dive) -> void:
 		Dive.INSIDE:
 			# Le flux n'est une cible QUE dans le noyau : dehors, il n'est pas atteignable
 			# et le joueur n'a aucune raison de croire qu'il l'est.
-			_flux_target.enabled = true
+			# ⚠️ `_reactor_open` repart à faux : le premier alignement doit s'ANNONCER,
+			# sinon le joueur entre dans un corridor déjà ouvert sans que rien ne le dise.
+			_reactor_open = false
+			_flux_target.enabled = tuning.reactor_rings.is_empty()
 			_local_damage = 0.0
 			_dive_damage = 0.0
 			_publish_structure()
 			dive_entered.emit(_cycle)
 		Dive.EJECT:
 			_flux_target.enabled = false
+			_reactor_open = false
 			dive_ended.emit(_cycle, _flux_health <= 0.0)
 
 ## Fin de plongée : le boss meurt si le flux est tombé, sinon l'armure se reforme.

@@ -179,6 +179,25 @@ extends Resource
 ## c'est une récompense — le joueur a brisé une armure pour arriver là.
 @export var flux_hitbox_radius: float = 1.80
 ## Le flux dérive dans le noyau : assez pour qu'on suive, pas assez pour qu'on cherche.
+## Le blindage rotatif du réacteur (Reactor Chamber, plan du 2026-08-27).
+##
+## ⚠️ VIDE = COMPORTEMENT D'AVANT. Sans anneau, le flux est atteignable pendant toute la
+## plongée, exactement comme avant ce chantier. C'est ce qui garde les tests existants
+## comparables, et ce qui permet de désarmer le puzzle si le playtest le condamne.
+@export var reactor_rings: Array[ReactorRing] = []
+
+## Part de la plongée pendant laquelle un joueur qui JOUE BIEN a son corridor ouvert.
+##
+## ⚠️ C'EST UNE ESTIMATION, ET ELLE EST NOMMÉE POUR ÇA. Un joueur immobile n'aurait que
+## ~13 % (le produit des deux couvertures d'anneaux) ; un joueur qui suit l'ouverture a
+## bien davantage, borné par son déplacement. 0,45 est le point de départ — **à mesurer en
+## jouant**, avec le sous-agent `balance-prober`.
+##
+## Elle entre dans l'invariant de portée ci-dessous : sans elle, on aurait armé le réacteur
+## d'un blindage tout en continuant de calculer les dégâts atteignables comme s'il n'y en
+## avait pas. C'est le calibrage silencieux qu'`ADR-0024` a coûté au projet.
+@export_range(0.05, 1.0) var ring_occupancy: float = 0.45
+
 @export var flux_drift_radius: float = 1.60
 @export var flux_drift_period: float = 3.4
 
@@ -378,6 +397,13 @@ func validate() -> PackedStringArray:
 	# --- INVARIANT 5 : le flux tombe au dernier passage, pas avant -------
 	# Trop mou, le boss meurt au premier plongeon et les cycles ne servent à rien ; trop
 	# dur, le joueur repart pour un tour de plus à chaque fois sans comprendre pourquoi.
+	for i in reactor_rings.size():
+		var ring := reactor_rings[i]
+		if ring == null:
+			errors.append("reactor_rings[%d] est nul" % i)
+			continue
+		for error in ring.validate():
+			errors.append("reactor_rings[%d] : %s" % [i, error])
 	if dive_time <= 0.0:
 		errors.append("dive_time must be > 0 — it is the whole point of the dive")
 	elif flux_reference_dps <= 0.0:
@@ -386,7 +412,9 @@ func validate() -> PackedStringArray:
 		# ⚠️ `flux_reference_dps`, PAS `reference_dps`. Se comparer à la cadence sur cible
 		# large revient à se donner raison : c'est ce qui a laissé passer un flux 2,2 fois
 		# trop gros, validé à 99 % du plafond autorisé.
-		var reachable := flux_reference_dps * occupancy_dive * dive_time
+		# Le blindage rotatif retranche sa part : on ne tire pas pendant qu'il est fermé.
+		var shielded := ring_occupancy if not reactor_rings.is_empty() else 1.0
+		var reachable := flux_reference_dps * occupancy_dive * dive_time * shielded
 		var needed := flux_damage_per_dive()
 		if needed > reachable:
 			errors.append("flux needs %.0f damage per dive but only %.0f is reachable in %.1f s — the fight cannot end in %d cycles"

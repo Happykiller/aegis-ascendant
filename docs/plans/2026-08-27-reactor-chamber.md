@@ -3,7 +3,8 @@ titre: Reactor Chamber — la phase du noyau devient une machine, pas une cible
 date: 2026-08-27
 auteur: session Claude, sur spécification et planche de l'opérateur
 perimetre: phase DIVE du Pale Leviathan (CoreInterior), assets de forge, budget GPU
-etat: instruit — RIEN d'engagé. Quatre points bloquants avant la première ligne de code
+etat: **B2 tranché (option a, `ADR-0030`) et LOT 1 LIVRÉ**. Lots 2-5 entiers ;
+  B1 (budget GPU), B3 (palette) et B4 (forge) restent ouverts
 supersede: rien. Amenderait `ADR-0025` (l'arène) et `ADR-0026` (le plafond par plongée)
 ---
 
@@ -19,9 +20,9 @@ Et la règle qu'il en tire :
 > **Le décor crée le gameplay.** On évite donc de remplir simplement l'écran avec davantage
 > d'ennemis.
 
-⚠️ **La planche n'a pas pu être archivée** : elle n'était plus sur le disque au moment de
-l'écriture. À redéposer pour entrer dans `assets/reference/concepts/` avec sa ligne de provenance
-(spec §24.7) — c'est une planche **originale**, pas une référence tierce.
+✅ **La planche est archivée** : [`assets/reference/concepts/reactor_chamber_concept.png`](../../assets/reference/concepts/reactor_chamber_concept.png),
+avec sa ligne de provenance (spec §24.7). Composition **originale** dérivée d'une capture du jeu —
+pas une référence tierce.
 
 ---
 
@@ -124,7 +125,7 @@ commande des pièces dont on ne connaît pas encore les dimensions utiles.
 
 ## 3. Découpage — le gameplay d'abord, l'habillage en dernier
 
-### Lot 1 — Les anneaux et la fenêtre de vulnérabilité ⭐ le cœur
+### Lot 1 — Les anneaux et la fenêtre de vulnérabilité ✅ LIVRÉ le 2026-08-27
 
 **C'est l'idée entière de la spec**, et c'est presque uniquement du code.
 
@@ -194,3 +195,28 @@ d'entre eux (B2, B3) amenderaient des décisions déjà prises.
 
 La question à trancher en premier est **B2** : elle décide si l'on parle d'une plongée enrichie
 (+1 min sur l'arc) ou d'une phase de boss nouvelle (+3 min). Tout le reste en découle.
+
+
+---
+
+## Lot 1 — ce que la livraison a appris
+
+**Le budget GPU ne s'est pas matérialisé, pour ce lot-là.** Mesuré sur **Quadro T1000** : **6,45
+ms/image** dans l'arène blindée, contre **7,1 à 12,6 ms** relevés sur la même arène *avant* le
+chantier. Les arcs sont des `ArrayMesh` de quelques dizaines de triangles : deux anneaux coûtent
+moins que la variance entre deux lancements. **B1 reste entier pour les lots 4 et 5**, qui portent
+les rails et le décor animé.
+
+⚠️ **Un piège silencieux, et il valait le détour.** `reactor_rings = [...]` avait été écrit **au-dessus**
+de `script = ExtResource(...)` dans le `.tres`. Godot applique les propriétés **dans l'ordre** :
+posée avant le script, la ligne désigne une propriété que la ressource ne connaît pas encore, et
+elle est **ignorée en silence**. Le blindage était absent du jeu, sans erreur ni test rouge — c'est
+la garde « le joueur n'est jamais enfermé » qui l'a rattrapé, en constatant que le blindage livré
+n'avait aucun anneau.
+
+**Deux défauts connus, à traiter au lot 2 :**
+
+1. ⚠️ **Les tirs traversent visuellement un blindage fermé.** Le verrou est logique, pas physique.
+   Le projet a déjà nommé ce défaut sur le Harvester et y a répondu par une gerbe de déviation.
+2. ⚠️ **Les anneaux se lisent comme de la peinture au sol.** Posés sous le plan de jeu pour ne pas
+   masquer les balles, ils passent sous les nervures du décor livré.

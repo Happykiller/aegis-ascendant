@@ -791,6 +791,9 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 		# sans repère, le joueur tire sur le réacteur du décor pendant qu'elle est ailleurs.
 		_core_marker_age = 0.0
 		_core_interior.set_target_marker(_leviathan.flux_plane_position(), true)
+		# Le blindage se dresse avec l'arène : ses arcs se déduisent des MÊMES Resources
+		# que la mécanique, jamais d'une copie.
+		_core_interior.build_rings(_leviathan.tuning.reactor_rings)
 	_dive_camera(false, true)
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
@@ -970,7 +973,10 @@ func _track_core_target(delta: float) -> void:
 		return
 	_core_marker_age += delta
 	_core_interior.set_target_marker(_leviathan.flux_plane_position(), true)
-	_core_interior.pulse_target_marker(_core_marker_age)
+	# ⚠️ Le battement dit si le tir COMPTE. Un repère qui bat pareil ouvert et fermé
+	# laisserait le joueur tirer dans un blindage plein sans rien pour l'en avertir.
+	_core_interior.pulse_target_marker(_core_marker_age, _leviathan.reactor_open())
+	_core_interior.pose_rings(_leviathan.tuning.reactor_rings, _leviathan.combat_age())
 
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 

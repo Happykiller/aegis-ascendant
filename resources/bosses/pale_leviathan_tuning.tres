@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="LeviathanTuning" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="LeviathanTuning" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://resources/data/leviathan_tuning.gd" id="1_tuning"]
+[ext_resource type="Script" path="res://resources/data/reactor_ring.gd" id="2_ring"]
 
 ; Reglage du combat du Pale Leviathan, refondu en CYCLES par ADR-0021. Les valeurs
 ; reprennent les defauts calibres de `leviathan_tuning.gd` (documentes et couverts par les
@@ -15,8 +16,38 @@
 ; contre les plaques, larges, ou toutes les balles portent ; `flux_reference_dps` contre le
 ; flux, 1,80 m qui derive, ou seuls les canons de nez comptent. Les confondre a produit un
 ; flux 2,2 fois trop gros — six plongees au playtest, a puissance maximale.
+
+; ============================================================================
+; LE BLINDAGE ROTATIF DU RÉACTEUR (plan du 2026-08-27, lot 1).
+;
+; Deux anneaux, en SENS CONTRAIRES : leur corridor commun se déplace vite, et le
+; joueur doit aller le chercher au lieu de camper sous le noyau.
+;
+; ⚠️ CHIFFRES SIMULÉS AVANT D'ÊTRE ÉCRITS, sur deux minutes de rotation : un
+; corridor existe 100 % du temps quelque part sur le cercle, verrou le plus long
+; 0,00 s, fenêtre large de ~48°. Le joueur n'ATTEND jamais — il se déplace.
+; ============================================================================
+[sub_resource type="Resource" id="ring_outer"]
+script = ExtResource("2_ring")
+apertures = 3
+aperture_deg = 46.0
+speed_deg = 26.0
+phase_deg = 0.0
+
+[sub_resource type="Resource" id="ring_inner"]
+script = ExtResource("2_ring")
+apertures = 2
+aperture_deg = 62.0
+speed_deg = -17.0
+phase_deg = 30.0
+
 [resource]
 script = ExtResource("1_tuning")
+; ⚠️ APRES `script`, JAMAIS AVANT. Godot applique les proprietes d'un .tres DANS L'ORDRE :
+; posee au-dessus, cette ligne designe une propriete que la ressource ne connait pas encore
+; et elle est ignoree EN SILENCE. Le blindage etait absent du jeu, sans erreur ni test rouge
+; — c'est la garde `test_the_player_is_never_locked_out` qui l'a rattrape.
+reactor_rings = [SubResource("ring_outer"), SubResource("ring_inner")]
 reference_dps = 420.0
 flux_reference_dps = 208.0
 reference_player_max_speed = 14.0
@@ -34,7 +65,15 @@ spine_interval = 3.2
 flux_health = 2400.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
-dive_time = 5.0
+; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est
+; de 800 degats pour 884 atteignables sans blindage : dix pour cent de marge. Un blindage
+; ouvert 45 % du temps fait tomber les atteignables a 398 — LE COMBAT NE POURRAIT PLUS
+; FINIR. Onze secondes retablissent la marge, et c'est aussi la duree d'une boucle complete
+; du puzzle (8-12 s dans la spec de l'operateur).
+;
+; ⚠️ C'est la SORTIE DE SECOURS, pas la duree reelle : depuis le playtest du 2026-08-27, le
+; quota rempli ejecte tout de suite. Un joueur qui trouve ses corridors sort bien avant.
+dive_time = 11.0
 dive_eject_time = 1.0
 pull_speed_max = 7.0
 pull_radius = 16.0

@@ -46,6 +46,26 @@ const MARKER_LIFT := 0.15
 const MARKER_SIZE := 0.030
 const MARKER_SWELL := 0.35
 const MARKER_PULSE_RATE := 5.0
+
+# --- Le blindage rotatif (plan « Reactor Chamber », lot 1) -------------------
+
+## Rayons des anneaux, du plus intérieur au plus extérieur, en unités du plan.
+##
+## ⚠️ TOUS AU-DELÀ DE L'ENVELOPPE DE DÉRIVE DU FLUX (~2,6 u) : un anneau qui passerait
+## par-dessus la cible la masquerait au moment précis où elle devient atteignable.
+const RING_RADII: Array[float] = [4.0, 6.2]
+## Épaisseur d'un anneau, en unités.
+const RING_THICKNESS := 0.9
+## Nombre de segments par degré d'arc. Un arc de 100° en fait donc une vingtaine — assez
+## pour que le bord ne se lise pas comme un polygone, assez peu pour ne rien coûter.
+const RING_STEP_DEG := 5.0
+
+## ⚠️ SOUS LE PLAN DE JEU, ET C'EST UNE RÈGLE DE LECTURE. L'ordre de priorité est
+## joueur > projectiles > dangers > point faible > MACHINES > décor : un anneau posé à
+## y = 0 serait coplanaire aux balles et les masquerait une fois sur deux.
+const RING_LIFT := -0.30
+
+var _rings: Array[Node3D] = []
 var _entry_plane: Vector2 = FALLBACK_ENTRY
 ## Vrai quand on a monté la doublure procédurale faute de décor livré. Le niveau le
 ## journalise : un intérieur en doublure ne doit jamais passer pour l'asset final.
@@ -77,13 +97,97 @@ func set_target_marker(plane_position: Vector2, lit: bool) -> void:
 
 ## Fait battre le repère. Appelé par le niveau, à l'image : le battement est ce qui le
 ## sépare du décor, qui lui ne bat pas.
-func pulse_target_marker(age: float) -> void:
+## `exposed` : le corridor est-il ouvert sur l'azimut du joueur ?
+##
+## ⚠️ LE BATTEMENT PORTE L'INFORMATION, pas l'interface. Le joueur doit savoir si son tir
+## compte SANS lire le HUD — c'est la règle que la spec de l'opérateur pose elle-même : « la
+## vulnérabilité doit être compréhensible sans lire l'UI ». Fermé, le repère respire
+## lentement et pâle ; ouvert, il bat vite et blanchit.
+func pulse_target_marker(age: float, exposed: bool = true) -> void:
 	if _marker == null or not _marker.visible:
 		return
-	var beat := 0.5 + 0.5 * sin(age * MARKER_PULSE_RATE)
-	_marker.pixel_size = MARKER_SIZE * (1.0 + MARKER_SWELL * beat)
-	_marker.modulate = Color(1.0, 0.45 + 0.35 * beat, 0.25 + 0.2 * beat,
-		0.55 + 0.45 * beat)
+	var rate := MARKER_PULSE_RATE if exposed else MARKER_PULSE_RATE * 0.35
+	var beat := 0.5 + 0.5 * sin(age * rate)
+	var swell := MARKER_SWELL if exposed else MARKER_SWELL * 0.4
+	_marker.pixel_size = MARKER_SIZE * (1.0 + swell * beat)
+	if exposed:
+		_marker.modulate = Color(1.0, 0.72 + 0.28 * beat, 0.55 + 0.45 * beat,
+			0.75 + 0.25 * beat)
+	else:
+		_marker.modulate = Color(0.85, 0.32 + 0.14 * beat, 0.22 + 0.10 * beat,
+			0.30 + 0.18 * beat)
+
+## Dresse le blindage : un nœud par anneau, chacun portant ses arcs pleins.
+##
+## La géométrie se déduit des MÊMES données que le gameplay (`ReactorRing`) : c'est ce qui
+## garantit qu'on tire là où l'on voit une ouverture. Deux sources séparées auraient fini
+## par diverger, et le joueur aurait tiré dans un blindage plein en croyant viser un trou.
+func build_rings(rings: Array[ReactorRing]) -> void:
+	for node in _rings:
+		node.queue_free()
+	_rings.clear()
+	for i in rings.size():
+		var ring := rings[i]
+		if ring == null:
+			continue
+		var pivot := Node3D.new()
+		pivot.name = "Ring%d" % i
+		pivot.position = Vector3(0.0, RING_LIFT, 0.0)
+		var radius: float = RING_RADII[mini(i, RING_RADII.size() - 1)]
+		var step := 360.0 / float(ring.apertures)
+		# Un arc PLEIN entre deux ouvertures : on dessine ce qui bloque, pas ce qui ouvre.
+		var solid := step - ring.aperture_deg
+		for k in ring.apertures:
+			var start := float(k) * step + ring.aperture_deg * 0.5
+			pivot.add_child(_arc(radius, start, solid))
+		add_child(pivot)
+		_rings.append(pivot)
+
+## Fait tourner le blindage. `age` est celui du COMBAT — le même que celui dont
+## `ReactorRings` déduit l'ouverture, sinon l'image mentirait sur l'état du jeu.
+func pose_rings(rings: Array[ReactorRing], age: float) -> void:
+	for i in mini(_rings.size(), rings.size()):
+		var ring := rings[i]
+		if ring == null:
+			continue
+		_rings[i].rotation.y = -deg_to_rad(ring.phase_deg + ring.speed_deg * age)
+
+## Un arc plein, à plat dans le plan, en `ArrayMesh`. ⚠️ La rotation d'un `Node3D` autour de
+## Y va dans le sens INVERSE de l'azimut du plan (le monde −Z est le haut de l'écran) : d'où
+## le signe de `pose_rings`. Une erreur ici décalerait l'image de l'ouverture réelle, ce qui
+## est le seul défaut que cette phase ne peut pas se permettre.
+func _arc(radius: float, start_deg: float, span_deg: float) -> MeshInstance3D:
+	var inner := radius - RING_THICKNESS * 0.5
+	var outer := radius + RING_THICKNESS * 0.5
+	var steps := maxi(int(span_deg / RING_STEP_DEG), 2)
+	var vertices := PackedVector3Array()
+	var indices := PackedInt32Array()
+	for s in steps + 1:
+		var a := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
+		vertices.append(Vector3(cos(a) * inner, 0.0, sin(a) * inner))
+		vertices.append(Vector3(cos(a) * outer, 0.0, sin(a) * outer))
+	for s in steps:
+		var b := s * 2
+		indices.append_array([b, b + 1, b + 2, b + 2, b + 1, b + 3])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	var material := StandardMaterial3D.new()
+	# Sombre et peu saturé : c'est une MACHINE, elle passe derrière le gameplay. Le liseré
+	# émissif suffit à la détacher du fond sans lui disputer l'attention.
+	material.albedo_color = Color(0.16, 0.13, 0.22)
+	material.emission_enabled = true
+	material.emission = Color(0.45, 0.25, 0.62)
+	material.emission_energy_multiplier = 0.55
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return node
 
 func reactor_plane_position() -> Vector2:
 	return _reactor_plane
