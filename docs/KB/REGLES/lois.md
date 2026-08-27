@@ -2,7 +2,7 @@
 titre: Lois — ce qu'on ne fait jamais sur ce projet
 type: regle
 statut: actif
-maj: 2026-08-27
+maj: 2026-08-28
 ---
 
 # Lois
@@ -56,6 +56,18 @@ s'arrête et on demande.
   SEUIL se règle chez celui qui écrase (`crush_mass_ratio`) — jamais sur chaque fiche d'en face.
   Tout ce qui est versé dans un `PlaneShapes` est de masse **infinie par construction** : une forme
   ne porte pas de masse, c'est ce qui fait d'elle un obstacle.
+- **Les surfaces ont une VITESSE, et une seule règle s'applique partout** (2026-08-28) : au
+  contact, la vitesse d'un corps selon la normale de la surface ne peut pas être inférieure à
+  celle de la surface. Une face de front arrête « comme une voiture dans un mur », en biais on
+  glisse, le BOUT d'un mur qui tourne entraîne, sa FACE glisse sous le corps. Tout dégagement
+  « après coup » par un chemin choisi est interdit : il a donné un ressort, un convoyeur et un
+  vaisseau figé. `PlaneCollider.move_capsule()` est la seule entrée du pilotage.
+- **Quatre représentations, UNE convention.** Image, corps (`PlaneShapes`), cibles
+  (`BulletTarget`), écrans de tir — tout ce qui pose une forme dans le monde passe par
+  `GameplayPlane.to_world`, sommets et pivots compris. ⚠️ Le décor de la chambre a tourné **à
+  l'envers** de sa collision pendant un jour (maillage en miroir + pivot négatif) : la garde
+  `test_the_decor_walls_are_where_the_collision_walls_are` compare un sommet du décor à l'arc de
+  collision. Toute nouvelle pièce mobile a droit à la même garde.
 - **Une unité ne peut jamais être à la fois un mur et une proie.** Les deux listes se dérivent du
   même test, à la même image ; les séparer laisserait le chasseur prisonnier d'un cadavre.
 

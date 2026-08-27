@@ -2,7 +2,7 @@
 titre: HISTORY — index chronologique des sujets abordés
 type: index
 statut: actif
-maj: 2026-08-27
+maj: 2026-08-28
 ---
 
 # Historique des sujets
@@ -189,3 +189,9 @@ Ce que la session a coûté, et qu'il ne faut pas repayer :
 
 Et une correction de l'opérateur qui vaut consigne : **demander une texture doit être un réflexe**
 ([`REGLES/consignes.md`](REGLES/consignes.md)).
+- **2026-08-28** — Chambre du réacteur : après quatre diagnostics chiffrés, l'overlay des
+  collisions montre le décor tournant **à l'envers** de sa collision (maillage en miroir + pivot
+  négatif). Réécriture de la résolution des contacts (surfaces avec vitesse,
+  `move_capsule`), noyau qui se faisait écran à sa propre cible, corps du boss caché mais
+  touchable, un seul mur reconstruit, section Options → Débogage. Leçon :
+  `.claude/resources/pratique-dessiner-avant-de-raisonner.md`.

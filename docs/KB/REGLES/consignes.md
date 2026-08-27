@@ -2,7 +2,7 @@
 titre: Consignes de l'opérateur — nées d'une correction
 type: regle
 statut: actif
-maj: 2026-08-27
+maj: 2026-08-28
 ---
 
 # Consignes
@@ -67,3 +67,16 @@ Les identifiants de code et les termes techniques gardent leur forme d'origine.
 > d'hôte) vivent dans la mémoire auto-rappelée, aujourd'hui **vide** pour ce projet — voir la
 > question ouverte de [`../MOTEUR.md`](../MOTEUR.md) sur les trois mémoires restées à l'ancien
 > chemin `-home-admin-sandbox-macross`.
+
+## Débogage et diagnostic (2026-08-28)
+
+- **En développement, les zones de collision, les cibles et les écrans de tir sont TOUJOURS
+  affichés** ; en release ils sont éteints par défaut mais restent activables dans Options →
+  Débogage, chacun avec sa phrase explicative (but pédagogique). « C'est un outil extrêmement
+  précieux. » — né d'une soirée où quatre diagnostics ont manqué un décalage de 90° visible en
+  une capture.
+- **Quand un symptôme survit à des correctifs, isoler** : retirer l'élément suspect et voir si
+  le symptôme part avec lui (« la méthode de la sphère indienne »), puis **rebâtir un élément à
+  la fois**. Ne pas empiler un cinquième correctif sur les quatre premiers.
+- **Un enregistrement de partie vaut plus qu'un banc** : quand l'opérateur dit « ça ne marche
+  toujours pas », enregistrer sa commande et sa position (`--dive-trace`) avant de re-raisonner.

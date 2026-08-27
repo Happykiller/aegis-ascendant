@@ -33,6 +33,7 @@ trois est fausse, la session n'est pas close — et tu le dis au lieu de conclur
 
 | Dépôt | Chemin | Branche de travail | Remarque |
 | --- | --- | --- | --- |
+| `aegis-ascendant` (compte `admin`, vérifié le 2026-08-28) | `/home/admin/aegis-ascendant` | `main` | Même dépôt, **autre compte de la même machine** : remote `origin` = `git@github-perso:Happykiller/aegis-ascendant.git` (alias `github-perso`) ; `/home/happykiller` n'existe pas sous ce compte, et `~/.ssh/config` n'y déclare pas `github-happykiller`. Les deux lignes sont vraies, chacune sous son utilisateur |
 | `aegis-ascendant` | `/home/happykiller/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-happykiller:Happykiller/aegis-ascendant.git` (alias SSH `github-happykiller`, compte `Happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/happykiller` comme un dépôt Git |
 
 | Stack | Fichier compose | Services |

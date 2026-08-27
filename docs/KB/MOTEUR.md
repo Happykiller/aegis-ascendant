@@ -2,7 +2,7 @@
 titre: MOTEUR — cartographie de .claude/
 type: index
 statut: actif
-maj: 2026-08-26
+maj: 2026-08-28
 ---
 
 # Le cerveau moteur — ce que Claude sait *faire* ici
@@ -72,3 +72,13 @@ posée dans [`README.md`](README.md).
 
 Si `welcome.py` est un jour branché, les deux ne feront pas doublon : le hook dit **ce qui est
 disponible maintenant** (il scanne), cette page dit **pourquoi ça existe et quand s'en servir**.
+
+## Instruments de diagnostic de la collision (2026-08-28)
+
+| Instrument | Quand l'utiliser | Où |
+|---|---|---|
+| `SolidsOverlay` (Options → Débogage ; `--show-solids` / `--hide-solids`) | **Avant tout diagnostic de collision** : superpose corps (vert), capsule (cyan), cibles (orange/magenta) et écrans de tir (rouge) sur l'image. Allumé par défaut en build debug | `scripts/debug/solids_overlay.gd` |
+| `--dive-trace` | Enregistre à chaque image du boss final la **commande** du joueur, sa position, le contact et toutes les formes solides → `C:/tmp/aegis-ascendant/dive-trace.csv`. À lire en Python : dérive sans commande, figé malgré commande, maintiens soutenus | `graybox_root.gd` (`_trace_dive`) |
+| `--dive-probe` | Le même, en lignes de journal, quatre fois par seconde, pendant la plongée seulement | `graybox_root.gd` (`_probe_dive`) |
+| `--no-rings` | Isolation : plus aucun mur dans la chambre, ni au décor ni en collision | `ReactorRings.disabled` |
+| `tools/dive_bench.gd` | Pilote le **vrai** `_slide_to()` du chasseur dans la chambre livrée, six scénarios, verdict + SVG des trajectoires (`build/bench/`) — à relancer après tout changement de `PlaneCollider` ou du réglage des anneaux | `godot4 --headless --path . --script res://tools/dive_bench.gd` |

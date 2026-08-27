@@ -5,7 +5,7 @@
 - **Ne supersède rien** ; il ferme un point laissé ouvert par
   [`2026-08-27-les-corps-ne-se-chevauchent-pas.md`](2026-08-27-les-corps-ne-se-chevauchent-pas.md)
   (« le couloir n'est pas un lieu — à trancher »).
-- **État** : **lots 1 à 4 livrés** (2026-08-27, même soirée) — reste le lot 5, la plongée jouée
+- **État** : **clos le 2026-08-28** — cinq lots livrés, plongée jouée jusqu'à l'appontage. ⚠️ La cause racine n'était dans aucun lot : le décor tournait à l'envers de sa collision (voir `pratique-dessiner-avant-de-raisonner.md`). Reste ouvert, au backlog : remettre ou non un second mur
 
 ## Le constat, mesuré
 

@@ -122,6 +122,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   d'*1 m*, et ce chiffre partait dans un compte-rendu — une mesure fausse est plus dangereuse
   qu'aucune mesure, elle porte l'autorité du chiffre. ⚠️ Et une mesure que son propre correctif rend
   vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**. ⚠️ **Un seuil absolu peut être aveugle à la nature de l'image** : `--check-tiling` compare deux colonnes d'UN pixel, donc sur une texture à grain fin il mesure la variance du grain et crie à la couture. Le témoin gratuit : l'écart entre deux colonnes **adjacentes à l'intérieur**. Vécu sur quatre textures, le verdict s'inverse **dans les deux sens**.
+- [Dessiner avant de raisonner](pratique-dessiner-avant-de-raisonner.md) — quand le joueur et la
+  mesure se contredisent, **c'est le joueur qui a raison** : instrumenter le JEU, pas raffiner le
+  banc. ⚠️ **Quatre diagnostics chiffrés** ont précédé une superposition des formes de collision
+  sur l'image qui a tout montré en **une capture** (le décor de la chambre tournait à l'envers de
+  sa collision). `SolidsOverlay` est allumé par défaut en dev : ne jamais diagnostiquer une
+  collision sans lui. ⚠️ Un banc qui **recopie** la boucle ment — `tools/dive_bench.gd` pilote le
+  vrai `_slide_to()`. ⚠️ `check.sh | grep && git commit` prend le code de retour de **grep** : un
+  commit est passé rouge.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil. ⚠️ **Un test qui construit un
   `Node` le fuit** (mode `--script` : pas d'arbre, donc pas de parent pour le récupérer) — passer par
