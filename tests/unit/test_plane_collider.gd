@@ -252,3 +252,28 @@ func test_the_nose_is_stopped_where_a_disc_would_have_let_it_through() -> void:
 	assert_false(PlaneCollider.capsule_blocks(shapes, freed, Vector2(0.0, 1.0),
 			stats.body_half_length, stats.body_radius),
 		"jusqu'a etre franchement dehors")
+
+## ⚠️ LE DÉGAGEMENT ET LE BORNAGE PEUVENT SE DISPUTER. Le premier peut sortir le chasseur de
+## l'arène, le second peut l'y rentrer — dans un obstacle. Un joueur poussé contre le bord
+## doit finir QUELQUE PART, pas vibrer entre les deux. Le comportement était affirmé dans un
+## commentaire ; il est mesuré ici.
+func test_a_fighter_pushed_against_the_arena_edge_settles() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := PlaneShapes.new()
+	shapes.reserve(1)
+	# Un gros corps juste au-dessus du bord bas : le seul dégagement possible est vers le bas,
+	# et le bas est justement la limite du plan.
+	var bottom := GameplayPlane.BOUNDS.position.y
+	shapes.add_disc(Vector2(0.0, bottom + 2.0), 3.0)
+	var here := Vector2(0.0, bottom + 0.5)
+	var seen := PackedVector2Array()
+	for step in 40:
+		here = GameplayPlane.clamp_to_bounds(PlaneCollider.resolve_capsule(shapes, here,
+			Vector2(0.0, 1.0), stats.body_half_length, stats.body_radius))
+		seen.append(here)
+	var last := seen[seen.size() - 1]
+	assert_true(last.distance_to(seen[seen.size() - 2]) < 0.001,
+		"il s'est immobilise (dernier pas %.4f u)"
+			% last.distance_to(seen[seen.size() - 2]))
+	assert_true(GameplayPlane.is_inside(last, 0.001),
+		"et il est reste dans l'arene (y = %.2f)" % last.y)

@@ -423,3 +423,28 @@ func test_closing_the_iris_puts_every_weapon_back_in_service() -> void:
 		assert_true(limb.is_up(), "%s est de retour en service" % limb.kind)
 		assert_almost_eq(limb.health_ratio(), 1.0, 0.001,
 			"%s est a 100 %%, pas en repousse" % limb.kind)
+
+# --- Ce que le boss OPPOSE (loi « les corps ne se chevauchent pas », lot 2) ----
+
+## Le corps est plein, et chaque appendice DEBOUT l'est aussi. Un bras a terre, lui, laisse
+## passer : c'est la recompense de l'avoir abattu.
+func test_the_body_and_its_standing_limbs_are_solid() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: HarvesterCombat = rig[1]
+	var shapes := PlaneShapes.new()
+	shapes.reserve(combat.solid_capacity())
+	combat.fill_solids(shapes)
+	var whole := shapes.size()
+	assert_true(whole >= 1, "il oppose au moins son corps")
+	assert_true(PlaneCollider.blocks(shapes, boss.plane_position, 0.0),
+		"et ce corps est plein : on ne le traverse pas")
+	var standing := 0
+	for limb in combat.limbs():
+		if limb.is_up():
+			standing += 1
+	assert_eq(whole, standing + 1, "le corps, plus un par appendice debout")
+	_kill_limb(combat, combat.limbs()[0].kind)
+	shapes.clear()
+	combat.fill_solids(shapes)
+	assert_eq(shapes.size(), whole - 1, "un bras a terre, une forme de moins en travers")

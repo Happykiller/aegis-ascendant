@@ -194,6 +194,11 @@ func _defeat() -> void:
 			_bullet_manager.unregister_target(_target)
 	defeated.emit(global_position)
 
+## Le boss a-t-il fini sa descente ? Tant qu'il entre, il n'oppose rien : le rendre solide
+## pendant qu'il traverse l'arène pousserait un joueur qui n'a rien fait de mal.
+func is_in_place() -> bool:
+	return not _entering
+
 func _physics_process(delta: float) -> void:
 	_age += delta
 	if _entering:

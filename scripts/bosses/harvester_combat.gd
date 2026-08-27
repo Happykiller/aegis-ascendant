@@ -271,6 +271,29 @@ func _limb_plane_position(limb: HarvesterLimb, origin: Vector2) -> Vector2:
 		return origin
 	return GameplayPlane.to_plane(limb.visual_center())
 
+## Verse dans `shapes` tout ce que le Harvester oppose au chasseur, À CET INSTANT.
+##
+## Le corps, plus chaque appendice ENCORE DEBOUT. Un bras à terre ne bloque plus : il est
+## tombé, et le joueur doit pouvoir passer là où il vient de faire le trou — c'est la
+## récompense de l'avoir abattu, et la lire à l'écran sans pouvoir y aller serait pire que
+## de ne rien montrer.
+##
+## Le niveau appelle ceci ; il ne connaît ni les bras ni l'iris. Loi « les corps ne se
+## chevauchent pas » (`docs/KB/REGLES/lois.md`) : un boss DÉCLARE ses formes, il n'écrit pas
+## de collision.
+func fill_solids(shapes: PlaneShapes) -> void:
+	if tuning == null or _boss == null or not _boss.is_in_place():
+		return
+	var origin := _boss.plane_position
+	shapes.add_disc(origin, _boss.hitbox_radius)
+	for limb in _limbs:
+		if limb.is_up():
+			shapes.add_disc(_limb_plane_position(limb, origin), tuning.limb_hitbox_radius)
+
+## Combien de formes `fill_solids()` peut produire — pour dimensionner UNE fois.
+func solid_capacity() -> int:
+	return _limbs.size() + 1
+
 # --- Iris ---------------------------------------------------------------------
 
 func _update_iris(delta: float) -> void:

@@ -19,16 +19,25 @@ et c'est ainsi qu'on croit un chantier fini.
 - La chambre est remontée de 1,2 dans le plan : centrée, la géométrie ne laissait plus que
   0,04 unité pour voler sous le blindage.
 
-## Lot 2 — les coques de boss ❌ À FAIRE
+## Lot 2 — les coques de boss ✅ FAIT
 
-Le corps du Pale Leviathan, ses plaques, ses bras, la pince et la faux du Harvester : rien ne les
-empêche aujourd'hui d'être traversés. Ce sont les plus gros objets du jeu et les plus visibles.
+- Chaque boss **déclare** ses formes (`fill_solids()`), il n'écrit pas de collision. Le niveau
+  ne connaît ni plaques, ni bras, ni anneaux : c'est ce qui rendra le boss suivant gratuit.
+- **Pale Leviathan** : coque + plaques debout pendant l'armure ; murs rotatifs + flux dans le
+  noyau. ⚠️ Jamais les deux : une coque apparaissant dans le noyau écraserait le joueur au
+  moment où il a plongé pour l'oublier.
+- **Choir Harvester** : corps + appendices **encore debout**. Un bras à terre laisse passer —
+  c'est la récompense de l'avoir abattu.
+- Un boss **en cours de descente n'oppose rien** : le rendre solide en pleine traversée
+  pousserait un joueur qui n'a rien fait de mal.
+- Le chasseur obéit **chez lui**, après son propre déplacement et son propre bornage : l'ordre
+  compte, sinon on le corrige puis le pilotage le renfonce à l'image suivante.
+- Le contact qui **blesse** est intact : `take_contact_damage` n'a pas été touché. Ne pas
+  confondre « ne se chevauchent pas » et « ne se touchent pas ».
 
-- Déclarer chaque pièce en forme (disque pour un corps, capsule pour un bras).
-- Les verser dans le jeu de formes du niveau, pas seulement du boss.
-- ⚠️ Attention au **contact qui blesse** : `take_contact_damage` existe déjà. Ne pas confondre
-  « ne se chevauchent pas » et « ne se touchent pas » — un boss qui repousse au lieu de blesser
-  changerait le combat.
+⚠️ **Ce que le lot 2 ne fait PAS** : le boss ne se laisse pas pousser. La collision est
+unilatérale — le chasseur cède, la coque non. C'est voulu ici (un boss poussé par un chasseur
+serait ridicule) et c'est exactement ce qui manquera au lot 3.
 
 ## Lot 3 — les vaisseaux entre eux ❌ À FAIRE, ET À TRANCHER
 

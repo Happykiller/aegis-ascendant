@@ -14,6 +14,31 @@ const DIR_UP := Vector2(0.0, 1.0)
 func plane_forward() -> Vector2:
 	return DIR_UP
 
+## Les corps solides que le chasseur ne peut pas traverser — murs, noyau, coques de boss.
+## Le NIVEAU les remplit à chaque image ; le chasseur ne fait que s'y conformer.
+##
+## ⚠️ IL OBÉIT ICI, ET PAS AILLEURS, POUR UNE RAISON D'ORDRE. Le dégagement doit avoir lieu
+## APRÈS son propre déplacement et son propre bornage, sinon un autre nœud le corrige puis
+## le pilotage le renfonce dans l'obstacle à l'image suivante. Chaque corps obéit à la loi
+## chez lui : c'est ce qui la rend applicable au reste du jeu (`docs/KB/REGLES/lois.md`).
+var solids: PlaneShapes = null
+
+## Dégage le chasseur de tout ce qu'il chevauche, puis le rebore. Deux bornages, et c'est
+## voulu : le dégagement peut le sortir de l'arène, le bornage peut le rentrer dans un mur.
+## À cette échelle l'aller-retour converge, et il est mesuré par
+## `test_a_fighter_pushed_against_the_arena_edge_settles`.
+func _obey_solids() -> void:
+	if solids == null or solids.size() == 0 or stats == null:
+		return
+	var freed := PlaneCollider.resolve_capsule(solids, plane_position, plane_forward(),
+		stats.body_half_length, stats.body_radius)
+	if freed.is_equal_approx(plane_position):
+		return
+	plane_position = GameplayPlane.clamp_to_bounds(freed)
+	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
+	if _target != null:
+		_target.position = plane_position
+
 ## Emitted whenever the shield value changes (HUD).
 signal shield_changed(ratio: float, current: float, maximum: float)
 ## Emitted when a life is lost; `lives` is the remaining count.
@@ -203,6 +228,7 @@ func _physics_process(delta: float) -> void:
 	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	if _target != null:
 		_target.position = plane_position
+	_obey_solids()
 	_apply_visual_bank(delta)
 	_update_plumes(input)
 	_update_fire(delta)

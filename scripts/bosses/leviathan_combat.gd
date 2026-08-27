@@ -870,6 +870,44 @@ func nodes_alive() -> int:
 ## ⚠️ Et elle s'applique APRÈS le déplacement du joueur, pas à sa place : sa commande reste
 ## pleine, on corrige seulement le résultat. Piloter à sa place se lirait comme une perte de
 ## contrôle, ce que le projet refuse depuis `GravityWell.leaves_room()`.
+## Verse dans `shapes` tout ce que le Leviathan oppose au chasseur, À CET INSTANT.
+##
+## ⚠️ CE QUI EST SOLIDE CHANGE AVEC LA PHASE, et c'est le fond de ce boss. Pendant l'armure,
+## c'est sa COQUE et ses plaques ; dans le noyau, ce sont les murs rotatifs et le flux. Les
+## verser tous ensemble ferait apparaître une coque là où le joueur a plongé pour l'oublier.
+##
+## Le niveau appelle ceci ; il ne connaît ni les plaques ni les anneaux. C'est l'application
+## de la loi « les corps ne se chevauchent pas » à ce boss (`docs/KB/REGLES/lois.md`), et
+## c'est aussi ce qui la rend applicable au suivant : un boss déclare ses formes, il n'écrit
+## pas de collision.
+func fill_solids(shapes: PlaneShapes) -> void:
+	if tuning == null:
+		return
+	var origin := _origin()
+	if _phase == Phase.DIVE:
+		var centre := _flux_origin(origin)
+		ReactorRings.fill_shapes(shapes, tuning.reactor_rings, centre, _age)
+		shapes.add_disc(centre + _flux_offset(), tuning.flux_hitbox_radius)
+		return
+	# ⚠️ PAS DE COQUE PENDANT L'ENTRÉE. Le boss descend vers sa place ; le rendre solide
+	# pendant qu'il traverse l'arène pousserait un joueur qui n'a rien fait de mal.
+	if _boss == null or not _boss.is_in_place():
+		return
+	shapes.add_disc(origin, _boss.hitbox_radius)
+	for plate in _plates:
+		if not plate.is_up():
+			continue
+		var a := plate.angle_at(_shell_rotation)
+		shapes.add_disc(origin + Vector2(cos(a), sin(a)) * plate.radius,
+			tuning.plate_hitbox_radius)
+
+## Combien de formes `fill_solids()` peut produire — pour dimensionner UNE fois.
+func solid_capacity() -> int:
+	if tuning == null:
+		return 0
+	return maxi(ReactorRings.shape_count(tuning.reactor_rings) + 1,
+		tuning.plate_count + 1)
+
 ## Refait les formes de la chambre pour CET instant : les murs tournant, plus le noyau.
 ##
 ## ⚠️ LE NOYAU EST UN CORPS, ET IL NE L'ÉTAIT PAS. « Le réacteur central ne devrait pas être
@@ -1137,7 +1175,6 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
 			_orbit_nodes(origin)
 			_rebuild_shapes(origin)
-			_enforce_walls(origin)
 			_update_reactor_shield(origin)
 			_update_sweep(delta, origin)
 			if _dive_elapsed >= tuning.dive_time:

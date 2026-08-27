@@ -876,3 +876,79 @@ func test_a_perfect_player_still_never_finishes_before_the_third_cycle() -> void
 	_kill_armour(combat)
 	_ride_dive(combat, per_dive * 10.0)
 	assert_true(combat.phase() != CombatScript.Phase.DEFEATED, "ni au deuxieme")
+
+# --- Ce que le boss OPPOSE (loi « les corps ne se chevauchent pas », lot 2) ----
+## ⚠️ Le mode d'echec vise : un boss qu'on traverse. Il n'y a pas d'erreur a lever, pas de
+## journal a lire — juste un vaisseau qui passe au milieu de vingt metres de coque, et un
+## joueur qui cesse de croire au decor.
+
+## Ce qui est solide CHANGE avec la phase, et les deux ne coexistent jamais : une coque
+## apparaissant dans le noyau ecraserait le joueur au moment ou il a plonge pour l'oublier.
+func test_the_hull_is_solid_outside_and_the_walls_inside() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: LeviathanCombat = rig[1]
+	var shapes := PlaneShapes.new()
+	shapes.reserve(combat.solid_capacity())
+	combat.fill_solids(shapes)
+	assert_true(shapes.size() > 0, "l'armure oppose quelque chose")
+	assert_true(PlaneCollider.blocks(shapes, boss.plane_position, 0.0),
+		"et le centre de la coque est plein : on ne le traverse pas")
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	shapes.clear()
+	combat.fill_solids(shapes)
+	assert_true(shapes.size() > 0, "le noyau oppose quelque chose a son tour")
+	assert_false(PlaneCollider.blocks(shapes, boss.plane_position, 0.0),
+		"mais plus la coque : elle n'existe pas dans le noyau")
+
+## Une plaque a terre ne bloque plus. C'est la recompense de l'avoir abattue — la voir tomber
+## sans pouvoir passer serait pire que de ne rien montrer.
+func test_a_fallen_plate_stops_blocking() -> void:
+	var rig := _rig()
+	var combat: LeviathanCombat = rig[1]
+	var shapes := PlaneShapes.new()
+	shapes.reserve(combat.solid_capacity())
+	combat.fill_solids(shapes)
+	var whole := shapes.size()
+	combat._on_plate_hit(combat.tuning.plate_health, 0)
+	shapes.clear()
+	combat.fill_solids(shapes)
+	assert_eq(shapes.size(), whole - 1,
+		"une plaque de moins debout, une forme de moins en travers")
+
+## Pendant sa descente il n'oppose RIEN. Le rendre solide en pleine traversee pousserait un
+## joueur qui n'a rien fait de mal, et depuis un objet qui n'est pas encore le combat.
+func test_a_boss_still_arriving_blocks_nothing() -> void:
+	var bm := track(BulletManager.new()) as BulletManager
+	var boss := track(BossScript.new()) as BossController
+	boss.max_health = 20000.0
+	boss.entry_plane_position = Vector2(0.0, 5.5)
+	var combat: LeviathanCombat = CombatScript.new()
+	combat.tuning = LeviathanTuning.new()
+	boss.add_child(combat)
+	boss._ready()
+	combat._ready()
+	boss.begin(bm, null)
+	assert_false(boss.is_in_place(), "pre-requis : il descend encore")
+	var shapes := PlaneShapes.new()
+	shapes.reserve(combat.solid_capacity())
+	combat.fill_solids(shapes)
+	assert_eq(shapes.size(), 0, "et il n'oppose rien tant qu'il n'est pas en place")
+
+## ⚠️ LE JEU DE FORMES NE GROSSIT PAS. Il est refait a chaque image, et `solid_capacity()`
+## doit vraiment majorer ce que `fill_solids()` produit — sinon la reservation ne sert a rien
+## et chaque image alloue, dans la scene la plus chargee du jeu (spec §26.1).
+func test_the_declared_capacity_really_covers_what_is_produced() -> void:
+	var rig := _rig()
+	var combat: LeviathanCombat = rig[1]
+	var shapes := PlaneShapes.new()
+	shapes.reserve(combat.solid_capacity())
+	for frame in 300:
+		shapes.clear()
+		combat.tick(0.016)
+		combat.fill_solids(shapes)
+		assert_true(shapes.size() <= combat.solid_capacity(),
+			"image %d : %d formes pour une capacite annoncee de %d"
+				% [frame, shapes.size(), combat.solid_capacity()])

@@ -89,6 +89,21 @@ var _citadel: AegisCitadel
 var _final_boss: BossController
 ## Le module du boss final, gardé pour lire sa progression de combat (la musique la suit).
 var _leviathan: LeviathanCombat
+
+## Tout ce qui est solide dans le niveau, à cet instant. Rempli à chaque image par les boss
+## en place, lu par le chasseur qui s'y conforme.
+##
+## ⚠️ UN SEUL JEU DE FORMES POUR TOUT LE NIVEAU, et il est REFAIT à chaque image sans jamais
+## être réalloué (spec §26.1). Le niveau ne sait pas ce qu'il contient — ni plaques, ni bras,
+## ni anneaux : chaque boss DÉCLARE ses formes par `fill_solids()`. C'est ce qui rend la loi
+## « les corps ne se chevauchent pas » applicable au boss suivant sans toucher à ce fichier.
+var _solids := PlaneShapes.new()
+
+## Le module de combat du mini-boss, gardé pour ses formes solides. ⚠️ Testé par
+## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
+## le niveau, et une référence morte lue une fois de trop planterait la partie sur la
+## transition la plus chargée de l'arc.
+var _harvester: HarvesterCombat
 var _alarm_armed: bool = true
 ## `--no-wave` : aucune vague ne se joue, ni celle des chasseurs ni celle du champ.
 var _waves_disabled: bool = false
@@ -341,6 +356,7 @@ func _start_mini_boss() -> void:
 ## AVANT `begin()` : c'est lui qui déclenche le montage du module.
 func _bind_harvester(boss: BossController) -> void:
 	var combat := boss.get_node_or_null("Combat") as HarvesterCombat
+	_harvester = combat
 	if combat == null:
 		return
 	combat.limb_destroyed.connect(_on_harvester_limb_destroyed.bind(boss))
@@ -985,10 +1001,26 @@ func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 	return "DERNIER ASSAUT" if cycle >= cycles else "CYCLE %d / %d" % [cycle + 1, cycles]
 
 func _physics_process(delta: float) -> void:
+	_rebuild_solids()
 	_update_engine_hum()
 	if _approach_active:
 		_advance_boss_approach(delta)
 	_track_core_target(delta)
+
+## Refait les corps solides du niveau et les donne au chasseur.
+##
+## Le chasseur s'en dégage CHEZ LUI, après son propre déplacement — l'ordre compte, sinon on
+## le corrige puis le pilotage le renfonce dans l'obstacle à l'image suivante.
+func _rebuild_solids() -> void:
+	_solids.clear()
+	if is_instance_valid(_leviathan):
+		_solids.reserve(_leviathan.solid_capacity())
+		_leviathan.fill_solids(_solids)
+	if is_instance_valid(_harvester):
+		_solids.reserve(_harvester.solid_capacity())
+		_harvester.fill_solids(_solids)
+	if _player != null and _player.solids != _solids:
+		_player.solids = _solids
 
 ## Le repère de cible SUIT le flux, à l'image, et il BAT.
 ##
