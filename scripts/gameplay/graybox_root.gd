@@ -99,6 +99,10 @@ var _leviathan: LeviathanCombat
 ## « les corps ne se chevauchent pas » applicable au boss suivant sans toucher à ce fichier.
 var _solids := PlaneShapes.new()
 
+## Sonde de plongée (`--dive-probe`) : voir `_probe_dive()`.
+var _dive_probe: bool = false
+var _probe_clock: float = 0.0
+
 ## Le module de combat du mini-boss, gardé pour ses formes solides. ⚠️ Testé par
 ## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
 ## le niveau, et une référence morte lue une fois de trop planterait la partie sur la
@@ -221,6 +225,13 @@ func _ready() -> void:
 	_hit_stop = HitStop.new()
 	_hit_stop.name = "HitStop"
 	add_child(_hit_stop)
+	# ⚠️ SONDE DE PLONGÉE (`--dive-probe`). Elle existe parce qu'une simulation headless a
+	# affirmé que le convoyeur de la chambre avait disparu, pendant que l'opérateur le vivait
+	# encore : « toujours le même syndrome, j'ai comme un mur qui me pousse ». Quand le banc
+	# et le jeu se contredisent, c'est le JEU qui a raison — et il faut l'instrumenter, pas
+	# raffiner le banc. Elle imprime, quatre fois par seconde et seulement pendant la
+	# plongée, ce que le chasseur subit VRAIMENT : sa position, son contact, ce qui est versé.
+	_dive_probe = "--dive-probe" in args
 	if "--density-probe" in args and _bullets != null:
 		add_child(DensityProbe.make(_bullets, phase_label))
 	# Aucun de ces sauts n'éteint le semeur lui-même : `_set_phase()` le fait pour tout le
@@ -1067,6 +1078,7 @@ func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 
 func _physics_process(delta: float) -> void:
 	_rebuild_solids()
+	_probe_dive(delta)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
@@ -1105,6 +1117,34 @@ func _rebuild_solids() -> void:
 			spawner.fill_solids(_solids, _crusher_mass(), _crush_ratio())
 	if _player != null and _player.solids != _solids:
 		_player.solids = _solids
+
+## Ce que le chasseur subit dans la chambre, mesuré dans le JEU et non dans un banc.
+##
+## Silencieuse sans `--dive-probe`, et muette hors de la plongée : c'est un instrument, pas
+## une trace de tous les jours.
+func _probe_dive(delta: float) -> void:
+	if not _dive_probe or _player == null or _player.stats == null:
+		return
+	if _leviathan == null or _leviathan.phase() != LeviathanCombat.Phase.DIVE:
+		_probe_clock = 0.0
+		return
+	_probe_clock -= delta
+	if _probe_clock > 0.0:
+		return
+	_probe_clock = 0.25
+	var here := _player.plane_position
+	var forward := _player.plane_forward()
+	var half := _player.stats.body_half_length
+	var radius := _player.stats.body_radius
+	var touching := PlaneCollider.capsule_blocks(_solids, here, forward, half, radius)
+	var freed := PlaneCollider.resolve_capsule(_solids, here, forward, half, radius)
+	var centre := _core_interior.reactor_plane_position() if _core_interior != null \
+		else Vector2.ZERO
+	print("[Dive] pos (%+.2f, %+.2f) | r=%.2f du centre | %s | poussee (%+.2f, %+.2f) | %d formes | bornes %.1f..%.1f"
+		% [here.x, here.y, here.distance_to(centre),
+			"CONTACT" if touching else "libre  ",
+			freed.x - here.x, freed.y - here.y, _solids.size(),
+			GameplayPlane.bounds.position.y, GameplayPlane.bounds.end.y])
 
 ## Le poids du chasseur, et le rapport à partir duquel il passe à travers. Zéro quand il n'y
 ## a pas de chasseur : personne n'écrase, tout est un mur — la règle d'avant la masse.

@@ -27,6 +27,28 @@ const NO_HIT := Vector2.INF
 ## et le chasseur reste collé en vibrant. Vécu, corrigé, gardé.
 const EDGE_EPSILON := 0.01
 
+## Ce que COÛTE une sortie par le bout de l'arc, en multiple de sa longueur réelle.
+##
+## ⚠️ UN MUR QUI TOURNE NE DOIT PAS VOUS EMPORTER AVEC LUI, et sans cette pénalité il le
+## faisait. Sortir « par le bout » est un déplacement TANGENTIEL : rejoué à chaque image
+## contre un arc en rotation, il devient un convoyeur. Mesuré sur la géométrie livrée, un
+## chasseur qui pousse vers le noyau en montant dérivait de **9,2 unités** latéralement, en
+## contact 279 images sur 540 — « j'ai comme un mur qui me pousse sur la droite, ça ne marche
+## pas du tout » (playtest du 2026-08-27, troisième retour sur le même symptôme).
+##
+## ⚠️ ET CE N'EST PAS UNE QUESTION DE PLACE. On a d'abord cru que le couloir trop étroit
+## expliquait tout, et on l'a élargi : la dérive persistait, parce qu'elle ne vient pas de
+## l'étroitesse mais du CHOIX DE SORTIE. La simulation qui avait conclu le contraire posait
+## le chasseur immobile au milieu du couloir — là où aucun bord d'arc ne vient le chercher.
+## Un banc qui ne reproduit pas le geste du joueur ne prouve rien.
+##
+## À 2, la sortie par le bout reste possible quand elle est franchement la plus courte —
+## c'est elle qui libère un corps coincé à quelques centimètres d'une ouverture, et
+## `test_a_body_near_the_end_of_a_wall_escapes_through_the_opening` l'exige — mais elle cesse
+## de gagner sur une sortie radiale à peine plus longue. Le mur repousse, il ne transporte
+## plus. Valeur mesurée : à 1 la dérive vaut 9,2 u, à 2 elle tombe à zéro.
+const EDGE_EXIT_COST := 2.0
+
 ## Nombre de passes de dégagement. Sortir d'une forme peut faire entrer dans sa voisine ;
 ## deux suffisent tant que les formes ne s'empilent pas à plus de deux d'épaisseur.
 const RESOLVE_PASSES := 2
@@ -168,7 +190,7 @@ static func _escape_arc(shapes: PlaneShapes, index: int, point: Vector2,
 	var after := start_deg + span_deg + extent + EDGE_EPSILON
 	for edge in [before, after]:
 		var delta := absf(_wrap_deg(bearing - edge))
-		cost = distance * deg_to_rad(delta)
+		cost = distance * deg_to_rad(delta) * EDGE_EXIT_COST
 		if cost < best:
 			best = cost
 			target = Vector2(cos(deg_to_rad(edge)), sin(deg_to_rad(edge))) * distance

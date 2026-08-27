@@ -522,6 +522,61 @@ func test_a_fighter_left_alone_in_the_corridor_stays_there() -> void:
 		"pose immobile dans le couloir, il a derive de %.2f u en %.0f s (arrivee %.2f, %.2f)"
 			% [here.distance_to(depart), tuning.dive_time, here.x, here.y])
 
+## ⚠️ LE GESTE DU JOUEUR, ET C'EST LUI QUI MANQUAIT A TOUS LES BANCS PRECEDENTS. Deux
+## simulations ont conclu que la chambre allait bien — l'une avec le chasseur immobile au
+## milieu du couloir, l'autre au poste de tir — pendant que l'operateur vivait le contraire :
+## « j'ai comme un mur qui me pousse sur la droite ». Aucune des deux ne faisait ce que fait
+## un joueur : POUSSER vers le noyau, donc rencontrer le bord d'un arc en rotation.
+##
+## Ce que ce test refuse : qu'un mur qui tourne EMPORTE le chasseur lateralement. Qu'il
+## l'arrete est normal et voulu — l'operateur le demande explicitement (« je ne peux pas les
+## franchir, il y aura une collision quand je les touche sur leur surface »). Qu'il le
+## convoie ne l'est pas.
+func test_a_turning_wall_stops_you_but_never_carries_you() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var centre := CoreInterior.PLANE_OFFSET
+	var up := Vector2(0.0, 1.0)
+	var shapes := PlaneShapes.new()
+	# Trois commandes qui montent vers le noyau, dont deux en biais : c'est en biais qu'on
+	# rencontre un bord d'arc de flanc, et c'est la que le convoyeur se declenchait.
+	for push in [Vector2(0.0, 1.0), Vector2(0.5, 0.87).normalized(),
+			Vector2(-0.5, 0.87).normalized()]:
+		var pos := centre + tuning.dive_entry_local()
+		var depart := pos
+		var last_free := pos
+		var against := 0
+		var carried := 0.0
+		for i in int(tuning.dive_time * 60.0):
+			shapes.clear()
+			shapes.reserve(ReactorRings.shape_count(tuning.reactor_rings) + 2)
+			ReactorRings.fill_shapes(shapes, tuning.reactor_rings, centre, float(i) / 60.0)
+			shapes.add_disc(centre, tuning.flux_hitbox_radius)
+			shapes.add_disc(centre, CoreInterior.REACTOR_HOUSING_RADIUS)
+			var wanted: Vector2 = (pos + push * stats.max_speed / 60.0).clamp(
+				GameplayPlane.CHAMBER_BOUNDS.position, GameplayPlane.CHAMBER_BOUNDS.end)
+			var next := PlaneCollider.slide_capsule(shapes, pos, wanted, up,
+				stats.body_half_length, stats.body_radius)
+			if not PlaneCollider.capsule_blocks(shapes, next, up,
+					stats.body_half_length, stats.body_radius):
+				last_free = next
+			else:
+				against += 1
+				var freed := PlaneCollider.resolve_capsule(shapes, next, up,
+					stats.body_half_length, stats.body_radius, 5, last_free - next)
+				if freed.distance_to(next) > 0.03:
+					next = next.move_toward(freed, 9.0 / 60.0)
+			pos = next.clamp(GameplayPlane.CHAMBER_BOUNDS.position,
+				GameplayPlane.CHAMBER_BOUNDS.end)
+			# Ce qu'on mesure : un deplacement lateral que le joueur n'a PAS demande.
+			if absf(push.x) < 0.01:
+				carried = maxf(carried, absf(pos.x - depart.x))
+			elif signf(pos.x - depart.x) != signf(push.x):
+				carried = maxf(carried, absf(pos.x - depart.x))
+		assert_true(carried < 1.5,
+			("commande (%+.2f, %+.2f) : emporte de %.2f u DANS LE SENS INVERSE de ce qui "
+				+ "etait demande (%d images contre un mur)") % [push.x, push.y, carried, against])
+
 ## Ce qui compte vraiment : il n'est ni pris au piege, ni EMPORTE. Le blindage tourne ; il ne
 ## doit pas emmener le chasseur avec lui.
 func test_pushing_into_the_shield_never_carries_you_off() -> void:

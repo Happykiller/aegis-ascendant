@@ -61,10 +61,28 @@ pouvant pas tenir dans le couloir, il est en contact les trois quarts du temps :
 dégage, l'image suivante le rattrape, et la somme de ces dégagements est un **transport le long de
 l'arc**. « Un mur invisible qui pousse à droite » est la description exacte du phénomène.
 
-⚠️ **Il n'y a donc rien à corriger dans [`PlaneCollider`]**, et c'est le principal risque de faux
-chantier sur ce sujet. Le convoyeur n'est pas un défaut du moteur : c'est ce que produit
-mécaniquement un dégagement répété quand le corps n'a pas la place d'exister. Balayage du rayon du
-mur extérieur, même protocole :
+⚠️ **CETTE CONCLUSION ÉTAIT FAUSSE, ET ELLE A COÛTÉ UN LOT ENTIER.** Elle disait « il n'y a rien à
+corriger dans [`PlaneCollider`] » — le convoyeur ne serait qu'un manque de place. L'arène a donc été
+agrandie… et l'opérateur a rapporté **le même symptôme, une troisième fois**.
+
+Le défaut du raisonnement est dans le banc, pas dans le jeu : il posait le chasseur **immobile** au
+milieu du couloir, là où aucun bord d'arc ne vient le chercher. Un joueur, lui, **pousse** vers le
+noyau et rencontre les bords de flanc. Rejoué avec une commande — le vrai geste —, la dérive est de
+**9,2 unités**, avec 279 images de contact sur 540, couloir élargi ou non.
+
+La cause est bien dans le dégagement : sortir « par le bout de l'arc » est un déplacement
+**tangentiel**, et rejoué à chaque image contre un mur en rotation, il devient un convoyeur.
+`PlaneCollider.EDGE_EXIT_COST` le pénalise d'un facteur 2 : la sortie par le bout reste possible
+quand elle est franchement la plus courte — c'est elle qui libère un corps coincé près d'une
+ouverture — mais elle cesse de gagner sur une sortie radiale à peine plus longue.
+
+**La leçon, plus large que ce bug** : un banc qui ne reproduit pas le geste du joueur ne prouve
+rien, et deux bancs d'affilée peuvent se tromper de la même façon. Quand la mesure et l'opérateur se
+contredisent, c'est l'opérateur qui a raison — il faut instrumenter le JEU (`--dive-probe`), pas
+raffiner le banc.
+
+L'élargissement reste juste et nécessaire (le couloir de 2,60 ne pouvait pas loger 4,22), mais il
+n'était pas suffisant. Balayage du rayon du mur extérieur, même protocole :
 
 | Rayon | Couloir libre | Dans le couloir |
 |---|---|---|
