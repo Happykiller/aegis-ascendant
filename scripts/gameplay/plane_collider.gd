@@ -35,6 +35,13 @@ const RESOLVE_PASSES := 2
 ## enfoncé, et un vaisseau enfoncé sur toute sa longueur en demande plusieurs.
 const CAPSULE_PASSES := 6
 
+## Passes de glissement le long d'une surface courbe (voir [method slide_capsule]).
+const SLIDE_PASSES := 3
+
+## Jusqu'ou une correction apres un pas tangent est un simple frottement de la corde
+## contre la courbe, et non une penetration (voir [method slide_capsule]).
+const GRAZE_TOLERANCE := 0.05
+
 # --- Interrogation ------------------------------------------------------------
 
 ## Le point est-il dans la forme `index`, corps de rayon `body` compris ?
@@ -400,17 +407,29 @@ static func move_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis: 
 	var goal := to
 	var hit := first_blocking_capsule(shapes, start, axis, half_length, radius)
 	if hit >= 0:
+		# ⚠️ SEULE LA COMPOSANTE NORMALE DE LA VITESSE DU MUR POUSSE. La face d'un arc qui
+		# tourne a une vitesse purement tangente : elle glisse sous le corps et ne doit pas
+		# le deplacer. Pousser « le long de la vitesse du mur » des qu'il y a contact — la
+		# version d'avant — emmenait un chasseur pose contre la FACE dans le sens de
+		# rotation, et le figeait quand il poussait en biais (mesure : 1,2 s immobile contre
+		# la face externe). La normale de contact se lit du degagement statique — une seule
+		# definition du « dehors » — et c'est elle qui porte la poussee, au prorata de ce
+		# que le mur avance dans cette direction. Le BOUT d'un arc a une normale tangente :
+		# il pousse pleinement. Sa FACE a une normale radiale : elle ne pousse pas.
+		var escape := resolve_capsule(shapes, start, axis, half_length, radius) - start
 		var velocity := surface_velocity(shapes, hit,
 			blocking_point_capsule(shapes, hit, start, axis, half_length, radius))
-		if velocity.length() > 0.0001:
-			# Ce qu'une surface a pu avancer en une image, avec de la marge : elle a tourné
-			# d'un pas, pas de dix. Au-delà, ce n'est pas un mur qui pousse, c'est un corps
-			# qui est né dedans — et ça, c'est l'affaire du dégagement statique.
-			var reach := velocity.length() * delta * 4.0 + radius
-			var pushed := push_capsule_along(shapes, start, axis, half_length, radius,
-				velocity, reach)
-			goal += pushed - start
-			start = pushed
+		if escape.length() > 0.0001 and velocity.length() > 0.0001:
+			var normal := escape.normalized()
+			var closing := velocity.dot(normal)
+			if closing > 0.0001:
+				# Ce qu'une surface a pu avancer en une image, avec de la marge : elle a
+				# tourne d'un pas, pas de dix.
+				var reach := closing * delta * 4.0 + radius
+				var pushed := push_capsule_along(shapes, start, axis, half_length, radius,
+					normal, reach)
+				goal += pushed - start
+				start = pushed
 		if capsule_blocks(shapes, start, axis, half_length, radius):
 			# Immobile et pourtant dedans : apparition dans un mur, ou une forme qui n'a
 			# pas déclaré sa vitesse. On sort par le plus court, une fois.
@@ -441,19 +460,44 @@ static func slide_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis:
 		return to
 	if not capsule_blocks(shapes, to, axis, half_length, radius):
 		return to
-	var contact := _last_free(shapes, from, to, axis, half_length, radius)
-	# La normale, c'est la direction dans laquelle le corps VOUDRAIT sortir à l'arrivée.
-	# On la lit du dégagement plutôt que de la recalculer : une seule définition du « dehors ».
-	var escape := resolve_capsule(shapes, to, axis, half_length, radius) - to
-	if escape.length() < 0.0001:
-		return contact
-	var normal := escape.normalized()
-	var remaining := to - contact
-	var tangent := remaining - normal * remaining.dot(normal)
-	var slid := contact + tangent
-	if not capsule_blocks(shapes, slid, axis, half_length, radius):
-		return slid
-	return contact
+	# ⚠️ PLUSIEURS PASSES, PARCE QUE LE CORPS EST LONG ET LES MURS SONT COURBES. Une seule
+	# projection sur la tangente suffit contre un mur droit ; contre un arc, le pas tangent
+	# fait entrer un AUTRE point de la capsule dans la courbe, et abandonner a la premiere
+	# passe figeait le chasseur : mesure en jeu, 1,2 s a pousser en biais contre la face
+	# externe du mur sans bouger d'un millimetre (trace du 2026-08-28). On re-projette sur
+	# la nouvelle normale, jusqu'a trois fois — un mur courbe se longe par petits segments.
+	var start := from
+	var goal := to
+	for _pass in SLIDE_PASSES:
+		var contact := _last_free(shapes, start, goal, axis, half_length, radius)
+		# La normale, c'est la direction dans laquelle le corps VOUDRAIT sortir a l'arrivee.
+		# On la lit du degagement plutot que de la recalculer : une seule definition du
+		# « dehors ».
+		var escape := resolve_capsule(shapes, goal, axis, half_length, radius) - goal
+		if escape.length() < 0.0001:
+			return contact
+		var normal := escape.normalized()
+		var remaining := goal - contact
+		var tangent := remaining - normal * remaining.dot(normal)
+		if tangent.length() < 0.0005:
+			return contact
+		var slid := contact + tangent
+		if not capsule_blocks(shapes, slid, axis, half_length, radius):
+			return slid
+		# ⚠️ LA CORDE PLONGE D'UN CHEVEU DANS LA COURBE, et ce cheveu figeait le chasseur. La
+		# normale est lue a l'ARRIVEE, pas au point de contact : contre un arc, un demi-degre
+		# d'ecart suffit pour que le pas tangent finisse 2 mm sous la frontiere (mesure :
+		# nez a 7,928 pour une frontiere a 7,930), et un test de blocage strict refusait le
+		# glissement entier. Une correction RASANTE — quelques centimetres, vers le dehors —
+		# n'est pas une penetration : on la fait, et on accepte le point. Le corps n'entre
+		# jamais ; il longe la courbe par cordes, remises sur la surface a chaque pas.
+		var grazed := resolve_capsule(shapes, slid, axis, half_length, radius)
+		if grazed.distance_to(slid) <= GRAZE_TOLERANCE \
+				and not capsule_blocks(shapes, grazed, axis, half_length, radius):
+			return grazed
+		start = contact
+		goal = slid
+	return _last_free(shapes, start, goal, axis, half_length, radius)
 
 ## Le dernier point du segment où le corps tient encore. Recherche dichotomique : douze pas
 ## suffisent à descendre sous le millimètre sur un déplacement d'une image.

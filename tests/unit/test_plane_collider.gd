@@ -617,6 +617,38 @@ func test_a_turning_wall_stops_you_but_never_moves_you_without_touching() -> voi
 			("commande (%+.2f, %+.2f) : %d image(s) ou il va a L'ENVERS sans qu'aucun "
 				+ "mur ne le touche (entraine legitimement %d fois)") % [push.x, push.y, ghosts, carried])
 
+## ⚠️ POUSSER EN BIAIS CONTRE UNE PAROI COURBE DOIT GLISSER, pas figer. Mesure en jeu
+## (trace du 2026-08-28) : 73 images — 1,2 s — a tenir GAUCHE, le nez contre la face
+## externe du mur, sans bouger d'un millimetre. Le corps est long : le pas tangent faisait
+## entrer un autre point de la capsule dans la courbe, et le glissement abandonnait a la
+## premiere passe. Un mur courbe se longe par petits segments, il faut re-projeter.
+func test_pushing_sideways_against_a_curved_wall_slides_instead_of_freezing() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var centre := CoreInterior.PLANE_OFFSET
+	var up := Vector2(0.0, 1.0)
+	# La position exacte de la trace : hors du mur, en bas a droite, le nez sur sa face.
+	var here := Vector2(5.3, -6.0)
+	var depart := here
+	var shapes := PlaneShapes.new()
+	var frozen := 0
+	for i in 60:
+		shapes.clear()
+		shapes.reserve(ReactorRings.shape_count(tuning.reactor_rings) + 2)
+		# Les murs FIGES a l'instant de la trace : c'est la paroi qui bloque, pas sa rotation.
+		ReactorRings.fill_shapes(shapes, tuning.reactor_rings, centre, 32.24)
+		shapes.add_disc(centre, tuning.flux_hitbox_radius)
+		shapes.add_disc(centre, CoreInterior.REACTOR_HOUSING_RADIUS)
+		var wanted := here + Vector2(-stats.max_speed / 60.0, 0.0)
+		var next := PlaneCollider.move_capsule(shapes, here, wanted, up,
+			stats.body_half_length, stats.body_radius, 1.0 / 60.0)
+		if next.distance_to(here) < 0.001:
+			frozen += 1
+		here = next
+	assert_true(here.distance_to(depart) > 1.0,
+		"en une seconde a pousser en biais contre la courbe, il a longe %.2f u" % here.distance_to(depart))
+	assert_true(frozen < 10, "%d images figees sur 60" % frozen)
+
 ## Ce qui compte vraiment : il n'est ni pris au piege, ni EMPORTE. Le blindage tourne ; il ne
 ## doit pas emmener le chasseur avec lui.
 func test_pushing_into_the_shield_never_carries_you_off() -> void:
