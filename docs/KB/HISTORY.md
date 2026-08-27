@@ -92,7 +92,7 @@ nous » sont **vérifiés fichier par fichier**, jamais supposés.
   pixelisation. Manque **une ligne d'UI**. Idem manette (§7.2) et remappage (§7.1) : `InputBootstrap`
   n'enregistre **aucun événement joypad**. → [`bible/10`](../design/bible/10-experience-joueur.md)
 - Deux constats mineurs mais vérifiés : la **cadence de récompense est déterministe** (un bonus tous
-  les 4 ennemis, un Power Core tous les 12 — donc indexée sur le **nombre d'ennemis**, pas sur le
+  les 4 ennemis, un Power Core tous les 16 (12 avant le playtest du soir) — donc indexée sur le **nombre d'ennemis**, pas sur le
   temps), et la **parité de l'éventail visé du boss change toute seule** à chaque phase
   (`3 + phase` : impair, pair, impair), ce qui rend la phase 1 plus permissive que la phase 0 pour
   ce pattern.

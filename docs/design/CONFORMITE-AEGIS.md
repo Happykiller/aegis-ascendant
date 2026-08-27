@@ -242,8 +242,10 @@ trentaine de secondes, trois fois.
 ### La cadence de récompense est **déterministe**
 
 `PickupManager.roll_drop()` ne tire rien au sort malgré son nom : un bonus **tous les 4 ennemis**
-(`_DROP_EVERY := 4`), un Power Core **un bonus sur trois** (`_POWER_EVERY := 3`) — soit **un niveau
-de puissance tous les 12 ennemis**. Les deux autres suivent un cycle fixe `bouclier → score →
+(`_DROP_EVERY := 4`), un Power Core **un bonus sur quatre** (`_POWER_EVERY := 4`) — soit **un niveau
+de puissance tous les 16 ennemis** (`KILLS_PER_POWER`). ⚠️ **C'était 12 jusqu'au playtest du
+2026-08-27** : le niveau 5 tombait alors au 48ᵉ kill d'une vague qui en compte 107, et la moitié des
+huit Power Cores distribués atterrissait sur un joueur déjà plein. Les deux autres suivent un cycle fixe `bouclier → score →
 bouclier`.
 
 ⚠️ **À connaître avant de toucher au bestiaire** : la montée en puissance est indexée sur le
@@ -267,7 +269,7 @@ ennemis coriaces le ralentit, à durée de phase identique.
 
 | Boucle | Sens | Chemin |
 |---|---|---|
-| **Puissance** | **positive** | tuer → bonus tous les 4 → Power Core tous les 12 → cadence ×0,8 et flux en plus → tuer plus vite |
+| **Puissance** | **positive** | tuer → bonus tous les 4 → Power Core tous les **16** → cadence ×0,8 et flux en plus → tuer plus vite |
 | **Bouclier** | **positive** | ne pas être touché 3 s → régénération à 12 /s → encaisser plus tard |
 | **Mort** | **neutre** | une vie en moins, **aucune puissance** perdue |
 | **Cycles du boss** | scriptée | l'armure revient amoindrie : 4 plaques, puis 3, puis 2 |
@@ -283,7 +285,7 @@ suivante est plus dure, pas parce que le joueur va bien.
 |---|---|---|---|
 | Bouclier (100) | régénération, bonus (+35) | en encaissant | ❌ subi |
 | Vies (3) | — | en mourant | ❌ continues illimités |
-| Puissance (1→5) | 1 bonus / 12 ennemis | **jamais** | ❌ |
+| Puissance (1→5) | 1 bonus / **16** ennemis | **jamais** | ❌ |
 | Score | ennemis, bonus, phases | **jamais** | ❌ |
 
 Les trois mécanismes que la spec prévoyait pour cela — **arme secondaire** (§9.3), **Overdrive**
@@ -302,7 +304,7 @@ systèmes non écrits.
 | `LOI-EXP-03` hit stop | ✅ **tenue** (2026-08-27) | `HitStop` (`scripts/fx/hit_stop.gd`) — **60 ms** quand une plaque du Leviathan cède, **80 ms** sur une défaite de boss : les deux dans la fenêtre documentée, et un test le garde. Le comptage est **pur** (`request` / `advance`), le nœud n'est qu'un applicateur. ⚠️ Tout gèle, **l'explosion comprise** — c'est le principe : un hit stop TIENT l'image de l'impact. Le son, lui, n'est pas touché par `Engine.time_scale`, donc le coup s'entend en plein pendant que l'image est suspendue |
 | `LOI-EXP-04` accepter l'intention | — | sans objet : aucune commande n'a de fenêtre (pas de saut, pas de dash, pas de bombe) |
 | `LOI-EXP-05` ni ennui ni angoisse | ❔ non vérifiée | « vérifier que la difficulté est facile mais nerveuse » est au P0 du backlog |
-| `LOI-EXP-06` puissance puis baisse | ❌ **absente** | la montée en puissance est **continue** (1 Power Core / 12 ennemis) et ne provoque **aucun palier de respiration**. Le joueur ne vit jamais le moment « je suis devenu fort, et ça se voit » |
+| `LOI-EXP-06` puissance puis baisse | ❌ **absente** | la montée en puissance est **continue** (1 Power Core / 16 ennemis) et ne provoque **aucun palier de respiration**. Le joueur ne vit jamais le moment « je suis devenu fort, et ça se voit » |
 | `LOI-EXP-07` apprendre en jouant | ⚠️ **partielle** (2026-08-27) | **de l'espace, enfin** : `WaveData.lead_in = 2,0 s` de ciel vide avant le premier chasseur — ils tombaient à `0.3 s`, le joueur découvrait qu'il se déplace en se faisant tirer dessus (spec §5.2, « prise en main calme »). Le silence vit sur la **vague**, pas dans trente `time_offset` : l'ordre relatif des entrées est du design déjà réglé. ⚠️ Restent absents l'**erreur peu coûteuse** et son **évaluation juste après** — les deux autres tiers de la loi |
 | `LOI-EXP-08` effet invisible = défaut | ✅ **tenue, et c'est une loi née ici** | cinq mécaniques prises en défaut le 2026-08-26 : freinage de la sangsue, champ protecteur, puits gravitique, sursis de mine. Capitalisée dans [`KB/DAF/signaux.md`](../KB/DAF/signaux.md) |
 | `LOI-EXP-09` contrat joueur | ⚠️ partielle | la loi des signaux en couvre le fond, **sans le formalisme** SEE/UNDERSTAND/FEEL/ANTICIPATE/DECIDE ni la ligne « à ne jamais produire » — qui aurait attrapé le lien du Shield Carrier lu comme « je suis ralenti » |

@@ -8,8 +8,28 @@ const _POOL_SIZE := 16
 ## Drop on roughly every Nth kill. Raised with the denser waves so bonuses stay
 ## rare (operator feedback) rather than flooding the field.
 const _DROP_EVERY := 4
-## Guarantee a Power Core every Nth drop until max power (spec §10.3 guarantee).
-const _POWER_EVERY := 3
+## Un Power Core tous les N bonus, donc tous les `_DROP_EVERY × _POWER_EVERY` ennemis
+## (spec §10.3 : la montée en puissance est GARANTIE, jamais tirée au sort).
+##
+## ⚠️ 4 ET NON 3, depuis le playtest du 2026-08-27. À 3, le Core tombait tous les 12
+## ennemis : le niveau 5 était atteint au **48ᵉ kill d'une vague qui en compte 107**, soit
+## 45 % — le joueur passait plus de la moitié de la phase 1 à pleine puissance, et arrivait
+## au champ d'astéroïdes surarmé contre les unités les plus coriaces du bestiaire.
+## Pire, la vague distribuait **8 Cores quand 4 suffisent** : la moitié tombait sur un
+## joueur déjà plein et ne produisait RIEN — un bonus muet.
+##
+## À 4 (un Core tous les 16 ennemis) : niveau 2 au 16ᵉ, 3 au 32ᵉ, 4 au 48ᵉ, 5 au 64ᵉ. Sur
+## les ~45 kills d'une phase 1 jouée, on entre en phase 2 au niveau 3-4 — ce que demandait
+## l'opérateur.
+##
+## ⚠️ Ne pas retoucher `_DROP_EVERY` pour compenser : ce sont deux réglages différents. Il
+## décide de la FRÉQUENCE des bonus (tous types), celui-ci de la part qui donne du feu.
+const _POWER_EVERY := 4
+
+## Ennemis à abattre pour un niveau de puissance. Dérivé, mais PUBLIC et nommé : c'est LE
+## nombre d'équilibrage de la montée en puissance, et il ne doit pas se déduire de deux
+## constantes privées quand on l'équilibre ou qu'on le teste.
+const KILLS_PER_POWER := _DROP_EVERY * _POWER_EVERY
 
 signal picked_up(kind: Pickup.Kind, world_position: Vector3)
 

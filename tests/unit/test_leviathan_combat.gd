@@ -607,6 +607,39 @@ func test_a_saturated_dive_stops_counting_but_the_fight_goes_on() -> void:
 	assert_almost_eq(_flux_left(combat), after_first, 0.001,
 		"le flux sature ne perd plus rien pendant CE passage")
 
+## ⚠️ LE DEFAUT NOMME AU PLAYTEST DU 2026-08-27. Le quota rempli, les tirs portaient encore
+## mais ne comptaient plus, la jauge se figeait, et le joueur attendait les 5 s de
+## `dive_time` sans rien pouvoir faire. `ADR-0026` demandait pourtant l'inverse en toutes
+## lettres : « mieux jouer RACCOURCIT chaque plongee sans jamais en supprimer une ».
+##
+## La garde porte sur l'INSTANT de la sortie, pas sur son existence : sans elle, une
+## regression rendrait simplement la plongee plus longue — et rien ne serait rouge.
+func test_filling_the_quota_ejects_at_once_instead_of_waiting_out_the_clock() -> void:
+	var combat := _make()
+	var ended: Array = []
+	combat.dive_ended.connect(func(c: int, _down: bool) -> void: ended.append(c))
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	assert_eq(ended.size(), 0, "on est bien dans le noyau, la plongee court encore")
+	combat._on_flux_hit(combat.tuning.flux_damage_per_dive())
+	assert_eq(ended.size(), 1,
+		"le quota rempli EJECTE — sans une seule seconde de dive_time consommee")
+
+## Et le revers, qui est la raison d'etre du minuteur : rater sa plongee doit couter du
+## TEMPS. Supprimer `dive_time` en meme temps que l'attente aurait rendu la phase gratuite.
+func test_a_missed_dive_still_waits_out_its_clock() -> void:
+	var combat := _make()
+	var ended: Array = []
+	combat.dive_ended.connect(func(c: int, _down: bool) -> void: ended.append(c))
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat._on_flux_hit(1.0)   # trois fois rien
+	assert_eq(ended.size(), 0, "un coup isole ne libere pas la plongee")
+	combat.tick(combat.tuning.dive_time + 0.01)
+	assert_eq(ended.size(), 1, "c'est le minuteur qui la termine, comme avant")
+
 func test_three_perfect_dives_are_exactly_enough() -> void:
 	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.
 	var combat := _make()

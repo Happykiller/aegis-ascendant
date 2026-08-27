@@ -1171,13 +1171,27 @@ func _on_flux_hit(damage: float) -> void:
 	var room := maxf(tuning.flux_damage_per_dive() - _dive_damage, 0.0)
 	var applied := minf(damage, room)
 	if applied <= 0.0:
-		# Le flux est déjà saturé pour ce passage : les tirs portent, ils ne comptent plus.
+		# Garde-fou : on ne devrait plus passer ici, la saturation éjectant désormais tout
+		# de suite. Reste pour les coups de la même image que celui qui a rempli le quota.
 		return
 	_dive_damage += applied
 	_account(applied)
 	_flux_health = maxf(_flux_health - applied, 0.0)
 	if _flux_health <= 0.0:
 		# Le flux tombe : on ne coupe pas la plongée en deux, l'éjection reste jouée.
+		_set_dive(Dive.EJECT)
+	elif _dive_damage >= tuning.flux_damage_per_dive():
+		# ⚠️ LE QUOTA EST REMPLI : ON SORT. Sans cette ligne, le joueur qui l'atteignait en
+		# 3 s attendait les 5 s de `dive_time` devant une jauge GELÉE — ses tirs portaient
+		# encore, ils ne comptaient plus, et rien ne le disait. C'est le défaut que
+		# l'opérateur a nommé au playtest du 2026-08-27.
+		#
+		# Ce n'est pas un changement d'équilibrage : `ADR-0026` l'écrivait déjà — « mieux
+		# jouer RACCOURCIT chaque plongée sans jamais en supprimer une ». Le plafond par
+		# passage garantit toujours les trois cycles ; seule l'attente disparaît.
+		#
+		# `dive_time` reste la sortie de celui qui n'atteint PAS le quota : rater sa
+		# plongée doit coûter du temps, pas l'enfermer.
 		_set_dive(Dive.EJECT)
 
 func _on_missile_hit(damage: float, index: int) -> void:

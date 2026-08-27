@@ -3,7 +3,7 @@ titre: Retours de playtest du 2026-08-27 — puissance, regen, noyau, et le mouv
 date: 2026-08-27
 auteur: session Claude, sur retours de l'opérateur après une partie complète (arc entier, rang S)
 perimetre: équilibrage de la montée en puissance, signaux de boss, phase du noyau, bibliothèque de trajectoires
-etat: instruit et chiffré — rien d'implémenté, quatre chantiers à ordonner
+etat: **R1 et R3b LIVRÉS** (2026-08-27) ; R2, R3a, R3c et R4 instruits, non engagés
 supersede: rien. Complète docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -18,7 +18,7 @@ chiffre.
 
 ---
 
-## R1 — On arrive en phase 2 à pleine puissance, et les PV ne suivent plus
+## R1 — On arrive en phase 2 à pleine puissance ✅ LIVRÉ
 
 > « Dans la phase deux les ennemis n'ont pas assez de points de vie vu qu'on commence souvent full
 > puissance, et je réduirais le taux de drop de la puissance pour avoir max 4/5 en arrivant en
@@ -82,7 +82,7 @@ C'est [`LOI-ENN-02`](../design/bible/02-ennemis-et-vagues.md) — « la priorit�
 coup d'œil, ou elle n'existe pas » — et le projet a **déjà** payé ce défaut sur le Shield Carrier,
 dont la portée « ne se voyait pas » et qu'il a fallu rendre en anneau.
 
-### R3b — ⚠️ On sort au minuteur, et la jauge se fige : c'est un défaut, pas un réglage
+### R3b — On sortait au minuteur, la jauge se figeait ✅ LIVRÉ
 
 > « Il faudrait qu'on soit éjecté quand on a descendu suffisamment les PV, pas sur un timer, car là
 > la barre de vie se fige et on attend. »
@@ -153,8 +153,8 @@ C'est mot pour mot le reproche de l'opérateur, résolu ailleurs et jamais trans
 
 | # | Chantier | Coût | Nature |
 |---|---|---|---|
-| **R3b** | Éjecter au quota atteint, pas au minuteur | faible | **défaut** — `ADR-0026` le demandait déjà |
-| **R1** | Un Power Core tous les 16 kills | faible | équilibrage — **à rejouer pour confirmer** |
+| ~~R3b~~ | ~~Éjecter au quota atteint~~ | — | ✅ **livré** le 2026-08-27 |
+| ~~R1~~ | ~~Un Power Core tous les 16 kills~~ | — | ✅ **livré** — ⚠️ **reste à rejouer pour confirmer** |
 | **R2** | Jauge de regen verte | moyen | signal — attention à `ADR-0023` |
 | **R3a** | Désigner le noyau comme cible | moyen | signal |
 | **R3c** | Le boss dérive pendant la plongée | moyen | vie de la scène |
