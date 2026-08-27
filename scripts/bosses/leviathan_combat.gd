@@ -764,16 +764,27 @@ func _update_reactor_shield(origin: Vector2) -> void:
 func combat_age() -> float:
 	return _age
 
-## Redresse les verrous à chaque entrée dans le noyau : ils reviennent entiers, comme
-## l'armure. Le joueur ne « garde » pas le travail d'une plongée pour la suivante — ce serait
-## rendre les cycles cumulatifs, ce que le combat n'a jamais été.
+## Redresse les verrous — MOINS NOMBREUX À CHAQUE CYCLE, exactement comme l'armure
+## (`ADR-0021` : « le boss se répare de plus en plus mal »).
+##
+## ⚠️ LE DÉFAUT QUE ÇA CORRIGE, ET IL A RENDU LE COMBAT INFINI. Ils se relevaient ENTIERS à
+## chaque plongée. Un joueur qui ne parvenait pas à les abattre dans les cinq secondes ne
+## touchait donc JAMAIS le flux — zéro dégât, à chaque passage, pour toujours. Playtest du
+## 2026-08-27 : « DERNIER ASSAUT » onze fois de suite, puis l'opérateur a fermé le jeu.
+##
+## Ce n'était pas une question d'équilibrage mais de STRUCTURE : une porte remise à neuf à
+## chaque tentative est un mur binaire, pas une difficulté. Le projet avait déjà répondu à
+## ça pour l'armure ; les verrous suivent la même règle.
 func _arm_nodes() -> void:
 	_nodes_alive = 0
+	var standing := maxi(tuning.node_count - _cycle, 1) if tuning.node_count > 0 else 0
 	for i in _node_targets.size():
-		_node_health[i] = tuning.node_health
-		_node_targets[i].enabled = true
-		_nodes_alive += 1
-		node_gauge_changed.emit(i, 1.0, true)
+		var alive := i < standing
+		_node_health[i] = tuning.node_health if alive else 0.0
+		_node_targets[i].enabled = alive
+		if alive:
+			_nodes_alive += 1
+		node_gauge_changed.emit(i, 1.0 if alive else 0.0, alive)
 
 ## Les verrous tournent autour du réacteur, régulièrement répartis.
 func _orbit_nodes(origin: Vector2) -> void:
@@ -1451,6 +1462,12 @@ func _on_flux_hit(damage: float) -> void:
 	if _phase != Phase.DIVE or _dive != Dive.INSIDE or _flux_health <= 0.0:
 		return
 	var room := maxf(tuning.flux_damage_per_dive() - _dive_damage, 0.0)
+	# ⚠️ LE PLAFOND CESSE DE PLAFONNER AU DERNIER CYCLE PRÉVU. `ADR-0026` l'a posé pour
+	# empêcher de finir TROP TÔT ; rien ne bornait le nombre de cycles. C'est le filet de
+	# sécurité de la terminaison — la vraie cause du combat infini est ailleurs, dans les
+	# verrous qui se relevaient entiers (voir `_arm_nodes`).
+	if _cycle >= maxi(tuning.cycle_count - 1, 0):
+		room = _flux_health
 	var applied := minf(damage, room)
 	if applied <= 0.0:
 		# Garde-fou : on ne devrait plus passer ici, la saturation éjectant désormais tout

@@ -216,7 +216,11 @@ extends Resource
 ## Combien de verrous énergétiques tournent autour du réacteur. Zéro les désactive
 ## entièrement — le comportement des lots 1 et 2.
 @export_range(0, 6) var node_count: int = 4
-@export var node_health: float = 90.0
+## ⚠️ 90 -> 55 APRÈS PLAYTEST. Quatre verrous de 90 PV plus un corridor à trouver ne
+## tenaient pas dans cinq secondes : l'opérateur ne remplissait aucun quota, et le combat
+## ne convergeait plus. `ring_occupancy` était annoncée comme une ESTIMATION à mesurer en
+## jouant — c'est fait, et elle était optimiste.
+@export var node_health: float = 55.0
 ## Rayon d'orbite. ⚠️ AU-DELÀ DE L'ANNEAU EXTÉRIEUR (6,2) : les nodes doivent être
 ## atteignables SANS corridor, sinon le joueur devrait ouvrir le blindage pour détruire ce
 ## qui verrouille le blindage.

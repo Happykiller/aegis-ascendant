@@ -772,9 +772,15 @@ func test_a_single_surviving_lock_keeps_the_core_shut() -> void:
 		assert_false(combat._flux_target.enabled,
 			"le dernier verrou tient : le noyau reste ferme")
 
-## Ils reviennent ENTIERS a chaque plongee : les cycles ne sont pas cumulatifs, et ils ne
-## l'ont jamais ete pour l'armure non plus.
-func test_the_locks_come_back_whole_on_the_next_dive() -> void:
+## ⚠️ CETTE GARDE AFFIRMAIT LE CONTRAIRE, ET ELLE AVAIT TORT. Ecrite le matin meme, elle
+## disait « ils reviennent ENTIERS : les cycles ne sont pas cumulatifs ». Le playtest a
+## montre ou menait cette regle : un joueur qui ne peut pas abattre quatre verrous en cinq
+## secondes ne touche JAMAIS le flux, et le combat ne se termine pas. Un mur remis a neuf a
+## chaque tentative n'est pas une difficulte.
+##
+## La regle est desormais celle de l'armure (`ADR-0021`, « le boss se repare de plus en plus
+## mal ») : ils reviennent AMOINDRIS. Un joueur qui en abat deux par passage progresse.
+func test_the_locks_come_back_diminished_like_the_armour() -> void:
 	var combat := _make()
 	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
 	_kill_armour(combat)
@@ -787,8 +793,8 @@ func test_the_locks_come_back_whole_on_the_next_dive() -> void:
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
-	assert_eq(combat.nodes_alive(), combat.tuning.node_count,
-		"et debout au suivant : les cycles ne se cumulent pas")
+	assert_eq(combat.nodes_alive(), combat.tuning.node_count - 1,
+		"et un de moins au suivant : le boss se repare de plus en plus mal")
 
 func test_three_perfect_dives_are_exactly_enough() -> void:
 	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.
@@ -807,3 +813,56 @@ func test_three_perfect_dives_are_exactly_enough() -> void:
 ## Reserve restante du flux — lue sur le module, pas recalculee.
 func _flux_left(combat: LeviathanCombat) -> float:
 	return combat._flux_health
+
+## ⚠️ LE DEFAUT LE PLUS GRAVE DE LA JOURNEE, ET IL EST SORTI D'UN PLAYTEST. Rien ne bornait
+## le nombre de cycles : le plafond d'ADR-0026 s'appliquait a TOUS les passages, si bien
+## qu'un joueur qui ne remplit jamais son quota voyait « DERNIER ASSAUT » se repeter sans
+## fin. Onze fois, avant que l'operateur ne ferme le jeu.
+##
+## Le plafond existe pour empecher de finir TROP TOT, pas pour empecher de finir. Cette
+## garde verifie qu'un joueur MEDIOCRE — un tiers du quota par plongee — voit quand meme la
+## fin, et qu'un joueur PARFAIT ne la voit toujours pas avant le troisieme cycle.
+## ⚠️ ET C'EST BIEN LES VERROUS QU'IL FAUT EPROUVER, PAS LE PLAFOND. Une premiere version
+## de cette garde nourrissait `_on_flux_hit` directement : elle passait MEME SANS la
+## correction, parce qu'elle ne reproduisait pas la panne. Le vrai scenario est un joueur
+## qui n'abat qu'UNE PARTIE des verrous par plongee — il ne touche alors jamais le flux, et
+## si les verrous se relevent entiers, il ne le touchera JAMAIS.
+func test_a_player_who_cannot_clear_the_locks_in_one_dive_still_progresses() -> void:
+	var combat := _make()
+	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.dive_anchor = Vector2.ZERO
+	var reached := false
+	for attempt in 12:
+		if combat.phase() == CombatScript.Phase.DEFEATED:
+			break
+		_kill_armour(combat)
+		combat.tick(0.016)
+		combat.tick(combat.tuning.dive_enter_time + 0.02)
+		# Il n'en abat que DEUX par passage : c'est tout ce que cinq secondes lui laissent.
+		var killed := 0
+		for i in combat.tuning.node_count:
+			if killed >= 2:
+				break
+			if combat.node_alive(i):
+				combat._on_node_hit(combat.tuning.node_health, i)
+				killed += 1
+		if combat.nodes_alive() == 0:
+			reached = true
+			combat._on_flux_hit(combat.tuning.flux_damage_per_dive())
+		combat.tick(combat.tuning.dive_time + 0.01)
+		combat.tick(combat.tuning.dive_eject_time + 0.01)
+		combat.tick(2.0)
+	assert_true(reached,
+		"il finit par atteindre le flux : sans quoi le combat est INFINI (%d cycles)" % combat.cycle())
+	assert_eq(combat.phase(), CombatScript.Phase.DEFEATED,
+		"et le combat se termine — il a tenu %d cycles" % combat.cycle())
+
+func test_a_perfect_player_still_never_finishes_before_the_third_cycle() -> void:
+	var combat := _make()
+	var per_dive := combat.tuning.flux_damage_per_dive()
+	_kill_armour(combat)
+	_ride_dive(combat, per_dive * 10.0)   # il place tout ce qu'il peut
+	assert_true(combat.phase() != CombatScript.Phase.DEFEATED, "pas au premier passage")
+	_kill_armour(combat)
+	_ride_dive(combat, per_dive * 10.0)
+	assert_true(combat.phase() != CombatScript.Phase.DEFEATED, "ni au deuxieme")
