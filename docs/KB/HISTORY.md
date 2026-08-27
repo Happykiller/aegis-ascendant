@@ -2,7 +2,7 @@
 titre: HISTORY — index chronologique des sujets abordés
 type: index
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-27
 ---
 
 # Historique des sujets
@@ -64,3 +64,39 @@ particules. Et un dépôt public de releases, avec un livrable Windows **en un s
 - [pratique-ecrivain-unique](../../.claude/resources/pratique-ecrivain-unique.md) — **récidive** :
   le second écrivain n'est pas seulement l'autre agent, c'est **le sous-agent qu'on vient de
   lancer**.
+
+## 2026-08-27 — la bible de design passe de six à treize pages
+
+Recherche web à la demande de l'opérateur, pour **aller plus loin** que les six pages du 2026-08-25 :
+piliers, boucle de jeu, règles et systèmes, expérience joueur, patterns, level design, lexique. Même
+coupe qu'avant — *ce que le métier dit* / *l'état réel du code* / *l'écart* — et les états « chez
+nous » sont **vérifiés fichier par fichier**, jamais supposés.
+
+**Ce que l'audit a trouvé, et qui n'était documenté nulle part** :
+
+- **Le pilier D de la spec §1.4 est orphelin** depuis `ADR-0010` (2026-07-19) : il décrit le passage
+  au pilotage de la forteresse, supprimé après usage. Un pilier qui nomme une **fonctionnalité**
+  meurt avec elle — c'est pour ça que le métier les veut formulés en **ressenti**.
+  → [`bible/07`](../design/bible/07-piliers-et-intention.md)
+- **`FAN` et `AIMED` ne sont employés par aucune unité de vague.** `fire` vaut `SINGLE` par défaut et
+  **aucun `.tres` d'ennemi ne le surcharge**, sauf trois `NONE` et un `RADIAL`. Les neuf Needle
+  Scout tirent tous une balle droite : le seul schéma qui punit l'immobilité en vague est écrit,
+  testé, et jamais joué. Deux lignes de `.tres` le mettraient en jeu.
+  → [`bible/11`](../design/bible/11-patterns-de-tir.md)
+- **Le jeu n'a que des boucles de rétroaction positives**, et **aucune ressource ne se dépense** :
+  pas d'économie, donc aucune décision d'arbitrage dans la micro-boucle. Overdrive (§9.4), arme
+  secondaire (§9.3) et focus (§7.1) sont dans le pire des états — *prévus, absents et silencieux*.
+  → [`bible/09`](../design/bible/09-regles-et-systemes.md)
+- **`shake_multiplier` est codé mais injoignable** : la spec §7.3 exige une secousse désactivable, le
+  code sait le faire (`CameraDirector`), le menu d'options n'expose que 4 volumes et la
+  pixelisation. Manque **une ligne d'UI**. Idem manette (§7.2) et remappage (§7.1) : `InputBootstrap`
+  n'enregistre **aucun événement joypad**. → [`bible/10`](../design/bible/10-experience-joueur.md)
+- Deux constats mineurs mais vérifiés : la **cadence de récompense est déterministe** (un bonus tous
+  les 4 ennemis, un Power Core tous les 12 — donc indexée sur le **nombre d'ennemis**, pas sur le
+  temps), et la **parité de l'éventail visé du boss change toute seule** à chaque phase
+  (`3 + phase` : impair, pair, impair), ce qui rend la phase 1 plus permissive que la phase 0 pour
+  ce pattern.
+
+**Rien n'a été décidé** : la bible n'est pas un cahier des charges, et les quatre constats
+ci-dessus attendent l'opérateur. Ils sont rappelés en tête de
+[`bible/README`](../design/bible/README.md).
