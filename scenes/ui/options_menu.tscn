@@ -204,6 +204,91 @@ theme_override_font_sizes/font_size = 24
 text = "100"
 horizontal_alignment = 2
 
+; La section DEBOGAGE : les couches invisibles du jeu, chacune avec la phrase qui dit ce
+; qu'elle est. But pedagogique, demande par l'operateur le 2026-08-28 : ce qu'on voit n'est
+; qu'une des quatre representations d'un objet, et c'est leur desaccord qui fait les bugs
+; qu'on ne comprend pas.
+[node name="DebugTitle" type="Label" parent="Center/Panel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.247, 0.851, 0.91, 1)
+theme_override_font_sizes/font_size = 32
+text = "DEBOGAGE"
+horizontal_alignment = 1
+
+[node name="Debug" type="VBoxContainer" parent="Center/Panel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Bodies" type="HBoxContainer" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Name" type="Label" parent="Center/Panel/Debug/Bodies"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
+theme_override_font_sizes/font_size = 24
+text = "CORPS (VERT)"
+
+[node name="Toggle" type="CheckButton" parent="Center/Panel/Debug/Bodies"]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="BodiesHint" type="Label" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.45)
+theme_override_font_sizes/font_size = 16
+text = "Les formes de collision : ce qui arrete un vaisseau. Murs, noyau, coques des boss, et la capsule du chasseur en cyan."
+autowrap_mode = 2
+
+[node name="Targets" type="HBoxContainer" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Name" type="Label" parent="Center/Panel/Debug/Targets"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
+theme_override_font_sizes/font_size = 24
+text = "CIBLES (ORANGE)"
+
+[node name="Toggle" type="CheckButton" parent="Center/Panel/Debug/Targets"]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="TargetsHint" type="Label" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.45)
+theme_override_font_sizes/font_size = 16
+text = "Ce qu'une balle touche et blesse. Orange : ce que vos tirs peuvent atteindre. Magenta : ce que les tirs ennemis atteignent sur vous."
+autowrap_mode = 2
+
+[node name="Screens" type="HBoxContainer" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Name" type="Label" parent="Center/Panel/Debug/Screens"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
+theme_override_font_sizes/font_size = 24
+text = "ECRANS DE TIR (ROUGE)"
+
+[node name="Toggle" type="CheckButton" parent="Center/Panel/Debug/Screens"]
+custom_minimum_size = Vector2(160, 48)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="ScreensHint" type="Label" parent="Center/Panel/Debug"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.45)
+theme_override_font_sizes/font_size = 16
+text = "Ce qui bloque une balle sans la prendre : le blindage du reacteur devant sa cible. Un tir qui meurt ici n'a blesse personne."
+autowrap_mode = 2
+
 [node name="VoiceHint" type="Label" parent="Center/Panel"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.45)

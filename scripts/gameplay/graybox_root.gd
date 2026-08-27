@@ -105,8 +105,12 @@ var _probe_clock: float = 0.0
 ## Enregistrement de partie (`--dive-trace`) : voir `_trace_dive()`. Accumulé en mémoire et
 ## écrit à la sortie — écrire 60 lignes par seconde sur le disque fausserait ce qu'on mesure.
 var _dive_trace: bool = false
-## Superposition des formes de collision (`--show-solids`).
+## Superposition des couches invisibles (corps, cibles, écrans de tir). Voir `SettingsData`.
 var _solids_overlay: SolidsOverlay = null
+## +1 : tout forcé (`--show-solids`) ; -1 : tout coupé (`--hide-solids`) ; 0 : le réglage.
+var _overlay_force: int = 0
+const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
+@onready var _settings: SettingsManagerScript = get_node_or_null("/root/SettingsManager")
 var _trace_lines := PackedStringArray()
 var _trace_age: float = 0.0
 
@@ -251,15 +255,19 @@ func _ready() -> void:
 	# quatre correctifs à l'aveugle : « faire apparaître la représentation dans l'espace des
 	# points de collision, pour qu'on voie visuellement la différence ». Quand l'image et la
 	# collision sont deux objets, la superposition est la seule preuve qui ne discute pas.
-	# ⚠️ ACTIF PAR DÉFAUT EN BUILD DE DÉVELOPPEMENT, coupé en release. « Dès qu'on est en
-	# développement, on doit toujours les afficher » (opérateur, 2026-08-28) — c'est cet
-	# outil, et lui seul, qui a montré que le décor et la collision tournaient en sens
-	# inverse, après quatre correctifs a l'aveugle. `--hide-solids` pour une capture propre.
-	if "--show-solids" in args \
-			or (OS.is_debug_build() and not "--hide-solids" in args):
-		_solids_overlay = SolidsOverlay.new()
-		_solids_overlay.name = "SolidsOverlay"
-		add_child(_solids_overlay)
+	# ⚠️ TOUJOURS MONTÉ ; ce sont les COUCHES qui s'allument — depuis le menu des options
+	# (« Débogage »), allumées par défaut en build de développement, éteintes en release. « Dès
+	# qu'on est en développement, on doit toujours les afficher » (opérateur, 2026-08-28) —
+	# c'est cet outil, et lui seul, qui a montré que le décor et la collision tournaient en
+	# sens inverse, après quatre correctifs à l'aveugle. `--show-solids` force tout,
+	# `--hide-solids` coupe tout (capture propre) ; sinon le réglage du joueur fait foi.
+	_solids_overlay = SolidsOverlay.new()
+	_solids_overlay.name = "SolidsOverlay"
+	add_child(_solids_overlay)
+	if "--show-solids" in args:
+		_overlay_force = 1
+	elif "--hide-solids" in args:
+		_overlay_force = -1
 	if ReactorRings.disabled:
 		print("[Level] ISOLATION : aucun mur dans la chambre (--no-rings)")
 	if "--density-probe" in args and _bullets != null:
@@ -1115,9 +1123,19 @@ func _physics_process(delta: float) -> void:
 	_probe_dive(delta)
 	_trace_dive(delta)
 	if _solids_overlay != null and _player != null and _player.stats != null:
+		var bodies := _overlay_force > 0
+		var targets := _overlay_force > 0
+		var screens := _overlay_force > 0
+		if _overlay_force == 0 and _settings != null:
+			var debug: SettingsData = _settings.get_debug()
+			bodies = debug.debug_bodies
+			targets = debug.debug_targets
+			screens = debug.debug_screens
 		_solids_overlay.draw(_solids, _player.plane_lift, _player.plane_position,
 			_player.plane_forward(), _player.stats.body_half_length, _player.stats.body_radius,
-			_bullets.targets() if _bullets != null else [])
+			_bullets.targets() if _bullets != null else [],
+			_leviathan.fire_screens() if is_instance_valid(_leviathan) else null,
+			bodies, targets, screens)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:

@@ -913,6 +913,12 @@ func fill_solids(shapes: PlaneShapes) -> void:
 		shapes.add_disc(origin + Vector2(cos(a), sin(a)) * plate.radius,
 			tuning.plate_hitbox_radius)
 
+## Les formes qui BLOQUENT UNE BALLE sans la prendre — la quatrième couche, pour l'overlay.
+## Vide hors de la plongée : `_shapes` garde sinon le dernier état de la chambre.
+var _no_screens := PlaneShapes.new()
+func fire_screens() -> PlaneShapes:
+	return _shapes if _phase == Phase.DIVE else _no_screens
+
 ## Combien de formes `fill_solids()` peut produire — pour dimensionner UNE fois.
 func solid_capacity() -> int:
 	if tuning == null:

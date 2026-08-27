@@ -9,6 +9,7 @@ const SettingsDataScript := preload("res://scripts/core/settings_data.gd")
 const SETTINGS_PATH := "user://settings.cfg"
 const _SECTION := "audio"
 const _SECTION_GRAPHICS := "graphics"
+const _SECTION_DEBUG := "debug"
 ## Dragging a slider fires continuously; writing the file on every frame would hammer
 ## the disk for nothing.
 const _SAVE_DEBOUNCE := 0.5
@@ -17,6 +18,8 @@ signal audio_changed(data: SettingsData)
 ## Émis quand un réglage d'image change. Les post-process s'y abonnent — ils vivent
 ## dans les scènes, pas ici : cet autoload ne connaît aucun nœud de rendu.
 signal graphics_changed(data: SettingsData)
+## Émis quand une couche de débogage est allumée ou éteinte (voir `SettingsData`).
+signal debug_changed(data: SettingsData)
 
 var _data: SettingsData = SettingsDataScript.new()
 var _save_timer: SceneTreeTimer
@@ -33,6 +36,17 @@ func get_audio() -> SettingsData:
 ## qu'il vient chercher.
 func get_graphics() -> SettingsData:
 	return _data
+
+## Même objet, troisième vue : les couches de débogage.
+func get_debug() -> SettingsData:
+	return _data
+
+func set_debug_layer(layer: StringName, enabled: bool) -> void:
+	if _data.get_debug_layer(layer) == enabled:
+		return
+	_data.set_debug_layer(layer, enabled)
+	debug_changed.emit(_data)
+	_schedule_save()
 
 func set_pixelation(enabled: bool) -> void:
 	if _data.pixelation == enabled:
@@ -81,6 +95,10 @@ func load_settings() -> void:
 	for key in config.get_section_keys(_SECTION_GRAPHICS) if config.has_section(_SECTION_GRAPHICS) else []:
 		graphics[key] = config.get_value(_SECTION_GRAPHICS, key)
 	_data.graphics_from_dict(graphics)
+	var debug := {}
+	for key in config.get_section_keys(_SECTION_DEBUG) if config.has_section(_SECTION_DEBUG) else []:
+		debug[key] = config.get_value(_SECTION_DEBUG, key)
+	_data.debug_from_dict(debug)
 
 func save_settings() -> void:
 	var config := ConfigFile.new()
@@ -88,6 +106,8 @@ func save_settings() -> void:
 		config.set_value(_SECTION, String(bus), _data.get_linear(bus))
 	config.set_value(_SECTION_GRAPHICS, "pixelation", _data.pixelation)
 	config.set_value(_SECTION_GRAPHICS, "shake", _data.shake)
+	for layer in SettingsData.DEBUG_LAYERS:
+		config.set_value(_SECTION_DEBUG, String(layer), _data.get_debug_layer(layer))
 	var error := config.save(SETTINGS_PATH)
 	if error != OK:
 		push_warning("[Settings] could not save %s (error %d)" % [SETTINGS_PATH, error])

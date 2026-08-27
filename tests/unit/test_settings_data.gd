@@ -120,3 +120,33 @@ func test_an_integer_shake_is_read_as_a_ratio() -> void:
 	var data: SettingsData = SettingsDataScript.new()
 	data.graphics_from_dict({&"shake": 1})
 	assert_almost_eq(data.shake, 1.0, 0.001, "un entier est une valeur valide")
+
+
+# --- Les couches de debogage ----------------------------------------------------
+
+## Le defaut suit le BUILD : allumees en developpement, eteintes en release. Un fichier de
+## reglages qui ne connait pas la section laisse ce defaut en place.
+func test_debug_layers_default_to_the_build_and_survive_an_old_file() -> void:
+	var data := SettingsData.new()
+	for layer in SettingsData.DEBUG_LAYERS:
+		assert_eq(data.get_debug_layer(layer), OS.is_debug_build(),
+			"%s suit le build par defaut" % layer)
+	data.debug_from_dict({})
+	for layer in SettingsData.DEBUG_LAYERS:
+		assert_eq(data.get_debug_layer(layer), OS.is_debug_build(),
+			"%s : une section absente laisse le defaut" % layer)
+
+## Aller-retour : ce qu'on ecrit est ce qu'on relit, et un entier vaut un booleen.
+func test_debug_layers_round_trip() -> void:
+	var data := SettingsData.new()
+	data.set_debug_layer(&"bodies", false)
+	data.set_debug_layer(&"targets", true)
+	data.set_debug_layer(&"screens", false)
+	var again := SettingsData.new()
+	again.debug_from_dict(data.debug_to_dict())
+	assert_false(again.debug_bodies, "corps eteints")
+	assert_true(again.debug_targets, "cibles allumees")
+	assert_false(again.debug_screens, "ecrans eteints")
+	again.debug_from_dict({"bodies": 1, "targets": 0})
+	assert_true(again.debug_bodies, "1 vaut vrai")
+	assert_false(again.debug_targets, "0 vaut faux")

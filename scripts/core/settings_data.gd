@@ -40,6 +40,59 @@ var pixelation: bool = true
 ## pas d'une session à l'autre.
 var shake: float = 1.0
 
+# --- Débogage : les couches invisibles du jeu, rendues visibles ---------------
+#
+# ⚠️ ELLES EXISTENT PARCE QU'UNE SOIRÉE ENTIÈRE A ÉTÉ PERDUE À NE PAS LES VOIR. Le décor de
+# la chambre du réacteur tournait à l'envers de sa collision, et quatre diagnostics chiffrés
+# se sont succédé avant qu'on dessine simplement les formes par-dessus l'image. « C'est un
+# outil extrêmement précieux. Dès qu'on est en développement, on doit toujours les afficher »
+# (opérateur, 2026-08-28). D'où le défaut : ALLUMÉES en build de développement, ÉTEINTES en
+# release — et réglables dans le menu des options dans les deux cas.
+#
+# Quatre représentations pour une même chose, et seule la première est le jeu :
+#   - ce qu'on VOIT (l'image) — toujours affiché ;
+#   - les CORPS (`bodies`) : ce qui arrête un vaisseau — vert ;
+#   - les CIBLES (`targets`) : ce qu'une balle touche et blesse — orange / magenta ;
+#   - les ÉCRANS (`screens`) : ce qui bloque une balle sans la prendre — rouge.
+
+## Noms des couches, tels que le menu et le gestionnaire les désignent.
+const DEBUG_LAYERS: Array[StringName] = [&"bodies", &"targets", &"screens"]
+
+var debug_bodies: bool = OS.is_debug_build()
+var debug_targets: bool = OS.is_debug_build()
+var debug_screens: bool = OS.is_debug_build()
+
+func get_debug_layer(layer: StringName) -> bool:
+	match layer:
+		&"bodies": return debug_bodies
+		&"targets": return debug_targets
+		&"screens": return debug_screens
+	push_warning("[Settings] unknown debug layer: %s" % layer)
+	return false
+
+func set_debug_layer(layer: StringName, enabled: bool) -> void:
+	match layer:
+		&"bodies": debug_bodies = enabled
+		&"targets": debug_targets = enabled
+		&"screens": debug_screens = enabled
+		_: push_warning("[Settings] unknown debug layer: %s" % layer)
+
+func debug_to_dict() -> Dictionary:
+	return {&"bodies": debug_bodies, &"targets": debug_targets, &"screens": debug_screens}
+
+## Même tolérance que les autres sections : une clé absente laisse le défaut DU BUILD (allumé
+## en développement, éteint en release), et un entier vaut un booléen.
+func debug_from_dict(source: Dictionary) -> void:
+	for layer in DEBUG_LAYERS:
+		var fallback := OS.is_debug_build()
+		var value: Variant = source.get(layer, source.get(String(layer)))
+		if value is bool:
+			set_debug_layer(layer, value)
+		elif value is int or value is float:
+			set_debug_layer(layer, float(value) != 0.0)
+		else:
+			set_debug_layer(layer, fallback)
+
 func get_linear(bus: StringName) -> float:
 	return volumes.get(bus, DEFAULTS.get(bus, 1.0))
 

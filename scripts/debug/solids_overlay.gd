@@ -33,17 +33,32 @@ func _ready() -> void:
 	material.render_priority = 100
 	material_override = material
 
+## `screens` : les formes qui bloquent une balle sans la prendre (rouge). `show_*` : les
+## couches allumées — depuis le menu des options, ou les drapeaux de lancement.
 func draw(shapes: PlaneShapes, lift: float, player: Vector2, forward: Vector2,
-		half_length: float, radius: float, targets: Array[BulletTarget] = []) -> void:
+		half_length: float, radius: float, targets: Array[BulletTarget] = [],
+		screens: PlaneShapes = null, show_bodies: bool = true, show_targets: bool = true,
+		show_screens: bool = true) -> void:
 	_mesh.clear_surfaces()
+	if not (show_bodies or show_targets or show_screens):
+		return
 	_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var green := Color(0.2, 1.0, 0.3)
-	for target in targets:
-		if target == null or not target.enabled:
-			continue
-		var colour := Color(1.0, 0.6, 0.15) if target.team == BulletManager.Team.ENEMY \
-			else Color(1.0, 0.3, 0.8)
-		_circle(target.position, target.radius, lift, colour)
+	if show_targets:
+		for target in targets:
+			if target == null or not target.enabled:
+				continue
+			var colour := Color(1.0, 0.6, 0.15) if target.team == BulletManager.Team.ENEMY \
+				else Color(1.0, 0.3, 0.8)
+			_circle(target.position, target.radius, lift, colour)
+	if show_screens and screens != null:
+		_shapes(screens, lift, Color(1.0, 0.25, 0.25))
+	if show_bodies:
+		_shapes(shapes, lift, Color(0.2, 1.0, 0.3))
+		var axis := forward.normalized() * half_length
+		_capsule(player - axis, player + axis, radius, lift, Color(0.3, 0.95, 1.0))
+	_mesh.surface_end()
+
+func _shapes(shapes: PlaneShapes, lift: float, green: Color) -> void:
 	for i in shapes.size():
 		match shapes.kind_at(i):
 			PlaneShapes.Kind.DISC:
@@ -63,9 +78,6 @@ func draw(shapes: PlaneShapes, lift: float, player: Vector2, forward: Vector2,
 				var a := shapes.centre_of(i)
 				var b := Vector2(shapes.param(i, 2), shapes.param(i, 3))
 				_capsule(a, b, shapes.param(i, 4), lift, green)
-	var axis := forward.normalized() * half_length
-	_capsule(player - axis, player + axis, radius, lift, Color(0.3, 0.95, 1.0))
-	_mesh.surface_end()
 
 func _line(a: Vector2, b: Vector2, lift: float, colour: Color) -> void:
 	_mesh.surface_set_color(colour)
