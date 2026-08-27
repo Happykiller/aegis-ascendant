@@ -1015,6 +1015,7 @@ func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 
 func _physics_process(delta: float) -> void:
 	_rebuild_solids()
+	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
 		_advance_boss_approach(delta)
@@ -1049,9 +1050,43 @@ func _rebuild_solids() -> void:
 	for spawner in [_wave_spawner, _field_spawner]:
 		if is_instance_valid(spawner):
 			_solids.reserve(spawner.solid_capacity())
-			spawner.fill_solids(_solids)
+			spawner.fill_solids(_solids, _crusher_mass(), _crush_ratio())
 	if _player != null and _player.solids != _solids:
 		_player.solids = _solids
+
+## Le poids du chasseur, et le rapport à partir duquel il passe à travers. Zéro quand il n'y
+## a pas de chasseur : personne n'écrase, tout est un mur — la règle d'avant la masse.
+func _crusher_mass() -> float:
+	return _player.stats.mass if _player != null and _player.stats != null else 0.0
+
+func _crush_ratio() -> float:
+	return _player.stats.crush_mass_ratio if _player != null and _player.stats != null else 0.0
+
+## Broie les coques trop légères que le chasseur traverse, et lui en fait payer le prix.
+##
+## ⚠️ APRÈS `_rebuild_solids()`, ET DANS CET ORDRE. Ce que la reconstruction vient d'écarter
+## des obstacles est exactement ce qui doit être écrasé ici : deux listes tirées du même
+## test, à la même image. Les séparer les ferait diverger d'une image — assez pour qu'une
+## unité soit à la fois traversable et vivante, ce que le joueur lirait comme un fantôme.
+func _crush_light_bodies() -> void:
+	if _player == null or _player.stats == null:
+		return
+	var mass := _crusher_mass()
+	var ratio := _crush_ratio()
+	var crushed := 0.0
+	for spawner in [_wave_spawner, _field_spawner]:
+		if is_instance_valid(spawner):
+			crushed += spawner.crush_contacts(_player.plane_position,
+				_player.plane_forward(), _player.stats.body_half_length,
+				_player.stats.body_radius, mass, ratio)
+	if crushed > 0.0:
+		var cost := MassRules.crush_damage(crushed, _player.stats.crush_damage_per_mass)
+		_player.take_contact_damage(cost)
+		# ⚠️ UNE TRACE D'ÉVÉNEMENT, PAS UNE TRACE DE BOUCLE : elle ne s'écrit que sur une
+		# collision réelle, quelques fois par partie. C'est le seul endroit d'où l'on peut
+		# voir la mécanique tourner — un écrasement ne laisse aucune marque à l'écran une
+		# fois l'explosion passée, et l'équilibrage se fait sur le journal (balance-prober).
+		print("[Level] ecrase %.1f t — %.0f de bouclier" % [crushed, cost])
 
 ## Le repère de cible SUIT le flux, à l'image, et il BAT.
 ##

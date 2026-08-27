@@ -560,6 +560,24 @@ func _receive_damage(amount: float) -> void:
 	_health.apply_damage(amount)
 
 
+## Écrasée par un corps d'une autre catégorie de poids. Rend `true` si l'unité en est
+## morte.
+##
+## ⚠️ ELLE MEURT PAR LE CHEMIN NORMAL, ET C'EST TOUT L'INTÉRÊT. Un écrasement qui
+## `deactivate()`-erait l'unité la ferait disparaître sans score, sans explosion et sans
+## bruit — le joueur croirait à un bug de pop. En passant par `_receive_damage()`, la mort
+## par collision emprunte exactement la chaîne de la mort par tir : `died` → `destroyed` →
+## score et explosion chez le niveau.
+##
+## Une unité COUVERTE par une aura ne meurt pas : le porteur la protège aussi du choc. Le
+## chasseur, lui, paie quand même sa collision — heurter un blindage fait mal.
+func crush() -> bool:
+	if not active or _health == null:
+		return false
+	_receive_damage(_health.health + 1.0)
+	return not active
+
+
 ## Accorde une invulnérabilité, renouvelée à chaque image par le porteur.
 ## `maxf` et non une affectation : deux porteurs qui se recouvrent ne doivent pas
 ## se voler la couverture — le plus généreux gagne.

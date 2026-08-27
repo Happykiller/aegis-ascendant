@@ -24,6 +24,31 @@ extends Resource
 ## Demi-longueur du corps. C'est elle qui manquait : décrit par un disque de sa demi-largeur,
 ## le chasseur laissait son NEZ dépasser de 0,38 et traverser les murs.
 @export var body_half_length: float = 1.23
+
+## Le POIDS du chasseur, dans la même unité arbitraire qu'[member EnemyData.mass].
+##
+## ⚠️ TOUT LE CONTRAT D'ÉCRASEMENT VIT ICI, ET NON SUR LES FICHES D'EN FACE. Ce qui décide
+## qu'un éclaireur est traversable, ce n'est pas l'éclaireur : c'est le chasseur qui lui
+## rentre dedans. Régler le seuil chez lui, c'est pouvoir le déplacer d'un chiffre pour
+## toute la faune — au lieu de rouvrir treize `.tres` en espérant n'en oublier aucun.
+@export var mass: float = 10.0
+
+## De combien il faut être plus lourd pour passer À TRAVERS au lieu d'être arrêté.
+##
+## ⚠️ SA VALEUR EST UN ARBITRAGE DE JEU, PAS DE PHYSIQUE. À 3, le Specter-9 (10 t) écrase
+## tout ce qui pèse 3,33 t ou moins : les éclaireurs et l'intercepteur passent, le porteur
+## de bouclier (8 t) arrête. C'est exactement la ligne que le playtest demandait — « ça
+## devient injouable pendant les vagues » — sans rendre le jeu traversable pour autant.
+@export var crush_mass_ratio: float = 3.0
+
+## Points de bouclier payés par tonne écrasée.
+##
+## ⚠️ RIEN N'EST TRAVERSÉ GRATUITEMENT, sinon foncer dans le tas devient la stratégie
+## dominante et le tir devient décoratif. À 8, un éclaireur (1 t) coûte 8 des 100 points du
+## bouclier ; l'invulnérabilité d'après impact (`invuln_time`) empêche qu'une vague entière
+## se facture en une image, mais la traversée reste chère.
+@export var crush_damage_per_mass: float = 8.0
+
 ## Seconds between primary shots.
 @export var fire_interval: float = 0.12
 ## Maximum visual roll when strafing; never affects the hitbox (spec §7.3).
@@ -56,6 +81,14 @@ func validate() -> PackedStringArray:
 			% [body_half_length, body_radius])
 	if fire_interval <= 0.0:
 		errors.append("fire_interval must be > 0")
+	if mass <= 0.0 or is_inf(mass) or is_nan(mass):
+		errors.append("mass must be a finite value > 0")
+	if crush_mass_ratio < 1.0:
+		# En dessous de 1, le chasseur écraserait des corps AUSSI LOURDS QUE LUI, voire
+		# plus lourds : plus rien ne l'arrêterait, et la loi des corps n'aurait plus d'objet.
+		errors.append("crush_mass_ratio must be >= 1 (below 1 the fighter goes through anything)")
+	if crush_damage_per_mass < 0.0:
+		errors.append("crush_damage_per_mass must be >= 0")
 	if shield_max <= 0.0:
 		errors.append("shield_max must be > 0")
 	if lives < 1:

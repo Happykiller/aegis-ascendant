@@ -46,6 +46,18 @@ s'arrête et on demande.
   ne peut pas l'apprendre.
 - Le contact qui **blesse** (tir, ennemi kamikaze) reste un mécanisme à part : ne pas confondre
   « ne se chevauchent pas » avec « ne se touchent pas ».
+- ⚠️ **… tant qu'ils jouent dans la même catégorie de poids** (`ADR-0033`, amendement du même jour).
+  Un corps trop léger n'est pas un obstacle amoindri : **il n'est pas un obstacle**. Il n'est pas
+  versé dans les formes du niveau, il est **écrasé** au contact — détruit par le chemin normal
+  (score, explosion), et payé en bouclier par celui qui l'a broyé. La règle sans la masse traitait
+  un éclaireur comme un mur de réacteur, et rendait les vagues injouables : « si on ne les tue pas
+  assez vite, ils nous empêchent de bouger » (playtest 2026-08-27).
+- **La masse se déclare dans la fiche d'identité** (`EnemyData.mass`, `PlayerStats.mass`), et le
+  SEUIL se règle chez celui qui écrase (`crush_mass_ratio`) — jamais sur chaque fiche d'en face.
+  Tout ce qui est versé dans un `PlaneShapes` est de masse **infinie par construction** : une forme
+  ne porte pas de masse, c'est ce qui fait d'elle un obstacle.
+- **Une unité ne peut jamais être à la fois un mur et une proie.** Les deux listes se dérivent du
+  même test, à la même image ; les séparer laisserait le chasseur prisonnier d'un cadavre.
 
 ## Architecture
 

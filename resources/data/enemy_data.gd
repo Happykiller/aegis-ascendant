@@ -68,6 +68,18 @@ enum Motion { PATH, HOMING }
 ## solide fait toujours mal. Il vous repousse en plus, ce qui vous sort de la zone de dégâts
 ## au lieu de vous y laisser mijoter.
 @export var solid: bool = false
+
+## Le POIDS de la coque, en tonnes arbitraires — sa catégorie, pas sa masse physique.
+##
+## ⚠️ ELLE NE SERT QU'À UNE QUESTION : le chasseur passe-t-il À TRAVERS ? Un corps trop
+## léger pour l'arrêter n'est pas versé dans les obstacles du niveau : il est ÉCRASÉ au
+## contact — détruit, et payé en dégâts (voir [MassRules]). C'est ce qui a rendu les vagues
+## rejouables : solides, les éclaireurs immobilisaient le chasseur (playtest 2026-08-27).
+##
+## Sans effet sur une unité non `solid` : le contact d'un kamikaze est déjà son attaque.
+## Elle ne dit rien non plus des dégâts qu'un tir inflige — c'est `max_health` qui règle
+## la résistance, la masse ne règle que l'inertie.
+@export var mass: float = 1.0
 @export var score_value: int = 100
 
 ## DIVE : secondes d'approche lente avant que l'ennemi ne fonde.
@@ -190,6 +202,10 @@ func validate() -> PackedStringArray:
 		errors.append("hitbox_radius must be > 0")
 	if score_value < 0:
 		errors.append("score_value must be >= 0")
+	if mass <= 0.0 or is_inf(mass) or is_nan(mass):
+		# Une masse nulle ferait d'une unité un fantôme qu'on écrase sans la toucher ;
+		# une masse infinie ferait d'un éclaireur un mur. Ni l'un ni l'autre n'est une unité.
+		errors.append("mass must be a finite value > 0")
 	if path == Path.DIVE and dive_delay < 0.0:
 		errors.append("dive_delay must be >= 0")
 	if path == Path.HOVER_STRAFE and hold_time <= 0.0:

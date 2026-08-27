@@ -40,6 +40,7 @@ max_health = 286.0
 move_speed = 1.1
 fire_interval = 1.9
 hitbox_radius = 0.62
+mass = 2.4
 score_value = 140
 alert_radius = 5.5
 trigger_radius = 3.0

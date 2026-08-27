@@ -49,7 +49,7 @@ static func shape_blocks(shapes: PlaneShapes, index: int, point: Vector2,
 		PlaneShapes.Kind.CAPSULE:
 			var a := shapes.centre_of(index)
 			var b := Vector2(shapes.param(index, 2), shapes.param(index, 3))
-			return _distance_to_segment(point, a, b) <= shapes.param(index, 4) + body
+			return distance_to_segment(point, a, b) <= shapes.param(index, 4) + body
 	return false
 
 ## Le point touche-t-il QUELQUE forme ?
@@ -199,7 +199,11 @@ static func _closest_on_segment(point: Vector2, a: Vector2, b: Vector2) -> Vecto
 		return a
 	return a + ab * clampf((point - a).dot(ab) / length_squared, 0.0, 1.0)
 
-static func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
+## Distance d'un point au segment `a`-`b`. Publique parce qu'un corps allongé n'est pas
+## toujours un obstacle : la passe d'écrasement (`WaveSpawner.crush_contacts`) a besoin de
+## la même mesure que la collision pour dire « la coque du chasseur touche cette unité »,
+## et il n'existe qu'UNE définition de cette distance dans le jeu.
+static func distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
 	return point.distance_to(_closest_on_segment(point, a, b))
 
 # --- Les corps allongés --------------------------------------------------------

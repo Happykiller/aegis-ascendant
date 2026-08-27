@@ -20,6 +20,7 @@ fire = 3
 burst_count = 3
 projectile = ExtResource("2_shot")
 solid = true
+mass = 1.3
 hitbox_radius = 0.45
 score_value = 170
 hold_y = 3.5

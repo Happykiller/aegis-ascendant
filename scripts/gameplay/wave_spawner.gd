@@ -155,13 +155,56 @@ func _separate() -> void:
 			first.nudge(-push)
 			second.nudge(push)
 
-## Verse les coques qui sont des CORPS. Une unité dont le contact EST l'attaque — mine,
-## sangsue, gueule — n'en est pas une : l'arrêter la désamorcerait (voir `EnemyData.solid`).
-func fill_solids(shapes: PlaneShapes) -> void:
+## Verse les coques qui sont des CORPS **et qui pèsent assez pour arrêter l'écraseur**.
+##
+## Une unité dont le contact EST l'attaque — mine, sangsue, gueule — n'en est pas une :
+## l'arrêter la désamorcerait (voir `EnemyData.solid`).
+##
+## ⚠️ ET UNE UNITÉ TROP LÉGÈRE N'EN EST PAS UNE NON PLUS, depuis le playtest du 2026-08-27.
+## Verser toutes les coques solides rendait les vagues injouables : « si on ne les tue pas
+## assez vite, ils nous empêchent de bouger ». Un éclaireur d'une tonne ne bloque pas un
+## chasseur de dix : il n'est pas un obstacle, il est un OBSTACLE ÉCRASÉ — c'est
+## `crush_contacts()` qui s'en charge, et la seule chose à faire ici est de ne pas le
+## déclarer comme un mur.
+##
+## `crusher_mass` à zéro (le défaut) veut dire « personne n'écrase » : toutes les coques
+## solides sont versées, exactement comme avant la masse. C'est ce que lisent les tests.
+func fill_solids(shapes: PlaneShapes, crusher_mass: float = 0.0,
+		crush_ratio: float = 0.0) -> void:
 	for enemy in _pool:
-		if enemy.active and enemy.data != null and enemy.data.solid:
-			shapes.add_disc(enemy.plane_position, enemy.data.hitbox_radius)
+		if not enemy.active or enemy.data == null or not enemy.data.solid:
+			continue
+		if MassRules.crushes(crusher_mass, enemy.data.mass, crush_ratio):
+			continue
+		shapes.add_disc(enemy.plane_position, enemy.data.hitbox_radius)
 
 ## Majorant du nombre de formes versées — pour dimensionner UNE fois.
 func solid_capacity() -> int:
 	return _pool.size()
+
+## Écrase les corps trop légers que la capsule `centre / axis` touche, et rend la MASSE
+## totale broyée — au niveau d'en tirer les dégâts.
+##
+## ⚠️ ON DÉTRUIT TOUT CE QU'ON TOUCHE, MAIS LES DÉGÂTS SONT CADENCÉS AILLEURS. Le contrat
+## est asymétrique et c'est voulu : l'ennemi n'a pas d'invulnérabilité — dix éclaireurs
+## traversés sont dix morts — tandis que le chasseur, lui, passe par
+## `take_contact_damage()`, donc par sa fenêtre d'invulnérabilité. Sans ça, traverser une
+## vague serrée viderait le bouclier en une image, et on aurait remplacé « on ne peut plus
+## bouger » par « on meurt en bougeant ».
+##
+## Rien ne s'alloue : on parcourt le pool déjà là et on somme un float (spec §26.1).
+func crush_contacts(centre: Vector2, axis: Vector2, half_length: float, radius: float,
+		crusher_mass: float, crush_ratio: float) -> float:
+	var crushed := 0.0
+	for enemy in _pool:
+		if not enemy.active or enemy.data == null or not enemy.data.solid:
+			continue
+		if not MassRules.crushes(crusher_mass, enemy.data.mass, crush_ratio):
+			continue
+		var reach := enemy.data.hitbox_radius + radius
+		if PlaneCollider.distance_to_segment(enemy.plane_position,
+				centre - axis * half_length, centre + axis * half_length) > reach:
+			continue
+		if enemy.crush():
+			crushed += enemy.data.mass
+	return crushed
