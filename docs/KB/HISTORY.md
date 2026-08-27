@@ -133,3 +133,31 @@ pas d'une lecture.
 Bible n'est pas le contrat produit d'Aegis, donc `SPEC → ADR → KB` reste en place) ; l'appareil de
 traçabilité `REQ ↔ VAL ↔ preuve` (hors nature d'un document de lois) ; la correction du `README.md`
 — « le README est un document pour les opérateurs, la KB porte déjà ce qu'il faut ».
+
+### Le soir : un playtest, et le mouvement cesse d'être sur rails
+
+Partie complète jouée à la main (rang S, sortie propre). Les cinq changements de la journée
+passent sans remarque ; quatre retours en sortent, tous vérifiables dans le code.
+
+**Trois sont livrés le soir même** :
+
+- **La plongée sortait au minuteur.** Une fois le quota de dégâts atteint, le code disait
+  lui-même « les tirs portent, ils ne comptent plus » — et la sortie attendait `dive_time = 5 s`
+  fixes, jauge gelée. ⚠️ `ADR-0026` demandait pourtant **l'inverse** en toutes lettres (« mieux
+  jouer raccourcit chaque plongée ») : ce n'était pas un réglage, c'était **une décision déjà
+  prise et jamais appliquée**. Le minuteur reste la sortie de qui n'atteint pas le quota.
+- **La puissance montait trop vite.** Mesure : 107 unités dans la vague, un Power Core tous les
+  12 kills, donc **niveau 5 au 48ᵉ — 45 % de la vague**. Et 8 Cores distribués quand 4 suffisent :
+  la moitié tombait sur un joueur plein et **ne produisait rien**. Passé à un Core tous les 16.
+  `KILLS_PER_POWER` devient public : c'est LE nombre d'équilibrage de la montée en puissance.
+- **Tout était sur rails** — [`ADR-0029`](../decisions/ADR-0029-la-derive-organique.md). Les
+  trajectoires sont des fonctions **pures** sans graine : une nuée volait en miroir. Les figures
+  de boss sont **harmoniques**, donc elles bouclaient exactement. Une **graine par instance** sur
+  des **périodes non harmoniques** casse les deux, sans rien coûter aux trois garanties de
+  pureté d'`ADR-0022`. ⚠️ Le remède **existait déjà dans le dépôt** — `title_stage.gd` fait
+  dériver sa caméra sur 11,0 / 7,3 / 17,0 s « sinon l'œil repère la boucle » — et n'avait jamais
+  été transposé au bestiaire.
+
+⚠️ **La graine est déterministe, et c'est le point discutable de l'ADR** : varier les unités
+entre elles, pas la vague d'une partie à l'autre. Un vrai hasard rendrait le jeu inapprenable, et
+la mémorisation est un pilier du genre.

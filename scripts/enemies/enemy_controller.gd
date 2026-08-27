@@ -66,6 +66,10 @@ var _target: BulletTarget
 ## Point de spawn : les trajectoires sont des fonctions de l'âge ET de ce point.
 var _spawn: Vector2 = Vector2.ZERO
 var _age: float = 0.0
+## Graine de dérive organique, posée à chaque activation (`OrganicDrift`). C'est elle qui
+## fait que deux coques de la même nuée n'ondulent pas à l'unisson. `NO_DRIFT` par défaut :
+## une unité montée à la main dans un test garde sa courbe nue.
+var _drift_seed: float = EnemyPath.NO_DRIFT
 var _fire_timer: float = 0.0
 var _hit_flash: float = 0.0
 var _plume: EnginePlume
@@ -222,10 +226,14 @@ func setup(bullet_manager: BulletManager, player: PlayerFighterController = null
 	_bullet_manager.register_target(_target)
 	_player = player
 
-func activate(spawn_plane_position: Vector2) -> void:
+## `drift_seed` : la phase de dérive de CETTE apparition. Réassignée à chaque activation —
+## c'est ce qui garde le pooling sûr tout en donnant à une coque réutilisée un mouvement
+## qui n'est pas celui de la précédente.
+func activate(spawn_plane_position: Vector2, drift_seed: float = EnemyPath.NO_DRIFT) -> void:
 	plane_position = spawn_plane_position
 	_spawn = spawn_plane_position
 	_age = 0.0
+	_drift_seed = drift_seed
 	_fire_timer = data.fire_interval
 	if data.motion == EnemyData.Motion.HOMING:
 		_velocity = EnemyHoming.initial_velocity(spawn_plane_position, _player_position(),
@@ -323,7 +331,7 @@ func _advance(delta: float) -> void:
 				data.homing_turn_rate, delta)
 		plane_position += _velocity * delta
 		return
-	plane_position = EnemyPath.position_at(data, _age, _spawn)
+	plane_position = EnemyPath.position_at(data, _age, _spawn, _drift_seed)
 
 
 ## Publique : le banc d'essai s'en sert pour corréler la vitesse du chasseur au

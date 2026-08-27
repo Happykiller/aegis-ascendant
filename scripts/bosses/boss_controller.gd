@@ -20,6 +20,11 @@ signal deflected(world_position: Vector3)
 
 enum Pattern { RADIAL, AIMED_SPREAD, FAN }
 
+## Phase de la dérive organique qui casse la boucle des figures (`OrganicDrift`). Une seule
+## valeur suffit : les deux boss du jeu ne se croisent jamais, et leurs amplitudes et
+## fréquences les distinguent déjà. Négative : aucune dérive (les tests l'emploient).
+@export var organic_seed: float = 0.0
+
 @export var display_name: String = "boss"
 @export var hull_scene: PackedScene
 @export var max_health: float = 600.0
@@ -214,7 +219,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		var pattern := BossMovement.pattern_for_phase(_phase, phase_count)
 		var target := BossMovement.position_at(pattern, _combat_age, _base_position,
-			drift_amplitude, _AMP_Y, drift_frequency)
+			drift_amplitude, _AMP_Y, drift_frequency, organic_seed)
 		target.y = clampf(target.y, _MIN_Y, _MAX_Y)
 		# Chase the target smoothly, never snap to it: a phase change swaps the movement
 		# shape, and snapping would teleport the boss to the new shape's point for one

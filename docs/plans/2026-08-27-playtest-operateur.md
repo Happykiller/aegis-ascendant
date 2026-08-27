@@ -3,7 +3,7 @@ titre: Retours de playtest du 2026-08-27 — puissance, regen, noyau, et le mouv
 date: 2026-08-27
 auteur: session Claude, sur retours de l'opérateur après une partie complète (arc entier, rang S)
 perimetre: équilibrage de la montée en puissance, signaux de boss, phase du noyau, bibliothèque de trajectoires
-etat: **R1 et R3b LIVRÉS** (2026-08-27) ; R2, R3a, R3c et R4 instruits, non engagés
+etat: **R1, R3b et R4 LIVRÉS** (2026-08-27, `ADR-0029`) ; R2, R3a et R3c instruits, non engagés
 supersede: rien. Complète docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -110,7 +110,7 @@ pendant toute la phase. Le noyau est donc une cible fixe dans une arène fixe.
 
 ---
 
-## R4 — Tout est sur rails, et ça se voit
+## R4 — Tout est sur rails, et ça se voit ✅ LIVRÉ (`ADR-0029`)
 
 > « J'aimerais que tous les ennemis aient des mouvements aléatoires non linéaires, même s'ils
 > doivent respecter un pattern. Ça fait figé, fête foraine, nul. »
@@ -158,7 +158,7 @@ C'est mot pour mot le reproche de l'opérateur, résolu ailleurs et jamais trans
 | **R2** | Jauge de regen verte | moyen | signal — attention à `ADR-0023` |
 | **R3a** | Désigner le noyau comme cible | moyen | signal |
 | **R3c** | Le boss dérive pendant la plongée | moyen | vie de la scène |
-| **R4** | Graine par instance + périodes non harmoniques | **élevé** | structurel — **ADR** |
+| ~~R4~~ | ~~Graine par instance + périodes non harmoniques~~ | — | ✅ **livré** — [`ADR-0029`](../decisions/ADR-0029-la-derive-organique.md) |
 
 Les deux premiers sont sans ambiguïté et se livrent d'un bloc. R4 est le plus gros et le plus
 visible ; c'est aussi celui qui, seul, change la sensation de tout le jeu.

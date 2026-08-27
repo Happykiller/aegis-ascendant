@@ -30,7 +30,35 @@ static func pattern_for_phase(phase: int, phase_count: int) -> int:
 		return Pattern.ORBIT
 	return Pattern.CHARGE_RETREAT
 
+## Passée comme graine, elle éteint la dérive : c'est le défaut, et c'est ce qui garde les
+## figures testables pour elles-mêmes.
+const NO_DRIFT := -1.0
+
+## Amplitude de la dérive organique d'un boss, en unités du plan. Plus large que celle des
+## unités : une coque de onze mètres qui bougerait de la même demi-unité ne bougerait pas.
+##
+## ⚠️ `ORGANIC_REACH` et non `DRIFT` : le contrôleur porte déjà un `drift_amplitude` qui
+## désigne l'ampleur de la FIGURE. Deux sens sur un même mot finiraient par se croiser.
+const ORGANIC_REACH := 1.1
+
+
+## Position d'un boss à un âge donné.
+##
+## ⚠️ LES QUATRE FIGURES SONT HARMONIQUES — `w`, `w × 2`, `w × 0,5` — donc elles BOUCLENT
+## exactement. C'est ce que le playtest du 2026-08-27 a nommé « figé, fête foraine » : à
+## la troisième répétition l'œil a la figure entière, et le boss cesse d'être un adversaire
+## pour redevenir un mobile. `drift_seed` ajoute une dérive sur des périodes NON
+## harmoniques (`OrganicDrift`) : la figure reste lisible, sa répétition ne l'est plus.
 static func position_at(pattern: int, age: float, base: Vector2,
+		amp_x: float, amp_y: float, freq: float,
+		drift_seed: float = NO_DRIFT) -> Vector2:
+	var pose := _figure(pattern, age, base, amp_x, amp_y, freq)
+	if drift_seed < 0.0:
+		return pose
+	return pose + OrganicDrift.offset(age, drift_seed, ORGANIC_REACH)
+
+
+static func _figure(pattern: int, age: float, base: Vector2,
 		amp_x: float, amp_y: float, freq: float) -> Vector2:
 	var w := age * freq * TAU
 	match pattern:

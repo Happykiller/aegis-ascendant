@@ -42,7 +42,56 @@ const HOOK_FLARE := 0.5
 const HOOK_CUT_RATE := 0.45
 
 
-static func position_at(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
+## Passée comme graine, elle éteint la dérive. C'est le DÉFAUT, et c'est délibéré : les
+## courbes doivent rester testables pour elles-mêmes, sans le voile qu'on leur ajoute en jeu.
+const NO_DRIFT := -1.0
+
+## Amplitude de référence de la dérive organique, en unités du plan (`OrganicDrift`).
+## Assez pour que deux coques cessent d'onduler à l'unisson, trop peu pour qu'on confonde
+## une trajectoire avec une autre — c'est ce second point que garde le test de variété.
+##
+## ⚠️ Nommée `ORGANIC_REACH` et non `DRIFT` : `EnemyData.Path.DRIFT` est une TRAJECTOIRE,
+## et deux sens sur un même mot dans le même fichier finiraient par se croiser.
+const ORGANIC_REACH := 0.55
+
+
+## Position d'une unité à un âge donné.
+##
+## `drift_seed` ajoute la dérive organique qui casse la répétition (`OrganicDrift`) : une
+## phase par instance, sur des périodes non harmoniques. Laissée à `NO_DRIFT`, la fonction
+## rend la courbe NUE — c'est sous cette forme que les tests jugent sa signature.
+static func position_at(data: EnemyData, age: float, spawn: Vector2,
+		drift_seed: float = NO_DRIFT) -> Vector2:
+	var base := _base_position(data, age, spawn)
+	if drift_seed < 0.0:
+		return base
+	return base + OrganicDrift.offset(age, drift_seed, ORGANIC_REACH * _drift_scale(data.path))
+
+
+## Combien de dérive une trajectoire supporte SANS PERDRE SA SIGNATURE. C'est le seul
+## réglage qui protège la règle de variété du fichier : une dérive uniforme arrondirait
+## les cassures du serpentin et ferait manœuvrer celle qui ne manœuvre pas.
+static func _drift_scale(path: EnemyData.Path) -> float:
+	match path:
+		EnemyData.Path.DRIFT:
+			# « Elle ne manœuvre pas : c'est le joueur qui avance. » Juste assez pour
+			# qu'elle cesse d'être tracée à la règle, pas assez pour qu'elle dévie.
+			return 0.3
+		EnemyData.Path.SERPENTINE:
+			# Ses cassures nettes SONT sa lecture : trop de dérive les arrondirait.
+			return 0.5
+		EnemyData.Path.DIVE:
+			# L'accélération est l'information ; on ne brouille pas l'approche.
+			return 0.5
+		EnemyData.Path.HOVER_STRAFE:
+			# Elle tient sa ligne pour viser (elle porte le tir AIMED) — elle respire,
+			# elle ne se déplace pas.
+			return 0.6
+		_:
+			return 1.0
+
+
+static func _base_position(data: EnemyData, age: float, spawn: Vector2) -> Vector2:
 	match data.path:
 		EnemyData.Path.SERPENTINE:
 			return _serpentine(data, age, spawn)

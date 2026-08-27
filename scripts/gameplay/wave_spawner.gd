@@ -92,7 +92,10 @@ func _physics_process(delta: float) -> void:
 	_clock += delta
 	var spawned := _next_spawn
 	while _next_spawn < _spawn_times.size() and _clock >= _spawn_times[_next_spawn]:
-		_pool[_next_spawn].activate(_spawn_positions[_next_spawn])
+		# La graine de dérive suit le RANG d'apparition : deux ennemis successifs d'une
+		# même nuée reçoivent les phases les plus éloignées possible (`OrganicDrift`).
+		_pool[_next_spawn].activate(_spawn_positions[_next_spawn],
+			OrganicDrift.seed_for(_next_spawn))
 		_next_spawn += 1
 	if _next_spawn != spawned:
 		progress_changed.emit(float(_next_spawn) / float(_spawn_times.size()))
