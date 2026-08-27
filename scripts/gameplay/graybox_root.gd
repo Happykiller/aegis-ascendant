@@ -105,6 +105,8 @@ var _probe_clock: float = 0.0
 ## Enregistrement de partie (`--dive-trace`) : voir `_trace_dive()`. Accumulé en mémoire et
 ## écrit à la sortie — écrire 60 lignes par seconde sur le disque fausserait ce qu'on mesure.
 var _dive_trace: bool = false
+## Superposition des formes de collision (`--show-solids`).
+var _solids_overlay: SolidsOverlay = null
 var _trace_lines := PackedStringArray()
 var _trace_age: float = 0.0
 
@@ -245,6 +247,19 @@ func _ready() -> void:
 	# à droite », et c'est exactement la question posée.
 	_dive_trace = "--dive-trace" in args
 	ReactorRings.disabled = "--no-rings" in args
+	# ⚠️ LA REPRÉSENTATION PHYSIQUE, VISIBLE (`--show-solids`). Demandée par l'opérateur après
+	# quatre correctifs à l'aveugle : « faire apparaître la représentation dans l'espace des
+	# points de collision, pour qu'on voie visuellement la différence ». Quand l'image et la
+	# collision sont deux objets, la superposition est la seule preuve qui ne discute pas.
+	# ⚠️ ACTIF PAR DÉFAUT EN BUILD DE DÉVELOPPEMENT, coupé en release. « Dès qu'on est en
+	# développement, on doit toujours les afficher » (opérateur, 2026-08-28) — c'est cet
+	# outil, et lui seul, qui a montré que le décor et la collision tournaient en sens
+	# inverse, après quatre correctifs a l'aveugle. `--hide-solids` pour une capture propre.
+	if "--show-solids" in args \
+			or (OS.is_debug_build() and not "--hide-solids" in args):
+		_solids_overlay = SolidsOverlay.new()
+		_solids_overlay.name = "SolidsOverlay"
+		add_child(_solids_overlay)
 	if ReactorRings.disabled:
 		print("[Level] ISOLATION : aucun mur dans la chambre (--no-rings)")
 	if "--density-probe" in args and _bullets != null:
@@ -1096,6 +1111,9 @@ func _physics_process(delta: float) -> void:
 	_rebuild_solids()
 	_probe_dive(delta)
 	_trace_dive(delta)
+	if _solids_overlay != null and _player != null and _player.stats != null:
+		_solids_overlay.draw(_solids, _player.plane_lift, _player.plane_position,
+			_player.plane_forward(), _player.stats.body_half_length, _player.stats.body_radius)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:

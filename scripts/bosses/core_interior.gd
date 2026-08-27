@@ -244,12 +244,25 @@ func pose_rings(rings: Array[ReactorRing], age: float) -> void:
 		var ring := rings[i]
 		if ring == null:
 			continue
-		_rings[i].rotation.y = -deg_to_rad(ring.phase_deg + ring.speed_deg * age)
+		# ⚠️ SIGNE POSITIF, ET IL A ÉTÉ NÉGATIF PENDANT UN JOUR ENTIER. Une rotation de +φ
+		# autour de Y ajoute +φ à l'azimut du plan — vérifié avec Godot lui-même, pas déduit.
+		# Le commentaire d'origine affirmait l'inverse ; combiné à un maillage construit en
+		# miroir, l'image coïncidait avec la collision à l'entrée (deux arcs symétriques) puis
+		# tournait À L'ENVERS : 96 degrés d'écart après deux secondes. Le joueur butait sur des
+		# murs invisibles et traversait ceux qu'il voyait — « il y a manifestement quelque
+		# chose d'invisible en plus des murs » (opérateur, 2026-08-28). Seule la
+		# superposition des formes de collision sur l'image (`--show-solids`) l'a montré.
+		_rings[i].rotation.y = deg_to_rad(ring.phase_deg + ring.speed_deg * age)
 
-## Un arc plein, à plat dans le plan, en `ArrayMesh`. ⚠️ La rotation d'un `Node3D` autour de
-## Y va dans le sens INVERSE de l'azimut du plan (le monde −Z est le haut de l'écran) : d'où
-## le signe de `pose_rings`. Une erreur ici décalerait l'image de l'ouverture réelle, ce qui
-## est le seul défaut que cette phase ne peut pas se permettre.
+## Un arc plein, à plat dans le plan, en `ArrayMesh`.
+##
+## ⚠️ LES SOMMETS PASSENT PAR `GameplayPlane.to_world`, COMME TOUT LE RESTE DU JEU. Ils
+## étaient posés en `(cos a, 0, sin a)` — le miroir de la convention du plan, où le haut de
+## l'écran est −Z. Un maillage en miroir tourné en négatif donne une image juste à l'instant
+## zéro et fausse ensuite ; c'est ce qui a rendu ce défaut invisible à toute lecture du code.
+## Une seule convention, un seul endroit : la garde
+## `test_the_decor_walls_are_where_the_collision_walls_are` compare un sommet du décor à
+## l'arc de collision, à deux âges.
 func _arc(radius: float, thickness: float, start_deg: float, span_deg: float,
 		index: int) -> MeshInstance3D:
 	var inner := radius - thickness * 0.5
@@ -288,8 +301,8 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float,
 	for s in steps:
 		var a0 := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
 		var a1 := deg_to_rad(start_deg + span_deg * float(s + 1) / float(steps))
-		var r0 := Vector3(cos(a0), 0.0, sin(a0))
-		var r1 := Vector3(cos(a1), 0.0, sin(a1))
+		var r0 := GameplayPlane.to_world(Vector2(cos(a0), sin(a0)))
+		var r1 := GameplayPlane.to_world(Vector2(cos(a1), sin(a1)))
 		var i0 := r0 * inner
 		var o0 := r0 * outer
 		var i1 := r1 * inner

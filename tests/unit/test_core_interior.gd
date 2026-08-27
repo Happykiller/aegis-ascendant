@@ -72,3 +72,38 @@ func test_the_arena_is_hidden_until_the_fighter_enters() -> void:
 	var interior := _make()
 	interior.visible = false
 	assert_false(interior.visible, "l'arene ne se montre qu'a l'entree")
+
+
+## ⚠️ LE DÉCOR ET LA COLLISION DOIVENT TOURNER ENSEMBLE, ET ILS ONT TOURNÉ EN SENS INVERSE.
+## Le maillage etait en miroir et le pivot en negatif : juste a l'instant zero (deux arcs
+## symetriques), 96 degres d'ecart deux secondes plus tard. Le joueur butait sur des murs
+## invisibles et traversait ceux qu'il voyait. Aucun banc ne l'a vu, parce que tous
+## mesuraient la collision seule — juste en elle-meme. Cette garde compare un SOMMET du
+## decor, transforme par son pivot, a l'arc de collision du meme instant, a deux ages.
+func test_the_decor_walls_are_where_the_collision_walls_are() -> void:
+	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	var interior := _make()
+	interior.build_rings(tuning.reactor_rings)
+	assert_true(interior._rings.size() >= 1, "le decor a bati au moins un anneau")
+	if interior._rings.is_empty():
+		return
+	for age in [0.0, 2.0, 7.3]:
+		interior.pose_rings(tuning.reactor_rings, age)
+		var shapes := PlaneShapes.new()
+		shapes.reserve(8)
+		ReactorRings.fill_shapes(shapes, tuning.reactor_rings, Vector2.ZERO, age)
+		var pivot: Node3D = interior._rings[0]
+		var arc: MeshInstance3D = pivot.get_child(0) as MeshInstance3D
+		assert_true(arc != null and arc.mesh != null, "le premier arc a un maillage")
+		if arc == null or arc.mesh == null:
+			return
+		var vertex: Vector3 = arc.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX][0]
+		var world: Vector3 = pivot.transform * (arc.transform * vertex)
+		var seen := fposmod(rad_to_deg(GameplayPlane.to_plane(world).angle()), 360.0)
+		# Le premier sommet du maillage est au DEBUT de l'arc ; la collision du meme arc
+		# commence au meme azimut, ou a un tour pres.
+		var expected := fposmod(shapes.param(0, 4), 360.0)
+		var gap := absf(angle_difference(deg_to_rad(seen), deg_to_rad(expected)))
+		assert_true(rad_to_deg(gap) < 1.0,
+			"a t=%.1f s le decor montre le mur a %.1f deg, la collision le met a %.1f deg (ecart %.1f)"
+				% [age, seen, expected, rad_to_deg(gap)])
