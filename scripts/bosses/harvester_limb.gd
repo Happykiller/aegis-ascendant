@@ -172,9 +172,17 @@ func deploy_ratio(tuning: HarvesterTuning) -> float:
 ## que le boss redevenait invulnerable. Le joueur voyait « la faux toujours en regen et
 ## inactive » alors que la porte etait deja close — trois etats differents sur une meme
 ## rangee, pour un boss qui n'a qu'un seul etat.
+## ⚠️ ET LA ZONE DE TOUCHE AVEC, SANS QUOI LE BRAS REVIENT INVINCIBLE. `apply_damage()`
+## coupe `target.enabled` en tombant ; le retour NORMAL (`RISING` -> `ALIVE`) le rallume.
+## Ce raccourci-ci l'avait oublié : les deux appendices remis en service par la fermeture de
+## l'iris affichaient 100 %, frappaient, opposaient leur corps — et n'encaissaient plus rien.
+## Le joueur voyait un boss qu'on ne peut plus entamer : « je n'arrive plus à faire de
+## dommages sur les armes qui ont été réinitialisées de force à 100 % » (playtest du
+## 2026-08-27, second retour). Trois lignes doivent bouger ensemble, ou le bras ment.
 func restore() -> void:
 	_enter(State.ALIVE)
 	health = max_health
+	target.enabled = true
 
 func rebuild_ratio(tuning: HarvesterTuning) -> float:
 	if tuning == null or tuning.limb_rebuild_time <= 0.0 or state == State.ALIVE:

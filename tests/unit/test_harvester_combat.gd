@@ -410,19 +410,64 @@ func test_a_living_limb_never_claims_to_be_regrowing() -> void:
 ## que son iris. L'iris se refermait des qu'UN appendice revenait, laissant les deux autres
 ## a terre et en repousse — « j'ai vu la faux toujours en regen et inactive » (playtest du
 ## 2026-08-27). Trois etats differents affiches pour un boss qui n'en a qu'un.
+## ⚠️ LES TROIS BRAS NE TOMBENT PAS ENSEMBLE, ET C'EST TOUT LE SCENARIO. Ce test les abattait
+## dans la meme image : ils repoussaient donc en meme temps, revenaient TOUS par le chemin
+## naturel, et `restore()` n'etait jamais exerce — le raccourci que la fermeture de l'iris
+## emprunte pour les retardataires n'etait couvert par rien. Un joueur, lui, met plusieurs
+## secondes a descendre chaque arme : le premier tombe revient bien avant le dernier, et ce
+## sont les DEUX AUTRES que l'iris releve de force. C'est exactement la ou etait le defaut.
 func test_closing_the_iris_puts_every_weapon_back_in_service() -> void:
 	var rig := _rig()
 	var combat: HarvesterCombat = rig[1]
-	_kill_all_limbs(combat)
+	_kill_limb(combat, HarvesterCombat.KIND_SCYTHE)
+	_advance(combat, 3.0)
+	_kill_limb(combat, HarvesterCombat.KIND_CLAW)
+	_advance(combat, 3.0)
+	_kill_limb(combat, HarvesterCombat.KIND_CANNON)
 	_advance(combat, combat.tuning.limb_retract_time + 0.1)
 	assert_true(combat.is_iris_open(), "les trois a terre ouvrent l'iris")
-	# On laisse le temps qu'un seul revienne : c'est lui qui referme la porte.
-	_advance(combat, combat.tuning.limb_rebuild_time + 0.2)
-	assert_false(combat.is_iris_open(), "l'iris s'est referme")
+	# La faux, tombee six secondes plus tot, revient la premiere : c'est elle qui referme
+	# la porte, et les deux autres sont encore en repousse a cet instant.
+	_advance(combat, combat.tuning.limb_rebuild_time - 5.5)
+	assert_false(combat.is_iris_open(), "l'iris s'est referme sur le retour de la faux")
 	for limb in combat.limbs():
 		assert_true(limb.is_up(), "%s est de retour en service" % limb.kind)
 		assert_almost_eq(limb.health_ratio(), 1.0, 0.001,
 			"%s est a 100 %%, pas en repousse" % limb.kind)
+		# ⚠️ L'ASSERTION QUI MANQUAIT, ET LE BUG EST PASSE PAR CE TROU. Ce test verifiait
+		# l'etat et la sante, jamais la ZONE DE TOUCHE : `restore()` remettait le bras en
+		# service sans rallumer sa cible. Les deux appendices releves par la fermeture de
+		# l'iris affichaient 100 %, frappaient — et n'encaissaient plus rien. « Je n'arrive
+		# plus a faire de dommages sur les armes reinitialisees de force a 100 % »
+		# (playtest du 2026-08-27, second retour). Un bras en service SE TIRE DESSUS.
+		assert_true(limb.target.enabled,
+			"%s peut etre touche — un bras en service n'est pas invincible" % limb.kind)
+
+## L'invariant, pris a la racine et sur TOUS les chemins de retour en service : il n'y en a
+## que deux — le redeploiement naturel (`RISING` -> `ALIVE`) et le raccourci `restore()` de
+## la fermeture de l'iris. Le premier rallumait la cible, le second l'avait oublie. Les
+## eprouver ensemble est la seule facon d'empecher qu'un troisieme chemin repete la faute.
+func test_every_way_back_into_service_re_arms_the_hitbox() -> void:
+	var tuning: HarvesterTuning = load("res://resources/bosses/choir_harvester_tuning.tres")
+	for by_restore in [false, true]:
+		var limb := HarvesterLimb.make(&"scythe", null, PackedStringArray(),
+			tuning.limb_health, tuning.limb_hitbox_radius, func(_d: float) -> void: pass)
+		assert_true(limb.target.enabled, "un appendice neuf est touchable")
+		limb.apply_damage(limb.max_health)
+		assert_false(limb.target.enabled, "un appendice a terre ne se tire plus dessus")
+		if by_restore:
+			limb.restore()
+		else:
+			# Le chemin long : repli, attente, redeploiement.
+			var elapsed := 0.0
+			while not limb.is_up() and elapsed < 60.0:
+				limb.tick(0.1, tuning)
+				elapsed += 0.1
+		assert_true(limb.is_up(), "il est revenu (restore=%s)" % by_restore)
+		assert_almost_eq(limb.health_ratio(), 1.0, 0.001,
+			"entier (restore=%s)" % by_restore)
+		assert_true(limb.target.enabled,
+			"ET touchable (restore=%s) — sinon le boss devient invincible" % by_restore)
 
 # --- Ce que le boss OPPOSE (loi « les corps ne se chevauchent pas », lot 2) ----
 
