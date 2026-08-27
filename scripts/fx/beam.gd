@@ -56,6 +56,17 @@ func aim(from: Vector2, to: Vector2, half_width: float) -> void:
 	rotation = Vector3(0.0, atan2(world_dir.x, world_dir.z), 0.0)
 	scale = Vector3(half_width * 2.0, 1.0, length)
 
+## Teinte ce faisceau-ci. Le shader porte déjà les deux couleurs en uniformes : on les pose
+## par instance, sans toucher aux autres faisceaux.
+##
+## ⚠️ POURQUOI ÇA COMPTE ICI. La teinte par défaut est un corail-orangé, et l'orange **veut
+## déjà dire autre chose** dans ce jeu : explosions et bonus (`LOI-LIS-01` — « une couleur
+## qui signifie quelque chose ne sert à rien d'autre »). Un danger mortel qui emprunte la
+## couleur des récompenses est le pire des voisinages.
+func tint(core: Color, edge: Color) -> void:
+	_material.set_shader_parameter("core_color", core)
+	_material.set_shader_parameter("edge_color", edge)
+
 ## `pulse` à 1 fait battre la ligne de télégraphe ; à 0 le faisceau est plein.
 func set_regime(energy: float, pulse: float) -> void:
 	visible = energy > 0.0

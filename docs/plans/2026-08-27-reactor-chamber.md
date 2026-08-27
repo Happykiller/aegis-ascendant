@@ -3,8 +3,8 @@ titre: Reactor Chamber — la phase du noyau devient une machine, pas une cible
 date: 2026-08-27
 auteur: session Claude, sur spécification et planche de l'opérateur
 perimetre: phase DIVE du Pale Leviathan (CoreInterior), assets de forge, budget GPU
-etat: **B2 tranché (option a, `ADR-0030`) et LOT 1 LIVRÉ**. Lots 2-5 entiers ;
-  B1 (budget GPU), B3 (palette) et B4 (forge) restent ouverts
+etat: **B2 tranché (`ADR-0030`), LOTS 1 ET 2 LIVRÉS**. Lots 3-5 entiers ;
+  B1 (budget GPU) et B4 (forge) restent ouverts, B3 partiellement tranché
 supersede: rien. Amenderait `ADR-0025` (l'arène) et `ADR-0026` (le plafond par plongée)
 ---
 
@@ -143,7 +143,7 @@ avec l'axe joueur → noyau.
 rapport tel que les ouvertures ne se croisent pas) enfermerait le joueur. La leçon d'`ADR-0029`
 s'applique à l'envers — ici, il faut des périodes qui **retombent** en rythme, et il faut le prouver.
 
-### Lot 2 — Les lasers balayants
+### Lot 2 — Les lasers balayants ✅ LIVRÉ le 2026-08-27
 
 `Beam` existe, télégraphe compris. Un balayage lent (30-45 °/s) autour du noyau, puis le double
 balayage avec son secteur sûr mobile.
@@ -220,3 +220,52 @@ n'avait aucun anneau.
    Le projet a déjà nommé ce défaut sur le Harvester et y a répondu par une gerbe de déviation.
 2. ⚠️ **Les anneaux se lisent comme de la peinture au sol.** Posés sous le plan de jeu pour ne pas
    masquer les balles, ils passent sous les nervures du décor livré.
+
+
+---
+
+## Lot 2 — trois choses, et la palette avance d'un pas
+
+**Les tirs sont ARRÊTÉS par un blindage fermé.** Une seconde cible (`_shield_target`) se pose sur
+l'anneau, **au droit du joueur** — là où ses bolts croisent le blindage — et rend une gerbe blanche
+avec le son de bouclier. Aucun dégât : ce n'est pas une armure à user, c'est une porte à trouver.
+
+⚠️ **Elle est enregistrée AVANT le flux.** `BulletManager._resolve_hits` parcourt les cibles dans
+l'ordre d'enregistrement et **consomme** la balle sur la première qui la réclame : dans l'autre
+sens, un tir aurait traversé un anneau fermé pour aller toucher le noyau. Les deux ne sont jamais
+actives ensemble — mais l'ordre est une **garantie**, pas un effet de bord d'un état.
+
+**Les anneaux remontent** de −0,30 à −0,08. À −0,30 ils passaient **sous les nervures** du décor et
+se lisaient comme de la peinture au sol. Ils restent sous le plan de jeu : la règle de priorité met
+les machines derrière les projectiles.
+
+**Le laser balaie**, à −29 °/s, à contresens de l'anneau extérieur.
+
+⚠️ **Simulé avant d'être écrit**, sur trois minutes : un corridor **libre** — ouvert ET hors du
+faisceau — existe **100 % du temps**, pire blocage 0,00 s. Le laser met la pression, il ne condamne
+jamais. Même exigence que pour les anneaux, par un autre chemin.
+
+⚠️ **Il s'arme après coup** (1,1 s). Le joueur qui vient d'entrer voit d'où part le faisceau et dans
+quel sens il tourne **avant** de pouvoir en mourir.
+
+### B3 avance d'un pas, sans être tranché
+
+Le faisceau sortait **orange** — la collision exacte que le plan annonçait. Il est désormais
+**rouge sécurité Helios**, ce que la spec de l'opérateur demande elle-même (« ROUGE = danger
+immédiat »). `Beam.tint()` pose les couleurs **par instance** : les faisceaux des épines n'ont pas
+bougé.
+
+⚠️ **La question de fond reste ouverte** : l'orange comme **télégraphe** de rail (lot 4) entrerait
+toujours en concurrence avec les explosions et les bonus. Le laser ne la tranche pas, il la contourne.
+
+### Le budget, mesuré à chaque étape (Quadro T1000)
+
+| État | ms/image |
+|---|---:|
+| L'arène avant le chantier | 7,1 à 12,6 |
+| Anneaux seuls | **6,45** |
+| Anneaux + laser | **5,5 à 7,2** |
+
+Deux lots, **aucun coût mesurable** : les arcs sont des `ArrayMesh` de quelques dizaines de
+triangles, et le faisceau un quad. **B1 reste entier pour les lots 4 et 5**, qui portent les rails
+et le décor animé — c'est là que le budget se jouera.

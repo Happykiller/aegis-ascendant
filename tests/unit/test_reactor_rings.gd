@@ -118,3 +118,62 @@ func test_the_nearest_opening_is_the_one_you_should_fly_to() -> void:
 func test_no_rings_means_no_shield() -> void:
 	var none: Array[ReactorRing] = []
 	assert_true(ReactorRings.is_open(none, 123.0, 4.5), "sans anneau, tout est ouvert")
+
+# --- Le laser balayant (lot 2) ----------------------------------------------
+
+## ⚠️ LA GARDE QUI COMPTE POUR LE LASER. Il met la pression, il ne CONDAMNE jamais : il doit
+## toujours exister un corridor à la fois OUVERT et HORS du faisceau. Un laser qui se poserait
+## sur la seule ouverture enfermerait le joueur — le même mode d'échec que le blindage, par un
+## autre chemin, et tout aussi silencieux.
+const LASER_BLOCK_DEG := 14.0
+
+func _laser_bearing(tuning: LeviathanTuning, age: float) -> float:
+	return fposmod(tuning.sweep_speed_deg * age, 360.0)
+
+func test_the_sweep_never_seals_the_last_corridor() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var rings := tuning.reactor_rings
+	var longest := 0.0
+	var sealed := 0.0
+	var step := 0.05
+	for i in int(90.0 / step):
+		var age := float(i) * step
+		var laser := _laser_bearing(tuning, age)
+		var free := false
+		for k in 180:
+			var bearing := float(k) * 2.0
+			if not ReactorRings.is_open(rings, bearing, age):
+				continue
+			if absf(rad_to_deg(angle_difference(deg_to_rad(bearing), deg_to_rad(laser)))) > LASER_BLOCK_DEG:
+				free = true
+				break
+		if free:
+			longest = maxf(longest, sealed)
+			sealed = 0.0
+		else:
+			sealed += step
+	longest = maxf(longest, sealed)
+	assert_true(longest <= 0.4,
+		"aucun corridor libre pendant %.2f s d'affilée — le joueur y serait enfermé" % longest)
+
+## Le faisceau doit tourner à contresens de l'anneau extérieur : dans le même sens, ils
+## dériveraient ensemble et la pression deviendrait un décor.
+func test_the_sweep_turns_against_the_outer_ring() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	assert_true(tuning.reactor_rings.size() > 0, "il y a bien un anneau extérieur")
+	var outer: ReactorRing = tuning.reactor_rings[0]
+	assert_true(signf(tuning.sweep_speed_deg) != signf(outer.speed_deg),
+		"laser %.0f °/s contre anneau %.0f °/s — mêmes sens, ils dériveraient ensemble"
+			% [tuning.sweep_speed_deg, outer.speed_deg])
+
+## ⚠️ ET IL S'ARME APRÈS COUP. Le joueur qui vient d'entrer doit voir d'où part le faisceau
+## et dans quel sens il tourne AVANT de pouvoir en mourir. Une mort qu'on ne pouvait pas lire
+## venir n'est pas une difficulté, c'est une injustice — la loi que ce projet applique déjà
+## à toute attaque lourde.
+func test_the_sweep_is_harmless_when_the_player_arrives() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	assert_true(tuning.sweep_arm_delay > 0.5,
+		"délai d'armement de %.2f s — en dessous, on meurt avant d'avoir vu le faisceau"
+			% tuning.sweep_arm_delay)
+	assert_true(tuning.sweep_arm_delay < tuning.dive_time * 0.35,
+		"mais il ne mange pas la plongée : %.2f s sur %.1f s" % [tuning.sweep_arm_delay, tuning.dive_time])

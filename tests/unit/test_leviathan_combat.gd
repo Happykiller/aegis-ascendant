@@ -715,6 +715,32 @@ func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
 	assert_almost_eq(seen[seen.size() - 1], 0.0, 0.001,
 		"puis s'efface quand l'armure est la — sinon elle resterait en travers du combat")
 
+## ⚠️ LES DEUX CIBLES SONT EXACTEMENT COMPLEMENTAIRES, et c'est ce qui rend le blindage
+## honnete. Jamais les deux (on toucherait le noyau ET le blindage), jamais aucune (les tirs
+## traverseraient sans rien produire — le defaut nomme sur le Harvester : « tirer dessus sans
+## rien produire a l'ecran se lit comme un defaut, pas comme une armure »).
+func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
+	var combat := _make()
+	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.dive_anchor = Vector2.ZERO
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	var seen_open := false
+	var seen_shut := false
+	for step in 200:
+		combat.tick(0.05)
+		if combat.phase() != CombatScript.Phase.DIVE:
+			break
+		var core: bool = combat._flux_target.enabled
+		var shield: bool = combat._shield_target.enabled
+		assert_true(core != shield,
+			"noyau=%s blindage=%s — il en faut exactement UN" % [core, shield])
+		seen_open = seen_open or core
+		seen_shut = seen_shut or shield
+	assert_true(seen_open, "le corridor s'ouvre au moins une fois")
+	assert_true(seen_shut, "et il se ferme au moins une fois — sinon le blindage ne sert a rien")
+
 func test_three_perfect_dives_are_exactly_enough() -> void:
 	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.
 	var combat := _make()

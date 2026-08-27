@@ -614,6 +614,7 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.dive_ended.connect(_on_leviathan_dive_ended)
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 	combat.armour_regen.connect(_on_leviathan_armour_regen)
+	combat.shield_deflected.connect(_on_boss_deflected)
 
 ## La jauge du boss montre la PROGRESSION DU COMBAT — `fight_ratio()`, qui ne remonte
 ## jamais — et non la santé de la cible courante.

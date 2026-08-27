@@ -87,6 +87,13 @@ signal armour_regen(ratio: float, plates: int)
 ## seulement : c'est un état, pas une mesure, et le niveau s'en sert pour dire au joueur —
 ## sans passer par l'interface — si son tir compte en ce moment.
 signal reactor_shield_changed(open: bool)
+## Un tir du joueur a heurté le blindage FERMÉ. Le niveau en fait une gerbe et un son.
+##
+## ⚠️ SANS LUI, LE BLINDAGE MENT. Le verrou est logique (`BulletTarget.enabled`), pas
+## physique : les bolts traversaient l'anneau plein sans rien produire. Le projet a déjà
+## nommé ce défaut sur le Harvester — « tirer dessus sans rien produire à l'écran se lit
+## comme un défaut, pas comme une armure ».
+signal shield_deflected(world_position: Vector3)
 
 ## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
 ## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
@@ -96,6 +103,18 @@ const FLUX_ORGANIC_SHARE := 0.45
 ## État courant du blindage. Faux au repos : hors plongée, il n'y a pas de corridor, et
 ## annoncer « ouvert » ferait clignoter le signal à chaque entrée.
 var _reactor_open: bool = false
+## La cible qui ARRÊTE les tirs quand le corridor est fermé. Posée sur l'anneau, au droit du
+## joueur : c'est là que ses bolts croisent le blindage.
+var _shield_target: BulletTarget
+## Le faisceau balayant du réacteur, et son horloge d'armement.
+var _sweep: Beam
+var _sweep_age: float = 0.0
+
+## Rayon auquel les tirs sont arrêtés — celui de l'anneau extérieur du décor.
+## ⚠️ La valeur vit dans `CoreInterior` : la gerbe doit naître SUR l'anneau qu'on voit, sinon
+## elle désigne un blindage qui n'est pas là.
+const SHIELD_RADIUS := 6.2
+const SHIELD_CATCH_RADIUS := 0.75
 
 @export var tuning: LeviathanTuning
 @export var projectile: ProjectileData
@@ -421,7 +440,17 @@ func _build_flux() -> void:
 	_flux_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.flux_hitbox_radius,
 		Callable(self, "_on_flux_hit"))
 	_flux_target.enabled = false   # il n'existe que dans le noyau, pendant la plongée
+	# ⚠️ LA CIBLE D'ARRÊT PASSE EN PREMIER. `BulletManager._resolve_hits` parcourt les cibles
+	# dans l'ordre d'enregistrement et CONSOMME la balle sur la première qui la réclame. Le
+	# blindage doit donc être vu avant le flux — sinon un tir traverserait un anneau fermé
+	# pour aller toucher le noyau, ce qui est exactement ce qu'il est censé empêcher.
+	# (Les deux ne sont jamais actives en même temps, mais l'ordre est une garantie, pas un
+	# effet de bord d'un état.)
+	_shield_target = BulletTarget.make(BulletManager.Team.ENEMY, SHIELD_CATCH_RADIUS,
+		Callable(self, "_on_shield_hit"))
+	_shield_target.enabled = false
 	if _bullet_manager != null:
+		_bullet_manager.register_target(_shield_target)
 		_bullet_manager.register_target(_flux_target)
 
 ## Résout la coquille, le cœur et le halo. Nuls en test (coque absente) : la boucle
@@ -466,6 +495,17 @@ func _build_spines() -> void:
 	_spine_rest.clear()
 	_spine_tip.clear()
 	_spine_beams.clear()
+	if _sweep == null:
+		_sweep = Beam.make()
+		# ⚠️ `top_level` comme les épines : `Beam.aim()` pose le faisceau en coordonnées du
+		# monde, et un parent qui bouge le décalerait deux fois.
+		_sweep.top_level = true
+		_sweep.visible = false
+		# ROUGE, et non le corail par défaut : c'est la couleur que la spec de l'opérateur
+		# réserve au danger immédiat, et l'orange est déjà pris par les explosions et les
+		# bonus. Rouge sécurité Helios (charte créative) pour le bord, cœur blanc chaud.
+		_sweep.tint(Color(1.0, 0.90, 0.86), Color("c93a31"))
+		add_child(_sweep)
 	_spine_state.resize(SPINE_SLOTS)
 	_spine_timer.resize(SPINE_SLOTS)
 	_spine_aim.resize(SPINE_SLOTS)
@@ -675,6 +715,15 @@ func _update_reactor_shield(origin: Vector2) -> void:
 		var bearing := rad_to_deg(_player_bearing(_flux_origin(origin)))
 		open = ReactorRings.is_open(tuning.reactor_rings, bearing, _age)
 	_flux_target.enabled = open
+	# La cible d'arrêt vit à l'inverse : elle n'existe QUE quand le corridor est fermé, et
+	# elle se pose sur l'anneau, au droit du joueur — là où ses bolts croisent le blindage.
+	if _shield_target != null:
+		_shield_target.enabled = not open
+		if not open and _player != null:
+			var centre := _flux_origin(origin)
+			var toward := _player.plane_position - centre
+			if toward.length_squared() > 0.01:
+				_shield_target.position = centre + toward.normalized() * SHIELD_RADIUS
 	if open != _reactor_open:
 		_reactor_open = open
 		reactor_shield_changed.emit(open)
@@ -685,6 +734,28 @@ func _update_reactor_shield(origin: Vector2) -> void:
 ## ouvert.
 func combat_age() -> float:
 	return _age
+
+## Le faisceau qui balaie le réacteur. Il tourne en permanence pendant la plongée : c'est
+## lui qui empêche de camper sous le noyau une fois le corridor trouvé.
+##
+## ⚠️ IL S'ARME APRÈS COUP. Pendant `sweep_arm_delay`, il est VISIBLE et INOFFENSIF : le
+## joueur qui vient d'entrer voit d'où il part et dans quel sens il tourne avant de pouvoir
+## en mourir. Une mort qu'on ne pouvait pas lire venir n'est pas une difficulté.
+func _update_sweep(delta: float, origin: Vector2) -> void:
+	if _sweep == null or tuning.sweep_half_width <= 0.0:
+		return
+	_sweep_age += delta
+	var centre := _flux_origin(origin)
+	var a := deg_to_rad(tuning.sweep_speed_deg * _age)
+	var reach := centre + Vector2(cos(a), sin(a)) * tuning.sweep_range
+	var armed := _sweep_age >= tuning.sweep_arm_delay
+	_sweep.aim(centre, reach,
+		tuning.sweep_half_width if armed else tuning.sweep_half_width * 0.30)
+	_sweep.set_regime(2.6 if armed else 0.4, 0.0 if armed else 1.0)
+	if not armed or _player == null:
+		return
+	if Beam.hits(centre, reach, tuning.sweep_half_width, _player.plane_position, 0.25):
+		_player.take_contact_damage(tuning.sweep_damage)
 
 ## Le corridor est-il ouvert en ce moment, sur l'azimut du joueur ?
 func reactor_open() -> bool:
@@ -906,6 +977,7 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 		Dive.INSIDE:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
 			_update_reactor_shield(origin)
+			_update_sweep(delta, origin)
 			if _dive_elapsed >= tuning.dive_time:
 				_set_dive(Dive.EJECT)
 		Dive.EJECT:
@@ -927,6 +999,9 @@ func _set_dive(next: Dive) -> void:
 			# sinon le joueur entre dans un corridor déjà ouvert sans que rien ne le dise.
 			_reactor_open = false
 			_flux_target.enabled = tuning.reactor_rings.is_empty()
+			_sweep_age = 0.0
+			if _sweep != null:
+				_sweep.visible = not tuning.reactor_rings.is_empty()
 			_local_damage = 0.0
 			_dive_damage = 0.0
 			_publish_structure()
@@ -934,6 +1009,11 @@ func _set_dive(next: Dive) -> void:
 		Dive.EJECT:
 			_flux_target.enabled = false
 			_reactor_open = false
+			if _shield_target != null:
+				_shield_target.enabled = false
+			if _sweep != null:
+				_sweep.extinguish()
+				_sweep.visible = false
 			dive_ended.emit(_cycle, _flux_health <= 0.0)
 
 ## Fin de plongée : le boss meurt si le flux est tombé, sinon l'armure se reforme.
@@ -1266,6 +1346,16 @@ func _drop_spine(index: int) -> void:
 ## cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage ; mieux
 ## jouer raccourcit chaque plongée sans jamais en supprimer une. Moins bien jouer en
 ## ouvre une de plus, ce qui reste la sanction juste.
+## Un tir a heurté le blindage fermé. Il est CONSOMMÉ, et il le fait savoir.
+##
+## ⚠️ Aucun dégât, et c'est le point : ce n'est pas une armure à user, c'est une porte à
+## trouver. Mais un tir qui disparaît sans rien produire se lit comme un défaut du jeu —
+## d'où la gerbe. `damage` est ignoré volontairement.
+func _on_shield_hit(_damage: float) -> void:
+	if _shield_target == null:
+		return
+	shield_deflected.emit(GameplayPlane.to_world(_shield_target.position))
+
 func _on_flux_hit(damage: float) -> void:
 	if _phase != Phase.DIVE or _dive != Dive.INSIDE or _flux_health <= 0.0:
 		return
@@ -1400,6 +1490,9 @@ func release() -> void:
 		missile.target.enabled = false
 		_bullet_manager.unregister_target(missile.target)
 	_missiles.clear()
+	if _shield_target != null:
+		_shield_target.enabled = false
+		_bullet_manager.unregister_target(_shield_target)
 	if _flux_target != null:
 		_flux_target.enabled = false
 		_bullet_manager.unregister_target(_flux_target)

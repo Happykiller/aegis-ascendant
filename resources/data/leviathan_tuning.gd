@@ -198,6 +198,27 @@ extends Resource
 ## avait pas. C'est le calibrage silencieux qu'`ADR-0024` a coûté au projet.
 @export_range(0.05, 1.0) var ring_occupancy: float = 0.45
 
+# --- Le laser balayant du réacteur (lot 2) ----------------------------------
+
+## Vitesse de balayage, en degrés par seconde. **Négative** : à contresens de l'anneau
+## extérieur, pour que le laser et les ouvertures se croisent souvent au lieu de dériver
+## ensemble.
+##
+## ⚠️ SIMULÉ AVANT D'ÊTRE ÉCRIT, sur trois minutes : un corridor **libre** — ouvert ET hors
+## du faisceau — existe **100 % du temps**, pire blocage 0,00 s. Le laser met la pression,
+## il ne condamne jamais. C'est la même exigence que pour les anneaux eux-mêmes.
+@export var sweep_speed_deg: float = -29.0
+## Portée du faisceau depuis le centre du réacteur, en unités.
+@export var sweep_range: float = 16.0
+## Demi-largeur mortelle du faisceau.
+@export var sweep_half_width: float = 0.55
+## Dégâts au contact, par image touchée.
+@export var sweep_damage: float = 14.0
+## Silence d'ouverture : le faisceau est visible mais INOFFENSIF pendant ce temps, à chaque
+## entrée dans le noyau. ⚠️ Sans lui, le joueur pourrait naître dans un laser déjà armé —
+## et une mort qu'on ne pouvait pas lire venir n'est pas une difficulté, c'est une injustice.
+@export var sweep_arm_delay: float = 1.1
+
 @export var flux_drift_radius: float = 1.60
 @export var flux_drift_period: float = 3.4
 
@@ -397,6 +418,12 @@ func validate() -> PackedStringArray:
 	# --- INVARIANT 5 : le flux tombe au dernier passage, pas avant -------
 	# Trop mou, le boss meurt au premier plongeon et les cycles ne servent à rien ; trop
 	# dur, le joueur repart pour un tour de plus à chaque fois sans comprendre pourquoi.
+	if sweep_half_width <= 0.0:
+		errors.append("sweep_half_width must be > 0")
+	if sweep_arm_delay <= 0.0:
+		errors.append("sweep_arm_delay must be > 0 — c'est le délai qui rend le laser lisible à l'entrée")
+	if not reactor_rings.is_empty() and is_zero_approx(sweep_speed_deg):
+		errors.append("sweep_speed_deg à zéro : un faisceau immobile condamne un secteur pour toute la plongée")
 	for i in reactor_rings.size():
 		var ring := reactor_rings[i]
 		if ring == null:

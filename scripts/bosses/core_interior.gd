@@ -63,7 +63,11 @@ const RING_STEP_DEG := 5.0
 ## ⚠️ SOUS LE PLAN DE JEU, ET C'EST UNE RÈGLE DE LECTURE. L'ordre de priorité est
 ## joueur > projectiles > dangers > point faible > MACHINES > décor : un anneau posé à
 ## y = 0 serait coplanaire aux balles et les masquerait une fois sur deux.
-const RING_LIFT := -0.30
+##
+## ⚠️ MAIS PAS TROP BAS. À −0,30, les anneaux passaient SOUS les nervures du décor livré et
+## se lisaient comme de la peinture au sol — pas comme la machine qui bloque. Ils remontent
+## juste sous le plan : au-dessus du sol, en dessous de tout ce qui se joue.
+const RING_LIFT := -0.08
 
 var _rings: Array[Node3D] = []
 var _entry_plane: Vector2 = FALLBACK_ENTRY
