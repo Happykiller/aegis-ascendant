@@ -277,12 +277,21 @@ extends Resource
 @export var dive_enter_time: float = 1.4
 ## Le temps de tir dans le noyau. ⚠️ Court EXPRÈS : « on n'aurait pas énormément de temps
 ## pour tirer dessus avant d'être à nouveau éjecté ».
-## ⚠️ ELLE N'A PAS BOUGÉ, ET C'EST LE RÉSULTAT LE PLUS IMPORTANT DU LOT 3. Le blindage et
-## les verrous auraient pu la faire passer à 14 s — c'était le premier réglage essayé, et il
-## faisait durer le combat 67 s au lieu de 40. Deux gardes l'ont refusé : « la plongée est
-## courte exprès » et « le combat tient sa promesse ». La conséquence est tombée là où elle
-## devait, sur la SANTÉ DU FLUX : le noyau n'est atteignable qu'une fraction du temps, il
-## lui faut donc bien moins de points de vie pour le même combat.
+## ⚠️ LE PALE LEVIATHAN LIVRÉ EST À 9 s (voir son `.tres`), À LA DEMANDE DE L'OPÉRATEUR (« rallonge le temps disponible pour faire des
+## dégâts »), ET ÇA NE COÛTE RIEN AU COMBAT. C'est le PLAFOND, pas la durée : la plongée
+## s'arrête au premier des DEUX critères — quota d'un tiers rempli, ou temps écoulé. Mesuré
+## sur les valeurs livrées, un joueur de référence remplit son quota en **3,28 s** ; il sort
+## donc bien avant, et son combat ne s'allonge pas d'une seconde. Les six secondes ajoutées
+## ne servent qu'à celui qui rate — et c'est exactement le bon endroit où mettre du temps.
+##
+## Le défaut reste à 5 : c'est la valeur de CALIBRATION, celle sur laquelle les invariants
+## sont éprouvés sans blindage ni verrous. La monter ici rendrait le flux par défaut
+## atteignable trois fois de trop et ferait mentir les gardes de convergence.
+##
+## Historique : le premier réglage du blindage l'avait poussée à 14 s, et le combat passait
+## à 67 s. Deux gardes l'ont refusé, et la conséquence est tombée sur la SANTÉ DU FLUX. Ce
+## n'est pas le même cas : là on allongeait la durée RÉELLE de tout le monde, ici on relève
+## un plafond que le joueur de référence n'atteint pas.
 @export var dive_time: float = 5.0
 @export var dive_eject_time: float = 1.0
 ## Aspiration qui tire le chasseur vers l'ouverture. ⚠️ DOIT rester sous
@@ -341,10 +350,33 @@ func dive_duration() -> float:
 	return dive_enter_time + dive_time + dive_eject_time
 
 ## Durée attendue du combat entier, sous les hypothèses de dimensionnement.
+## Le PIRE CAS : un joueur qui ne remplit jamais son quota et consomme chaque plongée
+## jusqu'au bout. ⚠️ Ce n'est PAS la durée du combat — c'est son plafond, et le confondre
+## avec la cible a longtemps fait passer `dive_time` pour un budget alors que c'est une
+## limite. Voir `reference_duration()` pour ce qu'un joueur de référence vit vraiment.
 func total_duration() -> float:
 	var total := 0.0
 	for cycle in cycle_count:
 		total += armor_duration(cycle) + dive_duration()
+	return total
+
+## Temps qu'un joueur de référence passe RÉELLEMENT dans le noyau à chaque plongée : le
+## premier des deux critères qui tombe. Le quota d'abord s'il tire bien, le plafond sinon.
+func reference_dive_time() -> float:
+	var rate := flux_reference_dps * occupancy_dive
+	if not reactor_rings.is_empty():
+		rate *= ring_occupancy
+	if rate <= 0.001:
+		return dive_time
+	return minf(dive_time, flux_damage_per_dive() / rate)
+
+## La durée du combat pour un joueur de référence — celle qui décide du RYTHME, et donc la
+## seule qu'il faille comparer à une cible de conception.
+func reference_duration() -> float:
+	var total := 0.0
+	for cycle in cycle_count:
+		total += armor_duration(cycle) + dive_enter_time + reference_dive_time() \
+			+ dive_eject_time
 	return total
 
 ## Part du combat passée à briser l'armure (le reste est passé dans le noyau).
@@ -482,7 +514,13 @@ func validate() -> PackedStringArray:
 	elif duration_tolerance < 0.0:
 		errors.append("duration_tolerance must be >= 0")
 	else:
-		var total := total_duration()
+		# ⚠️ LA DURÉE DE RÉFÉRENCE, PLUS LE PIRE CAS. `total_duration()` suppose un joueur
+		# qui consomme CHAQUE plongée jusqu'à la dernière seconde — ce qui n'arrive qu'à
+		# celui qui ne touche rien. Le rythme se juge sur ce qu'un joueur de référence vit :
+		# il sort dès son quota rempli. Confondre les deux faisait de `dive_time` un budget
+		# alors que c'est un PLAFOND, et interdisait de le relever sans « rallonger » un
+		# combat que personne ne joue.
+		var total := reference_duration()
 		if absf(total - target_duration) > duration_tolerance:
 			errors.append("fight lasts %.0f s, outside the %.0f +/- %.0f s target — %s"
 				% [total, target_duration, duration_tolerance,

@@ -136,7 +136,7 @@ dive_enter_time = 1.4
 ; ⚠️ INCHANGEE, et c'est le resultat le plus important du lot 3 : le blindage et les verrous
 ; tiennent DANS la plongee de cinq secondes. Le premier reglage essaye la portait a 14 s et
 ; faisait durer le combat 67 s au lieu de 40 — deux gardes l'ont refuse.
-dive_time = 5.0
+dive_time = 9.0
 dive_eject_time = 1.0
 pull_speed_max = 7.0
 pull_radius = 16.0

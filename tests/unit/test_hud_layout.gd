@@ -144,3 +144,50 @@ func test_the_regrowth_colour_is_bright_enough_to_be_seen() -> void:
 		"luminance %.2f — en dessous, on doit chercher le signal au lieu de le voir"
 			% green.get_luminance())
 	assert_true(green.g > green.r and green.g > green.b, "et c'est bien un vert")
+
+# --- Le sablier de la plongee (playtest du 2026-08-27) ------------------------
+## ⚠️ Le mode d'echec vise : une plongee qui se termine sans prevenir. Elle a DEUX sorties —
+## quota d'un tiers rempli, ou temps ecoule — et seule la premiere se voyait, sur la jauge du
+## boss. « Faut un indicateur visuel, une barre qui se recharge pour voir le temps qu'il nous
+## reste a l'interieur. »
+
+func test_the_dive_hourglass_is_hidden_outside_the_dive() -> void:
+	var hud := _hud()
+	hud.set_dive_time_left(-1.0)
+	assert_false(hud._dive_fill.visible,
+		"hors plongee il s'ETEINT — une barre pleine et figee se lit comme une jauge en panne")
+	assert_false(hud._dive_track.visible, "et son fond avec")
+
+func test_the_dive_hourglass_empties_with_the_time_left() -> void:
+	var hud := _hud()
+	hud.set_dive_time_left(1.0)
+	assert_true(hud._dive_fill.visible, "en plongee, il se voit")
+	var full: float = hud._dive_fill.size.x
+	hud.set_dive_time_left(0.5)
+	assert_almost_eq(hud._dive_fill.size.x, full * 0.5, 1.0, "a moitie du temps, a moitie plein")
+	hud.set_dive_time_left(0.0)
+	assert_almost_eq(hud._dive_fill.size.x, 0.0, 0.5, "et vide a l'ejection")
+
+## Le rouge est un AVERTISSEMENT, pas une decoration : il dit « place tes derniers tirs »,
+## et il doit arriver assez tot pour qu'on puisse encore agir.
+func test_the_last_quarter_turns_red() -> void:
+	var hud := _hud()
+	hud.set_dive_time_left(0.5)
+	assert_eq(hud._dive_fill.color, FighterHudScript.DIVE_GOLD, "au large, il est or")
+	hud.set_dive_time_left(FighterHudScript.DIVE_URGENT - 0.01)
+	assert_eq(hud._dive_fill.color, FighterHudScript.DIVE_RED, "sur la fin, il passe au rouge")
+	assert_true(FighterHudScript.DIVE_URGENT >= 0.15,
+		"et l'avertissement laisse le temps d'agir (%.0f %% de la plongee)"
+			% (FighterHudScript.DIVE_URGENT * 100.0))
+
+## ⚠️ IL A SA PROPRE RANGEE. La premiere version le posait a y = 50, pile sur la rangee des
+## jauges d'appendice — ca ne se voyait pas parce que les deux ne s'affichent jamais ensemble,
+## et ca se serait rappele au premier boss qui aurait les deux.
+func test_the_hourglass_does_not_share_the_limb_row() -> void:
+	var hud := _hud()
+	hud.set_dive_time_left(1.0)
+	var sablier := Rect2(hud._dive_fill.position, hud._dive_fill.size)
+	for track_rect in hud._limb_tracks:
+		var rect: ColorRect = track_rect
+		var overlap := sablier.intersects(Rect2(rect.position, rect.size))
+		assert_false(overlap, "le sablier ne recouvre aucune jauge d'appendice")

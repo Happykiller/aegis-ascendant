@@ -636,6 +636,7 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.dive_ended.connect(_on_leviathan_dive_ended)
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 	combat.armour_regen.connect(_on_leviathan_armour_regen)
+	combat.dive_time_left.connect(_on_leviathan_dive_time_left)
 	combat.shield_deflected.connect(_on_boss_deflected)
 	combat.node_gauge_changed.connect(_on_leviathan_node_gauge)
 	combat.node_destroyed.connect(_on_leviathan_node_destroyed)
@@ -678,6 +679,12 @@ func _on_leviathan_piece_active(index: int) -> void:
 ## ⚠️ La rangée est éteinte pendant la plongée (« plus de plaques »). On la redresse ici,
 ## pour le cycle QUI VIENT — c'est ce qui permet de voir arriver l'armure, et combien il en
 ## reste. Même vocabulaire que la repousse des appendices du mini-boss : une barre qui se
+## Le sablier de la plongée. Le niveau relaie : le module ne connaît pas le HUD, le HUD ne
+## connaît pas le Leviathan.
+func _on_leviathan_dive_time_left(ratio: float) -> void:
+	if _hud != null:
+		_hud.set_dive_time_left(ratio)
+
 ## remplit en vert.
 func _on_leviathan_armour_regen(ratio: float, plates: int) -> void:
 	if _hud == null:

@@ -80,6 +80,19 @@ var _boss_cycle: Label
 var _boss_fill: ColorRect
 var _limb_regens: Array[ColorRect] = []
 var _boss_full_width: float = 0.0
+
+## Le sablier de la plongée. Vide = éjection imminente.
+var _dive_track: ColorRect
+var _dive_fill: ColorRect
+
+## Or pâle : aucun autre élément du HUD ni du jeu ne l'emploie. ⚠️ Surtout PAS l'orange, qui
+## désigne la cible, ni le cyan/corail réservés aux projectiles.
+const DIVE_GOLD := Color("e8d48a")
+
+## En dessous, le sablier passe au ROUGE. Le joueur qui voit rouge sait qu'il ne finira pas
+## son passage : c'est le moment de placer ses derniers tirs, pas d'en chercher un meilleur.
+const DIVE_URGENT := 0.25
+const DIVE_RED := Color("e2603f")
 var _limb_pips: Array[ColorRect] = []
 var _limb_tracks: Array[ColorRect] = []
 var _limb_labels: Array[Label] = []
@@ -235,8 +248,11 @@ func _build_lives_panel() -> void:
 	_lives_count = _label(panel, "x3", _VALUE_FONT, 26, ACCENT, Vector2(ix + MAX_LIVES_ICONS * 24.0 + 6, 22), 80)
 
 func _build_boss_panel() -> void:
-	# 76 px et non 58 : les trois jauges d'appendice vivent sous la barre du noyau.
-	_boss_panel = _panel(Vector2(0.5, 0), Vector2(-400, MARGIN), Vector2(800, 76),
+	# 86 px : 58 pour le titre et la barre, +18 pour les trois jauges d'appendice, +10 pour
+	# le sablier de la plongée. ⚠️ Le sablier a SA rangée et ne partage pas celle des
+	# appendices, même si les deux ne s'affichent jamais ensemble : un chevauchement qui ne
+	# tient que par une coïncidence de phase se rappelle au premier boss qui aura les deux.
+	_boss_panel = _panel(Vector2(0.5, 0), Vector2(-400, MARGIN), Vector2(800, 86),
 		Color("d93d9c"))
 	_boss_panel.visible = false
 	_boss_name = _label(_boss_panel, "BOSS", _LABEL_FONT, 18, Color("f16bc0"), Vector2(0, 8), 800,
@@ -260,6 +276,30 @@ func _build_boss_panel() -> void:
 	_boss_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_panel.add_child(_boss_fill)
 	_boss_full_width = 772.0
+	# ⚠️ LE TEMPS QU'IL RESTE DANS LE NOYAU, demandé au playtest du 2026-08-27 : « faut un
+	# indicateur visuel, une barre qui se recharge pour voir le temps qu'il nous reste à
+	# l'intérieur ». Sans elle, la plongée se termine sans prévenir — et la phase a DEUX
+	# sorties (quota rempli, ou temps écoulé) dont une seule se voit, sur la jauge du boss.
+	#
+	# Collée SOUS la barre de vie, même largeur, deux fois plus fine : c'est une information
+	# de second rang, elle ne doit pas rivaliser avec la santé du boss. En or pâle, une
+	# couleur qu'aucun autre élément n'emploie — ni le magenta du boss, ni le vert de la
+	# repousse, ni le cyan du tir allié, ni le corail du tir ennemi (DA §6).
+	var dive_bg := ColorRect.new()
+	dive_bg.color = Color(0.09, 0.03, 0.07, 0.7)
+	dive_bg.position = Vector2(12, 74)
+	dive_bg.size = Vector2(776, 6)
+	dive_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dive_bg.visible = false
+	_boss_panel.add_child(dive_bg)
+	_dive_track = dive_bg
+	_dive_fill = ColorRect.new()
+	_dive_fill.color = DIVE_GOLD
+	_dive_fill.position = Vector2(14, 75)
+	_dive_fill.size = Vector2(772, 4)
+	_dive_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dive_fill.visible = false
+	_boss_panel.add_child(_dive_fill)
 	_build_limb_pips()
 
 ## Trois jauges d'appendice nommées, sous la barre du boss.
@@ -483,6 +523,22 @@ func set_boss_health(ratio: float) -> void:
 
 ## Affiche l'avancement en cycles d'un boss qui en a. Une chaîne vide éteint le compteur —
 ## c'est l'état par défaut, tous les autres boss du jeu se battant d'une seule traite.
+## Temps restant dans le noyau, de 1 à 0. Une valeur négative éteint le sablier — c'est
+## l'état hors plongée, et il doit disparaître plutôt que rester plein : une barre pleine et
+## figée se lit comme une jauge en panne.
+func set_dive_time_left(ratio: float) -> void:
+	var showing := ratio >= 0.0
+	if _dive_track != null:
+		_dive_track.visible = showing
+	if _dive_fill == null:
+		return
+	_dive_fill.visible = showing
+	if not showing:
+		return
+	var clamped := clampf(ratio, 0.0, 1.0)
+	_dive_fill.size.x = _boss_full_width * clamped
+	_dive_fill.color = DIVE_RED if clamped <= DIVE_URGENT else DIVE_GOLD
+
 func set_boss_cycle(text: String) -> void:
 	_boss_cycle.text = text
 	_boss_cycle.visible = not text.is_empty()

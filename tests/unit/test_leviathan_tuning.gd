@@ -86,8 +86,18 @@ func test_escapable_but_unplayable_is_also_refused() -> void:
 
 func test_the_whole_fight_lands_on_its_promise() -> void:
 	var t := _tuning()
-	assert_almost_eq(t.total_duration(), 40.0, 2.0,
-		"~40 s de combat net ; obtenu %.1f s" % t.total_duration())
+	# ⚠️ CE TEST MESURAIT LE PIRE CAS, ET SA PRECISION ETAIT UN ACCIDENT. Il comparait
+	# `total_duration()` — un joueur qui consomme chaque plongee jusqu'au bout — a 40 s a
+	# deux secondes pres, et ca tombait juste par coincidence. Le rythme se juge sur ce qu'un
+	# joueur de REFERENCE vit : il sort des son quota rempli, bien avant le plafond.
+	#
+	# La bande vient de `target_duration` / `duration_tolerance`, que `validate()` applique
+	# deja : une seule source, plus deux chiffres sur le meme fait.
+	assert_almost_eq(t.reference_duration(), t.target_duration, t.duration_tolerance,
+		"combat de reference : %.1f s pour une cible de %.0f +/- %.0f"
+			% [t.reference_duration(), t.target_duration, t.duration_tolerance])
+	assert_true(t.total_duration() < 70.0,
+		"et meme le pire cas reste borne : %.1f s" % t.total_duration())
 
 func test_a_fight_that_drifts_long_is_refused() -> void:
 	# LE GARDE-FOU QUI MANQUAIT. Chaque valeur peut rester sensee pendant que le combat
@@ -231,11 +241,20 @@ func test_a_missile_that_turns_too_fast_is_refused() -> void:
 
 # --- Lectures derivees ----------------------------------------------------
 
-func test_the_dive_is_short_on_purpose() -> void:
-	# « On n'aurait pas enormement de temps pour tirer dessus avant d'etre a nouveau
-	# ejecte » : le sejour dans le noyau est la recompense, pas le combat.
+## ⚠️ CETTE GARDE PLAFONNAIT `dive_time` A 6 s, en citant « on n'aurait pas enormement de
+## temps pour tirer dessus ». Elle confondait le PLAFOND et la DUREE. La plongee s'arrete au
+## premier de DEUX criteres — quota d'un tiers rempli, ou temps ecoule — et l'operateur a
+## demande le 2026-08-27 de rallonger le second. Ca ne rallonge la plongee de personne qui
+## tire correctement : il sort avant.
+##
+## Ce qui doit rester court, c'est la plongee du joueur de REFERENCE. C'est elle qu'on garde.
+func test_the_dive_is_short_for_whoever_shoots_straight() -> void:
 	var t := _tuning()
-	assert_true(t.dive_time <= 6.0, "%.1f s de tir dans le noyau" % t.dive_time)
+	assert_true(t.reference_dive_time() <= 6.0,
+		"%.2f s pour remplir le quota, contre %.1f s de plafond"
+			% [t.reference_dive_time(), t.dive_time])
+	assert_true(t.reference_dive_time() < t.dive_time,
+		"et le plafond laisse une marge a celui qui rate")
 	assert_true(t.dive_duration() > t.dive_time, "entree et ejection comptent aussi")
 
 func test_the_final_boss_still_outlasts_the_mini_boss() -> void:

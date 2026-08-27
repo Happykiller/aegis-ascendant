@@ -87,6 +87,12 @@ signal armour_regen(ratio: float, plates: int)
 ## seulement : c'est un état, pas une mesure, et le niveau s'en sert pour dire au joueur —
 ## sans passer par l'interface — si son tir compte en ce moment.
 signal reactor_shield_changed(open: bool)
+
+## Temps qu'il reste dans le noyau, de 1 à 0. ⚠️ **−1 hors plongée** : le HUD doit ÉTEINDRE
+## le sablier plutôt que le laisser plein, une barre pleine et figée se lisant comme une
+## jauge en panne. Demandé au playtest du 2026-08-27 — la plongée a deux sorties, quota
+## rempli ou temps écoulé, et seule la première se voyait.
+signal dive_time_left(ratio: float)
 ## Un tir du joueur a heurté le blindage FERMÉ. Le niveau en fait une gerbe et un son.
 ##
 ## ⚠️ SANS LUI, LE BLINDAGE MENT. Le verrou est logique (`BulletTarget.enabled`), pas
@@ -1176,6 +1182,8 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 			_orbit_nodes(origin)
 			_rebuild_shapes(origin)
 			_update_reactor_shield(origin)
+			dive_time_left.emit(
+				1.0 - clampf(_dive_elapsed / maxf(tuning.dive_time, 0.001), 0.0, 1.0))
 			_update_sweep(delta, origin)
 			if _dive_elapsed >= tuning.dive_time:
 				_set_dive(Dive.EJECT)
@@ -1207,6 +1215,10 @@ func _set_dive(next: Dive) -> void:
 			_publish_structure()
 			dive_entered.emit(_cycle)
 		Dive.EJECT:
+			# Le sablier s'ÉTEINT, il ne se vide pas jusqu'à zéro : l'éjection peut venir du
+			# quota rempli, et laisser la barre finir sa course dirait au joueur qu'il a été
+			# sorti par le temps alors qu'il a réussi.
+			dive_time_left.emit(-1.0)
 			_flux_target.enabled = false
 			_reactor_open = false
 			if _shield_target != null:
