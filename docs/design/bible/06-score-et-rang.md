@@ -2,86 +2,78 @@
 titre: Score et rang — les objectifs en conflit, et la difficulté qui s'adapte
 type: reference
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-27
 ---
 
 # Score et rang
 
-## Ce que le genre dit
+Un compteur de points n'est pas un système de score. La différence tient en un mot : **le conflit**.
 
-### Un bon système de score fait faire ce qu'on ne ferait pas
+| Loi | Force | Énoncé |
+|---|---|---|
+| `LOI-SCO-01` | **LOI** | Un bon système de score fait faire ce qu'on ne ferait pas |
+| `LOI-SCO-02` | **LOI** | Sans objectifs en conflit, il n'y a pas de décision |
+| `LOI-SCO-03` | RÉFÉRENCE | Le chaînage est dépendant du temps |
+| `LOI-SCO-04` | CONTRAINTE | Linéaire ou exponentiel : choisir, et assumer ce que ça punit |
+| `LOI-SCO-05` | RÉFÉRENCE | Agressif ou défensif : qui attaque qui |
+| `LOI-SCO-06` | CONTRAINTE | Le rang obéit à quatre règles, ou il devient un bug perçu |
 
-> Un bon système « récompense le joueur qui comprend le jeu plus profondément et emploie des
+---
+
+### `LOI-SCO-01` · Un bon système de score fait faire ce qu'on ne ferait pas — **[LOI]**
+
+> Un bon système « récompense le joueur qui comprend le jeu **plus profondément** et emploie des
 > stratégies qu'il n'emploierait pas s'il cherchait *seulement* à finir ».
 
-Sa structure de base : **des objectifs en conflit**. Survivre d'un côté, prendre des risques pour des
-points de l'autre — et des ressources finies qui obligent à choisir. Sans conflit, il n'y a pas de
-décision, donc pas de jeu dans le jeu.
+Un score qui monte tout seul en jouant normalement ne récompense rien : il **mesure**.
 
-### Chaînage
+### `LOI-SCO-02` · Sans objectifs en conflit, il n'y a pas de décision — **[LOI]**
+
+La structure de base : survivre d'un côté, prendre des risques pour des points de l'autre, et des
+ressources finies qui obligent à choisir. **Sans conflit, pas de décision — donc pas de jeu dans le
+jeu.**
+
+C'est la marche la plus courte vers un scoring qui existe : il suffit qu'une chose désirable
+**coûte** quelque chose.
+
+### `LOI-SCO-03` · Le chaînage est dépendant du temps — [RÉFÉRENCE]
 
 Le **chain** est une suite d'ennemis abattus sans interruption, qui fait monter un multiplicateur.
-Il est **dépendant du temps** : au-delà d'un certain intervalle entre deux morts, la chaîne casse.
+Au-delà d'un certain intervalle entre deux morts, la chaîne casse — c'est ce délai, et non le
+multiplicateur, qui dicte la façon de jouer.
 
-### Linéaire ou exponentiel — deux philosophies
+### `LOI-SCO-04` · Linéaire ou exponentiel : choisir, et assumer ce que ça punit — [CONTRAINTE]
 
 | | Linéaire | Exponentiel |
 |---|---|---|
 | Erreur isolée | peu ou pas punie | casse la chaîne, remet à zéro |
-| Ce qu'il reflète | l'adresse **globale** | des pics de risque |
+| Ce qu'il reflète | l'adresse **globale** | des **pics** de risque |
 | Récupération | possible par l'excellence ensuite | non |
 
-### Agressif ou défensif
+### `LOI-SCO-05` · Agressif ou défensif : qui attaque qui — [RÉFÉRENCE]
 
-- **Défensif** — « le jeu vous attaque » : un minuteur force à continuer (école *DoDonPachi*).
+- **Défensif** — « le jeu vous attaque » : un minuteur force à continuer.
 - **Agressif** — « vous attaquez le jeu » : le bonus se gagne activement, sans pression.
 
-### Le rang : la difficulté qui suit le joueur
+### `LOI-SCO-06` · Le rang obéit à quatre règles — [CONTRAINTE]
 
-L'exemple canonique est *Battle Garegga*. Le jeu suit en continu **combien d'objets sont ramassés,
-à quel point le vaisseau est monté en puissance, et même combien de coups sont tirés**, et durcit le
-jeu en conséquence. **Mourir est le principal moyen de faire redescendre la difficulté** — et
-d'autant plus qu'on a peu de vies en réserve.
-
-Quatre leçons de conception, indépendamment du jeu :
+Le **rang** est une difficulté qui suit la performance du joueur, en continu. Quatre règles le
+séparent d'un système qui se lit comme un bug :
 
 1. **Rétroaction continue**, sans paliers visibles — l'évolution doit être imperceptible.
-2. **Plusieurs vecteurs** alimentent un seul paramètre.
+2. **Plusieurs vecteurs** alimentent un seul paramètre (objets ramassés, puissance atteinte, coups
+   tirés…).
 3. **La mort remet du mou** — le système ne peut pas s'emballer.
 4. Le joueur doit pouvoir **agir** dessus, même sans le comprendre.
 
-⚠️ **Prudence sur les chiffres.** La page de référence expose une variable interne **inversée** (un
-« rank » élevé y correspond à une difficulté plus faible) et l'affiche en pourcentage retourné. La
-lecture fonctionnelle — tirer et se renforcer durcit, mourir adoucit — est celle des sources
-secondaires. Ne pas recopier de formule d'ici sans la revérifier à la source.
+⚠️ La quatrième est la plus violée. Une difficulté qui monte sans que rien ne le dise, et sur
+laquelle le joueur ne peut rien, ne se lit pas comme un adversaire : elle se lit comme un défaut.
 
-## Chez nous — état au 2026-08-25
+⚠️ **Prudence sur les chiffres publiés.** La documentation de référence du rang expose une variable
+interne **inversée** (une valeur élevée y correspond à une difficulté plus faible). Ne recopier
+aucune formule sans la revérifier à la source.
 
-| Point | État réel |
-|---|---|
-| Score | ✅ Existe, et rien de plus : `GameState.add_score()`. Chaque ennemi vaut son `score_value` (90 pour la Choir Mine, 140 la Null Maw, 160 la Leech Drone), le mini-boss 5 000, le boss final 20 000, un ramassage 500 |
-| Objectifs en conflit | ❌ **Aucun.** Le score est une conséquence mécanique du fait de jouer : rien ne se gagne en prenant un risque, rien ne se perd en jouant prudemment |
-| Chaînage | ❌ Inexistant |
-| Multiplicateur | ❌ Inexistant |
-| Rang / difficulté dynamique | ❌ Inexistant. La difficulté est **entièrement scriptée** : la timeline d'une `WaveData`, et les cycles du boss |
-| Rang affiché | ✅ Le rapport de mission attribue un rang (un « rang C » est mentionné dans le code du drapeau de démonstration) |
+## Sources
 
-## L'écart, et ce qu'on en fait
-
-C'est **le plus grand écart de toute la bible** : le genre considère le score comme un système de
-jeu à part entière, nous en avons un compteur.
-
-⚠️ **Et ce n'est pas forcément un défaut.** Un système de score profond sert une pratique de
-répétition — le 1CC, le classement, la rejouabilité. Rien dans la spec ne dit qu'Aegis Ascendant vise
-cela, et le P0 du backlog parle d'une **démo irréprochable de 2-3 minutes**, pas d'un jeu à scoring.
-Ajouter un chaînage à un arc qu'on traverse une fois, c'est ajouter de la complexité à personne.
-
-**La question appartient à l'opérateur**, et elle se pose en une phrase : *veut-on que l'arc se
-rejoue pour le score, ou se traverse une fois ?* Les deux réponses sont défendables, et elles
-commandent des chantiers très différents.
-
-Si la réponse est « on rejoue », la marche la plus courte n'est **pas** le rang — c'est le
-**conflit d'objectifs**, qui ne demande aucun système nouveau : il suffit qu'une chose désirable
-coûte quelque chose. Le rang, lui, est un mécanisme puissant mais qui se règle en aveugle et se
-mesure mal ; le projet a déjà appris ce que coûte un calibrage qui devient faux en silence
-(`ADR-0024`, `ADR-0026`).
+- [Boghog's bullet hell shmup 101](https://shmups.wiki/library/Boghog%27s_bullet_hell_shmup_101) — Shmups Wiki : objectifs en conflit, chaînage, linéaire/exponentiel, agressif/défensif.
+- [Battle Garegga / Advanced Rank](https://shmups.wiki/library/Battle_Garegga/Advanced_Rank) — Shmups Wiki : le rang décortiqué, et la variable inversée.

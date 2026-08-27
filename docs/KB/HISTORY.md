@@ -100,3 +100,36 @@ nous » sont **vérifiés fichier par fichier**, jamais supposés.
 **Rien n'a été décidé** : la bible n'est pas un cahier des charges, et les quatre constats
 ci-dessus attendent l'opérateur. Ils sont rappelés en tête de
 [`bible/README`](../design/bible/README.md).
+
+### Puis la bible change de nature : d'un état des lieux à un corpus de lois
+
+Un rapport d'audit externe est remis le même jour ([`docs/design/AUDIT-2026-08-27-bible-supreme.md`](../design/AUDIT-2026-08-27-bible-supreme.md),
+importé et **vérifié affirmation par affirmation** — aucune erreur factuelle). Il recommande une
+« Bible suprême » qui deviendrait le **contrat produit** d'Aegis, au-dessus de la spec et des ADR.
+
+**L'opérateur tranche autrement, et c'est la décision structurante du jour** :
+
+> « la bible doit pouvoir être suivie par n'importe quel jeu de shoot vertical comme le nôtre, c'est
+> un document de référence, une table de lois et règles **universelle** pour faire un bon jeu de
+> shoot vertical » — et « c'est pas un plan d'implémentation ».
+
+D'où une bible **réécrite en corpus de lois** : 88 lois identifiées (`LOI-PAT-03`) et graduées en
+quatre forces — **LOI** (48, respect exact), **CONTRAINTE** (15, fourchette), **INTENTION** (17,
+résultat imposé, moyens libres), **RÉFÉRENCE** (8, jamais une obligation). Le dossier ne contient
+plus **aucune** valeur, aucun nom de fichier, aucun jeu : il se copie tel quel vers un autre projet.
+
+Tout le spécifique Aegis — les anciennes sections « chez nous » et « l'écart » — part dans
+[`docs/design/CONFORMITE-AEGIS.md`](../design/CONFORMITE-AEGIS.md), qui cite les lois par
+identifiant et distingue **écartée** (choix assumé) d'**absente** (dette). Cinq écarts y appellent
+une décision, et trois gestes n'attendent rien.
+
+⚠️ **Trois lois ne viennent d'aucune source publique du genre** : `LOI-EXP-09` (le contrat
+SEE/UNDERSTAND/FEEL/ANTICIPATE/DECIDE, et sa ligne « à ne jamais produire »), `LOI-EXP-12`
+(vérification ≠ validation) et le vocabulaire des quatre forces — ils viennent du rapport d'audit.
+Et `LOI-EXP-08` est une **loi de terrain** : elle est née des cinq mécaniques muettes du 2026-08-26,
+pas d'une lecture.
+
+**Ce qui a été refusé du rapport, et pourquoi** : le renversement de la hiérarchie de vérité (la
+Bible n'est pas le contrat produit d'Aegis, donc `SPEC → ADR → KB` reste en place) ; l'appareil de
+traçabilité `REQ ↔ VAL ↔ preuve` (hors nature d'un document de lois) ; la correction du `README.md`
+— « le README est un document pour les opérateurs, la KB porte déjà ce qu'il faut ».

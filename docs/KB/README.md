@@ -22,7 +22,8 @@ au premier commit ; elle les référence.
 | [`REGLES/`](REGLES/README.md) | Process, workflows, consignes, normes, **lois** — les deux dernières sont contraignantes |
 | [`MOTEUR.md`](MOTEUR.md) | Cartographie de `.claude/` : quel skill, quel sous-agent, quel hook, et **quand s'en servir** |
 | [`HISTORY.md`](HISTORY.md) | Index chronologique des sujets abordés, pour ne pas refaire deux fois le même chemin |
-| [`../design/bible/`](../design/bible/README.md) | **Bible de référence** (13 pages) : ce que le shoot'em up **et** le métier ont établi — piliers, boucle, systèmes, expérience, patterns, level design, lexique — et où nous nous situons dessus. Hors KB — c'est du savoir externe, pas de la mémoire de projet — mais on y aiguille depuis ici |
+| [`../design/bible/`](../design/bible/README.md) | **Bible du shoot vertical** : **88 lois** du genre et du métier, identifiées (`LOI-PAT-03`) et graduées (LOI / CONTRAINTE / INTENTION / RÉFÉRENCE). **Universelle — elle ne parle d'aucun jeu**, un autre projet du genre peut la copier telle quelle |
+| [`../design/CONFORMITE-AEGIS.md`](../design/CONFORMITE-AEGIS.md) | **Où Aegis se situe**, loi par loi : tenue / partielle / écartée / absente / non vérifiée, avec sa preuve. C'est ici que vit tout le spécifique projet, et les cinq écarts qui appellent une décision |
 
 ## KB ou `.claude/resources/` ? La frontière
 

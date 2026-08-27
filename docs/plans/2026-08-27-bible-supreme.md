@@ -3,7 +3,7 @@ titre: Rapport « Bible suprême » — vérification, tri, et ce qu'il faut dé
 date: 2026-08-27
 auteur: session Claude (poste happykiller), sur remise d'un rapport externe par l'opérateur
 perimetre: gouvernance documentaire (SPEC / ADR / KB / bible de design), pas de code
-etat: rapport IMPORTÉ et VÉRIFIÉ ; trois décisions ouvertes, aucune prise
+etat: rapport IMPORTÉ, VÉRIFIÉ et TRIÉ ; les trois décisions sont PRISES (voir §6) et appliquées
 supersede: rien. Complète docs/design/bible/ (étendue le même jour)
 ---
 
@@ -49,11 +49,14 @@ recommandations, pas sur son constat.
 
 Quatre points identiques, établis par deux chemins indépendants :
 
-| Constat | Rapport | [`bible/`](../design/bible/README.md) |
+⚠️ Les renvois ci-dessous pointent le **rapport de conformité** : les pages de la bible sont
+devenues universelles le jour même, et ne parlent plus d'Aegis (voir §6).
+
+| Constat | Rapport | [`CONFORMITE-AEGIS.md`](../design/CONFORMITE-AEGIS.md) |
 |---|---|---|
-| Un pilier de la spec §1.4 décrit encore la forteresse supprimée | « un pilier historique concerne encore la transformation en forteresse supprimée » | [`07`](../design/bible/07-piliers-et-intention.md) — pilier D, orphelin depuis `ADR-0010` |
-| Le score n'est pas un système | « pas de chain, pas de multiplicateur, pas de conflit risque/récompense » | [`06`](../design/bible/06-score-et-rang.md), [`09`](../design/bible/09-regles-et-systemes.md) |
-| Manette à revalider | « le README de release documente surtout le clavier : **à revalider** » | [`10`](../design/bible/10-experience-joueur.md) — **aucun événement joypad** n'est enregistré |
+| Un pilier de la spec §1.4 décrit encore la forteresse supprimée | « un pilier historique concerne encore la transformation en forteresse supprimée » | section `PIL` — pilier D orphelin depuis `ADR-0010`, et `LOI-PIL-06` violée |
+| Le score n'est pas un système | « pas de chain, pas de multiplicateur, pas de conflit risque/récompense » | section `SCO` — six lois sur six absentes |
+| Manette à revalider | « le README de release documente surtout le clavier : **à revalider** » | section `EXP` — **aucun événement joypad** n'est enregistré |
 | Budgets perf « objectif » ≠ « mesuré » | `TARGET / MEASURED / MINIMUM / REFERENCE` | `.claude/resources/howto-mesurer-la-perf.md` |
 
 Un constat trouvé deux fois par deux méthodes différentes n'est plus une opinion.
@@ -81,9 +84,10 @@ Sept idées qui n'existent nulle part dans le projet, classées par rapport coû
 
 - **Il se trompe sur ce qu'est la bible de design.** Il lit sa prudence (« elle n'est pas la source
   de vérité du produit ») comme un défaut — « précisément l'inverse de ce dont la Bible suprême a
-  besoin ». Ce sont **deux objets différents** : `docs/design/bible/` documente **le genre et le
-  métier** avec l'état constaté du code ; une Bible normative dirait **ce que le jeu doit être**.
-  Les deux coexistent sans conflit. Rien à corriger dans la bible actuelle.
+  besoin ». Ce sont **deux objets différents**, et la décision de l'opérateur (§6) tranche dans le
+  sens inverse du rapport : la bible n'est **pas** le contrat produit d'Aegis, c'est un corpus de
+  lois **universelles**. Sa prudence n'était pas un défaut, c'était sa nature — désormais assumée
+  jusqu'au bout, puisque tout le spécifique projet en est sorti.
 
 - **Le volume du P0 est hors de proportion avec l'état du projet.** Quatre items « effort élevé »
   (catalogue `MEC-*` complet, SEE/UNDERSTAND/… sur chaque mécanique critique, matrice
@@ -98,43 +102,68 @@ Sept idées qui n'existent nulle part dans le projet, classées par rapport coû
   visuelle reste régie par la spec §0.2. Le rapport le dit lui-même — la leçon à retenir n'est
   « **pas de faire uniquement un style guide** ».
 
-## 5. Actionnable immédiatement, sans rien décider
-
-Un seul item, et il est net :
+## 5. Le seul item actionnable — et sa réponse
 
 - **`README.md` contredit `ADR-0010`.** Il annonce encore « prise de contrôle de la forteresse » et
-  un arc qui n'existe plus depuis le 2026-07-19. Ce n'est pas une préférence de gouvernance : c'est
-  un document public **faux**, sur le dépôt qui sert de vitrine. `CLAUDE.md` dit déjà que l'ADR
-  prime — le README n'a donc pas d'argument.
+  un arc qui n'existe plus depuis le 2026-07-19.
+
+  ❌ **Non corrigé, sur décision de l'opérateur** (§6) : « le README est un document pour les
+  opérateurs [...] on a sûrement dans la KB ce qu'il faut. » L'arc réel vit dans
+  [`KB/DAF/arc-de-jeu.md`](../KB/DAF/arc-de-jeu.md), et c'est lui qui fait foi.
 
 ⚠️ Les deux documents `docs/architecture/*.md` sont dans le même cas, **mais la question est déjà
 ouverte** dans [`KB/DAF/arc-de-jeu.md`](../KB/DAF/arc-de-jeu.md) avec trois options (corriger /
 archiver daté / laisser). Ne pas trancher ici ce qui attend là-bas.
 
-## 6. Les trois décisions ouvertes
+## 6. Les trois décisions — prises le 2026-08-27
 
-### DEC-1 — La Bible devient-elle l'autorité canonique ?
+### DEC-1 — La Bible n'est pas le contrat produit d'Aegis : c'est un corpus universel
 
-| Option | Ce que ça implique |
-|---|---|
-| **a. Oui, entièrement** | `docs/BIBLE_AEGIS_ASCENDANT.md` créé, `CLAUDE.md` réécrit, SPEC et ADR rétrogradés en historique/rationale, DoD modifiée. Chantier lourd, bénéfice réel : une seule vérité |
-| **b. Non — on garde `SPEC → ADR → KB`** | On ne prend que les outils (§3), pas la gouvernance. Coût quasi nul, la dette documentaire reste possible |
-| **c. Intermédiaire** | La Bible existe et est canonique **sur un périmètre borné** (vision, piliers, boucles, mécaniques critiques), le reste inchangé |
+L'opérateur écarte la proposition centrale du rapport, et en pose une autre :
 
-### DEC-2 — Quel périmètre, si oui ?
+> « La bible doit pouvoir être suivie par **n'importe quel jeu de shoot vertical** comme le nôtre.
+> C'est un document de référence, une table de **lois et règles universelle** pour faire un bon jeu
+> de shoot vertical. » — et « **c'est pas un plan d'implémentation**, c'est une table de vérité,
+> règle, lois, convention à suivre ».
 
-Le catalogue `MEC-*` complet + la matrice `REQ ↔ VAL` représentent l'essentiel de l'effort. Les
-faire **pour les seules mécaniques déjà prises en défaut** (les cinq de la loi des signaux, plus la
-Choir Mine et le Shield Carrier) donnerait 80 % du bénéfice pour une fraction du coût.
+Conséquences appliquées :
 
-### DEC-3 — Adopter le double étiquetage seul ?
+- `docs/design/bible/` est réécrite en **corpus de 88 lois**, identifiées (`LOI-PAT-03`) et graduées.
+  Elle ne contient **aucune** valeur, aucun nom de fichier, aucun jeu : elle se copie telle quelle.
+- **La hiérarchie de vérité ne bouge pas.** `SPEC → ADR → KB` reste en place, `CLAUDE.md` est
+  inchangé. Une loi de genre qui contredit une décision de projet **perd**.
+- Tout le spécifique Aegis part dans
+  [`docs/design/CONFORMITE-AEGIS.md`](../design/CONFORMITE-AEGIS.md).
 
-Les apports **A**, **B** et **C** du §3 sont **découplables** de toute la gouvernance : ce sont des
-conventions d'écriture, applicables dès la prochaine page de KB, sans rien renverser. C'est, de
-tout le rapport, le meilleur rapport coût/rendement.
+### DEC-2 — Périmètre : les lois, pas l'appareil de traçabilité
 
-## Ce que ce plan ne fait pas
+Sans Bible-contrat, les catalogues `MEC-*` et la matrice `REQ ↔ VAL ↔ preuve` **n'ont plus d'objet**
+dans ce document : ils décriraient une implémentation, ce que la Bible refuse d'être par définition.
 
-Il **n'implémente rien** et ne modifie **aucun document existant**. Le rapport est importé, vérifié,
-trié. La suite appartient à l'opérateur, et passera par un ADR — comme toute décision qui engage la
-gouvernance du dépôt.
+Deux de leurs idées sont **conservées, converties en lois** : le contrat joueur
+(`LOI-EXP-09`) et la distinction vérification/validation (`LOI-EXP-12`).
+
+### DEC-3 — Les forces normatives : adoptées, et c'est le meilleur apport du rapport
+
+Quatre forces, sur chaque loi : **LOI** (48), **CONTRAINTE** (15), **INTENTION** (17),
+**RÉFÉRENCE** (8).
+
+⚠️ L'**état de preuve** (`VERIFIED / INFERRED / PROPOSED / OBSOLETE`) n'entre **pas** dans la
+Bible : il porte sur un build, donc sur un projet. Il devient la colonne « état » du rapport de
+conformité — *tenue / partielle / **écartée** / **absente** / non vérifiée* — où la distinction qui
+compte est celle qu'ajoute ce projet : **écartée** (choix assumé) n'est pas **absente** (dette).
+
+### Et le `README.md` ?
+
+**Non corrigé, sur décision de l'opérateur** : « le README est un document pour les opérateurs, je
+ne suis pas convaincu qu'il soit judicieux d'aborder le contenu, on a sûrement dans la KB ce qu'il
+faut. » La KB porte l'arc réel ([`KB/DAF/arc-de-jeu.md`](../KB/DAF/arc-de-jeu.md)), et c'est elle
+qui fait foi.
+
+## Ce qui reste ouvert
+
+Les cinq écarts de [`CONFORMITE-AEGIS.md`](../design/CONFORMITE-AEGIS.md) — pilier D orphelin,
+score à trancher, Overdrive/secondaire/focus, manette, checkpoints de la spec §5.3 — et les trois
+gestes gratuits qui n'attendent aucune décision.
+
+Rien de tout cela n'est engagé par ce plan.

@@ -1,5 +1,5 @@
 ---
-titre: Expérience joueur — sensation, flow, apprentissage, accessibilité
+titre: Expérience joueur — sensation, flow, apprentissage, signaux, accessibilité
 type: reference
 statut: actif
 maj: 2026-08-27
@@ -7,159 +7,147 @@ maj: 2026-08-27
 
 # Expérience joueur
 
-Ce que le joueur **ressent**, par opposition à ce que le jeu **contient**. Quatre sujets qui n'ont
-rien à voir entre eux sauf leur destinataire : la sensation de pilotage, la courbe de flow, la
-manière dont on apprend sans qu'on nous explique, et ce qui laisse quelqu'un dehors.
+Ce que le joueur **ressent**, par opposition à ce que le jeu **contient**. C'est le domaine le plus
+large du corpus, et le seul dont les manquements ne se voient jamais dans un test automatisé.
 
-## Ce que le métier dit
+| Loi | Force | Énoncé |
+|---|---|---|
+| `LOI-EXP-01` | **LOI** | Trois choses doivent s'aligner : réponse, retour lisible, finition |
+| `LOI-EXP-02` | **LOI** | On ne « juice » pas un jeu qui répond mal |
+| `LOI-EXP-03` | CONTRAINTE | Le *hit stop* fait atterrir la conséquence — 60 à 80 ms |
+| `LOI-EXP-04` | INTENTION | Le jeu accepte l'intention du joueur, pas la précision de son doigt |
+| `LOI-EXP-05` | **LOI** | Ni ennui, ni angoisse |
+| `LOI-EXP-06` | **LOI** | Après un gain de puissance vient une baisse de difficulté |
+| `LOI-EXP-07` | INTENTION | On apprend en jouant : de l'espace, une erreur peu coûteuse, puis l'évaluation |
+| `LOI-EXP-08` | **LOI** | Un effet invisible se lit comme un défaut ; un signal mal lu est pire qu'un signal absent |
+| `LOI-EXP-09` | **LOI** | Une mécanique n'est pas spécifiée tant que l'expérience qu'elle produit ne l'est pas |
+| `LOI-EXP-10` | **LOI** | Aucune information essentielle n'est portée par une couleur seule |
+| `LOI-EXP-11` | CONTRAINTE | Le socle d'accessibilité est un plancher, pas une option |
+| `LOI-EXP-12` | **LOI** | Un système qui fonctionne n'est pas validé : il l'est quand l'expérience est là |
 
-### Le *game feel* tient en trois choses qui doivent s'aligner
+---
+
+### `LOI-EXP-01` · Trois choses doivent s'aligner — **[LOI]**
 
 > Un jeu est agréable quand trois choses s'alignent : **les commandes répondent à l'instant** où
 > l'on appuie, **chaque action produit un retour que le joueur peut lire**, et une **couche de
 > finition** transforme chaque interaction en quelque chose de satisfaisant.
 
-Les deux premières forment le *game feel* ; la troisième est la *juice*. Distinction utile :
+Les deux premières forment le *game feel* ; la troisième est la *juice* —
+« l'esthétique **non fonctionnelle** : elle **ne change pas les règles**, elle change
+**l'expérience** ».
 
-> La *juice* est l'esthétique **non fonctionnelle** : elle **ne change pas les règles** du jeu, elle
-> change **l'expérience** du jeu.
+### `LOI-EXP-02` · On ne « juice » pas un jeu qui répond mal — **[LOI]**
 
-⚠️ D'où une règle de priorité que le genre applique sans la dire : on ne « juice » pas un jeu dont
-les commandes répondent mal. La finition amplifie la sensation existante, y compris quand elle est
-mauvaise.
+La finition **amplifie** la sensation existante, y compris quand elle est mauvaise. L'ordre de
+travail n'est pas négociable : réponse, puis lisibilité du retour, puis finition.
 
-### Les techniques nommées
+### `LOI-EXP-03` · Le *hit stop* fait atterrir la conséquence — [CONTRAINTE]
 
-| Technique | Ce qu'elle fait | Repère chiffré |
+| Technique | Effet | Repère |
 |---|---|---|
-| **Hit stop** | fige tout, brièvement, à l'impact — « fait atterrir la conséquence » | **60 à 80 ms** sur une frappe décisive |
-| **Screen shake** | traduit la violence sans l'infliger | *The Art of Screenshake* recense une **trentaine** de trucs cumulés |
-| **Squash & stretch, anticipation, follow-through** | emprunts directs aux douze principes de l'animation Disney | — |
-| **Input buffering** | mémorise une commande envoyée trop tôt | quelques images |
-| **Coyote time** | tolère une commande envoyée trop tard | **5 à 10 images** |
+| **Hit stop** | fige tout, brièvement, à l'impact | **60 à 80 ms** sur une frappe décisive |
+| **Screen shake** | traduit la violence sans l'infliger | une trentaine de trucs cumulables |
+| **Squash & stretch, anticipation, follow-through** | emprunts aux douze principes de l'animation | — |
 
-Les deux dernières partagent une même idée, et c'est la plus transposable : **le jeu accepte
-l'intention du joueur plutôt que la précision de son doigt**.
+### `LOI-EXP-04` · Le jeu accepte l'intention, pas la précision du doigt — [INTENTION]
 
-### Le flow : ni ennui, ni angoisse
+L'**input buffering** mémorise une commande envoyée trop tôt ; le **coyote time** tolère une
+commande envoyée trop tard (5 à 10 images). Les deux disent la même chose, et c'est l'idée la plus
+transposable du *game feel* : **on interprète ce que le joueur voulait faire**.
 
-Le canal de flow oppose deux échecs symétriques : « les défis montent **trop lentement** par rapport
-aux compétences » → **ennui** ; « les défis montent **plus vite** que la compétence ne s'acquiert »
-→ **angoisse**. Les deux mènent au même mot, « le pire qu'un concepteur puisse entendre » :
+### `LOI-EXP-05` · Ni ennui, ni angoisse — **[LOI]**
+
+Le canal de flow oppose deux échecs symétriques : les défis montent **trop lentement** par rapport
+aux compétences → **ennui** ; ils montent **plus vite** que la compétence ne s'acquiert →
+**angoisse**. Les deux mènent au même mot, « le pire qu'un concepteur puisse entendre » :
 frustration.
 
-### La dent de scie, et l'ordre contre-intuitif
+### `LOI-EXP-06` · Après un gain de puissance vient une baisse de difficulté — **[LOI]**
 
-La difficulté ne doit pas monter en ligne droite mais **osciller**. La règle est plus précise qu'on
-ne croit :
+La difficulté oscille en **dent de scie**, et l'ordre est contre-intuitif :
 
-> Ne jamais donner une nouvelle capacité au joueur sans la lui enseigner, ni sans le laisser s'y
-> habituer. On lui donne une capacité ou une arme, **puis on baisse volontairement la difficulté**.
-> Une fois qu'on est sûr qu'il est à l'aise, on remonte — pour redescendre plus tard.
+> Ne jamais donner une nouvelle capacité sans l'enseigner, ni sans laisser s'y habituer. On donne
+> une capacité, **puis on baisse volontairement la difficulté**. Une fois le joueur à l'aise, on
+> remonte — pour redescendre plus tard.
 
-Autrement dit : **après un gain de puissance vient une phase de fantasme de puissance**, pas un pic.
-Et l'oscillation est **fractale** — elle existe à l'intérieur d'une séquence comme entre deux zones.
+Autrement dit : le gain de puissance ouvre une **phase de fantasme de puissance**, pas un pic. Et
+l'oscillation est **fractale** — à l'intérieur d'une séquence comme entre deux sections.
 
-### On apprend en jouant, pas en lisant
+### `LOI-EXP-07` · On apprend en jouant — [INTENTION]
 
-Le cas d'école reste le premier niveau de *Super Mario Bros.* : quinze écrans qui enseignent tout
-sans une ligne de texte. Trois principes en sortent :
+Trois principes, tirés des premières minutes de jeux qui n'expliquent rien :
 
 1. **Commencer par de l'espace** — de la place pour apprendre à se déplacer avant toute complexité.
-2. **Un environnement d'apprentissage sûr** — l'erreur doit être **peu coûteuse** au premier essai.
-3. **Progresser ensuite** — n'introduire une nouveauté qu'une fois la précédente acquise.
+2. **Un environnement d'apprentissage sûr** — la première erreur doit être **peu coûteuse**.
+3. **Évaluer juste après** — la situation d'apprentissage sûre est suivie de sa jumelle, celle-là
+   réelle.
 
-Le détail le plus cité : le premier trou a **un fond**, on peut s'y tromper sans mourir — et il est
-**immédiatement suivi** d'un trou presque identique, celui-là mortel. On a appris, puis on est
-évalué, sans jamais avoir été prévenu.
+### `LOI-EXP-08` · Un effet invisible se lit comme un défaut — **[LOI]**
 
-### L'accessibilité de base
+Deux propositions indissociables :
 
-Quatre plaintes reviennent plus que toutes les autres : **remappage**, **taille de texte**,
-**daltonisme**, **présentation des sous-titres**. Les lignes du niveau « basic » qui concernent un
-jeu d'action rapide :
+- **Un effet qui ne se montre pas se lit comme un défaut.** Le joueur n'a pas accès à l'état interne
+  du jeu : ce qui n'est pas signalé n'existe pas, et ce qui n'existe pas mais se ressent est un bug.
+- **Un signal mal compris est pire qu'un signal absent**, parce qu'il enseigne une **règle fausse**
+  — et le joueur jouera cette règle fausse jusqu'à ce qu'elle le tue.
 
-- « Permettre le **remappage / la reconfiguration** des commandes » et « ajuster la **sensibilité** ».
-- « S'assurer qu'**aucune information essentielle n'est portée par une couleur seule** ».
-- Taille de police lisible par défaut, **fort contraste** texte/fond.
-- « Éviter les images clignotantes et les motifs répétitifs » (photosensibilité).
-- Offrir un **choix large de difficulté**.
+### `LOI-EXP-09` · Une mécanique n'est pas spécifiée tant que l'expérience ne l'est pas — **[LOI]**
 
-## Chez nous — état au 2026-08-27
+Toute mécanique porte **deux contrats**. Le contrat système
+(`objectif / entrées / sorties / états / transitions / valeurs / interactions / exceptions`) ne
+suffit jamais. Il lui faut son contrat joueur :
 
-### Sensation : la réponse est acquise, la finition l'est presque
-
-| Point | État réel |
+| Dimension | Ce qu'il faut écrire |
 |---|---|
-| Réponse aux commandes | ✅ `accel_time = 0,18 s`, sous les 0,25 s exigés (spec §7.3), et **`validate()` le fait échouer** au-delà — la sensation est protégée par un test, pas par une intention |
-| Tir | ✅ automatique et continu, `fire_interval = 0,12 s` : il n'y a pas de latence de tir puisqu'il n'y a pas d'acte de tir |
-| Inclinaison visuelle | ✅ `max_bank_deg = 35` sur `VisualRoot` — **n'affecte jamais la hitbox**, et c'est écrit deux fois dans le code |
-| Screen shake | ✅ centralisé, à **trauma** (`CameraDirector.add_trauma()`, intensité en trauma²) |
-| Retour d'impact | ✅ gerbe teintée par camp, flash de coque, catégories d'explosion, texte flottant au ramassage, cue audio par type de bonus |
-| **Hit stop** | ❌ **absent** — aucune occurrence de `time_scale` dans `scripts/` |
-| Input buffering / tolérance | ❌ sans objet : aucune commande n'a de fenêtre (pas de saut, pas de dash, pas de bombe) |
+| **SEE** | ce que le joueur doit **percevoir** |
+| **UNDERSTAND** | la règle qu'il doit en **déduire** |
+| **FEEL** | ce qu'il doit **ressentir** |
+| **ANTICIPATE** | ce qu'il doit pouvoir **prévoir** |
+| **DECIDE** | la **décision** que la mécanique doit provoquer |
+| **À ne jamais produire** | les lectures fausses à exclure explicitement |
 
-### Flow : la dent de scie existe, mais l'ordre est inversé au moment clé
+⚠️ **La dernière ligne est celle qui rapporte le plus.** Écrire « le joueur ne doit surtout pas
+comprendre *je suis ralenti* » attrape, avant l'implémentation, la classe de défaut que les autres
+lignes laissent passer.
 
-L'arc alterne bien tension et repos — vagues, mini-boss, traversée, boss, appontage. Mais la règle
-« nouvelle puissance **puis** baisse de difficulté » n'est **pas** appliquée : la montée en
-puissance est **continue** (un Power Core tous les 12 ennemis, voir
-[`08-boucle-de-jeu.md`](08-boucle-de-jeu.md)) et ne provoque aucun palier de respiration. Le joueur
-ne vit jamais le moment « je suis devenu fort, et ça se voit ».
+### `LOI-EXP-10` · Aucune information essentielle n'est portée par une couleur seule — **[LOI]**
 
-### Apprentissage : il n'y a pas d'ouverture
+Prolonge [`LOI-LIS-01`](01-lisibilite.md) hors du champ visuel : tout signal critique doit être
+**redondant** sur au moins deux canaux — forme, mouvement, son, position, texte. Ce n'est pas
+seulement une règle d'accessibilité : c'est ce qui sauve la lecture quand l'écran est saturé.
 
-**Les premiers ennemis apparaissent à `time_offset = 0.3`** — trois dixièmes de seconde après le
-début de la partie (`resources/encounters/wave_graybox_01.tres`), en deux nuées de quatre.
+### `LOI-EXP-11` · Le socle d'accessibilité est un plancher — [CONTRAINTE]
 
-La spec §5.2 demande pourtant, en premier point de la courbe d'intensité, une **« prise en main
-calme »**. Elle n'existe pas. Il n'y a ni tutoriel, ni écran de commandes, ni espace vide initial :
-le joueur découvre qu'il se déplace en se faisant tirer dessus.
+Quatre manques reviennent plus que tous les autres : **remappage**, **taille de texte**,
+**daltonisme**, **sous-titres**. Le plancher, pour un jeu d'action rapide :
 
-### Accessibilité : le plus gros écart de la page
+- **remappage** des commandes et **sensibilité** ajustable ;
+- aucune information essentielle par la couleur seule ;
+- police lisible par défaut, **fort contraste** texte/fond ;
+- pas d'images clignotantes ni de motifs répétitifs (photosensibilité) ;
+- **secousse d'écran réductible ou désactivable** ;
+- un **choix de difficulté**.
 
-| Ligne « basic » | État réel |
-|---|---|
-| Remappage | ❌ **absent.** `InputBootstrap` déclare les actions en dur ; son propre commentaire dit que l'UI de remappage « viendra plus tard » |
-| Manette | ❌ **absente.** Seul `_add_key_action()` existe — **aucun événement joypad n'est enregistré**, alors que la spec §7.2 décrit une disposition Xbox complète |
-| Secousse réduite/désactivable | ⚠️ **codée mais injoignable** : `CameraDirector.shake_multiplier` documente « 0 désactive entièrement » (spec §16.3) — et le menu d'options n'expose que **4 volumes + la pixelisation** |
-| Information par la couleur seule | ✅ **tenu, et surveillé** : un cue audio par type de bonus, « parce qu'un bonus doit être identifiable sans le regarder » (`graybox_root.gd:253`), et la charte créative l'interdit explicitement |
-| Choix de difficulté | ❌ un seul réglage de difficulté, non exposé |
-| Clignotement | ⚠️ l'invulnérabilité fait clignoter la coque à **~18 Hz** (`_update_invuln_blink`) — sur le vaisseau seul, pas en plein écran, mais c'est la zone que le joueur fixe |
+### `LOI-EXP-12` · Un système qui fonctionne n'est pas validé — **[LOI]**
 
-## L'écart, et ce qu'on en fait
+Deux disciplines distinctes, et confondre les deux est la faute la plus coûteuse du domaine :
 
-**Le geste le moins cher du projet, tous chantiers confondus** : exposer `shake_multiplier` dans le
-menu d'options. Le système existe, le multiplicateur existe, la spec l'exige (§7.3 : « secousse
-réduite ou désactivable »), les référentiels d'accessibilité le classent en niveau de base — il
-manque **une ligne d'UI** à côté de la case « pixelisation », qui est déjà branchée sur le même
-chemin de réglages persistants.
+| | **Vérification** | **Validation** |
+|---|---|---|
+| Question | « le système fait-il ce qui est spécifié ? » | « le joueur vit-il ce qui est visé ? » |
+| Exemple | « la mine attend-elle réellement 1 s ? » | « le joueur comprend-il qu'il a un sursis ? » |
+| Méthodes | test, analyse, inspection, démonstration | **playtest**, observation |
 
-**Tenu, et à ne pas dégrader.** La réponse aux commandes est bonne **et testée** ; la règle « jamais
-la couleur seule » est vivante dans le code. Ce sont deux acquis que le genre considère comme
-difficiles.
-
-**Piste ouverte, non décidée — l'ouverture calme.** Trois secondes sans ennemi au début de la
-partie coûteraient un `time_offset` et donneraient au joueur ce que la spec lui promet. ⚠️ Mais la
-démo vise « 2-3 minutes irréprochables » (backlog P0) : trois secondes vides au démarrage sont
-aussi trois secondes où un spectateur ne voit rien. C'est un arbitrage d'opérateur, pas une
-évidence.
-
-**Piste ouverte — le hit stop.** 60 à 80 ms de gel sur la destruction d'une plaque du boss ou sur
-le coup fatal au mini-boss est la technique la plus rentable du game feel. ⚠️ À instruire avant
-d'écrire : sous Godot, agir sur `Engine.time_scale` fige **aussi** les VFX, la caméra et l'audio
-positionnel, et le projet a un budget GPU par image qu'un gel modifie de manière trompeuse
-(cf. `.claude/resources/INDEX.md` sur la mesure de perf).
-
-> **À COMPLÉTER — décision de l'opérateur.** Le support manette est décrit par la spec §7.2 et
-> n'existe pas. Pour un shooter montré à un professionnel (spec §1.3), c'est probablement le
-> manque le plus visible de cette page. Est-ce **à écrire**, ou **hors périmètre de la démo** ?
+Un test unitaire prouve parfaitement la première colonne et est **totalement incapable** de prouver
+la seconde. Une porte de qualité verte n'a jamais démontré qu'un jeu était lisible.
 
 ## Sources
 
-- [How to Make Your Game Feel Good: A Guide to Game Feel and Juice](https://egmatic.com/blog/how-to-make-your-game-feel-good) — les trois choses qui s'alignent, hit stop 60–80 ms, coyote time, input buffering.
-- [The Art of Screenshake](https://www.youtube.com/watch?v=AJdEqssNZ-U) — Jan Willem Nijman (Vlambeer), INDIGO Classes 2013 : la trentaine de trucs cumulés. ⚠️ Conférence vidéo, non transcrite ici.
-- [Game Design Theory Applied: The Flow Channel](https://www.gamedeveloper.com/design/game-design-theory-applied-the-flow-channel) — ennui/angoisse, l'oscillation, le caractère fractal.
-- [Video Game Level Design and Difficulty](https://stepico.com/blog/video-game-level-design-and-difficulty-how-to-challenge-players-without-losing-them/) — la formulation « tense and release » et l'ordre capacité → baisse de difficulté.
-- [Why Super Mario Bros is still a fantastic lesson in game design](https://www.creativebloq.com/3d/video-game-design/why-super-mario-bros-is-still-a-fantastic-lesson-in-game-design) — l'onboarding sans tutoriel, le Goomba préféré au Koopa, le trou sûr avant le trou mortel.
-- [Game Accessibility Guidelines — Basic](https://gameaccessibilityguidelines.com/basic/) — remappage, sensibilité, jamais la couleur seule, contraste, clignotement, choix de difficulté.
+- [How to Make Your Game Feel Good](https://egmatic.com/blog/how-to-make-your-game-feel-good) — les trois choses qui s'alignent, hit stop 60–80 ms, coyote time, input buffering.
+- [The Art of Screenshake](https://www.youtube.com/watch?v=AJdEqssNZ-U) — Jan Willem Nijman (Vlambeer), INDIGO Classes 2013. ⚠️ Conférence vidéo, non transcrite.
+- [Game Design Theory Applied: The Flow Channel](https://www.gamedeveloper.com/design/game-design-theory-applied-the-flow-channel) — ennui/angoisse, l'oscillation, son caractère fractal.
+- [Video Game Level Design and Difficulty](https://stepico.com/blog/video-game-level-design-and-difficulty-how-to-challenge-players-without-losing-them/) — « tense and release », l'ordre capacité → baisse de difficulté.
+- [Why Super Mario Bros is still a fantastic lesson in game design](https://www.creativebloq.com/3d/video-game-design/why-super-mario-bros-is-still-a-fantastic-lesson-in-game-design) — l'apprentissage sans tutoriel, l'erreur peu coûteuse suivie de sa jumelle réelle.
+- [Game Accessibility Guidelines — Basic](https://gameaccessibilityguidelines.com/basic/) — le plancher : remappage, sensibilité, couleur, contraste, clignotement, difficulté.
+- Vérification / validation : distinction empruntée aux pratiques d'ingénierie (V&V), et la méthode `PLAYTEST` comme extension propre au jeu.

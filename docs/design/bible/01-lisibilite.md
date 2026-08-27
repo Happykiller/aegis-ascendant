@@ -2,89 +2,91 @@
 titre: Lisibilité — le contrat de lecture
 type: reference
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-27
 ---
 
 # Lisibilité
 
-> « Lire les projectiles et faire des esquives précises est le cœur du défi d'un shmup. »
-> — [Wikipedia, *Shoot 'em up*](https://en.wikipedia.org/wiki/Shoot_%27em_up)
-
-C'est la page dont tout le reste dépend. Un pattern injuste est presque toujours un pattern
+C'est le domaine dont tous les autres dépendent. Un pattern injuste est presque toujours un pattern
 **illisible**, pas un pattern trop dense.
 
-## Ce que le genre dit
+| Loi | Force | Énoncé |
+|---|---|---|
+| `LOI-LIS-01` | **LOI** | Une couleur qui signifie quelque chose ne sert à rien d'autre |
+| `LOI-LIS-02` | **LOI** | Grouper, ou ne pas être lu |
+| `LOI-LIS-03` | CONTRAINTE | Une trajectoire inhabituelle exige un renfort visuel |
+| `LOI-LIS-04` | **LOI** | Toute attaque qui tue s'annonce avant de partir |
+| `LOI-LIS-05` | **LOI** | La densité n'est pas la difficulté |
+| `LOI-LIS-06` | INTENTION | L'espace négatif est une donnée de conception |
+| `LOI-LIS-07` | CONTRAINTE | La vitesse d'un projectile arbitre entre zone à surveiller et esquive fine |
+| `LOI-LIS-08` | **LOI** | Rien de mortel ne passe derrière quoi que ce soit |
 
-### Les couleurs se réservent
+---
 
-Le genre a convergé sur les **rouges, roses et violets** pour les balles ennemies — précisément
-parce qu'ils **n'entrent pas en collision** avec le jaune et l'orange des explosions et des items.
-Un projectile de la couleur d'une explosion disparaît dans la première explosion venue.
+### `LOI-LIS-01` · Une couleur qui signifie quelque chose ne sert à rien d'autre — **[LOI]**
 
-Corollaire : une couleur qui **signifie** quelque chose ne doit servir à rien d'autre. Ni au décor,
-ni aux effets.
+Le genre a convergé sur les **rouges, roses et violets** pour les projectiles ennemis, précisément
+parce qu'ils **n'entrent pas en collision** avec le jaune et l'orange des explosions et des bonus.
 
-### Le chunking : grouper, ou ne pas être lu
+Un projectile de la couleur d'une explosion **disparaît dans la première explosion venue**. La
+réserve vaut donc pour tout : ni le décor, ni les effets, ni l'interface ne réemploient une couleur
+qui porte un sens de gameplay.
+
+### `LOI-LIS-02` · Grouper, ou ne pas être lu — **[LOI]**
 
 > « Les balles isolées sont difficiles à lire et donnent souvent un sentiment d'injustice. »
 
-Grouper les balles en **lignes et formes claires** permet au joueur de prédire la trajectoire du
-groupe au lieu de suivre chaque projectile. Une trajectoire inhabituelle demande un **renfort
-visuel** : traînée, allongement, orientation du sprite selon l'angle.
+Grouper les projectiles en **lignes et formes claires** permet de prédire la trajectoire du
+**groupe** au lieu de suivre chaque balle. Le joueur ne lit pas des objets : il lit des formes.
 
-### La télégraphie rend une attaque juste
+### `LOI-LIS-03` · Une trajectoire inhabituelle exige un renfort visuel — [CONTRAINTE]
 
-> « Un laser a l'air d'une attaque puissante ; le télégraphier avant qu'il parte le rend juste. Même
-> une simple ligne d'avertissement fine rend le jeu bien plus jouable. »
+Traînée, allongement, orientation du sprite selon l'angle : une balle qui ne va pas là où sa forme
+le laisse croire doit **dire** où elle va. Le renfort est proportionnel à l'écart avec l'attendu.
+
+### `LOI-LIS-04` · Toute attaque qui tue s'annonce avant de partir — **[LOI]**
+
+> « Un laser a l'air d'une attaque puissante ; le télégraphier avant qu'il parte le **rend juste**.
+> Même une simple ligne d'avertissement fine rend le jeu bien plus jouable. »
 
 Ce n'est pas une aide au joueur faible : c'est ce qui transforme une mort en **erreur du joueur**
-plutôt qu'en piège.
+plutôt qu'en piège. La durée d'annonce est un paramètre de projet — quelques centaines de
+millisecondes, croissantes avec la gravité de l'attaque — mais son **existence** n'est pas
+négociable.
 
-### La densité n'est pas la difficulté
+⚠️ Corollaire, coûteux à apprendre autrement : **une annonce annulable enseigne à ignorer les
+annonces**. Si un télégraphe peut être interrompu en reculant, le joueur apprend que les
+avertissements ne valent rien.
 
-Sparen consacre une section entière à ce contresens : **« moins de balles ≠ plus facile »**. Un
-pattern clairsemé peut être atroce, et des milliers de projectiles peuvent être faciles s'ils
-laissent des **couloirs lisibles**.
+### `LOI-LIS-05` · La densité n'est pas la difficulté — **[LOI]**
 
-Deux densités se distinguent :
+**Moins de balles ≠ plus facile.** Un pattern clairsemé peut être atroce ; des milliers de
+projectiles peuvent être faciles s'ils laissent des **couloirs lisibles**.
 
-- **spatiale** — combien de balles dans une zone ;
-- **temporelle** — comment leur apparition est étalée dans le temps.
+Deux densités se distinguent et se règlent séparément :
 
-Et une balle **rapide** réduit la densité perçue mais **élargit la zone à surveiller** ; une balle
-**lente** concentre l'attention et autorise l'esquive fine. Enfin, l'**espace négatif** — l'absence
-de balles — est une donnée de conception à part entière : il naît du **timing**, et c'est lui qui
-guide le joueur.
+- **spatiale** — combien de balles dans une zone donnée ;
+- **temporelle** — comment leur apparition s'étale dans le temps.
 
-### Profondeur d'affichage
+### `LOI-LIS-06` · L'espace négatif est une donnée de conception — [INTENTION]
 
-Les balles ennemies passent **au-dessus** du vaisseau joueur ; les petites balles rapides au-dessus
-des grosses lentes. Une balle cachée derrière quoi que ce soit est une balle qui tue injustement.
+L'absence de balles n'est pas ce qui reste : c'est ce qui **guide**. Elle naît du **timing** avant
+de naître de la géométrie, et elle se conçoit aussi délibérément que les projectiles eux-mêmes.
 
-## Chez nous — état au 2026-08-25
+### `LOI-LIS-07` · La vitesse d'un projectile arbitre entre zone à surveiller et esquive fine — [CONTRAINTE]
 
-| Point | État réel |
-|---|---|
-| Couleurs réservées | ✅ **Tenu, et écrit dans le shader.** `shaders/space_background.gdshader` porte la règle : le fond « ne touche jamais au cyan réservé au tir allié ni au corail réservé au tir ennemi ». Elle a été appliquée le jour même sur le bolide d'impact du survol de lune (`ADR-0027`) |
-| Zone calme centrale | ✅ Le fond s'assombrit au tiers central (`center_calm`) — « l'art ne doit jamais disputer l'attention au vaisseau et aux balles » |
-| Télégraphie | ✅ **Présente et nommée.** `EnemyReaction` donne aux unités réactives un `alert_radius` où elles s'éveillent **et le montrent**, puis un `windup_time` avant de frapper. Le Leviathan télégraphie ses bascules par bannière, secousse et son |
-| Chunking | ⚠️ **Implicite.** Les salves (`Fire.FAN`, `RADIAL`, `AIMED`) produisent des groupes, mais rien ne garantit qu'un groupe se **lise** comme un groupe — aucune orientation de sprite selon l'angle, aucune traînée sur les trajectoires inhabituelles |
-| Densité | ⚠️ **Jamais mesurée.** Aucune notion de densité dans le code ni dans les Resources. La vague du champ d'astéroïdes borne sa population *instantanée* par échelonnement, mais c'est un raisonnement de rythme, pas de lisibilité |
-| Profondeur d'affichage | ⚠️ Non vérifié. Le jeu est en 3D avec un plan logique ; l'ordre de rendu dépend de la géométrie, pas d'une règle explicite |
+Une balle **rapide** réduit la densité perçue mais **élargit la zone à surveiller**. Une balle
+**lente** concentre l'attention et autorise l'esquive fine. Il n'y a pas de bon réglage dans
+l'absolu : il y a un choix, et il doit être conscient.
 
-## L'écart, et ce qu'on en fait
+### `LOI-LIS-08` · Rien de mortel ne passe derrière quoi que ce soit — **[LOI]**
 
-**Ce qui est tenu l'est solidement** : la réserve de couleurs est la plus forte des trois, parce
-qu'elle est écrite là où elle s'applique et qu'elle a déjà arbitré une décision.
+Les projectiles ennemis se dessinent **au-dessus** du vaisseau joueur ; les petites balles rapides
+au-dessus des grosses lentes. **Une balle cachée derrière quoi que ce soit est une balle qui tue
+injustement.**
 
-**Deux écarts méritent d'être regardés**, sans rien engager :
+## Sources
 
-1. **Le chunking n'a pas de support visuel.** Une salve radiale de 14 projectiles (Choir Mine) est
-   exactement le cas où le genre demande un renfort — orientation selon l'angle, ou traînée. À
-   juger en jouant : si les salves se lisent déjà, il n'y a rien à faire.
-2. **La densité n'est pas un outil chez nous.** Le genre en fait un paramètre de conception ; nous
-   composons les vagues à l'intuition. La première chose utile ne serait pas un réglage mais une
-   **mesure** : combien de projectiles hostiles simultanés, et sur quelle fraction de l'écran.
-
-⚠️ **Aucune de ces deux pistes ne se tranche au journal.** Ce sont des questions de perception, et
-`ADR-0019` a montré ce que coûte de croire une mesure automatique sur une question de ressenti.
+- [Boghog's bullet hell shmup 101](https://shmups.wiki/library/Boghog%27s_bullet_hell_shmup_101) — Shmups Wiki : réserve des couleurs, chunking, télégraphie, profondeur d'affichage.
+- [Sparen's Danmaku Design Studio — A4, densité](https://sparen.github.io/ph3tutorials/ddsga4.html) — densité spatiale/temporelle, espace négatif, « moins de balles ≠ plus facile ».
+- [Shoot 'em up](https://en.wikipedia.org/wiki/Shoot_%27em_up) — Wikipedia : lire les projectiles est le cœur du défi.

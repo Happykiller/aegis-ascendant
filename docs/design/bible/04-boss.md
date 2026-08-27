@@ -2,74 +2,61 @@
 titre: Boss — phases, télégraphie, ce qui sépare un pattern d'un tirage au sort
 type: reference
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-27
 ---
 
 # Boss
 
-## Ce que le genre dit
+Un boss est le seul moment où le jeu demande au joueur d'**apprendre un adversaire** plutôt que de
+lire une situation.
 
-### Un boss n'est pas un gros ennemi
+| Loi | Force | Énoncé |
+|---|---|---|
+| `LOI-BOS-01` | **LOI** | Un boss n'est pas un gros ennemi |
+| `LOI-BOS-02` | **LOI** | Chaque phase doit être distincte |
+| `LOI-BOS-03` | INTENTION | La barre de vie annonce où le pattern courant s'arrêtera |
+| `LOI-BOS-04` | **LOI** | Des patterns, pas du chaos |
+| `LOI-BOS-05` | **LOI** | Chaque attaque a un signal reconnaissable |
+| `LOI-BOS-06` | INTENTION | Le boss appartient à son niveau |
 
-> Les boss « présentent un défi d'une autre nature : tuer un gros ennemi **pièce par pièce**, ou
+---
+
+### `LOI-BOS-01` · Un boss n'est pas un gros ennemi — **[LOI]**
+
+> Les boss « présentent un défi **d'une autre nature** : tuer un gros ennemi **pièce par pièce**, ou
 > survivre à des attaques difficiles à esquiver en entamant une grande barre de vie ».
 
-### Chaque phase doit être distincte
+Un ennemi ordinaire avec dix fois plus de PV n'est pas un boss : c'est une attente.
 
-Plus les attaques varient, mieux c'est — et beaucoup de jeux **découpent visuellement la barre de
-vie** pour annoncer où le pattern courant s'arrêtera et où le suivant commencera. Le joueur sait
-alors ce qu'il gagne en frappant.
+### `LOI-BOS-02` · Chaque phase doit être distincte — **[LOI]**
 
-### Des patterns, pas du chaos
+Plus les attaques varient d'une phase à l'autre, mieux c'est. Une phase qui reprend le vocabulaire
+de la précédente en plus rapide ne fait que **prolonger** le combat.
 
-> « Éviter les boss dont l'issue tient plus à la chance qu'à l'adresse : pensez patterns, pas chaos. »
+### `LOI-BOS-03` · La barre de vie annonce où le pattern courant s'arrêtera — [INTENTION]
 
-Un pattern s'apprend ; un tirage au sort s'endure.
+Beaucoup de jeux **découpent visuellement** la barre pour marquer les seuils de phase. Le joueur
+sait alors **ce qu'il gagne en frappant** — et frapper cesse d'être un acte de foi.
 
-### Télégraphier, c'est enseigner
+### `LOI-BOS-04` · Des patterns, pas du chaos — **[LOI]**
 
-Chaque attaque doit être annoncée par un signal **reconnaissable**. Apprendre un boss, c'est
-apprendre à **lire** ses annonces — sans elles, il n'y a rien à apprendre, seulement à mémoriser.
+> « Éviter les boss dont l'issue tient plus à la chance qu'à l'adresse : pensez **patterns**, pas
+> chaos. »
 
-### Le boss appartient à son niveau
+Un pattern **s'apprend** ; un tirage au sort **s'endure**. La différence ne se voit pas sur une
+capture d'écran — elle se voit à la deuxième tentative.
 
-Des attaques sans rapport avec le thème du niveau font un boss **détaché**. La transition compte
-autant que le combat.
+### `LOI-BOS-05` · Chaque attaque a un signal reconnaissable — **[LOI]**
 
-## Chez nous — état au 2026-08-25
+Apprendre un boss, c'est apprendre à **lire ses annonces**. Sans elles, il n'y a rien à apprendre,
+seulement à mémoriser une chronologie — ce qui est un tout autre plaisir, bien plus fragile.
 
-Deux boss, et ils illustrent bien deux des principes.
+### `LOI-BOS-06` · Le boss appartient à son niveau — [INTENTION]
 
-**Le Choir Harvester** (mini-boss) : carapace blindée tant que l'iris est fermé, avec un retour
-explicite quand les tirs sont renvoyés (`deflected` → étincelle blanche et son de bouclier), parce
-que « tirer dessus sans rien produire à l'écran se lit comme un défaut, pas comme une armure ». Son
-ouverture est **le** moment du combat, et elle est annoncée par explosion, son et bannière
-« NOYAU EXPOSE ».
+Des attaques sans rapport avec le thème du niveau font un boss **détaché**. La transition vers lui
+compte autant que le combat lui-même.
 
-**Le Pale Leviathan** (boss final) : trois cycles, chacun fait de deux phases — armure à démonter
-plaque par plaque, puis plongée dans le noyau.
+## Sources
 
-| Principe | État réel |
-|---|---|
-| Pièce par pièce | ✅ **Exactement ça.** Quatre plaques à abattre, et une de moins à chaque cycle : « le boss se répare de plus en plus mal » |
-| Phases distinctes | ✅ Armure et plongée n'ont rien en commun — l'une se joue dehors, l'autre **dans une arène dédiée** (`ADR-0025`) |
-| La barre annonce | ✅ **Corrigé le 2026-08-25** (`ADR-0023`). Le HUD recevait `structure_ratio()` — la cible courante, qui se remplit à chaque bascule — au lieu de `fight_ratio()` : six remplissages se lisaient comme une boucle. La mesure juste existait et n'allait qu'à la musique |
-| Télégraphie | ✅ Chaque bascule est annoncée : bannière aux mots du design, secousse, son, changement musical |
-| Patterns, pas chaos | ✅ **Garanti par construction** (`ADR-0026`) : aucun `flux_health` ne pouvait donner trois cycles, les dégâts par plongée allant de 600 à plus de 1200 pour le même joueur. On plafonne à un tiers par passage — trois cycles sont désormais **vrais par construction et non par calibrage** |
-| Le boss appartient au niveau | ⚠️ **L'écart connu.** Ni l'armure démontable, ni la plongée, ni le flux n'ont été enseignés par les phases précédentes |
-
-## L'écart, et ce qu'on en fait
-
-Les boss sont la partie **la mieux tenue** du projet au regard du genre — et pour une raison qui
-mérite d'être écrite : chacun de ces points a été **corrigé après un playtest**, pas conçu juste du
-premier coup. `ADR-0019` (combat ramené de 3 min à 67 s), `ADR-0023` (la jauge qui bouclait),
-`ADR-0024` (le flux dimensionné sur la mauvaise cadence), `ADR-0026` (le plafond) : quatre décisions,
-quatre parties jouées.
-
-**La leçon dépasse les boss** : sur ces questions, aucune mesure automatique n'a jamais rien vu. Le
-combat « beaucoup beaucoup trop long » et la jauge « en boucle » ont été dits par l'opérateur en
-jouant, avec zéro test rouge.
-
-**Une seule piste ouverte** : le boss final n'enseigne rien avant de l'exiger. Elle ne se traite pas
-au niveau du boss mais à celui de la progression du niveau — voir
-[Niveau et rythme](03-niveau-et-rythme.md).
+- [Video Game Boss Design For Shmups](https://www.gamedeveloper.com/design/video-game-boss-design-for-shmups) — Game Developer : la nature du défi, les phases, patterns contre chaos, l'appartenance au niveau.
+- [Boghog's bullet hell shmup 101](https://shmups.wiki/library/Boghog%27s_bullet_hell_shmup_101) — Shmups Wiki : le découpage visuel de la barre de vie.

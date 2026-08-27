@@ -2,7 +2,7 @@
 titre: La loi des signaux — un effet qui ne se montre pas n'existe pas
 type: reference
 statut: actif
-maj: 2026-08-26
+maj: 2026-08-27
 ---
 
 # La loi des signaux
@@ -55,7 +55,7 @@ ligne et échoué à dire ce qu'elle signifie — il enseignait l'inverse de la 
 ## La contrepartie : ne pas promettre ce qu'on ne tient pas
 
 La bible pose que **rien ne doit ressembler à un obstacle s'il n'en est pas un**
-([Niveau et rythme](../../design/bible/03-niveau-et-rythme.md)). La règle vaut aussi pour les
+([`LOI-RYT-07`](../../design/bible/03-niveau-et-rythme.md)). La règle vaut aussi pour les
 éléments de gameplay, et pas seulement pour le décor : un grand cercle lumineux dans lequel le
 joueur vole **promet une conséquence**. S'il n'en délivre aucune, il ment — même quand la mécanique
 sous-jacente est correcte.
@@ -70,9 +70,18 @@ Devant toute mécanique qui modifie l'état du jeu, se poser **deux** questions 
 La seconde est celle qu'on oublie. Un signal qui répond « oui » à la première et « non » à la
 seconde est un piège qu'on a soi-même posé.
 
+⚠️ **Depuis le 2026-08-27, il existe une troisième question, et c'est la plus rentable** :
+*quelle lecture fausse ne doit-il surtout PAS faire ?* C'est la ligne « à ne jamais produire » du
+contrat joueur ([`LOI-EXP-09`](../../design/bible/10-experience-joueur.md)) — celle qui aurait
+attrapé le lien du Shield Carrier lu comme « je suis ralenti », **avant** de l'implémenter.
+
 ## Voir aussi
 
+- [`LOI-EXP-08`](../../design/bible/10-experience-joueur.md) — **cette page est devenue une loi du
+  corpus** : « un effet invisible se lit comme un défaut ; un signal mal lu est pire qu'un signal
+  absent ». C'est la seule loi de la bible née du terrain et non d'une lecture
 - [Lisibilité](../../design/bible/01-lisibilite.md) — le contrat de lecture, dont la télégraphie
-- [Boss](../../design/bible/04-boss.md) — « tirer dessus sans rien produire à l'écran se lit comme
-  un défaut, pas comme une armure » : la même loi, découverte sur le Choir Harvester et non
-  généralisée avant cette page
+  ([`LOI-LIS-04`](../../design/bible/01-lisibilite.md))
+- [`CONFORMITE-AEGIS.md`](../../design/CONFORMITE-AEGIS.md), section `BOS` — « tirer dessus sans
+  rien produire à l'écran se lit comme un défaut, pas comme une armure » : la même loi, découverte
+  sur le Choir Harvester et non généralisée avant cette page

@@ -2,82 +2,74 @@
 titre: Niveau et rythme — structure, introduction, respiration
 type: reference
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-27
 ---
 
 # Niveau et rythme
 
-## Ce que le genre dit
+Le **temps** d'un niveau : comment il s'ouvre, ce qu'il enseigne, quand il pèse et quand il lâche.
+Son **espace** est traité par [Level design](12-level-design.md).
 
-### Un niveau se construit comme une vague, en plus grand
+| Loi | Force | Énoncé |
+|---|---|---|
+| `LOI-RYT-01` | INTENTION | Un niveau se construit comme une vague, en plus grand |
+| `LOI-RYT-02` | **LOI** | Un mécanisme à la fois |
+| `LOI-RYT-03` | **LOI** | Le repos n'est pas du vide |
+| `LOI-RYT-04` | INTENTION | Le mid-boss est le climax du mécanisme qu'on vient d'apprendre |
+| `LOI-RYT-05` | INTENTION | Le boss final résume ce qui a été appris |
+| `LOI-RYT-06` | INTENTION | Des repères uniques donnent au joueur une carte mentale |
+| `LOI-RYT-07` | **LOI** | Le décor ne ment jamais |
 
-Game Developer décrit une structure **fractale** : le niveau reprend la forme de ses propres vagues.
-On pose un **thème**, puis :
+---
+
+### `LOI-RYT-01` · Un niveau se construit comme une vague, en plus grand — [INTENTION]
+
+La structure est **fractale** : le niveau reprend la forme de ses propres vagues. On pose un
+**thème**, puis :
 
 1. **Ouvrir** sur une vague intéressante mais **pas difficile** — elle présente le thème et laisse
    pratiquer.
-2. **Développer** — plus d'unités, des variantes, l'unité thématique maintenue pour que le joueur
+2. **Développer** — plus d'unités, des variantes, l'élément thématique maintenu pour que le joueur
    **détecte un motif commun**.
 3. **Intensifier** — mélanger les mécaniques.
-4. **Le mid-boss au milieu**, comme **climax récompensant la maîtrise** du mécanisme introduit.
-5. **Ralentir avant la fin** — « donner un défi intéressant » qui construit l'élan et l'attente, et
-   laisse **souffler** avant l'affrontement final.
-6. **Le boss final résume tout ce qui a été appris.**
+4. **Le mid-boss au milieu.**
+5. **Ralentir avant la fin** — un défi qui construit l'élan et l'attente, et laisse **souffler**.
+6. **Le boss final.**
 
-### Un mécanisme à la fois
+### `LOI-RYT-02` · Un mécanisme à la fois — **[LOI]**
 
-Ne pas introduire plusieurs nouveautés en même temps. Chacune s'installe **avant** d'être combinée
-aux précédentes.
+Ne jamais introduire deux nouveautés simultanément. Chacune s'installe **avant** d'être combinée aux
+précédentes — sinon le joueur qui échoue ne sait pas **laquelle** il n'a pas comprise.
 
-### Garder le joueur occupé — mais varier l'intensité
+### `LOI-RYT-03` · Le repos n'est pas du vide — **[LOI]**
 
-Deux conseils qui se tiennent : « garder le joueur occupé en permanence », et **varier l'intensité**
-— certaines phases doivent peser moins. Le repos n'est pas du vide : c'est ce qui rend le pic
-lisible comme un pic.
+Deux conseils qui se tiennent : garder le joueur occupé **en permanence**, et **varier
+l'intensité**. Certaines phases doivent peser moins.
 
-### Des repères
+Le repos est ce qui rend le pic **lisible comme un pic**. Un niveau à intensité constante n'a pas de
+sommet, quelle que soit sa difficulté.
 
-Boghog parle de **landmark uniqueness** : un mid-boss, un événement de décor, un changement de fond.
-Ce sont eux qui donnent au joueur une carte mentale du niveau.
+### `LOI-RYT-04` · Le mid-boss est le climax du mécanisme qu'on vient d'apprendre — [INTENTION]
 
-### Le décor ne doit pas mentir
+Il ne se place pas au milieu par symétrie : il se place là où le mécanisme introduit par le niveau
+est **acquis mais pas encore maîtrisé**, et il récompense cette maîtrise.
 
-Une règle simple et coûteuse à découvrir tard : **rien dans le décor ne doit ressembler à un
-obstacle** s'il n'en est pas un — ni l'inverse.
+### `LOI-RYT-05` · Le boss final résume ce qui a été appris — [INTENTION]
 
-## Chez nous — état au 2026-08-25
+Il n'apporte pas un vocabulaire neuf : il **convoque** celui du niveau, combiné plus densément.
 
-L'arc du niveau 1, dans le vocabulaire de l'opérateur : **phase 1** (vagues de chasseurs, close par
-le mini-boss) puis **phase 2** (le champ d'astéroïdes), avant le boss final et l'appontage.
+### `LOI-RYT-06` · Des repères uniques donnent au joueur une carte mentale — [INTENTION]
 
-| Étape du genre | Chez nous |
-|---|---|
-| Ouvrir doucement | ✅ `wave_graybox_01.tres` ouvre sur un V de Needle Scout à 0,3 s, quatre unités espacées de 0,7 s |
-| Développer | ✅ La vague introduit ses familles par blocs — arcs, serpents, piqués, spirales, lanciers — sur ~50 s |
-| Intensifier | ✅ Finale en tenaille : raiders des deux côtés, strafe, piqué central |
-| Mid-boss au milieu | ⚠️ **Il est à la FIN de la phase 1**, pas au milieu du niveau. Le Choir Harvester clôt les vagues au lieu de couronner l'apprentissage d'un mécanisme |
-| Ralentir avant la fin | ❌ **Non tenu.** Le boss final arrive après le champ d'astéroïdes, sans respiration |
-| Le boss final résume | ⚠️ Partiellement : le Leviathan a ses propres mécaniques (plaques, plongée, flux) qui **n'ont pas été enseignées** par les phases précédentes |
-| Un mécanisme à la fois | ✅ **Tenu par construction** dans le champ d'astéroïdes : trois colonnes de mines seules d'abord (« on apprend la mine avant d'en subir un rideau »), puis les puits, puis les sangsues, puis tout ensemble |
-| Varier l'intensité | ✅ La phase 2 est conçue comme une **respiration** entre deux boss (`ADR-0027`), et sa musique le dit — Fortress Awakening à 108 BPM au lieu de Fleet Battle à 132 |
-| Repères | ✅ Deux boss, un changement complet de décor à la phase 2, des bannières |
-| Le décor ne ment pas | ⚠️ **Point de vigilance actif.** Au lot 2, un astéroïde décoratif frôlait le chasseur ; il a été écarté du couloir de vol. ⚠️ L'arbitrage « astéroïdes solides, lune décor » va **rouvrir exactement ce problème** : solides et décoratifs partageront le cadre |
+*Landmark uniqueness* : un mid-boss, un événement de décor, un changement de fond. Ce sont eux qui
+répondent à la seule question que le joueur ne peut poser à personne — **« où en suis-je ? »**
 
-## L'écart, et ce qu'on en fait
+### `LOI-RYT-07` · Le décor ne ment jamais — **[LOI]**
 
-**Le plus net est la marche finale.** Le genre est explicite : on **ralentit avant le boss final**.
-Chez nous, le champ d'astéroïdes se termine et le Leviathan arrive. La phase 2 fait déjà office de
-respiration à l'échelle de l'arc — mais entre elle et le boss, il n'y a rien.
+**Rien dans le décor ne doit ressembler à un obstacle s'il n'en est pas un** — ni l'inverse. Règle
+simple, et coûteuse à découvrir tard : un décor menteur détruit la confiance du joueur dans tout ce
+qu'il voit, y compris ce qui est honnête.
 
-⚠️ C'est une piste, pas une correction : la durée de l'arc est déjà à sa cible (2-3 min de jeu), et
-ajouter du temps mort peut coûter plus que ça ne rapporte. **À juger en jouant l'arc entier.**
+## Sources
 
-**Le mid-boss mal placé est un faux problème** : notre « mid-boss » clôt la première section d'un
-niveau qui en compte deux — il est donc *au milieu* de l'arc, ce qui est exactement sa fonction. Le
-manque réel est ailleurs : il ne **couronne l'apprentissage de rien**, faute de mécanisme introduit
-pendant la phase 1.
-
-**Le boss final qui ne résume rien** est le vrai écart de fond, et il est structurel : le Leviathan
-enseigne ses mécaniques pendant qu'on le combat. Rien à corriger tant que le combat tourne
-(`ADR-0026` : trois cycles par construction, vérifié en partie) — mais c'est à savoir si un jour la
-progression du niveau est retravaillée.
+- [Designing smart, meaningful SHMUPs](https://www.gamedeveloper.com/design/designing-smart-meaningful-shmups) — Game Developer : la structure fractale en six temps, un mécanisme à la fois, varier l'intensité.
+- [Boghog's bullet hell shmup 101](https://shmups.wiki/library/Boghog%27s_bullet_hell_shmup_101) — Shmups Wiki : *landmark uniqueness*, le décor qui ne ment pas.
