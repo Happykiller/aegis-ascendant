@@ -51,6 +51,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-conformite-bible.md`](plans/2026-08-27-conformite-bible.md) | Fermer les écarts du rapport de conformité — secousse exposée, `FAN`/`AIMED` en jeu, manette, ouverture calme, hit stop | **lots 0, 1 et 2 livrés** ; lots 3-5 bloqués |
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
+| [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule** de 4,22 × 1,76 et n'entre pas dans le couloir (2,60). Agrandir l'arène — décidé par l'opérateur | **décidé, non commencé** |
 
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
