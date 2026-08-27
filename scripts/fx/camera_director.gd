@@ -11,6 +11,13 @@ extends Node3D
 ## suivante — c'est pour ça que le déplacement passe par la pose de repos, et pas par la
 ## caméra.
 
+const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
+
+## Secousse rendue au joueur quand il déplace le curseur, pour qu'il JUGE son réglage
+## au lieu de le deviner. Un curseur d'accessibilité qui ne produit rien pendant qu'on
+## le bouge est exactement le signal muet que le projet a appris à traquer.
+const PREVIEW_TRAUMA := 0.45
+
 @export var max_translation: float = 0.35
 @export var max_roll_deg: float = 2.2
 @export var trauma_decay: float = 1.6
@@ -33,6 +40,14 @@ var _noise: FastNoiseLite
 var _noise_time: float = 0.0
 
 func _ready() -> void:
+	# Accessibilité (spec §7.3) : la secousse suit le réglage du joueur dans TOUTES les
+	# scènes qui portent un director — l'accueil et le banc d'essai comme le combat.
+	# C'est le nœud de scène qui s'abonne, jamais l'autoload : lui ne connaît aucun nœud
+	# de rendu (settings_manager.gd). Absent en mode `--script`, d'où le `or_null`.
+	var settings := get_node_or_null("/root/SettingsManager") as SettingsManagerScript
+	if settings != null:
+		settings.graphics_changed.connect(_on_graphics_changed)
+		shake_multiplier = settings.get_graphics().shake
 	_camera = get_node_or_null("Camera3D") as Camera3D
 	if _camera == null:
 		push_error("[CameraDirector] expects a child Camera3D")
@@ -44,6 +59,17 @@ func _ready() -> void:
 	_noise = FastNoiseLite.new()
 	_noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	_noise.frequency = 0.08
+
+## Le réglage a bougé : on l'applique, et on le FAIT SENTIR.
+##
+## ⚠️ Pas d'aperçu en pause. Le tremblement s'anime dans `_process`, qui ne tourne pas
+## tant que l'arbre est en pause : le trauma resterait en attente et se déchargerait
+## d'un coup à la reprise, sur un joueur qui a repris les commandes.
+func _on_graphics_changed(data: SettingsData) -> void:
+	var changed := not is_equal_approx(shake_multiplier, data.shake)
+	shake_multiplier = data.shake
+	if changed and data.shake > 0.0 and not get_tree().paused:
+		add_trauma(PREVIEW_TRAUMA)
 
 ## Add trauma in [0,1]; shake intensity scales with trauma squared.
 func add_trauma(amount: float) -> void:

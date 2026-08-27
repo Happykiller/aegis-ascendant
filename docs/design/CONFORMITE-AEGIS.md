@@ -263,7 +263,7 @@ systèmes non écrits.
 | `LOI-EXP-08` effet invisible = défaut | ✅ **tenue, et c'est une loi née ici** | cinq mécaniques prises en défaut le 2026-08-26 : freinage de la sangsue, champ protecteur, puits gravitique, sursis de mine. Capitalisée dans [`KB/DAF/signaux.md`](../KB/DAF/signaux.md) |
 | `LOI-EXP-09` contrat joueur | ⚠️ partielle | la loi des signaux en couvre le fond, **sans le formalisme** SEE/UNDERSTAND/FEEL/ANTICIPATE/DECIDE ni la ligne « à ne jamais produire » — qui aurait attrapé le lien du Shield Carrier lu comme « je suis ralenti » |
 | `LOI-EXP-10` jamais la couleur seule | ✅ **tenue, et surveillée** | un cue audio par type de bonus, « parce qu'un bonus doit être identifiable sans le regarder » (`graybox_root.gd:253`) ; la charte créative l'interdit explicitement |
-| `LOI-EXP-11` socle d'accessibilité | ❌ **le plus gros écart de la page** | voir ci-dessous |
+| `LOI-EXP-11` socle d'accessibilité | ⚠️ partielle — **la secousse est réglable depuis le 2026-08-27** | voir ci-dessous |
 | `LOI-EXP-12` fonctionner ≠ validé | ✅ **tenue en pratique** | c'est la leçon des quatre ADR de boss : aucune mesure automatique n'a rien vu |
 
 ### Le socle d'accessibilité, ligne par ligne
@@ -272,7 +272,7 @@ systèmes non écrits.
 |---|---|
 | Remappage | ❌ **absent** — `InputBootstrap` déclare les actions en dur ; son propre commentaire dit que l'UI de remappage « viendra plus tard » |
 | Manette | ❌ **absente** — seul `_add_key_action()` existe, **aucun événement joypad** n'est enregistré, alors que la spec §7.2 décrit une disposition Xbox complète |
-| Secousse réductible | ⚠️ **codée mais injoignable** — `CameraDirector.shake_multiplier` documente « 0 désactive entièrement » (spec §16.3), et le menu d'options n'expose que **4 volumes + la pixelisation** |
+| Secousse réductible | ✅ **tenue** (2026-08-27) — curseur SECOUSSE au menu d'options, 0 → 100. C'est le `CameraDirector` lui-même qui s'abonne à `graphics_changed`, donc le réglage vaut pour **les trois scènes** qui en portent un (combat, accueil, banc d'essai). Et il **se sent** : déplacer le curseur déclenche une brève secousse à la nouvelle intensité — un réglage d'accessibilité qui ne produit rien pendant qu'on le bouge serait le signal muet de [`LOI-EXP-08`](bible/10-experience-joueur.md) |
 | Couleur seule | ✅ tenue |
 | Choix de difficulté | ❌ un seul réglage, non exposé |
 | Clignotement | ⚠️ l'invulnérabilité fait clignoter la coque à **~18 Hz** — sur le vaisseau seul, pas en plein écran, mais c'est la zone que le joueur fixe |
@@ -284,23 +284,29 @@ systèmes non écrits.
 | Loi | État | Preuve |
 |---|---|---|
 | `LOI-PAT-01` le nombre n'est pas le sujet | ✅ tenue | la bibliothèque est construite sur l'intention, pas sur le compte |
-| `LOI-PAT-02` cinq familles | ⚠️ **quatre sur cinq** | `SINGLE` (ligne), `FAN` (éventail aveugle, 62°), `AIMED` (éventail visé, 12°), `RADIAL` (anneau), `NONE`. **La pile n'existe pas** : aucun schéma ne fait varier la vitesse dans une salve |
-| `LOI-PAT-03` la parité | ⚠️ **violée sans le savoir** | voir ci-dessous |
+| `LOI-PAT-02` cinq familles | ⚠️ **quatre sur cinq, et toutes jouées depuis le 2026-08-27** | `SINGLE` (ligne), `FAN` (éventail aveugle, 62°), `AIMED` (éventail visé, 12°), `RADIAL` (anneau), `NONE`. **La pile n'existe pas** : aucun schéma ne fait varier la vitesse dans une salve |
+| `LOI-PAT-03` la parité | ⚠️ **tenue en vague, subie chez le boss** | le lancier vise en **3** balles, impair et écrit dans son `.tres` avec sa raison, gardé par `test_opening_wave.gd`. Le boss, lui, la subit — voir ci-dessous |
 | `LOI-PAT-04` semences d'angle | ⚠️ partielle | fixe et visée présentes ; `RADIAL_PHASE = 0,5` entrelace les couronnes — « les trous de la première sont bouchés par la seconde, **donc rester immobile ne paie jamais** » |
 | `LOI-PAT-05` composer | ✅ tenue | `RADIAL_PHASE` est exactement « régularité plus une légère fluctuation » |
-| `LOI-PAT-06` désigner l'esquive | ⚠️ partielle | la macro-esquive n'est demandée que par les couronnes de la Choir Mine |
+| `LOI-PAT-06` désigner l'esquive | ⚠️ partielle | la macro-esquive n'est demandée que par les couronnes de la Choir Mine. Le **streaming** devient possible depuis que le lancier vise (2026-08-27) |
 | `LOI-PAT-07` forme, pas constantes | ✅ **tenue, et testée** | la règle est écrite dans `enemy_fire.gd` et **un test de variété la vérifie** : « FAN et AIMED ne diffèrent pas par leur ouverture, ils diffèrent parce que l'un est aveugle et l'autre voit » |
 
-### ⚠️ `FAN` et `AIMED` ne sont employés par aucune unité de vague
+### ✅ `FAN` et `AIMED` sont en jeu depuis le 2026-08-27
 
-`fire` vaut `SINGLE` par défaut (`enemy_data.gd:28`) et **aucun `.tres` d'ennemi ne le surcharge**,
-sauf trois passages en `NONE` (Leech Drone, Null Maw, Shield Carrier) et **un seul** en `RADIAL`
-(Choir Mine, 14 balles).
+Ils étaient **écrits, testés, documentés — et joués nulle part** : `fire` valait `SINGLE` par défaut
+(`enemy_data.gd:28`) et aucun `.tres` d'ennemi ne le surchargeait. Les neuf Needle Scout et le
+Crescent Interceptor tiraient **tous une balle droite**.
 
-Les neuf Needle Scout et le Crescent Interceptor tirent donc **tous une balle droite**. L'éventail
-aveugle et l'éventail visé sont **écrits, testés, documentés — et jamais joués**. Le seul schéma qui
-punit l'immobilité au niveau des vagues n'est employé nulle part. **Deux lignes de `.tres` le
-mettraient en jeu.**
+C'est la **trajectoire** qui a désigné le schéma, pas le hasard :
+
+| Unité | Trajectoire | Schéma | Pourquoi |
+|---|---|---|---|
+| `needle_scout_lancer` | `HOVER_STRAFE` — s'arrête à `y = 3,5` pendant 2,6 s | **`AIMED`**, `burst_count = 3` | la seule unité de vague qui **s'immobilise**, donc la seule qui puisse viser honnêtement. Impair : une balle **sur l'axe**, l'immobilité du joueur se paie |
+| `needle_scout_strafe` | `STRAFE_RUN` — traverse à 4,5 u/s | **`FAN`**, `burst_count = 5` | il traverse sans s'arrêter, viser n'aurait aucun sens. L'éventail aveugle **ferme le couloir** de son passage |
+
+**Vérifié en jeu** (capture Windows, fond noir, t ≈ 34 s) : les salves du lancier **convergent sur le
+chasseur immobile**, en grappes de trois. `test_opening_wave.gd` garde les deux schémas en jeu et la
+parité de la salve visée — la garde a été éprouvée en la cassant (`burst_count = 4` → rouge).
 
 ### ⚠️ La parité de l'éventail visé du boss change toute seule
 
@@ -327,12 +333,30 @@ Personne n'a décidé cela : c'est l'arithmétique de `3 + phase`. La phase 1 es
 | `LOI-LVL-03` décor = progression | ⚠️ partielle | `BackdropLandmark` tient planètes et nébuleuses **hors du couloir central** ; `MoonFlyby` donne son décor propre à la phase 2. Mais ils **dérivent et bouclent** : ils disent « on est dans cette phase », pas « on en est aux deux tiers » |
 | `LOI-LVL-04` faire bouger | ✅ tenue | neuf courbes distinctes |
 | `LOI-LVL-05` pas de surgissement | ✅ tenue | spawn à `y = 9,5`, au-dessus du bord haut (`y_max = 8`) : les coques **entrent** dans le champ |
-| `LOI-LVL-06` deux patterns, deux apparences | ❔ **non vérifiée** | les `ProjectileData` diffèrent par unité, mais rien ne garantit que **deux patterns simultanés** emploient des projectiles distincts. Le champ d'astéroïdes superpose trois unités — **c'est là que ça se joue**, et c'est dix secondes de jeu à vérifier |
+| `LOI-LVL-06` deux patterns, deux apparences | ❌ **écart avéré** (2026-08-27) | voir ci-dessous — et le rapport se trompait d'endroit |
 | `LOI-LVL-07` file d'actions | ✅ tenue | `WaveData` / `WaveEntry` sont littéralement la structure : `time_offset`, `enemy_scene`, `spawn_plane_position`, `count`, `spacing`. ⚠️ Pas encore l'`EncounterDirector` de la spec §11.3 : la file pose des ennemis, elle n'attend pas une condition et ne synchronise rien |
 | `LOI-LVL-08` checkpoint ou reprise | ❌ **écartée, délibérément** | le mot « checkpoint » **n'apparaît dans aucun script**, alors que la spec §5.3 en demande deux. Le jeu fait la troisième voie : reprise sur place à `(0, −5)`, sans perte, continues illimités. Évite le *Gradius syndrome* par construction — et supprime l'enjeu de la mort |
 
 ⚠️ `BOUNDS` est un **paramètre d'équilibrage majeur déguisé en constante technique**. S'il bouge un
 jour, c'est un ADR, pas un ajustement (`LOI-LVL-01`).
+
+### ⚠️ `LOI-LVL-06` — trois schémas de tir, une seule apparence de balle
+
+Ce rapport annonçait que la question se jouait dans le **champ d'astéroïdes**. C'était faux, et la
+donnée le dit en trois lignes : sur les quatre unités de la phase, **une seule tire**
+(Choir Mine, `RADIAL`) — Null Maw, Leech Drone et Shield Carrier sont toutes en `fire = NONE`. Deux
+patterns simultanés ne s'y produisent **jamais**.
+
+L'endroit réel est la **vague d'ouverture**, et c'est le lot 0 du 2026-08-27 qui l'a créé : elle
+emploie désormais `SINGLE`, `FAN` et `AIMED` en même temps — et **les dix unités partagent le même
+`needle_shot.tres`**. Vérifié à la capture : les salves sont des grappes de coral identiques.
+
+Le joueur ne peut donc pas distinguer *« cette salve me suit »* de *« celle-là m'ignore »*, alors
+que c'est exactement la différence que les deux schémas existent pour produire.
+
+⚠️ **Ne pas corriger par réflexe.** Donner une apparence propre au tir visé touche la réserve des
+couleurs (`LOI-LIS-01`) et donc la charte créative : c'est une décision, pas un réglage. En tête du
+lot 2 du plan.
 
 ---
 
@@ -369,14 +393,16 @@ Ils n'existent pas et **rien ne les réclame** : la reprise sur place fait le tr
 simplement. Le plus honnête serait sans doute de **retirer la ligne de la spec** — mais la spec est
 source de vérité et ce rapport ne la modifie pas.
 
-## Ce qui est gratuit, et qui n'attend rien
+## ✅ Le lot gratuit — livré le 2026-08-27
 
-Trois gestes qui ne demandent aucun arbitrage :
+Les trois gestes du plan sont faits :
 
-1. **Exposer `shake_multiplier`** dans le menu d'options. Le système existe, la spec l'exige (§7.3),
-   les référentiels d'accessibilité le classent en niveau de base — il manque **une ligne d'UI** à
-   côté de la case « pixelisation », déjà branchée sur le même chemin de réglages persistants.
-2. **Donner `FAN` et `AIMED` à des unités de vague** — deux lignes de `.tres`. ⚠️ En choisissant la
-   **parité** volontairement (`LOI-PAT-03`), pas en laissant `burst_count = 5` décider du sens.
-3. **Vérifier `LOI-LVL-06` en jouant** le champ d'astéroïdes : les projectiles des trois unités
-   simultanées se distinguent-ils ? Dix secondes de jeu.
+1. **La secousse est exposée** (`LOI-EXP-11`) — curseur SECOUSSE, avec aperçu au déplacement.
+2. **`FAN` et `AIMED` sont en jeu** (`LOI-PAT-02`, `LOI-PAT-03`) — lancier visé en impair, strafe en
+   éventail aveugle, parité gardée par un test éprouvé en le cassant.
+3. **`LOI-LVL-06` est vérifiée** — et le résultat n'est pas celui qu'on attendait : l'écart n'est pas
+   dans le champ d'astéroïdes (une seule unité y tire), il est dans la vague d'ouverture. Il est
+   désormais **avéré et localisé**, ce qu'un ❔ ne permettait pas.
+
+Ce que le lot a **coûté** : un drapeau de debug `--options-demo`, pour que l'écran d'options — qui ne
+s'atteignait qu'au clavier — soit capturable depuis WSL comme le reste du jeu.

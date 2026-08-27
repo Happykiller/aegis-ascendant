@@ -79,3 +79,44 @@ func test_a_garbled_graphics_value_does_not_brick_the_game() -> void:
 	# ConfigFile relit parfois un booléen sauvegardé comme entier.
 	data.graphics_from_dict({&"pixelation": 0})
 	assert_false(data.pixelation, "an integer zero reads as off")
+
+func test_shake_is_full_by_default() -> void:
+	var data: SettingsData = SettingsDataScript.new()
+	assert_almost_eq(data.shake, 1.0, 0.001, "la secousse fait partie de la sensation")
+
+func test_shake_survives_a_save_and_load() -> void:
+	var data: SettingsData = SettingsDataScript.new()
+	data.shake = 0.4
+	var restored: SettingsData = SettingsDataScript.new()
+	restored.graphics_from_dict(data.graphics_to_dict())
+	assert_almost_eq(restored.shake, 0.4, 0.001, "le réglage tient d'une session à l'autre")
+
+## LA garde de cette option : couper la secousse doit RESTER coupé. Un `if not shake`
+## quelque part dans la relecture et zéro repasserait pour « valeur absente », donc
+## pour le défaut plein — le joueur qui l'a éteinte la retrouverait à chaque lancement.
+func test_zero_shake_is_a_choice_not_an_absence() -> void:
+	var data: SettingsData = SettingsDataScript.new()
+	data.graphics_from_dict({&"shake": 0.0})
+	assert_almost_eq(data.shake, 0.0, 0.001, "zéro est une valeur voulue, pas une clé manquante")
+
+func test_a_settings_file_without_shake_keeps_the_default() -> void:
+	var data: SettingsData = SettingsDataScript.new()
+	data.graphics_from_dict({&"pixelation": false})
+	assert_almost_eq(data.shake, 1.0, 0.001,
+		"un fichier écrit par une version qui ignorait la secousse ne casse rien")
+
+func test_a_garbled_shake_value_does_not_brick_the_game() -> void:
+	var data: SettingsData = SettingsDataScript.new()
+	data.graphics_from_dict({&"shake": "beaucoup"})
+	assert_almost_eq(data.shake, 1.0, 0.001, "valeur illisible ignorée")
+	data.graphics_from_dict({&"shake": 12.0})
+	assert_almost_eq(data.shake, 1.0, 0.001, "valeur hors bornes ramenée dans [0, 1]")
+	data.graphics_from_dict({&"shake": -3.0})
+	assert_almost_eq(data.shake, 0.0, 0.001, "négatif ramené à zéro")
+
+func test_an_integer_shake_is_read_as_a_ratio() -> void:
+	# ConfigFile relit 1.0 comme un entier : sans ce cas, remettre la secousse à fond
+	# la ferait disparaître au lancement suivant.
+	var data: SettingsData = SettingsDataScript.new()
+	data.graphics_from_dict({&"shake": 1})
+	assert_almost_eq(data.shake, 1.0, 0.001, "un entier est une valeur valide")

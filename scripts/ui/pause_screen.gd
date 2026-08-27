@@ -55,8 +55,14 @@ func _ready() -> void:
 	_center_rest_y = _center.position.y
 	for button in _buttons():
 		button.focus_entered.connect(_on_focus_changed)
-	if "--pause-demo" in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	if "--pause-demo" in args:
 		_open.call_deferred()
+	# L'écran d'options ne s'atteint qu'au clavier, donc il n'était vérifiable que par
+	# l'opérateur. Ce drapeau le rend capturable depuis WSL comme le reste du jeu.
+	if "--options-demo" in args:
+		_open.call_deferred()
+		_open_options.call_deferred()
 
 func _buttons() -> Array[Button]:
 	var found: Array[Button] = []

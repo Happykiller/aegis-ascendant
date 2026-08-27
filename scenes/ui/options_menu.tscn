@@ -178,6 +178,32 @@ layout_mode = 2
 size_flags_vertical = 4
 button_pressed = true
 
+[node name="Shake" type="HBoxContainer" parent="Center/Panel/Graphics"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Name" type="Label" parent="Center/Panel/Graphics/Shake"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.55)
+theme_override_font_sizes/font_size = 24
+text = "SECOUSSE"
+
+[node name="Slider" type="HSlider" parent="Center/Panel/Graphics/Shake"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 100.0
+value = 100.0
+
+[node name="Value" type="Label" parent="Center/Panel/Graphics/Shake"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 1)
+theme_override_font_sizes/font_size = 24
+text = "100"
+horizontal_alignment = 2
+
 [node name="VoiceHint" type="Label" parent="Center/Panel"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.918, 0.89, 0.45)

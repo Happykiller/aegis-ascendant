@@ -3,7 +3,8 @@ titre: Mettre le jeu en conformité avec la bible — plan d'implémentation
 date: 2026-08-27
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: gameplay, options/HUD, données de vagues et d'ennemis, tests. Aucun asset de forge
-etat: à appliquer — lot 0 et lot 1 prêts ; lot 2 à instruire ; lots 3-5 bloqués (décision ou coût)
+etat: **lot 0 LIVRÉ** (2026-08-27, vérifié en jeu) ; lot 1 prêt ; lot 2 à instruire ;
+  lots 3-5 bloqués (décision ou coût)
 supersede: rien. Applique docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -37,9 +38,18 @@ conformité.
 
 ---
 
-## Lot 0 — les trois gestes gratuits
+## Lot 0 — les trois gestes gratuits ✅ LIVRÉ le 2026-08-27
 
-Aucune décision requise, aucun arbitrage de design. À faire d'un bloc.
+Aucune décision requise, aucun arbitrage de design. Fait d'un bloc, vérifié en jeu.
+
+> **Ce que la vérification a changé au plan.** `LOI-LVL-06` ne se jouait **pas** dans le champ
+> d'astéroïdes comme annoncé en 0.3 : sur ses quatre unités, **une seule tire** (Choir Mine,
+> `RADIAL`) — les trois autres sont en `fire = NONE`. L'écart est dans la **vague d'ouverture**, et
+> c'est 0.2 qui vient de le créer : trois schémas de tir, **un seul `needle_shot.tres`**. Il passe
+> en tête du lot 2. C'est le bénéfice d'un ❔ transformé en ❌ localisé.
+>
+> Coût du lot : un drapeau `--options-demo`, parce que l'écran d'options ne s'atteignait qu'au
+> clavier et n'était donc vérifiable que par l'opérateur.
 
 ### 0.1 — Exposer la secousse d'écran (`LOI-EXP-11`)
 

@@ -12,6 +12,12 @@ move_speed = 2.38
 weave_amplitude = 1.4
 weave_frequency = 0.5
 fire_interval = 1.1
+; Il s'ARRÊTE pour tirer (hold_y / hold_time) : c'est la seule unité de vague qui puisse
+; viser honnêtement. AIMED, et surtout un burst IMPAIR — la balle du milieu part sur
+; l'axe de visée, donc rester immobile face à lui tue (LOI-PAT-03). La parité se CHOISIT :
+; burst_count vaut 5 par défaut, ce qui donnerait un impair par accident.
+fire = 3
+burst_count = 3
 projectile = ExtResource("2_shot")
 hitbox_radius = 0.45
 score_value = 170

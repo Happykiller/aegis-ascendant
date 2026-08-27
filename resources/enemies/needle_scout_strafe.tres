@@ -12,6 +12,11 @@ move_speed = 4.5
 weave_amplitude = 1.6
 weave_frequency = 0.4
 fire_interval = 2.4
+; Il TRAVERSE (STRAFE_RUN, 4,5 u/s) sans jamais s'arrêter : viser n'aurait aucun sens.
+; FAN — l'éventail aveugle de 62° ferme le couloir de son passage, ce que sa trajectoire
+; faisait déjà sans le dire. On le contourne, on ne le subit pas (LOI-ENN-06).
+fire = 2
+burst_count = 5
 projectile = ExtResource("2_shot")
 hitbox_radius = 0.45
 score_value = 110

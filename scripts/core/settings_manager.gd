@@ -41,6 +41,17 @@ func set_pixelation(enabled: bool) -> void:
 	graphics_changed.emit(_data)
 	_schedule_save()
 
+## Secousse d'écran, de 0 (éteinte) à 1 (pleine). Même chemin que la pixelisation :
+## la valeur vit dans la donnée pure, le signal prévient les nœuds de scène, et
+## l'écriture disque est différée.
+func set_shake(value: float) -> void:
+	var clamped := clampf(value, 0.0, 1.0)
+	if is_equal_approx(_data.shake, clamped):
+		return
+	_data.shake = clamped
+	graphics_changed.emit(_data)
+	_schedule_save()
+
 func set_bus_linear(bus: StringName, value: float) -> void:
 	_data.set_linear(bus, value)
 	_apply_bus(bus)
@@ -76,6 +87,7 @@ func save_settings() -> void:
 	for bus in SettingsData.BUSES:
 		config.set_value(_SECTION, String(bus), _data.get_linear(bus))
 	config.set_value(_SECTION_GRAPHICS, "pixelation", _data.pixelation)
+	config.set_value(_SECTION_GRAPHICS, "shake", _data.shake)
 	var error := config.save(SETTINGS_PATH)
 	if error != OK:
 		push_warning("[Settings] could not save %s (error %d)" % [SETTINGS_PATH, error])

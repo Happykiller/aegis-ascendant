@@ -17,6 +17,8 @@ signal closed
 
 var _sliders: Dictionary = {}
 var _pixelation: CheckButton
+var _shake: HSlider
+var _shake_value: Label
 
 func _ready() -> void:
 	for bus in _ROWS:
@@ -29,6 +31,10 @@ func _ready() -> void:
 	_pixelation = _graphics.get_node_or_null("Pixelation/Toggle") as CheckButton
 	if _pixelation != null:
 		_pixelation.toggled.connect(_on_pixelation_toggled)
+	_shake = _graphics.get_node_or_null("Shake/Slider") as HSlider
+	_shake_value = _graphics.get_node_or_null("Shake/Value") as Label
+	if _shake != null:
+		_shake.value_changed.connect(_on_shake_changed)
 	open()
 
 ## Show the overlay with the values that are actually in force.
@@ -44,6 +50,10 @@ func open() -> void:
 		# `set_pressed_no_signal` : sans lui, ouvrir l'écran rejouerait le réglage —
 		# et son clic de confirmation — comme si le joueur venait de le basculer.
 		_pixelation.set_pressed_no_signal(_settings.get_graphics().pixelation)
+	if _shake != null and _settings != null:
+		_shake.set_value_no_signal(_settings.get_graphics().shake * 100.0)
+		if _shake_value != null:
+			_shake_value.text = "%d" % roundi(_shake.value)
 	show()
 	# Keyboard/pad users land on the first slider.
 	var first := _sliders.get(_ROWS[0]) as HSlider
@@ -66,6 +76,18 @@ func _on_slider_changed(value: float, bus: StringName, value_label: Label) -> vo
 func _on_pixelation_toggled(enabled: bool) -> void:
 	if _settings != null:
 		_settings.set_pixelation(enabled)
+	if _audio != null:
+		_audio.play(&"ui_select")
+
+## Comme la pixelisation, le réglage s'applique TOUT DE SUITE — et il se sent : le
+## `CameraDirector` répond au signal par une brève secousse à la nouvelle intensité.
+## Sans cet aperçu, le curseur serait le seul réglage du menu dont on ne peut rien
+## juger sans quitter l'écran.
+func _on_shake_changed(value: float) -> void:
+	if _shake_value != null:
+		_shake_value.text = "%d" % roundi(value)
+	if _settings != null:
+		_settings.set_shake(value / 100.0)
 	if _audio != null:
 		_audio.play(&"ui_select")
 

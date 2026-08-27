@@ -29,6 +29,17 @@ var volumes: Dictionary = DEFAULTS.duplicate()
 ## replongerait l'image dans le sombre au lieu de la rendre nette.
 var pixelation: bool = true
 
+## Multiplicateur de secousse d'écran, dans [0, 1]. **0 éteint la secousse**
+## (spec §7.3 : « secousse réduite ou désactivable » ; §16.3).
+##
+## Plein par défaut : la secousse fait partie de la sensation du jeu, l'option est un
+## confort d'accessibilité — pas un réglage neutre qu'on activerait après coup.
+##
+## ⚠️ Zéro est une valeur VOULUE, pas une absence. Toute relecture doit distinguer
+## « le joueur a mis 0 » de « la clé manque » — sans quoi couper la secousse ne tient
+## pas d'une session à l'autre.
+var shake: float = 1.0
+
 func get_linear(bus: StringName) -> float:
 	return volumes.get(bus, DEFAULTS.get(bus, 1.0))
 
@@ -51,7 +62,7 @@ func audio_from_dict(source: Dictionary) -> void:
 			volumes[bus] = clampf(float(value), 0.0, 1.0)
 
 func graphics_to_dict() -> Dictionary:
-	return {&"pixelation": pixelation}
+	return {&"pixelation": pixelation, &"shake": shake}
 
 ## Même tolérance que pour l'audio : un fichier écrit par une version qui ne connaissait
 ## pas cette section laisse le défaut en place, et une valeur d'un autre type ne casse
@@ -64,6 +75,10 @@ func graphics_from_dict(source: Dictionary) -> void:
 	elif value is int or value is float:
 		# ConfigFile relit parfois un booléen sauvegardé comme entier.
 		pixelation = float(value) != 0.0
+	shake = 1.0
+	var shake_value: Variant = source.get(&"shake", source.get("shake"))
+	if shake_value is float or shake_value is int:
+		shake = clampf(float(shake_value), 0.0, 1.0)
 
 ## A slider is linear in loudness-ish terms; the mixer wants decibels.
 static func to_db(linear: float) -> float:
