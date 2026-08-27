@@ -277,3 +277,200 @@ func test_a_fighter_pushed_against_the_arena_edge_settles() -> void:
 			% last.distance_to(seen[seen.size() - 2]))
 	assert_true(GameplayPlane.is_inside(last, 0.001),
 		"et il est reste dans l'arene (y = %.2f)" % last.y)
+
+# --- Le déplacement : on glisse, on ne corrige pas -----------------------------
+## ⚠️ Le mode d'echec vise ici a un NOM, donne par l'operateur le 2026-08-27 : « j'ai pu
+## rentrer dans les murs, et quand on est repousse c'est comme un aimant ou avec des
+## ressorts ». Les deux moities sont le meme defaut — corriger APRES coup fait entrer pour
+## de bon, puis ressortir par un saut, et le saut rejoue contre la commande du joueur donne
+## un ressort. Ces gardes tiennent l'ordre des operations, pas la detection.
+
+func _wall() -> PlaneShapes:
+	var shapes := PlaneShapes.new()
+	shapes.reserve(1)
+	# Un mur horizontal en y = 4, tres large : on ne peut pas le contourner par les bouts.
+	shapes.add_capsule(Vector2(-40.0, 4.0), Vector2(40.0, 4.0), 0.6)
+	return shapes
+
+func test_a_move_into_a_wall_never_ends_inside_it() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := _wall()
+	var from := Vector2(0.0, 0.0)
+	for i in 60:
+		var to := Vector2(0.0, float(i) * 0.15)
+		var landed := PlaneCollider.slide_capsule(shapes, from, to, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius)
+		assert_false(PlaneCollider.capsule_blocks(shapes, landed, Vector2(0.0, 1.0),
+				stats.body_half_length, stats.body_radius),
+			"pas d'entree dans le mur, meme en visant %.2f" % to.y)
+
+## Et on GLISSE : un mouvement oblique contre un mur garde sa composante le long du mur.
+## Sans ca le vaisseau se colle et s'arrete net, ce qui se joue comme un accrochage.
+func test_a_diagonal_move_keeps_travelling_along_the_wall() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := _wall()
+	var from := Vector2(0.0, 1.0)
+	var to := from + Vector2(1.5, 1.5)
+	var landed := PlaneCollider.slide_capsule(shapes, from, to, Vector2(0.0, 1.0),
+		stats.body_half_length, stats.body_radius)
+	assert_false(PlaneCollider.capsule_blocks(shapes, landed, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius), "il est dehors")
+	assert_true(landed.x > from.x + 0.5,
+		"il a bien avance LE LONG du mur (%.2f u de cote)" % (landed.x - from.x))
+
+## ⚠️ LA GARDE DU RESSORT. Le joueur pousse contre le mur pendant deux secondes : sa position
+## doit SE POSER, pas osciller. Un aller-retour d'une image sur l'autre est exactement ce que
+## l'operateur a decrit, et c'est invisible sur une capture fixe.
+func test_holding_against_a_wall_settles_instead_of_bouncing() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := _wall()
+	var here := Vector2(0.0, 0.0)
+	var reversals := 0
+	var previous := 0.0
+	for frame in 120:
+		var wanted := here + Vector2(0.0, 6.0) * (1.0 / 60.0)
+		var next := PlaneCollider.slide_capsule(shapes, here, wanted, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius)
+		var step := next.y - here.y
+		if absf(step) > 0.0005 and absf(previous) > 0.0005 and signf(step) != signf(previous):
+			reversals += 1
+		previous = step
+		here = next
+	assert_eq(reversals, 0,
+		"aucun aller-retour en deux secondes de poussee (%d releves)" % reversals)
+	assert_true(absf(previous) < 0.001,
+		"et il s'est pose (dernier pas %.5f u)" % absf(previous))
+
+## Un mur qui TOURNE peut rattraper un vaisseau immobile : il faut bien l'en sortir. Mais le
+## degagement doit etre BORNE — instantane, c'est le saut qui fait le ressort.
+func test_a_wall_that_catches_you_pushes_you_out_at_a_readable_speed() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := _wall()
+	var inside := Vector2(0.0, 4.0)
+	assert_true(PlaneCollider.capsule_blocks(shapes, inside, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius), "pre-requis : il est dedans")
+	var freed := PlaneCollider.resolve_capsule(shapes, inside, Vector2(0.0, 1.0),
+		stats.body_half_length, stats.body_radius)
+	var step := inside.move_toward(freed, PlayerFighterController.DEPENETRATION_SPEED / 60.0)
+	assert_true(step.distance_to(inside) < freed.distance_to(inside),
+		"il sort en plusieurs images, pas d'un bond")
+	assert_true(step.distance_to(inside) > 0.05,
+		"mais franchement : %.3f u en une image" % step.distance_to(inside))
+
+## ⚠️ LA GARDE DE L'AIMANT, et elle rejoue le blindage LIVRE parce que le defaut ne se
+## reproduit pas sur un mur droit. « Quand on est repousse c'est comme un aimant ou avec des
+## ressorts » (playtest du 2026-08-27) : au moindre CONTACT le chasseur perdait sa commande
+## et n'etait plus que repousse. Or le contact est l'etat NORMAL de cette phase — mesure :
+## un joueur qui pousse vers le noyau touche un mur 77 % du temps. Il perdait donc la main
+## trois images sur quatre. Le remede tient en un ordre : GLISSER d'abord, ne corriger que ce
+## qui depasse.
+##
+## ⚠️ ET LE CHASSEUR DOIT RESTER AU CONTACT. Premiere version de cette garde : elle le
+## poussait vers le cote, il s'eloignait du blindage en quelques images et ne longeait plus
+## rien — verte, et aveugle (la mutation qui remettait le defaut passait). Ici il TOURNE
+## autour du reacteur, a distance rasante, donc chaque arc solide qui passe le touche.
+func _graze(input_is_tangential: bool) -> Array:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := PlaneShapes.new()
+	shapes.reserve(ReactorRings.shape_count(tuning.reactor_rings) + 2)
+	var outermost := 0.0
+	for ring in tuning.reactor_rings:
+		if ring != null:
+			outermost = maxf(outermost, ring.radius + ring.thickness * 0.5)
+	# Juste assez pres pour que la coque morde le mur quand un arc passe devant.
+	var grazing := outermost + stats.body_radius - 0.06
+	var up := Vector2(0.0, 1.0)
+	var here := Vector2(0.0, -grazing)
+	var last_free := here
+	var shoved := 0
+	var touched := 0
+	var travelled := 0.0
+	var closest := 999.0
+	for i in 600:
+		var age := float(i) / 60.0
+		shapes.clear()
+		ReactorRings.fill_shapes(shapes, tuning.reactor_rings, Vector2.ZERO, age)
+		shapes.add_disc(Vector2.ZERO, tuning.flux_hitbox_radius)
+		# Tangentiel : il longe, en restant a distance rasante. Radial : il pousse dedans.
+		var radial := here.normalized()
+		var input := Vector2(-radial.y, radial.x) * 4.0 if input_is_tangential else -radial * 4.0
+		var wanted := here + input / 60.0
+		if input_is_tangential:
+			wanted = wanted.normalized() * grazing
+		# ⚠️ ON COMPTE LE MUR QUI SE MET EN TRAVERS, pas le corps enfonce dedans. Avec le
+		# glissement le chasseur n'est JAMAIS dedans — il est contre — donc compter les
+		# penetrations rendait zero par construction, et la garde ne prouvait plus rien.
+		if PlaneCollider.capsule_blocks(shapes, wanted, up, stats.body_half_length,
+				stats.body_radius):
+			touched += 1
+		var next := PlaneCollider.slide_capsule(shapes, here, wanted, up,
+			stats.body_half_length, stats.body_radius)
+		if PlaneCollider.capsule_blocks(shapes, next, up, stats.body_half_length,
+				stats.body_radius):
+			var freed := PlaneCollider.resolve_capsule(shapes, next, up,
+				stats.body_half_length, stats.body_radius, 5, last_free - next)
+			if freed.distance_to(next) > PlayerFighterController.CONTACT_TOLERANCE:
+				next = next.move_toward(freed,
+					PlayerFighterController.DEPENETRATION_SPEED / 60.0)
+				shoved += 1
+		else:
+			last_free = next
+		travelled += next.distance_to(here)
+		here = next
+		closest = minf(closest, here.length())
+	return [shoved, touched, travelled, closest]
+
+func test_a_fighter_grazing_the_shield_keeps_full_control() -> void:
+	var run := _graze(true)
+	var shoved: int = run[0]
+	var touched: int = run[1]
+	var travelled: float = run[2]
+	assert_true(touched > 100,
+		"pre-requis : il RASE vraiment le blindage (%d images de contact sur 600)" % touched)
+	assert_true(shoved < 30,
+		"il longe sans etre manipule (%d images bousculees sur 600)" % shoved)
+	assert_true(travelled > 25.0,
+		"et il avance vraiment : %.1f u parcourues en dix secondes" % travelled)
+
+## Et quand il POUSSE dans les murs, il est repousse — c'est juste, les anneaux tournent sur
+## lui. Ce qui ne doit pas arriver, c'est que ce soit permanent.
+## Et quand il POUSSE dans les murs ? Il ne passe pas — et ce n'est PAS un defaut de
+## collision, c'est un fait de geometrie que personne n'avait calcule.
+##
+## ⚠️ LE COULOIR ENTRE LES DEUX MURS N'EST PAS UN LIEU. Le chasseur est toujours aligne sur
+## l'axe vertical (`LOI-SYS-07` : on vise en se deplacant, on ne pivote pas). Radialement,
+## c'est donc sa LONGUEUR — 2,46 — qui devrait tenir dans le couloir ; l'espace reellement
+## libre, une fois son envergure retranchee des deux cotes, vaut 0,84. Il ne peut pas y
+## entrer, jamais, quelle que soit son adresse.
+##
+## Ce n'est pas grave en soi : la phase se joue en tirant du dessous a travers les ouvertures,
+## pas en s'infiltrant. Mais ca veut dire que le « labyrinthe » demande au playtest est un
+## DECOR, pas un terrain — et il faut le savoir avant d'y accrocher une mecanique.
+func test_the_corridor_between_the_walls_is_scenery_not_a_place() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var rings := tuning.reactor_rings
+	assert_eq(rings.size(), 2, "deux murs")
+	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
+	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
+	var corridor := (outer.radius - outer.thickness * 0.5) \
+		- (inner.radius + inner.thickness * 0.5)
+	var usable := corridor - stats.body_radius * 2.0
+	var length := stats.body_half_length * 2.0
+	assert_true(usable < length,
+		("couloir libre %.2f u pour un chasseur long de %.2f : s'il tenait, cette garde "
+			+ "serait a reecrire et le laby deviendrait un terrain") % [usable, length])
+
+## Ce qui compte vraiment : il n'est ni pris au piege, ni EMPORTE. Le blindage tourne ; il ne
+## doit pas emmener le chasseur avec lui.
+func test_pushing_into_the_shield_never_carries_you_off() -> void:
+	var run := _graze(false)
+	var closest: float = run[3]
+	var travelled: float = run[2]
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	assert_true(closest > stats.body_radius,
+		"il n'est jamais aspire jusqu'au noyau (approche a %.2f)" % closest)
+	assert_true(travelled < 60.0,
+		("il est repousse, pas emporte : %.1f u parcourues en dix secondes alors qu'il "
+			+ "poussait contre un mur") % travelled)

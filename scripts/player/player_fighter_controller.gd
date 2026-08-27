@@ -23,21 +23,59 @@ func plane_forward() -> Vector2:
 ## chez lui : c'est ce qui la rend applicable au reste du jeu (`docs/KB/REGLES/lois.md`).
 var solids: PlaneShapes = null
 
-## Dégage le chasseur de tout ce qu'il chevauche, puis le rebore. Deux bornages, et c'est
-## voulu : le dégagement peut le sortir de l'arène, le bornage peut le rentrer dans un mur.
-## À cette échelle l'aller-retour converge, et il est mesuré par
-## `test_a_fighter_pushed_against_the_arena_edge_settles`.
-func _obey_solids() -> void:
+## Dernière position où le chasseur ne touchait rien. Sert de direction préférée quand un mur
+## lui tombe dessus : on le repousse D'OÙ IL VIENT, jamais plus loin dans le décor.
+var _last_free_plane: Vector2 = Vector2.ZERO
+
+## Vitesse à laquelle le chasseur se dégage d'un mur qui lui est tombé dessus, en unités par
+## seconde. Les anneaux TOURNENT : un mur peut arriver sur un vaisseau immobile, et il faut
+## bien l'en sortir.
+##
+## ⚠️ BORNÉE, ET C'EST LA MOITIÉ DU REMÈDE. Un dégagement instantané est un saut, et un saut
+## rejoué à chaque image contre la commande du joueur, c'est un ressort — « quand on est
+## repoussé c'est comme un aimant ou avec des ressorts » (playtest du 2026-08-27). À vitesse
+## bornée, la même correction se lit comme ce qu'elle est : le mur POUSSE le vaisseau.
+const DEPENETRATION_SPEED := 9.0
+
+## En deçà, on considère que le chasseur RASE le mur et on le laisse tranquille. Sans cette
+## tolérance, un contact d'un millimètre déclenche une correction, et une correction rejouée
+## à chaque image est un frémissement.
+const CONTACT_TOLERANCE := 0.03
+
+## Va vers `wanted` sans jamais traverser, et se dégage doucement si un mur l'a rattrapé.
+##
+## ⚠️ ON GLISSE, ON NE CORRIGE PAS. La version d'avant laissait le chasseur entrer puis le
+## remettait dehors : il entrait donc pour de bon — visible — et ressortait par un saut —
+## élastique. Les deux plaintes du playtest ne faisaient qu'un défaut, et il était dans
+## l'ORDRE des opérations, pas dans la détection.
+func _slide_to(wanted: Vector2, delta: float) -> Vector2:
 	if solids == null or solids.size() == 0 or stats == null:
-		return
-	var freed := PlaneCollider.resolve_capsule(solids, plane_position, plane_forward(),
-		stats.body_half_length, stats.body_radius)
-	if freed.is_equal_approx(plane_position):
-		return
-	plane_position = GameplayPlane.clamp_to_bounds(freed)
-	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
-	if _target != null:
-		_target.position = plane_position
+		return wanted
+	var half := stats.body_half_length
+	var radius := stats.body_radius
+	var forward := plane_forward()
+	# ⚠️ ON GLISSE D'ABORD, TOUJOURS. La version d'avant faisait l'inverse : dès que le
+	# chasseur TOUCHAIT un mur, elle abandonnait sa commande pour ne plus faire que le
+	# repousser. Or toucher un mur est l'état NORMAL de cette phase — mesuré sur le blindage
+	# livré, un joueur qui pousse vers le noyau est en contact 77 % du temps. Il perdait donc
+	# la main trois images sur quatre, et se sentait aspiré puis recraché : « comme un aimant
+	# ou avec des ressorts » (playtest du 2026-08-27).
+	#
+	# Le contact n'est pas une faute. On longe le mur, et on ne corrige QUE ce qui dépasse.
+	var next := PlaneCollider.slide_capsule(solids, plane_position, wanted, forward,
+		half, radius)
+	if not PlaneCollider.capsule_blocks(solids, next, forward, half, radius):
+		_last_free_plane = next
+		return GameplayPlane.clamp_to_bounds(next)
+	# Il reste enfoncé : un anneau a tourné dans la coque. On l'en sort à vitesse BORNÉE et
+	# de préférence d'où il vient — jamais plus loin dans le décor.
+	var freed := PlaneCollider.resolve_capsule(solids, next, forward, half, radius, 5,
+		_last_free_plane - next)
+	if freed.distance_to(next) <= CONTACT_TOLERANCE:
+		# Simple contact rasant : on ne le bouscule pas pour un centimètre.
+		return GameplayPlane.clamp_to_bounds(next)
+	return GameplayPlane.clamp_to_bounds(
+		next.move_toward(freed, DEPENETRATION_SPEED * delta))
 
 ## Emitted whenever the shield value changes (HUD).
 signal shield_changed(ratio: float, current: float, maximum: float)
@@ -223,12 +261,12 @@ func _physics_process(delta: float) -> void:
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
 	# Le frein s'applique à la COMMANDE du joueur, l'aspiration s'y ajoute. Une
 	# sangsue vole de la vitesse ; elle ne pousse pas le chasseur quelque part.
-	plane_position = GameplayPlane.clamp_to_bounds(
+	var wanted := GameplayPlane.clamp_to_bounds(
 		plane_position + (_velocity * (1.0 - drag) + pull) * delta)
+	plane_position = _slide_to(wanted, delta)
 	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
 	if _target != null:
 		_target.position = plane_position
-	_obey_solids()
 	_apply_visual_bank(delta)
 	_update_plumes(input)
 	_update_fire(delta)

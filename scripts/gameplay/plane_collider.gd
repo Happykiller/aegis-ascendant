@@ -214,8 +214,16 @@ static func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> floa
 ## On échantillonne l'axe, on regarde quel point est le plus enfoncé, et on translate TOUT
 ## le corps de ce que ce point exige. Translater et non pivoter : dans un shoot vertical, le
 ## vaisseau garde son cap (`LOI-SYS-07`), donc son axe ne tourne pas.
+## `prefer` — une direction vers laquelle on AIMERAIT sortir, typiquement « d'où l'on vient ».
+## ⚠️ SANS ELLE, LE CORPS SE FAIT TRANSPORTER. Mesuré le 2026-08-27 sur le blindage livré :
+## un chasseur immobile sous le noyau, poussé par les anneaux qui tournent, partait de
+## y = −6,3 et finissait à y = +6,85 — de l'autre côté du réacteur. La sortie la plus courte
+## est parfois VERS L'INTÉRIEUR ; elle le déposait dans le couloir entre les deux murs, d'où
+## il ne ressortait plus, et le blindage l'emmenait avec lui. C'est ce que l'opérateur a
+## appelé « un aimant ». En préférant repartir d'où il vient, il est repoussé, pas emporté.
 static func resolve_capsule(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
-		half_length: float, radius: float, samples: int = 5) -> Vector2:
+		half_length: float, radius: float, samples: int = 5,
+		prefer: Vector2 = Vector2.ZERO) -> Vector2:
 	if shapes.size() == 0:
 		return centre
 	var direction := axis.normalized() if axis.length() > 0.0001 else Vector2(0.0, 1.0)
@@ -244,9 +252,16 @@ static func resolve_capsule(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
 				continue
 			var stuck := _stuck_count(shapes, out + shift, direction, half_length,
 				radius, count)
-			if stuck < best_stuck or (stuck == best_stuck and shift.length() < best_length):
+			# À nombre de points dégagés égal, on classe par ce que ça COÛTE : la longueur
+			# du déplacement, moins ce qu'il gagne dans la direction préférée. Une sortie
+			# légèrement plus longue mais « vers d'où l'on vient » l'emporte donc sur une
+			# sortie plus courte qui enfoncerait le corps plus loin dans le décor.
+			var cost := shift.length()
+			if prefer != Vector2.ZERO:
+				cost -= shift.dot(prefer.normalized())
+			if stuck < best_stuck or (stuck == best_stuck and cost < best_length):
 				best_stuck = stuck
-				best_length = shift.length()
+				best_length = cost
 				best = shift
 		if best == Vector2.ZERO:
 			break
@@ -272,3 +287,58 @@ static func capsule_blocks(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
 		if blocks(shapes, centre + direction * t, radius):
 			return true
 	return false
+
+# --- Le déplacement, pas la correction ----------------------------------------
+
+## Déplace un corps allongé de `from` vers `to` en GLISSANT sur ce qu'il rencontre.
+##
+## ⚠️ C'EST L'INVERSE DE `resolve_capsule()`, ET C'EST TOUT LE SUJET. Corriger APRÈS coup
+## — laisser entrer puis repousser — produit exactement ce que le playtest du 2026-08-27 a
+## nommé : « j'ai pu rentrer dans les murs, et quand on est repoussé c'est comme un aimant
+## ou avec des ressorts ». Les deux plaintes sont le même défaut :
+##
+## - **on entre**, parce que la pénétration a lieu pour de bon avant d'être annulée ;
+## - **ça ressort tout seul**, parce que l'annulation est un saut, et qu'elle se rejoue
+##   contre la commande du joueur à chaque image. Le joueur pousse, le mur rend : un ressort.
+##
+## Ici, on ne pénètre jamais. On cherche le dernier point libre du trajet, puis on projette
+## ce qui restait du mouvement SUR la surface. Le vaisseau longe le mur au lieu d'être
+## avalé puis recraché — et un joueur qui longe comprend où est le mur.
+static func slide_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis: Vector2,
+		half_length: float, radius: float) -> Vector2:
+	if shapes.size() == 0:
+		return to
+	if not capsule_blocks(shapes, to, axis, half_length, radius):
+		return to
+	var contact := _last_free(shapes, from, to, axis, half_length, radius)
+	# La normale, c'est la direction dans laquelle le corps VOUDRAIT sortir à l'arrivée.
+	# On la lit du dégagement plutôt que de la recalculer : une seule définition du « dehors ».
+	var escape := resolve_capsule(shapes, to, axis, half_length, radius) - to
+	if escape.length() < 0.0001:
+		return contact
+	var normal := escape.normalized()
+	var remaining := to - contact
+	var tangent := remaining - normal * remaining.dot(normal)
+	var slid := contact + tangent
+	if not capsule_blocks(shapes, slid, axis, half_length, radius):
+		return slid
+	return contact
+
+## Le dernier point du segment où le corps tient encore. Recherche dichotomique : douze pas
+## suffisent à descendre sous le millimètre sur un déplacement d'une image.
+static func _last_free(shapes: PlaneShapes, from: Vector2, to: Vector2, axis: Vector2,
+		half_length: float, radius: float) -> Vector2:
+	if capsule_blocks(shapes, from, axis, half_length, radius):
+		# Le départ est DÉJÀ pris — un mur a tourné dans le corps. Ce n'est pas au glissement
+		# de régler ça : `PlayerFighterController` s'en dégage à vitesse bornée, ce qui se lit
+		# comme une poussée et non comme un saut.
+		return from
+	var low := 0.0
+	var high := 1.0
+	for i in 12:
+		var mid := (low + high) * 0.5
+		if capsule_blocks(shapes, from.lerp(to, mid), axis, half_length, radius):
+			high = mid
+		else:
+			low = mid
+	return from.lerp(to, low)
