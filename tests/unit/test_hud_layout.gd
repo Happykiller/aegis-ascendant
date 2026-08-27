@@ -96,3 +96,51 @@ func test_right_and_bottom_anchored_panels_hang_off_their_edge() -> void:
 	assert_almost_eq(score.end.x, size.x - 28.0, 0.5, "the score panel hugs the right margin")
 	assert_almost_eq(lives.end.y, size.y - 28.0, 0.5, "the lives panel hugs the bottom margin")
 	hud.free()
+
+# --- La repousse d'une sous-cible ------------------------------------------
+
+## ⚠️ LE DÉFAUT NOMMÉ AU SECOND PLAYTEST DU 2026-08-27 : « quand l'une d'elles est 100 %
+## rechargée, TOUTES passent à 100 % ». La cause n'était pas dans la logique du boss — les
+## appendices repoussent bel et bien chacun sur son minuteur — mais **dans la jauge** : une
+## sous-cible à terre affiche une barre PLEINE, seulement plus sombre. Rien n'y lit « vide »,
+## donc la rangée entière se lit comme opérationnelle dès qu'une seule redevient vive.
+##
+## La repousse est désormais une VRAIE barre, par-dessus la sombre. Ce test garde qu'elle
+## dise la vérité : une sous-cible à mi-repousse doit occuper la MOITIÉ de sa jauge, pas la
+## totalité.
+func test_a_regrowing_target_shows_how_far_it_has_come_not_a_full_bar() -> void:
+	var hud: Control = track(FighterHudScript.new()) as Control
+	hud._ready()
+	hud.show_boss("TEST")
+	hud.set_boss_limbs(PackedStringArray(["A", "B", "C"]))
+	hud.set_boss_limb(0, 0.0, false)
+	hud.set_boss_limb_regen(0, 0.5)
+	var regen: ColorRect = hud._limb_regens[0]
+	assert_true(regen.visible, "la repousse se voit")
+	assert_almost_eq(regen.size.x, FighterHudScript.LIMB_GAUGE_WIDTH * 0.5, 0.5,
+		"à mi-repousse, la barre fait la moitié de la jauge")
+	assert_almost_eq(regen.size.y, FighterHudScript.LIMB_GAUGE_HEIGHT, 0.01,
+		"et toute la hauteur : un filet de deux pixels ne se voyait pas")
+
+## Elle s'efface dès que la sous-cible est revenue — sinon elle resterait en travers d'une
+## jauge de santé qui, elle, redevient la vérité.
+func test_the_regrowth_bar_clears_the_moment_the_target_is_back() -> void:
+	var hud: Control = track(FighterHudScript.new()) as Control
+	hud._ready()
+	hud.show_boss("TEST")
+	hud.set_boss_limbs(PackedStringArray(["A", "B", "C"]))
+	hud.set_boss_limb(1, 0.0, false)
+	hud.set_boss_limb_regen(1, 0.9)
+	assert_true(hud._limb_regens[1].visible, "elle monte")
+	hud.set_boss_limb(1, 1.0, true)
+	assert_false(hud._limb_regens[1].visible, "et disparaît au retour")
+
+## La couleur doit être FRANCHE. Le vert « limité » de la charte a été jugé « trop subtil,
+## d'une couleur foncée pas visible » en jouant : la garde porte sur la luminosité, pas sur
+## la teinte, qui reste libre de bouger.
+func test_the_regrowth_colour_is_bright_enough_to_be_seen() -> void:
+	var green: Color = FighterHudScript.REGEN_GREEN
+	assert_true(green.get_luminance() > 0.45,
+		"luminance %.2f — en dessous, on doit chercher le signal au lieu de le voir"
+			% green.get_luminance())
+	assert_true(green.g > green.r and green.g > green.b, "et c'est bien un vert")

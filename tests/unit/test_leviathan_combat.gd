@@ -692,7 +692,7 @@ func test_the_regen_gauge_never_promises_an_armour_that_is_not_coming() -> void:
 	var combat := _make()
 	var per_dive := combat.tuning.flux_damage_per_dive()
 	var seen: Array[float] = []
-	combat.armour_regen.connect(func(r: float) -> void: seen.append(r))
+	combat.armour_regen.connect(func(r: float, _p: int) -> void: seen.append(r))
 	for cycle in 2:
 		_kill_armour(combat)
 		_ride_dive(combat, per_dive)
@@ -707,7 +707,7 @@ func test_the_regen_gauge_never_promises_an_armour_that_is_not_coming() -> void:
 func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
 	var combat := _make()
 	var seen: Array[float] = []
-	combat.armour_regen.connect(func(r: float) -> void: seen.append(r))
+	combat.armour_regen.connect(func(r: float, _p: int) -> void: seen.append(r))
 	_kill_armour(combat)
 	_ride_dive(combat, 10.0)   # on rate : l'armure va revenir
 	assert_true(seen.size() >= 2, "la reconstruction s'annonce pendant l'ejection")

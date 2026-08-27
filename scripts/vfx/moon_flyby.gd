@@ -93,6 +93,26 @@ const TRAIL_SPRITE_SIZE := 11.0
 ## immédiatement et n'a l'air que d'un « effet mal placé ».
 const SPRITE_DIAGONAL := -45.0
 
+## Vitesse de rotation du bolide, en degrés par seconde.
+##
+## ⚠️ IL N'EN AVAIT AUCUNE. Le panneau était posé au même roulis à chaque image : « on
+## dirait juste un sprite qui se déplace latéralement, aucune rotation » (playtest du
+## 2026-08-27). Un caillou qui tombe tourne — sans ça, c'est une décalcomanie qui glisse.
+##
+## `billboard_basis` prend le roulis en degrés depuis toujours : le mécanisme était là,
+## rien ne s'en servait.
+const BOLIDE_SPIN_DEG := 210.0
+
+## Longueur minimale de la traînée, en fraction de sa longueur pleine. Elle ne part pas de
+## zéro : une flamme qui naît d'un point se lit comme une apparition, pas comme un sillage.
+const TRAIL_STRETCH_MIN := 0.38
+
+## Battement de la flamme : fréquence en hertz, et amplitude en fraction de largeur.
+## ⚠️ Sur la LARGEUR, jamais sur la longueur — la longueur porte la vitesse de chute, et la
+## faire vibrer brouillerait la seule information que la traînée transporte.
+const TRAIL_FLICKER_HZ := 17.0
+const TRAIL_FLICKER := 0.14
+
 ## Où se trouve l'extrémité CHAUDE de la traînée dans son image, en fraction du côté depuis
 ## le centre. Sans ce recul, la flamme naîtrait au milieu du panneau — donc à côté du bolide.
 ##
@@ -1277,7 +1297,10 @@ func _advance_impacts(delta: float) -> void:
 		if falling:
 			_bolide.position = bolide_position(_impact_at, _impact_up, _impact_age)
 			if _painted_bolide:
-				_bolide.basis = billboard_basis(view, course, SPRITE_DIAGONAL, 1.0, 1.0)
+				# ⚠️ IL TOURNE. Le roulis s'ajoute à la diagonale de redressement du
+				# sprite : le panneau reste face caméra, son image tourne dedans.
+				_bolide.basis = billboard_basis(view, course,
+					SPRITE_DIAGONAL + _impact_age * BOLIDE_SPIN_DEG, 1.0, 1.0)
 			else:
 				# Repli : l'axe long de la coque forgée est +Z (`BRIEF-0086`), et
 				# `looking_at` fait pointer −Z vers sa cible — on vise donc l'OPPOSÉ de la
@@ -1293,8 +1316,19 @@ func _advance_impacts(delta: float) -> void:
 				# ⚠️ L'EXTRÉMITÉ CHAUDE DE L'IMAGE N'EST PAS SON CENTRE : elle est près d'un
 				# coin. On recule donc le panneau le long de la course pour que ce point
 				# tombe sur la tête du bolide, sinon la flamme naît à côté du caillou.
-				_trail.basis = billboard_basis(view, course, SPRITE_DIAGONAL, 1.0, 1.0)
-				_trail.position = head + course * (TRAIL_SPRITE_SIZE * TRAIL_HEAD_OFFSET)
+				# ⚠️ ELLE S'ALLONGE ET ELLE BAT. Le panneau était posé à échelle 1 à
+				# chaque image : « la traînée est statique ». La longueur suit
+				# `trail_length()` — LA MÊME formule que le cône de repli, pour que les
+				# deux rendus racontent la même chute — et la largeur vibre.
+				var stretch := maxf(trail_length(_impact_age) / TRAIL_LENGTH,
+					TRAIL_STRETCH_MIN)
+				var flicker := 1.0 + TRAIL_FLICKER * sin(_impact_age * TAU * TRAIL_FLICKER_HZ)
+				_trail.basis = billboard_basis(view, course, SPRITE_DIAGONAL,
+					stretch, flicker)
+				# Le recul suit l'étirement : sans ça, la flamme se décrocherait de la tête
+				# dès qu'elle s'allonge.
+				_trail.position = head + course \
+					* (TRAIL_SPRITE_SIZE * TRAIL_HEAD_OFFSET * stretch)
 			else:
 				# Repli : le cône suit la COURSE RÉELLE et non la verticale — alignée sur
 				# elle, la traînée était vue en enfilade et se lisait comme une tache.

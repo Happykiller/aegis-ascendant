@@ -229,3 +229,65 @@ vocabulaire : *vert fin = ça revient, et voilà dans combien de temps*.
 
 ⚠️ La barre sombre pleine **ne bouge pas** : elle dit toujours « celui-ci est tombé ». Deux
 informations, deux tracés.
+
+
+---
+
+# Troisième partie du 2026-08-27 — la phase 2 change de nature
+
+Arc complet jusqu'à la **victoire, rang S, 43 770**. ⚠️ Le combat est passé en **« DERNIER
+ASSAUT »** — un quatrième cycle du Leviathan. C'est prévu (`ADR-0026` : le boss n'avance pas sur un
+compteur), mais c'est la première fois qu'on le voit : une plongée n'a pas rempli son quota.
+
+## R7 — La montée en puissance, deuxième correction ✅
+
+**Toujours au niveau 5 en entrant en phase 2.** Et le calcul qui avait choisi 16 kills/Core était
+**faux** : il supposait ~45 kills en phase 1, la partie en a compté **~74 sur 107**. L'erreur —
+compter un prisme de score à chaque bonus, alors qu'il n'y en a **qu'un sur trois** parmi les
+non-Cores.
+
+Un Core tous les **24** ennemis : niveau 4 au 72ᵉ, niveau 5 au 96ᵉ — hors de portée d'une partie
+normale. La garde du premier Core se **déduit** désormais de la vague (premier quart) au lieu d'être
+un nombre posé.
+
+## R8 — La phase 2 : ce qui ne bouge pas doit résister ✅
+
+> « Autant les ennemis en mouvement représentent une menace, autant eux non. »
+
+| Unité | PV | ×|
+|---|---:|---:|
+| Choir Mine (explosive) | 44 → **484** | 11 |
+| Null Maw (attractive) | 26 → **286** | 11 |
+| Shield Carrier | 42 → **252** | 6 |
+
+⚠️ **La Choir Mine cesse d'être du popcorn** (`LOI-ENN-03` : « le popcorn n'a que le minimum de
+PV »), et c'est assumé : son rôle n'est pas de remplir, c'est d'**interdire une zone**
+(`LOI-ENN-01`). Une unité qui ne poursuit pas n'a qu'un moyen d'exister — durer.
+
+## R9 — « Trop de moments vides » ✅
+
+Deux trous **mesurés** dans la timeline (7→10 s et 16→20 s) comblés en premier, puis densification :
+**24 unités de phase 1 ajoutées**, pool de 38 → **62**.
+
+⚠️ **`STRAFE_RUN` en est exclu par construction** : il naît à `x = ±16`, hors du champ, et la garde
+de cette phase interdit toute apparition ailleurs que par le bord haut — « une unité qui apparaît
+sous le nez du joueur n'est pas une menace, c'est une injustice ». Les renforts sont donc des
+piqués, des croissants, des arcs et des serpentins.
+
+⚠️ **Et `ADR-0027` change d'intention.** Sa garde disait « et rien d'autre : la phase est celle du
+nouveau bestiaire ». Elle dit maintenant : les unités du bestiaire **et** une menace mobile.
+
+## R10 — Les météores ne tournaient pas ✅
+
+> « On dirait juste un sprite qui se déplace latéralement, aucune rotation, la traînée est
+> statique. »
+
+Exact, et le mécanisme existait déjà : `billboard_basis()` prend **un roulis et deux échelles**
+depuis toujours, et les deux appels passaient `SPRITE_DIAGONAL, 1.0, 1.0` — roulis fixe, échelle
+constante.
+
+- Le bolide **tourne** (210 °/s), et le panneau reste face caméra — c'est gardé par un test.
+- La traînée **s'allonge** avec la chute, en suivant `trail_length()`, **la même formule que le cône
+  de repli** : les deux rendus racontent enfin la même chute.
+- Elle **bat**, sur la **largeur** seulement : la longueur porte la vitesse de chute, la faire
+  vibrer brouillerait la seule information qu'elle transporte.

@@ -13,13 +13,13 @@ extends "res://tests/test_case.gd"
 
 const OpeningWave: WaveData = preload("res://resources/encounters/wave_graybox_01.tres")
 ## Le contrat, en un nombre : combien d'ennemis pour un niveau de puissance.
-const KILLS_PER_CORE := 16
+const KILLS_PER_CORE := 24
 
 ## Niveau maximal jugé acceptable à l'entrée de la phase 2 (retour opérateur du
 ## 2026-08-27 : « max 4/5 en arrivant en phase 2 »).
 const MAX_LEVEL_AT_PHASE_2 := 4
 
-func test_a_power_core_costs_sixteen_kills() -> void:
+func test_a_power_core_costs_what_it_was_balanced_to_cost() -> void:
 	assert_eq(PickupManager.KILLS_PER_POWER, KILLS_PER_CORE,
 		"un Power Core tous les %d ennemis" % KILLS_PER_CORE)
 
@@ -30,13 +30,17 @@ func test_full_power_is_not_reached_in_the_middle_of_the_opening_wave() -> void:
 	for entry in OpeningWave.entries:
 		units += entry.count
 	var kills_for_max := 4 * PickupManager.KILLS_PER_POWER
-	assert_true(kills_for_max > units * 0.55,
-		"le niveau 5 demande %d kills sur une vague de %d (%.0f %%) — il tomberait trop tôt"
+	assert_true(kills_for_max > units * 0.80,
+		"le niveau 5 demande %d kills sur une vague de %d (%.0f %%) — mesuré le 2026-08-27 : une partie jouée en tue ~74, le seuil doit rester au-dessus"
 			% [kills_for_max, units, 100.0 * kills_for_max / float(units)])
 
 ## Le revers : une cadence trop lente rendrait la montée en puissance invisible, et le
-## genre en fait « la moitié du plaisir » (LOI-PUI-01).
+## genre en fait « la moitié du plaisir » (`LOI-PUI-01`). La borne se DÉDUIT de la vague —
+## le premier Core doit tomber dans son premier quart — plutôt que d'être un nombre posé.
 func test_the_first_core_still_arrives_early() -> void:
-	assert_true(PickupManager.KILLS_PER_POWER <= 20,
-		"le premier Power Core tombe au %dᵉ ennemi — au-delà, la montée ne se sent plus"
-			% PickupManager.KILLS_PER_POWER)
+	var units := 0
+	for entry in OpeningWave.entries:
+		units += entry.count
+	assert_true(PickupManager.KILLS_PER_POWER <= units / 4,
+		"le premier Power Core tombe au %dᵉ ennemi d'une vague de %d — au-delà du premier quart, la montée ne se sent plus"
+			% [PickupManager.KILLS_PER_POWER, units])

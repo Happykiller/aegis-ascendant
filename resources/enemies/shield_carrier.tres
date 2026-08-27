@@ -41,7 +41,14 @@ path = 3
 fire = 1
 effect = 3
 display_name = "Shield Carrier"
-max_health = 42.0
+; ⚠️ PV MULTIPLIES PAR 6 le 2026-08-27, sur retour de playtest : « autant les ennemis
+; en mouvement representent une menace, autant eux non ». Une unite qui ne poursuit pas
+; n'a qu'un moyen d'exister : DURER. A 42 PV elle tombait d'une salve, et le barrage
+; qu'elle est censee former se traversait sans le voir.
+;
+; ⚠️ Ce n'est plus du popcorn (LOI-ENN-03 : « le popcorn n'a que le minimum de PV »), et
+; c'est assume : son role n'est pas de remplir, c'est d'INTERDIRE UNE ZONE (LOI-ENN-01).
+max_health = 252.0
 move_speed = 2.2
 hold_y = 4.5
 hold_time = 9.0

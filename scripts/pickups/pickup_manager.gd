@@ -18,13 +18,18 @@ const _DROP_EVERY := 4
 ## Pire, la vague distribuait **8 Cores quand 4 suffisent** : la moitié tombait sur un
 ## joueur déjà plein et ne produisait RIEN — un bonus muet.
 ##
-## À 4 (un Core tous les 16 ennemis) : niveau 2 au 16ᵉ, 3 au 32ᵉ, 4 au 48ᵉ, 5 au 64ᵉ. Sur
-## les ~45 kills d'une phase 1 jouée, on entre en phase 2 au niveau 3-4 — ce que demandait
-## l'opérateur.
+## ⚠️ 4 N'A PAS SUFFI, ET LE CALCUL QUI L'AVAIT CHOISI ÉTAIT FAUX. Il supposait ~45 kills
+## en phase 1 ; la partie du soir en a compté **~74 sur 107** (déduits du score du mini-boss,
+## 17 050 dont 5 000 pour lui). L'erreur : on comptait un prisme de score à chaque bonus,
+## alors qu'il n'y en a **qu'un sur trois** parmi les non-Cores.
+##
+## À 6 (un Core tous les **24** ennemis) : niveau 2 au 24ᵉ, 3 au 48ᵉ, 4 au 72ᵉ, 5 au 96ᵉ —
+## le dernier est hors de portée d'une partie normale, et on entre en phase 2 au niveau 4.
+## C'est ce que demandait l'opérateur : « max 4/5 en arrivant en phase 2 ».
 ##
 ## ⚠️ Ne pas retoucher `_DROP_EVERY` pour compenser : ce sont deux réglages différents. Il
 ## décide de la FRÉQUENCE des bonus (tous types), celui-ci de la part qui donne du feu.
-const _POWER_EVERY := 4
+const _POWER_EVERY := 6
 
 ## Ennemis à abattre pour un niveau de puissance. Dérivé, mais PUBLIC et nommé : c'est LE
 ## nombre d'équilibrage de la montée en puissance, et il ne doit pas se déduire de deux

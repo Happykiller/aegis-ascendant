@@ -312,3 +312,60 @@ func test_the_roll_turns_the_panel_without_breaking_it() -> void:
 	assert_true(droit.y.dot(tourne.y) < 0.95, "la rotation change bien l'orientation")
 	assert_almost_eq(tourne.y.length(), 1.0, 0.001, "et la base reste normée")
 	assert_true(absf(tourne.x.dot(tourne.y)) < 0.001, "et orthogonale")
+
+# --- Le bolide doit VIVRE (playtest du 2026-08-27) --------------------------
+
+## ⚠️ « On dirait juste un sprite qui se déplace latéralement, aucune rotation. » Le panneau
+## était posé au MÊME roulis à chaque image. `billboard_basis` prend pourtant le roulis en
+## degrés depuis toujours — le mécanisme était là, rien ne s'en servait.
+##
+## La garde porte sur le fait qu'il TOURNE, pas sur sa vitesse : celle-ci est un goût.
+func test_the_bolide_actually_spins_as_it_falls() -> void:
+	var view := Basis.IDENTITY
+	var course := Vector3(0.2, -1.0, 0.1).normalized()
+	var first := MoonFlyby.billboard_basis(view, course, MoonFlyby.SPRITE_DIAGONAL, 1.0, 1.0)
+	var later := MoonFlyby.billboard_basis(view, course,
+		MoonFlyby.SPRITE_DIAGONAL + 0.5 * MoonFlyby.BOLIDE_SPIN_DEG, 1.0, 1.0)
+	assert_true(first.x.angle_to(later.x) > 0.3,
+		"un demi-seconde de chute fait tourner le panneau de %.0f°"
+			% rad_to_deg(first.x.angle_to(later.x)))
+
+## Et il tourne dans le PLAN DE L'ÉCRAN : le panneau doit rester face caméra, sinon il
+## s'aplatit en tournant et disparaît une fois sur deux.
+func test_spinning_never_turns_the_panel_away_from_the_camera() -> void:
+	var view := Basis.IDENTITY
+	var course := Vector3(0.2, -1.0, 0.1).normalized()
+	for step in 12:
+		var basis := MoonFlyby.billboard_basis(view, course,
+			MoonFlyby.SPRITE_DIAGONAL + step * 30.0, 1.0, 1.0)
+		assert_almost_eq(basis.z.normalized().dot(view.z.normalized()), 1.0, 0.001,
+			"le panneau reste face caméra au roulis %d°" % (step * 30))
+
+## ⚠️ « La traînée est statique. » Elle était posée à échelle 1 en permanence. Elle suit
+## désormais `trail_length()` — LA MÊME formule que le cône de repli, pour que les deux
+## rendus racontent la même chute.
+func test_the_trail_stretches_with_the_fall() -> void:
+	var early := maxf(MoonFlyby.trail_length(0.2) / MoonFlyby.TRAIL_LENGTH,
+		MoonFlyby.TRAIL_STRETCH_MIN)
+	var late := maxf(MoonFlyby.trail_length(MoonFlyby.BOLIDE_FALL) / MoonFlyby.TRAIL_LENGTH,
+		MoonFlyby.TRAIL_STRETCH_MIN)
+	assert_true(late > early * 1.5,
+		"la traînée passe de %.2f à %.2f de sa longueur pendant la chute" % [early, late])
+	assert_true(early >= MoonFlyby.TRAIL_STRETCH_MIN,
+		"et elle ne naît jamais d'un point : %.2f" % early)
+
+## Le battement est sur la LARGEUR. Sur la longueur, il brouillerait la seule information
+## que la traînée transporte — la vitesse de chute.
+func test_the_flicker_never_touches_the_length() -> void:
+	var view := Basis.IDENTITY
+	var course := Vector3(0.0, -1.0, 0.0)
+	var span := 0.0
+	for step in 20:
+		var flicker := 1.0 + MoonFlyby.TRAIL_FLICKER \
+			* sin(step * 0.05 * TAU * MoonFlyby.TRAIL_FLICKER_HZ)
+		var basis := MoonFlyby.billboard_basis(view, course, MoonFlyby.SPRITE_DIAGONAL,
+			0.6, flicker)
+		if step == 0:
+			span = basis.y.length()
+		assert_almost_eq(basis.y.length(), span, 0.001,
+			"la longueur ne vibre pas (%.3f)" % basis.y.length())

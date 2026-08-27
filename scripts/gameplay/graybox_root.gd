@@ -67,6 +67,9 @@ var _hit_stop: HitStop
 ## Âge du battement du repère de cible. Repart de zéro à chaque plongée : le battement doit
 ## commencer plein, pas au milieu d'un cycle hérité de la plongée précédente.
 var _core_marker_age: float = 0.0
+## Nombre de plaques déjà annoncées par la rangée de reconstruction. Évite de redresser la
+## rangée à chaque image : `set_boss_limbs` repositionne toute la ligne.
+var _regen_plates: int = 0
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
@@ -644,10 +647,26 @@ func _on_leviathan_piece_active(index: int) -> void:
 	if _hud != null:
 		_hud.set_boss_limb_active(index)
 
-## L'armure se reconstruit : le HUD le MONTRE, au lieu de laisser une seconde de vide.
-func _on_leviathan_armour_regen(ratio: float) -> void:
-	if _hud != null:
-		_hud.set_boss_regen(ratio)
+## L'armure se reconstruit : la RANGÉE DE PLAQUES le montre, cuve par cuve, au lieu de
+## laisser une seconde de vide.
+##
+## ⚠️ La rangée est éteinte pendant la plongée (« plus de plaques »). On la redresse ici,
+## pour le cycle QUI VIENT — c'est ce qui permet de voir arriver l'armure, et combien il en
+## reste. Même vocabulaire que la repousse des appendices du mini-boss : une barre qui se
+## remplit en vert.
+func _on_leviathan_armour_regen(ratio: float, plates: int) -> void:
+	if _hud == null:
+		return
+	if ratio <= 0.0:
+		_regen_plates = 0
+		return
+	if _regen_plates != plates:
+		_regen_plates = plates
+		_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS.slice(0, plates))
+		for i in plates:
+			_hud.set_boss_limb(i, 0.0, false)   # à terre : la barre sombre dit « pas encore »
+	for i in plates:
+		_hud.set_boss_limb_regen(i, ratio)
 
 func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)

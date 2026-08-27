@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="WaveData" load_steps=29 format=3]
+[gd_resource type="Resource" script_class="WaveData" load_steps=40 format=3]
 
 ; ============================================================================
 ; Champ d'astéroïdes — la traversée entre les deux boss (ADR-0027).
@@ -25,6 +25,10 @@
 
 [ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
 [ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_diver.tscn" id="20_dive"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/crescent_interceptor.tscn" id="21_cres"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_arc.tscn" id="22_arc"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_serpent.tscn" id="23_serp"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/choir_mine.tscn" id="3_mine"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/null_maw.tscn" id="4_maw"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/leech_drone.tscn" id="5_leech"]
@@ -235,6 +239,82 @@ spawn_plane_position = Vector2(0, 9.5)
 count = 3
 spacing = 0.8
 
+
+; ============================================================================
+; RENFORTS DE PHASE 1 — ajoutés le 2026-08-27 sur retour de playtest.
+;
+;   « Trop de moments vides », et « autant les ennemis en mouvement représentent
+;    une menace, autant eux non. »
+;
+; Les trois unités du bestiaire ont gagné leurs PV le même jour : elles DURENT,
+; donc elles interdisent. Ce qui manquait, c'est ce qui BOUGE — et la phase 1 en
+; a neuf familles qui ne servaient qu'une fois.
+;
+; ⚠️ ELLES ENTRENT TOUTES PAR LE HAUT. `STRAFE_RUN` en est exclu par
+; construction : il naît à x = ±16, en dehors du champ, et la garde de cette
+; phase interdit toute apparition ailleurs que par le bord haut — « une unité qui
+; apparaît sous le nez du joueur n'est pas une menace, c'est une injustice ».
+;
+; ⚠️ Les deux TROUS mesurés (7→10 s et 16→20 s) sont comblés en premier : c'est
+; là que « vide » se lisait.
+; ============================================================================
+
+[sub_resource type="Resource" id="p1"]
+script = ExtResource("2_entry")
+time_offset = 7.0
+enemy_scene = ExtResource("20_dive")
+spawn_plane_position = Vector2(-6, 9.5)
+count = 3
+spacing = 0.60
+
+[sub_resource type="Resource" id="p2"]
+script = ExtResource("2_entry")
+time_offset = 8.0
+enemy_scene = ExtResource("20_dive")
+spawn_plane_position = Vector2(6, 9.5)
+count = 3
+spacing = 0.60
+
+[sub_resource type="Resource" id="p3"]
+script = ExtResource("2_entry")
+time_offset = 16.5
+enemy_scene = ExtResource("21_cres")
+spawn_plane_position = Vector2(-9, 9.5)
+count = 3
+spacing = 0.70
+
+[sub_resource type="Resource" id="p4"]
+script = ExtResource("2_entry")
+time_offset = 17.5
+enemy_scene = ExtResource("21_cres")
+spawn_plane_position = Vector2(9, 9.5)
+count = 3
+spacing = 0.70
+
+[sub_resource type="Resource" id="p5"]
+script = ExtResource("2_entry")
+time_offset = 27.0
+enemy_scene = ExtResource("22_arc")
+spawn_plane_position = Vector2(-11, 9.5)
+count = 4
+spacing = 0.60
+
+[sub_resource type="Resource" id="p6"]
+script = ExtResource("2_entry")
+time_offset = 28.0
+enemy_scene = ExtResource("22_arc")
+spawn_plane_position = Vector2(11, 9.5)
+count = 4
+spacing = 0.60
+
+[sub_resource type="Resource" id="p7"]
+script = ExtResource("2_entry")
+time_offset = 35.5
+enemy_scene = ExtResource("23_serp")
+spawn_plane_position = Vector2(0, 9.5)
+count = 4
+spacing = 0.50
+
 [resource]
 script = ExtResource("1_wave")
-entries = [SubResource("m1"), SubResource("m2"), SubResource("m3"), SubResource("w1"), SubResource("w2"), SubResource("l1"), SubResource("l2"), SubResource("sc1"), SubResource("m4"), SubResource("m5"), SubResource("m6"), SubResource("m7"), SubResource("l3"), SubResource("w3"), SubResource("w4"), SubResource("sc2"), SubResource("m8"), SubResource("l4"), SubResource("l5"), SubResource("m9"), SubResource("m10"), SubResource("l6")]
+entries = [SubResource("m1"), SubResource("m2"), SubResource("m3"), SubResource("w1"), SubResource("w2"), SubResource("l1"), SubResource("l2"), SubResource("sc1"), SubResource("m4"), SubResource("m5"), SubResource("m6"), SubResource("m7"), SubResource("l3"), SubResource("w3"), SubResource("w4"), SubResource("sc2"), SubResource("m8"), SubResource("l4"), SubResource("l5"), SubResource("m9"), SubResource("m10"), SubResource("l6"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7")]

@@ -46,7 +46,26 @@ func test_it_plays_the_three_units_the_bestiary_had_left_unused() -> void:
 	assert_true(int(counts.get(MineScene, 0)) > 0, "la Choir Mine entre en jeu")
 	assert_true(int(counts.get(MawScene, 0)) > 0, "la Null Maw entre en jeu")
 	assert_true(int(counts.get(LeechScene, 0)) > 0, "la Leech Drone entre en jeu")
-	assert_eq(counts.size(), 4, "et rien d'autre : la phase est celle du nouveau bestiaire")
+	assert_true(counts.size() >= 4, "les quatre unites du bestiaire sont la")
+
+## ⚠️ ET DEPUIS LE 2026-08-27, ELLE N'EST PLUS QUE CELA. Cette garde disait « et rien
+## d'autre : la phase est celle du nouveau bestiaire ». Le playtest a tranche autrement :
+## les trois unites du bestiaire ont vu leurs PV multiplies (elles DURENT, donc elles
+## interdisent une zone), et la phase s'est retrouvee sans MENACE MOBILE — « autant les
+## ennemis en mouvement representent une menace, autant eux non », plus « trop de moments
+## vides ».
+##
+## La garde change donc d'objet : la phase doit porter les unites du bestiaire ET des
+## unites qui bougent. Retirer les secondes rouvrirait le defaut nomme en jouant.
+func test_the_field_also_carries_a_moving_threat() -> void:
+	var counts := _scene_paths()
+	var movers := 0
+	for path: String in counts:
+		if path in [MineScene, MawScene, CarrierScene]:
+			continue   # celles-la derivent : elles interdisent, elles ne poursuivent pas
+		movers += int(counts[path])
+	assert_true(movers >= 20,
+		"%d unites mobiles dans la traversee — en dessous, la phase redevient un decor" % movers)
 
 func test_the_shield_carrier_teaches_before_it_is_exploited() -> void:
 	# ⚠️ PREMIÈRE APPARITION DANS TOUT LE JEU. Le genre est explicite : un mécanisme

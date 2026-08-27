@@ -66,7 +66,14 @@ script = ExtResource("1_data")
 path = 9
 fire = 4
 display_name = "Choir Mine"
-max_health = 44.0
+; ⚠️ PV MULTIPLIES PAR 11 le 2026-08-27, sur retour de playtest : « autant les ennemis
+; en mouvement representent une menace, autant eux non ». Une unite qui ne poursuit pas
+; n'a qu'un moyen d'exister : DURER. A 44 PV elle tombait d'une salve, et le barrage
+; qu'elle est censee former se traversait sans le voir.
+;
+; ⚠️ Ce n'est plus du popcorn (LOI-ENN-03 : « le popcorn n'a que le minimum de PV »), et
+; c'est assume : son role n'est pas de remplir, c'est d'INTERDIRE UNE ZONE (LOI-ENN-01).
+max_health = 484.0
 move_speed = 1.1
 fire_interval = 1.9
 projectile = ExtResource("2_shot")

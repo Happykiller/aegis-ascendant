@@ -24,9 +24,12 @@ const MAX_LIMB_PIPS := 4
 ## Couleur d'une jauge à terre : sombre mais pas noire, sinon elle disparaît du panneau
 ## et l'on ne compte plus que ce qui reste, pas ce qui manque.
 const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
-## Vert du Null Choir (charte) : c'est l'ennemi qui se répare. Le même que le filet de
-## reconstruction de l'armure du Leviathan — un seul mot pour une seule idée.
-const REGEN_GREEN := Color("7c9e52")
+## ⚠️ VERT FRANC, ET C'EST UNE CORRECTION. Le vert « limité » de la charte (`7c9e52`) a été
+## essayé le 2026-08-27 : verdict de l'opérateur en jouant, « c'est trop subtil, c'est d'une
+## couleur foncée pas visible ». Un signal d'accessibilité qu'on doit chercher ne signale
+## rien. On garde la teinte du Null Choir — c'est l'ennemi qui se répare — on lui rend sa
+## luminosité.
+const REGEN_GREEN := Color("8fd152")
 ## Sous-cible ACTIVE — celle que le joueur doit viser MAINTENANT (la plaque exposée en
 ## phase 1 du Leviathan). Plus vive que le magenta des vivantes ordinaires : c'est ce qui
 ## répond au « j'ai pas compris quelle plaque viser » du playtest.
@@ -75,7 +78,6 @@ var _boss_name: Label
 ## TOUS les boss, et seul le Pale Leviathan combat en cycles.
 var _boss_cycle: Label
 var _boss_fill: ColorRect
-var _boss_regen: ColorRect
 var _limb_regens: Array[ColorRect] = []
 var _boss_full_width: float = 0.0
 var _limb_pips: Array[ColorRect] = []
@@ -257,24 +259,6 @@ func _build_boss_panel() -> void:
 	_boss_fill.size = Vector2(772, 8)
 	_boss_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_panel.add_child(_boss_fill)
-	# La regen de l'armure : un filet de 2 px SOUS la jauge, dans les deux pixels que le
-	# fond laisse libres (fond 36→48, remplissage 38→46). Il ne peut donc pas recouvrir la
-	# progression du combat, qui NE REMONTE PAS (`ADR-0023`).
-	#
-	# ⚠️ PREMIÈRE VERSION ÉCARTÉE, et la raison vaut d'être gardée : le vert remplissait le
-	# CREUX de la jauge, ancré à droite. Il ne mentait pas, mais sa longueur dépendait de
-	# l'avancement du combat — au cycle 1 il faisait trente pixels. Or cette jauge mesure un
-	# TEMPS, pas des dégâts : elle doit balayer la même distance à chaque fois, sinon elle
-	# dit deux choses différentes selon le moment du combat.
-	#
-	# Vert du Null Choir (charte) : c'est l'ennemi qui se répare, pas nous.
-	_boss_regen = ColorRect.new()
-	_boss_regen.color = Color("7c9e52")
-	_boss_regen.position = Vector2(14, 46)
-	_boss_regen.size = Vector2(0, 2)
-	_boss_regen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_boss_regen.visible = false
-	_boss_panel.add_child(_boss_regen)
 	_boss_full_width = 772.0
 	_build_limb_pips()
 
@@ -321,17 +305,6 @@ func _build_limb_pips() -> void:
 		track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_boss_panel.add_child(track)
 		_limb_tracks.append(track)
-		# Le filet de repousse : 2 px au BAS de la jauge, sous le remplissage. Même
-		# vocabulaire que le filet vert de la barre du boss — le joueur apprend une seule
-		# fois que « vert fin = ça revient, et voilà dans combien de temps ».
-		var regen := ColorRect.new()
-		regen.color = REGEN_GREEN
-		regen.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0 + LIMB_GAUGE_HEIGHT - 2.0)
-		regen.size = Vector2(0.0, 2.0)
-		regen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		regen.visible = false
-		_boss_panel.add_child(regen)
-		_limb_regens.append(regen)
 		var fill := ColorRect.new()
 		fill.color = BOSS_MAGENTA
 		fill.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
@@ -340,6 +313,22 @@ func _build_limb_pips() -> void:
 		_boss_panel.add_child(fill)
 		_limb_pips.append(fill)
 		_limb_alive.append(true)
+		# La repousse : une VRAIE barre, pleine hauteur, qui grandit PAR-DESSUS le
+		# remplissage sombre. Ajoutée après lui, donc dessinée au-dessus.
+		#
+		# ⚠️ PREMIÈRE VERSION ÉCARTÉE : un filet de 2 px sous la jauge. « Trop subtil »,
+		# et la raison est structurelle — la jauge d'un appendice à terre reste PLEINE, en
+		# sombre, si bien que la rangée ne montre jamais rien de vide. Un filet de deux
+		# pixels ne pouvait pas se distinguer là-dedans. C'est la barre elle-même qui doit
+		# se remplir : « faire grandir leur barre de vie en vert », mot pour mot.
+		var regen := ColorRect.new()
+		regen.color = REGEN_GREEN
+		regen.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
+		regen.size = Vector2(0.0, LIMB_GAUGE_HEIGHT)
+		regen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		regen.visible = false
+		_boss_panel.add_child(regen)
+		_limb_regens.append(regen)
 
 func _build_banner() -> void:
 	_banner = Label.new()
@@ -383,12 +372,10 @@ func show_boss(display_name: String) -> void:
 	_boss_cycle.visible = false
 	_boss_name.text = display_name.to_upper()
 	_boss_fill.size.x = _boss_full_width
-	_boss_regen.visible = false
 	_boss_panel.visible = true
 
 func hide_boss() -> void:
 	_boss_panel.visible = false
-	_boss_regen.visible = false
 	for regen in _limb_regens:
 		regen.visible = false
 
@@ -435,7 +422,7 @@ func set_boss_limb_regen(index: int, ratio: float) -> void:
 		regen.visible = false
 		return
 	regen.size.x = LIMB_GAUGE_WIDTH * clamped
-	regen.visible = true
+	regen.visible = _limb_pips[index].visible
 
 ## Reconfigure la rangée de pastilles pour les sous-cibles d'un boss : un libellé chacune,
 ## la rangée RECENTRÉE sur leur nombre (trois pour le Harvester, quatre ou trois pour le
@@ -457,6 +444,7 @@ func set_boss_limbs(labels: PackedStringArray) -> void:
 		_limb_labels[i].visible = used
 		_limb_tracks[i].visible = used
 		_limb_pips[i].visible = used
+		_limb_regens[i].visible = false
 		_limb_alive[i] = used
 		if not used:
 			continue
@@ -465,6 +453,8 @@ func set_boss_limbs(labels: PackedStringArray) -> void:
 		_limb_labels[i].position = Vector2(x, 49)
 		_limb_tracks[i].position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
 		_limb_pips[i].position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
+		_limb_regens[i].position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
+		_limb_regens[i].visible = false
 		# Chaque sous-cible repart pleine et vive : la rangée décrit un boss neuf de phase.
 		_limb_pips[i].color = BOSS_MAGENTA
 		_limb_pips[i].size.x = LIMB_GAUGE_WIDTH
@@ -490,23 +480,6 @@ func set_boss_limb_active(index: int) -> void:
 
 func set_boss_health(ratio: float) -> void:
 	_boss_fill.size.x = _boss_full_width * clampf(ratio, 0.0, 1.0)
-
-## L'armure se reforme : on montre COMBIEN DE TEMPS il reste, pas une santé qui remonterait.
-##
-## ⚠️ LE DÉFAUT QUE ÇA FERME. Entre deux cycles, le boss passait une seconde à ne rien faire
-## et RIEN NE LE DISAIT — l'opérateur au playtest du 2026-08-27 : « au lieu d'avoir juste un
-## temps avant qu'ils reviennent ». Un état qui existe sans se montrer se lit comme un
-## défaut ; ici il se lisait comme un temps mort.
-##
-## Le filet balaie TOUTE la largeur, de gauche à droite, en `dive_eject_time` : c'est un
-## compte à rebours, et il doit donc parcourir la même distance à chaque reconstruction.
-func set_boss_regen(ratio: float) -> void:
-	var clamped := clampf(ratio, 0.0, 1.0)
-	if clamped <= 0.0:
-		_boss_regen.visible = false
-		return
-	_boss_regen.size.x = _boss_full_width * clamped
-	_boss_regen.visible = true
 
 ## Affiche l'avancement en cycles d'un boss qui en a. Une chaîne vide éteint le compteur —
 ## c'est l'état par défaut, tous les autres boss du jeu se battant d'une seule traite.

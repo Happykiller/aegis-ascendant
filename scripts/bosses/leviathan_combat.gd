@@ -76,10 +76,13 @@ signal dive_ended(cycle: int, flux_down: bool)
 ## L'armure s'est reformée, avec `plates` plaques. Le niveau l'annonce au joueur : sans
 ## cela, une armure qui revient se lit comme un bug, pas comme une mécanique.
 signal armour_reformed(cycle: int, plates: int)
-## L'armure se reforme, de 0 à 1. Émis pendant l'éjection, et une dernière fois à 0 quand
-## elle est revenue. Sans lui, le joueur passait une seconde devant un boss qui ne faisait
-## rien et ne le disait pas (playtest du 2026-08-27).
-signal armour_regen(ratio: float)
+## L'armure se reforme, de 0 à 1, et avec COMBIEN de plaques elle revient. Émis pendant
+## l'éjection, et une dernière fois à 0 quand elle est là. Sans lui, le joueur passait une
+## seconde devant un boss qui ne faisait rien et ne le disait pas (playtest du 2026-08-27).
+##
+## Le nombre de plaques accompagne le ratio parce que la rangée du HUD doit se dresser AVANT
+## que l'armure existe : c'est elle qui montre la reconstruction, cuve par cuve.
+signal armour_regen(ratio: float, plates: int)
 
 ## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
 ## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
@@ -858,7 +861,8 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 		Dive.EJECT:
 			# La reconstruction se MONTRE. Pas quand le flux est tombé : là, rien ne revient.
 			if _flux_health > 0.0 and tuning.dive_eject_time > 0.0:
-				armour_regen.emit(minf(_dive_elapsed / tuning.dive_eject_time, 1.0))
+				armour_regen.emit(minf(_dive_elapsed / tuning.dive_eject_time, 1.0),
+					tuning.plates_for_cycle(_cycle + 1))
 			if _dive_elapsed >= tuning.dive_eject_time:
 				_leave_dive()
 
@@ -891,7 +895,7 @@ func _leave_dive() -> void:
 	_cycle += 1
 	_arm_cycle(_cycle)
 	_enter_phase(Phase.ARMOR)
-	armour_regen.emit(0.0)   # elle est là : la jauge de reconstruction s'efface
+	armour_regen.emit(0.0, _plates.size())   # elle est là : la reconstruction s'efface
 	armour_reformed.emit(_cycle, _plates.size())
 
 # --- Rendu de la coque --------------------------------------------------------
