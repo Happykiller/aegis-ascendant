@@ -206,7 +206,16 @@ func test_the_shipped_fight_has_no_orbital_locks() -> void:
 	assert_eq(tuning.node_count, 0,
 		"les verrous sont eteints : « les boules vertes, c'est pas logique »")
 
-## Les deux murs laissent le passage d'un chasseur et demi entre eux.
+## Les deux murs laissent passer le chasseur ENTIER, dans le sens ou il vole.
+##
+## ⚠️ CETTE GARDE MESURAIT LA MAUVAISE DIMENSION, ET C'EST CE QUI A RENDU LA PHASE
+## INJOUABLE. Elle exigeait « une largeur et demie de chasseur » (2,64) et le couloir en
+## faisait 2,60 : verte, donc. Mais le chasseur ne vole pas de flanc — il garde son cap
+## (`LOI-SYS-07`), donc radialement c'est sa LONGUEUR qui doit tenir, capsule comprise :
+## 4,22. Il ne pouvait pas exister dans le couloir, y etait convoye par les murs qui
+## tournent et ejecte au plafond — « c'est comme si tout le cercle etait un mur pour moi »
+## (playtest du 2026-08-27). Une garde qui mesure la mauvaise dimension est pire que pas de
+## garde : elle certifie le defaut.
 func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 	var rings := _shipped_rings()
 	assert_eq(rings.size(), 2, "deux murs")
@@ -218,10 +227,17 @@ func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 	# parce qu'elle ne parcourait pas la hierarchie des noeuds. Une seule source, et c'est
 	# celle que le jeu emploie pour la collision.
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
-	var width := stats.body_radius * 2.0
-	assert_true(gap > 1.5 * width * 0.8 and gap < 1.5 * width * 1.35,
-		"%.2f u entre les deux murs, pour ~%.2f attendus (1,5 largeur de chasseur, %.2f u)"
-			% [gap, 1.5 * width, width])
+	# L'encombrement AXIAL : le segment de la capsule, plus son rayon aux deux bouts. C'est
+	# ce que `PlaneCollider` teste, donc c'est ce qui doit tenir.
+	var lengthwise := (stats.body_half_length + stats.body_radius) * 2.0
+	assert_true(gap >= lengthwise,
+		"%.2f u entre les deux murs pour un chasseur qui en occupe %.2f dans l'axe"
+			% [gap, lengthwise])
+	# Et une marge de pilotage : tenir au millimetre pres n'est pas voler. Seuil mesure —
+	# au balayage du rayon, la derive tombe a zero des que le couloir passe 4,22.
+	assert_true(gap >= lengthwise + 0.4,
+		"%.2f u : il tient, mais il n'a que %.2f u de jeu pour manoeuvrer"
+			% [gap, gap - lengthwise])
 
 ## ⚠️ RETIREE : la largeur du chasseur se lit desormais dans `PlayerStats.body_radius`, ou
 ## elle est MESUREE sur `specter_9.glb` (X ±0,876, transformations de noeuds appliquees) et

@@ -80,7 +80,7 @@ func _physics_process(delta: float) -> void:
 		plane_position = plane_position.move_toward(_player.plane_position, _ATTRACT_SPEED * delta)
 	else:
 		plane_position.y -= _DRIFT_SPEED * delta
-		if plane_position.y < GameplayPlane.BOUNDS.position.y - 1.0:
+		if plane_position.y < GameplayPlane.bounds.position.y - 1.0:
 			deactivate()
 			return
 	position = GameplayPlane.to_world(plane_position)

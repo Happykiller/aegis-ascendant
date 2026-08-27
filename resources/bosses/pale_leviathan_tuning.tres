@@ -68,7 +68,20 @@ phase_deg = 0.0
 ; chasseur (1,752 u mesures sur `specter_9.glb`, transformations de noeuds appliquees) — la
 ; distance demandee au playtest.
 ;
-; ⚠️ TOUT L'ENSEMBLE A ETE RETRECI (5,8 -> 5,45 et 2,2 -> 2,35, epaisseur 1,0 -> 0,5) APRES
+; ⚠️ PUIS IL A FALLU L'AGRANDIR, ET C'EST LE CONTRAIRE QUI ETAIT EN CAUSE. Retreci a 5,45,
+; le mur laissait 2,60 u entre sa face et celle du mur interieur — pour un chasseur qui en
+; occupe 4,22 dans l'axe. Il ne pouvait donc pas EXISTER dans le couloir : en contact les
+; trois quarts du temps, il etait convoye le long de l'arc par les murs qui tournent et
+; ejecte au plafond. « C'est comme si tout le cercle etait un mur pour moi » (playtest du
+; 2026-08-27). Mesure sans joueur : pose immobile, il derivait de +6,6 u en neuf secondes.
+;
+; 8,05 est MESURE, pas deduit : au balayage du rayon, la derive tombe a zero des que le
+; couloir depasse 4,22 — 7,00 ejecte encore, 7,50 ne bouge plus. On retient 8,05 (couloir de
+; 5,20) parce qu'un joueur bouge, contrairement a la simulation. Le plan de vol de la chambre
+; (`GameplayPlane.CHAMBER_BOUNDS`) a ete agrandi pour loger ce mur ET le chasseur sous lui.
+;
+; ⚠️ ANCIEN ETAT, GARDE POUR LA TRACE : tout l'ensemble avait ete RETRECI (5,8 -> 5,45 et
+; 2,2 -> 2,35, epaisseur 1,0 -> 0,5) APRES
 ; LE PLAYTEST « je fonce tout droit et mon vaisseau est bloque ». L'arene fait 16 u de haut :
 ; avec l'envergure du chasseur (0,85), l'ancien mur exterieur bloquait de 4,45 a 7,15 et ne
 ; laissait que 0,85 u entre lui et le bord — juste sous le noyau, c'est-a-dire au seul endroit
@@ -81,7 +94,7 @@ phase_deg = 0.0
 ; toutes les captures, les deux arcs violets a cheval sur la sphere rose. La derive tombe
 ; donc a 0,30 (decision de l'operateur : garder les deux murs plutot que la derive), ce qui
 ; ramene l'enveloppe a 2,10 et laisse le mur interieur commencer a 2,10, et l'ecart demande est conserve.
-radius = 5.45
+radius = 8.05
 thickness = 0.5
 
 [sub_resource type="Resource" id="ring_inner"]

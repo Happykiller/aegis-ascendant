@@ -175,12 +175,20 @@ func test_the_dive_entry_leaves_room_to_fly() -> void:
 	var tuning := _tuning()
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	var entry := CoreInterior.PLANE_OFFSET + tuning.dive_entry_local()
-	assert_true(GameplayPlane.is_inside(entry),
-		"l'entree est dans les limites du plan (y = %.2f)" % entry.y)
-	var room := entry.y - GameplayPlane.BOUNDS.position.y
-	assert_true(room >= stats.body_radius,
-		"il reste %.2f u sous elle pour manoeuvrer, pour un chasseur large de %.2f"
-			% [room, stats.body_radius * 2.0])
+	# ⚠️ LES BORNES DE LA CHAMBRE. L'entree se DEDUIT du rayon du mur exterieur : agrandir le
+	# blindage la fait descendre avec lui, et c'est elle — plus que le poste de tir — qui
+	# commande la profondeur du plan de vol de ce lieu.
+	var chamber := GameplayPlane.CHAMBER_BOUNDS
+	assert_true(chamber.has_point(entry),
+		"l'entree (y = %.2f) est dans la chambre (bas %.2f)" % [entry.y, chamber.position.y])
+	# ⚠️ SON CORPS ENTIER, et non sa demi-largeur. Le test exigeait `body_radius` : il aurait
+	# valide un point d'apparition ou le chasseur nait le nez dans le mur et la queue hors du
+	# plan. Ce qui doit tenir sous lui, c'est ce que la collision teste — la capsule.
+	var room := entry.y - chamber.position.y
+	var demi_corps: float = stats.body_half_length + stats.body_radius
+	assert_true(room >= demi_corps,
+		"il reste %.2f u sous l'entree, pour un corps qui en occupe %.2f depuis son centre"
+			% [room, demi_corps])
 
 ## Et le chasseur doit pouvoir atteindre le HAUT de l'arène sans se retrouver dans le mur.
 ## Sinon le dégagement le repousse, les limites du plan le ramènent, et il vibre entre les
@@ -192,10 +200,13 @@ func test_the_top_of_the_arena_is_not_inside_the_shield() -> void:
 	for ring in tuning.reactor_rings:
 		if ring != null:
 			outermost = maxf(outermost, ring.radius + ring.thickness * 0.5)
-	var reach := GameplayPlane.BOUNDS.end.y - CoreInterior.PLANE_OFFSET.y
-	assert_true(reach > outermost + stats.body_radius,
-		("le haut de l'arene est a %.2f du noyau, le blindage va jusqu'a %.2f corps compris"
-			% [reach, outermost + stats.body_radius]))
+	# Le haut de la CHAMBRE — et le corps entier, pour la meme raison que l'entree : ce qui
+	# doit passer au-dessus du blindage, c'est la capsule, pas un rayon.
+	var reach := GameplayPlane.CHAMBER_BOUNDS.end.y - CoreInterior.PLANE_OFFSET.y
+	var demi_corps: float = stats.body_half_length + stats.body_radius
+	assert_true(reach > outermost + demi_corps,
+		("le haut de la chambre est a %.2f du noyau, le blindage va jusqu'a %.2f corps compris"
+			% [reach, outermost + demi_corps]))
 
 ## ⚠️ « Le réacteur central ne devrait pas être franchissable » (playtest du 2026-08-27). Il
 ## l'était : on lui traversait le ventre, parce que la collision ne connaissait que les murs.
@@ -426,7 +437,13 @@ func test_a_fighter_grazing_the_shield_keeps_full_control() -> void:
 	var shoved: int = run[0]
 	var touched: int = run[1]
 	var travelled: float = run[2]
-	assert_true(touched > 100,
+	# ⚠️ SEUIL DE CALIBRATION, RECALE APRES L'AGRANDISSEMENT DU BLINDAGE (8,05). Ce n'est pas
+	# la garde — celles-ci sont `shoved` et `travelled` — c'est le controle qui dit que la
+	# simulation frotte vraiment quelque chose. Le mur ayant grandi a angles d'ouverture
+	# constants, la meme trajectoire rasante passe de 82 images de contact au lieu de plus de
+	# cent. Abaisser ce chiffre n'affaiblit rien tant que les deux assertions qui suivent
+	# restent inchangees ; le supprimer, si.
+	assert_true(touched > 60,
 		"pre-requis : il RASE vraiment le blindage (%d images de contact sur 600)" % touched)
 	assert_true(shoved < 30,
 		"il longe sans etre manipule (%d images bousculees sur 600)" % shoved)
@@ -438,16 +455,23 @@ func test_a_fighter_grazing_the_shield_keeps_full_control() -> void:
 ## Et quand il POUSSE dans les murs ? Il ne passe pas — et ce n'est PAS un defaut de
 ## collision, c'est un fait de geometrie que personne n'avait calcule.
 ##
-## ⚠️ LE COULOIR ENTRE LES DEUX MURS N'EST PAS UN LIEU. Le chasseur est toujours aligne sur
-## l'axe vertical (`LOI-SYS-07` : on vise en se deplacant, on ne pivote pas). Radialement,
-## c'est donc sa LONGUEUR — 2,46 — qui devrait tenir dans le couloir ; l'espace reellement
-## libre, une fois son envergure retranchee des deux cotes, vaut 0,84. Il ne peut pas y
-## entrer, jamais, quelle que soit son adresse.
+## ⚠️ LE COULOIR ENTRE LES DEUX MURS EST DEVENU UN LIEU — ET CETTE GARDE A CHANGE DE SENS.
 ##
-## Ce n'est pas grave en soi : la phase se joue en tirant du dessous a travers les ouvertures,
-## pas en s'infiltrant. Mais ca veut dire que le « labyrinthe » demande au playtest est un
-## DECOR, pas un terrain — et il faut le savoir avant d'y accrocher une mecanique.
-func test_the_corridor_between_the_walls_is_scenery_not_a_place() -> void:
+## Elle affirmait le contraire, et elle avait raison de le faire : le chasseur est toujours
+## aligne sur l'axe vertical (`LOI-SYS-07` : on vise en se deplacant, on ne pivote pas), donc
+## radialement c'est son encombrement de capsule — 4,22 — qui doit tenir dans le couloir, et
+## celui-ci en faisait 2,60. Elle constatait donc un fait de geometrie, en attendant qu'il
+## soit tranche.
+##
+## Il l'a ete : « la physique ne marche pas du tout, c'est comme si tout le cercle etait un
+## mur pour moi » (playtest du 2026-08-27). Un decor dans lequel on est convoye et ejecte
+## n'est pas un decor, c'est un piege. Le mur exterieur passe donc a 8,05 — valeur MESUREE,
+## la derive tombant a zero des que le couloir depasse 4,22 — et le plan de vol de la chambre
+## s'elargit pour le loger.
+##
+## La garde tient desormais l'autre bout : le couloir doit rester UN LIEU. Si quelqu'un
+## retrecit le mur ou allonge le chasseur, elle retombe.
+func test_the_corridor_between_the_walls_is_a_place() -> void:
 	var tuning: LeviathanTuning = load(SHIPPED)
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	var rings := tuning.reactor_rings
@@ -456,11 +480,47 @@ func test_the_corridor_between_the_walls_is_scenery_not_a_place() -> void:
 	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
 	var corridor := (outer.radius - outer.thickness * 0.5) \
 		- (inner.radius + inner.thickness * 0.5)
-	var usable := corridor - stats.body_radius * 2.0
-	var length := stats.body_half_length * 2.0
-	assert_true(usable < length,
-		("couloir libre %.2f u pour un chasseur long de %.2f : s'il tenait, cette garde "
-			+ "serait a reecrire et le laby deviendrait un terrain") % [usable, length])
+	var lengthwise := (stats.body_half_length + stats.body_radius) * 2.0
+	assert_true(corridor >= lengthwise,
+		"couloir de %.2f u pour un chasseur qui en occupe %.2f dans l'axe" % [corridor, lengthwise])
+
+## ET IL Y RESTE. Le test precedent mesure ; celui-ci EPROUVE — c'est la difference entre
+## « ca rentre sur le papier » et « on peut y voler ». Un chasseur pose immobile au milieu du
+## couloir, les murs tournant pendant toute la plongee, ne doit pas bouger. Avec l'ancienne
+## geometrie il derivait de 6,6 u vers la droite et finissait ejecte au plafond, sans qu'une
+## seule commande soit donnee : les murs le CONVOYAIENT le long de leurs arcs.
+func test_a_fighter_left_alone_in_the_corridor_stays_there() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var rings := tuning.reactor_rings
+	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
+	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
+	var milieu := ((outer.radius - outer.thickness * 0.5)
+		+ (inner.radius + inner.thickness * 0.5)) * 0.5
+	var up := Vector2(0.0, 1.0)
+	var here := Vector2(0.0, -milieu)
+	var depart := here
+	var last_free := here
+	var shapes := PlaneShapes.new()
+	for i in int(tuning.dive_time * 60.0):
+		shapes.clear()
+		shapes.reserve(ReactorRings.shape_count(rings) + 1)
+		ReactorRings.fill_shapes(shapes, rings, Vector2.ZERO, float(i) / 60.0)
+		shapes.add_disc(Vector2.ZERO, tuning.flux_hitbox_radius)
+		var next := PlaneCollider.slide_capsule(shapes, here, here, up,
+			stats.body_half_length, stats.body_radius)
+		if not PlaneCollider.capsule_blocks(shapes, next, up,
+				stats.body_half_length, stats.body_radius):
+			last_free = next
+		else:
+			var freed := PlaneCollider.resolve_capsule(shapes, next, up,
+				stats.body_half_length, stats.body_radius, 5, last_free - next)
+			if freed.distance_to(next) > 0.03:
+				next = next.move_toward(freed, 9.0 / 60.0)
+		here = next
+	assert_true(here.distance_to(depart) < 0.5,
+		"pose immobile dans le couloir, il a derive de %.2f u en %.0f s (arrivee %.2f, %.2f)"
+			% [here.distance_to(depart), tuning.dive_time, here.x, here.y])
 
 ## Ce qui compte vraiment : il n'est ni pris au piege, ni EMPORTE. Le blindage tourne ; il ne
 ## doit pas emmener le chasseur avec lui.

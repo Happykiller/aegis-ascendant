@@ -259,6 +259,12 @@ func _set_phase(phase: int) -> void:
 	_phase = phase
 	if phase != Phase.FIGHTER_WAVES and _wave_spawner != null:
 		_wave_spawner.set_physics_process(false)
+	# ⚠️ MÊME RAISON QUE LE SEMEUR, ET MÊME ENDROIT. La chambre du réacteur élargit le plan
+	# de vol le temps d'une plongée ; le boss peut tomber pendant celle-ci, et l'arc enchaîne
+	# alors sur l'appontage. Rendre les bornes ici couvre ce chemin comme tous les autres —
+	# une phase qui n'est pas le boss final se joue TOUJOURS sur le plan ordinaire.
+	if phase != Phase.FINAL_BOSS:
+		GameplayPlane.reset_bounds()
 	_music.level_phase = phase
 	_update_music()
 
@@ -269,6 +275,24 @@ func _on_wave_progress(ratio: float) -> void:
 func _update_music() -> void:
 	if _audio != null:
 		_audio.set_music_state(MusicDirector.resolve(_music))
+
+## La caméra prend le recul qu'exige la chambre.
+##
+## ⚠️ ELLE REVENAIT AU CADRAGE ORDINAIRE, ET C'ÉTAIT JUSTE TANT QUE L'ARÈNE FAISAIT LA MÊME
+## TAILLE QUE LE PLAN DE VOL. La chambre est désormais plus grande (23,8 contre 16) : au
+## cadrage d'origine, le blindage déborderait de l'écran et le joueur piloterait vers des
+## murs qu'il ne voit pas. Le facteur se DÉDUIT des deux terrains — changer l'un déplace la
+## caméra avec lui, sans qu'aucun chiffre ne soit à reprendre ici.
+##
+## Coupe franche (durée nulle) : on arrive du zoom d'entrée, qui vient de remplir l'écran.
+## Un glissement, lui, se verrait — c'est la même raison qui fait entrer sec dans le lieu.
+func _frame_chamber() -> void:
+	var director := get_node_or_null("CameraDirector") as CameraDirector
+	if director == null:
+		return
+	var chamber := GameplayPlane.CHAMBER_BOUNDS
+	director.frame_scaled(chamber.size.y / GameplayPlane.BOUNDS.size.y,
+		GameplayPlane.to_world(chamber.get_center()), 0.0)
 
 ## Le HUD s'efface pendant la pause et revient à la reprise. Coupure franche
 ## assumée : elle se produit sous un voile qui monte en 0.16 s, donc invisible.
@@ -834,6 +858,12 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 func _on_leviathan_dive_entered(_cycle: int) -> void:
 	if _player != null:
 		_player.end_autopilot()
+	# ⚠️ LE LIEU PREND SES BORNES AVANT QU'ON Y POSE LE CHASSEUR. La chambre est plus grande
+	# que l'arène ouverte (`GameplayPlane.CHAMBER_BOUNDS`) : le blindage y occupe 16,6 unités
+	# de diamètre, et sous le plan de vol ordinaire le chasseur n'avait la place ni de tenir
+	# entre les murs ni de se poster dessous — il était convoyé le long des arcs et éjecté.
+	# L'ordre compte : poser sa position d'abord la ferait borner par l'ancien plan.
+	GameplayPlane.use_bounds(GameplayPlane.CHAMBER_BOUNDS)
 	_show_core_interior(true)
 	if _player != null and _core_interior != null:
 		# ⚠️ LE MÊME POINT QUE L'AUTOPILOTE, et il n'y en a plus qu'un. Ici on lisait
@@ -859,9 +889,12 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 		_core_interior.build_rings(_leviathan.tuning.reactor_rings)
 		_core_interior.build_nodes(_leviathan.tuning.node_count)
 		_regen_plates = 0   # la rangée se redressera au premier verrou annoncé
-	_dive_camera(false, true)
+	_frame_chamber()
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
+	# On quitte le lieu : il rend le plan de vol. Voir `_leave_chamber()` pour les AUTRES
+	# chemins de sortie — celui-ci n'est que le plus heureux.
+	GameplayPlane.reset_bounds()
 	# L'éjection est une secousse, pas un fondu : on est recraché.
 	_boom(_final_boss.global_position if _final_boss != null else Vector3.ZERO,
 		VfxExplosion.Category.HEAVY, 0.85)
@@ -952,11 +985,26 @@ func _show_core_interior(inside: bool) -> void:
 	if _final_boss != null:
 		_final_boss.visible = not inside
 
+## Démonte la chambre — et lui reprend ses bornes.
+##
+## ⚠️ LE FILET, ET IL EST NÉCESSAIRE. La sortie heureuse (`_on_leviathan_dive_ended`) rend
+## déjà le plan de vol ; ce n'est pas le seul chemin qui quitte le lieu. Mourir dedans,
+## abandonner la partie depuis la pause, ou voir le boss tomber pendant une plongée passent
+## tous par ici. Une borne oubliée laisserait le joueur voler jusqu'à −10,7 dans la phase
+## SUIVANTE, hors du cadre de la caméra — et rien ne le signalerait.
 func _clear_core_interior() -> void:
+	GameplayPlane.reset_bounds()
 	if _core_interior == null:
 		return
 	_core_interior.queue_free()
 	_core_interior = null
+
+## ⚠️ ET LE FILET DU FILET : quitter la scène rend TOUJOURS le plan ordinaire. `bounds` est
+## le seul état global du jeu ; il ne doit pas pouvoir survivre au niveau qui l'a changé —
+## un retour au titre en pleine plongée, et l'écran-titre hériterait des bornes de la
+## chambre.
+func _exit_tree() -> void:
+	GameplayPlane.reset_bounds()
 
 ## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
 ## secousse, bascule musicale, et la rangée de pastilles reconfigurée pour les sous-cibles

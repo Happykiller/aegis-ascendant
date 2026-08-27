@@ -36,8 +36,12 @@ func test_the_entry_point_sits_inside_the_playfield() -> void:
 	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
 	var interior := _make()
 	var entry := interior.reactor_plane_position() + tuning.dive_entry_local()
-	assert_true(GameplayPlane.BOUNDS.has_point(entry),
-		"entree en (%.1f, %.1f), bornes %s" % [entry.x, entry.y, GameplayPlane.BOUNDS])
+	# ⚠️ LES BORNES DE LA CHAMBRE, et non celles du plan ordinaire : c'est le lieu ou cette
+	# entree existe. Juger l'entree d'une piece sur les dimensions d'une autre piece etait
+	# vrai tant que les deux avaient la meme taille ; elles n'en ont plus.
+	assert_true(GameplayPlane.CHAMBER_BOUNDS.has_point(entry),
+		"entree en (%.1f, %.1f), bornes de la chambre %s"
+			% [entry.x, entry.y, GameplayPlane.CHAMBER_BOUNDS])
 
 func test_the_fighter_does_not_start_on_top_of_the_reactor() -> void:
 	# Il arrive DANS une arene, il ne s'y telporte pas au contact de sa cible : sinon la

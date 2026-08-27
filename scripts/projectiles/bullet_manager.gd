@@ -74,7 +74,11 @@ func _init() -> void:
 	_visible_counts.resize(2)
 	_grid_counts.resize(GRID_COLS * GRID_ROWS)
 	_grid_data.resize(GRID_COLS * GRID_ROWS * CELL_CAP)
-	var grid_bounds := GameplayPlane.BOUNDS.grow(CULL_MARGIN)
+	# ⚠️ `MAX_BOUNDS` ET NON LES BORNES COURANTES : la grille est allouée UNE fois, et le plan
+	# de vol s'élargit dans la chambre du réacteur. Dimensionnée sur le plan ordinaire, elle
+	# aurait laissé les balles de la chambre retomber dans des cellules voisines — une
+	# collision manquée par-ci par-là, sans la moindre erreur pour le dire.
+	var grid_bounds := GameplayPlane.MAX_BOUNDS.grow(CULL_MARGIN)
 	_grid_origin = grid_bounds.position
 	_cell_size = grid_bounds.size / Vector2(GRID_COLS, GRID_ROWS)
 

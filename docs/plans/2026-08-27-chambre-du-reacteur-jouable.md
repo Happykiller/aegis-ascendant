@@ -5,7 +5,7 @@
 - **Ne supersède rien** ; il ferme un point laissé ouvert par
   [`2026-08-27-les-corps-ne-se-chevauchent-pas.md`](2026-08-27-les-corps-ne-se-chevauchent-pas.md)
   (« le couloir n'est pas un lieu — à trancher »).
-- **État** : décidé, non commencé
+- **État** : **lots 1 à 4 livrés** (2026-08-27, même soirée) — reste le lot 5, la plongée jouée
 
 ## Le constat, mesuré
 
@@ -97,25 +97,43 @@ du chasseur (4,22 × 1,76) :
 | Borne basse du plan pendant la plongée | **−10,7** | 1,2 − 8,30 − 3,61 |
 | Bornes de la chambre | **≈ ±11 en y** (22 u de haut) | symétrie |
 
+## Ce que la livraison a appris
+
+- **L'entrée de plongée commande la profondeur du plan**, pas le poste de tir. Elle se déduit
+  du rayon du mur (`dive_entry_local()`), donc elle descend avec lui : −9,51, et il lui faut le
+  corps entier dessous. C'est elle qui a fixé le bas à −12, pas les −10,2 du calcul initial.
+- **L'équilibrage n'a PAS bougé**, contrairement à ce que ce plan annonçait. L'occupation
+  mesurée passe de 0,31 à 0,334 — dans la tolérance de la garde — et le flux reste à 57 % du
+  plaçable. `flux_health` reste à 840. ⚠️ Ne pas « corriger » `ring_occupancy` à 0,334 pour
+  autant : ça remonterait le plaçable à 531 et ferait tomber le ratio sous les 55 % exigés.
+- **Le décor ne suivait pas, et sa garde ne le voyait pas** : elle comparait la salle à
+  l'arène ouverte. À `DECOR_SCALE` = 1,26 la bordure basse tombait à −8,19, soit près de
+  quatre unités de vol à travers le mur de la salle. Portée à 1,81, mesurée sur les bornes de
+  la chambre.
+- **Sept gardes sont tombées** au changement de géométrie, et c'est le vrai travail du lot :
+  elles encodaient l'ancien monde. La plus instructive exigeait « une largeur et demie de
+  chasseur » (2,64) là où il fallait sa LONGUEUR (4,22) — elle était verte sur un couloir de
+  2,60. Une garde qui mesure la mauvaise dimension certifie le défaut.
+
 ## Lots
 
-1. **Des bornes de jeu par phase.** `GameplayPlane.BOUNDS` est une constante unique lue par le
+1. ✅ **Des bornes de jeu par phase.** `GameplayPlane.BOUNDS` est une constante unique lue par le
    joueur, les ennemis, les balles et les bonus. Elle devient une valeur **courante**, dont le
    défaut est exactement celle d'aujourd'hui. Garde : hors plongée, les bornes sont identiques
    au chiffre près — cette étape ne doit rien changer au reste du jeu.
-2. **La chambre pose les siennes.** Bornes élargies à l'entrée de plongée, restaurées à la
+2. ✅ **La chambre pose les siennes.** Bornes élargies à l'entrée de plongée, restaurées à la
    sortie (y compris sur une sortie par mort ou par quota). `DECOR_SCALE` suit, pour que les
    bordures restent au-delà des limites — la garde `test_no_decor_wall_reaches_into_the_play_area`
    fait déjà ce calcul et doit rester verte.
-3. **La caméra cadre la chambre.** Elle revient aujourd'hui au cadrage normal une fois dedans
+3. ✅ **La caméra cadre la chambre.** Elle revient aujourd'hui au cadrage normal une fois dedans
    (`_dive_camera(false)` → `restore_rest`) : il lui faut un repos propre à la phase, calculé
    depuis les nouvelles bornes et le champ de vision, pas une fraction inventée.
-4. **Le blindage devient un terrain.** Mur extérieur porté à 8,05 — valeur **mesurée** (voir le
+4. ✅ **Le blindage devient un terrain.** Mur extérieur porté à 8,05 — valeur **mesurée** (voir le
    balayage ci-dessus), pas déduite. Garde à écrire : un chasseur immobile dans le couloir y est
    encore neuf secondes plus tard. Elle est ROUGE aujourd'hui, et c'est ce qui en fait une garde. ⚠️ **Ça change l'équilibrage** :
    `ring_occupancy` (0,31) a été MESURÉ sur la géométrie actuelle, le long de la vraie ligne de
    tir. Il faut refaire la mesure, puis reprendre `flux_health` — qu'on vient de porter à 840.
-5. **Vérification.** La plongée jouée par l'opérateur, et deux captures : le chasseur DANS le
+5. ⏳ **Vérification.** La plongée jouée par l'opérateur, et deux captures : le chasseur DANS le
    couloir, et le poste de tir sous le mur.
 
 ## Ce qu'il ne faut pas faire au passage

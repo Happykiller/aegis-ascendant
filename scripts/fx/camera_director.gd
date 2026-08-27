@@ -93,6 +93,23 @@ func restore_rest(duration: float) -> void:
 func home_transform() -> Transform3D:
 	return _home_transform
 
+## Cadre un terrain `scale` fois plus grand que celui d'origine, centré sur `centre`.
+##
+## ⚠️ UNE HOMOTHÉTIE, ET SURTOUT PAS UNE HAUTEUR RECALCULÉE. La caméra de jeu est inclinée
+## de 70 degrés : ce qu'elle couvre du plan est un TRAPÈZE, pas un rectangle, et « monter la
+## caméra de tant » ne donne aucun cadrage prévisible. En revanche, éloigner l'œil d'un
+## facteur k autour du point qu'il vise multiplie exactement par k ce qu'il voit sur le plan
+## — c'est vrai de toute projection perspective, quelle que soit l'inclinaison. La pose
+## d'origine vise le centre du plan de vol ordinaire ; on l'étire, puis on la translate sur
+## le centre du nouveau terrain.
+##
+## Passe par la pose de REPOS (`push_rest`), jamais par `Camera3D.transform` : le shake
+## s'applique par-dessus et écraserait une écriture directe à l'image suivante.
+func frame_scaled(scale: float, centre: Vector3, duration: float) -> void:
+	var framed := _home_transform
+	framed.origin = _home_transform.origin * maxf(scale, 0.0001) + centre
+	push_rest(framed, duration)
+
 ## Vrai tant qu'un glissement est en cours.
 func is_moving() -> bool:
 	return _rest_move_left > 0.0

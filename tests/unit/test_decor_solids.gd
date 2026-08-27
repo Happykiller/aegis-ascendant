@@ -78,9 +78,13 @@ func test_no_decor_wall_reaches_into_the_play_area() -> void:
 			continue   # déclaré solide, versé par le niveau
 		var footprint := Rect2(Vector2(box[0].x, box[0].z),
 			Vector2(box[1].x - box[0].x, box[1].z - box[0].z))
-		if footprint.intersects(GameplayPlane.BOUNDS):
+		# ⚠️ LES BORNES DE LA CHAMBRE. Le décor de ce lieu doit se tenir au-delà du terrain de
+		# CE lieu — et il est plus grand que l'arène ouverte depuis que le blindage a été
+		# agrandi. Juger contre `BOUNDS` laissait la salle déborder dans le plan de vol sans
+		# qu'aucune garde ne s'en aperçoive.
+		if footprint.intersects(GameplayPlane.CHAMBER_BOUNDS):
 			offenders.append("%s (empiète de %.2f u)" % [piece_name,
-				footprint.intersection(GameplayPlane.BOUNDS).size.length()])
+				footprint.intersection(GameplayPlane.CHAMBER_BOUNDS).size.length()])
 	assert_eq(offenders.size(), 0,
 		"pièces de décor traversables dans l'aire de jeu : %s" % ", ".join(offenders))
 

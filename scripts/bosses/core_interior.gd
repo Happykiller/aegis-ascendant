@@ -55,12 +55,20 @@ const PLANE_OFFSET := Vector2(0.0, 1.2)
 ##
 ## ⚠️ ET IL FAUT COMPTER `PLANE_OFFSET`. Remonter la chambre de 1,2 a fait DESCENDRE sa
 ## bordure basse dans l'aire de jeu : 1,08 aurait suffi à une salle centrée, pas à celle-ci.
-## Il faut `7,45 × s − 1,2 ≥ 8,0`, soit s ≥ 1,235. On prend 1,26 pour la marge — et ce
+##
+## ⚠️ PUIS LE TERRAIN A GRANDI, ET LA SALLE DEVAIT SUIVRE. Le plan de vol de la chambre
+## descend désormais à −12 (`GameplayPlane.CHAMBER_BOUNDS`), pour loger un blindage de 8,05
+## de rayon et le chasseur sous lui. À 1,26, la bordure basse tombait à −8,19 : le joueur
+## volait à travers le mur de la salle sur près de quatre unités, et **la garde ne le voyait
+## pas** parce qu'elle comparait encore le décor à l'arène ouverte. Un décor mesuré contre
+## le mauvais terrain est un décor non mesuré.
+##
+## Il faut `7,45 × s − 1,2 ≥ 12,0`, soit s ≥ 1,772. On prend 1,81 pour la marge — et ce
 ## chiffre est vérifié par `test_no_decor_wall_reaches_into_the_play_area`, pas déduit ici.
 ##
 ## Conséquence assumée : les bordures n'ont PAS besoin d'être solides. Ce sont les limites du
 ## plan qui arrêtent, et elles s'arrêtent désormais **devant** le mur, là où l'image le dit.
-const DECOR_SCALE := 1.26
+const DECOR_SCALE := 1.81
 
 ## ⚠️ LA SALLE GRANDIT, LA MACHINE NON. Le carter du réacteur est un frère des bordures dans
 ## le décor : il aurait grossi avec elles, jusqu'à 2,65 de rayon — et il aurait alors ENGLOUTI
@@ -531,7 +539,10 @@ func _plane_of(node: Node3D) -> Vector2:
 func _build_stand_in() -> Node3D:
 	var root := Node3D.new()
 	root.name = "StandIn"
-	var bounds := GameplayPlane.BOUNDS
+	# ⚠️ LES BORNES DE LA CHAMBRE, pas celles du plan ordinaire : la doublure sert à jouer la
+	# mécanique avant que la forge ait rendu, et une doublure plus petite que le terrain
+	# donnerait à la phase un cadre qu'elle n'a pas.
+	var bounds := GameplayPlane.CHAMBER_BOUNDS
 	root.add_child(_slab("Floor", Vector3(bounds.size.x + 4.0, 0.2, bounds.size.y + 4.0),
 		Vector3(0.0, -0.6, 0.0), Color(0.07, 0.04, 0.10), 0.0))
 	# La bordure : quatre pans bas, inclinés vers l'intérieur par leur seule position. Ils

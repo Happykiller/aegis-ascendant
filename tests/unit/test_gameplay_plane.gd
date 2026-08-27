@@ -48,6 +48,51 @@ func test_is_inside_with_margin() -> void:
 	assert_false(GameplayPlane.is_inside(outside), "1 unit out is outside")
 	assert_true(GameplayPlane.is_inside(outside, 2.0), "but inside with margin 2")
 
+# --- Le plan de vol change de taille selon le LIEU (chambre du reacteur) ------
+
+## ⚠️ LA GARDE DU CHANTIER : hors de la chambre, rien ne bouge. Les bornes sont devenues une
+## valeur COURANTE pour que la chambre du reacteur puisse etre plus grande que l'arene
+## ouverte ; si cette bascule deteignait sur le reste du jeu, elle casserait trois phases qui
+## marchent pour en reparer une.
+func test_the_default_bounds_are_the_ones_the_game_always_had() -> void:
+	GameplayPlane.reset_bounds()
+	assert_eq(GameplayPlane.bounds, GameplayPlane.BOUNDS,
+		"au repos, le plan de vol est celui d'avant le chantier")
+	assert_eq(GameplayPlane.BOUNDS.size, Vector2(28.0, 16.0), "et il n'a pas change de taille")
+
+func test_a_lieu_can_widen_the_plane_and_give_it_back() -> void:
+	GameplayPlane.reset_bounds()
+	var previous := GameplayPlane.use_bounds(GameplayPlane.CHAMBER_BOUNDS)
+	assert_eq(previous, GameplayPlane.BOUNDS, "use_bounds rend celui qu'il remplace")
+	assert_eq(GameplayPlane.bounds, GameplayPlane.CHAMBER_BOUNDS, "la chambre est en vigueur")
+	# Ce que ca change concretement : on peut descendre plus bas que le plan ordinaire.
+	var bas := Vector2(0.0, -9.5)
+	assert_eq(GameplayPlane.clamp_to_bounds(bas), bas, "dans la chambre, -9,5 est un lieu")
+	GameplayPlane.use_bounds(previous)
+	assert_true(GameplayPlane.clamp_to_bounds(bas).y > bas.y,
+		"dehors, le meme point est hors du terrain")
+	GameplayPlane.reset_bounds()
+
+## La chambre doit loger le blindage ET le chasseur sous lui. Ce test tient les deux bouts :
+## si quelqu'un retrecit les bornes ou agrandit le mur, l'un des deux cesse de tenir.
+func test_the_chamber_holds_the_shield_and_the_fighter_under_it() -> void:
+	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var outer := 0.0
+	for ring in tuning.reactor_rings:
+		if ring != null:
+			outer = maxf(outer, ring.radius + ring.thickness * 0.5)
+	# Le centre de la chambre, remonte par `CoreInterior.PLANE_OFFSET`.
+	var centre := 1.2
+	var demi_corps: float = stats.body_half_length + stats.body_radius
+	var besoin: float = centre - outer - demi_corps
+	assert_true(GameplayPlane.CHAMBER_BOUNDS.position.y <= besoin,
+		"il faut descendre a %.2f pour se poster sous le mur ; la chambre s'arrete a %.2f"
+			% [besoin, GameplayPlane.CHAMBER_BOUNDS.position.y])
+	assert_true(GameplayPlane.MAX_BOUNDS.encloses(GameplayPlane.BOUNDS)
+		and GameplayPlane.MAX_BOUNDS.encloses(GameplayPlane.CHAMBER_BOUNDS),
+		"MAX_BOUNDS couvre tous les lieux — c'est sur lui que les grilles fixes sont taillees")
+
 func test_bounds_fill_widescreen_gameplay_frame() -> void:
 	assert_eq(GameplayPlane.BOUNDS.size, Vector2(28.0, 16.0),
 		"playable area tracks the camera's widescreen footprint")
