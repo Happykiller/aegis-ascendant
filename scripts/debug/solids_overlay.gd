@@ -9,7 +9,12 @@ extends MeshInstance3D
 ## Un décor et sa collision sont deux objets distincts dans ce projet ; quand ils
 ## divergent, aucun chiffre ne le dit aussi vite qu'une superposition.
 ##
-## Vert : ce qui arrête. Cyan : le corps du chasseur tel que la collision le voit.
+## Vert : ce qui arrête un CORPS. Cyan : le corps du chasseur tel que la collision le voit.
+## Orange : ce qu'une BALLE du joueur touche (cibles ennemies). Magenta : ce qu'une balle
+## ennemie touche (le chasseur). Ce sont des couches distinctes — un noyau peut être un
+## obstacle sans être une cible, une mine une cible sans être un obstacle — et c'est
+## précisément leur désaccord qui a coûté une soirée : le noyau, versé parmi ce qui bloque
+## une balle, faisait écran à sa propre cible.
 ## Tout est redessiné à chaque image dans un `ImmediateMesh` — c'est un instrument de
 ## debug, pas un rendu de jeu, et il ne tourne que sous drapeau.
 
@@ -29,10 +34,16 @@ func _ready() -> void:
 	material_override = material
 
 func draw(shapes: PlaneShapes, lift: float, player: Vector2, forward: Vector2,
-		half_length: float, radius: float) -> void:
+		half_length: float, radius: float, targets: Array[BulletTarget] = []) -> void:
 	_mesh.clear_surfaces()
 	_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	var green := Color(0.2, 1.0, 0.3)
+	for target in targets:
+		if target == null or not target.enabled:
+			continue
+		var colour := Color(1.0, 0.6, 0.15) if target.team == BulletManager.Team.ENEMY \
+			else Color(1.0, 0.3, 0.8)
+		_circle(target.position, target.radius, lift, colour)
 	for i in shapes.size():
 		match shapes.kind_at(i):
 			PlaneShapes.Kind.DISC:

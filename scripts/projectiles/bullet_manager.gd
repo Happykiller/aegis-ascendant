@@ -129,6 +129,13 @@ func despawn(index: int) -> void:
 	if _alive[index] == 1:
 		_release(index)
 
+## Les cibles, en LECTURE — pour l'overlay de debug (`SolidsOverlay`) et rien d'autre.
+## Ce qu'une balle touche n'est pas ce qui arrête un corps : les deux couches se voient
+## désormais côte à côte, et un désaccord entre elles se lit à l'écran au lieu de se
+## chercher pendant une soirée (le noyau qui se faisait écran à sa propre cible).
+func targets() -> Array[BulletTarget]:
+	return _targets
+
 func register_target(target: BulletTarget) -> void:
 	if not _targets.has(target):
 		_targets.append(target)

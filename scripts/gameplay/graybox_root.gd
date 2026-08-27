@@ -1113,7 +1113,8 @@ func _physics_process(delta: float) -> void:
 	_trace_dive(delta)
 	if _solids_overlay != null and _player != null and _player.stats != null:
 		_solids_overlay.draw(_solids, _player.plane_lift, _player.plane_position,
-			_player.plane_forward(), _player.stats.body_half_length, _player.stats.body_radius)
+			_player.plane_forward(), _player.stats.body_half_length, _player.stats.body_radius,
+			_bullets.targets() if _bullets != null else [])
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
