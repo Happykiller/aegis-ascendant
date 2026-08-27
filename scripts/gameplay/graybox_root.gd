@@ -63,6 +63,7 @@ var _defeated: bool = false
 @onready var _field_spawner: WaveSpawner = get_node_or_null("AsteroidFieldSpawner")
 @onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
 @onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
+var _hit_stop: HitStop
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
@@ -188,6 +189,11 @@ func _ready() -> void:
 	# bloc, et il lui faut son décor déjà monté.
 	_build_moon_flyby()
 	_build_transition()
+	# Le gel d'impact. Monté en code : il n'a ni transform ni enfant, et l'ajouter aux
+	# trois scènes qui portent un CameraDirector n'apporterait rien de plus.
+	_hit_stop = HitStop.new()
+	_hit_stop.name = "HitStop"
+	add_child(_hit_stop)
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
 	elif "--skip-to-field" in args:
@@ -369,6 +375,8 @@ func _on_mini_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(5000)
 	_boom(world_position, VfxExplosion.Category.HEAVY, 1.0)
 	_sfx(&"heavy_explosion")
+	if _hit_stop != null:
+		_hit_stop.freeze(HitStop.BOSS)
 	if _hud != null:
 		_hud.hide_boss()
 	if _boss != null:
@@ -626,6 +634,10 @@ func _on_leviathan_piece_active(index: int) -> void:
 func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)
 	_sfx(&"medium_explosion")
+	# Une plaque qui cède est le seul retour que le joueur ait sur sa progression dans
+	# l'armure : elle mérite qu'on tienne l'image (LOI-EXP-03).
+	if _hit_stop != null:
+		_hit_stop.freeze(HitStop.PLATE)
 
 ## Le champ gravitique (vagues d'aspiration de la phase 2) s'ajoute à la vitesse du joueur. Le module publie
 ## à chaque image tant que la phase l'exige ; on la recalcule ici depuis la position
@@ -897,6 +909,8 @@ func _physics_process(delta: float) -> void:
 
 func _on_final_boss_defeated(world_position: Vector3) -> void:
 	_game_state.add_score(20000)
+	if _hit_stop != null:
+		_hit_stop.freeze(HitStop.BOSS)
 	if _hud != null:
 		_hud.hide_boss()
 	# The boss is destroyed: remove its hull so it does not linger through the

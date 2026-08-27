@@ -226,4 +226,8 @@ spacing = 0.5
 
 [resource]
 script = ExtResource("1_wave")
+; Deux secondes de ciel vide avant le premier chasseur. Le joueur découvrait qu'il se
+; déplace EN SE FAISANT TIRER DESSUS : les premiers ennemis tombaient à 0,3 s. Assez pour
+; toucher les commandes, trop court pour qu'une démo paraisse morte.
+lead_in = 2.0
 entries = [SubResource("w1"), SubResource("w2"), SubResource("s1"), SubResource("s2"), SubResource("a1"), SubResource("a2"), SubResource("z1"), SubResource("s3"), SubResource("d1"), SubResource("d2"), SubResource("sp1"), SubResource("sp2"), SubResource("s4"), SubResource("l1"), SubResource("l2"), SubResource("a3"), SubResource("s5"), SubResource("z2"), SubResource("c1"), SubResource("c2"), SubResource("r1"), SubResource("r2"), SubResource("s6"), SubResource("s7"), SubResource("d3")]

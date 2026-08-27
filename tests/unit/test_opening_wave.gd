@@ -85,3 +85,36 @@ func test_the_wave_speaks_more_than_one_language() -> void:
 		schemes[data.fire] = true
 	assert_true(schemes.size() >= 3,
 		"la vague emploie %d schémas de tir distincts, il en faut au moins 3" % schemes.size())
+
+## Le silence d'ouverture (spec §5.2, `LOI-EXP-07`). Le joueur découvrait qu'il se déplace
+## en se faisant tirer dessus : le premier chasseur tombait à 0,3 s.
+##
+## ⚠️ La garde porte sur l'HORAIRE CALCULÉ, pas sur `lead_in`. Vérifier le champ ne
+## prouverait rien — c'est `build_schedule()` qui décide de la date d'un spawn, et c'est
+## lui qui pourrait cesser d'en tenir compte sans qu'aucun autre test ne bouge.
+const CALM_SECONDS := 1.5
+
+func test_the_player_gets_the_sky_to_himself_first() -> void:
+	var schedule := WaveSpawner.build_schedule(OpeningWave)
+	var times: PackedFloat32Array = schedule["times"]
+	assert_true(times.size() > 0, "la vague a des spawns")
+	var first := times[0]
+	for t in times:
+		first = minf(first, t)
+	assert_true(first >= CALM_SECONDS,
+		"le premier ennemi arrive à %.2f s, il en faut au moins %.1f" % [first, CALM_SECONDS])
+
+## Le silence décale TOUT le bloc : il ne doit pas écraser le rythme déjà réglé entre les
+## entrées. Une implémentation qui ne retarderait que la première entrée passerait le test
+## ci-dessus et casserait la vague en silence.
+func test_the_calm_does_not_rewrite_the_rhythm() -> void:
+	var schedule := WaveSpawner.build_schedule(OpeningWave)
+	var times: PackedFloat32Array = schedule["times"]
+	var span := times[times.size() - 1] - times[0]
+	var raw_first := INF
+	var raw_last := -INF
+	for entry in OpeningWave.entries:
+		raw_first = minf(raw_first, entry.time_offset)
+		raw_last = maxf(raw_last, entry.time_offset + (entry.count - 1) * entry.spacing)
+	assert_almost_eq(span, raw_last - raw_first, 0.01,
+		"la vague garde exactement sa durée, elle est seulement décalée")

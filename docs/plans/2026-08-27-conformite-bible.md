@@ -3,8 +3,8 @@ titre: Mettre le jeu en conformité avec la bible — plan d'implémentation
 date: 2026-08-27
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: gameplay, options/HUD, données de vagues et d'ennemis, tests. Aucun asset de forge
-etat: **lot 0 et 1.1 LIVRÉS** (2026-08-27) ; 1.2 attend une durée, 1.3 une portée ;
-  lot 2 à instruire ; lots 3-5 bloqués (décision ou coût)
+etat: **lots 0 et 1 LIVRÉS** (2026-08-27) ; lot 2 à instruire ;
+  lots 3-5 bloqués (décision ou coût)
 supersede: rien. Applique docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -139,15 +139,17 @@ une fois par erreur. Éprouvée en la cassant.
 branchée sur le poste. Les glyphes de la spec §7.2 (« s'adaptent au dernier périphérique ») sont un
 chantier à part : les écrans affichent des touches en dur.
 
-### 1.2 — L'ouverture calme (`LOI-EXP-07`, spec §5.2)
+### 1.2 — L'ouverture calme (`LOI-EXP-07`, spec §5.2) — ✅ LIVRÉ le 2026-08-27
 
 **Les premiers ennemis apparaissent à `time_offset = 0.3`.** Le joueur découvre qu'il se déplace en
 se faisant tirer dessus, alors que la spec demande une « prise en main calme » en **premier point**
 de sa courbe d'intensité.
 
-| Fichier | Changement |
-|---|---|
-| `resources/encounters/wave_graybox_01.tres` | décaler **toute** la timeline d'un même delta — l'ordre relatif des entrées est du design déjà réglé, il ne se retouche pas ici |
+Livré **autrement que prévu**, et mieux : un champ **`WaveData.lead_in`**, consommé une seule fois
+dans `WaveSpawner.build_schedule()`. Décaler les trente `time_offset` aurait rendu illisible le
+prochain diff de la vague, et mélangé le silence d'ouverture avec le rythme interne.
+
+**`lead_in = 2,0 s`** sur la vague d'ouverture.
 
 ⚠️ **Le delta est un arbitrage, pas une évidence.** Trois secondes vides au démarrage sont aussi
 trois secondes où un spectateur ne voit rien, et le P0 du backlog vise « 2-3 minutes
@@ -157,7 +159,7 @@ qu'une démo paraisse morte. À trancher en jouant, pas au journal.
 **Test** : « aucun ennemi avant N secondes » — la garde qui empêche qu'une retouche de timeline
 reprenne le vide sans le dire.
 
-### 1.3 — Le hit stop (`LOI-EXP-03`)
+### 1.3 — Le hit stop (`LOI-EXP-03`) — ✅ LIVRÉ le 2026-08-27
 
 60 à 80 ms de gel sur une destruction décisive — plaque du Leviathan, coup fatal au mini-boss.
 C'est la technique la plus rentable du *game feel*, et elle est **absente** (aucune occurrence de
@@ -172,8 +174,19 @@ C'est la technique la plus rentable du *game feel*, et elle est **absente** (auc
 3. Le shake est **centralisé** dans `CameraDirector` — le hit stop doit l'être au même endroit, ou
    les deux effets se marcheront dessus.
 
-**Livrable d'instruction attendu** : quel nœud gèle quoi, et ce qui continue de tourner. Puis un
-test de durée (le gel dure ce qu'il annonce et **rend toujours la main**), et un jugement à l'œil.
+**Ce que l'instruction a tranché, et qui corrige la recommandation initiale** : il n'y a **pas**
+d'exemptions. Tout gèle, l'explosion comprise — un hit stop **tient l'image de l'impact**, et
+exempter la gerbe qui vient de naître reviendrait à figer le décor autour d'elle, ce qui n'est plus
+un hit stop mais un ralenti raté. Le son n'est pas concerné : `Engine.time_scale` ne touche pas la
+lecture audio, si bien que le coup s'entend en plein pendant que l'image est suspendue.
+
+Livré : `scripts/fx/hit_stop.gd`, comptage **pur** (`request` / `advance`) et nœud applicateur.
+60 ms sur une plaque, 80 ms sur une défaite de boss. Six tests, dont le seul qui compte — **le temps
+revient toujours à l'échelle 1** — éprouvé en le cassant. Plus une garde `_exit_tree()` : un
+changement de scène pendant un gel laisserait le jeu au ralenti sans la moindre erreur.
+
+**Vérifié en conditions réelles** : run Windows jusqu'au Leviathan, armure cycle 1 → noyau → armure
+cycle 2. Le combat progresse à travers une dizaine de gels, donc le temps n'y reste pas bloqué.
 
 ---
 

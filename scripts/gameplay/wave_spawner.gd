@@ -69,12 +69,15 @@ func begin() -> void:
 
 ## Pure scheduling, testable headless: flattens entries into per-enemy spawn
 ## times/positions, sorted by time. Returns {times, positions, entries}.
+##
+## `lead_in` s'ajoute à TOUTES les dates : c'est un silence d'ouverture, pas un retard
+## sur la première entrée. Le reste de la vague garde son rythme intact.
 static func build_schedule(wave_data: WaveData) -> Dictionary:
 	var events: Array = []
 	for entry_index in wave_data.entries.size():
 		var entry := wave_data.entries[entry_index]
 		for n in entry.count:
-			events.append([entry.time_offset + n * entry.spacing, entry_index])
+			events.append([wave_data.lead_in + entry.time_offset + n * entry.spacing, entry_index])
 	events.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 	var times := PackedFloat32Array()
 	var positions := PackedVector2Array()
