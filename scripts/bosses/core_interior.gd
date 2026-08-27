@@ -155,7 +155,7 @@ func build_rings(rings: Array[ReactorRing]) -> void:
 		var solid := step - ring.aperture_deg
 		for k in ring.apertures:
 			var start := float(k) * step + ring.aperture_deg * 0.5
-			pivot.add_child(_arc(ring.radius, ring.thickness, start, solid))
+			pivot.add_child(_arc(ring.radius, ring.thickness, start, solid, i * ring.apertures + k))
 		add_child(pivot)
 		_rings.append(pivot)
 
@@ -172,7 +172,8 @@ func pose_rings(rings: Array[ReactorRing], age: float) -> void:
 ## Y va dans le sens INVERSE de l'azimut du plan (le monde −Z est le haut de l'écran) : d'où
 ## le signe de `pose_rings`. Une erreur ici décalerait l'image de l'ouverture réelle, ce qui
 ## est le seul défaut que cette phase ne peut pas se permettre.
-func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) -> MeshInstance3D:
+func _arc(radius: float, thickness: float, start_deg: float, span_deg: float,
+		index: int) -> MeshInstance3D:
 	var inner := radius - thickness * 0.5
 	var outer := radius + thickness * 0.5
 	var steps := maxi(int(span_deg / RING_STEP_DEG), 2)
@@ -197,6 +198,15 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) ->
 	# rendrait deux matières différentes. Ici la densité de texels est la MÊME partout.
 	var wide := thickness / TILE_M
 	var tall := RING_HEIGHT / TILE_M
+	# ⚠️ CHAQUE ARC LIT UNE BANDE DIFFÉRENTE DE LA TUILE, et ce n'est pas une coquetterie.
+	# Le mur fait 1,00 m pour une tuile de 2 m : la face vue n'échantillonne que `v` de 0 à
+	# 0,50. Sans décalage, LA MOITIÉ HAUTE DE LA TEXTURE NE SERAIT JAMAIS VUE — et les cinq
+	# arcs porteraient tous exactement la même plaque, ce qui se remarque d'autant plus qu'ils
+	# tournent l'un devant l'autre. Deux décalages irrationnels entre eux (racine de 2 et
+	# nombre d'or moins un) ne reviennent jamais en phase : la tuile est employée en entier et
+	# aucun arc n'est le jumeau d'un autre.
+	var slide_u := fmod(float(index) * 0.6180339887, 1.0)
+	var slide_v := fmod(float(index) * 0.4142135624, 1.0)
 	for s in steps:
 		var a0 := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
 		var a1 := deg_to_rad(start_deg + span_deg * float(s + 1) / float(steps))
@@ -207,16 +217,16 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) ->
 		var i1 := r1 * inner
 		var o1 := r1 * outer
 		var radial := (r0 + r1).normalized()
-		var u0 := radius * (a0 - deg_to_rad(start_deg)) / TILE_M
-		var u1 := radius * (a1 - deg_to_rad(start_deg)) / TILE_M
+		var u0 := slide_u + radius * (a0 - deg_to_rad(start_deg)) / TILE_M
+		var u1 := slide_u + radius * (a1 - deg_to_rad(start_deg)) / TILE_M
 		_quad(vertices, normals, uvs, i0 + lift, o0 + lift, o1 + lift, i1 + lift, Vector3.UP,
-			Vector2(u0, 0.0), Vector2(u0, wide), Vector2(u1, wide), Vector2(u1, 0.0))
+			Vector2(u0, slide_v), Vector2(u0, slide_v + wide), Vector2(u1, slide_v + wide), Vector2(u1, slide_v))
 		_quad(vertices, normals, uvs, i1, o1, o0, i0, Vector3.DOWN,
-			Vector2(u1, 0.0), Vector2(u1, wide), Vector2(u0, wide), Vector2(u0, 0.0))
+			Vector2(u1, slide_v), Vector2(u1, slide_v + wide), Vector2(u0, slide_v + wide), Vector2(u0, slide_v))
 		_quad(vertices, normals, uvs, o0, o1, o1 + lift, o0 + lift, radial,
-			Vector2(u0, 0.0), Vector2(u1, 0.0), Vector2(u1, tall), Vector2(u0, tall))
+			Vector2(u0, slide_v), Vector2(u1, slide_v), Vector2(u1, slide_v + tall), Vector2(u0, slide_v + tall))
 		_quad(vertices, normals, uvs, i1, i0, i0 + lift, i1 + lift, -radial,
-			Vector2(u1, 0.0), Vector2(u0, 0.0), Vector2(u0, tall), Vector2(u1, tall))
+			Vector2(u1, slide_v), Vector2(u0, slide_v), Vector2(u0, slide_v + tall), Vector2(u1, slide_v + tall))
 	# Les BOUCHONS. Un arc s'arrête net des deux côtés, et ces deux tranches bordent
 	# précisément les ouvertures — c'est-à-dire le seul endroit que le joueur regarde.
 	var ab := deg_to_rad(start_deg)
@@ -226,9 +236,11 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) ->
 	var tb := Vector3(-sin(ab), 0.0, cos(ab))
 	var te := Vector3(-sin(ae), 0.0, cos(ae))
 	_quad(vertices, normals, uvs, rb * inner, rb * outer, rb * outer + lift, rb * inner + lift, -tb,
-		Vector2(0.0, 0.0), Vector2(wide, 0.0), Vector2(wide, tall), Vector2(0.0, tall))
+		Vector2(slide_u, slide_v), Vector2(slide_u + wide, slide_v),
+		Vector2(slide_u + wide, slide_v + tall), Vector2(slide_u, slide_v + tall))
 	_quad(vertices, normals, uvs, re * outer, re * inner, re * inner + lift, re * outer + lift, te,
-		Vector2(0.0, 0.0), Vector2(wide, 0.0), Vector2(wide, tall), Vector2(0.0, tall))
+		Vector2(slide_u, slide_v), Vector2(slide_u + wide, slide_v),
+		Vector2(slide_u + wide, slide_v + tall), Vector2(slide_u, slide_v + tall))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
