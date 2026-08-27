@@ -205,8 +205,20 @@ Quatre lignes ❔ du rapport. Elles ne se ferment pas par du code mais par une *
 > | **2.3** densité | ✅ **mesurée** : `DensityProbe`. Phase 1 = **pic à 30**, mais **0 à 5 balles pendant 34 s** puis un unique créneau. Un profil, pas une courbe |
 > | **2.4** tir rapproché | ❌ **angle mort de 0,90 u** devant le nez, mesuré et borné par un test. Et rien n'en chasse le joueur : les chasseurs ordinaires n'infligent aucun dégât de contact |
 >
-> **Deux décisions de gameplay en sortent**, et aucune ne se tranche au journal : l'origine des
-> bolts (2.4) et une apparence propre au tir visé (`LOI-LVL-06`). Toutes deux se jugent en jouant.
+> **Suite donnée le 2026-08-27** — les deux décisions de gameplay ont été prises :
+>
+> - **2.4, l'origine des bolts : ✅ fait.** Le bolt naît sur l'axe du chasseur, l'éclair de bouche
+>   reste au canon. Angle mort à **zéro**, rendu vérifié à 1:1 et **neutre**.
+> - **`LOI-LVL-06` : re-cadré, pas fait.** Ce n'était pas la décision de charte annoncée.
+>   `ProjectileData` ne porte **aucun champ visuel** : l'apparence vit dans le `MultiMesh`, une par
+>   équipe, base identité posée une fois au `_ready`. **Toutes les balles ennemies sont identiques
+>   par construction.** Distinguer le tir visé demande une capacité absente de `BulletManager`
+>   (troisième `MultiMesh`, ou `use_custom_data` lu par le shader) — un chantier sur une classe
+>   critique et budgétée. Même cause pour un écart trouvé en chemin : la balle ne ressemble pas à sa
+>   hitbox (spec §17.3), 1,6 à 1,9 fois trop grosse.
+>
+> ⚠️ Ce chantier n'est **pas** dans ce plan : il change la classe la plus chaude du jeu et se mesure
+> en temps GPU par image. Il appelle son propre lot, et probablement un ADR.
 
 | # | Loi | Ce qu'il faut d'abord |
 |---|---|---|

@@ -19,10 +19,9 @@ const SCOUT: EnemyData = preload("res://resources/enemies/needle_scout.tres")
 ## Cadence physique du projet (défaut moteur, aucune surcharge dans project.godot).
 const TICK := 1.0 / 60.0
 
-## Angle mort MESURÉ le 2026-08-27 : 0,90 unité devant le centre du chasseur, aux canons
-## de nez. La borne laisse une marge de 15 % ; au-delà, ce n'est plus la même géométrie et
-## il faut le regarder, pas le rattraper.
-const DEAD_ZONE_LIMIT := 1.04
+## Angle mort mesuré le 2026-08-27 aux canons de nez : **0,90 u**. Fermé le même jour en
+## faisant naître le bolt sur l'axe du chasseur (`BOLT_FORWARD_OFFSET`). Il doit le rester.
+const DEAD_ZONE_LIMIT := 0.0
 
 func _nose_offset() -> float:
 	var hull := track(HULL.instantiate()) as Node3D
@@ -33,19 +32,30 @@ func _nose_offset() -> float:
 	# Même projection que le contrôleur : le monde -Z est le haut de l'écran.
 	return -node.position.z
 
-## L'angle mort vient d'une addition simple, et chacun de ses trois termes peut bouger
-## tout seul : la coque (la position du canon), l'arme (sa vitesse), le bestiaire (le
-## rayon de la cible).
-func test_the_nose_blind_spot_stays_within_its_measured_bound() -> void:
-	var muzzle := _nose_offset()
+## L'angle mort vient d'une addition simple, et chacun de ses termes peut bouger tout
+## seul : l'avance du point de naissance, la vitesse de l'arme, le rayon de la cible.
+func test_there_is_no_blind_spot_in_front_of_the_nose() -> void:
 	# La balle est déplacée AVANT le premier test de collision (`BulletManager.step()` :
 	# on avance, puis `_resolve_hits`). Sa première position testée est donc déjà en avant.
-	var first_test := muzzle + PULSE.speed * TICK
+	var first_test := PlayerFighterController.BOLT_FORWARD_OFFSET + PULSE.speed * TICK
 	var reach := PULSE.radius + SCOUT.hitbox_radius
 	var dead_zone := maxf(0.0, first_test - reach)
 	assert_true(dead_zone <= DEAD_ZONE_LIMIT,
-		"angle mort de %.2f u devant le chasseur (canon à %.2f, premier test à %.2f, portée %.2f)"
-			% [dead_zone, muzzle, first_test, reach])
+		"angle mort de %.2f u (naissance à %.2f, premier test à %.2f, portée %.2f)"
+			% [dead_zone, PlayerFighterController.BOLT_FORWARD_OFFSET, first_test, reach])
+
+## Le bolt ne naît PLUS au bout du canon, et l'écart n'est pas un détail : c'est la
+## distance sur laquelle il traverse la coque avant d'en sortir. Mesurée ici pour qu'une
+## coque re-exportée avec un nez plus long ne l'allonge pas en silence.
+func test_the_flash_stays_on_the_gun_and_the_bolt_does_not() -> void:
+	var muzzle := _nose_offset()
+	assert_true(muzzle > PlayerFighterController.BOLT_FORWARD_OFFSET,
+		"le canon (%.2f u) est bien en avant du point de naissance (%.2f u)"
+			% [muzzle, PlayerFighterController.BOLT_FORWARD_OFFSET])
+	var crossing := (muzzle - PlayerFighterController.BOLT_FORWARD_OFFSET) / PULSE.speed
+	assert_true(crossing <= 0.060,
+		"le bolt sort du nez en %.0f ms — au-delà, il se voit naître DANS la coque"
+			% (crossing * 1000.0))
 
 ## Les canons d'aile et de bout d'aile sont modélisés DERRIÈRE le centre du chasseur.
 ## Conséquence non évidente et qui vaut d'être écrite : l'angle mort du nez se referme en

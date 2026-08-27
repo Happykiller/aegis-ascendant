@@ -91,11 +91,10 @@ Détail non évident, et qui aggrave le cas : les canons d'aile et de bout d'ail
 **derrière** le centre du chasseur. L'angle mort **se referme donc en montant en puissance** — le
 joueur le subit précisément quand il est le plus faible.
 
-> **À COMPLÉTER — décision de l'opérateur.** Le remède le moins cher a un précédent solide dans ce
-> projet : faire partir les bolts du **centre du chasseur** en laissant l'éclair de bouche au canon,
-> exactement comme la hitbox est déjà « délibérément plus petite que le modèle visuel » (spec §8.2).
-> Une ligne. ⚠️ Mais c'est un changement de **gameplay** — la portée utile du tir change — et il se
-> juge en jouant, pas au journal.
+✅ **Fermé le 2026-08-27** : les bolts naissent sur l'axe du chasseur, l'éclair de bouche reste au
+canon. La coque n'a pas bougé — c'est le **point de naissance** de la balle qui a été découplé de
+l'arme, exactement comme la hitbox l'est déjà du modèle. Vérifié à 1:1 : le rendu est **neutre**,
+le joueur ne verra que l'ennemi collé qui meurt enfin.
 
 ## Ennemis et vagues — `ENN`
 
@@ -106,7 +105,7 @@ joueur le subit précisément quand il est le plus faible.
 | `LOI-ENN-01` couverture des rôles | ✅ tenue | pression : les neuf Needle Scout, le Crescent Interceptor. Interdiction de zone : **Null Maw** (`GRAVITY_WELL`), Choir Mine en barrage. Défi direct : **Leech Drone** (`HOMING`), les deux boss. Plus un quatrième rôle que le genre nomme peu : le **Shield Carrier** (`SHIELD_AURA`), priorité de cible **pure** |
 | `LOI-ENN-02` priorité lisible | ⚠️ partielle | le Shield Carrier est le mécanisme même — sa **portée ne se voyait pas**, corrigée en anneau (pas en dôme : trois volumes ont rendu un aplat, condamnés par leur surface) |
 | `LOI-ENN-03` PV du popcorn | ✅ tenue | Choir Mine 12 PV, Leech Drone 10 — une salve suffit |
-| `LOI-ENN-04` toucher de près | ❌ **angle mort mesuré** (2026-08-27) | **0,90 unité** devant le centre du chasseur — voir ci-dessous. Borné par `test_point_blank.gd` |
+| `LOI-ENN-04` toucher de près | ✅ **tenue** (2026-08-27) | l'angle mort de **0,90 u** est **fermé** : le bolt naît sur l'axe du chasseur (`BOLT_FORWARD_OFFSET = 0`) au lieu du bout du canon, l'éclair de bouche restant sur l'arme. Même découplage que la hitbox « délibérément plus petite que le modèle visuel » (spec §8.2). Rendu **vérifié à 1:1** : visuellement neutre. `test_point_blank.gd` garde le zéro |
 | `LOI-ENN-05` approcher paie | ✅ tenue | `pull_speed_max` de la Null Maw plafonné à 7,0 contre 14,0 de vitesse joueur, et `GravityWell.leaves_room()` l'**impose** |
 | `LOI-ENN-06` couloirs Toaplan | ❌ absente | les vagues posent des `spawn_plane_position` en unités monde, **pas en couloirs**. Le champ d'astéroïdes emploie quatre colonnes échelonnées — du Toaplan sans le nommer |
 | `LOI-ENN-07` zigzag | ✅ tenue | neuf courbes distinctes (`WEAVE`, `ARC_CROSS`, `SERPENTINE`, `SPIRAL`, `STRAFE_RUN`…) |
@@ -399,9 +398,32 @@ emploie désormais `SINGLE`, `FAN` et `AIMED` en même temps — et **les dix un
 Le joueur ne peut donc pas distinguer *« cette salve me suit »* de *« celle-là m'ignore »*, alors
 que c'est exactement la différence que les deux schémas existent pour produire.
 
-⚠️ **Ne pas corriger par réflexe.** Donner une apparence propre au tir visé touche la réserve des
-couleurs (`LOI-LIS-01`) et donc la charte créative : c'est une décision, pas un réglage. En tête du
-lot 2 du plan.
+⚠️ **Et ce n'est PAS la décision de charte que ce rapport annonçait.** Vérifié le 2026-08-27 :
+`ProjectileData` ne porte **aucun champ visuel** — ni couleur, ni maillage. L'apparence vit dans le
+`MultiMesh`, **une par équipe**, et le buffer de transformation écrit uniquement l'origine : la base
+identité est posée **une fois pour toutes** au `_ready`. Autrement dit, **toutes les balles ennemies
+du jeu sont identiques par construction**, quelle que soit leur Resource.
+
+Distinguer le tir visé demande donc une **capacité qui n'existe pas** dans `BulletManager` : soit un
+troisième `MultiMesh`, soit des données par instance (`use_custom_data`) lues par le shader de bolt.
+C'est un chantier sur une classe **critique et budgétée** (600 projectiles, quotas 150/450, zéro
+allocation), pas deux lignes de `.tres`.
+
+### ⚠️ Même cause, autre écart : la balle ne ressemble pas à sa hitbox (spec §17.3)
+
+La spec exige que le rayon de collision « corresponde à la taille visuelle ». Mesuré :
+
+| | Rayon de collision | Rayon visuel |
+|---|---:|---:|
+| `needle_shot` | 0,16 | **0,31** |
+| `mine_burst` | 0,20 | **0,31** |
+| `boss_shot` | 0,18 | **0,31** |
+| `fortress_battery` | 0,30 | **0,31** |
+
+Le quad ennemi fait 0,62 × 0,62 pour tout le monde. Les balles se voient donc **1,6 à 1,9 fois plus
+grosses qu'elles ne touchent** — l'écart est dans le sens généreux, ce qui explique qu'il n'ait
+jamais gêné personne. Mais une balle de mine et une balle de chasseur sont **strictement
+indiscernables** alors que leurs hitbox diffèrent de 25 %.
 
 ---
 

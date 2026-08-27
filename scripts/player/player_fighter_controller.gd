@@ -24,6 +24,12 @@ signal fired
 
 const MAX_POWER := 5
 
+## Avance du point de naissance d'un bolt par rapport au centre du chasseur, en unités
+## du plan. **Zéro, et c'est une décision** : voir `_shoot()`. Le porter à la position
+## réelle du canon rouvrirait l'angle mort du tir rapproché, que `test_point_blank.gd`
+## garde fermé.
+const BOLT_FORWARD_OFFSET := 0.0
+
 @export var stats: PlayerStats
 @export var primary_projectile: ProjectileData
 ## Réglages de la plume d'échappement (ADR-0017). Nul = pas de plume : la coque vole
@@ -385,8 +391,21 @@ func _fire_pattern() -> void:
 
 ## Fire one bolt from the named gun and light that gun's muzzle flash. A gun the
 ## hull does not carry (old asset) degrades to the ship centre (cached as zero).
+##
+## ⚠️ LE BOLT PART DE L'AXE DU CHASSEUR, PAS DU BOUT DU CANON. On garde l'écart LATÉRAL
+## de l'arme — un tir d'aile sort bien de l'aile — et on annule son AVANCE.
+##
+## Mesuré le 2026-08-27 : les canons de nez sont modélisés à **+1,070 u** devant le centre,
+## et la balle avance encore de 0,40 u avant le premier test de collision. Une cible dont
+## le centre était à moins de **0,90 u** devant le chasseur ne pouvait donc pas être
+## touchée — et rien ne chassait le joueur de là, un chasseur ordinaire n'infligeant aucun
+## dégât de contact. L'unité y était **inoffensive et invulnérable** (`LOI-ENN-04`).
+##
+## C'est le même découplage que la hitbox, « délibérément plus petite que le modèle
+## visuel » (spec §8.2) : l'éclair de bouche reste sur l'arme, la balle naît sur l'axe.
 func _shoot(muzzle_name: String, direction: Vector2) -> void:
-	var origin: Vector2 = plane_position + _muzzles.get(muzzle_name, Vector2.ZERO)
+	var gun: Vector2 = _muzzles.get(muzzle_name, Vector2.ZERO)
+	var origin: Vector2 = plane_position + Vector2(gun.x, BOLT_FORWARD_OFFSET)
 	_bullet_manager.spawn_from_data(BulletManager.Team.PLAYER, origin, direction, primary_projectile)
 	var flash: MeshInstance3D = _muzzle_flashes.get(muzzle_name)
 	if flash != null:
