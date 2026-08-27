@@ -2,7 +2,7 @@
 titre: Consignes de l'opérateur — nées d'une correction
 type: regle
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-27
 ---
 
 # Consignes
@@ -11,6 +11,17 @@ Ce que l'opérateur a corrigé chez Claude. Chaque ligne a coûté quelque chose
 tant que personne ne la lève.
 
 ## Sur la conduite du travail
+
+- **Demander une texture doit être un RÉFLEXE, pas une option.** L'opérateur a dû le dire :
+  « si tu as besoin de texture pour les murs demande, rappelle-toi que cela doit être un
+  réflexe » (2026-08-27). Un volume neuf qui rend un aplat de couleur n'est pas fini — il lui
+  manque sa matière, et la voie est écrite (`ADR-0028`, brief de forge + `docs/forge/textures/`).
+  Ne pas attendre qu'on la réclame. Le coût de l'oubli : deux playtests passés à juger « un halo
+  de couleur » qu'une carte de 1024 px a réglé en une passe.
+- **Signaler ce qui n'est PAS tenu quand une règle est posée.** Une loi appliquée à un seul
+  endroit se lit comme une loi appliquée partout. Sur la collision, le plan a nommé lot par lot
+  ce qui restait ouvert (coques de boss, vaisseaux entre eux, décor) — et l'opérateur a pu les
+  demander dans l'ordre au lieu de les découvrir en jouant.
 
 - **Ne pas tirer les leviers de réglage d'office.** Après un playtest, les correctifs évidents se
   font ; les leviers de rythme restants (`shell_orbit_period`, `plate_arc_deg`) attendent le verdict

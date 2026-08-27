@@ -161,3 +161,31 @@ passent sans remarque ; quatre retours en sortent, tous vérifiables dans le cod
 ⚠️ **La graine est déterministe, et c'est le point discutable de l'ADR** : varier les unités
 entre elles, pas la vague d'une partie à l'autre. Un vrai hasard rendrait le jeu inapprenable, et
 la mémorisation est un pilier du genre.
+
+## 2026-08-27 (soir) — la collision devient un moteur, et une loi
+
+Le fil part d'un playtest — « j'arrive à traverser les murs » — et remonte jusqu'à une règle de
+projet : **les corps ne se chevauchent pas** ([`REGLES/lois.md`](REGLES/lois.md)). Quatre lots :
+la chambre du réacteur, les coques de boss, les vaisseaux entre eux, le décor
+([`ADR-0032`](../decisions/ADR-0032-un-module-de-collision-de-plan.md), plan
+`docs/plans/2026-08-27-les-corps-ne-se-chevauchent-pas.md`).
+
+Ce que la session a coûté, et qu'il ne faut pas repayer :
+
+- **Corriger après coup, c'est un ressort.** Laisser entrer puis repousser fait entrer *pour de
+  bon*, et le saut rejoué contre la commande du joueur se sent comme un aimant. Pire : abandonner
+  sa commande dès qu'il TOUCHE un mur lui retire le contrôle **77 % du temps** dans cette phase.
+  On glisse d'abord, on ne corrige que ce qui dépasse.
+- **Un vaisseau n'est pas un disque.** Décrit par sa demi-envergure, le Specter-9 laissait son nez
+  dépasser de 0,38 et traverser. Et **mesurer un `.glb` sans parcourir sa hiérarchie** donne 1,30
+  au lieu de 1,752 — deuxième fois, après le 25/08.
+- **Trois seuils inventés** dans des gardes vertes (35 % de couverture, 6 s de plongée, 260
+  bousculades) ont chacun caché un défaut. Un seuil se lit dans la donnée qui décide.
+- **Le couloir entre les deux murs n'est pas un lieu** : le chasseur est toujours aligné, donc
+  radialement c'est sa longueur (2,46) qui devrait tenir dans 0,84 de libre. Le labyrinthe est un
+  décor, pas un terrain.
+- **`total_duration()` mesurait le pire cas** et servait de cible depuis toujours. La durée qui
+  décide du rythme est celle d'un joueur de référence, qui sort dès son quota rempli.
+
+Et une correction de l'opérateur qui vaut consigne : **demander une texture doit être un réflexe**
+([`REGLES/consignes.md`](REGLES/consignes.md)).

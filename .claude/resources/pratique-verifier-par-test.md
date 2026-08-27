@@ -95,3 +95,62 @@ porte du travail non commité, sauf `git add`/`git commit`.
 Corollaire : **commiter avant de muter** est la vraie protection. Un test de mutation se fait
 sur du travail déjà sauvé ; le rouge attendu ne prouve rien de plus s'il est obtenu sur du code
 qu'on risque de perdre.
+
+## Une garde qui RECOPIE le code ne teste rien (27/08/2026)
+
+La garde de la répulsion entre ennemis rejouait à la main les quatre lignes du pas d'image —
+retirer l'écart, avancer, le réappliquer — au lieu d'appeler ce pas. Elle était verte, et elle
+serait **restée verte** le jour où le contrôleur aurait oublié de réappliquer l'écart : elle
+testait sa propre copie.
+
+Le nœud du problème est réel : le contrôleur est un `Node`, et son `_physics_process` n'est pas
+appelable en headless. La tentation est alors de reproduire ce qu'il fait.
+
+**Le remède** : extraire le pas dans une méthode publique (`step_position(delta)`) et faire
+appeler **celle-là** par le test *et* par `_physics_process`. Une méthode publique de plus vaut
+mieux qu'une garde qui ment.
+
+**Le témoin qui tranche** : muter le code et vérifier que la garde rougit. Ici, retirer la
+réapplication de l'écart — la garde d'origine passait, la garde rebranchée échoue avec
+« l'écart a survécu au recalcul (0.00 u) ».
+
+## ⛔ Un seuil INVENTÉ dans une garde est une panne qui dort (27/08/2026)
+
+Trois fois dans la même session, et à chaque fois le même mécanisme : une garde verte qui tenait
+un chiffre que personne n'avait dérivé de quoi que ce soit.
+
+| Garde | Le chiffre inventé | Ce que ça a coûté |
+|---|---|---|
+| couverture du blindage | « < 35 % » | l'équilibrage calculait avec 45 % — huit à douze plongées au lieu de trois, aucun test rouge |
+| durée de la plongée | « ≤ 6 s » | interdisait de relever un **plafond** que le joueur de référence n'atteint jamais |
+| bousculades au contact | « < 260 sur 600 » | mesurait un taux là où le fait qui compte est « le blindage finit-il par laisser passer ? » |
+
+Une borne inventée ne protège de rien : elle **fige un chiffre plausible** et donne à la suite
+l'autorité d'une mesure. Pire, elle rend vert un désaccord entre deux valeurs qui décrivent le
+même fait.
+
+**La règle** : une garde numérique doit lire son seuil **dans la donnée qui décide** — la Resource
+que le jeu emploie, la dimension mesurée sur le modèle, la cible déclarée. `assert ratio ≈
+tuning.ring_occupancy` vaut mille fois `assert ratio < 0.35`, parce qu'elle rougit aussi quand
+c'est l'estimation qui a tort.
+
+Et quand aucune donnée ne porte le seuil, c'est souvent qu'on mesure la mauvaise chose : la
+question « combien d'images bousculées ? » n'avait pas de bonne réponse ; « le joueur garde-t-il
+le contrôle en longeant ? » en avait une, et binaire.
+
+## Mesurer un `.glb` : parcourir la hiérarchie, ou se tromper (27/08/2026, 2ᵉ fois)
+
+Lire les `min`/`max` des accesseurs `POSITION` donne les bornes **en espace local de chaque
+maillage**. Une pièce portée par un nœud décalé — un canon de bout d'aile, un bras — en sort.
+
+Le Specter-9 mesure ainsi **1,30** de large au lieu de **1,752**. Le chiffre faux est parti dans
+un brief de forge le 25/08, et il est revenu le 27/08 : j'allais « corriger » une constante de
+test qui avait raison depuis le début.
+
+**Le contrôle gratuit** : comparer au chiffre déjà écrit quelque part (constante de test, doc de
+Resource). Deux mesures qui divergent d'un facteur ~1,35 signent un oubli de transformation, pas
+une erreur de l'autre.
+
+Il faut composer `translation`/`rotation`/`scale` (ou `matrix`) de chaque nœud en descendant, et
+transformer **les huit coins** de la boîte locale — pas seulement `min` et `max`, qui ne sont plus
+les extrêmes après rotation.

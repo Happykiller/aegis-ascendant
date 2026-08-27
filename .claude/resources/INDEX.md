@@ -132,6 +132,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   emporte tout le travail non commité du fichier — deux fois en une session le 2026-08-27,
   la seconde a coûté une implémentation entière. Copier le fichier avant, ou commiter avant
   de muter.
+  ⛔ **Un seuil inventé dans une garde est une panne qui dort** : trois fois en une session
+  (35 % de couverture, 6 s de plongée, 260 bousculades) — une borne plausible fige un chiffre
+  et rend vert un désaccord. Lire le seuil dans **la donnée qui décide**.
+  ⛔ **Une garde qui RECOPIE le pas d'image ne teste rien** : extraire le pas et l'appeler.
+  ⛔ **Mesurer un `.glb` sans parcourir la hiérarchie** donne 1,30 au lieu de 1,752 sur le
+  Specter-9 — deux fois la même erreur, 25/08 puis 27/08.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et
