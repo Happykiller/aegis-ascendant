@@ -156,6 +156,28 @@ func deploy_ratio(tuning: HarvesterTuning) -> float:
 	return 1.0
 
 ## Part de vie restante, pour un retour visuel d'endommagement (émissifs, fissures).
+## Avancement de la REPOUSSE, de 0 (l'appendice vient de tomber) à 1 (il est de retour).
+##
+## ⚠️ CE QUE ÇA REND VISIBLE. `limb_rebuild_time` vaut **14 secondes** : quatorze secondes
+## pendant lesquelles la jauge de l'appendice restait pleine et sombre, immobile. Le joueur
+## ne pouvait pas savoir s'il lui restait dix secondes de répit ou une. Un état qui existe
+## et ne se montre pas se lit comme un défaut — playtest du 2026-08-27 : « je ne vois pas
+## les barres de vie de la griffe se recharger ».
+##
+## Rend 0 pour un appendice VIVANT : il ne repousse pas, il vit.
+func rebuild_ratio(tuning: HarvesterTuning) -> float:
+	if tuning == null or tuning.limb_rebuild_time <= 0.0 or state == State.ALIVE:
+		return 0.0
+	var done := 0.0
+	match state:
+		State.FALLING:
+			done = elapsed
+		State.DOWN:
+			done = tuning.limb_retract_time + elapsed
+		State.RISING:
+			done = tuning.limb_rebuild_time - tuning.limb_deploy_time + elapsed
+	return clampf(done / tuning.limb_rebuild_time, 0.0, 1.0)
+
 func health_ratio() -> float:
 	return health / max_health if max_health > 0.0 else 0.0
 

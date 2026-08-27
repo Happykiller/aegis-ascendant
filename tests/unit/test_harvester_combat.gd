@@ -361,3 +361,47 @@ func test_the_shipped_tuning_leaves_a_usable_window() -> void:
 	var window := tuning.limb_rebuild_time - 2.0 * kill_time
 	assert_true(window >= HarvesterTuning.MIN_WINDOW,
 		"shipped tuning: %.1f s kill, %.1f s window" % [kill_time, window])
+
+
+## ⚠️ QUATORZE SECONDES SANS RIEN DIRE. `limb_rebuild_time` vaut 14 s, et pendant tout ce
+## temps la jauge de l'appendice restait PLEINE ET SOMBRE, immobile : le joueur ne pouvait
+## pas savoir s'il lui restait dix secondes de repit ou une. La jauge n'etait emise qu'aux
+## TRANSITIONS — a la chute, puis au retour. « Je ne vois pas les barres de vie de la griffe
+## se recharger » (playtest du 2026-08-27).
+func test_a_downed_limb_reports_how_far_along_its_regrowth_is() -> void:
+	var rig := _rig()
+	var combat: HarvesterCombat = rig[1]
+	var seen: Array = []
+	combat.limb_rebuild_changed.connect(func(i: int, r: float) -> void: seen.append([i, r]))
+	_kill_limb(combat, HarvesterCombat.KIND_CLAW)
+	var before := seen.size()
+	_advance(combat, combat.tuning.limb_rebuild_time * 0.25)
+	assert_true(seen.size() > before, "la repousse s'annonce pendant qu'elle a lieu")
+	var last: Array = seen[seen.size() - 1]
+	assert_true(float(last[1]) > 0.0 and float(last[1]) < 1.0,
+		"et elle rend un avancement, pas un tout-ou-rien (%.2f)" % float(last[1]))
+	_free(rig)
+
+## L'avancement doit MONTER : une valeur qui stagne serait aussi muette que pas de valeur.
+func test_the_regrowth_gauge_actually_climbs() -> void:
+	var rig := _rig()
+	var combat: HarvesterCombat = rig[1]
+	var seen: Array[float] = []
+	combat.limb_rebuild_changed.connect(func(_i: int, r: float) -> void: seen.append(r))
+	_kill_limb(combat, HarvesterCombat.KIND_SCYTHE)
+	_advance(combat, combat.tuning.limb_rebuild_time * 0.8)
+	assert_true(seen.size() >= 8, "elle s'annonce a chaque image")
+	assert_true(seen[seen.size() - 1] > seen[0] + 0.3,
+		"et elle monte franchement (%.2f -> %.2f)" % [seen[0], seen[seen.size() - 1]])
+	_free(rig)
+
+## Un appendice VIVANT ne repousse pas : promettre un retour pour ce qui est deja la serait
+## un signal faux, et la loi des signaux le tient pour pire qu'un signal absent.
+func test_a_living_limb_never_claims_to_be_regrowing() -> void:
+	var rig := _rig()
+	var combat: HarvesterCombat = rig[1]
+	var seen: Array = []
+	combat.limb_rebuild_changed.connect(func(i: int, r: float) -> void: seen.append([i, r]))
+	_advance(combat, 2.0)
+	assert_eq(seen.size(), 0, "aucun appendice a terre, aucune promesse de retour")
+	_free(rig)

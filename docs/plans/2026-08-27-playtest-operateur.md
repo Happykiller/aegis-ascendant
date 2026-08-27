@@ -3,7 +3,7 @@ titre: Retours de playtest du 2026-08-27 — puissance, regen, noyau, et le mouv
 date: 2026-08-27
 auteur: session Claude, sur retours de l'opérateur après une partie complète (arc entier, rang S)
 perimetre: équilibrage de la montée en puissance, signaux de boss, phase du noyau, bibliothèque de trajectoires
-etat: **TOUT LIVRÉ** le 2026-08-27 (R1, R2, R3a, R3b, R3c, R4 — `ADR-0029`).
+etat: **TOUT LIVRÉ** le 2026-08-27 (R1 à R4, `ADR-0029`, plus R5 et R6 d'une seconde partie).
   Reste le jugement en jeu : trois signaux et un équilibrage ne se valident pas au journal
 supersede: rien. Complète docs/design/CONFORMITE-AEGIS.md
 ---
@@ -188,3 +188,44 @@ balayer la même distance à chaque reconstruction.
 ⚠️ **Et une garde a pris une hypothèse à moi en défaut** : le premier test de la jauge croyait
 abattre le flux d'une seule plongée. C'est impossible **par construction** (`ADR-0026` plafonne
 les dégâts à un tiers par passage) — il fallait aller jusqu'au troisième cycle.
+
+
+---
+
+# Seconde partie du 2026-08-27 — deux défauts de plus
+
+Arc complet à nouveau, fermé pendant l'appontage. Mini-boss à **15 560** contre 16 690 la partie
+d'avant : **−1 130 points**, la trace indirecte d'un Power Core de moins ramassé en phase 1. R1 fait
+donc ce qu'on lui demandait.
+
+## R5 — « Mes tirs ne vont pas jusqu'au bout de l'écran » ✅ LIVRÉ
+
+**Mesuré à la capture** : le bolt le plus haut mourait à **~170 px du bord**, soit 16 % de la hauteur
+d'écran. Ils ne s'arrêtaient pas — ils **disparaissaient dans le cadre**, ce qui est pire.
+
+⚠️ **Ce n'était pas la portée.** Le `ttl` du tir joueur autorise **36 unités** de trajet quand le
+terrain en fait 16 : l'allonger n'aurait rien changé. C'était le **culling**. `BOUNDS` est le terrain
+de **jeu**, pas le champ **visible** — le fond en montre bien davantage, et les ennemis naissent à
+`y = 9,5` où on les voit arriver. La coupe à `y = 10` (bornes + marge de 2) tombait donc en plein
+cadre.
+
+`CULL_MARGIN` passe de **2,0 à 5,0**. Vérifié à la capture : le bolt le plus haut est désormais à
+**~20 px du bord**. Deux gardes, dont une qui empêche de rechercher le défaut du mauvais côté :
+*le `ttl` n'a jamais borné quoi que ce soit*.
+
+## R6 — Les jauges d'appendice ne montrent pas la repousse ✅ LIVRÉ
+
+> « Je ne vois pas les barres de vie de la griffe, etc. du premier boss se recharger pendant que le
+> noyau est exposé. »
+
+**Vérifié, et c'est le jumeau exact de R2 sur l'autre boss.** `limb_rebuild_time` vaut **14 secondes**,
+et pendant tout ce temps la jauge restait **pleine et sombre, immobile** : la gauge n'était émise
+qu'aux **transitions** — à la chute, puis au retour. Le joueur ne pouvait pas savoir s'il lui restait
+dix secondes de répit ou une.
+
+`HarvesterLimb.rebuild_ratio()` expose l'avancement, `limb_rebuild_changed` le publie à l'image, et
+le HUD pose **le même filet vert** que la reconstruction de l'armure du Leviathan — un seul
+vocabulaire : *vert fin = ça revient, et voilà dans combien de temps*.
+
+⚠️ La barre sombre pleine **ne bouge pas** : elle dit toujours « celui-ci est tombé ». Deux
+informations, deux tracés.

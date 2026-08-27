@@ -49,6 +49,10 @@ signal limb_restored(kind: StringName)
 ## change — un impact, une chute, un retour en service. Le temps de repousse, lui, se lit
 ## sur le modèle : l'appendice se redéploie à vue (cf. `FighterHud._build_limb_pips`).
 signal limb_gauge_changed(index: int, ratio: float, alive: bool)
+## Un appendice REPOUSSE, de 0 à 1. Émis à l'image tant qu'il est à terre — c'est une
+## valeur continue, et `limb_rebuild_time` dure quatorze secondes : sans elle, le joueur
+## voit une barre immobile et ne peut pas savoir combien de répit il lui reste.
+signal limb_rebuild_changed(index: int, ratio: float)
 
 @export var tuning: HarvesterTuning
 ## Projectile de la griffe. Les deux autres appendices ne tirent pas de balle.
@@ -239,6 +243,11 @@ func tick(delta: float) -> void:
 		if not was_up and limb.is_up():
 			limb_restored.emit(limb.kind)
 			_emit_gauge(limb)
+		elif not limb.is_up():
+			# La repousse se MONTRE, à l'image. Elle ne se déduisait de rien : la jauge
+			# restait pleine et sombre pendant quatorze secondes.
+			limb_rebuild_changed.emit(LIMB_ORDER.find(limb.kind),
+				limb.rebuild_ratio(tuning))
 		limb.target.position = _limb_plane_position(limb, origin)
 
 	_update_iris(delta)

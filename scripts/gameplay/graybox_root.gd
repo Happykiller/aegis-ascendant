@@ -336,6 +336,7 @@ func _bind_harvester(boss: BossController) -> void:
 		return
 	combat.limb_destroyed.connect(_on_harvester_limb_destroyed.bind(boss))
 	combat.limb_gauge_changed.connect(_on_harvester_limb_gauge)
+	combat.limb_rebuild_changed.connect(_on_harvester_limb_rebuild)
 	combat.iris_opened.connect(_on_harvester_iris_opened.bind(boss))
 	combat.iris_closed.connect(_on_harvester_iris_closed)
 
@@ -351,6 +352,12 @@ func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController) -> vo
 
 ## Une jauge d'appendice a bougé. Le niveau ne fait que relayer : le HUD ne connaît pas
 ## le Harvester, le module ne connaît pas le HUD.
+## Un appendice REPOUSSE : le HUD le montre, au lieu d'une barre immobile pendant les
+## quatorze secondes de `limb_rebuild_time`.
+func _on_harvester_limb_rebuild(index: int, ratio: float) -> void:
+	if _hud != null:
+		_hud.set_boss_limb_regen(index, ratio)
+
 func _on_harvester_limb_gauge(index: int, ratio: float, alive: bool) -> void:
 	if _hud != null:
 		_hud.set_boss_limb(index, ratio, alive)

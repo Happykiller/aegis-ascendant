@@ -24,6 +24,9 @@ const MAX_LIMB_PIPS := 4
 ## Couleur d'une jauge à terre : sombre mais pas noire, sinon elle disparaît du panneau
 ## et l'on ne compte plus que ce qui reste, pas ce qui manque.
 const LIMB_PIP_DOWN := Color(0.25, 0.08, 0.18, 0.85)
+## Vert du Null Choir (charte) : c'est l'ennemi qui se répare. Le même que le filet de
+## reconstruction de l'armure du Leviathan — un seul mot pour une seule idée.
+const REGEN_GREEN := Color("7c9e52")
 ## Sous-cible ACTIVE — celle que le joueur doit viser MAINTENANT (la plaque exposée en
 ## phase 1 du Leviathan). Plus vive que le magenta des vivantes ordinaires : c'est ce qui
 ## répond au « j'ai pas compris quelle plaque viser » du playtest.
@@ -73,6 +76,7 @@ var _boss_name: Label
 var _boss_cycle: Label
 var _boss_fill: ColorRect
 var _boss_regen: ColorRect
+var _limb_regens: Array[ColorRect] = []
 var _boss_full_width: float = 0.0
 var _limb_pips: Array[ColorRect] = []
 var _limb_tracks: Array[ColorRect] = []
@@ -289,6 +293,7 @@ func _build_boss_panel() -> void:
 func _build_limb_pips() -> void:
 	_limb_pips.clear()
 	_limb_tracks.clear()
+	_limb_regens.clear()
 	_limb_labels.clear()
 	_limb_alive.clear()
 	_active_limb = -1
@@ -316,6 +321,17 @@ func _build_limb_pips() -> void:
 		track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_boss_panel.add_child(track)
 		_limb_tracks.append(track)
+		# Le filet de repousse : 2 px au BAS de la jauge, sous le remplissage. Même
+		# vocabulaire que le filet vert de la barre du boss — le joueur apprend une seule
+		# fois que « vert fin = ça revient, et voilà dans combien de temps ».
+		var regen := ColorRect.new()
+		regen.color = REGEN_GREEN
+		regen.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0 + LIMB_GAUGE_HEIGHT - 2.0)
+		regen.size = Vector2(0.0, 2.0)
+		regen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		regen.visible = false
+		_boss_panel.add_child(regen)
+		_limb_regens.append(regen)
 		var fill := ColorRect.new()
 		fill.color = BOSS_MAGENTA
 		fill.position = Vector2(x + LIMB_LABEL_WIDTH, 50.0)
@@ -362,6 +378,8 @@ func show_boss(display_name: String) -> void:
 		label.visible = false
 	for track in _limb_tracks:
 		track.visible = false
+	for regen in _limb_regens:
+		regen.visible = false
 	_boss_cycle.visible = false
 	_boss_name.text = display_name.to_upper()
 	_boss_fill.size.x = _boss_full_width
@@ -371,6 +389,8 @@ func show_boss(display_name: String) -> void:
 func hide_boss() -> void:
 	_boss_panel.visible = false
 	_boss_regen.visible = false
+	for regen in _limb_regens:
+		regen.visible = false
 
 ## Pose la jauge d'UN appendice, et la REND VISIBLE : les trois sont cachées par défaut,
 ## parce qu'un boss générique — le Pale Leviathan — n'a pas d'appendices et afficherait
@@ -394,6 +414,28 @@ func set_boss_limb(index: int, ratio: float, alive: bool) -> void:
 	# structure (zéro) le ferait disparaître : la jauge dirait « rien ici » là où il faut
 	# lire « celui-ci est tombé, il revient ».
 	fill.size.x = LIMB_GAUGE_WIDTH * (clampf(ratio, 0.0, 1.0) if alive else 1.0)
+	if alive and index < _limb_regens.size():
+		_limb_regens[index].visible = false   # il est revenu : le filet s'efface
+
+## La repousse d'un appendice, de 0 à 1. Un filet vert sous sa jauge.
+##
+## ⚠️ CE QU'IL FERME. `limb_rebuild_time` vaut quatorze secondes, pendant lesquelles la
+## jauge restait PLEINE ET SOMBRE, immobile. Le joueur ne pouvait pas savoir s'il lui
+## restait dix secondes de répit ou une — « je ne vois pas les barres de vie de la griffe
+## se recharger » (playtest du 2026-08-27).
+##
+## La barre sombre pleine ne bouge PAS : elle dit toujours « celui-ci est tombé ». C'est le
+## filet qui dit « et il revient dans tant de temps ». Deux informations, deux tracés.
+func set_boss_limb_regen(index: int, ratio: float) -> void:
+	if index < 0 or index >= _limb_regens.size():
+		return
+	var clamped := clampf(ratio, 0.0, 1.0)
+	var regen := _limb_regens[index]
+	if clamped <= 0.0 or not _limb_tracks[index].visible:
+		regen.visible = false
+		return
+	regen.size.x = LIMB_GAUGE_WIDTH * clamped
+	regen.visible = true
 
 ## Reconfigure la rangée de pastilles pour les sous-cibles d'un boss : un libellé chacune,
 ## la rangée RECENTRÉE sur leur nombre (trois pour le Harvester, quatre ou trois pour le

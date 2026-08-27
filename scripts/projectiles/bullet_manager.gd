@@ -16,7 +16,18 @@ signal target_hit(plane_position: Vector2, victim_team: int)
 
 const MAX_BULLETS := 600                       # spec §21.3 hard budget
 const TEAM_BUDGETS: PackedInt32Array = [150, 450]  # player / enemy sub-budgets
-const CULL_MARGIN := 2.0                       # units beyond BOUNDS before culling
+## Marge au-delà de `BOUNDS` avant qu'un projectile soit recyclé.
+##
+## ⚠️ ELLE VALAIT 2,0, ET LES TIRS MOURAIENT DANS LE CADRE. `BOUNDS` est le terrain de JEU,
+## pas le champ VISIBLE : le fond en montre bien davantage (les ennemis naissent à y = 9,5 et
+## on les voit arriver). Une coupe à y = 10 escamotait donc les bolts du joueur à environ
+## 170 px du haut de l'écran — mesuré à la capture le 2026-08-27. « Mes tirs ne vont pas
+## jusqu'au bout de l'écran, cela fait étrange » : ils ne s'arrêtaient pas, ils
+## DISPARAISSAIENT, ce qui est pire.
+##
+## ⚠️ Ce n'est PAS une histoire de portée : le `ttl` du tir joueur autorise 36 unités de
+## trajet quand le terrain en fait 16. Rallonger le `ttl` n'aurait rien changé.
+const CULL_MARGIN := 5.0
 
 ## Fixed-capacity flat spatial grid over BOUNDS.grow(CULL_MARGIN).
 const GRID_COLS := 12
