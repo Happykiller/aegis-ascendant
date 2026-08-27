@@ -44,8 +44,18 @@ func test_the_player_is_never_locked_out() -> void:
 			% longest_lock)
 
 ## Et il doit VRAIMENT protéger : un blindage ouvert partout tout le temps ne serait pas un
-## puzzle, ce serait une décoration. La garde tient les deux bouts.
-func test_the_shield_actually_shields() -> void:
+## puzzle, ce serait une décoration.
+##
+## ⚠️ CETTE GARDE TENAIT UNE BORNE INVENTÉE (« < 35 % ») PENDANT QUE L'ÉQUILIBRAGE CALCULAIT
+## AVEC 45 %. Elle était verte, et le combat n'en finissait pas : douze plongées à puissance
+## maximale au playtest du 2026-08-27, parce que la géométrie livrée n'ouvrait que 13 % du
+## temps. Deux chiffres sur le même fait, qui ne se parlaient pas — la panne exacte
+## qu'`ADR-0024` a déjà coûtée au projet.
+##
+## Elle compare donc désormais la couverture RÉELLEMENT SIMULÉE à `ring_occupancy`, qui est
+## la valeur dont `flux_reachable_per_dive()` déduit la santé du flux. Changer les ouvertures
+## sans corriger l'estimation — ou l'inverse — rougit ici.
+func test_the_shield_opens_as_often_as_the_balance_assumes() -> void:
 	var rings := _shipped_rings()
 	var open := 0
 	var total := 0
@@ -56,7 +66,11 @@ func test_the_shield_actually_shields() -> void:
 			if ReactorRings.is_open(rings, float(k) * 5.0, age):
 				open += 1
 	var ratio := float(open) / float(total)
-	assert_true(ratio < 0.35,
+	var tuning: LeviathanTuning = load(SHIPPED)
+	assert_true(absf(ratio - tuning.ring_occupancy) <= 0.06,
+		("le blindage livré laisse tirer %.0f %% du temps, mais l'équilibrage dimensionne "
+			+ "le flux comme s'il en laissait %.0f %%") % [ratio * 100.0, tuning.ring_occupancy * 100.0])
+	assert_true(ratio < 0.70,
 		"le corridor couvre %.0f %% du cercle — au-delà, il n'y a plus rien à chercher"
 			% (ratio * 100.0))
 	assert_true(ratio > 0.03,
@@ -248,3 +262,35 @@ func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 ## Largeur du chasseur, relevee sur la coque livree : les canons de bout d'aile sont a
 ## x = ±0,853, soit ~1,7 u d'envergure utile.
 const SHIP_WIDTH := 1.75
+
+## ⚠️ L'INVARIANT QUI COMPTE MAINTENANT : la ligne de tir est soit coupee — et il existe UN
+## premier point de contact — soit degagee, et il n'y en a aucun. Jamais les deux, jamais
+## aucun des deux. C'est ce qui garantit qu'une gerbe de deviation nait la ou le bolt
+## s'arrete, et non ailleurs.
+func test_a_blocked_line_always_names_where_it_is_blocked() -> void:
+	var rings := _shipped_rings()
+	for step in 300:
+		var age := float(step) * 0.09
+		var from := Vector2(-3.0 + fmod(age, 6.0), -8.0)
+		var hit := ReactorRings.first_hit_along(rings, from, Vector2.ZERO, age, 0.35)
+		var blocked := ReactorRings.line_blocked(rings, from, Vector2.ZERO, age, 0.35)
+		assert_eq(hit.is_finite(), blocked,
+			"coupee <=> un point de contact nomme (age %.2f)" % age)
+		if hit.is_finite():
+			assert_true(hit.distance_to(from) <= from.length() + 0.01,
+				"et ce point est SUR le trajet, entre le tireur et le noyau")
+
+## Le corps du chasseur ne franchit pas le bord d'une ouverture par lequel son centre passe.
+func test_a_wide_body_does_not_slip_through_an_edge_its_centre_clears() -> void:
+	var ring := ReactorRing.new()
+	ring.apertures = 2
+	ring.aperture_deg = 40.0
+	ring.speed_deg = 10.0
+	ring.phase_deg = 0.0
+	ring.radius = 4.0
+	ring.thickness = 1.0
+	# Juste au bord de l'ouverture : le centre passe (19° < 20°), le corps non.
+	var edge := Vector2(4.0, 0.0).rotated(deg_to_rad(19.0))
+	assert_false(ReactorRings.blocks(ring, edge, 0.0), "le CENTRE passe au bord")
+	assert_true(ReactorRings.blocks_body(ring, edge, 0.85, 0.0),
+		"mais le corps, large de 0,85, touche encore le plein")

@@ -192,19 +192,35 @@ extends Resource
 
 ## Part de la plongée pendant laquelle un joueur qui JOUE BIEN a son corridor ouvert.
 ##
-## ⚠️ C'EST UNE ESTIMATION, ET ELLE EST NOMMÉE POUR ÇA. Un joueur immobile n'aurait que
-## ~13 % (le produit des deux couvertures d'anneaux) ; un joueur qui suit l'ouverture a
-## bien davantage, borné par son déplacement. 0,45 est le point de départ — **à mesurer en
-## jouant**, avec le sous-agent `balance-prober`.
+## ⚠️ CE N'EST PLUS UNE ESTIMATION : LA GÉOMÉTRIE A ÉTÉ RÉGLÉE DESSUS. La version d'origine
+## pariait qu'« un joueur qui suit l'ouverture » ferait bien mieux que les ~13 % du produit
+## des deux anneaux. Ce pari était FAUX, et d'une façon qu'aucun réglage ne rattrape : le
+## chasseur tire DROIT VERS LE HAUT, il ne touche le noyau que par le bas, et se déplacer
+## latéralement ne lui donne aucun angle. « Aller chercher le corridor » n'existe pas dans
+## un shoot vertical. Le joueur réel avait donc les 13 % du joueur immobile — d'où les douze
+## plongées du playtest du 2026-08-27.
+##
+## Les ouvertures ont été élargies (46->80 et 62->120) pour que le blindage tienne enfin la
+## promesse écrite ici, et `test_the_shield_opens_as_often_as_the_balance_assumes` compare
+## désormais cette valeur à la couverture simulée : les deux ne peuvent plus diverger.
 ##
 ## Elle entre dans l'invariant de portée ci-dessous : sans elle, on aurait armé le réacteur
 ## d'un blindage tout en continuant de calculer les dégâts atteignables comme s'il n'y en
 ## avait pas. C'est le calibrage silencieux qu'`ADR-0024` a coûté au projet.
 @export_range(0.05, 1.0) var ring_occupancy: float = 0.45
 
-## Marge entre la coque du chasseur et la face d'un mur. Sa hitbox fait 0,25 de rayon, mais
-## c'est le MODÈLE qu'on voit s'encastrer : la marge se règle sur ce qui se regarde.
-@export var wall_clearance: float = 0.55
+## Rayon du CORPS du chasseur pour la collision aux murs.
+##
+## ⚠️ 0,55 -> 0,85 APRÈS PLAYTEST : « le vaisseau rentre en partie dans les murs et j'ai
+## l'impression que le bord des murs est franchissable ». Sa hitbox fait 0,25, mais c'est le
+## MODÈLE qu'on voit s'encastrer — la demi-envergure vaut ~0,85, canons de bout d'aile
+## compris. La collision se règle sur ce qui se regarde.
+@export var wall_clearance: float = 0.85
+
+## Rayon pris en compte pour la ligne de tir. Les canons d'aile montent en parallèle, écartés
+## de l'axe : une ligne infiniment fine laisserait passer leurs bolts par le bord d'une
+## ouverture que le tir central, lui, ne franchit pas.
+@export var bolt_radius: float = 0.35
 
 # --- Le laser balayant du réacteur (lot 2) ----------------------------------
 

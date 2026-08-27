@@ -729,36 +729,27 @@ func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
 ## honnete. Jamais les deux (on toucherait le noyau ET le blindage), jamais aucune (les tirs
 ## traverseraient sans rien produire — le defaut nomme sur le Harvester : « tirer dessus sans
 ## rien produire a l'ecran se lit comme un defaut, pas comme une armure »).
-func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
+## ⚠️ SANS JOUEUR, IL N'Y A PAS DE LIGNE DE TIR — et donc rien a bloquer. Le blindage ne doit
+## alors JAMAIS pretendre arreter quoi que ce soit : une cible d'arret active sans tireur
+## consommerait les balles d'un autre.
+##
+## L'invariant de complementarite lui-meme vit desormais dans `test_reactor_rings.gd` : il
+## porte sur la LIGNE DE TIR, qui est de la geometrie pure et se teste sans monter un joueur.
+func test_without_a_shooter_the_shield_claims_nothing() -> void:
 	var combat := _make()
 	combat.tuning = _tuning_with_locks()
+	combat.tuning.node_count = 0
 	combat.dive_anchor = Vector2.ZERO
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
-	# ⚠️ LES VERROUS D'ABORD. Tant qu'un node tient, le corridor ne s'ouvre JAMAIS — c'est
-	# la seconde porte, et l'oublier ici ferait accuser le blindage.
-	for i in combat.tuning.node_count:
-		combat._on_node_hit(combat.tuning.node_health, i)
-	assert_eq(combat.nodes_alive(), 0, "les verrous sont a terre")
-	var seen_open := false
-	var seen_shut := false
-	for step in 200:
+	for step in 60:
 		combat.tick(0.05)
-		if combat.phase() != CombatScript.Phase.DIVE:
-			break
-		# ⚠️ SEULEMENT DANS LE NOYAU. Pendant l'entree et l'ejection, les DEUX cibles sont
-		# eteintes a juste titre : la complementarite ne vaut que la ou l'on tire.
 		if combat._dive != CombatScript.Dive.INSIDE:
-			continue
-		var core: bool = combat._flux_target.enabled
-		var shield: bool = combat._shield_target.enabled
-		assert_true(core != shield,
-			"noyau=%s blindage=%s — il en faut exactement UN" % [core, shield])
-		seen_open = seen_open or core
-		seen_shut = seen_shut or shield
-	assert_true(seen_open, "le corridor s'ouvre au moins une fois")
-	assert_true(seen_shut, "et il se ferme au moins une fois — sinon le blindage ne sert a rien")
+			break
+		assert_false(combat._shield_target.enabled,
+			"aucun tireur : la cible d'arret reste eteinte")
+		assert_true(combat._flux_target.enabled, "et le noyau reste atteignable")
 
 ## ⚠️ LES VERROUS SONT LA PREMIERE PORTE, ET ELLE EST ABSOLUE. Corridor ouvert ou non, tant
 ## qu'un node tient, le flux est intouchable. Sans cette garde, un reglage qui les

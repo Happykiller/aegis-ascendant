@@ -23,14 +23,24 @@
 ; Deux anneaux, en SENS CONTRAIRES : leur corridor commun se déplace vite, et le
 ; joueur doit aller le chercher au lieu de camper sous le noyau.
 ;
-; ⚠️ CHIFFRES SIMULÉS AVANT D'ÊTRE ÉCRITS, sur deux minutes de rotation : un
-; corridor existe 100 % du temps quelque part sur le cercle, verrou le plus long
-; 0,00 s, fenêtre large de ~48°. Le joueur n'ATTEND jamais — il se déplace.
+; ⚠️ OUVERTURES ÉLARGIES APRÈS PLAYTEST (46 -> 80 et 62 -> 120), et pour une
+; raison GÉOMÉTRIQUE, pas de confort. Le chasseur tire DROIT VERS LE HAUT : il ne
+; peut toucher le noyau que par LE BAS, et « aller chercher le corridor » sur le
+; côté ne lui donne aucun angle. Ce qui compte n'est donc pas qu'un corridor existe
+; quelque part sur le cercle — c'était la mesure d'origine, et elle mesurait au
+; mauvais endroit — mais que LE BAS soit dégagé assez souvent.
+;
+; À bearing fixe, un anneau est ouvert aperture/step du temps, et les deux tournent
+; à des vitesses incommensurables : le produit tient.
+;   46/120 × 62/180 = 13 %  -> DOUZE plongées à puissance 5 pour finir. Le playtest.
+;   80/120 × 120/180 = 44 % -> ce que `ring_occupancy` (0,45) annonce depuis le début.
+; Les gardes de convergence lisent cette estimation ; elles étaient donc vertes sur
+; une donnée que le jeu ne tenait pas.
 ; ============================================================================
 [sub_resource type="Resource" id="ring_outer"]
 script = ExtResource("2_ring")
 apertures = 3
-aperture_deg = 46.0
+aperture_deg = 80.0
 speed_deg = 26.0
 phase_deg = 0.0
 ; Le mur EXTERIEUR. ⚠️ L'ecart se mesure entre les FACES, pas entre les centres : une garde
@@ -43,7 +53,7 @@ thickness = 1.0
 [sub_resource type="Resource" id="ring_inner"]
 script = ExtResource("2_ring")
 apertures = 2
-aperture_deg = 62.0
+aperture_deg = 120.0
 speed_deg = -17.0
 phase_deg = 30.0
 ; Le mur INTERIEUR, « au plus pres du noyau pour eviter qu'on s'y colle ». Il laisse juste

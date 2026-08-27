@@ -53,6 +53,61 @@ static func blocks(ring: ReactorRing, local: Vector2, age: float) -> bool:
 	return not ring_open(ring, rad_to_deg(local.angle()), age)
 
 
+## Ce CORPS — un disque de rayon `body` — touche-t-il le mur ?
+##
+## ⚠️ UN POINT NE SUFFIT PAS, ET LE PLAYTEST L'A DIT : « le vaisseau rentre en partie dans
+## les murs et j'ai l'impression que le bord des murs est franchissable ». Testé au centre,
+## le chasseur passait par une ouverture où son aile ne passait pas. Le corps a une largeur ;
+## la collision doit l'avoir aussi.
+##
+## L'extension ANGULAIRE d'un disque vue du centre vaut `asin(body / distance)` : c'est elle
+## qu'il faut ajouter de part et d'autre de l'azimut, et non une marge en degrés posée à la
+## main — la même largeur couvre bien plus d'angle près du noyau que loin.
+static func blocks_body(ring: ReactorRing, local: Vector2, body: float, age: float) -> bool:
+	if ring == null:
+		return false
+	var distance := local.length()
+	var half := ring.thickness * 0.5 + body
+	if distance < ring.radius - half or distance > ring.radius + half:
+		return false
+	if body <= 0.0 or distance <= body:
+		return not ring_open(ring, rad_to_deg(local.angle()), age)
+	var spread := rad_to_deg(asin(clampf(body / distance, 0.0, 1.0)))
+	var bearing := rad_to_deg(local.angle())
+	# Fermé si l'un des deux bords du corps est dans le plein, ou le centre.
+	for probe in [bearing - spread, bearing, bearing + spread]:
+		if not ring_open(ring, probe, age):
+			return true
+	return false
+
+
+## Premier point de la ligne de tir qui touche un mur, en partant de `from_local`.
+##
+## ⚠️ C'EST LA LIGNE DE TIR QUI COMPTE, PAS L'AZIMUT DU JOUEUR. Le chasseur tire DROIT VERS
+## LE HAUT : se placer sur le côté ne lui donne aucun angle sur le noyau. Un corridor calculé
+## depuis son azimut ne décrivait donc pas ce que ses balles rencontrent — « on dirait que la
+## collision n'est pas juste par rapport à la forme exacte des murs », et « des murs mobiles
+## qui entravent la LIGNE DE TIR » (playtest du 2026-08-27).
+##
+## Rend `Vector2.INF` quand la ligne est dégagée.
+static func first_hit_along(rings: Array[ReactorRing], from_local: Vector2,
+		to_local: Vector2, age: float, body: float = 0.0, steps: int = 32) -> Vector2:
+	if rings.is_empty() or steps < 1:
+		return Vector2.INF
+	for i in steps + 1:
+		var point := from_local.lerp(to_local, float(i) / float(steps))
+		for ring in rings:
+			if blocks_body(ring, point, body, age):
+				return point
+	return Vector2.INF
+
+
+## La ligne de tir est-elle coupée ?
+static func line_blocked(rings: Array[ReactorRing], from_local: Vector2,
+		to_local: Vector2, age: float, body: float = 0.0) -> bool:
+	return first_hit_along(rings, from_local, to_local, age, body).is_finite()
+
+
 ## Repousse un point hors des murs, radialement, vers le bord le plus proche.
 ##
 ## ⚠️ RADIALEMENT ET NON LATÉRALEMENT : glisser le long du mur ferait franchir l'ouverture
@@ -68,7 +123,7 @@ static func push_out(rings: Array[ReactorRing], local: Vector2, age: float,
 	# sont proches. Deux suffisent — ils ne se chevauchent jamais (`validate()` l'impose).
 	for pass_index in 2:
 		for ring in rings:
-			if not blocks(ring, point, age):
+			if not blocks_body(ring, point, clearance, age):
 				continue
 			var half := ring.thickness * 0.5 + clearance
 			var distance := point.length()

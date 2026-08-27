@@ -7,7 +7,7 @@ maj: 2026-08-27
 
 # Bible du shoot vertical
 
-**88 lois** pour faire un bon shoot vertical. Elles ne parlent d'aucun jeu en particulier :
+**89 lois** pour faire un bon shoot vertical. Elles ne parlent d'aucun jeu en particulier :
 n'importe quel projet du genre peut les suivre telles quelles.
 
 > **Ce document est une table de lois, de règles et de conventions.** Ce n'est pas un plan
@@ -30,7 +30,7 @@ LOI-PAT-03 · La parité d'un éventail décide de son sens — [LOI]
 
 | Force | Ce qu'elle exige | Combien |
 |---|---|---:|
-| **[LOI]** | **Respect exact.** L'enfreindre casse le genre ; on ne s'en écarte que par une décision explicite et écrite | 48 |
+| **[LOI]** | **Respect exact.** L'enfreindre casse le genre ; on ne s'en écarte que par une décision explicite et écrite | 49 |
 | **[CONTRAINTE]** | Une **fourchette** ou un choix borné. Liberté à l'intérieur des limites indiquées | 15 |
 | **[INTENTION]** | Un **résultat** imposé, les moyens sont libres | 17 |
 | **[RÉFÉRENCE]** | Un usage constaté, une inspiration. **Jamais une obligation** | 8 |

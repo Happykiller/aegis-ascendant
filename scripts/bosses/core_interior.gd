@@ -59,6 +59,10 @@ const RING_HEIGHT := 0.70
 ## Nombre de segments par degré d'arc. Un arc de 100° en fait donc une vingtaine — assez
 ## pour que le bord ne se lise pas comme un polygone, assez peu pour ne rien coûter.
 const RING_STEP_DEG := 5.0
+## Côté, en mètres, de la tuile de blindage (1 unité = 1 m, ADR-0008). C'est l'échelle que
+## `TEX-0009` reçoit comme contrat : la changer ici sans la changer là-bas rendrait la plaque
+## à une taille que personne n'a demandée.
+const TILE_M := 2.0
 
 ## ⚠️ SOUS LE PLAN DE JEU, ET C'EST UNE RÈGLE DE LECTURE. L'ordre de priorité est
 ## joueur > projectiles > dangers > point faible > MACHINES > décor : un anneau posé à
@@ -172,31 +176,64 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) ->
 	var inner := radius - thickness * 0.5
 	var outer := radius + thickness * 0.5
 	var steps := maxi(int(span_deg / RING_STEP_DEG), 2)
+	var lift := Vector3(0.0, RING_HEIGHT, 0.0)
+	# ⚠️ SOUPE DE TRIANGLES, PAS UN MAILLAGE INDEXÉ, et c'est le fond du défaut signalé au
+	# playtest : « les murs sont pas complets, on dirait juste des U inversés ». La version
+	# indexée partageait ses sommets entre le dessus et les parois, ce qui interdit une
+	# normale PAR FACE — le bloc rendait donc à plat, sans arête, et se lisait comme une
+	# coquille. Et il l'était : il n'avait ni dessous ni bouchons d'extrémité, on voyait
+	# dedans au bord des ouvertures.
+	#
+	# Ici chaque quad porte ses quatre sommets et sa normale. Six faces, le volume est CLOS,
+	# et l'éclairage donne enfin une arête au sommet du mur. Le coût est nul à cette échelle
+	# (~400 triangles pour tout le blindage), et c'est ce que « faut leur donner un corps,
+	# pas qu'un halo de couleur » demandait vraiment.
 	var vertices := PackedVector3Array()
-	var indices := PackedInt32Array()
-	# Quatre anneaux de sommets : bas-intérieur, bas-extérieur, haut-intérieur, haut-extérieur.
-	# De quoi bâtir un PRISME — deux parois et un dessus — au lieu d'un ruban plat.
-	for s in steps + 1:
-		var a := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
-		var ci := Vector3(cos(a) * inner, 0.0, sin(a) * inner)
-		var co := Vector3(cos(a) * outer, 0.0, sin(a) * outer)
-		vertices.append(ci)
-		vertices.append(co)
-		vertices.append(ci + Vector3(0.0, RING_HEIGHT, 0.0))
-		vertices.append(co + Vector3(0.0, RING_HEIGHT, 0.0))
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	# Le dépliage, en LONGUEUR D'ARC RÉELLE et non en fraction d'angle. Les deux anneaux n'ont
+	# pas le même rayon (5,8 m et 2,2 m) : à fraction d'angle égale, la plaque du mur extérieur
+	# serait étirée deux fois et demie plus que celle du mur intérieur, et la même texture
+	# rendrait deux matières différentes. Ici la densité de texels est la MÊME partout.
+	var wide := thickness / TILE_M
+	var tall := RING_HEIGHT / TILE_M
 	for s in steps:
-		var b := s * 4
-		var n := b + 4
-		# le dessus
-		indices.append_array([b + 2, b + 3, n + 2, n + 2, b + 3, n + 3])
-		# la paroi extérieure
-		indices.append_array([b + 1, b + 3, n + 1, n + 1, b + 3, n + 3])
-		# la paroi intérieure
-		indices.append_array([b + 2, b, n + 2, n + 2, b, n])
+		var a0 := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
+		var a1 := deg_to_rad(start_deg + span_deg * float(s + 1) / float(steps))
+		var r0 := Vector3(cos(a0), 0.0, sin(a0))
+		var r1 := Vector3(cos(a1), 0.0, sin(a1))
+		var i0 := r0 * inner
+		var o0 := r0 * outer
+		var i1 := r1 * inner
+		var o1 := r1 * outer
+		var radial := (r0 + r1).normalized()
+		var u0 := radius * (a0 - deg_to_rad(start_deg)) / TILE_M
+		var u1 := radius * (a1 - deg_to_rad(start_deg)) / TILE_M
+		_quad(vertices, normals, uvs, i0 + lift, o0 + lift, o1 + lift, i1 + lift, Vector3.UP,
+			Vector2(u0, 0.0), Vector2(u0, wide), Vector2(u1, wide), Vector2(u1, 0.0))
+		_quad(vertices, normals, uvs, i1, o1, o0, i0, Vector3.DOWN,
+			Vector2(u1, 0.0), Vector2(u1, wide), Vector2(u0, wide), Vector2(u0, 0.0))
+		_quad(vertices, normals, uvs, o0, o1, o1 + lift, o0 + lift, radial,
+			Vector2(u0, 0.0), Vector2(u1, 0.0), Vector2(u1, tall), Vector2(u0, tall))
+		_quad(vertices, normals, uvs, i1, i0, i0 + lift, i1 + lift, -radial,
+			Vector2(u1, 0.0), Vector2(u0, 0.0), Vector2(u0, tall), Vector2(u1, tall))
+	# Les BOUCHONS. Un arc s'arrête net des deux côtés, et ces deux tranches bordent
+	# précisément les ouvertures — c'est-à-dire le seul endroit que le joueur regarde.
+	var ab := deg_to_rad(start_deg)
+	var ae := deg_to_rad(start_deg + span_deg)
+	var rb := Vector3(cos(ab), 0.0, sin(ab))
+	var re := Vector3(cos(ae), 0.0, sin(ae))
+	var tb := Vector3(-sin(ab), 0.0, cos(ab))
+	var te := Vector3(-sin(ae), 0.0, cos(ae))
+	_quad(vertices, normals, uvs, rb * inner, rb * outer, rb * outer + lift, rb * inner + lift, -tb,
+		Vector2(0.0, 0.0), Vector2(wide, 0.0), Vector2(wide, tall), Vector2(0.0, tall))
+	_quad(vertices, normals, uvs, re * outer, re * inner, re * inner + lift, re * outer + lift, te,
+		Vector2(0.0, 0.0), Vector2(wide, 0.0), Vector2(wide, tall), Vector2(0.0, tall))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
-	arrays[Mesh.ARRAY_INDEX] = indices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	var node := MeshInstance3D.new()
@@ -210,10 +247,24 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) ->
 	material.emission_enabled = true
 	material.emission = Color(0.42, 0.22, 0.60)
 	material.emission_energy_multiplier = 0.30
+	# ⚠️ ON NE CULLE PAS, alors même que le volume est clos désormais. Godot enroule ses faces
+	# avant dans le sens HORAIRE, et je n'ai pas vérifié le sens de CES quads : activer
+	# `CULL_BACK` sur une supposition ferait disparaître des murs entiers. Le volume étant
+	# opaque et fermé, le tampon de profondeur suffit — le rendu est identique, et gratuit.
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	node.material_override = material
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node
+
+## Un quad plat, en deux triangles, avec SA normale sur ses quatre sommets. Les sommets ne
+## sont partagés avec aucune autre face : c'est ce qui donne une arête franche au mur.
+func _quad(vertices: PackedVector3Array, normals: PackedVector3Array, uvs: PackedVector2Array,
+		a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3,
+		ua: Vector2, ub: Vector2, uc: Vector2, ud: Vector2) -> void:
+	vertices.append_array([a, b, c, a, c, d])
+	uvs.append_array([ua, ub, uc, ua, uc, ud])
+	for i in 6:
+		normals.append(normal)
 
 ## Dresse les verrous orbitaux. Même point doux que le repère de cible, en plus gros et en
 ## CYAN-VERT : ils ne sont ni la cible (orange) ni le blindage (violet), et le joueur doit

@@ -124,11 +124,13 @@ var _node_targets: Array[BulletTarget] = []
 var _node_health: PackedFloat32Array = PackedFloat32Array()
 var _nodes_alive: int = 0
 
-## Rayon auquel les tirs sont arrêtés — celui de l'anneau extérieur du décor.
-## ⚠️ La valeur vit dans `CoreInterior` : la gerbe doit naître SUR l'anneau qu'on voit, sinon
-## elle désigne un blindage qui n'est pas là.
-const SHIELD_RADIUS := 6.2
-const SHIELD_CATCH_RADIUS := 0.75
+## Rayon de la cible qui arrête les tirs. Assez large pour attraper les bolts des canons
+## d'aile, qui montent en parallèle et non depuis l'axe du chasseur.
+##
+## ⚠️ Un rayon FIXE l'accompagnait, celui de l'anneau extérieur, recopié depuis le décor. Il
+## est devenu faux le jour où les murs ont bougé — et il n'aurait de toute façon jamais
+## décrit un mur INTÉRIEUR. La position se calcule désormais.
+const SHIELD_CATCH_RADIUS := 0.95
 
 @export var tuning: LeviathanTuning
 @export var projectile: ProjectileData
@@ -740,19 +742,29 @@ func _update_reactor_shield(origin: Vector2) -> void:
 	# disent SI. Un joueur qui trouve son corridor avant d'avoir abattu les verrous tire donc
 	# encore dans le vide — d'où la gerbe de déviation, qui vaut pour les deux cas.
 	var open := _nodes_alive == 0
-	if open and not tuning.reactor_rings.is_empty():
-		var bearing := rad_to_deg(_player_bearing(_flux_origin(origin)))
-		open = ReactorRings.is_open(tuning.reactor_rings, bearing, _age)
+	var centre := _flux_origin(origin)
+	var hit := Vector2.INF
+	if open and not tuning.reactor_rings.is_empty() and _player != null:
+		# ⚠️ LA LIGNE DE TIR, PAS L'AZIMUT. Le chasseur tire DROIT VERS LE HAUT : se placer
+		# sur le côté ne lui donne aucun angle sur le noyau, et un corridor calculé depuis
+		# son azimut ne décrivait pas ce que ses balles rencontrent. On teste le segment
+		# qu'un bolt doit VRAIMENT parcourir, du chasseur jusqu'au flux.
+		var from_local := _player.plane_position - centre
+		var to_local := _flux_offset()
+		hit = ReactorRings.first_hit_along(tuning.reactor_rings, from_local, to_local,
+			_age, tuning.bolt_radius)
+		open = not hit.is_finite()
 	_flux_target.enabled = open
 	# La cible d'arrêt vit à l'inverse : elle n'existe QUE quand le corridor est fermé, et
 	# elle se pose sur l'anneau, au droit du joueur — là où ses bolts croisent le blindage.
 	if _shield_target != null:
-		_shield_target.enabled = not open
-		if not open and _player != null:
-			var centre := _flux_origin(origin)
-			var toward := _player.plane_position - centre
-			if toward.length_squared() > 0.01:
-				_shield_target.position = centre + toward.normalized() * SHIELD_RADIUS
+		# ⚠️ LA CIBLE D'ARRÊT SE POSE LÀ OÙ LE MUR EST VRAIMENT, sur le premier point de la
+		# ligne de tir qui touche du plein. Elle était posée sur un rayon fixe et sur
+		# l'azimut du joueur : les bolts la manquaient et traversaient le mur — « les tirs
+		# aussi peuvent passer » (playtest du 2026-08-27).
+		_shield_target.enabled = not open and hit.is_finite()
+		if _shield_target.enabled:
+			_shield_target.position = centre + hit
 	if open != _reactor_open:
 		_reactor_open = open
 		reactor_shield_changed.emit(open)

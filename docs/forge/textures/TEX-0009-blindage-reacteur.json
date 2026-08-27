@@ -1,0 +1,192 @@
+{
+  "id": "TEX-0009",
+  "slug": "blindage-reacteur",
+  "schema_version": "1.0",
+  "date": "2026-08-27",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du blindage des deux murs contrarotatifs qui enferment le noyau du Pale Leviathan — la matière de la face vue, c'est-à-dire la tranche supérieure du mur",
+    "game_context": "Phase DIVE du Pale Leviathan, Chambre du Réacteur (docs/plans/2026-08-27-reactor-chamber.md, lot 1). Deux anneaux blindés tournent en sens inverse (26 °/s et -17 °/s) autour du noyau ; le joueur ne peut tirer le noyau que lorsqu'une ouverture de chaque anneau s'aligne sous lui. La caméra est en plongée quasi verticale (~70°) : ce qu'on voit du mur est sa TRANCHE SUPÉRIEURE, une bande annulaire d'1,00 m de large, longue de 4,05 m sur le mur extérieur (arc plein de 40° à R=5,8 m) et de 2,30 m sur le mur intérieur (arc plein de 60° à R=2,2 m). Les parois latérales (0,70 m de haut) ne se voient qu'en tranche, au gré de la rotation. Le matériau actuel n'est fait que de facteurs — albedo (0.22, 0.19, 0.28), metallic 0.55, roughness 0.45, émission violette à 0,30 — et le playtest l'a lu « juste des U inversés » puis « un halo de couleur » : un volume, pas une machine.",
+    "priority": "⚠️ LE MUR EST UN OBSTACLE MORTEL, et sa matière porte une information de jeu : « blindé, massif, infranchissable », d'un coup d'œil. Elle ne doit JAMAIS suggérer une ouverture, une grille ou un interstice — le joueur cherche précisément un passage sur cette phase, et un motif qui mime un corridor lui coûterait une vie. Et elle passe DERRIÈRE le gameplay (LOI-LIS-01) : jamais en concurrence avec le noyau orange, qui est la cible."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 2.0,
+    "texture_height_m": 2.0,
+    "reference_element": "La bande vue fait 1,00 m de large : `thickness = 1.0` sur les deux `ReactorRing` de resources/bosses/pale_leviathan_tuning.tres, et 1 unité = 1 m par ADR-0008. Une tuile de 2 m place donc une DEMI-TUILE en travers du mur.",
+    "confidence": "decided",
+    "rationale": "Échelle DÉCIDÉE, pas mesurée sur une capture : la texture n'existe pas encore. La bande vue fait 1,00 m de large (`thickness = 1.0` dans resources/bosses/pale_leviathan_tuning.tres, et 1 unité = 1 m par ADR-0008) ; une tuile de 2 m place donc une demi-tuile en travers du mur, soit deux à quatre plaques visibles sur la longueur d'un arc — assez pour lire un appareillage, trop peu pour lire une répétition. Les chiffres tombent juste : l'arc plein extérieur mesure 5,8 x 40° = 4,05 m, soit u de 0 à 2,02 tuiles ; l'arc intérieur 2,2 x 60° = 2,30 m, soit u de 0 à 1,15 tuile. C'est exactement la valeur `TILE_M := 2.0` déjà posée côté moteur dans scripts/bosses/core_interior.gd. Densité de texels qui en découle : 1024 px / 2,00 m = 512 texels/m, contre ~60 px/m à l'écran en 1920x1080 et ~30 px/m après le post-process rétro à 960x540 (caméra à 14,87 m du centre de la chambre, fov 62° vertical) — un rapport de 8,5:1 à 17:1. Tout détail inférieur à ~3 cm de monde disparaît : la demande l'interdit plutôt que de le subir. ⚠️ À CONFIRMER À LA CAPTURE (ADR-0006), pas sur parole : si l'appareillage se lit en répétition, monter la tuile à 2,5 ou 3 m via `TILE_M` — c'est rattrapable sans regénérer l'image, comme MOON_METRES_PER_TILE l'a été pour TEX-0001."
+  },
+  "composition": {
+    "main_elements": [
+      "2 à 4 plaques d'acier épaisses par tuile, de 0,6 à 1,2 m de côté, décalées et jamais en damier régulier",
+      "des joints étroits (6 à 10 cm) et PEU PROFONDS entre les plaques, interrompus et décalés",
+      "des têtes de boulon noyées dans des lamages circulaires de 8 à 12 cm, groupées le long des bords",
+      "2 ou 3 nervures de renfort larges et saillantes qui traversent les plaques",
+      "des bandes de cerclage plates et quelques cabochons de levage"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "Plaques, joints et nervures traversent les quatre bords et s'y raccordent. Aucun élément ne doit trahir la taille de la tuile — en particulier aucune plaque entière centrée.",
+    "empty_space": "Des plages de tôle nue au centre des plaques : c'est ce qui donne la masse. Mais aucune plage assez large pour rendre une zone lisse et morte."
+  },
+  "visual": {
+    "subject": "Plaque de blindage de sas de réacteur vue de dessus : tôles épaisses appareillées, chanfreinées, boulonnées, nervurées",
+    "materials": [
+      "acier de blindage",
+      "tôle épaisse",
+      "boulonnerie noyée"
+    ],
+    "details": [
+      "bords de plaque chanfreinés et épais",
+      "lamages circulaires à tête de boulon noyée",
+      "nervures de renfort larges",
+      "bandes de cerclage plates",
+      "cabochons de levage",
+      "éraflures larges et cabossages peu profonds"
+    ],
+    "style": "machine froide, militaire, sobre — lisible à distance, sans stylisation ni ornement",
+    "color_palette": {
+      "dominant": [
+        "gris moyen",
+        "gris sombre"
+      ],
+      "secondary": [
+        "gris clair",
+        "blanc sur les seules arêtes saillantes"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "couleur",
+        "teinte",
+        "orange",
+        "émissif",
+        "noir absolu"
+      ]
+    },
+    "surface_character": "Métal MAT, ni poli ni brillant. Massif : épaisseur lisible aux bords des plaques.",
+    "age_and_damage": "En service, entretenue : éraflures larges, cabossages peu profonds, un ou deux impacts émoussés. Aucune rouille (c'est le vide), aucune coulée, aucune déchirure — une déchirure serait un trou, et un trou est interdit ici."
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. La normale, la rugosité et l'AO en sont DÉRIVÉES par tools/derive-maps.py — aucune carte de normale n'est demandée (règle 2 du contrat).",
+    "black": "⚠️ INTERDIT ICI. Le point le plus creux — fond de joint, fond de lamage — s'arrête vers 60/255. Un joint au noir se lirait comme une fente ouverte, exactement l'erreur que cette surface ne peut pas commettre.",
+    "gray": "face de référence de la tôle, ~150/255",
+    "white": "chanfreins, nervures, têtes de boulon et cabochons saillants"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit dans l'image : le moteur éclaire, et le mur TOURNE. Une ombre portée peinte tournerait avec lui et deviendrait un faux relief qui contredit la lumière de la scène à chaque demi-tour.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ une lecture immédiate « plein, massif, infranchissable » — c'est une information de jeu, pas une ambiance",
+      "une plage dynamique RESSERRÉE : le creux le plus profond reste un gris sombre (~60/255), jamais le noir",
+      "des joints interrompus et décalés, jamais un sillon rectiligne d'un bord à l'autre",
+      "un appareillage inégal : plaques de tailles différentes, non alignées",
+      "⚠️ une richesse HOMOGÈNE en v : seule la moitié de la tuile (v de 0 à 0,5) est échantillonnée sur la face vue — n'importe quelle bande horizontale de mi-hauteur doit à elle seule ressembler à du blindage complet"
+    ],
+    "must_not_have": [
+      "grille",
+      "caillebotis",
+      "fente",
+      "persienne",
+      "évent",
+      "aération",
+      "perforation",
+      "trou traversant",
+      "interstice",
+      "rainure profonde",
+      "longue ligne sombre continue traversant l'image",
+      "damier régulier",
+      "plaques toutes identiques",
+      "noir absolu",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "couleur",
+      "teinte",
+      "cyan",
+      "corail",
+      "orange",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "numéro de coque",
+      "pictogramme",
+      "flèche",
+      "hachures de signalétique",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais par l'œil",
+      "⚠️ la couture en u est celle qui coûterait le plus : le mur tourne, une couture verticale défilerait en boucle à 26 °/s et se lirait comme un battement"
+    ],
+    "readability_requirements": [
+      "à 960x540 après le post-process rétro, la bande vue ne fait qu'une trentaine de pixels de large : l'appareillage doit encore s'y lire, et rien de plus fin que ~3 cm de monde ne doit porter d'information",
+      "⚠️ aucun motif ne doit se lire comme un passage : c'est le critère qui prime sur tous les autres",
+      "le chasseur, ses balles et le noyau orange doivent rester lisibles PAR-DESSUS (critère final, en capture regardée — ADR-0006)"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Matériau des arcs construits par `_arc()` dans scripts/bosses/core_interior.gd, pour les deux `ReactorRing` de resources/bosses/pale_leviathan_tuning.tres (R=5,8 / thickness=1,0 / 3 arcs de 40°, et R=2,2 / thickness=1,0 / 2 arcs de 60°).",
+    "shader_usage": "StandardMaterial3D. Normale, rugosité et AO DÉRIVÉES de cette hauteur, jamais générées. La carte de multiplication (--mul) sert d'albedo_texture par-dessus l'`albedo_color` existante Color(0.22, 0.19, 0.28) — soit le violet-graphite ~#383047 : albedo = albedo_texture x albedo_color, la teinte reste et seuls les creux s'assombrissent (ADR-0011, cf. scripts/fx/hull_detail.gd). C'est ce mécanisme qui rend inutile une seconde génération d'albedo.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/bosses/reactor_armour_height_1024.png --out assets/imported/textures/bosses --name reactor_armour --mul --check-tiling --preview /tmp/reactor_armour.png    (⚠️ `--name` est OBLIGATOIRE ici : l'outil ne déshabille que `_2048`, `_height` et `_mask` — sans lui on obtiendrait reactor_armour_height_1024_nrm.png)",
+    "additional_notes": "⚠️ LE DÉPLIAGE EXISTE DÉJÀ côté moteur et il conditionne cette demande. Dans `_arc()` : u = longueur d'arc réelle / TILE_M (2,0), v = largeur traversée / TILE_M. Deux conséquences à connaître avant de juger l'image. (1) La densité de texels est IDENTIQUE sur les deux anneaux malgré R=5,8 et R=2,2 — c'est justement pour ça que l'unwrap est en longueur d'arc et non en fraction d'angle. (2) La face vue n'échantillonne que v de 0 à 0,50 (thickness 1,0 / TILE_M 2,0) et les parois latérales que v de 0 à 0,35 (RING_HEIGHT 0,70 / 2,0) : LA MOITIÉ HAUTE DE LA TUILE N'EST JAMAIS VUE. D'où l'exigence de richesse homogène en v — une image dont la belle plaque tombe à v=0,75 rendrait une bande morte en jeu. ⚠️ L'émission violette actuelle (0,42/0,22/0,60 à 0,30) risque de laver le relief que cette carte apporte : la baisser à 0,10-0,15, ou la couper, se juge à la capture après intégration — pas ici. Rappel mesuré du ghost, valable pour ce mur comme pour le dôme du porteur : le bloom et le `lift` de 1,25 du post-traitement RELÈVENT les noirs et ravivent toute grande surface teintée ; ce qui doit rester en arrière-plan doit être PEU CONTRASTÉ, pas seulement sombre."
+  },
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "obligatoire",
+    "source_path": "assets/source/textures/bosses/reactor_armour_height_1024.png",
+    "derived_dir": "assets/imported/textures/bosses",
+    "derived_files": [
+      "reactor_armour_nrm.png",
+      "reactor_armour_rough.png",
+      "reactor_armour_ao.png",
+      "reactor_armour_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD, et le test des quatre coins S'INVERSE ICI : cette tuile est pleine cadre, ses quatre coins doivent porter de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper, il cuirait un faux creux tournant.",
+      "⚠️ LE TEST QUI TRANCHE : regarder l'image à 30 px de large (la taille réelle de la bande à l'écran). Y voit-on un passage, une fente, un corridor ? Si oui, la renvoyer : le joueur cherche une ouverture sur cette phase.",
+      "mesurer le point le plus sombre de l'image : il doit rester vers 60/255, jamais 0. Un histogramme qui touche le noir annonce des joints qui se liront comme des fentes.",
+      "la ligne « tuilage » de derive-maps.py --check-tiling doit dire OK — la couture en u défilerait à 26 °/s",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "⚠️ n'employer que la MOITIÉ BASSE de l'image pour juger : c'est tout ce que la face vue échantillonne (v de 0 à 0,50)",
+      "puis en jeu, en capture regardée (ADR-0006) : la densité de texels annoncée (512 texels/m pour ~30 px/m à l'écran) se vérifie là, pas sur parole ; et le noyau orange doit rester la chose la plus lisible de l'image"
+    ],
+    "provenance_csv_line": "reactor_armour_height,assets/source/textures/bosses/reactor_armour_height_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-27,docs/forge/textures/TEX-0009-blindage-reacteur.json,,\"Hauteur du blindage des deux murs contrarotatifs de la Chambre du Reacteur (phase DIVE du Pale Leviathan, BRIEF-0027). Tuile repetable, 1024 px pour 2,00 m x 2,00 m. La geometrie est generee par code (_arc() de scripts/bosses/core_interior.gd) : depliage continu en LONGUEUR D ARC reelle, TILE_M = 2.0, donc meme densite de texels sur les deux anneaux malgre R=5,8 et R=2,2. Le mur est un obstacle mortel : plage dynamique resserree, aucun joint au noir, aucun motif lisible comme une ouverture. Normale, rugosite, AO et carte de multiplication DERIVEES par tools/derive-maps.py, jamais generees.\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\nCarte de hauteur en niveaux de gris d'une plaque de blindage de sas de réacteur. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun reflet. Image strictement monochrome : c'est une carte de HAUTEUR, pas une carte de relief colorée.\n\nMotif répétable sans couture sur les quatre bords : plaques, joints et nervures traversent naturellement les bords et s'y raccordent, et aucun élément ne doit trahir la taille de la tuile.\n\nÉchelle réelle : la tuile couvre 2 mètres sur 2 mètres de blindage. Deux à quatre plaques d'acier épaisses par tuile, de 0,6 à 1,2 m de côté, décalées les unes par rapport aux autres, jamais alignées en damier régulier. Leurs bords sont CHANFREINÉS, épais, adoucis par l'usure ; entre elles court un joint étroit de 6 à 10 cm, PEU PROFOND. Sur les plaques : des têtes de boulon noyées dans des lamages circulaires de 8 à 12 cm, groupées par trois ou quatre le long des bords ; deux ou trois nervures de renfort larges et saillantes qui traversent la plaque ; des bandes de cerclage plates ; quelques cabochons de levage. Rien de plus petit que 3 cm.\n\n⚠️ CETTE PLAQUE EST PLEINE ET INFRANCHISSABLE, ET L'IMAGE DOIT LE DIRE. Aucun motif ne doit pouvoir se lire comme une ouverture : pas de grille, pas de caillebotis, pas de fente, pas de persienne, pas d'évent, pas d'aération, pas de perforation, pas de trou traversant, pas d'interstice, pas de rainure profonde, pas de longue ligne sombre continue traversant l'image de part en part. Les joints entre plaques sont interrompus et décalés, jamais un sillon rectiligne d'un bord à l'autre.\n\nLe gris code la HAUTEUR, et rien d'autre : gris moyen pour la face des plaques, gris clair à blanc pour les chanfreins, les nervures et les têtes de boulon saillantes, gris SOMBRE pour le fond des joints et des lamages. ⚠️ La plage dynamique reste RESSERRÉE et le noir absolu est INTERDIT : le point le plus creux vaut environ 60 sur 255. Un joint qui atteindrait le noir se lirait comme une fente ouverte, ce qui est précisément l'erreur interdite ici.\n\nLe motif doit être également riche partout : n'importe quelle bande horizontale prise sur la moitié de la hauteur de l'image doit, à elle seule, ressembler à du blindage complet.\n\nMétal mat, ni poli ni brillant ; machine froide, militaire et sobre. Usure large et douce : plaques éraflées, cabossages peu profonds, un ou deux impacts émoussés. Aucune rouille, aucune coulée, aucun micro-détail : à l'écran cette bande ne fait qu'une trentaine de pixels de large, tout ce qui est fin y disparaît.\n\n⚠️ AUCUN LETTRAGE, NULLE PART. Ni texte, ni lettres, ni chiffres, ni numéro, ni pictogramme, ni flèche, ni hachures de signalétique, ni insigne, ni emblème, ni symbole, ni code-barres, ni logo, ni filigrane, ni signature.\n\nÉviter absolument : perspective, ombre portée, vignettage, bords assombris, cadre, bordure, objet isolé au centre, reflet spéculaire, éclairage directionnel, couleur, teinte, cyan, turquoise, corail, orange, rouille, grille, caillebotis, fente, persienne, évent, perforation, trou, interstice, rainure profonde, damier régulier, plaques toutes identiques, noir absolu, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+  }
+}
