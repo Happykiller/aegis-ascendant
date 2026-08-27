@@ -43,6 +43,17 @@
 ;
 ; `ring_occupancy` vaut donc 0,31, MESURÉ, et `flux_health` a suivi (780 -> 540). La garde
 ; `test_the_shield_opens_as_often_as_the_balance_assumes` refait cette mesure exacte.
+;
+; ⚠️ PUIS `dive_time` EST PASSÉ À 9 s ET PERSONNE N'A REPRIS CE CHIFFRE. Allonger la
+; plongée augmente ce qu'on peut y placer (493 atteignables), sans toucher à ce qu'il faut
+; y placer (180) : le flux mourait au premier tiers de la fenêtre. La garde le criait à
+; CHAQUE lancement — « flux needs only 180 of the 493 damage reachable per dive » — et la
+; porte de qualité restait verte, parce que le test validait les valeurs par DÉFAUT du
+; script au lieu de CE fichier, le seul que le jeu charge.
+;
+; 540 -> 840 : le plus petit ajustement qui rende l'hypothèse vraie (280 par plongée, soit
+; 57 % du plaçable) plutôt que le milieu de la bande, qui aurait doublé la durée du combat.
+; 814 serait le minimum strict — il tombe PILE sur le seuil des 55 %, à 0,03 dégât près.
 ; ============================================================================
 [sub_resource type="Resource" id="ring_outer"]
 script = ExtResource("2_ring")
@@ -122,7 +133,7 @@ spine_interval = 3.2
 ; ⚠️ Le DEFAUT du script reste a 2400, et c'est voulu : il n'a pas d'anneaux, donc pas de
 ; porte. Les deux valeurs decrivent deux configurations differentes, chacune coherente.
 ring_occupancy = 0.31
-flux_health = 540.0
+flux_health = 840.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est

@@ -9,7 +9,23 @@ extends "res://tests/test_case.gd"
 ## passage (ni avant, ni jamais), et que l'arc d'exposition suive la perte des plaques.
 
 func _tuning() -> LeviathanTuning:
-	return LeviathanTuning.new()   # les valeurs par defaut sont les valeurs retenues
+	return LeviathanTuning.new()   # le banc d'essai des invariants : on part du neutre
+
+## ⚠️ CE QUE LE JEU CHARGE, ET C'EST TOUT AUTRE CHOSE QUE `LeviathanTuning.new()`. Ce fichier
+## affirmait que « les valeurs par defaut sont les valeurs retenues » : ca a cesse d'etre
+## vrai le jour ou la Resource a diverge du script, et personne ne l'a vu passer. Le boss
+## final a donc tourne avec un reglage INVALIDE, qui criait son erreur a chaque lancement
+## (« flux needs only 180 of the 493 damage reachable per dive ») pendant que la porte de
+## qualite restait verte sur des valeurs que le jeu n'utilise pas.
+##
+## Un test qui valide autre chose que la donnee livree ne valide rien.
+const SHIPPED := "res://resources/bosses/pale_leviathan_tuning.tres"
+
+func test_the_shipped_resource_validates() -> void:
+	var shipped := load(SHIPPED) as LeviathanTuning
+	assert_true(shipped != null, "la Resource livree se charge")
+	var errors := shipped.validate()
+	assert_eq(errors.size(), 0, "reglages LIVRES valides, sinon : %s" % ", ".join(errors))
 
 func test_the_shipped_values_validate() -> void:
 	var errors := _tuning().validate()
