@@ -59,10 +59,26 @@ const RING_HEIGHT := 0.70
 ## Nombre de segments par degré d'arc. Un arc de 100° en fait donc une vingtaine — assez
 ## pour que le bord ne se lise pas comme un polygone, assez peu pour ne rien coûter.
 const RING_STEP_DEG := 5.0
-## Côté, en mètres, de la tuile de blindage (1 unité = 1 m, ADR-0008). C'est l'échelle que
-## `TEX-0009` reçoit comme contrat : la changer ici sans la changer là-bas rendrait la plaque
-## à une taille que personne n'a demandée.
-const TILE_M := 2.0
+## Côté, en mètres, de la tuile de blindage (1 unité = 1 m, ADR-0008).
+##
+## ⚠️ 2 -> 4 APRÈS LA PREMIÈRE CAPTURE TEXTURÉE, et c'est un recalage prévu : `TEX-0009`
+## déclare son échelle en `decided`, pas en `measured`, précisément parce qu'elle ne se
+## tranche qu'en regardant. À 2 m la tuile rendait du GRAIN : la bande vue ne fait qu'une
+## trentaine de pixels de large après le post-process rétro, et des plaques de 0,8 m y
+## tombaient à 24 px, les têtes de boulon à 3 px — sous le pixel, donc du bruit.
+##
+## À 4 m, une plaque occupe ~1,6 m de monde et déborde la largeur du mur : on en voit UNE
+## en travers, avec son chanfrein. C'est ce qu'on veut lire — un blindage appareillé, pas
+## une texture. La même image sert, sans regénération : c'est tout l'intérêt d'avoir posé
+## l'échelle comme une décision rattrapable.
+const TILE_M := 8.0
+
+## La matière du blindage — TEX-0009, dérivées d'`ADR-0013` (la normale ne se génère jamais).
+const _TEX_DIR := "res://assets/imported/textures/bosses/"
+const ARMOUR_MUL := preload(_TEX_DIR + "reactor_armour_height_1024_mul.png")
+const ARMOUR_NRM := preload(_TEX_DIR + "reactor_armour_height_1024_nrm.png")
+const ARMOUR_ROUGH := preload(_TEX_DIR + "reactor_armour_height_1024_rough.png")
+const ARMOUR_AO := preload(_TEX_DIR + "reactor_armour_height_1024_ao.png")
 
 ## ⚠️ SOUS LE PLAN DE JEU, ET C'EST UNE RÈGLE DE LECTURE. L'ordre de priorité est
 ## joueur > projectiles > dangers > point faible > MACHINES > décor : un anneau posé à
@@ -248,17 +264,48 @@ func _arc(radius: float, thickness: float, start_deg: float, span_deg: float,
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	# ⚠️ LES TANGENTES, ET LEUR ABSENCE NE PRODUIT AUCUNE ERREUR. Une carte de normale se lit
+	# dans le repère tangent : sans `ARRAY_TANGENT`, Godot n'a pas ce repère et l'éclairage
+	# part au hasard, sommet par sommet. À l'écran ça ne ressemble pas à un bug — ça ressemble
+	# à du GRAIN, et on croit à une texture trop fine. J'ai d'abord recalé l'échelle de la
+	# tuile pour ça, sans effet : le défaut n'était pas là.
+	#
+	# `generate_tangents()` les calcule depuis les normales et les UV, qu'on a déjà.
+	var tangents := SurfaceTool.new()
+	tangents.create_from(mesh, 0)
+	tangents.generate_tangents()
 	var node := MeshInstance3D.new()
-	node.mesh = mesh
+	node.mesh = tangents.commit()
 	var material := StandardMaterial3D.new()
 	# Sombre et peu saturé : c'est une MACHINE, elle passe derrière le gameplay. Un corps
 	# éclairé — pas un aplat émissif — pour qu'on lise son volume et non une décalcomanie.
+	#
+	# La MATIÈRE vient de TEX-0009 (BRIEF-0027). ⚠️ `albedo_texture` reçoit la carte de
+	# MULTIPLICATION, pas un albédo : Godot calcule `albedo = albedo_texture x albedo_color`,
+	# donc la teinte violet-graphite ci-dessous survit et seuls les creux s'assombrissent.
+	# C'est le mécanisme d'`ADR-0011`, et il évite une seconde génération d'image.
 	material.albedo_color = Color(0.22, 0.19, 0.28)
+	material.albedo_texture = ARMOUR_MUL
+	material.normal_enabled = true
+	material.normal_texture = ARMOUR_NRM
+	material.normal_scale = 1.6
+	material.roughness_texture = ARMOUR_ROUGH
+	material.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	material.ao_enabled = true
+	material.ao_texture = ARMOUR_AO
+	material.ao_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	# 0 = l'AO n'assombrit que l'ambiante. Au-delà elle mange la lumière directe et le
+	# blindage vire au gris sale sous la clé.
+	material.ao_light_affect = 0.0
 	material.metallic = 0.55
 	material.roughness = 0.45
+	# ⚠️ ÉMISSION DIVISÉE PAR TROIS (0,30 -> 0,10) LE JOUR OÙ LA MATIÈRE EST ARRIVÉE. Elle
+	# était là pour qu'un volume nu se voie ; elle laverait maintenant le relief qu'elle
+	# remplaçait. On en garde juste assez pour que le mur ne disparaisse pas dans le noir
+	# quand il passe hors de la clé.
 	material.emission_enabled = true
 	material.emission = Color(0.42, 0.22, 0.60)
-	material.emission_energy_multiplier = 0.30
+	material.emission_energy_multiplier = 0.10
 	# ⚠️ ON NE CULLE PAS, alors même que le volume est clos désormais. Godot enroule ses faces
 	# avant dans le sens HORAIRE, et je n'ai pas vérifié le sens de CES quads : activer
 	# `CULL_BACK` sur une supposition ferait disparaître des murs entiers. Le volume étant

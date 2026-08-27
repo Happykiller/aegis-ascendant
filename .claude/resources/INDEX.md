@@ -55,6 +55,11 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   ⚠️ Et **un brief de forge doit dire que la texture viendra d'ailleurs** : trois mains, pas deux —
   sinon la forge modélise en géométrie ce que l'opérateur allait peindre, et ses UV n'accueillent
   rien.
+  ⚠️ Et **trois pièges muets** quand la texture se pose sur un maillage bâti par code — mipmaps
+  absents (défaut d'import de Godot, `detect_3d` ne rattrape rien sans éditeur), tangentes absentes
+  (`ArrayMesh` à la main), échelle trop fine. Même symptôme, du **grain**, aucune erreur. Les régler
+  **dans cet ordre** : recaler l'échelle en premier donne un faux progrès qui masque les deux vrais
+  défauts.
 
 ## Bonnes pratiques — apprises à nos dépens
 

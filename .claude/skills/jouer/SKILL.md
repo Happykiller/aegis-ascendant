@@ -99,6 +99,7 @@ script.
 | `--skip-to-field` | droit au **champ d'astéroïdes**, la phase entre les deux boss (ADR-0027) |
 | `--skip-to-boss` / `--skip-to-final` / `--skip-to-dock` | droit au mini-boss, au boss final, à l'appontage |
 | `--no-flyby` | la phase inter-boss garde le fond spatial habituel — le témoin de sa mesure |
+| `--leviathan-phase=2` | ⚠️ **avec `--skip-to-final`** : abat l'armure du premier cycle et ouvre DIRECTEMENT la plongée dans le noyau. Sans lui, il faut un pilote (`--demo`) pour casser l'armure, puis viser l'instant à tâtons — trois lancements perdus le 2026-08-27 avant de s'apercevoir que le drapeau existait déjà. La plongée dure `dive_time` (5 s) : capturer vers 3,5 s |
 | `--goto-codex` | ouvre le bestiaire |
 | `--codex-entry=N` | ouvre une fiche précise du bestiaire (0 = Specter-9) |
 | `--pause-demo` | ouvre le menu de pause à l'entrée du niveau |

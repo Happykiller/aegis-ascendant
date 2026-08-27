@@ -72,3 +72,25 @@ Deux conséquences à écrire dans tout brief concerné :
 - Objet devant apparaître **rond sous la caméra inclinée** (plan de jeu XZ, caméra Y=14) → le poser
   en **Sprite3D `billboard`**, pas en plan texturé (qui serait écrasé par la perspective).
 - Le post-process rétro pixelise **tout** l'écran (~960×540) : inutile de viser un asset 4K fin.
+
+## Une texture posée sur un maillage bâti par code : trois pièges muets, dans cet ordre
+
+Vécu le 2026-08-27 sur le blindage rotatif du réacteur (`TEX-0009`, `scripts/bosses/core_interior.gd`).
+Les trois produisent **le même symptôme** — la texture rend du **grain** au lieu de la matière — et
+aucun ne lève d'erreur. D'où l'ordre : le diagnostic par l'échelle est celui qui vient à l'esprit en
+premier, et c'est le seul des trois qui ne soit **pas** un bug.
+
+| Piège | Ce qu'on voit | Le témoin qui tranche |
+|---|---|---|
+| **1. Pas de mipmaps** | Grain scintillant, dense, sur toute la surface | `mipmaps/generate=false` est le **défaut d'import de Godot** pour une image. Un maillage 3D vu de loin l'aliase brutalement — ici 1254 px de texture sur 30 px d'écran, soit 40:1. `detect_3d/compress_to=1` était censé le rattraper : il ne se déclenche que si la texture passe dans le viewport 3D de l'ÉDITEUR, donc **jamais** en export sans tête |
+| **2. Pas de tangentes** | Éclairage incohérent, sommet par sommet | Une carte de normale se lit dans le repère tangent. `ArrayMesh` bâti à la main sans `ARRAY_TANGENT` : Godot ne dit rien. Remède : `SurfaceTool.create_from(mesh, 0)` + `generate_tangents()` + `commit()` — les normales et les UV suffisent |
+| **3. Échelle trop fine** | Motif présent mais illisible, lavé par les mips | Se calcule : `px_écran/m` × la taille du motif. Sous ~10 px, le motif n'existe pas. **Ne se corrige qu'après les deux autres** — sinon on recale une échelle qui n'était pas en cause (fait, sans effet) |
+
+⚠️ **Le piège du diagnostic** : les trois se ressemblent, mais seuls 1 et 2 sont des défauts. Recaler
+l'échelle en premier donne une amélioration *partielle* qui ressemble à un progrès et masque les
+deux autres. Régler **1, puis 2, puis 3** — et ne juger l'échelle que sur une capture propre.
+
+Un dernier chiffre utile, à calculer avant de demander l'image : le rapport de sous-échantillonnage.
+Caméra à 14,9 m, fov 62°, post-process rétro à 960×540 → **~30 px/m**. Une bande de mur d'1 m fait
+30 px : tout motif sous 3 cm y est invisible, et une tuile calée sur 2 m y est du bruit. C'est ce
+calcul, pas le goût, qui a fait passer `TILE_M` de 2 à 8.
