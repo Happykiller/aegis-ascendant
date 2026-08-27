@@ -505,6 +505,20 @@ func test_a_fighter_grazing_the_shield_keeps_full_control() -> void:
 ## Et quand il POUSSE dans les murs ? Il ne passe pas — et ce n'est PAS un defaut de
 ## collision, c'est un fait de geometrie que personne n'avait calcule.
 ##
+## Le couloir sous le mur le plus INTERIEUR : [plancher, plafond] en rayon. Le plancher est
+## la face externe du mur d'en dessous s'il y en a un, sinon le carter du noyau. Un ou deux
+## murs, la garde suit la geometrie livree — la chambre est rebatie un element a la fois.
+func _corridor_bounds(rings: Array[ReactorRing]) -> Array:
+	var innermost: ReactorRing = rings[0]
+	for ring in rings:
+		if ring.radius < innermost.radius:
+			innermost = ring
+	var floor_r := CoreInterior.REACTOR_HOUSING_RADIUS
+	for ring in rings:
+		if ring != innermost and ring.radius < innermost.radius:
+			floor_r = maxf(floor_r, ring.radius + ring.thickness * 0.5)
+	return [floor_r, innermost.radius - innermost.thickness * 0.5]
+
 ## ⚠️ LE COULOIR ENTRE LES DEUX MURS EST DEVENU UN LIEU — ET CETTE GARDE A CHANGE DE SENS.
 ##
 ## Elle affirmait le contraire, et elle avait raison de le faire : le chasseur est toujours
@@ -525,11 +539,9 @@ func test_the_corridor_between_the_walls_is_a_place() -> void:
 	var tuning: LeviathanTuning = load(SHIPPED)
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	var rings := tuning.reactor_rings
-	assert_eq(rings.size(), 2, "deux murs")
-	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
-	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
-	var corridor := (outer.radius - outer.thickness * 0.5) \
-		- (inner.radius + inner.thickness * 0.5)
+	assert_true(rings.size() >= 1, "au moins un mur")
+	var bounds := _corridor_bounds(rings)
+	var corridor: float = bounds[1] - bounds[0]
 	var lengthwise := (stats.body_half_length + stats.body_radius) * 2.0
 	assert_true(corridor >= lengthwise,
 		"couloir de %.2f u pour un chasseur qui en occupe %.2f dans l'axe" % [corridor, lengthwise])
@@ -543,10 +555,8 @@ func test_a_fighter_left_alone_in_the_corridor_stays_there() -> void:
 	var tuning: LeviathanTuning = load(SHIPPED)
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	var rings := tuning.reactor_rings
-	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
-	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
-	var milieu := ((outer.radius - outer.thickness * 0.5)
-		+ (inner.radius + inner.thickness * 0.5)) * 0.5
+	var bounds := _corridor_bounds(rings)
+	var milieu: float = (bounds[0] + bounds[1]) * 0.5
 	var up := Vector2(0.0, 1.0)
 	var here := Vector2(0.0, -milieu)
 	var depart := here

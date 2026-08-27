@@ -28,7 +28,7 @@ func _any_opening(rings: Array[ReactorRing], age: float) -> bool:
 ## quelque part sur le cercle. Le joueur n'attend pas : il se DÉPLACE.
 func test_the_player_is_never_locked_out() -> void:
 	var rings := _shipped_rings()
-	assert_true(rings.size() >= 2, "le blindage livré a bien ses anneaux")
+	assert_true(rings.size() >= 1, "le blindage livré a bien au moins un anneau")
 	var longest_lock := 0.0
 	var lock := 0.0
 	var step := 0.05
@@ -218,10 +218,20 @@ func test_the_shipped_fight_has_no_orbital_locks() -> void:
 ## garde : elle certifie le defaut.
 func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 	var rings := _shipped_rings()
-	assert_eq(rings.size(), 2, "deux murs")
-	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
-	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
-	var gap := (outer.radius - outer.thickness * 0.5) - (inner.radius + inner.thickness * 0.5)
+	assert_true(rings.size() >= 1, "au moins un mur")
+	# ⚠️ UN OU DEUX MURS : le couloir est ce qui separe le mur le plus INTERIEUR de ce qu'il
+	# y a en dessous — l'autre mur s'il y en a un, sinon le carter du noyau. La chambre est
+	# rebatie un element a la fois depuis le 2026-08-28 ; la garde suit la geometrie livree
+	# au lieu d'exiger une configuration.
+	var innermost: ReactorRing = rings[0]
+	for ring in rings:
+		if ring.radius < innermost.radius:
+			innermost = ring
+	var floor_r := CoreInterior.REACTOR_HOUSING_RADIUS
+	for ring in rings:
+		if ring != innermost:
+			floor_r = maxf(floor_r, ring.radius + ring.thickness * 0.5) if ring.radius < innermost.radius else floor_r
+	var gap := (innermost.radius - innermost.thickness * 0.5) - floor_r
 	# ⚠️ LA LARGEUR SE LIT SUR LE CHASSEUR LIVRE, plus sur une constante. Elle valait 1,75 —
 	# juste, mais recopiee — et une mesure faite au meme moment sur le `.glb` donnait 1,30
 	# parce qu'elle ne parcourait pas la hierarchie des noeuds. Une seule source, et c'est

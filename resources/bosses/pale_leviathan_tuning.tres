@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LeviathanTuning" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="LeviathanTuning" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://resources/data/leviathan_tuning.gd" id="1_tuning"]
 [ext_resource type="Script" path="res://resources/data/reactor_ring.gd" id="2_ring"]
@@ -55,57 +55,23 @@
 ; 57 % du plaçable) plutôt que le milieu de la bande, qui aurait doublé la durée du combat.
 ; 814 serait le minimum strict — il tombe PILE sur le seuil des 55 %, à 0,03 dégât près.
 ; ============================================================================
-[sub_resource type="Resource" id="ring_outer"]
+[sub_resource type="Resource" id="ring_single"]
 script = ExtResource("2_ring")
-apertures = 3
-aperture_deg = 80.0
-speed_deg = 26.0
-phase_deg = 0.0
-; Le mur EXTERIEUR. ⚠️ L'ecart se mesure entre les FACES, pas entre les centres : une garde
-; a rattrape l'erreur, qui donnait 1,70 u au lieu des 2,62 demandes. Face interne du mur
-; exterieur (5,45 - 0,25 = 5,20) moins face externe du mur interieur (2,35 + 0,25 = 2,60) =
-; 2,60 u, soit 1,48 largeur de
-; chasseur (1,752 u mesures sur `specter_9.glb`, transformations de noeuds appliquees) — la
-; distance demandee au playtest.
+; ⚠️ UN SEUL MUR, ET C'EST UNE ETAPE DE METHODE, PAS UN REGLAGE FINAL. Apres l'isolation
+; sans murs (2026-08-28) qui a innocente la physique et revele que le noyau se faisait
+; ecran a lui-meme, l'operateur reconstruit la chambre un element a la fois : « rajoute
+; un seul mur, a bonne distance, ni contre le reacteur ni tres loin, qui m'oblige soit a
+; le contourner, soit a viser pendant la fenetre ou il n'est pas devant le reacteur ».
 ;
-; ⚠️ PUIS IL A FALLU L'AGRANDIR, ET C'EST LE CONTRAIRE QUI ETAIT EN CAUSE. Retreci a 5,45,
-; le mur laissait 2,60 u entre sa face et celle du mur interieur — pour un chasseur qui en
-; occupe 4,22 dans l'axe. Il ne pouvait donc pas EXISTER dans le couloir : en contact les
-; trois quarts du temps, il etait convoye le long de l'arc par les murs qui tournent et
-; ejecte au plafond. « C'est comme si tout le cercle etait un mur pour moi » (playtest du
-; 2026-08-27). Mesure sans joueur : pose immobile, il derivait de +6,6 u en neuf secondes.
-;
-; 8,05 est MESURE, pas deduit : au balayage du rayon, la derive tombe a zero des que le
-; couloir depasse 4,22 — 7,00 ejecte encore, 7,50 ne bouge plus. On retient 8,05 (couloir de
-; 5,20) parce qu'un joueur bouge, contrairement a la simulation. Le plan de vol de la chambre
-; (`GameplayPlane.CHAMBER_BOUNDS`) a ete agrandi pour loger ce mur ET le chasseur sous lui.
-;
-; ⚠️ ANCIEN ETAT, GARDE POUR LA TRACE : tout l'ensemble avait ete RETRECI (5,8 -> 5,45 et
-; 2,2 -> 2,35, epaisseur 1,0 -> 0,5) APRES
-; LE PLAYTEST « je fonce tout droit et mon vaisseau est bloque ». L'arene fait 16 u de haut :
-; avec l'envergure du chasseur (0,85), l'ancien mur exterieur bloquait de 4,45 a 7,15 et ne
-; laissait que 0,85 u entre lui et le bord — juste sous le noyau, c'est-a-dire au seul endroit
-; d'ou l'on peut tirer. Le chasseur naissait DANS le mur, se faisait repousser vers l'interieur
-; et se retrouvait encage. Il reste 1,45 u desormais.
-;
-; ⚠️ ET LE MUR INTERIEUR ETAIT DANS LE NOYAU. `flux_hitbox_radius` vaut 1,80 EN RAYON, plus
-; la derive : le flux occupait jusqu'a 2,70 u, quand la face interne du mur etait a 1,70.
-; Ce n'etait pas un mur autour du flux, c'etait de la decoration POSEE DESSUS — visible sur
-; toutes les captures, les deux arcs violets a cheval sur la sphere rose. La derive tombe
-; donc a 0,30 (decision de l'operateur : garder les deux murs plutot que la derive), ce qui
-; ramene l'enveloppe a 2,10 et laisse le mur interieur commencer a 2,10, et l'ecart demande est conserve.
-radius = 8.05
-thickness = 0.5
-
-[sub_resource type="Resource" id="ring_inner"]
-script = ExtResource("2_ring")
+; 6,8 : assez loin du noyau pour qu'un chasseur ENTIER (4,22 dans l'axe) tienne entre les
+; deux — face interne 6,55, bord du noyau 1,80, soit 4,75 de libre — et assez pres pour
+; rester un obstacle qu'on ne contourne pas gratuitement. Deux ouvertures larges (110 deg)
+; a 24 deg/s : une fenetre toutes les 7,5 s, lisible.
 apertures = 2
-aperture_deg = 120.0
-speed_deg = -17.0
-phase_deg = 30.0
-; Le mur INTERIEUR, « au plus pres du noyau pour eviter qu'on s'y colle ». Il laisse juste
-; la place a la derive du flux (enveloppe ~1,7 u apres reduction du rayon de derive).
-radius = 2.35
+aperture_deg = 110.0
+speed_deg = 24.0
+phase_deg = 0.0
+radius = 6.8
 thickness = 0.5
 
 [resource]
@@ -123,7 +89,7 @@ flux_drift_radius = 0.3
 ; posee au-dessus, cette ligne designe une propriete que la ressource ne connait pas encore
 ; et elle est ignoree EN SILENCE. Le blindage etait absent du jeu, sans erreur ni test rouge
 ; — c'est la garde `test_the_player_is_never_locked_out` qui l'a rattrape.
-reactor_rings = [SubResource("ring_outer"), SubResource("ring_inner")]
+reactor_rings = [SubResource("ring_single")]
 reference_dps = 420.0
 flux_reference_dps = 208.0
 reference_player_max_speed = 14.0
@@ -145,8 +111,8 @@ spine_interval = 3.2
 ;
 ; ⚠️ Le DEFAUT du script reste a 2400, et c'est voulu : il n'a pas d'anneaux, donc pas de
 ; porte. Les deux valeurs decrivent deux configurations differentes, chacune coherente.
-ring_occupancy = 0.31
-flux_health = 840.0
+ring_occupancy = 0.59
+flux_health = 1600.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est
