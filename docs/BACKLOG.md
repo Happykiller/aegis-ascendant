@@ -49,7 +49,8 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-25-phase-inter-boss-survol-de-lune.md`](plans/2026-08-25-phase-inter-boss-survol-de-lune.md) | Une phase de jeu entre les deux boss : unités du bestiaire + survol de lune | **lot 1 livré** (ADR-0027) ; lots 2-4 à faire |
 | [`2026-08-27-bible-supreme.md`](plans/2026-08-27-bible-supreme.md) | Rapport d'audit externe « Bible suprême » : vérifié et trié — gouvernance documentaire | **3 décisions ouvertes**, rien d'engagé |
 | [`2026-08-27-conformite-bible.md`](plans/2026-08-27-conformite-bible.md) | Fermer les écarts du rapport de conformité — secousse exposée, `FAN`/`AIMED` en jeu, manette, ouverture calme, hit stop | **lots 0, 1 et 2 livrés** ; lots 3-5 bloqués |
-| [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | instruit et chiffré, rien d'engagé |
+| [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
+| [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
