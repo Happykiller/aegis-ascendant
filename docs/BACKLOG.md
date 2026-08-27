@@ -36,6 +36,19 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## Outillage de développement — demandé le 2026-08-28
+
+- **Afficher les zones de collision, toujours, en développement.** Livré : `SolidsOverlay`
+  (`--show-solids`, actif par défaut en build debug, `--hide-solids` pour une capture propre,
+  jamais en release). C'est cet outil, et lui seul, qui a montré que le décor de la chambre
+  tournait **à l'envers** de sa collision après quatre correctifs à l'aveugle. Reste à faire :
+  **une option dans le menu** pour l'activer/désactiver en jeu (`SettingsData` + `OptionsMenu`),
+  comme l'opérateur l'a suggéré — « voire même laisser une option dans le menu ».
+- **L'étendre aux autres lieux** : l'overlay ne dessine que ce que `_rebuild_solids()` verse ;
+  les cibles de tir (`BulletTarget`) n'y sont pas. Les ajouter (couleur distincte) rendrait
+  visible l'écart entre « ce qui arrête un corps » et « ce qui arrête une balle » — le second
+  défaut de la soirée, le noyau qui se faisait écran, se serait vu du premier coup.
+
 ## ⚠️ Les plans datés font foi sur « ce qui reste »
 
 Ce backlog est un inventaire ; il ne dit pas **quel document est le plus récent**. Les plans de
