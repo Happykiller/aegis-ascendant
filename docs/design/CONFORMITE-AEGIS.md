@@ -27,6 +27,10 @@ faux coûte plus qu'un point de reprise absent.
 
 > **Ce rapport ne décide de rien.** Il constate. Les écarts qui appellent un arbitrage sont
 > rassemblés en fin de page, et attendent l'opérateur.
+>
+> **Ce qu'on en fait** est dans [`docs/plans/2026-08-27-conformite-bible.md`](../plans/2026-08-27-conformite-bible.md) :
+> quel fichier, quel test, dans quel ordre — et ce qu'on ne ferme **pas**, parce qu'un écart assumé
+> n'est pas une dette.
 
 ---
 
