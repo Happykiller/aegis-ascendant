@@ -1003,3 +1003,17 @@ func test_the_declared_capacity_really_covers_what_is_produced() -> void:
 		assert_true(shapes.size() <= combat.solid_capacity(),
 			"image %d : %d formes pour une capacite annoncee de %d"
 				% [frame, shapes.size(), combat.solid_capacity()])
+
+
+## ⚠️ UN BOSS QU'ON NE VOIT PAS NE FAIT PAS ECRAN. Pendant la plongee son corps est cache ;
+## sa cible de tir (2,2) restait active, posee juste au-dessus du noyau de la chambre en
+## coordonnees du plan, et absorbait toute balle qui passait le reacteur. L'overlay des
+## cibles l'a montree en un cercle orange sans rien de visible dessous.
+func test_the_hidden_body_is_not_a_target() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	assert_true(boss._target.enabled, "en place et visible, le corps est une cible")
+	boss.set_body_targetable(false)
+	assert_false(boss._target.enabled, "cache, il ne l'est plus")
+	boss.set_body_targetable(true)
+	assert_true(boss._target.enabled, "et il le redevient a la sortie")

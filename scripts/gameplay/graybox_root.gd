@@ -1025,6 +1025,9 @@ func _show_core_interior(inside: bool) -> void:
 	_set_backdrop_hidden(inside)
 	if _final_boss != null:
 		_final_boss.visible = not inside
+		# Le corps s'efface AVEC sa cible : caché mais touchable, il faisait écran aux balles
+		# qui passaient le noyau (voir `BossController.set_body_targetable`).
+		_final_boss.set_body_targetable(not inside)
 
 ## Démonte la chambre — et lui reprend ses bornes.
 ##

@@ -149,6 +149,20 @@ func begin(bullet_manager: BulletManager, player: PlayerFighterController) -> vo
 	phase_changed.emit(_phase, phase_count)
 	health_changed.emit(1.0)
 
+## Retire (ou rend) la cible du CORPS — sans toucher au reste du boss.
+##
+## ⚠️ ELLE RESTAIT ACTIVE PENDANT LA PLONGÉE, CORPS INVISIBLE. En coordonnées du plan, le
+## corps du boss se tient juste au-dessus du noyau de la chambre : sa cible de 2,2 absorbait
+## toute balle qui passait le réacteur — étincelles, zéro dégât, « un mur invisible qui va
+## plus loin que lui » (opérateur, 2026-08-28, capture à l'appui). Personne ne pouvait le
+## voir : le corps était caché, pas sa cible. L'overlay des cibles l'a montré en un cercle.
+## Un boss qu'on ne voit pas ne se touche pas — et ne fait pas écran.
+func set_body_targetable(targetable: bool) -> void:
+	if _target == null:
+		return
+	# Jamais avant la fin de l'entrée : l'invulnérabilité d'approche a la priorité.
+	_target.enabled = targetable and is_in_place()
+
 func _take_hit(damage: float) -> void:
 	if _entering or _defeated:
 		return
