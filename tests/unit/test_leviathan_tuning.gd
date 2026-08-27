@@ -238,13 +238,6 @@ func test_the_dive_is_short_on_purpose() -> void:
 	assert_true(t.dive_time <= 6.0, "%.1f s de tir dans le noyau" % t.dive_time)
 	assert_true(t.dive_duration() > t.dive_time, "entree et ejection comptent aussi")
 
-func test_total_structure_covers_every_cycle_and_the_flux() -> void:
-	var t := _tuning()
-	var sum := t.flux_health
-	for cycle in t.cycle_count:
-		sum += t.plate_health * float(t.plates_for_cycle(cycle))
-	assert_almost_eq(t.total_structure(), sum, 0.001, "toutes les armures, plus le flux")
-
 func test_the_final_boss_still_outlasts_the_mini_boss() -> void:
 	var t := _tuning()
 	assert_true(t.total_duration() > 30.0,

@@ -786,7 +786,13 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 		# vu en capture, un noyau splendide et pas un vaisseau à l'écran. On le pose en
 		# dessous, à portée de tir : c'est la position d'un shooter vertical, celle où le
 		# joueur sait déjà ce qu'il a à faire.
-		_player.begin_autopilot(centre + Vector2(0.0, -5.0))
+		#
+		# ⚠️ ET LA DISTANCE NE S'ÉCRIT PLUS ICI. Elle valait `-5.0`, une constante posée avant
+		# que les murs n'existent — et qui tombait EN PLEIN DEDANS. Le chasseur naissait dans
+		# le blindage, se faisait repousser vers l'intérieur et se retrouvait encagé : « je
+		# fonce tout droit et mon vaisseau est bloqué, il avance pas ». `dive_entry_local()`
+		# la déduit des anneaux livrés, et une garde refuse ce qui enfermerait.
+		_player.begin_autopilot(centre + _leviathan.tuning.dive_entry_local())
 		# Il vole DANS le noyau, au-dessus de son plancher : sans cette hauteur il passe
 		# derrière la coque et on ne le voit plus.
 		_player.plane_lift = 2.2

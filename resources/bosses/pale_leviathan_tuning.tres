@@ -33,9 +33,16 @@
 ; À bearing fixe, un anneau est ouvert aperture/step du temps, et les deux tournent
 ; à des vitesses incommensurables : le produit tient.
 ;   46/120 × 62/180 = 13 %  -> DOUZE plongées à puissance 5 pour finir. Le playtest.
-;   80/120 × 120/180 = 44 % -> ce que `ring_occupancy` (0,45) annonce depuis le début.
-; Les gardes de convergence lisent cette estimation ; elles étaient donc vertes sur
-; une donnée que le jeu ne tenait pas.
+;   80/120 × 120/180 = 44 % -> ce que `ring_occupancy` (0,45) annonçait.
+;
+; ⚠️ ET CES 44 % ÉTAIENT ENCORE FAUX, d'un facteur et demi. Ils comptaient un tir SANS
+; ÉPAISSEUR : le jeu, lui, teste la ligne avec `bolt_radius`, qui rogne l'ouverture des
+; deux côtés — d'autant plus que l'anneau est proche du centre. Mesuré sur la géométrie
+; livrée, le long de la vraie ligne de tir : 31 %. Huit plongées au playtest au lieu de
+; trois, et la garde restait verte parce qu'elle mesurait un point, pas un tir.
+;
+; `ring_occupancy` vaut donc 0,31, MESURÉ, et `flux_health` a suivi (780 -> 540). La garde
+; `test_the_shield_opens_as_often_as_the_balance_assumes` refait cette mesure exacte.
 ; ============================================================================
 [sub_resource type="Resource" id="ring_outer"]
 script = ExtResource("2_ring")
@@ -45,10 +52,24 @@ speed_deg = 26.0
 phase_deg = 0.0
 ; Le mur EXTERIEUR. ⚠️ L'ecart se mesure entre les FACES, pas entre les centres : une garde
 ; a rattrape l'erreur, qui donnait 1,70 u au lieu des 2,62 demandes. Face interne du mur
-; exterieur (5,8 - 0,5 = 5,3) moins face externe du mur interieur (2,2 + 0,5 = 2,7) =
+; exterieur (5,45 - 0,25 = 5,20) moins face externe du mur interieur (2,35 + 0,25 = 2,60) =
 ; 2,60 u, soit ~1,5 largeur de chasseur (1,75 u) — la distance demandee au playtest.
-radius = 5.8
-thickness = 1.0
+;
+; ⚠️ TOUT L'ENSEMBLE A ETE RETRECI (5,8 -> 5,45 et 2,2 -> 2,35, epaisseur 1,0 -> 0,5) APRES
+; LE PLAYTEST « je fonce tout droit et mon vaisseau est bloque ». L'arene fait 16 u de haut :
+; avec l'envergure du chasseur (0,85), l'ancien mur exterieur bloquait de 4,45 a 7,15 et ne
+; laissait que 0,85 u entre lui et le bord — juste sous le noyau, c'est-a-dire au seul endroit
+; d'ou l'on peut tirer. Le chasseur naissait DANS le mur, se faisait repousser vers l'interieur
+; et se retrouvait encage. Il reste 1,45 u desormais.
+;
+; ⚠️ ET LE MUR INTERIEUR ETAIT DANS LE NOYAU. `flux_hitbox_radius` vaut 1,80 EN RAYON, plus
+; la derive : le flux occupait jusqu'a 2,70 u, quand la face interne du mur etait a 1,70.
+; Ce n'etait pas un mur autour du flux, c'etait de la decoration POSEE DESSUS — visible sur
+; toutes les captures, les deux arcs violets a cheval sur la sphere rose. La derive tombe
+; donc a 0,30 (decision de l'operateur : garder les deux murs plutot que la derive), ce qui
+; ramene l'enveloppe a 2,10 et laisse le mur interieur commencer a 2,10, et l'ecart demande est conserve.
+radius = 5.45
+thickness = 0.5
 
 [sub_resource type="Resource" id="ring_inner"]
 script = ExtResource("2_ring")
@@ -58,8 +79,8 @@ speed_deg = -17.0
 phase_deg = 30.0
 ; Le mur INTERIEUR, « au plus pres du noyau pour eviter qu'on s'y colle ». Il laisse juste
 ; la place a la derive du flux (enveloppe ~1,7 u apres reduction du rayon de derive).
-radius = 2.2
-thickness = 1.0
+radius = 2.35
+thickness = 0.5
 
 [resource]
 script = ExtResource("1_tuning")
@@ -71,7 +92,7 @@ script = ExtResource("1_tuning")
 ; deja par construction).
 node_count = 0
 ; La derive du flux doit rester DANS le mur interieur (rayon 2,2) : enveloppe ~1,7 u.
-flux_drift_radius = 0.9
+flux_drift_radius = 0.3
 ; ⚠️ APRES `script`, JAMAIS AVANT. Godot applique les proprietes d'un .tres DANS L'ORDRE :
 ; posee au-dessus, cette ligne designe une propriete que la ressource ne connait pas encore
 ; et elle est ignoree EN SILENCE. Le blindage etait absent du jeu, sans erreur ni test rouge
@@ -98,7 +119,8 @@ spine_interval = 3.2
 ;
 ; ⚠️ Le DEFAUT du script reste a 2400, et c'est voulu : il n'a pas d'anneaux, donc pas de
 ; porte. Les deux valeurs decrivent deux configurations differentes, chacune coherente.
-flux_health = 780.0
+ring_occupancy = 0.31
+flux_health = 540.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est

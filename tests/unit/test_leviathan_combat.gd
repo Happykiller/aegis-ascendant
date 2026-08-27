@@ -324,17 +324,26 @@ func test_the_gauge_refills_for_the_flux_then_for_the_next_armour() -> void:
 	_ride_dive(combat)
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "puis celle de l'armure reformee")
 
-func test_the_fight_progress_never_climbs_back_up() -> void:
-	# ⚠️ DEUX MESURES, DEUX USAGES. La jauge du HUD remonte a chaque bascule ; la
-	# progression du combat, jamais. Les confondre a coute un sommet musical : la
-	# partition culminait a mi-combat puis retombait (`music 9 -> 8 -> 9` au journal).
+## ⚠️ CETTE GARDE AFFIRMAIT L'INVERSE — « l'armure brisee compte dans la progression ». Elle
+## etait verte, et elle tenait un defaut : la jauge du boss descendait pendant le temps 1,
+## puis stagnait pendant que le joueur frappait la seule chose qui compte. « En phase externe
+## du boss sa barre de vie ne devrait pas descendre » (playtest du 2026-08-27). L'armure
+## REPOUSSE a chaque cycle : la casser n'est pas un progres, c'est ouvrir une porte.
+func test_the_fight_progress_only_moves_inside_the_core() -> void:
 	var combat := _make()
 	assert_almost_eq(combat.fight_ratio(), 1.0, 0.001, "combat intact")
 	_kill_armour(combat)
+	assert_almost_eq(combat.fight_ratio(), 1.0, 0.001,
+		"toute l'armure a terre, et la jauge du boss n'a pas bouge")
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat._on_flux_hit(combat.tuning.flux_damage_per_dive())
 	var after := combat.fight_ratio()
-	assert_true(after < 1.0, "l'armure brisee compte dans la progression")
+	assert_true(after < 0.999, "le flux touche, ELLE descend")
+	assert_almost_eq(after, 1.0 - 1.0 / float(combat.tuning.cycle_count), 0.02,
+		"d'un tiers, une marche par phase interne")
 	_ride_dive(combat)
-	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "la JAUGE se remplit")
+	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001, "la JAUGE de cible se remplit")
 	assert_true(combat.fight_ratio() <= after, "mais la PROGRESSION ne remonte pas")
 
 func test_the_gauge_never_goes_below_zero() -> void:

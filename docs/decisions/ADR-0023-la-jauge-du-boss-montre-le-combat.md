@@ -99,3 +99,21 @@ de `LeviathanTuning` n'est modifié par cet ADR. Le quatrième cycle observé au
 Cet ADR corrige ce que le joueur **voit**. Il ne dit pas si trois cycles sont le bon compte,
 ni si un quatrième tour reste agréable une fois qu'on sait où l'on en est. À rejuger à la
 partie suivante — et seulement là.
+
+---
+
+## Amendement du 2026-08-27 — l'armure n'est pas de la santé
+
+« En phase externe du boss, sa barre de vie ne devrait pas descendre » (playtest). C'est la bonne
+règle, et elle corrige une erreur de cet ADR : la progression comptait **tous** les dégâts, armure
+comprise. Or l'armure **repousse à chaque cycle** — la casser n'est pas un progrès, c'est ouvrir
+une porte. Le joueur voyait donc la jauge descendre pendant le temps 1, puis stagner pendant qu'il
+frappait la seule chose qui compte vraiment.
+
+`fight_ratio()` ne lit plus que les dégâts placés sur le **flux**. Avec le plafond d'`ADR-0026`,
+une plongée en retire au plus un tiers : la barre tombe donc par tiers, **une marche par phase
+interne**, ce que l'opérateur avait décrit mot pour mot. Elle ne remonte toujours jamais — c'est
+l'acquis de cet ADR, et il tient.
+
+Conséquence assumée : quatre cycles sans toucher le flux laissent la barre **intacte**. C'est
+voulu — elle dit ce que le joueur a réellement abattu.

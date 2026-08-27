@@ -258,7 +258,19 @@ var _missile_timer: float = 0.0
 ## Dégâts encaissés par la cible courante — le numérateur de la jauge.
 var _local_damage: float = 0.0
 ## Dégâts encaissés depuis le début du combat — la progression, qui ne remonte jamais.
-var _fight_damage: float = 0.0
+
+## Les formes de collision de la chambre, refaites à chaque image et JAMAIS réallouées.
+## Voir [PlaneShapes] : les murs tournent et le noyau dérive, donc les fabriquer en objets
+## reviendrait à allouer soixante fois par seconde dans une boucle critique (spec §26.1).
+var _shapes := PlaneShapes.new()
+
+## Dégâts placés sur le FLUX seul, et la SEULE mesure d'avancement du combat. Un compteur
+## « tous dégâts confondus » vivait ici ; il a été retiré avec la jauge qui le lisait, plutôt
+## que laissé à dormir. La jauge du boss ne doit descendre QUE dans le noyau — « en phase
+## externe du boss sa barre de vie ne devrait pas descendre » (playtest du 2026-08-27).
+## L'armure est une PORTE, pas de la santé : elle repousse à chaque cycle, et compter sa
+## destruction comme un progrès promettait au joueur un avancement qu'il perdait aussitôt.
+var _flux_damage: float = 0.0
 
 # --- Montage ------------------------------------------------------------------
 
@@ -303,7 +315,7 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	release()
 	_cycle = 0
 	_flux_health = tuning.flux_health
-	_fight_damage = 0.0
+	_flux_damage = 0.0
 	_plate_fall.resize(PLATE_SLOTS)
 	_plate_fall.fill(-1.0)
 	_plate_rest.clear()
@@ -749,11 +761,16 @@ func _update_reactor_shield(origin: Vector2) -> void:
 		# sur le côté ne lui donne aucun angle sur le noyau, et un corridor calculé depuis
 		# son azimut ne décrivait pas ce que ses balles rencontrent. On teste le segment
 		# qu'un bolt doit VRAIMENT parcourir, du chasseur jusqu'au flux.
-		var from_local := _player.plane_position - centre
+		# ⚠️ LE NOYAU EST EXCLU DE CE TEST, et il faut le dire. Il est dans `_shapes` pour
+		# arrêter le CHASSEUR ; s'il y restait ici, il bloquerait le tir qui le vise —
+		# la cible ferait écran à elle-même. On s'arrête donc au bord du flux.
 		var to_local := _flux_offset()
-		hit = ReactorRings.first_hit_along(tuning.reactor_rings, from_local, to_local,
-			_age, tuning.bolt_radius)
-		open = not hit.is_finite()
+		var aim := centre + to_local
+		var stop := aim + (_player.plane_position - aim).normalized() \
+			* tuning.flux_hitbox_radius
+		hit = PlaneCollider.first_hit(_shapes, _player.plane_position, stop,
+			tuning.bolt_radius)
+		open = hit == PlaneCollider.NO_HIT
 	_flux_target.enabled = open
 	# La cible d'arrêt vit à l'inverse : elle n'existe QUE quand le corridor est fermé, et
 	# elle se pose sur l'anneau, au droit du joueur — là où ses bolts croisent le blindage.
@@ -762,9 +779,9 @@ func _update_reactor_shield(origin: Vector2) -> void:
 		# ligne de tir qui touche du plein. Elle était posée sur un rayon fixe et sur
 		# l'azimut du joueur : les bolts la manquaient et traversaient le mur — « les tirs
 		# aussi peuvent passer » (playtest du 2026-08-27).
-		_shield_target.enabled = not open and hit.is_finite()
+		_shield_target.enabled = not open and hit != PlaneCollider.NO_HIT
 		if _shield_target.enabled:
-			_shield_target.position = centre + hit
+			_shield_target.position = hit
 	if open != _reactor_open:
 		_reactor_open = open
 		reactor_shield_changed.emit(open)
@@ -853,15 +870,25 @@ func nodes_alive() -> int:
 ## ⚠️ Et elle s'applique APRÈS le déplacement du joueur, pas à sa place : sa commande reste
 ## pleine, on corrige seulement le résultat. Piloter à sa place se lirait comme une perte de
 ## contrôle, ce que le projet refuse depuis `GravityWell.leaves_room()`.
-func _enforce_walls(origin: Vector2) -> void:
-	if _player == null or tuning.reactor_rings.is_empty():
-		return
+## Refait les formes de la chambre pour CET instant : les murs tournant, plus le noyau.
+##
+## ⚠️ LE NOYAU EST UN CORPS, ET IL NE L'ÉTAIT PAS. « Le réacteur central ne devrait pas être
+## franchissable » (playtest du 2026-08-27) : on lui traversait le ventre. Il entre ici comme
+## un disque au même titre qu'un mur — c'est tout l'intérêt d'avoir un module de collision
+## plutôt qu'un cas particulier par obstacle.
+func _rebuild_shapes(origin: Vector2) -> void:
 	var centre := _flux_origin(origin)
-	var local := _player.plane_position - centre
-	var freed := ReactorRings.push_out(tuning.reactor_rings, local, _age,
-		tuning.wall_clearance)
-	if not freed.is_equal_approx(local):
-		_player.plane_position = centre + freed
+	_shapes.clear()
+	ReactorRings.fill_shapes(_shapes, tuning.reactor_rings, centre, _age)
+	_shapes.add_disc(centre + _flux_offset(), tuning.flux_hitbox_radius)
+
+func _enforce_walls(_origin: Vector2) -> void:
+	if _player == null or _shapes.size() == 0:
+		return
+	var here := _player.plane_position
+	var freed := PlaneCollider.resolve(_shapes, here, tuning.wall_clearance)
+	if not freed.is_equal_approx(here):
+		_player.plane_position = freed
 
 ## Le faisceau qui balaie le réacteur. Il tourne en permanence pendant la plongée : c'est
 ## lui qui empêche de camper sous le noyau une fois le corridor trouvé.
@@ -1105,6 +1132,7 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 		Dive.INSIDE:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
 			_orbit_nodes(origin)
+			_rebuild_shapes(origin)
 			_enforce_walls(origin)
 			_update_reactor_shield(origin)
 			_update_sweep(delta, origin)
@@ -1501,6 +1529,7 @@ func _on_flux_hit(damage: float) -> void:
 	if _cycle >= maxi(tuning.cycle_count - 1, 0):
 		room = _flux_health
 	var applied := minf(damage, room)
+	_flux_damage += applied
 	if applied <= 0.0:
 		# Garde-fou : on ne devrait plus passer ici, la saturation éjectant désormais tout
 		# de suite. Reste pour les coups de la même image que celui qui a rempli le quota.
@@ -1532,7 +1561,6 @@ func _on_missile_hit(damage: float, index: int) -> void:
 
 func _account(damage: float) -> void:
 	_local_damage += damage
-	_fight_damage += damage
 	_publish_structure()
 
 func _publish_structure() -> void:
@@ -1595,8 +1623,20 @@ func structure_ratio() -> float:
 func fight_ratio() -> float:
 	if tuning == null:
 		return 1.0
-	var total := tuning.total_structure()
-	return clampf(1.0 - _fight_damage / total, 0.0, 1.0) if total > 0.0 else 1.0
+	# ⚠️ LE FLUX SEUL, ET PLUS TOUTE LA STRUCTURE. « En phase externe du boss, sa barre de
+	# vie ne devrait pas descendre » (playtest du 2026-08-27) — et c'est la bonne règle :
+	# l'armure REPOUSSE à chaque cycle, donc la casser n'est pas un progrès. La compter
+	# faisait descendre la jauge pendant le temps 1 puis la faisait stagner pendant que le
+	# joueur frappait la seule chose qui compte vraiment.
+	#
+	# Avec le plafond d'`ADR-0026`, une plongée retire au plus un tiers du flux : la jauge
+	# tombe donc par tiers, une marche par phase interne. C'est exactement ce que
+	# l'opérateur décrit — « la barre de vie générale du boss descendra de 33 % à chaque
+	# phase interne ».
+	#
+	# Elle ne remonte toujours jamais (`ADR-0023`) : `_flux_damage` ne fait que croître.
+	var total := tuning.flux_health
+	return clampf(1.0 - _flux_damage / total, 0.0, 1.0) if total > 0.0 else 1.0
 
 ## Publie l'état de toutes les jauges. Le niveau l'appelle après `begin()`, quand le HUD
 ## est prêt : interroger avant afficherait des pastilles éteintes sur un boss intact.

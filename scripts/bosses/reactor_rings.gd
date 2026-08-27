@@ -6,6 +6,16 @@ class_name ReactorRings
 ## qu'une pose. Les deux lisent la MÊME fonction — c'est ce qui garantit qu'on tire là où
 ## l'on voit une ouverture, et le contraire serait le pire défaut possible pour cette phase.
 ##
+## ⚠️ IL NE FAIT PLUS DE COLLISION. Il en a fait — `blocks()`, `blocks_body()`, `push_out()`,
+## `first_hit_along()` — et c'était un moteur de collision écrit pour UNE forme, qui ne
+## savait pousser que radialement. [PlaneCollider] l'a remplacé, et ces fonctions ont été
+## retirées plutôt que laissées à dormir : plus personne ne les appelait, seuls leurs propres
+## tests les maintenaient en vie. Deux implémentations de la même chose finissent toujours
+## par diverger, et c'est ce fichier qui aurait gagné en silence.
+##
+## Ce qui reste ici est la CONVENTION : où sont les ouvertures, et dans quel sens ça tourne.
+## `fill_shapes()` la traduit en formes pour le module de collision.
+##
 ## ⚠️ C'est `ADR-0029` à l'envers. Là, il fallait des périodes qui ne retombent JAMAIS en
 ## rythme, pour que l'œil ne repère pas la boucle. Ici il faut qu'elles se croisent SOUVENT,
 ## pour que le joueur ne reste jamais enfermé. Deux problèmes opposés, deux réglages opposés.
@@ -14,8 +24,6 @@ class_name ReactorRings
 ## cercle pour qu'aucun appelant ne la prenne pour une direction valide.
 const NO_OPENING := INF
 
-## Marge de sortie d'un mur, en unités. Voir `push_out()`.
-const EDGE_EPSILON := 0.01
 
 
 ## Cet anneau laisse-t-il passer à `bearing_deg`, à l'instant `age` ?
@@ -36,111 +44,6 @@ static func is_open(rings: Array[ReactorRing], bearing_deg: float, age: float) -
 		if not ring_open(ring, bearing_deg, age):
 			return false
 	return true
-
-
-## Ce point est-il DANS le mur de cet anneau ? `local` est relatif au centre du réacteur.
-##
-## ⚠️ LE MUR EST UN CORPS, pas un halo. Playtest du 2026-08-27 : « faut leur donner un corps,
-## pas qu'un halo de couleur, et faut intégrer au jeu un moteur de collision : on ne doit
-## pas pouvoir franchir les murs. »
-static func blocks(ring: ReactorRing, local: Vector2, age: float) -> bool:
-	if ring == null:
-		return false
-	var distance := local.length()
-	var half := ring.thickness * 0.5
-	if distance < ring.radius - half or distance > ring.radius + half:
-		return false
-	return not ring_open(ring, rad_to_deg(local.angle()), age)
-
-
-## Ce CORPS — un disque de rayon `body` — touche-t-il le mur ?
-##
-## ⚠️ UN POINT NE SUFFIT PAS, ET LE PLAYTEST L'A DIT : « le vaisseau rentre en partie dans
-## les murs et j'ai l'impression que le bord des murs est franchissable ». Testé au centre,
-## le chasseur passait par une ouverture où son aile ne passait pas. Le corps a une largeur ;
-## la collision doit l'avoir aussi.
-##
-## L'extension ANGULAIRE d'un disque vue du centre vaut `asin(body / distance)` : c'est elle
-## qu'il faut ajouter de part et d'autre de l'azimut, et non une marge en degrés posée à la
-## main — la même largeur couvre bien plus d'angle près du noyau que loin.
-static func blocks_body(ring: ReactorRing, local: Vector2, body: float, age: float) -> bool:
-	if ring == null:
-		return false
-	var distance := local.length()
-	var half := ring.thickness * 0.5 + body
-	if distance < ring.radius - half or distance > ring.radius + half:
-		return false
-	if body <= 0.0 or distance <= body:
-		return not ring_open(ring, rad_to_deg(local.angle()), age)
-	var spread := rad_to_deg(asin(clampf(body / distance, 0.0, 1.0)))
-	var bearing := rad_to_deg(local.angle())
-	# Fermé si l'un des deux bords du corps est dans le plein, ou le centre.
-	for probe in [bearing - spread, bearing, bearing + spread]:
-		if not ring_open(ring, probe, age):
-			return true
-	return false
-
-
-## Premier point de la ligne de tir qui touche un mur, en partant de `from_local`.
-##
-## ⚠️ C'EST LA LIGNE DE TIR QUI COMPTE, PAS L'AZIMUT DU JOUEUR. Le chasseur tire DROIT VERS
-## LE HAUT : se placer sur le côté ne lui donne aucun angle sur le noyau. Un corridor calculé
-## depuis son azimut ne décrivait donc pas ce que ses balles rencontrent — « on dirait que la
-## collision n'est pas juste par rapport à la forme exacte des murs », et « des murs mobiles
-## qui entravent la LIGNE DE TIR » (playtest du 2026-08-27).
-##
-## Rend `Vector2.INF` quand la ligne est dégagée.
-static func first_hit_along(rings: Array[ReactorRing], from_local: Vector2,
-		to_local: Vector2, age: float, body: float = 0.0, steps: int = 32) -> Vector2:
-	if rings.is_empty() or steps < 1:
-		return Vector2.INF
-	for i in steps + 1:
-		var point := from_local.lerp(to_local, float(i) / float(steps))
-		for ring in rings:
-			if blocks_body(ring, point, body, age):
-				return point
-	return Vector2.INF
-
-
-## La ligne de tir est-elle coupée ?
-static func line_blocked(rings: Array[ReactorRing], from_local: Vector2,
-		to_local: Vector2, age: float, body: float = 0.0) -> bool:
-	return first_hit_along(rings, from_local, to_local, age, body).is_finite()
-
-
-## Repousse un point hors des murs, radialement, vers le bord le plus proche.
-##
-## ⚠️ RADIALEMENT ET NON LATÉRALEMENT : glisser le long du mur ferait franchir l'ouverture
-## voisine à un joueur qui pousse contre la paroi, et l'anneau cesserait de fermer quoi que
-## ce soit. On le repousse donc du côté d'où il vient.
-##
-## Fonction PURE : aucun nœud, aucun état — la collision se teste en headless comme le
-## reste, et c'est ce qui la rend vérifiable sans jouer.
-static func push_out(rings: Array[ReactorRing], local: Vector2, age: float,
-		clearance: float = 0.0) -> Vector2:
-	var point := local
-	# Deux passes : repousser hors d'un anneau peut faire entrer dans l'autre quand ils
-	# sont proches. Deux suffisent — ils ne se chevauchent jamais (`validate()` l'impose).
-	for pass_index in 2:
-		for ring in rings:
-			if not blocks_body(ring, point, clearance, age):
-				continue
-			var half := ring.thickness * 0.5 + clearance
-			var distance := point.length()
-			if distance < 0.0001:
-				# Au centre exact : aucune direction n'est « dehors ». On sort vers le bas,
-				# la convention du projet quand un vecteur nul rendrait NaN.
-				point = Vector2(0.0, -(ring.radius + half))
-				continue
-			# ⚠️ UN CHEVEU AU-DELA DU BORD, ET C'EST NECESSAIRE. Repousser PILE sur la face
-			# laisse le point dans le mur au sens de `blocks()` (comparaison large), et la
-			# passe suivante le repousse a nouveau : le joueur reste collé, vibrant.
-			var inward := ring.radius - half - EDGE_EPSILON
-			var outward := ring.radius + half + EDGE_EPSILON
-			var to_in := absf(distance - inward)
-			var to_out := absf(outward - distance)
-			point = point.normalized() * (inward if to_in <= to_out else outward)
-	return point
 
 
 ## Un azimut où le corridor est ouvert, à l'instant `age` — celui le plus PROCHE de
@@ -165,3 +68,37 @@ static func nearest_opening(rings: Array[ReactorRing], from_deg: float, age: flo
 			best_gap = gap
 			best = bearing
 	return best
+
+
+## Verse les murs de CET instant dans un jeu de formes, prêt pour [PlaneCollider].
+##
+## ⚠️ C'EST ICI, ET NULLE PART AILLEURS, QUE VIT LA CONVENTION DE ROTATION. Le décor
+## (`CoreInterior.build_rings`) dessine un arc plein de `start = k x pas + ouverture/2` puis
+## fait tourner son pivot de `-(phase + vitesse x age)` — le signe est inversé parce que la
+## rotation d'un `Node3D` autour de Y va à l'envers de l'azimut du plan. Dans le plan, ça
+## revient donc à AJOUTER cet angle. Se tromper de signe ici ferait bloquer le tir là où
+## l'on voit une ouverture : le pire défaut possible pour cette phase, et le seul que le
+## joueur ne pourrait pas apprendre.
+##
+## `shapes` est vidé puis rempli — il appartient à l'appelant, qui l'a dimensionné une fois.
+static func fill_shapes(shapes: PlaneShapes, rings: Array[ReactorRing],
+		centre: Vector2, age: float) -> void:
+	for ring in rings:
+		if ring == null or ring.apertures < 1:
+			continue
+		var step := 360.0 / float(ring.apertures)
+		var span := step - ring.aperture_deg
+		if span <= 0.0:
+			continue
+		var turn := ring.phase_deg + ring.speed_deg * age
+		for k in ring.apertures:
+			shapes.add_ring_arc(centre, ring.radius, ring.thickness,
+				float(k) * step + ring.aperture_deg * 0.5 + turn, span)
+
+## Combien de formes `fill_shapes()` produira — pour dimensionner UNE fois.
+static func shape_count(rings: Array[ReactorRing]) -> int:
+	var total := 0
+	for ring in rings:
+		if ring != null and ring.apertures >= 1 and ring.aperture_deg < 360.0 / float(ring.apertures):
+			total += ring.apertures
+	return total

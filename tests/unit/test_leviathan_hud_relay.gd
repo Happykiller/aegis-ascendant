@@ -59,6 +59,18 @@ func _ride_dive(combat: LeviathanCombat) -> void:
 	combat.tick(t.dive_eject_time + 0.01)
 	combat.tick(2.0)
 
+## Plonge ET FRAPPE. ⚠️ Depuis que la jauge du boss ne lit que le flux, `_ride_dive()` seul
+## ne fait plus avancer le combat — et c'est la regle, pas un manque : traverser le noyau
+## sans toucher le flux ne tue rien. Les tests de progression doivent donc frapper.
+func _ride_dive_and_hit(combat: LeviathanCombat) -> void:
+	var t := combat.tuning
+	combat.tick(0.016)
+	combat.tick(t.dive_enter_time + 0.01)
+	combat._on_flux_hit(t.flux_damage_per_dive())
+	combat.tick(t.dive_time + 0.01)
+	combat.tick(t.dive_eject_time + 0.01)
+	combat.tick(2.0)
+
 # --- La jauge ---------------------------------------------------------------
 
 func test_the_hud_gauge_shows_the_fight_not_the_current_target() -> void:
@@ -68,7 +80,7 @@ func test_the_hud_gauge_shows_the_fight_not_the_current_target() -> void:
 	var combat := _make_combat()
 	var level := _make_level(combat)
 	_kill_armour(combat)
-	_ride_dive(combat)
+	_ride_dive_and_hit(combat)
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001,
 		"pre-requis : la cible courante s'est bien remplie")
 	assert_true(combat.fight_ratio() < 1.0, "pre-requis : la progression, elle, a baisse")
@@ -87,7 +99,7 @@ func test_the_hud_gauge_never_climbs_back_up() -> void:
 		level._on_leviathan_structure(combat.structure_ratio())
 		_kill_armour(combat)
 		level._on_leviathan_structure(combat.structure_ratio())
-		_ride_dive(combat)
+		_ride_dive_and_hit(combat)
 	level._on_leviathan_structure(combat.structure_ratio())
 	var spy: HudSpy = level._hud
 	assert_true(spy.health.size() >= 7, "les sept relais ont eu lieu")
@@ -121,7 +133,12 @@ func test_beyond_the_last_cycle_the_counter_is_NAMED_not_numbered() -> void:
 		assert_eq(label, "DERNIER ASSAUT", "au-dela du dernier cycle, on NOMME le depassement")
 		assert_false(label.contains("/"), "et surtout on ne compte plus : jamais de « 4 / 3 »")
 
-func test_a_fourth_cycle_is_playable_and_stays_readable() -> void:
+## ⚠️ CETTE GARDE EXIGEAIT QUE LA PROGRESSION AVANCE SANS QU'ON TOUCHE LE FLUX. C'etait la
+## consequence de l'ancienne jauge, qui comptait l'armure : quatre cycles rates faisaient
+## descendre la barre du boss d'un tiers alors que RIEN n'avait ete tue. Elle affirme
+## desormais l'inverse, qui est la promesse faite au joueur — la barre dit ce qu'il a
+## reellement abattu.
+func test_a_fourth_cycle_is_playable_and_the_gauge_tells_the_truth() -> void:
 	# Le depassement n'est pas une panne : il doit rester jouable. Quatre cycles d'affilee,
 	# sans degats sur le flux — exactement la partie du 2026-08-25.
 	var combat := _make_combat()
@@ -131,6 +148,9 @@ func test_a_fourth_cycle_is_playable_and_stays_readable() -> void:
 		_ride_dive(combat)
 	assert_true(combat.cycle() >= 3, "on est bien alle au-dela des trois cycles prevus")
 	assert_true(combat.plates().size() > 0, "et l'armure est revenue : le combat continue")
-	var progress := combat.fight_ratio()
-	assert_true(progress >= 0.0 and progress < 1.0,
-		"la progression reste bornee et a bien avance, meme hors des cycles prevus")
+	assert_almost_eq(combat.fight_ratio(), 1.0, 0.001,
+		"quatre cycles sans toucher le flux : la barre du boss est INTACTE, et elle a raison")
+	level._on_leviathan_structure(combat.structure_ratio())
+	var spy: HudSpy = level._hud
+	assert_almost_eq(spy.health[spy.health.size() - 1], 1.0, 0.001,
+		"et c'est bien ce que le HUD affiche")

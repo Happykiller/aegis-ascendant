@@ -217,6 +217,9 @@ extends Resource
 ## compris. La collision se règle sur ce qui se regarde.
 @export var wall_clearance: float = 0.85
 
+## Marge entre le mur le plus extérieur et le point où le chasseur apparaît dans la chambre.
+@export var dive_entry_margin: float = 0.50
+
 ## Rayon pris en compte pour la ligne de tir. Les canons d'aile montent en parallèle, écartés
 ## de l'axe : une ligne infiniment fine laisserait passer leurs bolts par le bord d'une
 ## ouverture que le tir central, lui, ne franchit pas.
@@ -349,16 +352,6 @@ func armor_share() -> float:
 		armor += armor_duration(cycle)
 	return armor / total
 
-## Total des points de vie du combat — dimensionnement uniquement.
-##
-## ⚠️ N'EST PAS LE DÉNOMINATEUR DE LA JAUGE. Il l'a été, et c'est ce qui faisait mentir le
-## HUD : briser toute l'armure ne valait que 30 % d'une barre qui comptait quatre phases.
-func total_structure() -> float:
-	var total := flux_health
-	for cycle in cycle_count:
-		total += plate_health * float(plates_for_cycle(cycle))
-	return total
-
 ## Durée pendant laquelle une plaque reste dans l'arc à chaque passage, au premier cycle.
 func plate_window() -> float:
 	return shell_orbit_period * plate_arc_deg / 360.0
@@ -382,6 +375,23 @@ func flux_damage_window() -> float:
 func flux_reachable_per_dive() -> float:
 	var shielded := ring_occupancy if not reactor_rings.is_empty() else 1.0
 	return flux_reference_dps * occupancy_dive * flux_damage_window() * shielded
+
+## Où le chasseur apparaît en plongeant, RELATIVEMENT au centre du réacteur.
+##
+## ⚠️ IL ÉTAIT ÉCRIT EN DUR — `Vector2(0, -5)` dans le niveau — et il tombait DANS le mur.
+## Avec l'envergure du chasseur, l'anneau extérieur bloquait de 4,45 à 7,15 : le dégagement
+## poussait le nouvel arrivant vers l'intérieur, dans un couloir de 0,9 u dont il ne pouvait
+## plus sortir. « Je fonce tout droit et à l'apparition de la phase interne mon vaisseau est
+## bloqué, il avance pas » (playtest du 2026-08-27).
+##
+## Il se DÉDUIT désormais des anneaux livrés : changer un rayon déplace l'entrée avec lui, et
+## `test_the_dive_entry_is_never_inside_a_wall` refuse la combinaison qui l'enfermerait.
+func dive_entry_local() -> Vector2:
+	var outermost := 0.0
+	for ring in reactor_rings:
+		if ring != null:
+			outermost = maxf(outermost, ring.radius + ring.thickness * 0.5)
+	return Vector2(0.0, -(outermost + wall_clearance + dive_entry_margin))
 
 func flux_damage_per_dive() -> float:
 	return flux_health / float(maxi(cycle_count, 1))

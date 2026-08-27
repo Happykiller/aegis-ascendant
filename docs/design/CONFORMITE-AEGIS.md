@@ -264,7 +264,7 @@ ennemis coriaces le ralentit, à durée de phase identique.
 | `LOI-SYS-04` MDA | ✅ tenue | rien à corriger : c'est une loi de méthode |
 | `LOI-SYS-05` ressource dépensable | ❌ **absente** | **aucune ressource ne se dépense** — voir ci-dessous |
 | `LOI-SYS-06` règle cachée | ✅ tenue | par absence : aucun système adaptatif caché |
-| `LOI-SYS-07` viser en se déplaçant | ✅ tenue **depuis `ADR-0031`** | le blindage rotatif du boss final l'enfreignait : il demandait au joueur d'« aller chercher le corridor », ce qu'un chasseur qui tire `DIR_UP` ne peut pas faire. Douze plongées au lieu de trois, et aucun test rouge. Ouvertures élargies (13 % -> 44 % de ligne de tir dégagée), et `test_the_shield_opens_as_often_as_the_balance_assumes` confronte désormais la géométrie livrée à `ring_occupancy` |
+| `LOI-SYS-07` viser en se déplaçant | ✅ tenue **depuis `ADR-0031`** | le blindage rotatif du boss final l'enfreignait : il demandait au joueur d'« aller chercher le corridor », ce qu'un chasseur qui tire `DIR_UP` ne peut pas faire. Douze plongées au lieu de trois, et aucun test rouge. Ouvertures élargies, puis la mesure elle-même corrigée : les 44 % annoncés comptaient un tir SANS ÉPAISSEUR ; le long de la vraie ligne, avec `bolt_radius`, la géométrie livrée ouvre 31 % du temps (`ADR-0032`). C'est cette valeur qui dimensionne le flux, et `test_the_shield_opens_as_often_as_the_balance_assumes` confronte désormais la géométrie livrée à `ring_occupancy` |
 
 ### Inventaire des boucles
 
