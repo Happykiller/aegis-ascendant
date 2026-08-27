@@ -244,6 +244,9 @@ func _ready() -> void:
 	# position : sans elle, une trace ne distingue pas « il va à droite » de « il est poussé
 	# à droite », et c'est exactement la question posée.
 	_dive_trace = "--dive-trace" in args
+	ReactorRings.disabled = "--no-rings" in args
+	if ReactorRings.disabled:
+		print("[Level] ISOLATION : aucun mur dans la chambre (--no-rings)")
 	if "--density-probe" in args and _bullets != null:
 		add_child(DensityProbe.make(_bullets, phase_label))
 	# Aucun de ces sauts n'éteint le semeur lui-même : `_set_phase()` le fait pour tout le

@@ -20,6 +20,13 @@ class_name ReactorRings
 ## rythme, pour que l'œil ne repère pas la boucle. Ici il faut qu'elles se croisent SOUVENT,
 ## pour que le joueur ne reste jamais enfermé. Deux problèmes opposés, deux réglages opposés.
 
+## ⚠️ INTERRUPTEUR D'ISOLATION (`--no-rings`) : plus AUCUN mur, ni en collision ni au décor.
+## « La méthode de la sphère indienne : vire les murs, on teste sans » (opérateur,
+## 2026-08-28). Quand un symptôme survit à quatre correctifs, on retire l'élément suspect
+## et on regarde si le symptôme part avec lui. Si le chasseur pousse encore à droite sans
+## un seul mur, les murs sont hors de cause — et on aura cessé de les accuser pour de bon.
+static var disabled: bool = false
+
 ## Azimut d'ouverture le plus proche, à défaut d'en trouver un : rend une valeur hors du
 ## cercle pour qu'aucun appelant ne la prenne pour une direction valide.
 const NO_OPENING := INF
@@ -28,7 +35,7 @@ const NO_OPENING := INF
 
 ## Cet anneau laisse-t-il passer à `bearing_deg`, à l'instant `age` ?
 static func ring_open(ring: ReactorRing, bearing_deg: float, age: float) -> bool:
-	if ring == null or ring.apertures < 1:
+	if disabled or ring == null or ring.apertures < 1:
 		return true
 	var step := 360.0 / float(ring.apertures)
 	# Repli du tour sur UN secteur : les ouvertures étant régulières, il suffit de comparer
@@ -83,6 +90,8 @@ static func nearest_opening(rings: Array[ReactorRing], from_deg: float, age: flo
 ## `shapes` est vidé puis rempli — il appartient à l'appelant, qui l'a dimensionné une fois.
 static func fill_shapes(shapes: PlaneShapes, rings: Array[ReactorRing],
 		centre: Vector2, age: float) -> void:
+	if disabled:
+		return
 	for ring in rings:
 		if ring == null or ring.apertures < 1:
 			continue

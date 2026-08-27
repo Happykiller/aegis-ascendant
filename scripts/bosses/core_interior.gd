@@ -216,6 +216,8 @@ func pulse_target_marker(age: float, exposed: bool = true) -> void:
 ## garantit qu'on tire là où l'on voit une ouverture. Deux sources séparées auraient fini
 ## par diverger, et le joueur aurait tiré dans un blindage plein en croyant viser un trou.
 func build_rings(rings: Array[ReactorRing]) -> void:
+	if ReactorRings.disabled:
+		return   # isolation `--no-rings` : pas de murs, ni au decor ni en collision
 	for node in _rings:
 		node.queue_free()
 	_rings.clear()

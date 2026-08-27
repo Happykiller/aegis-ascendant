@@ -909,6 +909,51 @@ func test_the_hull_is_solid_outside_and_the_walls_inside() -> void:
 	assert_false(PlaneCollider.blocks(shapes, boss.plane_position, 0.0),
 		"mais plus la coque : elle n'existe pas dans le noyau")
 
+## ⚠️ LE NOYAU NE SE FAIT PAS ECRAN A LUI-MEME — et il l'a fait pendant un jour entier.
+##
+## Le garde `test_the_shield_opens_as_often_as_the_balance_assumes` testait la ligne de tir
+## contre des anneaux SANS le noyau : vert. Le jeu, lui, versait le noyau dans les memes
+## formes, et la ligne — qui s'arrete PILE sur son bord — le trouvait a chaque image. Le
+## flux etait desactive en permanence, une cible d'arret se posait sur son bord, et le
+## joueur tirait dans un mur invisible : « la vie du boss ne descend pas quand je tire sur
+## le reacteur » (playtest du 2026-08-28). Ce test passe par le chemin du JEU : un joueur
+## present, la plongee entree, l'ancrage pose — exactement la configuration qui echouait.
+func test_the_flux_is_a_target_when_no_wall_is_in_the_way() -> void:
+	var rig := _rig()
+	var boss: BossController = rig[0]
+	var combat: LeviathanCombat = rig[1]
+	var player := track(PlayerFighterController.new()) as PlayerFighterController
+	player.stats = load("res://resources/player/specter9_stats.tres")
+	combat._player = player
+	# Sans verrous orbitaux : ils sont eteints dans le reglage livre, et ce test ne parle
+	# que du noyau. Les valeurs par defaut du script en gardent quatre.
+	combat.tuning.node_count = 0
+	# ⚠️ AVEC LES ANNEAUX LIVRES, sinon la ligne de tir n'est jamais testee — et cette garde
+	# etait verte sur le defaut qu'elle pretend attraper (verifie : elle ne tombait pas).
+	# On les declare pour que le test de ligne s'execute, et on les ETEINT pendant le tick
+	# pour qu'aucun mur ne barre : seul le noyau reste sur le chemin des balles.
+	var shipped: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.tuning.reactor_rings = shipped.reactor_rings
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat.dive_anchor = Vector2(0.0, 40.0)
+	# Sous le noyau, ligne de tir droite vers le haut, et AUCUN mur : on retire les anneaux
+	# pour ne tester que ce qui est en cause — le noyau lui-meme.
+	player.plane_position = combat.dive_anchor + Vector2(0.0, -8.0)
+	ReactorRings.disabled = true
+	combat.tick(0.016)
+	ReactorRings.disabled = false
+	assert_true(combat.reactor_open(),
+		"sans aucun mur, la ligne de tir vers le noyau est OUVERTE")
+	assert_true(combat._flux_target.enabled,
+		"et le flux est une cible — il ne se fait pas ecran a lui-meme")
+	var before: float = combat._flux_health
+	combat._on_flux_hit(10.0)
+	assert_true(combat._flux_health < before,
+		"un coup sur le flux fait baisser sa sante (%.0f -> %.0f)" % [before, combat._flux_health])
+	assert_true(boss != null, "le rig tient")
+
 ## Une plaque a terre ne bloque plus. C'est la recompense de l'avoir abattue — la voir tomber
 ## sans pouvoir passer serait pire que de ne rien montrer.
 func test_a_fallen_plate_stops_blocking() -> void:

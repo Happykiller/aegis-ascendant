@@ -920,29 +920,26 @@ func solid_capacity() -> int:
 	return maxi(ReactorRings.shape_count(tuning.reactor_rings) + 1,
 		tuning.plate_count + 1)
 
-## Refait les formes de la chambre pour CET instant : les murs tournant, plus le noyau.
+## Refait les formes qui peuvent BARRER LA LIGNE DE TIR pour cet instant : les murs, et rien
+## d'autre.
 ##
-## ⚠️ LE NOYAU EST UN CORPS, ET IL NE L'ÉTAIT PAS. « Le réacteur central ne devrait pas être
-## franchissable » (playtest du 2026-08-27) : on lui traversait le ventre. Il entre ici comme
-## un disque au même titre qu'un mur — c'est tout l'intérêt d'avoir un module de collision
-## plutôt qu'un cas particulier par obstacle.
+## ⚠️ LE NOYAU N'EN FAIT PAS PARTIE, ET IL EN A FAIT PARTIE PENDANT UN JOUR. Quand il est
+## devenu un corps (« le réacteur central ne devrait pas être franchissable »), il a été
+## versé ici comme un mur — et la ligne de tir, qui s'arrête PILE sur son bord, l'a trouvé
+## à chaque image : la cible faisait écran à elle-même, le flux était désactivé en
+## permanence, et une cible d'ARRÊT se posait sur son bord. Le joueur tirait, voyait des
+## impacts, et la jauge ne bougeait pas : « la vie du boss ne descend pas quand je tire sur
+## le réacteur, c'est comme si derrière il y avait un mur invisible » (playtest du
+## 2026-08-28, capture à l'appui). Le garde `test_the_shield_opens_as_often_as_the_balance_assumes`
+## ne l'a pas vu parce qu'il testait des anneaux SANS le noyau — pas le chemin du jeu.
+##
+## Ce qui arrête le CHASSEUR (noyau compris) est versé par `fill_solids()`, au niveau. Ce
+## qui arrête un TIR est ici. Ce ne sont pas les mêmes questions, et les mélanger a coûté
+## une phase entière.
 func _rebuild_shapes(origin: Vector2) -> void:
 	var centre := _flux_origin(origin)
 	_shapes.clear()
 	ReactorRings.fill_shapes(_shapes, tuning.reactor_rings, centre, _age)
-	_shapes.add_disc(centre + _flux_offset(), tuning.flux_hitbox_radius)
-
-func _enforce_walls(_origin: Vector2) -> void:
-	if _player == null or _shapes.size() == 0:
-		return
-	var here := _player.plane_position
-	# ⚠️ UNE CAPSULE, PAS UN DISQUE. Décrit par un cercle de sa demi-envergure, le chasseur
-	# laissait son NEZ dépasser de 0,38 et entrer dans le blindage — vu en jeu, capture à
-	# l'appui, le 2026-08-27. Le corps se lit dans les stats, où il est MESURÉ sur le modèle.
-	var freed := PlaneCollider.resolve_capsule(_shapes, here, _player.plane_forward(),
-		_player.stats.body_half_length, _player.stats.body_radius)
-	if not freed.is_equal_approx(here):
-		_player.plane_position = freed
 
 ## Le faisceau qui balaie le réacteur. Il tourne en permanence pendant la plongée : c'est
 ## lui qui empêche de camper sous le noyau une fois le corridor trouvé.
