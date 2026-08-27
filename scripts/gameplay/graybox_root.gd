@@ -70,6 +70,12 @@ var _core_marker_age: float = 0.0
 ## Nombre de plaques déjà annoncées par la rangée de reconstruction. Évite de redresser la
 ## rangée à chaque image : `set_boss_limbs` repositionne toute la ligne.
 var _regen_plates: int = 0
+
+## Libellés de la rangée quand elle porte les VERROUS et non les plaques. Quatre lettres :
+## la colonne est étroite, et « VERROU 1 » y déborderait.
+## ⚠️ `var` et non `const` : un `PackedStringArray(...)` n'est pas une expression constante
+## en GDScript, et le script entier refuse alors de se charger.
+static var _LEVIATHAN_LOCK_LABELS := PackedStringArray(["V1", "V2", "V3", "V4", "V5", "V6"])
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
@@ -615,6 +621,8 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 	combat.armour_regen.connect(_on_leviathan_armour_regen)
 	combat.shield_deflected.connect(_on_boss_deflected)
+	combat.node_gauge_changed.connect(_on_leviathan_node_gauge)
+	combat.node_destroyed.connect(_on_leviathan_node_destroyed)
 
 ## La jauge du boss montre la PROGRESSION DU COMBAT — `fight_ratio()`, qui ne remonte
 ## jamais — et non la santé de la cible courante.
@@ -668,6 +676,21 @@ func _on_leviathan_armour_regen(ratio: float, plates: int) -> void:
 			_hud.set_boss_limb(i, 0.0, false)   # à terre : la barre sombre dit « pas encore »
 	for i in plates:
 		_hud.set_boss_limb_regen(i, ratio)
+
+## L'état d'un verrou : la rangée de pastilles le porte, comme elle porte les plaques
+## pendant l'armure. ⚠️ La rangée est ÉTEINTE pendant la plongée depuis `ADR-0025` (« plus de
+## plaques ») : c'est le premier verrou annoncé qui la redresse.
+func _on_leviathan_node_gauge(index: int, ratio: float, alive: bool) -> void:
+	if _hud == null or _leviathan == null:
+		return
+	if _regen_plates != -1:
+		_regen_plates = -1
+		_hud.set_boss_limbs(_LEVIATHAN_LOCK_LABELS.slice(0, _leviathan.tuning.node_count))
+	_hud.set_boss_limb(index, ratio, alive)
+
+func _on_leviathan_node_destroyed(_index: int, world_position: Vector3) -> void:
+	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.35)
+	_sfx(&"medium_explosion")
 
 func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)
@@ -795,6 +818,8 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 		# Le blindage se dresse avec l'arène : ses arcs se déduisent des MÊMES Resources
 		# que la mécanique, jamais d'une copie.
 		_core_interior.build_rings(_leviathan.tuning.reactor_rings)
+		_core_interior.build_nodes(_leviathan.tuning.node_count)
+		_regen_plates = 0   # la rangée se redressera au premier verrou annoncé
 	_dive_camera(false, true)
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
@@ -978,6 +1003,9 @@ func _track_core_target(delta: float) -> void:
 	# laisserait le joueur tirer dans un blindage plein sans rien pour l'en avertir.
 	_core_interior.pulse_target_marker(_core_marker_age, _leviathan.reactor_open())
 	_core_interior.pose_rings(_leviathan.tuning.reactor_rings, _leviathan.combat_age())
+	for i in _leviathan.tuning.node_count:
+		_core_interior.pose_node(i, _leviathan.node_plane_position(i),
+			_leviathan.node_alive(i), _core_marker_age)
 
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 

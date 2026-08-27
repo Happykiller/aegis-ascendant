@@ -62,7 +62,14 @@ spine_windup_time = 1.0
 spine_beam_time = 0.9
 spine_damage = 24.0
 spine_interval = 3.2
-flux_health = 2400.0
+; ⚠️ 2400 -> 780 : LA CONSEQUENCE HONNETE DU BLINDAGE. Le noyau n'est atteignable que 45 %
+; du temps et il faut d'abord abattre quatre verrous : a sante egale, le combat aurait
+; depasse sa duree cible de vingt-sept secondes. Moins de sante pour autant de temps de
+; combat — ce n'est pas un adoucissement, c'est le meme combat avec une porte devant.
+;
+; ⚠️ Le DEFAUT du script reste a 2400, et c'est voulu : il n'a pas d'anneaux, donc pas de
+; porte. Les deux valeurs decrivent deux configurations differentes, chacune coherente.
+flux_health = 780.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est
@@ -73,7 +80,10 @@ dive_enter_time = 1.4
 ;
 ; ⚠️ C'est la SORTIE DE SECOURS, pas la duree reelle : depuis le playtest du 2026-08-27, le
 ; quota rempli ejecte tout de suite. Un joueur qui trouve ses corridors sort bien avant.
-dive_time = 11.0
+; ⚠️ INCHANGEE, et c'est le resultat le plus important du lot 3 : le blindage et les verrous
+; tiennent DANS la plongee de cinq secondes. Le premier reglage essaye la portait a 14 s et
+; faisait durer le combat 67 s au lieu de 40 — deux gardes l'ont refuse.
+dive_time = 5.0
 dive_eject_time = 1.0
 pull_speed_max = 7.0
 pull_radius = 16.0

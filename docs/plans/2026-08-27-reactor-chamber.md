@@ -3,7 +3,7 @@ titre: Reactor Chamber — la phase du noyau devient une machine, pas une cible
 date: 2026-08-27
 auteur: session Claude, sur spécification et planche de l'opérateur
 perimetre: phase DIVE du Pale Leviathan (CoreInterior), assets de forge, budget GPU
-etat: **B2 tranché (`ADR-0030`), LOTS 1 ET 2 LIVRÉS**. Lots 3-5 entiers ;
+etat: **B2 tranché (`ADR-0030`), LOTS 1, 2 ET 3 LIVRÉS**. Lots 4-5 entiers ;
   B1 (budget GPU) et B4 (forge) restent ouverts, B3 partiellement tranché
 supersede: rien. Amenderait `ADR-0025` (l'arène) et `ADR-0026` (le plafond par plongée)
 ---
@@ -150,7 +150,7 @@ balayage avec son secteur sûr mobile.
 
 Coût faible, rendement élevé : c'est ce qui force à bouger même quand on pourrait rester sous le boss.
 
-### Lot 3 — Les nodes orbitaux
+### Lot 3 — Les nodes orbitaux ✅ LIVRÉ le 2026-08-27
 
 Sous-cibles destructibles en orbite, qui **verrouillent** le réacteur tant qu'elles vivent. L'idiome
 existe (plaques, appendices) **et la rangée de pastilles du HUD sait déjà** afficher leur état, leur
@@ -269,3 +269,58 @@ toujours en concurrence avec les explosions et les bonus. Le laser ne la tranche
 Deux lots, **aucun coût mesurable** : les arcs sont des `ArrayMesh` de quelques dizaines de
 triangles, et le faisceau un quad. **B1 reste entier pour les lots 4 et 5**, qui portent les rails
 et le décor animé — c'est là que le budget se jouera.
+
+
+---
+
+## Lot 3 — et la leçon d'équilibrage de la journée
+
+Quatre verrous orbitent **en dehors** de l'anneau extérieur — atteignables sans corridor, sinon il
+aurait fallu ouvrir le blindage pour détruire ce qui verrouille le blindage. Ils reviennent
+**entiers** à chaque plongée : les cycles ne se cumulent pas, l'armure non plus.
+
+### ⚠️ Le premier réglage aurait cassé deux promesses, et deux gardes l'ont refusé
+
+Sizing naïf : 4 verrous × 130 PV demandent 2,5 s de tir, et pendant ce temps le flux est
+**intouchable**. Pour que le quota reste atteignable, la plongée passait à **14 s** — et le combat
+entier à **67 s** au lieu de 40.
+
+Deux tests ont dit non, et ils encodaient des décisions prises en playtest :
+
+- *« la plongée est courte exprès »* — « on n'aurait pas énormément de temps pour tirer dessus » ;
+- *« le combat tient sa promesse »* — 40 ± 10 s.
+
+**La conséquence est tombée là où elle devait : sur la santé du flux** (2400 → 780). Le noyau
+n'est atteignable qu'une fraction du temps et il faut d'abord abattre quatre verrous : il lui faut
+donc bien moins de points de vie pour le même combat. La durée de la plongée et celle du combat
+sont des **promesses faites au joueur** ; la santé du flux n'est qu'un moyen.
+
+Réglage final : **plongée 5,0 s — inchangée**, 4 verrous × 90 PV, flux 780. Combat : **40,1 s**.
+
+### Trois formules qui étaient recopiées
+
+`dps × occupancy × dive_time` vivait dans `validate()` **et** dans trois tests. Deux d'entre eux
+sont devenus faux le jour où le blindage puis les verrous ont retranché leur part.
+`flux_reachable_per_dive()` et `flux_damage_window()` l'exposent désormais — même remède que
+`flux_drift_envelope()` au lot 1.
+
+Et une garde tenait un **883 mesuré en playtest**, relevé sur une plongée sans blindage. Elle porte
+désormais sur le **mécanisme** (`ADR-0026` plafonne à un tiers par passage) et non sur un relevé qui
+vieillit.
+
+### Deux pièges de langage, tous deux silencieux
+
+- `reactor_rings = [...]` **au-dessus** de `script = ...` dans un `.tres` : ignoré sans un mot (lot 1).
+- `const _LABELS := PackedStringArray([...])` : ce n'est **pas une expression constante** en
+  GDScript, et le script entier refuse de se charger.
+
+### Le budget, toujours (Quadro T1000)
+
+| État | ms/image |
+|---|---:|
+| L'arène avant le chantier | 7,1 – 12,6 |
+| Anneaux | 6,45 |
+| + laser | 5,5 – 7,2 |
+| + verrous | **5,4 – 6,5** |
+
+Trois lots, **aucun coût mesurable**. B1 reste entier pour les lots 4 et 5.

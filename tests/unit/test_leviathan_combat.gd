@@ -726,12 +726,21 @@ func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	# ⚠️ LES VERROUS D'ABORD. Tant qu'un node tient, le corridor ne s'ouvre JAMAIS — c'est
+	# la seconde porte, et l'oublier ici ferait accuser le blindage.
+	for i in combat.tuning.node_count:
+		combat._on_node_hit(combat.tuning.node_health, i)
+	assert_eq(combat.nodes_alive(), 0, "les verrous sont a terre")
 	var seen_open := false
 	var seen_shut := false
 	for step in 200:
 		combat.tick(0.05)
 		if combat.phase() != CombatScript.Phase.DIVE:
 			break
+		# ⚠️ SEULEMENT DANS LE NOYAU. Pendant l'entree et l'ejection, les DEUX cibles sont
+		# eteintes a juste titre : la complementarite ne vaut que la ou l'on tire.
+		if combat._dive != CombatScript.Dive.INSIDE:
+			continue
 		var core: bool = combat._flux_target.enabled
 		var shield: bool = combat._shield_target.enabled
 		assert_true(core != shield,
@@ -740,6 +749,46 @@ func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
 		seen_shut = seen_shut or shield
 	assert_true(seen_open, "le corridor s'ouvre au moins une fois")
 	assert_true(seen_shut, "et il se ferme au moins une fois — sinon le blindage ne sert a rien")
+
+## ⚠️ LES VERROUS SONT LA PREMIERE PORTE, ET ELLE EST ABSOLUE. Corridor ouvert ou non, tant
+## qu'un node tient, le flux est intouchable. Sans cette garde, un reglage qui les
+## desactiverait par megarde rendrait le noyau atteignable des l'entree, et la phase
+## reviendrait a ce qu'elle etait.
+func test_a_single_surviving_lock_keeps_the_core_shut() -> void:
+	var combat := _make()
+	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.dive_anchor = Vector2.ZERO
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	# On en abat tous SAUF un.
+	for i in combat.tuning.node_count - 1:
+		combat._on_node_hit(combat.tuning.node_health, i)
+	assert_eq(combat.nodes_alive(), 1, "il en reste un")
+	for step in 120:
+		combat.tick(0.05)
+		if combat._dive != CombatScript.Dive.INSIDE:
+			break
+		assert_false(combat._flux_target.enabled,
+			"le dernier verrou tient : le noyau reste ferme")
+
+## Ils reviennent ENTIERS a chaque plongee : les cycles ne sont pas cumulatifs, et ils ne
+## l'ont jamais ete pour l'armure non plus.
+func test_the_locks_come_back_whole_on_the_next_dive() -> void:
+	var combat := _make()
+	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	for i in combat.tuning.node_count:
+		combat._on_node_hit(combat.tuning.node_health, i)
+	assert_eq(combat.nodes_alive(), 0, "abattus au premier passage")
+	_ride_dive(combat, 10.0)
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	assert_eq(combat.nodes_alive(), combat.tuning.node_count,
+		"et debout au suivant : les cycles ne se cumulent pas")
 
 func test_three_perfect_dives_are_exactly_enough() -> void:
 	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.

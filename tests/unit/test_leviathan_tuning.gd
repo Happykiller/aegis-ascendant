@@ -131,7 +131,9 @@ func test_the_flux_falls_on_the_last_dive_not_before() -> void:
 	# Trop mou, le boss meurt au premier passage et les cycles ne servent a rien ; trop dur,
 	# le joueur repart pour un tour de plus a chaque fois sans comprendre pourquoi.
 	var t := _tuning()
-	var reachable := t.flux_reference_dps * t.occupancy_dive * t.dive_time
+	# ⚠️ On LIT la portee au reglage, on ne la recalcule pas : la formule a change deux
+	# fois (blindage, puis verrous) et une copie locale serait restee sur l'ancienne.
+	var reachable := t.flux_reachable_per_dive()
 	assert_true(t.flux_damage_per_dive() <= reachable,
 		"%.0f PV a placer par plongee, %.0f atteignables" % [t.flux_damage_per_dive(), reachable])
 	assert_true(t.flux_damage_per_dive() > reachable * 0.55,
@@ -149,7 +151,9 @@ func test_the_flux_is_NOT_sized_against_the_armour_cadence() -> void:
 		"une petite cible mobile ne se frappe pas comme une plaque : %.0f contre %.0f"
 			% [t.flux_reference_dps, t.reference_dps])
 	# Le reglage livre doit garder de la MARGE, pas froler le plafond comme avant.
-	var reachable := t.flux_reference_dps * t.occupancy_dive * t.dive_time
+	# ⚠️ On LIT la portee au reglage, on ne la recalcule pas : la formule a change deux
+	# fois (blindage, puis verrous) et une copie locale serait restee sur l'ancienne.
+	var reachable := t.flux_reachable_per_dive()
 	assert_true(t.flux_damage_per_dive() < reachable * 0.95,
 		"le flux ne doit plus etre calibre au millimetre du plafond : %.0f %% de %.0f PV"
 			% [100.0 * t.flux_damage_per_dive() / reachable, reachable])
@@ -161,16 +165,29 @@ func test_an_ancient_flux_sized_on_the_armour_cadence_is_now_refused() -> void:
 	assert_true(t.validate().size() > 0,
 		"5300 PV, c'etait le flux dimensionne sur la mauvaise cadence")
 
+## Le flux doit encaisser DEUX plongees et ceder pendant la TROISIEME — toute la promesse
+## des cycles.
+##
+## ⚠️ CETTE GARDE TENAIT UN NOMBRE MESURE, ET IL EST DEVENU FAUX. Elle comparait la sante a
+## « ~883 PV places par plongee a puissance maximale », releve au playtest du 2026-08-25 —
+## sur une plongee SANS blindage ni verrous. Depuis, le noyau n'est atteignable qu'une
+## fraction du temps : la mesure ne decrit plus le jeu.
+##
+## Et surtout, ce n'est plus elle qui garantit les cycles. `ADR-0026` a plafonne les degats
+## a UN TIERS par passage : trois cycles sont vrais PAR CONSTRUCTION, pas par calibrage.
+## La garde porte donc desormais sur le mecanisme, pas sur un releve qui vieillit.
 func test_the_flux_survives_a_second_dive_so_the_cycles_happen() -> void:
-	# Mesure du playtest : ~883 PV places par plongee a puissance maximale. Le flux doit
-	# encaisser DEUX de ces plongees et ceder pendant la TROISIEME — c'est toute la
-	# promesse des cycles.
 	var t := _tuning()
-	var placed_per_dive := 883.0
-	assert_true(t.flux_health > placed_per_dive * 2.0,
-		"il tiendrait deux plongees : %.0f PV contre %.0f places" % [t.flux_health, placed_per_dive * 2.0])
-	assert_true(t.flux_health <= placed_per_dive * 3.0,
-		"et il cede a la troisieme : %.0f PV contre %.0f places" % [t.flux_health, placed_per_dive * 3.0])
+	var per_dive := t.flux_damage_per_dive()
+	assert_almost_eq(per_dive * float(t.cycle_count), t.flux_health, 0.01,
+		"les %d passages plafonnes couvrent exactement la sante du flux" % t.cycle_count)
+	assert_true(per_dive * 2.0 < t.flux_health,
+		"deux passages n'y suffisent pas : %.0f contre %.0f PV" % [per_dive * 2.0, t.flux_health])
+	# Et le plafond doit rester ATTEIGNABLE, sinon il ne plafonne rien : c'est ce que
+	# `validate()` verifie, on s'assure seulement que la marge existe.
+	assert_true(per_dive <= t.flux_reachable_per_dive(),
+		"un joueur de reference remplit son quota : %.0f a placer, %.0f atteignables"
+			% [per_dive, t.flux_reachable_per_dive()])
 
 func test_a_flux_too_tough_for_its_dives_is_refused() -> void:
 	var t := _tuning()

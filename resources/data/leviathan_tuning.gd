@@ -174,7 +174,11 @@ extends Resource
 ## du plafond que l'invariant 5 autorise (bande permise : 55 à 100 %). Il n'y avait pas de
 ## marge, il y avait 1 % : la moindre imperfection ouvrait un cycle de plus. À puissance
 ## maximale, le playtest en a ouvert **trois**.
-@export var flux_health: float = 2400.0
+## ⚠️ Le défaut décrit une configuration SANS anneaux (le script n'en porte aucun) : le
+## noyau y est atteignable en permanence, il lui faut donc davantage de santé que dans le
+## réglage livré. Les deux valeurs décrivent deux jeux différents, chacun cohérent — c'est
+## `validate()` qui l'impose, pas une convention.
+@export var flux_health: float = 1400.0
 ## Large : le flux remplit le noyau, on ne le rate pas. Ce n'est pas un test d'adresse,
 ## c'est une récompense — le joueur a brisé une armure pour arriver là.
 @export var flux_hitbox_radius: float = 1.80
@@ -207,6 +211,19 @@ extends Resource
 ## ⚠️ SIMULÉ AVANT D'ÊTRE ÉCRIT, sur trois minutes : un corridor **libre** — ouvert ET hors
 ## du faisceau — existe **100 % du temps**, pire blocage 0,00 s. Le laser met la pression,
 ## il ne condamne jamais. C'est la même exigence que pour les anneaux eux-mêmes.
+# --- Les nodes orbitaux (lot 3) ---------------------------------------------
+
+## Combien de verrous énergétiques tournent autour du réacteur. Zéro les désactive
+## entièrement — le comportement des lots 1 et 2.
+@export_range(0, 6) var node_count: int = 4
+@export var node_health: float = 90.0
+## Rayon d'orbite. ⚠️ AU-DELÀ DE L'ANNEAU EXTÉRIEUR (6,2) : les nodes doivent être
+## atteignables SANS corridor, sinon le joueur devrait ouvrir le blindage pour détruire ce
+## qui verrouille le blindage.
+@export var node_orbit_radius: float = 7.6
+@export var node_orbit_deg: float = 21.0
+@export var node_hitbox_radius: float = 0.62
+
 @export var sweep_speed_deg: float = -29.0
 ## Portée du faisceau depuis le centre du réacteur, en unités.
 @export var sweep_range: float = 16.0
@@ -228,6 +245,12 @@ extends Resource
 @export var dive_enter_time: float = 1.4
 ## Le temps de tir dans le noyau. ⚠️ Court EXPRÈS : « on n'aurait pas énormément de temps
 ## pour tirer dessus avant d'être à nouveau éjecté ».
+## ⚠️ ELLE N'A PAS BOUGÉ, ET C'EST LE RÉSULTAT LE PLUS IMPORTANT DU LOT 3. Le blindage et
+## les verrous auraient pu la faire passer à 14 s — c'était le premier réglage essayé, et il
+## faisait durer le combat 67 s au lieu de 40. Deux gardes l'ont refusé : « la plongée est
+## courte exprès » et « le combat tient sa promesse ». La conséquence est tombée là où elle
+## devait, sur la SANTÉ DU FLUX : le noyau n'est atteignable qu'une fraction du temps, il
+## lui faut donc bien moins de points de vie pour le même combat.
 @export var dive_time: float = 5.0
 @export var dive_eject_time: float = 1.0
 ## Aspiration qui tire le chasseur vers l'ouverture. ⚠️ DOIT rester sous
@@ -317,6 +340,25 @@ func plate_window() -> float:
 	return shell_orbit_period * plate_arc_deg / 360.0
 
 ## Points de vie qu'il faut placer par plongée pour tuer le flux en `cycle_count` passages.
+## Le temps réellement passé à tirer sur le NOYAU pendant une plongée : la durée du séjour,
+## moins ce qu'il faut pour abattre les verrous. Tant qu'un node vit, le flux est
+## intouchable — ces secondes-là ne comptent pas.
+func flux_damage_window() -> float:
+	var clearing := 0.0
+	if node_count > 0:
+		clearing = float(node_count) * node_health / maxf(flux_reference_dps, 0.001)
+	return maxf(dive_time - clearing, 0.0)
+
+## Dégâts qu'un joueur de référence peut réellement placer sur le flux en une plongée.
+##
+## ⚠️ EXPOSÉ PARCE QUE LA FORMULE ÉTAIT RECOPIÉE. Trois tests la refaisaient à la main —
+## `dps × occupancy × dive_time` — et deux d'entre eux sont devenus faux le jour où le
+## blindage et les verrous ont retranché leur part. Une formule dupliquée ne peut que
+## diverger de celle qui décide ; c'est le même remède que `flux_drift_envelope()`.
+func flux_reachable_per_dive() -> float:
+	var shielded := ring_occupancy if not reactor_rings.is_empty() else 1.0
+	return flux_reference_dps * occupancy_dive * flux_damage_window() * shielded
+
 func flux_damage_per_dive() -> float:
 	return flux_health / float(maxi(cycle_count, 1))
 
@@ -439,13 +481,12 @@ func validate() -> PackedStringArray:
 		# ⚠️ `flux_reference_dps`, PAS `reference_dps`. Se comparer à la cadence sur cible
 		# large revient à se donner raison : c'est ce qui a laissé passer un flux 2,2 fois
 		# trop gros, validé à 99 % du plafond autorisé.
-		# Le blindage rotatif retranche sa part : on ne tire pas pendant qu'il est fermé.
-		var shielded := ring_occupancy if not reactor_rings.is_empty() else 1.0
-		var reachable := flux_reference_dps * occupancy_dive * dive_time * shielded
+		var window := flux_damage_window()
+		var reachable := flux_reachable_per_dive()
 		var needed := flux_damage_per_dive()
 		if needed > reachable:
 			errors.append("flux needs %.0f damage per dive but only %.0f is reachable in %.1f s — the fight cannot end in %d cycles"
-				% [needed, reachable, dive_time, cycle_count])
+				% [needed, reachable, window, cycle_count])
 		elif needed < reachable * 0.55:
 			errors.append("flux needs only %.0f of the %.0f damage reachable per dive — it dies far too early, and the cycles never happen"
 				% [needed, reachable])

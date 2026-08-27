@@ -94,6 +94,14 @@ signal reactor_shield_changed(open: bool)
 ## nommé ce défaut sur le Harvester — « tirer dessus sans rien produire à l'écran se lit
 ## comme un défaut, pas comme une armure ».
 signal shield_deflected(world_position: Vector3)
+## L'état d'un verrou orbital : sa part de vie, et s'il tient encore. Le niveau en fait une
+## pastille dans la rangée du HUD — celle-là même qui porte les plaques pendant l'armure.
+signal node_gauge_changed(index: int, ratio: float, alive: bool)
+## Un verrou tombe. Le niveau en fait une explosion à sa position.
+signal node_destroyed(index: int, world_position: Vector3)
+## Les verrous sont tous à terre : le réacteur redevient atteignable — quand le corridor
+## s'ouvre. Émis une fois par plongée.
+signal nodes_cleared
 
 ## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
 ## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
@@ -109,6 +117,12 @@ var _shield_target: BulletTarget
 ## Le faisceau balayant du réacteur, et son horloge d'armement.
 var _sweep: Beam
 var _sweep_age: float = 0.0
+
+## Les verrous orbitaux. Tant qu'il en reste un, le flux est intouchable — même corridor
+## ouvert. C'est le second gate de la phase, et il se démonte à la main.
+var _node_targets: Array[BulletTarget] = []
+var _node_health: PackedFloat32Array = PackedFloat32Array()
+var _nodes_alive: int = 0
 
 ## Rayon auquel les tirs sont arrêtés — celui de l'anneau extérieur du décor.
 ## ⚠️ La valeur vit dans `CoreInterior` : la gerbe doit naître SUR l'anneau qu'on voit, sinon
@@ -449,7 +463,19 @@ func _build_flux() -> void:
 	_shield_target = BulletTarget.make(BulletManager.Team.ENEMY, SHIELD_CATCH_RADIUS,
 		Callable(self, "_on_shield_hit"))
 	_shield_target.enabled = false
+	_node_targets.clear()
+	_node_health.resize(tuning.node_count)
+	for i in tuning.node_count:
+		var node := BulletTarget.make(BulletManager.Team.ENEMY, tuning.node_hitbox_radius,
+			Callable(self, "_on_node_hit").bind(i))
+		node.enabled = false
+		_node_targets.append(node)
 	if _bullet_manager != null:
+		# ⚠️ ORDRE D'ENREGISTREMENT : les verrous D'ABORD. Ils orbitent EN DEHORS de l'anneau
+		# extérieur, donc un bolt les croise avant le blindage ; enregistrés après, le
+		# blindage aurait consommé des tirs destinés à ce qui le verrouille.
+		for node in _node_targets:
+			_bullet_manager.register_target(node)
 		_bullet_manager.register_target(_shield_target)
 		_bullet_manager.register_target(_flux_target)
 
@@ -710,8 +736,11 @@ var dive_anchor: Vector2 = Vector2.INF
 func _update_reactor_shield(origin: Vector2) -> void:
 	if _flux_target == null:
 		return
-	var open := true
-	if not tuning.reactor_rings.is_empty():
+	# ⚠️ DEUX PORTES, ET IL FAUT LES DEUX. Le corridor dit QUAND on peut tirer, les verrous
+	# disent SI. Un joueur qui trouve son corridor avant d'avoir abattu les verrous tire donc
+	# encore dans le vide — d'où la gerbe de déviation, qui vaut pour les deux cas.
+	var open := _nodes_alive == 0
+	if open and not tuning.reactor_rings.is_empty():
 		var bearing := rad_to_deg(_player_bearing(_flux_origin(origin)))
 		open = ReactorRings.is_open(tuning.reactor_rings, bearing, _age)
 	_flux_target.enabled = open
@@ -734,6 +763,63 @@ func _update_reactor_shield(origin: Vector2) -> void:
 ## ouvert.
 func combat_age() -> float:
 	return _age
+
+## Redresse les verrous à chaque entrée dans le noyau : ils reviennent entiers, comme
+## l'armure. Le joueur ne « garde » pas le travail d'une plongée pour la suivante — ce serait
+## rendre les cycles cumulatifs, ce que le combat n'a jamais été.
+func _arm_nodes() -> void:
+	_nodes_alive = 0
+	for i in _node_targets.size():
+		_node_health[i] = tuning.node_health
+		_node_targets[i].enabled = true
+		_nodes_alive += 1
+		node_gauge_changed.emit(i, 1.0, true)
+
+## Les verrous tournent autour du réacteur, régulièrement répartis.
+func _orbit_nodes(origin: Vector2) -> void:
+	if _node_targets.is_empty():
+		return
+	var centre := _flux_origin(origin)
+	var step := TAU / float(_node_targets.size())
+	var turn := deg_to_rad(tuning.node_orbit_deg * _age)
+	for i in _node_targets.size():
+		if not _node_targets[i].enabled:
+			continue
+		var a := turn + step * float(i)
+		_node_targets[i].position = centre \
+			+ Vector2(cos(a), sin(a)) * tuning.node_orbit_radius
+
+func _on_node_hit(damage: float, index: int) -> void:
+	if index < 0 or index >= _node_targets.size():
+		return
+	if not _node_targets[index].enabled:
+		return
+	_node_health[index] = maxf(_node_health[index] - damage, 0.0)
+	_account(damage)
+	node_gauge_changed.emit(index, _node_health[index] / maxf(tuning.node_health, 0.001), true)
+	if _node_health[index] > 0.0:
+		return
+	_node_targets[index].enabled = false
+	_nodes_alive -= 1
+	node_gauge_changed.emit(index, 0.0, false)
+	node_destroyed.emit(index, GameplayPlane.to_world(_node_targets[index].position))
+	if _nodes_alive <= 0:
+		nodes_cleared.emit()
+
+## Où se trouve un verrou, dans le plan de jeu. Le décor s'en sert pour le dessiner : une
+## seconde source de position ferait dessiner le verrou ailleurs qu'il ne se touche.
+func node_plane_position(index: int) -> Vector2:
+	if index < 0 or index >= _node_targets.size():
+		return Vector2.ZERO
+	return _node_targets[index].position
+
+## Ce verrou tient-il encore ?
+func node_alive(index: int) -> bool:
+	return index >= 0 and index < _node_targets.size() and _node_targets[index].enabled
+
+## Combien de verrous tiennent encore.
+func nodes_alive() -> int:
+	return _nodes_alive
 
 ## Le faisceau qui balaie le réacteur. Il tourne en permanence pendant la plongée : c'est
 ## lui qui empêche de camper sous le noyau une fois le corridor trouvé.
@@ -976,6 +1062,7 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 				_set_dive(Dive.INSIDE)
 		Dive.INSIDE:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
+			_orbit_nodes(origin)
 			_update_reactor_shield(origin)
 			_update_sweep(delta, origin)
 			if _dive_elapsed >= tuning.dive_time:
@@ -1002,6 +1089,7 @@ func _set_dive(next: Dive) -> void:
 			_sweep_age = 0.0
 			if _sweep != null:
 				_sweep.visible = not tuning.reactor_rings.is_empty()
+			_arm_nodes()
 			_local_damage = 0.0
 			_dive_damage = 0.0
 			_publish_structure()
@@ -1011,6 +1099,9 @@ func _set_dive(next: Dive) -> void:
 			_reactor_open = false
 			if _shield_target != null:
 				_shield_target.enabled = false
+			for node in _node_targets:
+				node.enabled = false
+			_nodes_alive = 0
 			if _sweep != null:
 				_sweep.extinguish()
 				_sweep.visible = false
@@ -1490,6 +1581,10 @@ func release() -> void:
 		missile.target.enabled = false
 		_bullet_manager.unregister_target(missile.target)
 	_missiles.clear()
+	for node in _node_targets:
+		node.enabled = false
+		_bullet_manager.unregister_target(node)
+	_node_targets.clear()
 	if _shield_target != null:
 		_shield_target.enabled = false
 		_bullet_manager.unregister_target(_shield_target)

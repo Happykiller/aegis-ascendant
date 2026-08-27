@@ -70,6 +70,15 @@ const RING_STEP_DEG := 5.0
 const RING_LIFT := -0.08
 
 var _rings: Array[Node3D] = []
+
+## Taille d'un verrou à l'écran.
+##
+## ⚠️ 0,055 A ÉTÉ ESSAYÉ ET REGARDÉ : les verrous rendaient des NUAGES de 180 px, plus larges
+## que le réacteur lui-même. Un point doux grossi ne devient pas une pièce, il devient une
+## brume — et une pièce à abattre doit avoir un bord. On reste juste au-dessus du repère de
+## cible (0,030) : plus gros que lui, sans lui disputer l'écran.
+const NODE_SIZE := 0.018
+var _nodes: Array[Sprite3D] = []
 var _entry_plane: Vector2 = FALLBACK_ENTRY
 ## Vrai quand on a monté la doublure procédurale faute de décor livré. Le niveau le
 ## journalise : un intérieur en doublure ne doit jamais passer pour l'asset final.
@@ -192,6 +201,45 @@ func _arc(radius: float, start_deg: float, span_deg: float) -> MeshInstance3D:
 	node.material_override = material
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return node
+
+## Dresse les verrous orbitaux. Même point doux que le repère de cible, en plus gros et en
+## CYAN-VERT : ils ne sont ni la cible (orange) ni le blindage (violet), et le joueur doit
+## pouvoir les distinguer d'un coup d'œil pendant qu'il cherche son corridor.
+func build_nodes(count: int) -> void:
+	for node in _nodes:
+		node.queue_free()
+	_nodes.clear()
+	for i in count:
+		var sprite := Sprite3D.new()
+		sprite.name = "Lock%d" % i
+		sprite.texture = SoftDot.texture()
+		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		sprite.shaded = false
+		sprite.transparent = true
+		sprite.no_depth_test = true
+		sprite.render_priority = 3
+		sprite.pixel_size = NODE_SIZE
+		sprite.visible = false
+		add_child(sprite)
+		_nodes.append(sprite)
+
+## Pose un verrou. `alive` faux l'éteint — un verrou abattu ne doit plus rien désigner.
+##
+## ⚠️ Appelée par index et non par tableau : un `PackedVector2Array` reconstruit à chaque
+## image allouerait soixante fois par seconde, pour quatre positions.
+func pose_node(index: int, plane_position: Vector2, alive: bool, age: float) -> void:
+	if index < 0 or index >= _nodes.size():
+		return
+	var sprite := _nodes[index]
+	sprite.visible = alive
+	if not alive:
+		return
+	sprite.position = GameplayPlane.to_world(plane_position) + Vector3(0.0, MARKER_LIFT, 0.0)
+	# Ils RESPIRENT, sans battre : le battement rapide appartient au noyau vulnérable, et
+	# deux choses qui battent pareil se lisent comme la même chose.
+	var breath := 0.5 + 0.5 * sin(age * 2.1 + float(index) * 1.7)
+	sprite.modulate = Color(0.40 + 0.22 * breath, 1.0, 0.72 + 0.20 * breath,
+		0.55 + 0.30 * breath)
 
 func reactor_plane_position() -> Vector2:
 	return _reactor_plane
