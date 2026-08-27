@@ -31,6 +31,10 @@ const EDGE_EPSILON := 0.01
 ## deux suffisent tant que les formes ne s'empilent pas à plus de deux d'épaisseur.
 const RESOLVE_PASSES := 2
 
+## Un corps allongé sort en plusieurs fois : chaque passe ne dégage que le point le plus
+## enfoncé, et un vaisseau enfoncé sur toute sa longueur en demande plusieurs.
+const CAPSULE_PASSES := 6
+
 # --- Interrogation ------------------------------------------------------------
 
 ## Le point est-il dans la forme `index`, corps de rayon `body` compris ?
@@ -197,3 +201,74 @@ static func _closest_on_segment(point: Vector2, a: Vector2, b: Vector2) -> Vecto
 
 static func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
 	return point.distance_to(_closest_on_segment(point, a, b))
+
+# --- Les corps allongés --------------------------------------------------------
+
+## Dégage une CAPSULE — un corps plus long que large, comme un vaisseau.
+##
+## ⚠️ UN VAISSEAU N'EST PAS UN DISQUE, et le croire a laissé passer son nez à travers les
+## murs. `specter_9.glb` mesure 1,30 de large pour 2,41 de long : décrit par un cercle de
+## 0,85 — sa demi-envergure — il couvrait ses ailes et débordait de 0,38 devant. Le joueur
+## voyait sa pointe entrer dans le blindage, et il avait raison.
+##
+## On échantillonne l'axe, on regarde quel point est le plus enfoncé, et on translate TOUT
+## le corps de ce que ce point exige. Translater et non pivoter : dans un shoot vertical, le
+## vaisseau garde son cap (`LOI-SYS-07`), donc son axe ne tourne pas.
+static func resolve_capsule(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
+		half_length: float, radius: float, samples: int = 5) -> Vector2:
+	if shapes.size() == 0:
+		return centre
+	var direction := axis.normalized() if axis.length() > 0.0001 else Vector2(0.0, 1.0)
+	var count := maxi(samples, 2)
+	var out := centre
+	for _pass in CAPSULE_PASSES:
+		if not capsule_blocks(shapes, out, direction, half_length, radius, count):
+			break
+		# ⚠️ ON NE PREND PAS LA PLUS GRANDE CORRECTION, ET C'ÉTAIT LE PREMIER RÉFLEXE. Chaque
+		# point de l'axe veut sortir par le côté LE PLUS PROCHE DE LUI : quand le nez a déjà
+		# dépassé le plan médian d'un mur mince, sa sortie la plus courte est EN AVANT — et
+		# suivre la plus grande correction pousse alors tout le vaisseau À TRAVERS le mur.
+		# Vu en test, et c'est exactement le défaut qu'on prétendait corriger.
+		#
+		# On juge donc chaque candidate à ce qu'elle DONNE : celle qui laisse le moins de
+		# points enfoncés gagne, et à égalité la plus courte. Le corps recule ou avance d'un
+		# bloc, mais il ne traverse plus.
+		var best := Vector2.ZERO
+		var best_stuck := count + 1
+		var best_length := INF
+		for s in count:
+			var t := lerpf(-half_length, half_length, float(s) / float(count - 1))
+			var probe := out + direction * t
+			var shift := resolve(shapes, probe, radius) - probe
+			if shift.length() <= 0.0:
+				continue
+			var stuck := _stuck_count(shapes, out + shift, direction, half_length,
+				radius, count)
+			if stuck < best_stuck or (stuck == best_stuck and shift.length() < best_length):
+				best_stuck = stuck
+				best_length = shift.length()
+				best = shift
+		if best == Vector2.ZERO:
+			break
+		out += best
+	return out
+
+static func _stuck_count(shapes: PlaneShapes, centre: Vector2, direction: Vector2,
+		half_length: float, radius: float, count: int) -> int:
+	var stuck := 0
+	for s in count:
+		var t := lerpf(-half_length, half_length, float(s) / float(count - 1))
+		if blocks(shapes, centre + direction * t, radius):
+			stuck += 1
+	return stuck
+
+## La capsule touche-t-elle quelque chose ?
+static func capsule_blocks(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
+		half_length: float, radius: float, samples: int = 5) -> bool:
+	var direction := axis.normalized() if axis.length() > 0.0001 else Vector2(0.0, 1.0)
+	var count := maxi(samples, 2)
+	for s in count:
+		var t := lerpf(-half_length, half_length, float(s) / float(count - 1))
+		if blocks(shapes, centre + direction * t, radius):
+			return true
+	return false

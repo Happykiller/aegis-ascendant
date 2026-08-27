@@ -213,10 +213,16 @@ func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
 	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
 	var gap := (outer.radius - outer.thickness * 0.5) - (inner.radius + inner.thickness * 0.5)
-	assert_true(gap > 1.5 * SHIP_WIDTH * 0.8 and gap < 1.5 * SHIP_WIDTH * 1.35,
-		"%.2f u entre les deux murs, pour ~%.2f attendus (1,5 largeur de chasseur)"
-			% [gap, 1.5 * SHIP_WIDTH])
+	# ⚠️ LA LARGEUR SE LIT SUR LE CHASSEUR LIVRE, plus sur une constante. Elle valait 1,75 —
+	# juste, mais recopiee — et une mesure faite au meme moment sur le `.glb` donnait 1,30
+	# parce qu'elle ne parcourait pas la hierarchie des noeuds. Une seule source, et c'est
+	# celle que le jeu emploie pour la collision.
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var width := stats.body_radius * 2.0
+	assert_true(gap > 1.5 * width * 0.8 and gap < 1.5 * width * 1.35,
+		"%.2f u entre les deux murs, pour ~%.2f attendus (1,5 largeur de chasseur, %.2f u)"
+			% [gap, 1.5 * width, width])
 
-## Largeur du chasseur, relevee sur la coque livree : les canons de bout d'aile sont a
-## x = ±0,853, soit ~1,7 u d'envergure utile.
-const SHIP_WIDTH := 1.75
+## ⚠️ RETIREE : la largeur du chasseur se lit desormais dans `PlayerStats.body_radius`, ou
+## elle est MESUREE sur `specter_9.glb` (X ±0,876, transformations de noeuds appliquees) et
+## ou la collision la lit deja. Une constante recopiee dans un test finit par mentir.

@@ -7,6 +7,13 @@ extends Node3D
 ## Logical "up the screen" direction (+y logical = -Z world).
 const DIR_UP := Vector2(0.0, 1.0)
 
+## Le cap du chasseur dans le plan. Il ne pivote JAMAIS — c'est la grammaire du genre
+## (`LOI-SYS-07` : on vise en se déplaçant) — donc c'est toujours `DIR_UP`. Exposé plutôt
+## qu'écrit en dur chez les appelants pour qu'un jour où une coque banquerait, un seul
+## endroit change.
+func plane_forward() -> Vector2:
+	return DIR_UP
+
 ## Emitted whenever the shield value changes (HUD).
 signal shield_changed(ratio: float, current: float, maximum: float)
 ## Emitted when a life is lost; `lives` is the remaining count.

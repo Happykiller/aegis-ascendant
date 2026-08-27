@@ -209,16 +209,21 @@ extends Resource
 ## avait pas. C'est le calibrage silencieux qu'`ADR-0024` a coûté au projet.
 @export_range(0.05, 1.0) var ring_occupancy: float = 0.45
 
-## Rayon du CORPS du chasseur pour la collision aux murs.
+## Encombrement du chasseur DEVANT LUI : demi-longueur + demi-largeur. Sert à placer le
+## point d'entrée dans la chambre, rien d'autre — la collision, elle, lit une capsule.
 ##
-## ⚠️ 0,55 -> 0,85 APRÈS PLAYTEST : « le vaisseau rentre en partie dans les murs et j'ai
-## l'impression que le bord des murs est franchissable ». Sa hitbox fait 0,25, mais c'est le
-## MODÈLE qu'on voit s'encastrer — la demi-envergure vaut ~0,85, canons de bout d'aile
-## compris. La collision se règle sur ce qui se regarde.
-@export var wall_clearance: float = 0.85
+## ⚠️ 0,85 -> 2,11. Le premier chiffre valait « la demi-envergure, canons de bout d'aile
+## compris » — presque juste sur la largeur (±0,876 mesurés), et complètement muet sur la
+## LONGUEUR (±1,230). Un vaisseau décrit par un cercle laisse passer son NEZ : c'est ce que
+## le joueur a vu traverser les murs, capture à l'appui.
+##
+## ⚠️ IL DOIT VALOIR `body_half_length + body_radius` du chasseur. Deux chiffres sur le même
+## fait, et ce dépôt sait ce que ça coûte : `test_the_wall_clearance_matches_the_real_fighter`
+## les confronte.
+@export var wall_clearance: float = 2.11
 
 ## Marge entre le mur le plus extérieur et le point où le chasseur apparaît dans la chambre.
-@export var dive_entry_margin: float = 0.50
+@export var dive_entry_margin: float = 0.30
 
 ## Rayon pris en compte pour la ligne de tir. Les canons d'aile montent en parallèle, écartés
 ## de l'axe : une ligne infiniment fine laisserait passer leurs bolts par le bord d'une

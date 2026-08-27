@@ -53,7 +53,9 @@ phase_deg = 0.0
 ; Le mur EXTERIEUR. ⚠️ L'ecart se mesure entre les FACES, pas entre les centres : une garde
 ; a rattrape l'erreur, qui donnait 1,70 u au lieu des 2,62 demandes. Face interne du mur
 ; exterieur (5,45 - 0,25 = 5,20) moins face externe du mur interieur (2,35 + 0,25 = 2,60) =
-; 2,60 u, soit ~1,5 largeur de chasseur (1,75 u) — la distance demandee au playtest.
+; 2,60 u, soit 1,48 largeur de
+; chasseur (1,752 u mesures sur `specter_9.glb`, transformations de noeuds appliquees) — la
+; distance demandee au playtest.
 ;
 ; ⚠️ TOUT L'ENSEMBLE A ETE RETRECI (5,8 -> 5,45 et 2,2 -> 2,35, epaisseur 1,0 -> 0,5) APRES
 ; LE PLAYTEST « je fonce tout droit et mon vaisseau est bloque ». L'arene fait 16 u de haut :

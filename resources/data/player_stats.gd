@@ -9,6 +9,21 @@ extends Resource
 @export var accel_time: float = 0.18
 ## Logical hitbox radius; deliberately smaller than the visual model (spec §8.2).
 @export var hitbox_radius: float = 0.25
+
+## Demi-largeur du CORPS, pour la collision avec le décor solide.
+##
+## ⚠️ MESURÉ SUR `specter_9.glb`, PAS ESTIMÉ (loi « les corps ne se chevauchent pas ») :
+## X ±0,876, Z ±1,230, **transformations de nœuds appliquées**. Cette précision a coûté une
+## erreur : lire les bornes brutes des accesseurs donne ±0,65, parce que les canons de bout
+## d'aile sont montés sur des nœuds décalés. Un `.glb` ne se mesure pas sans parcourir sa
+## hiérarchie. À ne pas confondre avec
+## `hitbox_radius` (0,25), qui décide de ce qui BLESSE et reste volontairement généreux pour
+## le joueur — un shoot vertical se joue avec une hitbox plus petite que le vaisseau.
+@export var body_radius: float = 0.88
+
+## Demi-longueur du corps. C'est elle qui manquait : décrit par un disque de sa demi-largeur,
+## le chasseur laissait son NEZ dépasser de 0,38 et traverser les murs.
+@export var body_half_length: float = 1.23
 ## Seconds between primary shots.
 @export var fire_interval: float = 0.12
 ## Maximum visual roll when strafing; never affects the hitbox (spec §7.3).
@@ -34,6 +49,11 @@ func validate() -> PackedStringArray:
 		errors.append("accel_time must be in (0, 0.25] (spec §7.3)")
 	if hitbox_radius <= 0.0:
 		errors.append("hitbox_radius must be > 0")
+	if body_radius <= 0.0:
+		errors.append("body_radius must be > 0")
+	if body_half_length < body_radius:
+		errors.append("body_half_length (%.2f) < body_radius (%.2f) : un vaisseau n'est pas plus large que long"
+			% [body_half_length, body_radius])
 	if fire_interval <= 0.0:
 		errors.append("fire_interval must be > 0")
 	if shield_max <= 0.0:

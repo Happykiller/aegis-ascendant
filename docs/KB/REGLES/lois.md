@@ -2,7 +2,7 @@
 titre: Lois — ce qu'on ne fait jamais sur ce projet
 type: regle
 statut: actif
-maj: 2026-08-23
+maj: 2026-08-27
 ---
 
 # Lois
@@ -26,6 +26,26 @@ s'arrête et on demande.
 - **Ne pas contourner un test. Ne pas cacher une erreur d'import ou d'export.** Un check vert obtenu
   en désarmant l'instrument ne vaut rien.
 - Ne jamais lancer Godot **sans `--headless`** dans WSL (ADR-0002).
+
+## Les corps ne se chevauchent pas (posée le 2026-08-27)
+
+> « De façon globale dans le jeu je veux maintenant qu'on gère la physique, les objets n'ont
+> plus le droit de se chevaucher : vaisseaux, boss, mur, réacteur, etc. » — l'opérateur
+
+- **Deux corps solides ne peuvent jamais occuper le même endroit.** Ça vaut pour le chasseur, les
+  boss et leurs pièces, les murs, le réacteur, le décor solide. Un chevauchement visible est un
+  **défaut**, pas une approximation acceptable, même bref, même partiel.
+- **La collision passe par [`PlaneCollider`]** (`ADR-0032`), jamais par un test écrit sur place.
+  Un obstacle nouveau se déclare en **forme** ; il n'ajoute pas de code de collision.
+- **Un corps se décrit par sa taille RÉELLE, mesurée sur le modèle**, jamais par un chiffre
+  plausible. ⚠️ Le chasseur a été donné pour un disque de 0,85 alors que `specter_9.glb` mesure
+  1,30 × 2,41 : le disque couvrait les ailes et **pas le nez**, qui traversait les murs. Un
+  vaisseau est plus long que large — il se décrit en **capsule**, pas en cercle.
+- **La collision et l'image lisent la même donnée.** Si l'une change, l'autre suit dans le même
+  commit. Un mur qui bloque ailleurs qu'où il est dessiné est le pire défaut possible : le joueur
+  ne peut pas l'apprendre.
+- Le contact qui **blesse** (tir, ennemi kamikaze) reste un mécanisme à part : ne pas confondre
+  « ne se chevauchent pas » avec « ne se touchent pas ».
 
 ## Architecture
 

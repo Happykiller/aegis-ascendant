@@ -886,7 +886,11 @@ func _enforce_walls(_origin: Vector2) -> void:
 	if _player == null or _shapes.size() == 0:
 		return
 	var here := _player.plane_position
-	var freed := PlaneCollider.resolve(_shapes, here, tuning.wall_clearance)
+	# ⚠️ UNE CAPSULE, PAS UN DISQUE. Décrit par un cercle de sa demi-envergure, le chasseur
+	# laissait son NEZ dépasser de 0,38 et entrer dans le blindage — vu en jeu, capture à
+	# l'appui, le 2026-08-27. Le corps se lit dans les stats, où il est MESURÉ sur le modèle.
+	var freed := PlaneCollider.resolve_capsule(_shapes, here, _player.plane_forward(),
+		_player.stats.body_half_length, _player.stats.body_radius)
 	if not freed.is_equal_approx(here):
 		_player.plane_position = freed
 

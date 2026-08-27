@@ -22,6 +22,22 @@ extends Node3D
 const DECOR_PATH := "res://assets/imported/models/bosses/core_interior.glb"
 
 ## Contrat de noms attendu du décor (BRIEF-0082).
+## ⚠️ TOUTE LA CHAMBRE EST REMONTÉE DANS LE PLAN, et c'est de la place trouvée, pas gagnée
+## sur le design. L'arène va de −8 à +8 ; le réacteur était au MILIEU, ce qui gaspillait toute
+## la moitié haute — un shoot vertical n'y envoie jamais son joueur, puisqu'il tire vers le
+## haut et vit en bas de l'écran.
+##
+## Sous le noyau, il fallait loger : l'enveloppe du flux (2,10), le mur intérieur, le couloir
+## d'une largeur et demie de chasseur (2,60), le mur extérieur, puis le chasseur LUI-MÊME —
+## et lui mesure 2,11 de portée depuis son centre, demi-longueur comprise. Centré, ça ne
+## tenait pas : il restait 0,04 unité pour voler. Décentré de 1,2, il en reste 1,09.
+##
+## ⚠️ CE DÉCALAGE DÉPLACE L'IMAGE ET LA DONNÉE, du même champ : il pose la position 3D du
+## nœud ET s'ajoute à ce que `reactor_plane_position()` / `entry_plane_position()` rendent.
+## Les séparer ferait bloquer les murs ailleurs qu'où on les voit — ce que la loi « les corps
+## ne se chevauchent pas » interdit nommément.
+const PLANE_OFFSET := Vector2(0.0, 1.2)
+
 const ANCHOR_REACTOR := "Reactor_Core"
 const ANCHOR_ENTRY := "Entry_Point"
 
@@ -365,11 +381,11 @@ func pose_node(index: int, plane_position: Vector2, alive: bool, age: float) -> 
 		0.55 + 0.30 * breath)
 
 func reactor_plane_position() -> Vector2:
-	return _reactor_plane
+	return _reactor_plane + PLANE_OFFSET
 
 ## Où le chasseur apparaît en arrivant.
 func entry_plane_position() -> Vector2:
-	return _entry_plane
+	return _entry_plane + PLANE_OFFSET
 
 func _build() -> void:
 	if ResourceLoader.exists(DECOR_PATH):
@@ -380,6 +396,8 @@ func _build() -> void:
 		_decor = _build_stand_in()
 		_is_stand_in = true
 	add_child(_decor)
+	# Le plan de jeu est (X, −Z) : d'où le signe. Voir `PLANE_OFFSET`.
+	position = Vector3(PLANE_OFFSET.x, position.y, -PLANE_OFFSET.y)
 	_read_anchors()
 	_build_marker()
 

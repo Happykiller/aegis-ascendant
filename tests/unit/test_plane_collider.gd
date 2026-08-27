@@ -164,16 +164,38 @@ func test_the_dive_entry_is_never_inside_a_wall() -> void:
 	assert_almost_eq(worst, 0.0, 0.001,
 		"le chasseur apparait TOUJOURS au large (deplacement maximal %.2f u)" % worst)
 
-## Et il doit pouvoir voler. Une entrée libre mais collée au bord de l'arène serait un
-## piège d'un autre genre : il ne pourrait ni avancer ni reculer.
+## Et il doit pouvoir voler. Une entrée libre mais collée au bord de l'arène serait un piège
+## d'un autre genre : il ne pourrait ni avancer ni reculer.
+##
+## ⚠️ EN COORDONNÉES DU MONDE, ET LA PREMIÈRE VERSION S'EST TROMPÉE LÀ-DESSUS. Elle comparait
+## `dive_entry_local()` — relatif au CENTRE DU RÉACTEUR — aux limites du plan, qui sont
+## absolues. Tant que la chambre était centrée en (0,0), les deux coïncidaient et l'erreur
+## était invisible ; elle est apparue le jour où la chambre a été remontée.
 func test_the_dive_entry_leaves_room_to_fly() -> void:
 	var tuning := _tuning()
-	var entry := tuning.dive_entry_local()
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var entry := CoreInterior.PLANE_OFFSET + tuning.dive_entry_local()
 	assert_true(GameplayPlane.is_inside(entry),
-		"l'entree est dans les limites du plan (%.2f)" % entry.y)
-	assert_true(entry.y - GameplayPlane.BOUNDS.position.y >= 0.8,
-		"et il reste %.2f u sous elle pour manoeuvrer"
-			% (entry.y - GameplayPlane.BOUNDS.position.y))
+		"l'entree est dans les limites du plan (y = %.2f)" % entry.y)
+	var room := entry.y - GameplayPlane.BOUNDS.position.y
+	assert_true(room >= stats.body_radius,
+		"il reste %.2f u sous elle pour manoeuvrer, pour un chasseur large de %.2f"
+			% [room, stats.body_radius * 2.0])
+
+## Et le chasseur doit pouvoir atteindre le HAUT de l'arène sans se retrouver dans le mur.
+## Sinon le dégagement le repousse, les limites du plan le ramènent, et il vibre entre les
+## deux — un blocage de plus, et celui-là n'a aucune image pour l'expliquer.
+func test_the_top_of_the_arena_is_not_inside_the_shield() -> void:
+	var tuning := _tuning()
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var outermost := 0.0
+	for ring in tuning.reactor_rings:
+		if ring != null:
+			outermost = maxf(outermost, ring.radius + ring.thickness * 0.5)
+	var reach := GameplayPlane.BOUNDS.end.y - CoreInterior.PLANE_OFFSET.y
+	assert_true(reach > outermost + stats.body_radius,
+		("le haut de l'arene est a %.2f du noyau, le blindage va jusqu'a %.2f corps compris"
+			% [reach, outermost + stats.body_radius]))
 
 ## ⚠️ « Le réacteur central ne devrait pas être franchissable » (playtest du 2026-08-27). Il
 ## l'était : on lui traversait le ventre, parce que la collision ne connaissait que les murs.
@@ -198,3 +220,35 @@ func test_no_wall_lives_inside_the_core() -> void:
 		assert_true(ring.radius - ring.thickness * 0.5 >= envelope - 0.001,
 			("mur de rayon %.2f : sa face interne (%.2f) est dans l'enveloppe du flux (%.2f)"
 				% [ring.radius, ring.radius - ring.thickness * 0.5, envelope]))
+
+## ⚠️ DEUX CHIFFRES SUR LE MÊME FAIT, et ce dépôt sait ce que ça coûte. `wall_clearance` sert
+## à placer l'entrée dans la chambre ; il doit valoir l'encombrement RÉEL du chasseur devant
+## lui. Le laisser dériver du corps replacerait l'entrée dans le mur — le défaut d'origine.
+func test_the_wall_clearance_matches_the_real_fighter() -> void:
+	var tuning := _tuning()
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var reach := stats.body_half_length + stats.body_radius
+	assert_almost_eq(tuning.wall_clearance, reach, 0.05,
+		("wall_clearance vaut %.2f, l'encombrement du chasseur %.2f "
+			+ "(demi-longueur %.2f + demi-largeur %.2f)")
+			% [tuning.wall_clearance, reach, stats.body_half_length, stats.body_radius])
+
+## Le nez, précisément. C'est LUI qu'on a vu traverser, et un disque ne le décrit pas.
+func test_the_nose_is_stopped_where_a_disc_would_have_let_it_through() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var shapes := PlaneShapes.new()
+	shapes.reserve(1)
+	# Un mur droit devant, a portee du nez mais hors de portee d'un disque de demi-largeur.
+	var wall_y := stats.body_radius + (stats.body_half_length - stats.body_radius) * 0.5
+	shapes.add_capsule(Vector2(-6.0, wall_y), Vector2(6.0, wall_y), 0.1)
+	assert_false(PlaneCollider.blocks(shapes, Vector2.ZERO, stats.body_radius),
+		"un DISQUE de sa demi-largeur ne verrait rien : c'est ainsi qu'il traversait")
+	assert_true(PlaneCollider.capsule_blocks(shapes, Vector2.ZERO, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius),
+		"la CAPSULE, elle, touche : le nez est devant")
+	var freed := PlaneCollider.resolve_capsule(shapes, Vector2.ZERO, Vector2(0.0, 1.0),
+		stats.body_half_length, stats.body_radius)
+	assert_true(freed.y < 0.0, "et le chasseur est repousse en arriere, pas laisse dedans")
+	assert_false(PlaneCollider.capsule_blocks(shapes, freed, Vector2(0.0, 1.0),
+			stats.body_half_length, stats.body_radius),
+		"jusqu'a etre franchement dehors")
