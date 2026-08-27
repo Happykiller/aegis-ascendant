@@ -194,6 +194,8 @@ func _ready() -> void:
 	_hit_stop = HitStop.new()
 	_hit_stop.name = "HitStop"
 	add_child(_hit_stop)
+	if "--density-probe" in args and _bullets != null:
+		add_child(DensityProbe.make(_bullets, phase_label))
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
 	elif "--skip-to-field" in args:
@@ -897,6 +899,12 @@ func _leviathan_cycle_beat() -> void:
 ## dimensionnement, pas une fin de combat. Le playtest du 2026-08-25 a produit un quatrième
 ## tour, et le journal a affiché « cycle 4/3 » : un compteur qui dépasse son total dit au
 ## joueur que le jeu s'est trompé. On nomme le dépassement au lieu de le compter.
+## Le nom de la phase courante, pour qui mesure plutôt que pour qui joue : la sonde de
+## densité s'en sert pour situer un chiffre. Public, parce qu'un outil de mesure n'a pas à
+## connaître l'`enum` privé du director.
+func phase_label() -> String:
+	return str(Phase.keys()[_phase]) if _phase >= 0 and _phase < Phase.size() else "?"
+
 func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 	return "DERNIER ASSAUT" if cycle >= cycles else "CYCLE %d / %d" % [cycle + 1, cycles]
 

@@ -41,16 +41,61 @@ faux coûte plus qu'un point de reprise absent.
 | Loi | État | Preuve |
 |---|---|---|
 | `LOI-LIS-01` couleurs réservées | ✅ tenue | **écrite dans le shader** : `shaders/space_background.gdshader` — le fond « ne touche jamais au cyan réservé au tir allié ni au corail réservé au tir ennemi ». Appliquée le jour même au bolide du survol de lune (`ADR-0027`) |
-| `LOI-LIS-02` grouper | ⚠️ partielle | les salves (`FAN`, `RADIAL`, `AIMED`) produisent des groupes, mais **rien ne garantit qu'un groupe se lise comme un groupe** |
+| `LOI-LIS-02` grouper | ⚠️ **partielle, et on sait désormais où** (2026-08-27) | ✅ **l'anneau se lit comme un anneau** — vérifié à **1:1** sur une couronne de 14 balles de Choir Mine : géométrie régulière, écart constant, le groupe est immédiat. ⚠️ **La salve visée, non** : les grappes de trois du lancier se fondent en une masse molle (capture t≈34 s). L'écart n'est pas la couronne, c'est l'éventail serré |
 | `LOI-LIS-03` renfort visuel | ❌ absente | aucune orientation de sprite selon l'angle, aucune traînée sur les trajectoires inhabituelles |
 | `LOI-LIS-04` annoncer l'attaque | ✅ tenue | `EnemyReaction` : `alert_radius` où l'unité s'éveille **et le montre**, puis `windup_time`. Le Leviathan télégraphie ses bascules par bannière, secousse et son. Le contrat « ce qui s'allume part » est écrit dans le fichier |
-| `LOI-LIS-05` densité ≠ difficulté | ❔ non vérifiée | **aucune notion de densité** dans le code ni les Resources. Les vagues sont composées à l'intuition |
+| `LOI-LIS-05` densité ≠ difficulté | ⚠️ **mesurée pour la première fois** (2026-08-27) | `DensityProbe` (`--density-probe`) rend un profil par seconde. Résultats ci-dessous — et le profil de la phase 1 est **une ligne plate avec un seul pic** |
 | `LOI-LIS-06` espace négatif | ❔ non vérifiée | jamais traité comme une donnée |
 | `LOI-LIS-07` vitesse des projectiles | ✅ tenue | spec §11.2 : « davantage de projectiles lents et lisibles ». Choix conscient, cohérent avec `LOI-LVL-01` |
-| `LOI-LIS-08` rien de mortel caché | ❔ non vérifiée | jeu 3D sur plan logique : l'ordre de rendu dépend de la géométrie, **pas d'une règle explicite** |
+| `LOI-LIS-08` rien de mortel caché | ❌ **aucune règle** (2026-08-27) | les balles rendent à **Y = 0** — l'ordonnée n'est jamais écrite dans le buffer du `MultiMesh` — et les coques aussi (`plane_lift = 0` hors plongée dans le noyau). **Balles et coques sont coplanaires** : c'est la géométrie du maillage et le tampon de profondeur qui décident, pas une règle. ⚠️ Aucun cas observé pour l'instant (les balles passent proprement sur un astéroïde, vérifié à 1:1), mais le genre ordonne explicitement les plans — nous n'ordonnons rien |
 
 Zone calme centrale : ✅ le fond s'assombrit au tiers central (`center_calm`) — « l'art ne doit
 jamais disputer l'attention au vaisseau et aux balles ».
+
+### La densité, enfin chiffrée (2026-08-27)
+
+Premier profil du projet, relevé en mode démo sur l'arc complet (`--density-probe`) :
+
+| Phase | Pic | Moyenne des pics par seconde | Forme du profil |
+|---|---:|---:|---|
+| `FIGHTER_WAVES` | **30** | 4,7 | ⚠️ **une ligne plate et un seul pic** : 0 à 5 balles pendant **34 s**, puis 27–30 entre t=35 et t=39 (la tenaille finale), puis retour à 0–3 |
+| `MINI_BOSS` | 12 | 6,6 | régulier, sans creux |
+
+Ce que le chiffre dit, et qu'aucune relecture n'aurait donné : **la phase 1 est très peu dense
+pendant sa première moitié**. Le genre traite la densité comme un axe à deux dimensions — spatiale
+et temporelle ; nous n'avons ici qu'un créneau. C'est à rapprocher du P0 du backlog (« vérifier que
+la difficulté est facile mais nerveuse »), qui devient une question mesurable au lieu d'une
+impression.
+
+⚠️ La ligne de synthèse (« PIC DE LA PARTIE ») ne s'écrit qu'à la **sortie propre** du jeu : un run
+interrompu par un `timeout` la perd. Les lignes par seconde, elles, portent tout.
+
+### L'angle mort du tir rapproché (2026-08-27)
+
+Trois mesures, et une addition :
+
+| Terme | Valeur | Source |
+|---|---:|---|
+| Canons de nez (`Muzzle_L/R`) | **+1,070** u devant le centre | coque `specter_9.glb`, relevée |
+| Déplacement avant le premier test de collision | **+0,40** u | `pulse_shot` à 24 u/s, physique à 60 Hz — `step()` avance **puis** résout |
+| Portée d'un impact | **0,57** u | rayon de balle 0,12 + hitbox d'un Needle Scout 0,45 |
+
+**Un ennemi dont le centre est à moins de 0,90 u devant le chasseur ne peut pas être touché par les
+canons de nez.**
+
+⚠️ Et rien ne l'en chasse : **aucun chasseur ordinaire n'inflige de dégât de contact** (seules la
+sangsue, la mine et les pièces de boss le font). Une unité posée là serait **inoffensive et
+invulnérable** — l'impasse exacte que `LOI-ENN-04` nomme.
+
+Détail non évident, et qui aggrave le cas : les canons d'aile et de bout d'aile sont modélisés
+**derrière** le centre du chasseur. L'angle mort **se referme donc en montant en puissance** — le
+joueur le subit précisément quand il est le plus faible.
+
+> **À COMPLÉTER — décision de l'opérateur.** Le remède le moins cher a un précédent solide dans ce
+> projet : faire partir les bolts du **centre du chasseur** en laissant l'éclair de bouche au canon,
+> exactement comme la hitbox est déjà « délibérément plus petite que le modèle visuel » (spec §8.2).
+> Une ligne. ⚠️ Mais c'est un changement de **gameplay** — la portée utile du tir change — et il se
+> juge en jouant, pas au journal.
 
 ## Ennemis et vagues — `ENN`
 
@@ -61,7 +106,7 @@ jamais disputer l'attention au vaisseau et aux balles ».
 | `LOI-ENN-01` couverture des rôles | ✅ tenue | pression : les neuf Needle Scout, le Crescent Interceptor. Interdiction de zone : **Null Maw** (`GRAVITY_WELL`), Choir Mine en barrage. Défi direct : **Leech Drone** (`HOMING`), les deux boss. Plus un quatrième rôle que le genre nomme peu : le **Shield Carrier** (`SHIELD_AURA`), priorité de cible **pure** |
 | `LOI-ENN-02` priorité lisible | ⚠️ partielle | le Shield Carrier est le mécanisme même — sa **portée ne se voyait pas**, corrigée en anneau (pas en dôme : trois volumes ont rendu un aplat, condamnés par leur surface) |
 | `LOI-ENN-03` PV du popcorn | ✅ tenue | Choir Mine 12 PV, Leech Drone 10 — une salve suffit |
-| `LOI-ENN-04` toucher de près | ❔ non vérifiée | les canons du chasseur sont frontaux ; une unité collée au nez est-elle atteignable ? **jamais mesuré** |
+| `LOI-ENN-04` toucher de près | ❌ **angle mort mesuré** (2026-08-27) | **0,90 unité** devant le centre du chasseur — voir ci-dessous. Borné par `test_point_blank.gd` |
 | `LOI-ENN-05` approcher paie | ✅ tenue | `pull_speed_max` de la Null Maw plafonné à 7,0 contre 14,0 de vitesse joueur, et `GravityWell.leaves_room()` l'**impose** |
 | `LOI-ENN-06` couloirs Toaplan | ❌ absente | les vagues posent des `spawn_plane_position` en unités monde, **pas en couloirs**. Le champ d'astéroïdes emploie quatre colonnes échelonnées — du Toaplan sans le nommer |
 | `LOI-ENN-07` zigzag | ✅ tenue | neuf courbes distinctes (`WEAVE`, `ARC_CROSS`, `SERPENTINE`, `SPIRAL`, `STRAFE_RUN`…) |
