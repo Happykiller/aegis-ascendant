@@ -28,8 +28,8 @@ var _options: Control
 var _leaving: bool = false
 
 func _ready() -> void:
-	var version: String = ProjectSettings.get_setting("application/config/version", "0.0.0")
-	_version_label.text = "v%s — prototype" % version
+	var version := GameVersion.current()
+	_version_label.text = GameVersion.label()
 	_build_menu_focus()
 	_fade.color.a = 1.0
 	# Ouverture en fondu : l'accueil se lève du noir au lieu d'apparaître d'un coup.

@@ -36,6 +36,7 @@ const FADE_TIME := 0.45   # sortie vers le titre, calée sur title_menu.gd
 @onready var _center: Control = %Center
 @onready var _menu: VBoxContainer = %Menu
 @onready var _fade: ColorRect = %Fade
+@onready var _build_label: Label = %Build
 
 var _options: Control
 var _is_open: bool = false
@@ -53,6 +54,7 @@ func _ready() -> void:
 	# celle-ci, jamais une valeur en dur qui divergerait au premier réglage.
 	_scrim_alpha = _scrim.color.a
 	_center_rest_y = _center.position.y
+	_build_label.text = GameVersion.label()
 	for button in _buttons():
 		button.focus_entered.connect(_on_focus_changed)
 	var args := OS.get_cmdline_user_args()

@@ -103,6 +103,16 @@ theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.75)
 theme_override_font_sizes/font_size = 10
 text = "HV-09  //  SPECTER-9"
 
+; La version du BUILD, et elle est ici parce qu'un testeur qui rapporte un defaut met
+; le jeu en pause pour lire ce qu'il tient. Le texte est pose par le script : la scene
+; ne recopie pas un chiffre que project.godot est seul a detenir.
+[node name="Build" type="Label" parent="Overlay/Identity"]
+unique_name_in_owner = true
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.42)
+theme_override_font_sizes/font_size = 9
+text = "v0.0.0"
+
 ; Même bande verticale que le bloc central de l'accueil : en ouvrant la pause, le
 ; titre tombe à la hauteur où AEGIS ASCENDANT se tenait. C'est la même interface qui
 ; se rabat, pas une autre qui s'ouvre.

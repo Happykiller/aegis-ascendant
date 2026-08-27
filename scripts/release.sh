@@ -11,18 +11,54 @@
 # `play.sh` compare les sources au .pck pour savoir si le build est perime, et embarquer le
 # pck casserait ce test. Deux presets, deux usages.
 #
+# ⚠️ LA VERSION NE SE SAISIT PAS ICI, ELLE SE LIT. `project.godot` (`config/version`) est la
+# seule source : c'est elle que Godot grave dans les metadonnees de l'exe, elle que
+# l'ecran-titre et l'ecran de pause affichent, elle qu'un testeur nous citera. Un tag passe a
+# la main pouvait donc publier un binaire qui ne le portait pas — et ca ne se voyait sur
+# aucun des deux. L'argument reste accepte, mais il doit CONCORDER : il vaut confirmation,
+# pas declaration.
+#
 # Usage :
 #   ./scripts/release.sh              # fabrique le livrable dans build/release/
-#   ./scripts/release.sh vX.Y.Z       # fabrique PUIS publie la release GitHub
+#   ./scripts/release.sh vX.Y.Z       # fabrique PUIS publie — vX.Y.Z doit etre la version du projet
+#   ./scripts/release.sh --publish    # publie la version du projet, sans avoir a la retaper
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-VERSION="${1:-}"
+ARG="${1:-}"
 DEPOT_RELEASES="Happykiller/aegis-ascendant-releases"
 SORTIE="build/release/AegisAscendant.exe"
 
 log() { printf '[release] %s\n' "$*"; }
+
+# La version du projet, telle que Godot la lira. Une seule ligne fait foi.
+PROJET_VERSION="$(sed -n 's/^config\/version="\(.*\)"$/\1/p' project.godot | head -1)"
+[ -n "$PROJET_VERSION" ] || { log "project.godot ne declare pas config/version"; exit 1; }
+printf '%s' "$PROJET_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+	|| { log "version « $PROJET_VERSION » : il faut MAJEUR.MINEUR.CORRECTIF"; exit 1; }
+TAG="v$PROJET_VERSION"
+
+case "$ARG" in
+	"")          PUBLIER=0 ;;
+	--publish)   PUBLIER=1 ;;
+	*)
+		PUBLIER=1
+		if [ "$ARG" != "$TAG" ]; then
+			log "vous demandez $ARG, le projet porte $TAG"
+			log "  changez config/version dans project.godot, ou passez $TAG"
+			exit 1
+		fi
+		;;
+esac
+
+# Un tag deja publie ne se remplace pas : quelqu'un a peut-etre deja telecharge l'autre.
+if [ "$PUBLIER" -eq 1 ] && command -v gh >/dev/null \
+		&& gh release view "$TAG" --repo "$DEPOT_RELEASES" >/dev/null 2>&1; then
+	log "$TAG est deja publie — montez config/version avant de refaire une release"
+	exit 1
+fi
+log "version du projet : $PROJET_VERSION"
 
 # ⚠️ LA PORTE D'ABORD, ET SANS DISCUSSION. Un livrable qu'on donne a quelqu'un d'autre ne se
 # fabrique pas sur un depot dont on n'a pas verifie qu'il est vert.
@@ -51,17 +87,17 @@ if [ -f "build/release/AegisAscendant.pck" ]; then
 fi
 log "  OK — $((TAILLE/1024/1024)) Mo, fichier unique"
 
-if [ -z "$VERSION" ]; then
+if [ "$PUBLIER" -eq 0 ]; then
 	log "livrable pret : $SORTIE"
-	log "pour publier : ./scripts/release.sh vX.Y.Z"
+	log "pour publier : ./scripts/release.sh --publish   (soit $TAG)"
 	exit 0
 fi
 
 command -v gh >/dev/null || { log "gh introuvable — publication impossible"; exit 1; }
-log "publication de $VERSION sur $DEPOT_RELEASES"
-gh release create "$VERSION" "$SORTIE" \
+log "publication de $TAG sur $DEPOT_RELEASES"
+gh release create "$TAG" "$SORTIE" \
 	--repo "$DEPOT_RELEASES" \
-	--title "Aegis Ascendant ${VERSION#v}" \
+	--title "Aegis Ascendant $PROJET_VERSION" \
 	--notes-file - <<NOTES
 Telechargez **AegisAscendant.exe** et double-cliquez. Rien a installer.
 
@@ -71,4 +107,4 @@ Telechargez **AegisAscendant.exe** et double-cliquez. Rien a installer.
 
 Prototype : le contenu evolue d'une version a l'autre.
 NOTES
-log "publie : https://github.com/$DEPOT_RELEASES/releases/tag/$VERSION"
+log "publie : https://github.com/$DEPOT_RELEASES/releases/tag/$TAG"
