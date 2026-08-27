@@ -12,25 +12,28 @@ trois est fausse, la session n'est pas close — et tu le dis au lieu de conclur
 
 ## Périmètre de ce projet
 
-> Relevé le 2026-08-23, **rétabli le 2026-08-25** après une correction erronée. À corriger dès
-> que le projet change de forme, et **en le vérifiant sur la machine**.
+> Relevé le 2026-08-23, corrigé le 2026-08-25, **re-vérifié sur la machine le 2026-08-27**.
 >
-> ⚠️ **CE BLOC A ÉTÉ FAUSSÉ PAR UNE « CORRECTION ».** Il annonçait le bon chemin
-> (`/home/admin/aegis-ascendant`) et le bon remote (`github-perso`) ; une passe l'a remplacé par
-> `/home/happykiller/aegis-ascendant` sur `github-happykiller`. Vérifié le 2026-08-25 :
-> **`/home/happykiller` n'existe pas**, et l'alias SSH `github-happykiller` non plus — seul
-> `github-perso` est déclaré dans `~/.ssh/config`. Toute la session avait pourtant poussé sans
-> encombre : la clôture aurait donc cherché un dépôt fantôme pendant que le vrai était à jour.
+> ⚠️ **CE BLOC A CHANGÉ DE VALEUR DEUX FOIS, DANS LES DEUX SENS.** Il a annoncé
+> `/home/admin` + `github-perso`, puis `/home/happykiller` + `github-happykiller`, puis
+> `/home/admin` de nouveau. Chaque bascule se réclamait d'une vérification.
 >
-> **La leçon est celle que ce document énonçait déjà, retournée contre lui** : un périmètre ne se
-> corrige pas de mémoire. Les quatre commandes de l'étape 1 le donnent en trois secondes —
-> `pwd`, `git remote -v`, `find . -name .git`, `ls` du chemin annoncé. Une correction non vérifiée
-> est plus dangereuse qu'une erreur laissée en place, parce qu'elle porte l'autorité d'une
-> relecture.
+> **Vérifié le 2026-08-27, sur cette machine, par les quatre commandes de l'étape 1** :
+> `pwd` rend `/home/happykiller/aegis-ascendant` ; `git remote -v` rend
+> `git@github-happykiller:Happykiller/aegis-ascendant.git` ; `~/.ssh/config` déclare **les deux**
+> alias `github-happykiller` et `github-perso` ; et `/home/admin/aegis-ascendant` **n'existe
+> pas**. Le tableau ci-dessous porte donc ces valeurs-là.
+>
+> **La leçon, elle, ne bouge pas** : un périmètre ne se corrige pas de mémoire, et une correction
+> non vérifiée est plus dangereuse qu'une erreur laissée en place — elle porte l'autorité d'une
+> relecture. Le va-et-vient s'explique probablement par **plusieurs comptes sur cette machine**
+> (voir `.claude/resources/pratique-ecrivain-unique.md`) : ce qui est vrai sous un utilisateur ne
+> l'est pas sous l'autre. **Ne pas rebasculer ce bloc sans avoir relancé les quatre commandes**,
+> et si le résultat diffère, écrire lequel des comptes on est plutôt que d'effacer l'autre.
 
 | Dépôt | Chemin | Branche de travail | Remarque |
 | --- | --- | --- | --- |
-| `aegis-ascendant` | `/home/admin/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-perso:Happykiller/aegis-ascendant.git` (alias SSH `github-perso`, compte `Happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/admin` comme un dépôt Git |
+| `aegis-ascendant` | `/home/happykiller/aegis-ascendant` | `main` | Dépôt **unique**. Remote `origin` = `git@github-happykiller:Happykiller/aegis-ascendant.git` (alias SSH `github-happykiller`, compte `Happykiller`). Dépôt **imbriqué dans le home** : ne jamais l'ajouter depuis un dépôt parent, et ne jamais traiter `/home/happykiller` comme un dépôt Git |
 
 | Stack | Fichier compose | Services |
 | --- | --- | --- |
