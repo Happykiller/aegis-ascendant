@@ -891,6 +891,12 @@ func fill_solids(shapes: PlaneShapes) -> void:
 		return
 	var origin := _origin()
 	if _phase == Phase.DIVE:
+		# ⚠️ SEULEMENT UNE FOIS DANS LA CHAMBRE. Avant `dive_anchor`, le chasseur est encore
+		# dehors, en approche guidée vers la gueule : verser les murs ici les posait autour du
+		# CORPS DU BOSS, et un enregistrement de partie a montré le chasseur en contact avec
+		# eux pendant tout le zoom d'entrée. Ils n'existent que dans le lieu qu'ils gardent.
+		if not dive_anchor.is_finite():
+			return
 		var centre := _flux_origin(origin)
 		ReactorRings.fill_shapes(shapes, tuning.reactor_rings, centre, _age)
 		shapes.add_disc(centre + _flux_offset(), tuning.flux_hitbox_radius)

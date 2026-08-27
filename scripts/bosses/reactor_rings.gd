@@ -93,7 +93,7 @@ static func fill_shapes(shapes: PlaneShapes, rings: Array[ReactorRing],
 		var turn := ring.phase_deg + ring.speed_deg * age
 		for k in ring.apertures:
 			shapes.add_ring_arc(centre, ring.radius, ring.thickness,
-				float(k) * step + ring.aperture_deg * 0.5 + turn, span)
+				float(k) * step + ring.aperture_deg * 0.5 + turn, span, ring.speed_deg)
 
 ## Combien de formes `fill_shapes()` produira — pour dimensionner UNE fois.
 static func shape_count(rings: Array[ReactorRing]) -> int:

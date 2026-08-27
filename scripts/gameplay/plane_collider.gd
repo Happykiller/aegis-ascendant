@@ -27,37 +27,6 @@ const NO_HIT := Vector2.INF
 ## et le chasseur reste collé en vibrant. Vécu, corrigé, gardé.
 const EDGE_EPSILON := 0.01
 
-## Au-delà de ce produit scalaire entre le mouvement et la normale, le contact est FRONTAL :
-## on s'arrête au lieu de glisser (voir [method slide_capsule]).
-##
-## À 0,9, on bloque net dans un cône d'environ 25 degrés autour de la perpendiculaire — ce
-## qui couvre « je pousse tout droit dans le mur » sans toucher au « je le rase ». Plus haut,
-## le dérapage revient dès qu'on est légèrement décalé ; plus bas, on ne peut plus longer une
-## paroi en s'appuyant dessus.
-const FRONTAL_DOT := 0.9
-
-## Ce que COÛTE une sortie par le bout de l'arc, en multiple de sa longueur réelle.
-##
-## ⚠️ UN MUR QUI TOURNE NE DOIT PAS VOUS EMPORTER AVEC LUI, et sans cette pénalité il le
-## faisait. Sortir « par le bout » est un déplacement TANGENTIEL : rejoué à chaque image
-## contre un arc en rotation, il devient un convoyeur. Mesuré sur la géométrie livrée, un
-## chasseur qui pousse vers le noyau en montant dérivait de **9,2 unités** latéralement, en
-## contact 279 images sur 540 — « j'ai comme un mur qui me pousse sur la droite, ça ne marche
-## pas du tout » (playtest du 2026-08-27, troisième retour sur le même symptôme).
-##
-## ⚠️ ET CE N'EST PAS UNE QUESTION DE PLACE. On a d'abord cru que le couloir trop étroit
-## expliquait tout, et on l'a élargi : la dérive persistait, parce qu'elle ne vient pas de
-## l'étroitesse mais du CHOIX DE SORTIE. La simulation qui avait conclu le contraire posait
-## le chasseur immobile au milieu du couloir — là où aucun bord d'arc ne vient le chercher.
-## Un banc qui ne reproduit pas le geste du joueur ne prouve rien.
-##
-## À 2, la sortie par le bout reste possible quand elle est franchement la plus courte —
-## c'est elle qui libère un corps coincé à quelques centimètres d'une ouverture, et
-## `test_a_body_near_the_end_of_a_wall_escapes_through_the_opening` l'exige — mais elle cesse
-## de gagner sur une sortie radiale à peine plus longue. Le mur repousse, il ne transporte
-## plus. Valeur mesurée : à 1 la dérive vaut 9,2 u, à 2 elle tombe à zéro.
-const EDGE_EXIT_COST := 2.0
-
 ## Nombre de passes de dégagement. Sortir d'une forme peut faire entrer dans sa voisine ;
 ## deux suffisent tant que les formes ne s'empilent pas à plus de deux d'épaisseur.
 const RESOLVE_PASSES := 2
@@ -199,7 +168,7 @@ static func _escape_arc(shapes: PlaneShapes, index: int, point: Vector2,
 	var after := start_deg + span_deg + extent + EDGE_EPSILON
 	for edge in [before, after]:
 		var delta := absf(_wrap_deg(bearing - edge))
-		cost = distance * deg_to_rad(delta) * EDGE_EXIT_COST
+		cost = distance * deg_to_rad(delta)
 		if cost < best:
 			best = cost
 			target = Vector2(cos(deg_to_rad(edge)), sin(deg_to_rad(edge))) * distance
@@ -323,6 +292,133 @@ static func capsule_blocks(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
 			return true
 	return false
 
+# --- Les surfaces qui BOUGENT -------------------------------------------------
+
+## Vitesse de la surface de la forme `index` au point `point`, en unités par seconde.
+##
+## Une forme immobile rend zéro. Un arc qui tourne à ω autour de son centre déplace chacun
+## de ses points à ω × r, perpendiculairement au rayon — c'est la vitesse d'un point du
+## mur, celle qu'un corps posé contre lui subit.
+static func surface_velocity(shapes: PlaneShapes, index: int, point: Vector2) -> Vector2:
+	var spin := shapes.spin_at(index)
+	if is_zero_approx(spin):
+		return Vector2.ZERO
+	var arm := point - shapes.centre_of(index)
+	return Vector2(-arm.y, arm.x) * deg_to_rad(spin)
+
+## L'indice de la première forme qui touche la capsule, ou -1.
+static func first_blocking_capsule(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
+		half_length: float, radius: float, samples: int = 5) -> int:
+	var direction := axis.normalized() if axis.length() > 0.0001 else Vector2(0.0, 1.0)
+	var count := maxi(samples, 2)
+	for i in shapes.size():
+		for s in count:
+			var t := lerpf(-half_length, half_length, float(s) / float(count - 1))
+			if shape_blocks(shapes, i, centre + direction * t, radius):
+				return i
+	return -1
+
+## Le point de l'axe de la capsule que la forme `index` touche — le premier trouvé.
+##
+## ⚠️ C'EST LÀ QU'IL FAUT LIRE LA VITESSE DU MUR, pas au centre du corps. Un mur qui tourne
+## va d'autant plus vite qu'on est loin de son axe : sur un chasseur de 4,2 de long posé en
+## travers, le bout touché peut être à un rayon et demi du centre — lire la vitesse au centre
+## poussait trop peu, et le mur rattrapait le corps image après image.
+static func blocking_point_capsule(shapes: PlaneShapes, index: int, centre: Vector2,
+		axis: Vector2, half_length: float, radius: float, samples: int = 5) -> Vector2:
+	var direction := axis.normalized() if axis.length() > 0.0001 else Vector2(0.0, 1.0)
+	var count := maxi(samples, 2)
+	for s in count:
+		var t := lerpf(-half_length, half_length, float(s) / float(count - 1))
+		var point := centre + direction * t
+		if shape_blocks(shapes, index, point, radius):
+			return point
+	return centre
+
+## Pousse la capsule le long de `direction` jusqu'à ce qu'elle soit libre — pas plus loin.
+##
+## C'est ce que fait une surface qui AVANCE sur un corps : elle le déplace dans SA
+## direction, de ce qu'il faut pour cesser de le pénétrer. Ni par le chemin le plus court,
+## ni « vers d'où il vient » — dans la direction de ce qui pousse. Rend le centre inchangé
+## si `max_distance` ne suffit pas : un mur ne téléporte pas.
+static func push_capsule_along(shapes: PlaneShapes, centre: Vector2, axis: Vector2,
+		half_length: float, radius: float, direction: Vector2,
+		max_distance: float) -> Vector2:
+	if direction.length() < 0.0001 or max_distance <= 0.0:
+		return centre
+	var unit := direction.normalized()
+	if not capsule_blocks(shapes, centre, axis, half_length, radius):
+		return centre
+	var far := centre + unit * max_distance
+	if capsule_blocks(shapes, far, axis, half_length, radius):
+		return centre
+	# Dichotomie entre « dedans » (centre) et « dehors » (far) : douze pas descendent sous
+	# le millimètre sur une poussée d'une unité. On rend le côté LIBRE de la dichotomie, sans
+	# rien ajouter : un cheveu de plus par image, rejoué soixante fois par seconde, ferait
+	# avancer le corps plus vite que le mur qui le pousse (mesuré : +1,2 u en deux secondes).
+	var low := 0.0
+	var high := 1.0
+	for i in 12:
+		var mid := (low + high) * 0.5
+		if capsule_blocks(shapes, centre.lerp(far, mid), axis, half_length, radius):
+			low = mid
+		else:
+			high = mid
+	return centre.lerp(far, high)
+
+## Déplace un corps allongé de `from` vers `to` parmi des formes qui peuvent BOUGER.
+##
+## ⚠️ C'EST LA SEULE ENTRÉE QUE LE PILOTAGE DOIT APPELER, et elle remplace un mécanisme de
+## « dégagement après coup » qui a produit, dans l'ordre, un ressort, un convoyeur et un
+## vaisseau figé — trois symptômes du même défaut : on laissait le corps pénétrer, puis on
+## le repoussait par un chemin CHOISI (le plus court, puis « d'où il vient », puis avec des
+## pénalités). Chaque rustine déplaçait le problème. « Il faut que tu remettes à plat »
+## (opérateur, 2026-08-28).
+##
+## La règle est celle d'un contact sans frottement, et elle tient en une phrase : **au
+## contact, la vitesse du corps selon la normale de la surface ne peut pas être inférieure
+## à celle de la surface.** Tout le reste est libre. Ce qu'elle donne :
+##
+## - une face immobile percutée de front : on s'arrête, « comme une voiture dans un mur » ;
+## - la même en biais : on glisse le long ;
+## - le BOUT d'un mur qui tourne arrive sur le corps : il l'entraîne, à sa vitesse ;
+## - la FACE d'un mur qui tourne : sa vitesse est tangente, elle glisse sous le corps sans
+##   rien lui faire.
+##
+## Deux temps. D'abord ce que les SURFACES font au corps : si une forme le pénètre déjà —
+## elle a tourné dans lui depuis l'image d'avant — il est poussé dans la direction où cette
+## surface se déplace, du minimum qui le libère. Ensuite ce que le CORPS fait : son propre
+## déplacement est balayé contre les formes, et ce qui entrerait dans une surface est
+## retiré (`slide_capsule`).
+##
+## `delta` : la durée de l'image, pour borner la poussée à ce qu'une surface a pu parcourir.
+static func move_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis: Vector2,
+		half_length: float, radius: float, delta: float) -> Vector2:
+	if shapes.size() == 0:
+		return to
+	var start := from
+	var goal := to
+	var hit := first_blocking_capsule(shapes, start, axis, half_length, radius)
+	if hit >= 0:
+		var velocity := surface_velocity(shapes, hit,
+			blocking_point_capsule(shapes, hit, start, axis, half_length, radius))
+		if velocity.length() > 0.0001:
+			# Ce qu'une surface a pu avancer en une image, avec de la marge : elle a tourné
+			# d'un pas, pas de dix. Au-delà, ce n'est pas un mur qui pousse, c'est un corps
+			# qui est né dedans — et ça, c'est l'affaire du dégagement statique.
+			var reach := velocity.length() * delta * 4.0 + radius
+			var pushed := push_capsule_along(shapes, start, axis, half_length, radius,
+				velocity, reach)
+			goal += pushed - start
+			start = pushed
+		if capsule_blocks(shapes, start, axis, half_length, radius):
+			# Immobile et pourtant dedans : apparition dans un mur, ou une forme qui n'a
+			# pas déclaré sa vitesse. On sort par le plus court, une fois.
+			var freed := resolve_capsule(shapes, start, axis, half_length, radius)
+			goal += freed - start
+			start = freed
+	return slide_capsule(shapes, start, goal, axis, half_length, radius)
+
 # --- Le déplacement, pas la correction ----------------------------------------
 
 ## Déplace un corps allongé de `from` vers `to` en GLISSANT sur ce qu'il rencontre.
@@ -353,23 +449,6 @@ static func slide_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis:
 		return contact
 	var normal := escape.normalized()
 	var remaining := to - contact
-	# ⚠️ UN CHOC FRONTAL ARRÊTE ; IL NE FAIT PAS DÉRAPER. Le glissement sert à LONGER une
-	# paroi : il est juste quand on la rase, absurde quand on la percute de face. Sur une
-	# surface RONDE — le carter du réacteur — il l'était doublement : un joueur qui pousse
-	# tout droit vers le noyau, décalé de onze centimètres, voyait son vaisseau partir sur le
-	# côté. La composante tangentielle d'un mouvement frontal contre un cercle est un
-	# dérapage, et rien dans l'image ne l'explique : « mon vaisseau part sur la droite, je
-	# suis expulsé, ça ne marche pas du tout » (playtest du 2026-08-27, enregistrement de
-	# partie à l'appui — nez à 2,09 du centre pour un carter de 2,10, pendant toute la
-	# plongée).
-	#
-	# Mesuré et non supposé : trois diagnostics successifs ont accusé les murs tournants, la
-	# taille du couloir, puis les bornes du plan. Aucun n'était la cause. C'est
-	# l'enregistrement `--dive-trace` — la commande du joueur À CÔTÉ de sa position — qui a
-	# tranché : le vaisseau suivait sa commande, sauf au contact du carter.
-	if remaining.length() > 0.0001 \
-			and remaining.normalized().dot(normal) < -FRONTAL_DOT:
-		return contact
 	var tangent := remaining - normal * remaining.dot(normal)
 	var slid := contact + tangent
 	if not capsule_blocks(shapes, slid, axis, half_length, radius):

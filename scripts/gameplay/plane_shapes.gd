@@ -28,6 +28,11 @@ const STRIDE := 6
 
 var _kind := PackedInt32Array()
 var _data := PackedFloat32Array()
+## Vitesse de rotation de la forme autour de son centre, en degrés par seconde. Zéro pour
+## tout ce qui ne tourne pas. C'est ce qui permet à la collision de savoir si une surface
+## VIENT vers le corps ou s'en éloigne — sans quoi un mur qui tourne et un corps qui avance
+## sont indiscernables, et on ne peut ni arrêter l'un ni entraîner l'autre correctement.
+var _spin := PackedFloat32Array()
 var _count: int = 0
 
 ## Dimensionne pour `capacity` formes. À appeler UNE FOIS, au montage.
@@ -39,6 +44,7 @@ func reserve(capacity: int) -> void:
 	var target := maxi(capacity, _kind.size() * 2)
 	_kind.resize(target)
 	_data.resize(target * STRIDE)
+	_spin.resize(target)
 
 ## Vide sans libérer. C'est l'appel de début d'image.
 func clear() -> void:
@@ -57,12 +63,18 @@ func centre_of(index: int) -> Vector2:
 	var base := index * STRIDE
 	return Vector2(_data[base], _data[base + 1])
 
+## Rotation de la forme autour de son centre, en degrés par seconde (0 si immobile).
+func spin_at(index: int) -> float:
+	return _spin[index]
+
 func add_disc(centre: Vector2, radius: float) -> void:
 	_push(Kind.DISC, centre.x, centre.y, radius, 0.0, 0.0, 0.0)
 
+## `spin_deg` : vitesse de rotation de l'arc autour de `centre`, en degrés par seconde.
 func add_ring_arc(centre: Vector2, radius: float, thickness: float,
-		start_deg: float, span_deg: float) -> void:
+		start_deg: float, span_deg: float, spin_deg: float = 0.0) -> void:
 	_push(Kind.RING_ARC, centre.x, centre.y, radius, thickness, start_deg, span_deg)
+	_spin[_count - 1] = spin_deg
 
 func add_capsule(a: Vector2, b: Vector2, radius: float) -> void:
 	_push(Kind.CAPSULE, a.x, a.y, b.x, b.y, radius, 0.0)
@@ -78,4 +90,5 @@ func _push(kind: Kind, p0: float, p1: float, p2: float, p3: float,
 	_data[base + 3] = p3
 	_data[base + 4] = p4
 	_data[base + 5] = p5
+	_spin[_count] = 0.0
 	_count += 1

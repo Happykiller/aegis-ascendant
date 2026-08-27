@@ -1142,7 +1142,11 @@ func _rebuild_solids() -> void:
 func _trace_dive(delta: float) -> void:
 	if not _dive_trace or _player == null or _player.stats == null:
 		return
-	if _leviathan == null or _leviathan.phase() != LeviathanCombat.Phase.DIVE:
+	# ⚠️ TOUT LE COMBAT, ET PLUS SEULEMENT LA PLONGÉE. La première version ne s'armait que
+	# dans le noyau : si le défaut se produit dehors — pendant l'armure, l'approche — elle
+	# n'en garde aucune trace, et il faut refaire une partie pour rien. Un instrument qui ne
+	# regarde qu'où l'on croit que le problème est ne sert qu'à confirmer ce qu'on croit.
+	if _phase != Phase.FINAL_BOSS:
 		return
 	_trace_age += delta
 	var here := _player.plane_position
@@ -1150,8 +1154,11 @@ func _trace_dive(delta: float) -> void:
 	var half := _player.stats.body_half_length
 	var radius := _player.stats.body_radius
 	var touching := PlaneCollider.capsule_blocks(_solids, here, forward, half, radius)
-	var line := "%.4f;%.3f;%.3f;%.3f;%.3f;%d" % [_trace_age,
-		_player.last_input.x, _player.last_input.y, here.x, here.y, 1 if touching else 0]
+	var dive := 1 if _leviathan != null \
+		and _leviathan.phase() == LeviathanCombat.Phase.DIVE else 0
+	var line := "%.4f;%.3f;%.3f;%.3f;%.3f;%d;%d" % [_trace_age,
+		_player.last_input.x, _player.last_input.y, here.x, here.y,
+		1 if touching else 0, dive]
 	for i in _solids.size():
 		var c := _solids.centre_of(i)
 		line += "|%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % [_solids.kind_at(i), c.x, c.y,
@@ -1168,7 +1175,7 @@ func _flush_dive_trace() -> void:
 	if file == null:
 		push_error("[DiveTrace] ecriture impossible : %s" % path)
 		return
-	file.store_line("t;input_x;input_y;pos_x;pos_y;contact|formes(kind,p0..p5)")
+	file.store_line("t;input_x;input_y;pos_x;pos_y;contact;dive|formes(kind,p0..p5)")
 	for line in _trace_lines:
 		file.store_line(line)
 	file.close()

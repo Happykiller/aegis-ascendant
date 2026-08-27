@@ -352,21 +352,77 @@ func test_holding_against_a_wall_settles_instead_of_bouncing() -> void:
 	assert_true(absf(previous) < 0.001,
 		"et il s'est pose (dernier pas %.5f u)" % absf(previous))
 
-## Un mur qui TOURNE peut rattraper un vaisseau immobile : il faut bien l'en sortir. Mais le
-## degagement doit etre BORNE — instantane, c'est le saut qui fait le ressort.
-func test_a_wall_that_catches_you_pushes_you_out_at_a_readable_speed() -> void:
+## Un mur qui TOURNE arrive sur un corps immobile : il l'ENTRAINE dans sa direction — et
+## seulement dans la sienne. Ni par le chemin le plus court, ni « d'ou il vient » : c'est la
+## surface qui pousse, donc c'est elle qui dit ou.
+##
+## ⚠️ CE TEST REMPLACE « le degagement est borne a 9 u/s ». Cette borne etait une rustine
+## sur un mecanisme qui laissait entrer puis repoussait par un chemin choisi ; elle a donne
+## un ressort, puis un convoyeur, puis un vaisseau fige. La regle est desormais celle d'un
+## contact sans frottement : la vitesse du corps selon la normale ne peut pas etre
+## inferieure a celle de la surface. Un mur qui avance de 6 cm pousse de 6 cm.
+func test_a_turning_wall_pushes_you_in_its_own_direction_and_no_further() -> void:
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
-	var shapes := _wall()
-	var inside := Vector2(0.0, 4.0)
-	assert_true(PlaneCollider.capsule_blocks(shapes, inside, Vector2(0.0, 1.0),
-			stats.body_half_length, stats.body_radius), "pre-requis : il est dedans")
-	var freed := PlaneCollider.resolve_capsule(shapes, inside, Vector2(0.0, 1.0),
-		stats.body_half_length, stats.body_radius)
-	var step := inside.move_toward(freed, PlayerFighterController.DEPENETRATION_SPEED / 60.0)
-	assert_true(step.distance_to(inside) < freed.distance_to(inside),
-		"il sort en plusieurs images, pas d'un bond")
-	assert_true(step.distance_to(inside) > 0.05,
-		"mais franchement : %.3f u en une image" % step.distance_to(inside))
+	var up := Vector2(0.0, 1.0)
+	# Un arc de 60 degres a 5 u du centre, qui tourne a +30 deg/s (sens trigonometrique).
+	# Le corps est pose juste APRES son bout, sur son rayon : la rotation l'amene dessus.
+	var body := Vector2(cos(deg_to_rad(-28.0)), sin(deg_to_rad(-28.0))) * 5.0
+	var here := body
+	var shapes := PlaneShapes.new()
+	var step := 1.0 / 60.0
+	var travelled := 0.0
+	var off_axis := 0
+	for i in 120:
+		shapes.clear()
+		shapes.reserve(1)
+		# L'arc va de -90 a -30 a t=0, puis tourne : son bout a -30 atteint le corps.
+		shapes.add_ring_arc(Vector2.ZERO, 5.0, 0.5, -90.0 + 30.0 * step * i, 60.0, 30.0)
+		var next := PlaneCollider.move_capsule(shapes, here, here, up,
+			stats.body_half_length, stats.body_radius, step)
+		assert_false(PlaneCollider.capsule_blocks(shapes, next, up,
+			stats.body_half_length, stats.body_radius), "jamais dedans (image %d)" % i)
+		var moved := next - here
+		if moved.length() > 0.001:
+			# Chaque pas va dans la direction LOCALE du mur : tangente au cercle, sens
+			# de rotation. C'est image par image que ca se juge — sur deux secondes le
+			# corps a parcouru 60 degres, et la corde ne dit plus rien de la tangente.
+			var tangent := Vector2(-here.y, here.x).normalized()
+			if moved.normalized().dot(tangent) < 0.95:
+				off_axis += 1
+		travelled += moved.length()
+		here = next
+	assert_true(travelled > 0.5, "il a ete entraine (%.2f u)" % travelled)
+	assert_eq(off_axis, 0, "%d pas hors de la direction du mur" % off_axis)
+	# Et pas plus vite que le mur LA OU IL TOUCHE. Le corps est vertical, pose en travers du
+	# rayon : son bout le plus eloigne est a r = 5 + 2,11 (demi-corps), et c'est la que le
+	# bout du mur le pousse — a 30 deg/s, sur deux secondes, ca fait ~7,4 u d'arc. Mesurer
+	# au centre (5,2 u) aurait ete une erreur de rayon, pas une preuve d'exces.
+	var farthest: float = 5.0 + stats.body_half_length + stats.body_radius
+	var wall_reach: float = deg_to_rad(60.0) * farthest
+	assert_true(travelled <= wall_reach * 1.05,
+		"pas plus vite que le mur au point de contact (%.2f u pour %.2f)" % [travelled, wall_reach])
+
+## Le symetrique, et il est aussi important : la FACE d'un mur qui tourne glisse sous le
+## corps sans rien lui faire. Un vaisseau pose contre la face interne d'un anneau en
+## rotation ne bouge pas d'un millimetre — c'est ce qui distingue « le mur tourne » de
+## « le mur m'emporte ».
+func test_the_face_of_a_turning_wall_slides_past_without_carrying() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	var up := Vector2(0.0, 1.0)
+	# Contre la face interne (rayon 5 - 0,25 = 4,75), nez en haut : le nez touche a 4,75.
+	var here := Vector2(0.0, 4.75 - stats.body_half_length - stats.body_radius - 0.02)
+	var depart := here
+	var shapes := PlaneShapes.new()
+	var step := 1.0 / 60.0
+	for i in 120:
+		shapes.clear()
+		shapes.reserve(1)
+		# Un arc de 180 degres centre sur le haut, qui tourne : sa face reste au meme rayon.
+		shapes.add_ring_arc(Vector2.ZERO, 5.0, 0.5, 0.0 + 20.0 * step * i, 180.0, 20.0)
+		here = PlaneCollider.move_capsule(shapes, here, here, up,
+			stats.body_half_length, stats.body_radius, step)
+	assert_true(here.distance_to(depart) < 0.05,
+		"la face glisse sous lui, il n'a pas bouge (%.3f u)" % here.distance_to(depart))
 
 ## ⚠️ LA GARDE DE L'AIMANT, et elle rejoue le blindage LIVRE parce que le defaut ne se
 ## reproduit pas sur un mur droit. « Quand on est repousse c'est comme un aimant ou avec des
@@ -393,7 +449,6 @@ func _graze(input_is_tangential: bool) -> Array:
 	var grazing := outermost + stats.body_radius - 0.06
 	var up := Vector2(0.0, 1.0)
 	var here := Vector2(0.0, -grazing)
-	var last_free := here
 	var shoved := 0
 	var touched := 0
 	var travelled := 0.0
@@ -415,18 +470,13 @@ func _graze(input_is_tangential: bool) -> Array:
 		if PlaneCollider.capsule_blocks(shapes, wanted, up, stats.body_half_length,
 				stats.body_radius):
 			touched += 1
-		var next := PlaneCollider.slide_capsule(shapes, here, wanted, up,
-			stats.body_half_length, stats.body_radius)
-		if PlaneCollider.capsule_blocks(shapes, next, up, stats.body_half_length,
+		# « Bouscule » = un mur a TOURNE dans le corps depuis l'image d'avant : c'est le
+		# seul cas ou la physique deplace le vaisseau sans que le joueur l'ait demande.
+		if PlaneCollider.capsule_blocks(shapes, here, up, stats.body_half_length,
 				stats.body_radius):
-			var freed := PlaneCollider.resolve_capsule(shapes, next, up,
-				stats.body_half_length, stats.body_radius, 5, last_free - next)
-			if freed.distance_to(next) > PlayerFighterController.CONTACT_TOLERANCE:
-				next = next.move_toward(freed,
-					PlayerFighterController.DEPENETRATION_SPEED / 60.0)
-				shoved += 1
-		else:
-			last_free = next
+			shoved += 1
+		var next := PlaneCollider.move_capsule(shapes, here, wanted, up,
+			stats.body_half_length, stats.body_radius, 1.0 / 60.0)
 		travelled += next.distance_to(here)
 		here = next
 		closest = minf(closest, here.length())
@@ -500,53 +550,37 @@ func test_a_fighter_left_alone_in_the_corridor_stays_there() -> void:
 	var up := Vector2(0.0, 1.0)
 	var here := Vector2(0.0, -milieu)
 	var depart := here
-	var last_free := here
 	var shapes := PlaneShapes.new()
 	for i in int(tuning.dive_time * 60.0):
 		shapes.clear()
 		shapes.reserve(ReactorRings.shape_count(rings) + 1)
 		ReactorRings.fill_shapes(shapes, rings, Vector2.ZERO, float(i) / 60.0)
 		shapes.add_disc(Vector2.ZERO, tuning.flux_hitbox_radius)
-		var next := PlaneCollider.slide_capsule(shapes, here, here, up,
-			stats.body_half_length, stats.body_radius)
-		if not PlaneCollider.capsule_blocks(shapes, next, up,
-				stats.body_half_length, stats.body_radius):
-			last_free = next
-		else:
-			var freed := PlaneCollider.resolve_capsule(shapes, next, up,
-				stats.body_half_length, stats.body_radius, 5, last_free - next)
-			if freed.distance_to(next) > 0.03:
-				next = next.move_toward(freed, 9.0 / 60.0)
-		here = next
+		here = PlaneCollider.move_capsule(shapes, here, here, up,
+			stats.body_half_length, stats.body_radius, 1.0 / 60.0)
 	assert_true(here.distance_to(depart) < 0.5,
 		"pose immobile dans le couloir, il a derive de %.2f u en %.0f s (arrivee %.2f, %.2f)"
 			% [here.distance_to(depart), tuning.dive_time, here.x, here.y])
 
-## ⚠️ LE GESTE DU JOUEUR, ET C'EST LUI QUI MANQUAIT A TOUS LES BANCS PRECEDENTS. Deux
-## simulations ont conclu que la chambre allait bien — l'une avec le chasseur immobile au
-## milieu du couloir, l'autre au poste de tir — pendant que l'operateur vivait le contraire :
-## « j'ai comme un mur qui me pousse sur la droite ». Aucune des deux ne faisait ce que fait
-## un joueur : POUSSER vers le noyau, donc rencontrer le bord d'un arc en rotation.
+## ⚠️ LE GESTE DU JOUEUR : pousser vers le noyau, en biais, contre des murs qui tournent.
 ##
-## Ce que ce test refuse : qu'un mur qui tourne EMPORTE le chasseur lateralement. Qu'il
-## l'arrete est normal et voulu — l'operateur le demande explicitement (« je ne peux pas les
-## franchir, il y aura une collision quand je les touche sur leur surface »). Qu'il le
-## convoie ne l'est pas.
-func test_a_turning_wall_stops_you_but_never_carries_you() -> void:
+## Ce que ce test refuse, et rien d'autre : qu'un vaisseau QUE RIEN NE TOUCHE aille ailleurs
+## que la ou on le commande. Etre arrete par un mur est normal ; etre ENTRAINE par le bout
+## d'un mur qui arrive sur le flanc l'est aussi — « il n'y a que dans l'eventualite ou je
+## suis pris sur le cote du mur que je vais etre entraine » (operateur, 2026-08-28). Ce qui
+## ne l'est pas, c'est le fantome : une derive sans contact, ou un deplacement a l'envers
+## de la commande quand aucune surface ne l'impose.
+func test_a_turning_wall_stops_you_but_never_moves_you_without_touching() -> void:
 	var tuning: LeviathanTuning = load(SHIPPED)
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	var centre := CoreInterior.PLANE_OFFSET
 	var up := Vector2(0.0, 1.0)
 	var shapes := PlaneShapes.new()
-	# Trois commandes qui montent vers le noyau, dont deux en biais : c'est en biais qu'on
-	# rencontre un bord d'arc de flanc, et c'est la que le convoyeur se declenchait.
 	for push in [Vector2(0.0, 1.0), Vector2(0.5, 0.87).normalized(),
 			Vector2(-0.5, 0.87).normalized()]:
 		var pos := centre + tuning.dive_entry_local()
-		var depart := pos
-		var last_free := pos
-		var against := 0
-		var carried := 0.0
+		var ghosts := 0
+		var carried := 0
 		for i in int(tuning.dive_time * 60.0):
 			shapes.clear()
 			shapes.reserve(ReactorRings.shape_count(tuning.reactor_rings) + 2)
@@ -555,27 +589,23 @@ func test_a_turning_wall_stops_you_but_never_carries_you() -> void:
 			shapes.add_disc(centre, CoreInterior.REACTOR_HOUSING_RADIUS)
 			var wanted: Vector2 = (pos + push * stats.max_speed / 60.0).clamp(
 				GameplayPlane.CHAMBER_BOUNDS.position, GameplayPlane.CHAMBER_BOUNDS.end)
-			var next := PlaneCollider.slide_capsule(shapes, pos, wanted, up,
+			# Un mur a-t-il tourne DANS le corps depuis l'image d'avant ? Alors il a le
+			# droit de le deplacer. Sinon, seul le joueur decide.
+			var caught := PlaneCollider.capsule_blocks(shapes, pos, up,
 				stats.body_half_length, stats.body_radius)
-			if not PlaneCollider.capsule_blocks(shapes, next, up,
-					stats.body_half_length, stats.body_radius):
-				last_free = next
-			else:
-				against += 1
-				var freed := PlaneCollider.resolve_capsule(shapes, next, up,
-					stats.body_half_length, stats.body_radius, 5, last_free - next)
-				if freed.distance_to(next) > 0.03:
-					next = next.move_toward(freed, 9.0 / 60.0)
-			pos = next.clamp(GameplayPlane.CHAMBER_BOUNDS.position,
+			var next := PlaneCollider.move_capsule(shapes, pos, wanted, up,
+				stats.body_half_length, stats.body_radius, 1.0 / 60.0)
+			next = next.clamp(GameplayPlane.CHAMBER_BOUNDS.position,
 				GameplayPlane.CHAMBER_BOUNDS.end)
-			# Ce qu'on mesure : un deplacement lateral que le joueur n'a PAS demande.
-			if absf(push.x) < 0.01:
-				carried = maxf(carried, absf(pos.x - depart.x))
-			elif signf(pos.x - depart.x) != signf(push.x):
-				carried = maxf(carried, absf(pos.x - depart.x))
-		assert_true(carried < 1.5,
-			("commande (%+.2f, %+.2f) : emporte de %.2f u DANS LE SENS INVERSE de ce qui "
-				+ "etait demande (%d images contre un mur)") % [push.x, push.y, carried, against])
+			var moved := next - pos
+			if caught:
+				carried += 1
+			elif moved.length() > 0.001 and moved.dot(push) < -0.001:
+				ghosts += 1
+			pos = next
+		assert_eq(ghosts, 0,
+			("commande (%+.2f, %+.2f) : %d image(s) ou il va a L'ENVERS sans qu'aucun "
+				+ "mur ne le touche (entraine legitimement %d fois)") % [push.x, push.y, ghosts, carried])
 
 ## Ce qui compte vraiment : il n'est ni pris au piege, ni EMPORTE. Le blindage tourne ; il ne
 ## doit pas emmener le chasseur avec lui.

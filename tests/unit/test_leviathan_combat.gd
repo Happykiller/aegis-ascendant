@@ -897,6 +897,12 @@ func test_the_hull_is_solid_outside_and_the_walls_inside() -> void:
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	# Les murs n'existent que DANS la chambre : tant que le niveau n'a pas pose l'ancrage,
+	# le chasseur est dehors en approche guidee, et rien ne doit le toucher.
+	shapes.clear()
+	combat.fill_solids(shapes)
+	assert_eq(shapes.size(), 0, "avant l'ancrage, rien — on est encore dehors")
+	combat.dive_anchor = Vector2(0.0, 40.0)
 	shapes.clear()
 	combat.fill_solids(shapes)
 	assert_true(shapes.size() > 0, "le noyau oppose quelque chose a son tour")
