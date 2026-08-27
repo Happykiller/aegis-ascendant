@@ -35,6 +35,17 @@ const FALLBACK_ENTRY := Vector2(0.0, -6.0)
 
 var _decor: Node3D
 var _reactor_plane: Vector2 = FALLBACK_REACTOR
+
+## Le repère de cible : un point doux, additif, qui SUIT le flux et qui BAT.
+## Le décor ne bat pas — c'est ce qui distingue la cible de ce qui l'entoure.
+var _marker: Sprite3D
+
+## Hauteur du repère au-dessus du plan. Assez pour ne pas s'enfoncer dans le décor du
+## réacteur, assez peu pour rester à la même profondeur que le chasseur.
+const MARKER_LIFT := 0.15
+const MARKER_SIZE := 0.030
+const MARKER_SWELL := 0.35
+const MARKER_PULSE_RATE := 5.0
 var _entry_plane: Vector2 = FALLBACK_ENTRY
 ## Vrai quand on a monté la doublure procédurale faute de décor livré. Le niveau le
 ## journalise : un intérieur en doublure ne doit jamais passer pour l'asset final.
@@ -48,6 +59,32 @@ func is_stand_in() -> bool:
 	return _is_stand_in
 
 ## Position du réacteur dans le plan de jeu — la cible de la phase.
+## Pose le repère de cible sur le flux, dans le plan de jeu. Le rendre invisible en
+## passant `false` (hors plongée).
+##
+## ⚠️ CE QU'IL FERME, ET CE N'ÉTAIT PAS UN MANQUE DE DÉCORATION. La cible réelle dérive
+## jusqu'à ~2,6 u de l'ancre, et RIEN ne la dessinait dans l'arène : le halo du flux se pose
+## sur le cœur du boss, resté DEHORS pendant la plongée. Le joueur tirait donc sur le
+## réacteur du décor pendant que la cible était ailleurs — « le noyau semble juste un point
+## du décor » (playtest du 2026-08-27). Un signal faux, pas un signal absent.
+func set_target_marker(plane_position: Vector2, lit: bool) -> void:
+	if _marker == null:
+		return
+	_marker.visible = lit
+	if not lit:
+		return
+	_marker.position = GameplayPlane.to_world(plane_position) + Vector3(0.0, MARKER_LIFT, 0.0)
+
+## Fait battre le repère. Appelé par le niveau, à l'image : le battement est ce qui le
+## sépare du décor, qui lui ne bat pas.
+func pulse_target_marker(age: float) -> void:
+	if _marker == null or not _marker.visible:
+		return
+	var beat := 0.5 + 0.5 * sin(age * MARKER_PULSE_RATE)
+	_marker.pixel_size = MARKER_SIZE * (1.0 + MARKER_SWELL * beat)
+	_marker.modulate = Color(1.0, 0.45 + 0.35 * beat, 0.25 + 0.2 * beat,
+		0.55 + 0.45 * beat)
+
 func reactor_plane_position() -> Vector2:
 	return _reactor_plane
 
@@ -65,10 +102,27 @@ func _build() -> void:
 		_is_stand_in = true
 	add_child(_decor)
 	_read_anchors()
+	_build_marker()
 
 ## Lit les points d'ancrage du décor. Un ancrage absent DÉGRADE vers une valeur sensée et
 ## le dit : c'est la règle du projet pour les pièces d'asset manquantes (cf. les bouches de
 ## canon du chasseur), parce qu'un combat qui plante vaut moins qu'un combat imparfait.
+## Le repère est construit ICI et non dans le décor livré : il doit exister même quand la
+## forge n'a rien livré (doublure), sans quoi la cible redeviendrait invisible au premier
+## décor manquant — exactement le cas où l'on en a le plus besoin.
+func _build_marker() -> void:
+	_marker = Sprite3D.new()
+	_marker.name = "TargetMarker"
+	_marker.texture = SoftDot.texture()
+	_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_marker.shaded = false
+	_marker.transparent = true
+	_marker.no_depth_test = true
+	_marker.render_priority = 4
+	_marker.pixel_size = MARKER_SIZE
+	_marker.visible = false
+	add_child(_marker)
+
 func _read_anchors() -> void:
 	_reactor_plane = _anchor_or(ANCHOR_REACTOR, FALLBACK_REACTOR)
 	_entry_plane = _anchor_or(ANCHOR_ENTRY, FALLBACK_ENTRY)

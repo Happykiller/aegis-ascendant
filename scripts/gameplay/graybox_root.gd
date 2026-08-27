@@ -64,6 +64,9 @@ var _defeated: bool = false
 @onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
 @onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
 var _hit_stop: HitStop
+## Âge du battement du repère de cible. Repart de zéro à chaque plongée : le battement doit
+## commencer plein, pas au milieu d'un cycle hérité de la plongée précédente.
+var _core_marker_age: float = 0.0
 @onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
 @onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
@@ -600,6 +603,7 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.dive_entered.connect(_on_leviathan_dive_entered)
 	combat.dive_ended.connect(_on_leviathan_dive_ended)
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
+	combat.armour_regen.connect(_on_leviathan_armour_regen)
 
 ## La jauge du boss montre la PROGRESSION DU COMBAT — `fight_ratio()`, qui ne remonte
 ## jamais — et non la santé de la cible courante.
@@ -632,6 +636,11 @@ func _on_leviathan_piece_gauge(index: int, ratio: float, alive: bool) -> void:
 func _on_leviathan_piece_active(index: int) -> void:
 	if _hud != null:
 		_hud.set_boss_limb_active(index)
+
+## L'armure se reconstruit : le HUD le MONTRE, au lieu de laisser une seconde de vide.
+func _on_leviathan_armour_regen(ratio: float) -> void:
+	if _hud != null:
+		_hud.set_boss_regen(ratio)
 
 func _on_leviathan_piece_destroyed(_phase: int, _index: int, world_position: Vector3) -> void:
 	_boom(world_position, VfxExplosion.Category.MEDIUM, 0.4)
@@ -752,6 +761,10 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 	# centre du corps du boss, resté dehors.
 	if _leviathan != null and _core_interior != null:
 		_leviathan.dive_anchor = _core_interior.reactor_plane_position()
+		# ⚠️ ET ON DIT OÙ ELLE EST. La cible dérive de plusieurs unités autour de l'ancre ;
+		# sans repère, le joueur tire sur le réacteur du décor pendant qu'elle est ailleurs.
+		_core_marker_age = 0.0
+		_core_interior.set_target_marker(_leviathan.flux_plane_position(), true)
 	_dive_camera(false, true)
 
 func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
@@ -765,6 +778,8 @@ func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
 		_player.plane_position = _outside_plane
 	if _leviathan != null:
 		_leviathan.dive_anchor = Vector2.INF   # le flux redevient une affaire de boss
+	if _core_interior != null:
+		_core_interior.set_target_marker(Vector2.ZERO, false)
 	_show_core_interior(false)
 	_dive_camera(false)
 	_clear_core_interior()
@@ -912,6 +927,24 @@ func _physics_process(delta: float) -> void:
 	_update_engine_hum()
 	if _approach_active:
 		_advance_boss_approach(delta)
+	_track_core_target(delta)
+
+## Le repère de cible SUIT le flux, à l'image, et il BAT.
+##
+## ⚠️ Le suivi n'est pas un luxe : c'est tout l'intérêt. Un repère posé une fois à l'entrée
+## se retrouverait à plusieurs unités de la cible dès la première seconde de dérive — il
+## deviendrait le second signal faux, après le réacteur du décor.
+##
+## Sondage plutôt que signal : c'est une valeur CONTINUE, et un signal par image ne dirait
+## rien de plus qu'une lecture par image.
+func _track_core_target(delta: float) -> void:
+	if _core_interior == null or _leviathan == null:
+		return
+	if not _core_interior.visible:
+		return
+	_core_marker_age += delta
+	_core_interior.set_target_marker(_leviathan.flux_plane_position(), true)
+	_core_interior.pulse_target_marker(_core_marker_age)
 
 # --- Helios Lance finale + victory (spec §12.7) -----------------------------
 

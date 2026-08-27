@@ -63,6 +63,17 @@ static func offset(age: float, seed: float, amplitude: float) -> Vector2:
 		reach * (wave_a * (1.0 - SECOND_SHARE) + wave_b * SECOND_SHARE),
 		reach * VERTICAL_RATIO * wave_b)
 
+## Distance maximale que la dérive peut atteindre, pour une amplitude donnée.
+##
+## Exposée parce qu'elle est LA borne : un repère visuel qui suit la cible, un test qui la
+## vérifie et un réglage qui la fixe doivent partager une seule vérité, jamais trois
+## approximations recopiées.
+static func max_offset(amplitude: float) -> float:
+	if amplitude <= 0.0:
+		return 0.0
+	return amplitude * sqrt(1.0 + VERTICAL_RATIO * VERTICAL_RATIO)
+
+
 ## Graine d'une unité à partir de son rang d'apparition.
 ##
 ## Suite à faible discordance (le nombre d'or, modulo 1) : deux ennemis SUCCESSIFS d'une

@@ -210,11 +210,11 @@ func test_the_flux_follows_the_dive_anchor_not_the_boss_body() -> void:
 	_kill_armour(combat)
 	combat.tick(0.016)                                    # bascule armure -> plongee
 	combat.tick(combat.tuning.dive_enter_time + 0.02)     # entree consommee
-	# ⚠️ L'ENVELOPPE DE DERIVE N'EST PAS UN CERCLE. `_flux_offset()` rend
-	# `Vector2(cos t, sin 0,7t) * rayon` : une figure de Lissajous dont le coin atteint
-	# `sqrt(2) * rayon`, soit 2,26 m et non 1,60. Une borne posee au rayon nu echoue une
-	# fois sur deux selon l'instant du tick — un test intermittent qui accuserait le code.
-	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	# ⚠️ L'ENVELOPPE DE DERIVE N'EST PAS UN CERCLE, et elle n'est plus recopiee ici : la
+	# figure de base est une Lissajous dont le coin atteint sqrt(2) x rayon, et la derive
+	# organique (ADR-0029) s'y ajoute. Le code l'expose, le test la LIT — deux formules
+	# separees n'auraient pu que diverger.
+	var drift: float = combat.flux_drift_envelope()
 	var to_anchor := combat._flux_target.position - anchor
 	assert_true(to_anchor.length() <= drift + 0.01,
 		"le flux vit sur l'ancre de plongee, a sa derive pres : %.2f m" % to_anchor.length())
@@ -228,7 +228,7 @@ func test_without_an_anchor_the_flux_stays_on_the_boss() -> void:
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
-	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	var drift: float = combat.flux_drift_envelope()
 	assert_true(combat._flux_target.position.length() <= drift + 0.01,
 		"sans ancre, le flux reste au corps du boss")
 
@@ -238,7 +238,7 @@ func test_the_anchor_is_ignored_outside_the_dive() -> void:
 	var combat := _make()
 	combat.dive_anchor = Vector2(9.0, 9.0)
 	combat.tick(0.5)
-	var drift: float = combat.tuning.flux_drift_radius * sqrt(2.0)
+	var drift: float = combat.flux_drift_envelope()
 	assert_true(combat._flux_target.position.length() <= drift + 0.01,
 		"pendant l'armure, l'ancre ne dit rien")
 
@@ -639,6 +639,81 @@ func test_a_missed_dive_still_waits_out_its_clock() -> void:
 	assert_eq(ended.size(), 0, "un coup isole ne libere pas la plongee")
 	combat.tick(combat.tuning.dive_time + 0.01)
 	assert_eq(ended.size(), 1, "c'est le minuteur qui la termine, comme avant")
+
+## ⚠️ LA GARDE DU REPERE DE CIBLE. Le flux derive de plusieurs unites autour de son ancre,
+## et rien ne le dessinait dans l'arene : le halo du flux se pose sur le coeur du boss,
+## RESTE DEHORS pendant la plongee. Le joueur tirait sur le reacteur du decor pendant que la
+## cible etait ailleurs — « le noyau semble juste un point du decor » (playtest 2026-08-27).
+##
+## Ce que le test garde, c'est que la position PUBLIEE — celle que le niveau pose sous le
+## repere — est bien celle de la CIBLE, et non celle de l'ancre. Les deux se ressemblent une
+## fraction de seconde apres l'entree ; c'est ce qui rend l'erreur invisible autrement.
+func test_the_published_flux_position_is_the_target_not_the_anchor() -> void:
+	var combat := _make()
+	var anchor := Vector2(3.0, -5.0)
+	combat.dive_anchor = anchor
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat.tick(1.1)   # le temps que la derive s'ecarte
+	var published := combat.flux_plane_position()
+	assert_true(published.distance_to(combat._flux_target.position) < 0.001,
+		"le niveau lit la cible reelle (%.2f m d'ecart)"
+			% published.distance_to(combat._flux_target.position))
+	assert_true(published.distance_to(anchor) > 0.3,
+		"et elle a bien QUITTE l'ancre (%.2f m) — sinon le repere serait inutile"
+			% published.distance_to(anchor))
+
+## La derive doit rester DANS son enveloppe : le repere suit, mais le joueur ne doit pas
+## avoir a chercher la cible a l'autre bout de l'arene.
+func test_the_flux_never_leaves_its_declared_envelope() -> void:
+	var combat := _make()
+	var anchor := Vector2(1.0, 2.0)
+	combat.dive_anchor = anchor
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	var envelope := combat.flux_drift_envelope()
+	var worst := 0.0
+	for step in 60:
+		combat.tick(0.05)
+		worst = maxf(worst, combat.flux_plane_position().distance_to(anchor))
+	assert_true(worst <= envelope + 0.01,
+		"ecart max %.2f m pour une enveloppe declaree de %.2f m" % [worst, envelope])
+
+## ⚠️ LA REGEN NE SE MONTRE QUE SI ELLE A LIEU. Au dernier cycle le flux tombe et l'armure
+## ne revient pas : une jauge verte qui monterait la promettrait pour rien — un signal faux,
+## que la loi des signaux tient pour pire qu'un signal absent.
+## ⚠️ ET LE PIEGE DU TEST LUI-MEME : on NE PEUT PAS abattre le flux en une plongee, les
+## degats sont plafonnes a un tiers par passage (ADR-0026). Une premiere version de cette
+## garde croyait tuer le boss du premier coup et accusait le code de promettre une armure —
+## alors qu'elle revenait bel et bien. Il faut donc aller jusqu'au TROISIEME cycle.
+func test_the_regen_gauge_never_promises_an_armour_that_is_not_coming() -> void:
+	var combat := _make()
+	var per_dive := combat.tuning.flux_damage_per_dive()
+	var seen: Array[float] = []
+	combat.armour_regen.connect(func(r: float) -> void: seen.append(r))
+	for cycle in 2:
+		_kill_armour(combat)
+		_ride_dive(combat, per_dive)
+	seen.clear()                       # les deux premieres reconstructions ont bien eu lieu
+	_kill_armour(combat)
+	_ride_dive(combat, per_dive)       # la derniere : le flux tombe, rien ne revient
+	assert_eq(combat.phase(), CombatScript.Phase.DEFEATED, "le boss est bien mort")
+	for value in seen:
+		assert_true(value <= 0.0,
+			"aucune promesse de reconstruction quand le boss meurt (%.2f)" % value)
+
+func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
+	var combat := _make()
+	var seen: Array[float] = []
+	combat.armour_regen.connect(func(r: float) -> void: seen.append(r))
+	_kill_armour(combat)
+	_ride_dive(combat, 10.0)   # on rate : l'armure va revenir
+	assert_true(seen.size() >= 2, "la reconstruction s'annonce pendant l'ejection")
+	assert_true(seen.max() > 0.0, "et la jauge monte")
+	assert_almost_eq(seen[seen.size() - 1], 0.0, 0.001,
+		"puis s'efface quand l'armure est la — sinon elle resterait en travers du combat")
 
 func test_three_perfect_dives_are_exactly_enough() -> void:
 	# Trois cycles deviennent le MEILLEUR cas, vrai par construction et non par calibrage.

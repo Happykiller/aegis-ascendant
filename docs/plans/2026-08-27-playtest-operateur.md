@@ -3,7 +3,8 @@ titre: Retours de playtest du 2026-08-27 — puissance, regen, noyau, et le mouv
 date: 2026-08-27
 auteur: session Claude, sur retours de l'opérateur après une partie complète (arc entier, rang S)
 perimetre: équilibrage de la montée en puissance, signaux de boss, phase du noyau, bibliothèque de trajectoires
-etat: **R1, R3b et R4 LIVRÉS** (2026-08-27, `ADR-0029`) ; R2, R3a et R3c instruits, non engagés
+etat: **TOUT LIVRÉ** le 2026-08-27 (R1, R2, R3a, R3b, R3c, R4 — `ADR-0029`).
+  Reste le jugement en jeu : trois signaux et un équilibrage ne se valident pas au journal
 supersede: rien. Complète docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -50,7 +51,7 @@ ne tiennent pas une seconde contre sept flux.
 
 ---
 
-## R2 — La regen des « organes » ne se montre pas
+## R2 — La regen des « organes » ne se montre pas ✅ LIVRÉ
 
 > « Lors des phases de regen des organes, au lieu d'avoir juste un temps avant qu'ils reviennent, on
 > pourrait faire grandir leur barre de vie en vert qui montre la regen. »
@@ -73,7 +74,7 @@ l'ADR.
 
 Trois défauts distincts dans la même phase.
 
-### R3a — Le noyau ne se désigne pas comme cible
+### R3a — Le noyau ne se désignait pas comme cible ✅ LIVRÉ
 
 > « On doit guider l'utilisateur visuellement pour lui montrer que le noyau est la cible, là il
 > semble juste un point du décor. »
@@ -100,7 +101,7 @@ donc **2 secondes** devant une jauge gelée.
 supprimer une ». L'intention est écrite dans le fichier ; le code ne l'applique pas. Ce n'est pas un
 changement d'équilibrage, c'est **la mise en œuvre d'une décision déjà prise**.
 
-### R3c — La phase est immobile
+### R3c — La phase était immobile ✅ LIVRÉ
 
 > « Cette phase n'est pas vivante, rien ne bouge. On pourrait imaginer que le boss bouge et donc le
 > noyau suit le mouvement. »
@@ -155,10 +156,35 @@ C'est mot pour mot le reproche de l'opérateur, résolu ailleurs et jamais trans
 |---|---|---|---|
 | ~~R3b~~ | ~~Éjecter au quota atteint~~ | — | ✅ **livré** le 2026-08-27 |
 | ~~R1~~ | ~~Un Power Core tous les 16 kills~~ | — | ✅ **livré** — ⚠️ **reste à rejouer pour confirmer** |
-| **R2** | Jauge de regen verte | moyen | signal — attention à `ADR-0023` |
-| **R3a** | Désigner le noyau comme cible | moyen | signal |
-| **R3c** | Le boss dérive pendant la plongée | moyen | vie de la scène |
+| ~~R2~~ | ~~Jauge de regen verte~~ | — | ✅ **livré** — un filet de 2 px SOUS la jauge, `ADR-0023` intact |
+| ~~R3a~~ | ~~Désigner le noyau comme cible~~ | — | ✅ **livré** — et l'écart était pire que « pas assez visible » |
+| ~~R3c~~ | ~~Le boss dérive pendant la plongée~~ | — | ✅ **livré** — la dérive du flux devient non harmonique |
 | ~~R4~~ | ~~Graine par instance + périodes non harmoniques~~ | — | ✅ **livré** — [`ADR-0029`](../decisions/ADR-0029-la-derive-organique.md) |
 
 Les deux premiers sont sans ambiguïté et se livrent d'un bloc. R4 est le plus gros et le plus
 visible ; c'est aussi celui qui, seul, change la sensation de tout le jeu.
+
+
+---
+
+## Ce que la mise en œuvre a trouvé, et que le plan ne disait pas
+
+**R3a n'était pas un défaut de décoration : le repère MANQUAIT tout court.** Le halo du flux
+(`_apply_flux_glow`) se pose sur le **cœur du boss** — resté **dehors** pendant la plongée
+(`ADR-0025` : l'arène est une zone dédiée montée à l'origine du monde). Dans l'arène, la cible
+n'avait donc **aucun rendu**, et elle dérive jusqu'à **~2,6 u** de l'ancre. Le joueur tirait sur
+le réacteur du décor pendant que la cible était ailleurs : un signal **faux**, que la loi des
+signaux tient pour pire qu'un signal absent.
+
+**L'enveloppe de dérive était recopiée dans trois tests** sous forme d'un `sqrt(2.0)` — une
+formule dupliquée qui ne pouvait que diverger du code. Elle est désormais exposée par
+`flux_drift_envelope()` : le repère, les tests et le réglage partagent une seule vérité.
+
+**La première jauge de regen a été écartée après l'avoir regardée.** Elle remplissait le creux
+de la barre, ancrée à droite : elle ne mentait pas, mais sa longueur dépendait de l'avancement du
+combat — trente pixels au cycle 1. Or elle mesure un **temps**, pas des dégâts : elle doit
+balayer la même distance à chaque reconstruction.
+
+⚠️ **Et une garde a pris une hypothèse à moi en défaut** : le premier test de la jauge croyait
+abattre le flux d'une seule plongée. C'est impossible **par construction** (`ADR-0026` plafonne
+les dégâts à un tiers par passage) — il fallait aller jusqu'au troisième cycle.

@@ -76,6 +76,15 @@ signal dive_ended(cycle: int, flux_down: bool)
 ## L'armure s'est reformée, avec `plates` plaques. Le niveau l'annonce au joueur : sans
 ## cela, une armure qui revient se lit comme un bug, pas comme une mécanique.
 signal armour_reformed(cycle: int, plates: int)
+## L'armure se reforme, de 0 à 1. Émis pendant l'éjection, et une dernière fois à 0 quand
+## elle est revenue. Sans lui, le joueur passait une seconde devant un boss qui ne faisait
+## rien et ne le disait pas (playtest du 2026-08-27).
+signal armour_regen(ratio: float)
+
+## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
+## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
+const FLUX_DRIFT_SEED := 0.29
+const FLUX_ORGANIC_SHARE := 0.45
 
 @export var tuning: LeviathanTuning
 @export var projectile: ProjectileData
@@ -637,17 +646,47 @@ func _player_bearing(origin: Vector2) -> float:
 ## montent aucune zone, ne changent donc pas de régime.
 var dive_anchor: Vector2 = Vector2.INF
 
+## Rayon maximal de la dérive du flux autour de son ancre.
+##
+## ⚠️ CE N'EST PAS UN CERCLE DE RAYON `flux_drift_radius`. La figure de base est une
+## Lissajous dont le coin atteint √2 × rayon, et la dérive organique s'y ajoute. Exposé
+## pour que le repère visuel, les tests et le réglage partagent UNE vérité — la borne était
+## jusqu'ici un `sqrt(2.0)` recopié dans deux tests, qui ne pouvait que diverger du code.
+func flux_drift_envelope() -> float:
+	if tuning == null or tuning.flux_drift_period <= 0.0:
+		return 0.0
+	return tuning.flux_drift_radius * sqrt(2.0) \
+		+ OrganicDrift.max_offset(tuning.flux_drift_radius * FLUX_ORGANIC_SHARE)
+
+
+## Où le flux est VRAIMENT, dans le plan de jeu — ancre du noyau plus sa dérive.
+##
+## ⚠️ PUBLIQUE PARCE QUE PERSONNE NE LE SAVAIT. La cible dérive jusqu'à 1,6 u de l'ancre, et
+## rien ne la dessinait dans l'arène : le halo du flux se pose sur le cœur du boss, qui est
+## resté DEHORS pendant la plongée. Le joueur tirait donc sur le réacteur du décor pendant
+## que la cible était ailleurs — « le noyau semble juste un point du décor » (playtest du
+## 2026-08-27). Le niveau s'en sert pour poser un repère qui SUIT la cible.
+func flux_plane_position() -> Vector2:
+	return _flux_origin(_origin()) + _flux_offset()
+
 func _flux_origin(origin: Vector2) -> Vector2:
 	if _phase != Phase.DIVE or not dive_anchor.is_finite():
 		return origin
 	return dive_anchor
 
 ## Dérive du flux dans le noyau : assez pour qu'on suive, pas assez pour qu'on cherche.
+##
+## ⚠️ La figure de base est une Lissajous de rapport 0,7 — donc elle BOUCLE. On lui ajoute
+## la dérive organique (`ADR-0029`, périodes non harmoniques) : la cible reste suivable,
+## sa trajectoire cesse d'être prévisible. C'est le « rien ne bouge, fête foraine » du
+## playtest, appliqué au noyau.
 func _flux_offset() -> Vector2:
 	if _phase != Phase.DIVE or tuning.flux_drift_period <= 0.0:
 		return Vector2.ZERO
 	var t := TAU * _age / tuning.flux_drift_period
-	return Vector2(cos(t), sin(t * 0.7)) * tuning.flux_drift_radius
+	var figure := Vector2(cos(t), sin(t * 0.7)) * tuning.flux_drift_radius
+	return figure + OrganicDrift.offset(_age, FLUX_DRIFT_SEED,
+		tuning.flux_drift_radius * FLUX_ORGANIC_SHARE)
 
 # --- Temps 1 — BRISER L'ARMURE ------------------------------------------------
 
@@ -817,6 +856,9 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 			if _dive_elapsed >= tuning.dive_time:
 				_set_dive(Dive.EJECT)
 		Dive.EJECT:
+			# La reconstruction se MONTRE. Pas quand le flux est tombé : là, rien ne revient.
+			if _flux_health > 0.0 and tuning.dive_eject_time > 0.0:
+				armour_regen.emit(minf(_dive_elapsed / tuning.dive_eject_time, 1.0))
 			if _dive_elapsed >= tuning.dive_eject_time:
 				_leave_dive()
 
@@ -849,6 +891,7 @@ func _leave_dive() -> void:
 	_cycle += 1
 	_arm_cycle(_cycle)
 	_enter_phase(Phase.ARMOR)
+	armour_regen.emit(0.0)   # elle est là : la jauge de reconstruction s'efface
 	armour_reformed.emit(_cycle, _plates.size())
 
 # --- Rendu de la coque --------------------------------------------------------
