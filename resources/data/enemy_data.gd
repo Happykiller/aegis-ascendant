@@ -54,6 +54,20 @@ enum Motion { PATH, HOMING }
 @export var projectile: ProjectileData
 ## Logical hitbox radius (generous on enemies, spec §5.3 accessibility).
 @export var hitbox_radius: float = 0.45
+
+## Cette coque est-elle un CORPS ? Loi « les corps ne se chevauchent pas »
+## (`docs/KB/REGLES/lois.md`).
+##
+## ⚠️ FAUX PAR DÉFAUT, ET C'EST VOLONTAIRE. Une unité dont le métier est de VOUS ATTEINDRE
+## doit pouvoir vous atteindre : une mine qui rebondit sur le chasseur au lieu d'exploser
+## est désamorcée par sa propre collision, et une sangsue qui ne peut plus mordre n'est plus
+## une sangsue. Les kamikazes et les effets de zone traversent ; les vaisseaux, eux, sont des
+## corps. Le doute se tranche par : « est-ce que le contact EST son attaque ? »
+##
+## Ça ne change rien au contact qui BLESSE : les deux mécanismes cohabitent, et un vaisseau
+## solide fait toujours mal. Il vous repousse en plus, ce qui vous sort de la zone de dégâts
+## au lieu de vous y laisser mijoter.
+@export var solid: bool = false
 @export var score_value: int = 100
 
 ## DIVE : secondes d'approche lente avant que l'ennemi ne fonde.

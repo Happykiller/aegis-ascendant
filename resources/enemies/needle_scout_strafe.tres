@@ -18,5 +18,6 @@ fire_interval = 2.4
 fire = 2
 burst_count = 5
 projectile = ExtResource("2_shot")
+solid = true
 hitbox_radius = 0.45
 score_value = 110

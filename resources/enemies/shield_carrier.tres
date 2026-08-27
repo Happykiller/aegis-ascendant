@@ -52,6 +52,7 @@ max_health = 252.0
 move_speed = 2.2
 hold_y = 4.5
 hold_time = 9.0
+solid = true
 hitbox_radius = 0.85
 score_value = 400
 ; ⚠️ 7,0 ET NON 5,0 depuis le 2026-08-26 — « j agrandirais sa zone d influence pour

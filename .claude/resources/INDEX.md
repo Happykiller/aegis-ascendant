@@ -128,6 +128,10 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   `track()`. Le compte de Godot ne désigne pas son coupable : l'attribuer en exécutant **un fichier
   de test par process**. Un backlog annonçait 8 fuites « tweens/timers », il y en avait **789**,
   toutes dans un seul fichier.
+  ⛔ **Jamais `git checkout <fichier>` pour défaire une mutation** : il ramène à HEAD et
+  emporte tout le travail non commité du fichier — deux fois en une session le 2026-08-27,
+  la seconde a coûté une implémentation entière. Copier le fichier avant, ou commiter avant
+  de muter.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et

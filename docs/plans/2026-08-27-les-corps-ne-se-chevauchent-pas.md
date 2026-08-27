@@ -39,18 +39,29 @@ et c'est ainsi qu'on croit un chantier fini.
 unilatérale — le chasseur cède, la coque non. C'est voulu ici (un boss poussé par un chasseur
 serait ridicule) et c'est exactement ce qui manquera au lot 3.
 
-## Lot 3 — les vaisseaux entre eux ❌ À FAIRE, ET À TRANCHER
+## Lot 3 — les vaisseaux entre eux ✅ FAIT
 
-Le chasseur traverse les ennemis, et les ennemis se traversent entre eux.
+**Arbitrage retenu** (proposé, non contredit) : le doute se tranche par *« est-ce que le contact
+EST son attaque ? »*.
 
-**Question de conception, pas de technique** : aujourd'hui toucher un ennemi coûte des points de
-vie. Le non-chevauchement voudrait dire **repousser**. Les deux sont incompatibles sur le même
-contact ; il faut choisir, ennemi par ennemi :
+- **Trois traversent** — `choir_mine`, `leech_drone`, `null_maw`. Une mine qui rebondit sur le
+  chasseur au lieu d'exploser est désamorcée par sa propre collision, et rien ne le dirait :
+  elle aurait l'air de fonctionner, elle tournerait autour de sa cible.
+- **Les dix autres coques sont des corps.** Elles repoussent le chasseur — ce qui le sort de la
+  zone de dégâts au lieu de l'y laisser mijoter. Le contact qui blesse est intact.
+- **Entre pairs, la répulsion est réciproque et douce** : chacune prend la moitié. Faire céder
+  une seule des deux ferait passer la nuée pour un tas de billes poussées par la dernière
+  arrivée.
 
-- les **kamikazes** (sangsues, mines) doivent traverser puisqu'ils explosent ;
-- les **coques lourdes** (porteur de bouclier, frégates) gagneraient à repousser ;
-- les **ennemis entre eux** : un empilement de trois sangsues au même pixel est le défaut le plus
-  visible, et le moins coûteux à corriger — une répulsion douce suffit, sans collision dure.
+⚠️ **Le point technique qui n'était pas évident** : une unité sur trajectoire recalcule sa
+position **entièrement** à chaque image (`EnemyPath.position_at` est pure). Une poussée écrite
+dans `plane_position` disparaît à l'image suivante — la répulsion n'existerait qu'une image sur
+deux, et à l'écran ça ne se lit pas comme une panne mais comme un **frémissement**. D'où un écart
+persistant, réappliqué après le recalcul, **amorti** vers zéro : l'unité s'écarte puis revient sur
+sa figure. Une répulsion permanente aurait déformé les nuées jusqu'à ce qu'elles ne dessinent
+plus rien.
+
+Borné (`SEPARATION_MAX`) : dix unités au même endroit ne s'éjectent pas hors de l'écran.
 
 ## Lot 4 — le décor solide ❌ À FAIRE
 
@@ -66,5 +77,9 @@ aujourd'hui ; certains ne devraient pas l'être (le survol est un fond). À arbi
 | Ligne de tir | `PlaneCollider.first_hit(shapes, de, vers, rayon)` |
 | Déclarer un obstacle | `shapes.add_disc` / `add_ring_arc` / `add_capsule` |
 
-Il **manque** : corps contre corps (deux capsules qui se repoussent l'une l'autre), nécessaire au
-lot 3. Le lot 2 n'en a pas besoin — un boss ne se laisse pas pousser.
+| Écarter deux pairs | `EnemyController.nudge(offset)`, appelé par le semeur |
+
+Le corps-contre-corps du lot 3 est traité par **répulsion douce** (chacun prend la moitié) plutôt
+que par collision dure : entre unités mobiles, une collision dure fige les nuées et se lit comme
+un bug. Le chasseur contre un boss reste **unilatéral** — un boss poussé par un chasseur serait
+ridicule.

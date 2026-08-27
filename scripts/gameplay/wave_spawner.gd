@@ -27,6 +27,15 @@ var _next_spawn: int = 0
 var _spawn_times: PackedFloat32Array
 var _spawn_positions: PackedVector2Array
 var _pool: Array[EnemyController] = []
+
+## Indices des unités vivantes, réutilisés d'une image à l'autre. ⚠️ Sans cette liste, la
+## passe de séparation parcourrait les 107 entrées du pool à chaque image pour en trouver
+## quinze : 5 600 paires au lieu de 105, dans une boucle critique (spec §26.1).
+var _live := PackedInt32Array()
+
+## Douceur de la répulsion. À 1,0 deux unités se décollent en une image — ça se voit comme
+## un choc. À 0,5 elles glissent l'une contre l'autre, ce qui lit comme une nuée.
+const SEPARATION_STRENGTH := 0.5
 var _cleared: bool = false
 
 func _ready() -> void:
@@ -90,6 +99,7 @@ static func build_schedule(wave_data: WaveData) -> Dictionary:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
+	_separate()
 	var spawned := _next_spawn
 	while _next_spawn < _spawn_times.size() and _clock >= _spawn_times[_next_spawn]:
 		# La graine de dérive suit le RANG d'apparition : deux ennemis successifs d'une
@@ -110,3 +120,48 @@ func _physics_process(delta: float) -> void:
 	# pas laquelle vient de se clore.
 	print("[WaveSpawner] wave_cleared (%s)" % name)
 	wave_cleared.emit()
+
+
+# --- Loi « les corps ne se chevauchent pas » (lot 3) ---------------------------
+
+## Écarte les unités qui se chevauchent, doucement et RÉCIPROQUEMENT.
+##
+## ⚠️ CHACUNE PREND LA MOITIÉ, contrairement au chasseur contre un boss, où seul le chasseur
+## cède. Entre pairs, faire céder une seule des deux ferait passer la nuée pour un tas de
+## billes poussées par la dernière arrivée ; à parts égales, elle se dénoue.
+##
+## La répulsion est SOUPLE et amortie (voir `EnemyController._separation`) : les figures
+## écrites survivent, les unités y reviennent dès qu'elles sont libres. Un empilement de
+## trois unités au même pixel était le défaut le plus visible du jeu, et le moins cher à
+## corriger — il ne demandait pas une collision dure.
+func _separate() -> void:
+	_live.clear()
+	for i in _pool.size():
+		if _pool[i].active:
+			_live.append(i)
+	for a in _live.size():
+		var first := _pool[_live[a]]
+		for b in range(a + 1, _live.size()):
+			var second := _pool[_live[b]]
+			var offset := second.plane_position - first.plane_position
+			var distance := offset.length()
+			var wanted := first.body_radius() + second.body_radius()
+			if distance >= wanted:
+				continue
+			# Deux unités exactement superposées n'ont aucune direction : on les sépare
+			# le long d'un axe arbitraire mais STABLE, sinon elles frémiraient sur place.
+			var away := offset / distance if distance > 0.0001 else Vector2(1.0, 0.0)
+			var push := away * ((wanted - distance) * 0.5 * SEPARATION_STRENGTH)
+			first.nudge(-push)
+			second.nudge(push)
+
+## Verse les coques qui sont des CORPS. Une unité dont le contact EST l'attaque — mine,
+## sangsue, gueule — n'en est pas une : l'arrêter la désamorcerait (voir `EnemyData.solid`).
+func fill_solids(shapes: PlaneShapes) -> void:
+	for enemy in _pool:
+		if enemy.active and enemy.data != null and enemy.data.solid:
+			shapes.add_disc(enemy.plane_position, enemy.data.hitbox_radius)
+
+## Majorant du nombre de formes versées — pour dimensionner UNE fois.
+func solid_capacity() -> int:
+	return _pool.size()

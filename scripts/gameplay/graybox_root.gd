@@ -1019,6 +1019,13 @@ func _rebuild_solids() -> void:
 	if is_instance_valid(_harvester):
 		_solids.reserve(_harvester.solid_capacity())
 		_harvester.fill_solids(_solids)
+	# ⚠️ LES DEUX SEMEURS, et ils ne tournent jamais ensemble (ADR-0027 : la vague, puis le
+	# champ d'astéroïdes). Les interroger tous les deux coûte deux tests et évite d'avoir à
+	# savoir lequel est actif — ce que ce fichier n'a pas à connaître.
+	for spawner in [_wave_spawner, _field_spawner]:
+		if is_instance_valid(spawner):
+			_solids.reserve(spawner.solid_capacity())
+			spawner.fill_solids(_solids)
 	if _player != null and _player.solids != _solids:
 		_player.solids = _solids
 

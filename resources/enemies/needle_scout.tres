@@ -12,5 +12,6 @@ weave_amplitude = 1.6
 weave_frequency = 0.4
 fire_interval = 1.9
 projectile = ExtResource("2_shot")
+solid = true
 hitbox_radius = 0.45
 score_value = 100

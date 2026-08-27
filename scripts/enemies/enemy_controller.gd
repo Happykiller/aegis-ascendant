@@ -40,6 +40,37 @@ signal reaction_changed(state: int)
 var active: bool = false
 var plane_position: Vector2 = Vector2.ZERO
 
+## Écart TEMPORAIRE imposé par les voisins, loi « les corps ne se chevauchent pas ».
+##
+## ⚠️ IL FAUT UN DÉCALAGE PERSISTANT, ET CE N'EST PAS UN DÉTAIL D'IMPLÉMENTATION. Une unité
+## sur trajectoire recalcule sa position ENTIÈREMENT à chaque image — `EnemyPath.position_at`
+## est une fonction pure de l'âge. Une poussée écrite dans `plane_position` serait donc
+## effacée à l'image suivante, et la répulsion n'existerait qu'une image sur deux : on
+## verrait frémir, pas s'écarter.
+##
+## Il s'amortit vers zéro : l'unité s'écarte, puis REVIENT sur sa trajectoire dès qu'elle est
+## libre. C'est ce qui préserve les figures écrites — une répulsion permanente les
+## déformerait jusqu'à ce que la nuée ne dessine plus rien.
+var _separation: Vector2 = Vector2.ZERO
+var _applied_separation: Vector2 = Vector2.ZERO
+
+## Vitesse de retour sur la trajectoire, en unités par seconde.
+const SEPARATION_RECOVER := 3.0
+
+## Écart maximal qu'un empilement peut imposer. Sans borne, dix unités au même endroit
+## s'éjecteraient mutuellement hors de l'écran.
+const SEPARATION_MAX := 1.2
+
+## Écarte cette unité. Appelé par le semeur, jamais par elle-même : une unité ne connaît pas
+## ses voisines, et lui donner cette connaissance ferait de chaque ennemi un moteur physique.
+func nudge(offset: Vector2) -> void:
+	_separation = (_separation + offset).limit_length(SEPARATION_MAX)
+
+## Demi-largeur du corps pour la séparation. On réemploie la hitbox : c'est la seule taille
+## déclarée, et l'inventer une seconde fois créerait deux chiffres pour le même fait.
+func body_radius() -> float:
+	return data.hitbox_radius if data != null else 0.0
+
 ## Seconds the hull stays lit after taking a hit (spec §17: feedback under 120 ms).
 const HIT_FLASH_TIME := 0.09
 ## Peak opacity of the additive white wash laid over the hull on impact.
@@ -232,6 +263,8 @@ func setup(bullet_manager: BulletManager, player: PlayerFighterController = null
 func activate(spawn_plane_position: Vector2, drift_seed: float = EnemyPath.NO_DRIFT) -> void:
 	plane_position = spawn_plane_position
 	_spawn = spawn_plane_position
+	_separation = Vector2.ZERO
+	_applied_separation = Vector2.ZERO
 	_age = 0.0
 	_drift_seed = drift_seed
 	_fire_timer = data.fire_interval
@@ -277,7 +310,7 @@ func _set_active(value: bool) -> void:
 func _physics_process(delta: float) -> void:
 	_age += delta
 	var previous_x := plane_position.x
-	_advance(delta)
+	step_position(delta)
 	position = GameplayPlane.to_world(plane_position)
 	_target.position = plane_position
 	# Sortie par le bas OU par le haut : le BOOMERANG s'échappe en remontant, et sans
@@ -316,6 +349,22 @@ func _physics_process(delta: float) -> void:
 ## pour les neuf familles historiques — ajouter un comportement de ce type, c'est
 ## ajouter une trajectoire dans `EnemyPath` et la choisir dans la Resource, pas
 ## toucher ici.
+## Avance d'une image, ÉCART DE SÉPARATION COMPRIS.
+##
+## ⚠️ PUBLIQUE, ET C'EST DÉLIBÉRÉ. La garde qui compte ici — « la poussée survit au recalcul
+## de la trajectoire » — recopiait ces quatre lignes au lieu de les appeler : elle serait
+## restée verte le jour où le pas d'image aurait oublié de réappliquer l'écart. Un test qui
+## reproduit le code ne teste rien. Monter le nœud entier en headless n'étant pas possible,
+## c'est le pas lui-même qu'on expose.
+func step_position(delta: float) -> void:
+	# On retire l'écart de l'image précédente AVANT de rejouer le déplacement : sans ça, une
+	# unité en poursuite (dont la position s'accumule) le compterait deux fois et dériverait.
+	plane_position -= _applied_separation
+	_advance(delta)
+	_applied_separation = _separation
+	plane_position += _applied_separation
+	_separation = _separation.move_toward(Vector2.ZERO, SEPARATION_RECOVER * delta)
+
 func _advance(delta: float) -> void:
 	if _is_attached():
 		# Accrochée : elle ne se déplace plus, elle est PORTÉE. Le décalage a été

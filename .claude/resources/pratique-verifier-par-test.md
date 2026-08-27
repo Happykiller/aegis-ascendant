@@ -68,3 +68,30 @@ une sortie qui crie déjà 789 objets n'en est plus un.
 | « Combien ça coûte ? » | **Mesure GPU** — cf. [howto-mesurer-la-perf](howto-mesurer-la-perf.md) |
 
 Une capture répond à « à quoi ça ressemble », **jamais** à « est-ce que c'est correct ».
+
+## ⛔ Ne JAMAIS défaire une mutation avec `git checkout <fichier>`
+
+**Deux fois dans la même session, le 2026-08-27.** La seconde a effacé toute une
+implémentation non commitée — variables, méthode extraite, réinitialisation — en une commande
+tapée par réflexe après un test de mutation réussi.
+
+Le piège est que le geste a l'air sûr : on vient d'écrire *une* ligne de mutation, on veut la
+retirer, et `git checkout` est la façon évidente. Sauf qu'il ne retire pas la mutation, il
+**ramène le fichier à HEAD** — donc il emporte aussi tout ce qu'on venait d'écrire et qui n'est
+pas encore commité, c'est-à-dire précisément le code que la mutation servait à éprouver.
+
+Le remède, en deux lignes :
+
+```bash
+cp fichier.gd "$SCRATCH/fichier.gd.avant"   # AVANT de muter
+# ... muter, lancer les tests, lire le rouge ...
+cp "$SCRATCH/fichier.gd.avant" fichier.gd   # rendre exactement l'etat d'avant
+```
+
+Ou muter par substitution réversible (`sed` dans un sens, puis dans l'autre) — jamais par un
+appel à git. **Règle** : aucune commande git qui écrit dans l'arbre de travail pendant qu'il
+porte du travail non commité, sauf `git add`/`git commit`.
+
+Corollaire : **commiter avant de muter** est la vraie protection. Un test de mutation se fait
+sur du travail déjà sauvé ; le rouge attendu ne prouve rien de plus s'il est obtenu sur du code
+qu'on risque de perdre.
