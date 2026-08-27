@@ -102,6 +102,11 @@ var _solids := PlaneShapes.new()
 ## Sonde de plongée (`--dive-probe`) : voir `_probe_dive()`.
 var _dive_probe: bool = false
 var _probe_clock: float = 0.0
+## Enregistrement de partie (`--dive-trace`) : voir `_trace_dive()`. Accumulé en mémoire et
+## écrit à la sortie — écrire 60 lignes par seconde sur le disque fausserait ce qu'on mesure.
+var _dive_trace: bool = false
+var _trace_lines := PackedStringArray()
+var _trace_age: float = 0.0
 
 ## Le module de combat du mini-boss, gardé pour ses formes solides. ⚠️ Testé par
 ## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
@@ -232,6 +237,13 @@ func _ready() -> void:
 	# raffiner le banc. Elle imprime, quatre fois par seconde et seulement pendant la
 	# plongée, ce que le chasseur subit VRAIMENT : sa position, son contact, ce qui est versé.
 	_dive_probe = "--dive-probe" in args
+	# ⚠️ L'ENREGISTREMENT DE PARTIE (`--dive-trace`), demandé par l'opérateur après trois
+	# diagnostics qui se contredisaient : « enregistre le déplacement du vaisseau en même
+	# temps que la position des murs ». C'est la seule preuve qui ne dépende d'aucune
+	# hypothèse — ni la mienne, ni celle d'un banc. On écrit la COMMANDE en plus de la
+	# position : sans elle, une trace ne distingue pas « il va à droite » de « il est poussé
+	# à droite », et c'est exactement la question posée.
+	_dive_trace = "--dive-trace" in args
 	if "--density-probe" in args and _bullets != null:
 		add_child(DensityProbe.make(_bullets, phase_label))
 	# Aucun de ces sauts n'éteint le semeur lui-même : `_set_phase()` le fait pour tout le
@@ -1015,6 +1027,7 @@ func _clear_core_interior() -> void:
 ## un retour au titre en pleine plongée, et l'écran-titre hériterait des bornes de la
 ## chambre.
 func _exit_tree() -> void:
+	_flush_dive_trace()
 	GameplayPlane.reset_bounds()
 
 ## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
@@ -1079,6 +1092,7 @@ func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 func _physics_process(delta: float) -> void:
 	_rebuild_solids()
 	_probe_dive(delta)
+	_trace_dive(delta)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
@@ -1122,6 +1136,44 @@ func _rebuild_solids() -> void:
 ##
 ## Silencieuse sans `--dive-probe`, et muette hors de la plongée : c'est un instrument, pas
 ## une trace de tous les jours.
+## Enregistre une image de plongée : le temps, la commande, la position, le contact, et
+## TOUTES les formes solides telles que la collision les voit — murs compris, avec leur
+## rotation du moment.
+func _trace_dive(delta: float) -> void:
+	if not _dive_trace or _player == null or _player.stats == null:
+		return
+	if _leviathan == null or _leviathan.phase() != LeviathanCombat.Phase.DIVE:
+		return
+	_trace_age += delta
+	var here := _player.plane_position
+	var forward := _player.plane_forward()
+	var half := _player.stats.body_half_length
+	var radius := _player.stats.body_radius
+	var touching := PlaneCollider.capsule_blocks(_solids, here, forward, half, radius)
+	var line := "%.4f;%.3f;%.3f;%.3f;%.3f;%d" % [_trace_age,
+		_player.last_input.x, _player.last_input.y, here.x, here.y, 1 if touching else 0]
+	for i in _solids.size():
+		var c := _solids.centre_of(i)
+		line += "|%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % [_solids.kind_at(i), c.x, c.y,
+			_solids.param(i, 2), _solids.param(i, 3), _solids.param(i, 4), _solids.param(i, 5)]
+	_trace_lines.append(line)
+
+## Écrit l'enregistrement à côté de l'exécutable, comme la capture d'écran — c'est le seul
+## dossier que WSL peut relire après un lancement Windows.
+func _flush_dive_trace() -> void:
+	if not _dive_trace or _trace_lines.is_empty():
+		return
+	var path := OS.get_executable_path().get_base_dir().path_join("dive-trace.csv")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		push_error("[DiveTrace] ecriture impossible : %s" % path)
+		return
+	file.store_line("t;input_x;input_y;pos_x;pos_y;contact|formes(kind,p0..p5)")
+	for line in _trace_lines:
+		file.store_line(line)
+	file.close()
+	print("[DiveTrace] %d images -> %s" % [_trace_lines.size(), path])
+
 func _probe_dive(delta: float) -> void:
 	if not _dive_probe or _player == null or _player.stats == null:
 		return

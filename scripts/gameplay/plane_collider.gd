@@ -27,6 +27,15 @@ const NO_HIT := Vector2.INF
 ## et le chasseur reste collé en vibrant. Vécu, corrigé, gardé.
 const EDGE_EPSILON := 0.01
 
+## Au-delà de ce produit scalaire entre le mouvement et la normale, le contact est FRONTAL :
+## on s'arrête au lieu de glisser (voir [method slide_capsule]).
+##
+## À 0,9, on bloque net dans un cône d'environ 25 degrés autour de la perpendiculaire — ce
+## qui couvre « je pousse tout droit dans le mur » sans toucher au « je le rase ». Plus haut,
+## le dérapage revient dès qu'on est légèrement décalé ; plus bas, on ne peut plus longer une
+## paroi en s'appuyant dessus.
+const FRONTAL_DOT := 0.9
+
 ## Ce que COÛTE une sortie par le bout de l'arc, en multiple de sa longueur réelle.
 ##
 ## ⚠️ UN MUR QUI TOURNE NE DOIT PAS VOUS EMPORTER AVEC LUI, et sans cette pénalité il le
@@ -344,6 +353,23 @@ static func slide_capsule(shapes: PlaneShapes, from: Vector2, to: Vector2, axis:
 		return contact
 	var normal := escape.normalized()
 	var remaining := to - contact
+	# ⚠️ UN CHOC FRONTAL ARRÊTE ; IL NE FAIT PAS DÉRAPER. Le glissement sert à LONGER une
+	# paroi : il est juste quand on la rase, absurde quand on la percute de face. Sur une
+	# surface RONDE — le carter du réacteur — il l'était doublement : un joueur qui pousse
+	# tout droit vers le noyau, décalé de onze centimètres, voyait son vaisseau partir sur le
+	# côté. La composante tangentielle d'un mouvement frontal contre un cercle est un
+	# dérapage, et rien dans l'image ne l'explique : « mon vaisseau part sur la droite, je
+	# suis expulsé, ça ne marche pas du tout » (playtest du 2026-08-27, enregistrement de
+	# partie à l'appui — nez à 2,09 du centre pour un carter de 2,10, pendant toute la
+	# plongée).
+	#
+	# Mesuré et non supposé : trois diagnostics successifs ont accusé les murs tournants, la
+	# taille du couloir, puis les bornes du plan. Aucun n'était la cause. C'est
+	# l'enregistrement `--dive-trace` — la commande du joueur À CÔTÉ de sa position — qui a
+	# tranché : le vaisseau suivait sa commande, sauf au contact du carter.
+	if remaining.length() > 0.0001 \
+			and remaining.normalized().dot(normal) < -FRONTAL_DOT:
+		return contact
 	var tangent := remaining - normal * remaining.dot(normal)
 	var slid := contact + tangent
 	if not capsule_blocks(shapes, slid, axis, half_length, radius):

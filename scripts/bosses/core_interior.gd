@@ -424,13 +424,23 @@ func pose_node(index: int, plane_position: Vector2, alive: bool, age: float) -> 
 	sprite.modulate = Color(0.40 + 0.22 * breath, 1.0, 0.72 + 0.20 * breath,
 		0.55 + 0.30 * breath)
 
-## Rayon du CARTER du réacteur, mis à l'échelle. Mesuré sur le décor livré : ±2,10 dans le
-## plan, et il monte à 2,05 de haut — le chasseur vole à 2,2, il le frôle.
+## Rayon du carter tel qu'il est SCULPTÉ dans le décor livré : ±2,10 dans le plan.
+const REACTOR_HOUSING_SCULPTED := 2.10
+
+## Rayon du CARTER du réacteur — l'obstacle, et la pièce qu'on voit.
 ##
-## ⚠️ IL EST PLUS LARGE QUE LE FLUX (1,80). Rendre le flux solide ne suffisait donc pas :
-## « le réacteur central ne devrait pas être franchissable » vaut pour la machine, pas
-## seulement pour la boule lumineuse qu'elle porte.
-const REACTOR_HOUSING_RADIUS := 2.10
+## ⚠️ RAMENÉ DE 2,10 À 1,80, SUR LA TAILLE DU NOYAU QU'ON VISE. Il restait plus large que le
+## flux, et cette différence de trente centimètres s'est payée cher : un enregistrement de
+## partie (`--dive-trace`) a montré le chasseur plaqué contre lui **54 % de la plongée** —
+## trois blocages de plus de deux secondes, le nez à 2,09 pour un carter à 2,10, pendant que
+## le joueur tenait la flèche haut sans comprendre. Un obstacle rond, invisible, et plus
+## grand que ce qu'on vise, ne se lit pas comme un mur : il se lit comme un jeu cassé.
+##
+## ⚠️ ET L'IMAGE SUIT, sans quoi on remplacerait un défaut par son symétrique. La loi du
+## projet est que la collision et l'image lisent la même donnée : le carter du décor est
+## donc rétréci du même rapport (voir `_apply_decor_scale`). Le décider ici et pas là-bas
+## laisserait un obstacle plus petit que la pièce qu'on voit — un mur qui n'arrête pas.
+const REACTOR_HOUSING_RADIUS := 1.80
 
 ## ⚠️ PAS MISE À L'ÉCHELLE : le carter est contre-échelonné pour garder sa taille sculptée
 ## (voir `ANCHOR_HOUSING`). Le multiplier ici rendrait un obstacle plus large que la pièce
@@ -463,7 +473,12 @@ func _build() -> void:
 	_decor.scale = Vector3(DECOR_SCALE, DECOR_SCALE, DECOR_SCALE)
 	var housing := _decor.find_child(ANCHOR_HOUSING, true, false) as Node3D
 	if housing != null:
-		housing.scale = Vector3.ONE / DECOR_SCALE
+		# ⚠️ DEUX FACTEURS, ET ILS DISENT DEUX CHOSES DIFFÉRENTES. Le premier annule
+		# l'agrandissement de la salle — le carter n'a pas à grandir avec elle. Le second le
+		# ramène à la taille du noyau qu'on vise, parce que l'obstacle et l'image doivent être
+		# la même chose (voir `REACTOR_HOUSING_RADIUS`).
+		housing.scale = Vector3.ONE / DECOR_SCALE \
+			* (REACTOR_HOUSING_RADIUS / REACTOR_HOUSING_SCULPTED)
 	# Le plan de jeu est (X, −Z) : d'où le signe. Voir `PLANE_OFFSET`.
 	position = Vector3(PLANE_OFFSET.x, position.y, -PLANE_OFFSET.y)
 	_read_anchors()

@@ -115,6 +115,8 @@ var _velocity: Vector2 = Vector2.ZERO
 ## traîne pas la dernière valeur. Ce n'est pas un déplacement piloté : la commande du
 ## joueur reste pleine, l'aspiration s'y AJOUTE — c'est le sujet des phases 2 et 4.
 var _external_pull: Vector2 = Vector2.ZERO
+## Dernière commande lue, pour l'enregistrement de partie. Aucune mécanique ne s'en sert.
+var last_input: Vector2 = Vector2.ZERO
 ## Part de vitesse volée par ce qui s'accroche à la coque (`Leech Drone`). Même
 ## cycle de vie que l'aspiration : posée par les agresseurs, consommée en tête de
 ## `_physics_process`, quel que soit l'état du chasseur.
@@ -258,6 +260,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		input = GameplayPlane.from_input(
 			Input.get_vector("move_left", "move_right", "move_up", "move_down"))
+	# Ce que le joueur DEMANDE, lisible de l'extérieur : c'est la seule façon de distinguer
+	# « il va à droite » de « il est poussé à droite » quand on enregistre une partie
+	# (`--dive-trace`). Sans elle, une trace de positions ne prouve rien.
+	last_input = input
 	_velocity = integrate_velocity(_velocity, input, stats.max_speed, stats.accel_time, delta)
 	# Le frein s'applique à la COMMANDE du joueur, l'aspiration s'y ajoute. Une
 	# sangsue vole de la vitesse ; elle ne pousse pas le chasseur quelque part.

@@ -97,9 +97,25 @@ func test_the_reactor_housing_is_declared_solid() -> void:
 		return
 	var box: Array = pieces[CoreInterior.ANCHOR_HOUSING]
 	var half := maxf(box[1].x - box[0].x, box[1].z - box[0].z) * 0.5
-	assert_almost_eq(CoreInterior.REACTOR_HOUSING_RADIUS, half, 0.2,
-		"le rayon déclaré (%.2f) est celui de la pièce qu'on voit (%.2f)"
-			% [CoreInterior.REACTOR_HOUSING_RADIUS, half])
+	# ⚠️ LE CARTER EST SCULPTÉ À 2,10 ET JOUÉ À 1,80 : le nœud est contre-échelonné au
+	# montage pour que l'obstacle ait la taille du noyau qu'on vise. La garde tient donc les
+	# DEUX bouts — la constante qui décrit le `.glb`, et le rapport qui décrit ce qu'on en
+	# fait — sans quoi rétrécir la collision seule laisserait un mur plus petit que la pièce
+	# qu'on voit, exactement le défaut inverse de celui qu'on corrige.
+	assert_almost_eq(CoreInterior.REACTOR_HOUSING_SCULPTED, half, 0.2,
+		"la constante du sculpté (%.2f) suit la pièce du décor (%.2f)"
+			% [CoreInterior.REACTOR_HOUSING_SCULPTED, half])
+	var affiche := half * (CoreInterior.REACTOR_HOUSING_RADIUS
+		/ CoreInterior.REACTOR_HOUSING_SCULPTED)
+	assert_almost_eq(CoreInterior.REACTOR_HOUSING_RADIUS, affiche, 0.05,
+		"une fois mis à l'échelle, la piece qu'on voit (%.2f) est l'obstacle qu'on heurte (%.2f)"
+			% [affiche, CoreInterior.REACTOR_HOUSING_RADIUS])
+	# Et il ne doit plus etre plus large que la cible : c'est cette difference de trente
+	# centimetres qui plaquait le chasseur contre un mur invisible plus grand que le noyau.
+	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	assert_true(CoreInterior.REACTOR_HOUSING_RADIUS <= tuning.flux_hitbox_radius + 0.01,
+		"le carter (%.2f) ne deborde plus le noyau qu'on vise (%.2f)"
+			% [CoreInterior.REACTOR_HOUSING_RADIUS, tuning.flux_hitbox_radius])
 
 ## Le sol reste un sol. Une garde à l'envers : elle refuse qu'on rende solide par excès de
 ## zèle une passerelle qu'on se voit survoler.
