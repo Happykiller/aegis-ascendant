@@ -40,6 +40,43 @@ traverser les murs, mais côté **décor** cette fois.
 valeur juste est **1,39 u** — étroit, mais pas impossible. C'est le couloir qui est impossible,
 pas le poste de tir.
 
+## Le convoyeur — mesuré, et ce n'est PAS un bug du collider
+
+> « C'est comme si je glissais sur la droite, où j'étais poussé sur la droite, impossible d'aller
+> sur la gauche de la salle. J'arrive à avancer, à reculer un petit peu, mais mon vaisseau part
+> sur la droite, je suis expulsé avec comme un mur invisible qui me pousse. » — l'opérateur,
+> second playtest du même soir
+
+Reproduit **sans aucune commande de joueur**, en headless, avec la géométrie livrée : un chasseur
+posé immobile dans la chambre, les anneaux tournant pendant les 9 s de plongée.
+
+| Départ | Arrivée | Contact |
+|---|---|---|
+| (0, −6,91) — l'entrée de plongée | inchangé | 0 / 540 images |
+| (0, −4,80) — un pas vers le noyau | **(6,59 ; +1,03)** | 215 / 540 |
+| (0, −2,70) — dans le couloir | (0,73 ; **+8,00**, le plafond) | 409 / 540 |
+
+Le mur extérieur tourne à +26 °/s ; en bas du cercle, sa tangente pointe vers **+x**. Le corps ne
+pouvant pas tenir dans le couloir, il est en contact les trois quarts du temps : chaque image le
+dégage, l'image suivante le rattrape, et la somme de ces dégagements est un **transport le long de
+l'arc**. « Un mur invisible qui pousse à droite » est la description exacte du phénomène.
+
+⚠️ **Il n'y a donc rien à corriger dans [`PlaneCollider`]**, et c'est le principal risque de faux
+chantier sur ce sujet. Le convoyeur n'est pas un défaut du moteur : c'est ce que produit
+mécaniquement un dégagement répété quand le corps n'a pas la place d'exister. Balayage du rayon du
+mur extérieur, même protocole :
+
+| Rayon | Couloir libre | Dans le couloir |
+|---|---|---|
+| 5,45 (livré) | 2,60 | +11,0, éjecté — 409/540 en contact |
+| 7,00 | 4,15 | +11,8, éjecté — 399/540 |
+| **7,50** | **4,65** | **immobile — 0/540** |
+| 8,05 | 5,20 | immobile — 0/540 |
+
+Le seuil tombe **exactement** là où le couloir dépasse l'encombrement axial du chasseur (4,22).
+7,50 est le minimum strict ; le plan retient **8,05**, parce qu'un joueur bouge, contrairement à
+cette simulation. Le poste de tir sous le mur, lui, ne dérive dans aucune configuration.
+
 ## La décision (opérateur, 2026-08-27)
 
 **Agrandir l'arène** — et non rétrécir les anneaux ni renoncer au couloir. La chambre est un lieu
@@ -73,7 +110,9 @@ du chasseur (4,22 × 1,76) :
 3. **La caméra cadre la chambre.** Elle revient aujourd'hui au cadrage normal une fois dedans
    (`_dive_camera(false)` → `restore_rest`) : il lui faut un repos propre à la phase, calculé
    depuis les nouvelles bornes et le champ de vision, pas une fraction inventée.
-4. **Le blindage devient un terrain.** Mur extérieur porté à 8,05. ⚠️ **Ça change l'équilibrage** :
+4. **Le blindage devient un terrain.** Mur extérieur porté à 8,05 — valeur **mesurée** (voir le
+   balayage ci-dessus), pas déduite. Garde à écrire : un chasseur immobile dans le couloir y est
+   encore neuf secondes plus tard. Elle est ROUGE aujourd'hui, et c'est ce qui en fait une garde. ⚠️ **Ça change l'équilibrage** :
    `ring_occupancy` (0,31) a été MESURÉ sur la géométrie actuelle, le long de la vraie ligne de
    tir. Il faut refaire la mesure, puis reprendre `flux_health` — qu'on vient de porter à 840.
 5. **Vérification.** La plongée jouée par l'opérateur, et deux captures : le chasseur DANS le
