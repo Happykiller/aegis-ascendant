@@ -33,13 +33,51 @@ const DECOR_PATH := "res://assets/imported/models/bosses/core_interior.glb"
 ## tenait pas : il restait 0,04 unité pour voler. Décentré de 1,2, il en reste 1,09.
 ##
 ## ⚠️ CE DÉCALAGE DÉPLACE L'IMAGE ET LA DONNÉE, du même champ : il pose la position 3D du
-## nœud ET s'ajoute à ce que `reactor_plane_position()` / `entry_plane_position()` rendent.
+## nœud ET s'ajoute à ce que `reactor_plane_position()` rend.
 ## Les séparer ferait bloquer les murs ailleurs qu'où on les voit — ce que la loi « les corps
 ## ne se chevauchent pas » interdit nommément.
 const PLANE_OFFSET := Vector2(0.0, 1.2)
 
+## Mise à l'échelle du décor de la chambre, pour que ses BORDURES tombent juste au-delà des
+## limites de jeu.
+##
+## ⚠️ LA SALLE ÉTAIT PLUS PETITE QUE L'AIRE DE JEU, et le chasseur entrait dedans. Mesuré sur
+## `core_interior.glb` : la face interne des bordures est à |x| = 13,45 et |y| = 7,45, quand
+## `GameplayPlane.BOUNDS` laisse aller jusqu'à 14 et 8. Le chasseur pouvait donc pénétrer le
+## mur de la salle de 0,55 unité — plus sa demi-largeur de 0,88, soit **1,43 unité de coque
+## dans la pierre**. Personne ne l'avait vu parce que le mur est sombre et qu'on le longe
+## rarement.
+##
+## Deux façons de le corriger : rendre les bordures solides, ou agrandir la salle. La
+## première ne TIENT PAS — l'entrée de plongée tomberait dans le mur, et la géométrie du
+## blindage ne rentre pas dans une salle de 7,45. La seconde est gratuite : le plancher
+## déborde déjà largement, donc rien ne découvre.
+##
+## ⚠️ ET IL FAUT COMPTER `PLANE_OFFSET`. Remonter la chambre de 1,2 a fait DESCENDRE sa
+## bordure basse dans l'aire de jeu : 1,08 aurait suffi à une salle centrée, pas à celle-ci.
+## Il faut `7,45 × s − 1,2 ≥ 8,0`, soit s ≥ 1,235. On prend 1,26 pour la marge — et ce
+## chiffre est vérifié par `test_no_decor_wall_reaches_into_the_play_area`, pas déduit ici.
+##
+## Conséquence assumée : les bordures n'ont PAS besoin d'être solides. Ce sont les limites du
+## plan qui arrêtent, et elles s'arrêtent désormais **devant** le mur, là où l'image le dit.
+const DECOR_SCALE := 1.26
+
+## ⚠️ LA SALLE GRANDIT, LA MACHINE NON. Le carter du réacteur est un frère des bordures dans
+## le décor : il aurait grossi avec elles, jusqu'à 2,65 de rayon — et il aurait alors ENGLOUTI
+## le mur intérieur du blindage (rayon 2,35), qui n'est pas un enfant du décor et ne suit pas
+## l'échelle. On aurait vu un mur enterré dans une carrosserie.
+##
+## Ce qu'on corrige, c'est une salle sous-dimensionnée face à l'aire de jeu ; ça ne concerne
+## que ses murs et son sol.
+const ANCHOR_HOUSING := "Reactor"
+
+## Hauteur à laquelle le chasseur vole DANS la chambre. Le sol est en dessous, les bordures
+## au-dessus — c'est ce chiffre qui décide qu'une passerelle est un sol et qu'un mur est un
+## obstacle. Il vivait en dur dans le niveau ; il est ici parce que c'est la chambre qui le
+## détermine, et parce qu'une garde le lit (`test_no_decor_wall_reaches_into_the_play_area`).
+const FLIGHT_LIFT := 2.2
+
 const ANCHOR_REACTOR := "Reactor_Core"
-const ANCHOR_ENTRY := "Entry_Point"
 
 ## Position du réacteur dans le plan, quand le décor ne porte pas son point d'ancrage.
 ## Le centre : c'est là que le brief demande le réacteur, et un décor qui l'a déplacé sans
@@ -47,7 +85,6 @@ const ANCHOR_ENTRY := "Entry_Point"
 const FALLBACK_REACTOR := Vector2.ZERO
 ## Entrée par le bas du cadre — la convention du shooter vertical, celle que le joueur a
 ## déjà apprise. `GameplayPlane.BOUNDS` descend à −8.
-const FALLBACK_ENTRY := Vector2(0.0, -6.0)
 
 var _decor: Node3D
 var _reactor_plane: Vector2 = FALLBACK_REACTOR
@@ -115,7 +152,6 @@ var _rings: Array[Node3D] = []
 ## cible (0,030) : plus gros que lui, sans lui disputer l'écran.
 const NODE_SIZE := 0.018
 var _nodes: Array[Sprite3D] = []
-var _entry_plane: Vector2 = FALLBACK_ENTRY
 ## Vrai quand on a monté la doublure procédurale faute de décor livré. Le niveau le
 ## journalise : un intérieur en doublure ne doit jamais passer pour l'asset final.
 var _is_stand_in: bool = false
@@ -380,12 +416,32 @@ func pose_node(index: int, plane_position: Vector2, alive: bool, age: float) -> 
 	sprite.modulate = Color(0.40 + 0.22 * breath, 1.0, 0.72 + 0.20 * breath,
 		0.55 + 0.30 * breath)
 
+## Rayon du CARTER du réacteur, mis à l'échelle. Mesuré sur le décor livré : ±2,10 dans le
+## plan, et il monte à 2,05 de haut — le chasseur vole à 2,2, il le frôle.
+##
+## ⚠️ IL EST PLUS LARGE QUE LE FLUX (1,80). Rendre le flux solide ne suffisait donc pas :
+## « le réacteur central ne devrait pas être franchissable » vaut pour la machine, pas
+## seulement pour la boule lumineuse qu'elle porte.
+const REACTOR_HOUSING_RADIUS := 2.10
+
+## ⚠️ PAS MISE À L'ÉCHELLE : le carter est contre-échelonné pour garder sa taille sculptée
+## (voir `ANCHOR_HOUSING`). Le multiplier ici rendrait un obstacle plus large que la pièce
+## qu'on voit — et la loi dit que la collision et l'image lisent la même donnée.
+func housing_radius() -> float:
+	return REACTOR_HOUSING_RADIUS
+
 func reactor_plane_position() -> Vector2:
 	return _reactor_plane + PLANE_OFFSET
 
-## Où le chasseur apparaît en arrivant.
-func entry_plane_position() -> Vector2:
-	return _entry_plane + PLANE_OFFSET
+## ⚠️ RETIRÉ : `entry_plane_position()`, qui lisait l'ancrage `Entry_Point` du décor.
+## Il donnait un DEUXIÈME point d'entrée, à côté de `LeviathanTuning.dive_entry_local()` —
+## deux chiffres pour le même fait, la panne que ce dépôt paie le plus souvent. L'ancrage a
+## été sculpté avant que les murs rotatifs n'existent : agrandie, la salle l'a poussé à
+## −8,4, hors de l'aire de jeu, et une garde l'a dit.
+##
+## Celui qui reste se DÉDUIT des anneaux livrés et se vérifie
+## (`test_the_dive_entry_is_never_inside_a_wall`). L'ancrage du décor reste dans le `.glb` :
+## il ne coûte rien, et il redeviendra utile le jour où la chambre aura une vraie porte.
 
 func _build() -> void:
 	if ResourceLoader.exists(DECOR_PATH):
@@ -396,6 +452,10 @@ func _build() -> void:
 		_decor = _build_stand_in()
 		_is_stand_in = true
 	add_child(_decor)
+	_decor.scale = Vector3(DECOR_SCALE, DECOR_SCALE, DECOR_SCALE)
+	var housing := _decor.find_child(ANCHOR_HOUSING, true, false) as Node3D
+	if housing != null:
+		housing.scale = Vector3.ONE / DECOR_SCALE
 	# Le plan de jeu est (X, −Z) : d'où le signe. Voir `PLANE_OFFSET`.
 	position = Vector3(PLANE_OFFSET.x, position.y, -PLANE_OFFSET.y)
 	_read_anchors()
@@ -422,7 +482,6 @@ func _build_marker() -> void:
 
 func _read_anchors() -> void:
 	_reactor_plane = _anchor_or(ANCHOR_REACTOR, FALLBACK_REACTOR)
-	_entry_plane = _anchor_or(ANCHOR_ENTRY, FALLBACK_ENTRY)
 
 func _anchor_or(anchor_name: String, fallback: Vector2) -> Vector2:
 	if _decor == null:
@@ -449,7 +508,12 @@ func _anchor_or(anchor_name: String, fallback: Vector2) -> Vector2:
 func _plane_of(node: Node3D) -> Vector2:
 	var local := Transform3D.IDENTITY
 	var walk: Node = node
-	while walk != null and walk != _decor:
+	# ⚠️ ON REMONTE JUSQU'À `self`, DONC ON INCLUT LA TRANSFORMATION DU DÉCOR LUI-MÊME —
+	# sa mise à l'échelle comprise. S'arrêter à `_decor` (ce qu'on faisait) rendait les
+	# ancrages dans leur repère d'origine : le jour où la salle a été agrandie, l'entrée de
+	# plongée serait restée là où elle était avant, sans un mot. La position de `self` n'y
+	# entre pas : c'est `PLANE_OFFSET`, que les accesseurs ajoutent déjà.
+	while walk != null and walk != self:
 		var as_3d := walk as Node3D
 		if as_3d != null:
 			local = as_3d.transform * local

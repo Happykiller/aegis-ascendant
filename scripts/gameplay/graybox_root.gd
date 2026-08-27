@@ -811,7 +811,7 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 		_player.begin_autopilot(centre + _leviathan.tuning.dive_entry_local())
 		# Il vole DANS le noyau, au-dessus de son plancher : sans cette hauteur il passe
 		# derrière la coque et on ne le voit plus.
-		_player.plane_lift = 2.2
+		_player.plane_lift = CoreInterior.FLIGHT_LIFT
 	_dive_camera(true)
 
 ## ⚠️ C'EST ICI QUE L'ON CHANGE DE LIEU, et c'est tout l'objet de la refonte. Le zoom de
@@ -825,7 +825,13 @@ func _on_leviathan_dive_entered(_cycle: int) -> void:
 		_player.end_autopilot()
 	_show_core_interior(true)
 	if _player != null and _core_interior != null:
-		_player.plane_position = _core_interior.entry_plane_position()
+		# ⚠️ LE MÊME POINT QUE L'AUTOPILOTE, et il n'y en a plus qu'un. Ici on lisait
+		# l'ancrage `Entry_Point` du décor — sculpté avant que les murs n'existent — pendant
+		# que l'autopilote visait `dive_entry_local()`, déduit des anneaux. Deux points
+		# d'entrée pour le même fait : le chasseur était posé à un endroit puis conduit à un
+		# autre, et le premier a fini hors de l'aire de jeu sans que rien ne s'en aperçoive.
+		_player.plane_position = _core_interior.reactor_plane_position() \
+			+ _leviathan.tuning.dive_entry_local()
 		# Dedans, le chasseur revole DANS le plan : plus besoin de le soulever pour qu'il
 		# cesse de disparaître derrière la cible, il n'y a plus de sphère devant lui.
 		_player.plane_lift = 0.0
@@ -1019,6 +1025,17 @@ func _rebuild_solids() -> void:
 	if is_instance_valid(_harvester):
 		_solids.reserve(_harvester.solid_capacity())
 		_harvester.fill_solids(_solids)
+	# ⚠️ LE CARTER DU RÉACTEUR, et c'est le NIVEAU qui le verse parce qu'il est le seul à
+	# connaître à la fois la chambre et le boss. Le module de combat ne sait rien du décor ;
+	# le décor ne sait rien du combat. Le carter est plus large que le flux (2,27 contre
+	# 1,80) : rendre le flux solide ne suffisait pas — « le réacteur central ne devrait pas
+	# être franchissable » vaut pour la machine, pas seulement pour la boule qu'elle porte.
+	#
+	# `visible` fait foi : la chambre n'existe que pendant la plongée, et le carter avec elle.
+	if is_instance_valid(_core_interior) and _core_interior.visible:
+		_solids.reserve(_solids.size() + 1)
+		_solids.add_disc(_core_interior.reactor_plane_position(),
+			_core_interior.housing_radius())
 	# ⚠️ LES DEUX SEMEURS, et ils ne tournent jamais ensemble (ADR-0027 : la vague, puis le
 	# champ d'astéroïdes). Les interroger tous les deux coûte deux tests et évite d'avoir à
 	# savoir lequel est actif — ce que ce fichier n'a pas à connaître.

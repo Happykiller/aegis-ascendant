@@ -63,10 +63,36 @@ plus rien.
 
 Borné (`SEPARATION_MAX`) : dix unités au même endroit ne s'éjectent pas hors de l'écran.
 
-## Lot 4 — le décor solide ❌ À FAIRE
+## Lot 4 — le décor solide ✅ FAIT
 
-Les rails de la chambre, les batteries des frégates, la lune du survol. Aucun n'est un obstacle
-aujourd'hui ; certains ne devraient pas l'être (le survol est un fond). À arbitrer pièce par pièce.
+Arbitré **sur mesures**, pas au jugé. La question qui tranche : *la pièce monte-t-elle jusqu'à
+la hauteur de vol (2,2) ?*
+
+| Pièce | Monte à | Verdict |
+|---|---|---|
+| `Floor` | 0,45 | **sol** — on vole à 2,2, on ne le touche jamais |
+| `Catwalk_01..04` | −0,06 | **sol** — les rendre solides poserait des murs invisibles *au-dessus* de passerelles qu'on se voit survoler : le pire cas possible |
+| `Reactor` (le carter) | 2,05 | **corps** — il frôle le plan de vol, et il est **plus large que le flux** (2,10 contre 1,80). Rendre le flux solide ne suffisait pas |
+| `Rim_01..06` | 3,22 | **mur** — écarté hors de l'aire de jeu plutôt que rendu solide |
+| Survol de lune | — | **fond** : hors du plan de jeu, inatteignable. Le rendre solide n'aurait aucun sens |
+
+**Le défaut trouvé** : la face interne des bordures était à |x| = 13,45 quand l'aire de jeu va
+jusqu'à 14. Le chasseur entrait dans la pierre de **1,43 unité**, coque comprise — depuis
+toujours, et personne ne l'avait vu parce que le mur est sombre et qu'on le longe rarement.
+
+**Pourquoi agrandir plutôt que rendre solide** : des bordures solides rétréciraient l'aire utile
+en dessous de ce que le blindage rotatif exige, et l'entrée de plongée tomberait dans le mur. La
+salle était simplement sous-dimensionnée face à l'aire de jeu. Elle est mise à l'échelle 1,26 —
+et **le carter est contre-échelonné** pour garder sa taille sculptée, sinon il aurait englouti le
+mur intérieur du blindage, qui ne suit pas cette échelle.
+
+⚠️ **Conséquence visible** : les bordures de la salle sortent du cadre. On ne voit plus le mur du
+fond ; on voit le sol jusqu'au bord de l'écran.
+
+**Doublon supprimé au passage** : le décor portait un ancrage `Entry_Point`, sculpté avant que
+les murs rotatifs n'existent, pendant que le réglage calculait `dive_entry_local()`. Le chasseur
+était posé à l'un puis conduit à l'autre. L'agrandissement a poussé l'ancrage hors de l'aire de
+jeu et une garde l'a dit ; il n'est plus lu.
 
 ## Ce que le moteur sait déjà faire
 

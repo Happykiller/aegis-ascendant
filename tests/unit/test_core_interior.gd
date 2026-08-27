@@ -27,10 +27,15 @@ func test_the_reactor_sits_inside_the_playfield() -> void:
 	assert_true(GameplayPlane.BOUNDS.has_point(reactor),
 		"reacteur en (%.1f, %.1f), bornes %s" % [reactor.x, reactor.y, GameplayPlane.BOUNDS])
 
+## ⚠️ CETTE GARDE LISAIT L'ANCRAGE DU DECOR, et elle a fait son travail : agrandie, la salle
+## l'a pousse a -8,4, hors de l'aire de jeu. Le vrai defaut n'etait pas la position mais le
+## DOUBLON — le decor portait un point d'entree, le reglage en calculait un autre, et le
+## chasseur etait pose a l'un puis conduit a l'autre. L'ancrage n'est plus lu ; la garde suit
+## le point qui reste.
 func test_the_entry_point_sits_inside_the_playfield() -> void:
-	# Un point d'entree hors cadre pose le chasseur la ou le joueur ne peut plus le ramener.
+	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
 	var interior := _make()
-	var entry := interior.entry_plane_position()
+	var entry := interior.reactor_plane_position() + tuning.dive_entry_local()
 	assert_true(GameplayPlane.BOUNDS.has_point(entry),
 		"entree en (%.1f, %.1f), bornes %s" % [entry.x, entry.y, GameplayPlane.BOUNDS])
 
@@ -38,7 +43,8 @@ func test_the_fighter_does_not_start_on_top_of_the_reactor() -> void:
 	# Il arrive DANS une arene, il ne s'y telporte pas au contact de sa cible : sinon la
 	# phase commence par un choc que personne n'a demande.
 	var interior := _make()
-	var gap := interior.entry_plane_position().distance_to(interior.reactor_plane_position())
+	var tuning: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	var gap := tuning.dive_entry_local().length()
 	assert_true(gap >= 3.0, "entree a %.1f m du reacteur" % gap)
 
 func test_a_missing_decor_degrades_instead_of_breaking_the_fight() -> void:
