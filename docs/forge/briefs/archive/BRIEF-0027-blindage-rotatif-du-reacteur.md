@@ -1,6 +1,6 @@
 # BRIEF-0027 — La matière du blindage rotatif du réacteur
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-27

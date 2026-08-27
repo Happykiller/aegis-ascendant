@@ -4,6 +4,11 @@
 > plus le droit de se chevaucher : vaisseaux, boss, mur, réacteur, etc. C'est une nouvelle
 > règle. » — l'opérateur, 2026-08-27
 
+> **État : LES QUATRE LOTS SONT LIVRÉS** (2026-08-27). Ce qu'ils laissent ouvert est versé dans
+> [`docs/BACKLOG.md`](../BACKLOG.md), section « Ouvert par le chantier collision » : le couloir
+> entre les deux murs est inutilisable par construction, et il reste à trancher s'il devient un
+> terrain ou s'il s'assume comme décor.
+
 Loi posée dans [`docs/KB/REGLES/lois.md`](../KB/REGLES/lois.md). Moteur : `ADR-0032`
 ([`PlaneCollider`], [`PlaneShapes`]). Ce plan dit **où elle est tenue et où elle ne l'est pas
 encore** — parce qu'une loi appliquée à un seul endroit se lit comme une loi appliquée partout,

@@ -236,6 +236,32 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 
 ---
 
+## Ouvert par le chantier collision (2026-08-27)
+
+Les quatre lots du plan `2026-08-27-les-corps-ne-se-chevauchent-pas.md` sont livrés. Ce qu'ils
+laissent, en revanche, n'appartient à aucun d'eux :
+
+- **Le couloir entre les deux murs du réacteur n'est pas un lieu.** Le chasseur est toujours
+  aligné sur l'axe vertical, donc radialement c'est sa LONGUEUR (2,46) qui devrait tenir dans
+  l'espace libre du couloir (0,84 une fois l'envergure retranchée). Il ne peut pas y entrer,
+  quelle que soit son adresse. La phase se joue très bien en tirant du dessous à travers les
+  ouvertures — mais le « labyrinthe » demandé au playtest est un **décor**, pas un terrain.
+  ⚠️ **À trancher avant d'y accrocher la moindre mécanique.** Trois issues : élargir le couloir
+  (l'arène ne le permet pas sans reprendre l'enveloppe du flux), passer à **un seul** anneau, ou
+  assumer que c'est du décor et le dire dans le plan. Garde en place :
+  `test_the_corridor_between_the_walls_is_scenery_not_a_place`.
+
+- **Les paliers musicaux lisent une jauge qui a changé de sens.** Depuis l'amendement d'`ADR-0023`,
+  `fight_ratio()` ne compte plus que les dégâts sur le flux : elle ne bouge donc pas pendant la
+  phase d'armure. Les seuils de `_update_music()` avaient été calés sur l'ancienne mesure, qui
+  comptait aussi les plaques. Constaté sur trois parties d'affilée : la partition passe de 7 à 8
+  au cycle 2 et **n'atteint jamais 9**. Rien n'est cassé, mais la montée arrive trop tard et le
+  combat ne culmine pas. Recalage à faire sur les nouveaux ratios (1 → 2/3 → 1/3 → 0).
+
+- **Les bordures de la salle du réacteur sortent du cadre** depuis son agrandissement (échelle
+  1,26, lot 4). On voit le sol jusqu'au bord de l'écran au lieu du mur du fond. Choix assumé —
+  l'alternative rendait l'entrée de plongée impossible — mais **non jugé par l'opérateur**.
+
 ## P0 — Rendre la démo irréprochable
 
 - [x] **Contenu de la phase chasseur** — une **seconde vague** existe : le champ d'astéroïdes
