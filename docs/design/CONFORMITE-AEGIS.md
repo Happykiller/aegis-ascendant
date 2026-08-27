@@ -270,8 +270,8 @@ systèmes non écrits.
 
 | Ligne | État |
 |---|---|
-| Remappage | ❌ **absent** — `InputBootstrap` déclare les actions en dur ; son propre commentaire dit que l'UI de remappage « viendra plus tard » |
-| Manette | ❌ **absente** — seul `_add_key_action()` existe, **aucun événement joypad** n'est enregistré, alors que la spec §7.2 décrit une disposition Xbox complète |
+| Remappage | ❌ **absent** — `InputBootstrap` déclare les actions en dur ; son propre commentaire dit que l'UI de remappage « viendra plus tard ». C'est un écran, pas un branchement |
+| Manette | ✅ **tenue** (2026-08-27) — stick gauche au déplacement, A **et** gâchette droite au tir, Menu à la pause, et **le bestiaire est pilotable** (stick droit, gâchettes, tranches), lui qui n'écoute aucune action `ui_*`. ⚠️ Le constat de départ était trop noir : `project.godot` n'a **aucune section `[input]`**, donc les `ui_*` intégrées gardaient les défauts moteur — les menus se naviguaient **déjà** au pad. Ce qui manquait, c'était le jeu et le codex |
 | Secousse réductible | ✅ **tenue** (2026-08-27) — curseur SECOUSSE au menu d'options, 0 → 100. C'est le `CameraDirector` lui-même qui s'abonne à `graphics_changed`, donc le réglage vaut pour **les trois scènes** qui en portent un (combat, accueil, banc d'essai). Et il **se sent** : déplacer le curseur déclenche une brève secousse à la nouvelle intensité — un réglage d'accessibilité qui ne produit rien pendant qu'on le bouge serait le signal muet de [`LOI-EXP-08`](bible/10-experience-joueur.md) |
 | Couleur seule | ✅ tenue |
 | Choix de difficulté | ❌ un seul réglage, non exposé |
@@ -382,10 +382,16 @@ Prévus par la spec (§9.3, §9.4, §7.1), absents du code, et **silencieux**. C
 Un seul d'entre eux — l'Overdrive — apporterait d'un coup `LOI-SYS-05` (une ressource dépensable),
 `LOI-SCO-02` (le conflit) et une boucle négative naturelle.
 
-### D-4 — La manette (`LOI-EXP-11`)
+### D-4 — La manette (`LOI-EXP-11`) — ✅ **fermée le 2026-08-27**
 
-Décrite par la spec §7.2, inexistante. Pour un shooter montré à un professionnel (spec §1.3), c'est
-probablement le manque le plus visible du rapport.
+Les liaisons sont posées (spec §7.2) et gardées par `test_input_bootstrap.gd`, dont la garde
+d'orientation a été éprouvée en la cassant. ⚠️ **Non vérifié manette en main** : aucune manette n'est
+branchée sur le poste de développement — la seule chose qu'un test ne peut pas dire ici, c'est que
+ça se joue bien.
+
+Restent hors périmètre, et ce sont deux chantiers distincts : l'**UI de remappage** (un écran), et
+les **glyphes qui suivent le dernier périphérique** que demande la même §7.2 — soit une passe sur
+tous les écrans d'aide, qui affichent aujourd'hui des touches en dur (`ESC BACK`, `OPTIONS O`).
 
 ### D-5 — Les checkpoints de la spec §5.3 (`LOI-LVL-08`)
 

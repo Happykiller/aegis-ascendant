@@ -3,8 +3,8 @@ titre: Mettre le jeu en conformité avec la bible — plan d'implémentation
 date: 2026-08-27
 auteur: session Claude (poste happykiller), sur demande de l'opérateur
 perimetre: gameplay, options/HUD, données de vagues et d'ennemis, tests. Aucun asset de forge
-etat: **lot 0 LIVRÉ** (2026-08-27, vérifié en jeu) ; lot 1 prêt ; lot 2 à instruire ;
-  lots 3-5 bloqués (décision ou coût)
+etat: **lot 0 et 1.1 LIVRÉS** (2026-08-27) ; 1.2 attend une durée, 1.3 une portée ;
+  lot 2 à instruire ; lots 3-5 bloqués (décision ou coût)
 supersede: rien. Applique docs/design/CONFORMITE-AEGIS.md
 ---
 
@@ -118,22 +118,26 @@ ligne passe de ❔ à ✅ dans le rapport de conformité, et c'est tout.
 
 ## Lot 1 — ce que le joueur perd aujourd'hui sans le savoir
 
-### 1.1 — La manette (`LOI-EXP-11`, spec §7.2) — décision **D-4**
+### 1.1 — La manette (`LOI-EXP-11`, spec §7.2) — ✅ LIVRÉ le 2026-08-27
 
-`InputBootstrap` n'enregistre **aucun événement joypad**, alors que la spec décrit une disposition
-Xbox complète. Pour un shooter montré à un professionnel (spec §1.3), c'est le manque le plus
-visible du rapport.
+⚠️ **Le diagnostic de départ était trop noir.** `project.godot` ne porte **aucune section
+`[input]`** : les actions intégrées `ui_accept`, `ui_cancel` et les quatre directionnelles gardaient
+donc les liaisons par défaut du moteur, croix et stick compris. **Les menus se naviguaient déjà à la
+manette.** Ce qui manquait, c'étaient les actions maison — le jeu, et le **bestiaire**, seul écran
+du jeu à n'écouter aucune `ui_*` et donc le seul à être resté totalement injouable au pad.
 
-| Fichier | Changement |
-|---|---|
-| `scripts/core/input_bootstrap.gd` | un `_add_joypad_action()` jumeau de `_add_key_action()` : `move_*` sur l'axe du stick gauche (avec `MOVE_DEADZONE`), `fire_primary` sur A **et** RT, `ui_options` sur Menu |
+Livré : `_add_axis()` et `_add_button()` dans `input_bootstrap.gd`, tous deux idempotents comme
+l'annonce l'en-tête du fichier. Déplacement au stick gauche, tir sur A **et** gâchette droite, Menu
+à la pause, View aux options — **pas Y**, que la spec réserve à l'Overdrive.
 
-**Test** : chaque action de **jeu** (`move_*`, `fire_primary`) possède au moins un événement clavier
-**et** un événement joypad. C'est la garde qui empêche qu'un ajout d'action future arrive manchot.
+**Tests** (`test_input_bootstrap.gd`) : toute action de jeu répond aux **deux** périphériques ; le
+bestiaire est pilotable sans clavier ; `register_actions()` reste idempotente ; et surtout la garde
+d'**orientation** — l'axe Y d'une manette est négatif vers le haut, et cet axe a déjà été inversé
+une fois par erreur. Éprouvée en la cassant.
 
-⚠️ **Ce qui ne se teste pas** : que ça se joue bien. À vérifier manette en main, sur Windows.
-Le remappage complet (UI de reconfiguration) reste hors de ce lot — c'est un écran, pas un
-branchement.
+⚠️ **Ce qui ne se teste pas, et n'a pas été vérifié** : que ça se joue bien. Aucune manette n'est
+branchée sur le poste. Les glyphes de la spec §7.2 (« s'adaptent au dernier périphérique ») sont un
+chantier à part : les écrans affichent des touches en dur.
 
 ### 1.2 — L'ouverture calme (`LOI-EXP-07`, spec §5.2)
 
