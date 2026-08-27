@@ -33,6 +33,12 @@ apertures = 3
 aperture_deg = 46.0
 speed_deg = 26.0
 phase_deg = 0.0
+; Le mur EXTERIEUR. ⚠️ L'ecart se mesure entre les FACES, pas entre les centres : une garde
+; a rattrape l'erreur, qui donnait 1,70 u au lieu des 2,62 demandes. Face interne du mur
+; exterieur (5,8 - 0,5 = 5,3) moins face externe du mur interieur (2,2 + 0,5 = 2,7) =
+; 2,60 u, soit ~1,5 largeur de chasseur (1,75 u) — la distance demandee au playtest.
+radius = 5.8
+thickness = 1.0
 
 [sub_resource type="Resource" id="ring_inner"]
 script = ExtResource("2_ring")
@@ -40,9 +46,22 @@ apertures = 2
 aperture_deg = 62.0
 speed_deg = -17.0
 phase_deg = 30.0
+; Le mur INTERIEUR, « au plus pres du noyau pour eviter qu'on s'y colle ». Il laisse juste
+; la place a la derive du flux (enveloppe ~1,7 u apres reduction du rayon de derive).
+radius = 2.2
+thickness = 1.0
 
 [resource]
 script = ExtResource("1_tuning")
+; ⚠️ VERROUS DESACTIVES au playtest du 2026-08-27 : « les boules vertes, c'est pas logique,
+; elles sont dehors donc je vois pas en quoi le laby gene ». Le mecanisme reste code et
+; teste — la spec lui prevoit deux autres roles (tourelles, emetteurs de patterns) — mais
+; il ne verrouille plus rien. On revient a l'idee de base : on tire sur le noyau, et la
+; barre du boss descend d'un tiers par phase interne (ce que le plafond d'ADR-0026 fait
+; deja par construction).
+node_count = 0
+; La derive du flux doit rester DANS le mur interieur (rayon 2,2) : enveloppe ~1,7 u.
+flux_drift_radius = 0.9
 ; ⚠️ APRES `script`, JAMAIS AVANT. Godot applique les proprietes d'un .tres DANS L'ORDRE :
 ; posee au-dessus, cette ligne designe une propriete que la ressource ne connait pas encore
 ; et elle est ignoree EN SILENCE. Le blindage etait absent du jeu, sans erreur ni test rouge

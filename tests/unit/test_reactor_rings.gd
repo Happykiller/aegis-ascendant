@@ -177,3 +177,74 @@ func test_the_sweep_is_harmless_when_the_player_arrives() -> void:
 			% tuning.sweep_arm_delay)
 	assert_true(tuning.sweep_arm_delay < tuning.dive_time * 0.35,
 		"mais il ne mange pas la plongée : %.2f s sur %.1f s" % [tuning.sweep_arm_delay, tuning.dive_time])
+
+# --- Les murs sont des CORPS (playtest du 2026-08-27) -----------------------
+
+## ⚠️ « Faut leur donner un corps, pas qu'un halo de couleur, et faut integrer au jeu un
+## moteur de collision : on ne doit pas pouvoir franchir les murs. » La collision est
+## analytique — un anneau est un anneau — donc elle se teste en headless comme le reste.
+func test_a_wall_blocks_where_it_is_solid_and_lets_through_where_it_opens() -> void:
+	var ring := ReactorRing.new()
+	ring.apertures = 2
+	ring.aperture_deg = 60.0
+	ring.speed_deg = 10.0
+	ring.phase_deg = 0.0
+	ring.radius = 4.0
+	ring.thickness = 1.0
+	# Au centre d'une ouverture : on passe.
+	assert_false(ReactorRings.blocks(ring, Vector2(4.0, 0.0), 0.0), "l'ouverture laisse passer")
+	# Entre deux ouvertures : c'est un mur.
+	assert_true(ReactorRings.blocks(ring, Vector2(4.0, 0.0).rotated(deg_to_rad(90.0)), 0.0),
+		"le plein bloque")
+	# Loin du rayon : rien a bloquer.
+	assert_false(ReactorRings.blocks(ring, Vector2(9.0, 0.0).rotated(deg_to_rad(90.0)), 0.0),
+		"au-dela du mur, il n'y a plus de mur")
+
+## Repoussé, le joueur doit se retrouver DEHORS — et du cote d'ou il venait.
+func test_being_pushed_out_never_leaves_you_inside_a_wall() -> void:
+	var rings := _shipped_rings()
+	for step in 240:
+		var age := float(step) * 0.11
+		# Un point tire un peu partout dans l'arene.
+		var probe := Vector2(cos(age * 2.3), sin(age * 1.7)) * (1.0 + fmod(age, 5.5))
+		var pushed := ReactorRings.push_out(rings, probe, age)
+		for ring in rings:
+			assert_false(ReactorRings.blocks(ring, pushed, age),
+				"apres poussee, on n'est plus dans le mur (r=%.2f)" % pushed.length())
+
+## Et il ne doit pas etre TELEPORTE : la poussee est radiale et courte, elle ne traverse
+## jamais l'anneau de part en part.
+func test_the_push_is_short_and_radial() -> void:
+	var rings := _shipped_rings()
+	for step in 200:
+		var age := float(step) * 0.13
+		var probe := Vector2(cos(age * 1.9), sin(age * 2.7)) * (1.5 + fmod(age, 4.0))
+		var pushed := ReactorRings.push_out(rings, probe, age)
+		if pushed.is_equal_approx(probe):
+			continue
+		assert_true(absf(pushed.angle() - probe.angle()) < 0.001,
+			"la poussee garde l'azimut : elle est radiale")
+		assert_true(pushed.distance_to(probe) < 2.0,
+			"et elle est courte (%.2f u) — pas une teleportation" % pushed.distance_to(probe))
+
+## ⚠️ ET LE REGLAGE LIVRE N'A PLUS DE VERROUS. Decision de playtest, gardee ici pour qu'un
+## `node_count` remis a quatre par megarde se signale.
+func test_the_shipped_fight_has_no_orbital_locks() -> void:
+	var tuning: LeviathanTuning = load(SHIPPED)
+	assert_eq(tuning.node_count, 0,
+		"les verrous sont eteints : « les boules vertes, c'est pas logique »")
+
+## Les deux murs laissent le passage d'un chasseur et demi entre eux.
+func test_the_two_walls_leave_room_to_fly_between_them() -> void:
+	var rings := _shipped_rings()
+	assert_eq(rings.size(), 2, "deux murs")
+	var inner: ReactorRing = rings[1] if rings[1].radius < rings[0].radius else rings[0]
+	var outer: ReactorRing = rings[0] if rings[1].radius < rings[0].radius else rings[1]
+	var gap := (outer.radius - outer.thickness * 0.5) - (inner.radius + inner.thickness * 0.5)
+	assert_true(gap > 1.5 * SHIP_WIDTH * 0.8 and gap < 1.5 * SHIP_WIDTH * 1.35,
+		"%.2f u entre les deux murs, pour ~%.2f attendus (1,5 largeur de chasseur)"
+			% [gap, 1.5 * SHIP_WIDTH])
+
+## Largeur du chasseur, relevee sur la coque livree : les canons de bout d'aile sont a
+## x = ±0,853, soit ~1,7 u d'envergure utile.
+const SHIP_WIDTH := 1.75

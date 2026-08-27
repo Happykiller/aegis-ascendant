@@ -405,3 +405,21 @@ func test_a_living_limb_never_claims_to_be_regrowing() -> void:
 	_advance(combat, 2.0)
 	assert_eq(seen.size(), 0, "aucun appendice a terre, aucune promesse de retour")
 	_free(rig)
+
+## ⚠️ LE BOSS N'A QU'UN ETAT : ouvert ou ferme. Sa rangee de jauges doit dire la meme chose
+## que son iris. L'iris se refermait des qu'UN appendice revenait, laissant les deux autres
+## a terre et en repousse — « j'ai vu la faux toujours en regen et inactive » (playtest du
+## 2026-08-27). Trois etats differents affiches pour un boss qui n'en a qu'un.
+func test_closing_the_iris_puts_every_weapon_back_in_service() -> void:
+	var rig := _rig()
+	var combat: HarvesterCombat = rig[1]
+	_kill_all_limbs(combat)
+	_advance(combat, combat.tuning.limb_retract_time + 0.1)
+	assert_true(combat.is_iris_open(), "les trois a terre ouvrent l'iris")
+	# On laisse le temps qu'un seul revienne : c'est lui qui referme la porte.
+	_advance(combat, combat.tuning.limb_rebuild_time + 0.2)
+	assert_false(combat.is_iris_open(), "l'iris s'est referme")
+	for limb in combat.limbs():
+		assert_true(limb.is_up(), "%s est de retour en service" % limb.kind)
+		assert_almost_eq(limb.health_ratio(), 1.0, 0.001,
+			"%s est a 100 %%, pas en repousse" % limb.kind)

@@ -21,6 +21,14 @@ extends Resource
 ## Décalage initial, en degrés.
 @export var phase_deg: float = 0.0
 
+## Rayon de l'anneau, en unités du plan, et épaisseur de son mur.
+##
+## ⚠️ ILS VIVENT ICI, avec les ouvertures, et pas dans le décor. La collision et l'image
+## doivent lire LA MÊME donnée : deux sources auraient fini par diverger, et le joueur se
+## serait cogné à un mur qu'il ne voit pas — ou traversé celui qu'il voit.
+@export var radius: float = 4.0
+@export var thickness: float = 1.0
+
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if apertures < 1:
@@ -31,6 +39,10 @@ func validate() -> PackedStringArray:
 	if aperture_deg >= step:
 		errors.append("aperture_deg (%.1f) >= l'écart entre deux ouvertures (%.1f) : l'anneau n'est plus un blindage"
 			% [aperture_deg, step])
+	if radius <= 0.0:
+		errors.append("radius must be > 0")
+	if thickness <= 0.0 or thickness >= radius * 2.0:
+		errors.append("thickness (%.1f) incoherente avec le rayon (%.1f)" % [thickness, radius])
 	if is_zero_approx(speed_deg):
 		errors.append("speed_deg must not be 0 — un anneau immobile est un mur, pas un puzzle")
 	return errors

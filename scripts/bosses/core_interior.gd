@@ -49,13 +49,13 @@ const MARKER_PULSE_RATE := 5.0
 
 # --- Le blindage rotatif (plan « Reactor Chamber », lot 1) -------------------
 
-## Rayons des anneaux, du plus intérieur au plus extérieur, en unités du plan.
-##
-## ⚠️ TOUS AU-DELÀ DE L'ENVELOPPE DE DÉRIVE DU FLUX (~2,6 u) : un anneau qui passerait
-## par-dessus la cible la masquerait au moment précis où elle devient atteignable.
-const RING_RADII: Array[float] = [4.0, 6.2]
-## Épaisseur d'un anneau, en unités.
-const RING_THICKNESS := 0.9
+## ⚠️ LE RAYON ET L'ÉPAISSEUR NE VIVENT PLUS ICI. Ils sont portés par chaque `ReactorRing`,
+## avec ses ouvertures : la collision et l'image doivent lire LA MÊME donnée, sinon le joueur
+## se cogne à un mur qu'il ne voit pas — ou traverse celui qu'il voit.
+
+## Hauteur d'un mur. ⚠️ Il en a une, désormais : « faut leur donner un corps, pas qu'un halo
+## de couleur » (playtest du 2026-08-27). Une face interne, une face externe, un dessus.
+const RING_HEIGHT := 0.70
 ## Nombre de segments par degré d'arc. Un arc de 100° en fait donc une vingtaine — assez
 ## pour que le bord ne se lise pas comme un polygone, assez peu pour ne rien coûter.
 const RING_STEP_DEG := 5.0
@@ -146,13 +146,12 @@ func build_rings(rings: Array[ReactorRing]) -> void:
 		var pivot := Node3D.new()
 		pivot.name = "Ring%d" % i
 		pivot.position = Vector3(0.0, RING_LIFT, 0.0)
-		var radius: float = RING_RADII[mini(i, RING_RADII.size() - 1)]
 		var step := 360.0 / float(ring.apertures)
 		# Un arc PLEIN entre deux ouvertures : on dessine ce qui bloque, pas ce qui ouvre.
 		var solid := step - ring.aperture_deg
 		for k in ring.apertures:
 			var start := float(k) * step + ring.aperture_deg * 0.5
-			pivot.add_child(_arc(radius, start, solid))
+			pivot.add_child(_arc(ring.radius, ring.thickness, start, solid))
 		add_child(pivot)
 		_rings.append(pivot)
 
@@ -169,19 +168,31 @@ func pose_rings(rings: Array[ReactorRing], age: float) -> void:
 ## Y va dans le sens INVERSE de l'azimut du plan (le monde −Z est le haut de l'écran) : d'où
 ## le signe de `pose_rings`. Une erreur ici décalerait l'image de l'ouverture réelle, ce qui
 ## est le seul défaut que cette phase ne peut pas se permettre.
-func _arc(radius: float, start_deg: float, span_deg: float) -> MeshInstance3D:
-	var inner := radius - RING_THICKNESS * 0.5
-	var outer := radius + RING_THICKNESS * 0.5
+func _arc(radius: float, thickness: float, start_deg: float, span_deg: float) -> MeshInstance3D:
+	var inner := radius - thickness * 0.5
+	var outer := radius + thickness * 0.5
 	var steps := maxi(int(span_deg / RING_STEP_DEG), 2)
 	var vertices := PackedVector3Array()
 	var indices := PackedInt32Array()
+	# Quatre anneaux de sommets : bas-intérieur, bas-extérieur, haut-intérieur, haut-extérieur.
+	# De quoi bâtir un PRISME — deux parois et un dessus — au lieu d'un ruban plat.
 	for s in steps + 1:
 		var a := deg_to_rad(start_deg + span_deg * float(s) / float(steps))
-		vertices.append(Vector3(cos(a) * inner, 0.0, sin(a) * inner))
-		vertices.append(Vector3(cos(a) * outer, 0.0, sin(a) * outer))
+		var ci := Vector3(cos(a) * inner, 0.0, sin(a) * inner)
+		var co := Vector3(cos(a) * outer, 0.0, sin(a) * outer)
+		vertices.append(ci)
+		vertices.append(co)
+		vertices.append(ci + Vector3(0.0, RING_HEIGHT, 0.0))
+		vertices.append(co + Vector3(0.0, RING_HEIGHT, 0.0))
 	for s in steps:
-		var b := s * 2
-		indices.append_array([b, b + 1, b + 2, b + 2, b + 1, b + 3])
+		var b := s * 4
+		var n := b + 4
+		# le dessus
+		indices.append_array([b + 2, b + 3, n + 2, n + 2, b + 3, n + 3])
+		# la paroi extérieure
+		indices.append_array([b + 1, b + 3, n + 1, n + 1, b + 3, n + 3])
+		# la paroi intérieure
+		indices.append_array([b + 2, b, n + 2, n + 2, b, n])
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -191,12 +202,14 @@ func _arc(radius: float, start_deg: float, span_deg: float) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.mesh = mesh
 	var material := StandardMaterial3D.new()
-	# Sombre et peu saturé : c'est une MACHINE, elle passe derrière le gameplay. Le liseré
-	# émissif suffit à la détacher du fond sans lui disputer l'attention.
-	material.albedo_color = Color(0.16, 0.13, 0.22)
+	# Sombre et peu saturé : c'est une MACHINE, elle passe derrière le gameplay. Un corps
+	# éclairé — pas un aplat émissif — pour qu'on lise son volume et non une décalcomanie.
+	material.albedo_color = Color(0.22, 0.19, 0.28)
+	material.metallic = 0.55
+	material.roughness = 0.45
 	material.emission_enabled = true
-	material.emission = Color(0.45, 0.25, 0.62)
-	material.emission_energy_multiplier = 0.55
+	material.emission = Color(0.42, 0.22, 0.60)
+	material.emission_energy_multiplier = 0.30
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	node.material_override = material
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

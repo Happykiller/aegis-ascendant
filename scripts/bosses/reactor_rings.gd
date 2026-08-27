@@ -14,6 +14,9 @@ class_name ReactorRings
 ## cercle pour qu'aucun appelant ne la prenne pour une direction valide.
 const NO_OPENING := INF
 
+## Marge de sortie d'un mur, en unités. Voir `push_out()`.
+const EDGE_EPSILON := 0.01
+
 
 ## Cet anneau laisse-t-il passer à `bearing_deg`, à l'instant `age` ?
 static func ring_open(ring: ReactorRing, bearing_deg: float, age: float) -> bool:
@@ -33,6 +36,56 @@ static func is_open(rings: Array[ReactorRing], bearing_deg: float, age: float) -
 		if not ring_open(ring, bearing_deg, age):
 			return false
 	return true
+
+
+## Ce point est-il DANS le mur de cet anneau ? `local` est relatif au centre du réacteur.
+##
+## ⚠️ LE MUR EST UN CORPS, pas un halo. Playtest du 2026-08-27 : « faut leur donner un corps,
+## pas qu'un halo de couleur, et faut intégrer au jeu un moteur de collision : on ne doit
+## pas pouvoir franchir les murs. »
+static func blocks(ring: ReactorRing, local: Vector2, age: float) -> bool:
+	if ring == null:
+		return false
+	var distance := local.length()
+	var half := ring.thickness * 0.5
+	if distance < ring.radius - half or distance > ring.radius + half:
+		return false
+	return not ring_open(ring, rad_to_deg(local.angle()), age)
+
+
+## Repousse un point hors des murs, radialement, vers le bord le plus proche.
+##
+## ⚠️ RADIALEMENT ET NON LATÉRALEMENT : glisser le long du mur ferait franchir l'ouverture
+## voisine à un joueur qui pousse contre la paroi, et l'anneau cesserait de fermer quoi que
+## ce soit. On le repousse donc du côté d'où il vient.
+##
+## Fonction PURE : aucun nœud, aucun état — la collision se teste en headless comme le
+## reste, et c'est ce qui la rend vérifiable sans jouer.
+static func push_out(rings: Array[ReactorRing], local: Vector2, age: float,
+		clearance: float = 0.0) -> Vector2:
+	var point := local
+	# Deux passes : repousser hors d'un anneau peut faire entrer dans l'autre quand ils
+	# sont proches. Deux suffisent — ils ne se chevauchent jamais (`validate()` l'impose).
+	for pass_index in 2:
+		for ring in rings:
+			if not blocks(ring, point, age):
+				continue
+			var half := ring.thickness * 0.5 + clearance
+			var distance := point.length()
+			if distance < 0.0001:
+				# Au centre exact : aucune direction n'est « dehors ». On sort vers le bas,
+				# la convention du projet quand un vecteur nul rendrait NaN.
+				point = Vector2(0.0, -(ring.radius + half))
+				continue
+			# ⚠️ UN CHEVEU AU-DELA DU BORD, ET C'EST NECESSAIRE. Repousser PILE sur la face
+			# laisse le point dans le mur au sens de `blocks()` (comparaison large), et la
+			# passe suivante le repousse a nouveau : le joueur reste collé, vibrant.
+			var inward := ring.radius - half - EDGE_EPSILON
+			var outward := ring.radius + half + EDGE_EPSILON
+			var to_in := absf(distance - inward)
+			var to_out := absf(outward - distance)
+			point = point.normalized() * (inward if to_in <= to_out else outward)
+	return point
 
 
 ## Un azimut où le corridor est ouvert, à l'instant `age` — celui le plus PROCHE de

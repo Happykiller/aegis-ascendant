@@ -202,6 +202,10 @@ extends Resource
 ## avait pas. C'est le calibrage silencieux qu'`ADR-0024` a coûté au projet.
 @export_range(0.05, 1.0) var ring_occupancy: float = 0.45
 
+## Marge entre la coque du chasseur et la face d'un mur. Sa hitbox fait 0,25 de rayon, mais
+## c'est le MODÈLE qu'on voit s'encastrer : la marge se règle sur ce qui se regarde.
+@export var wall_clearance: float = 0.55
+
 # --- Le laser balayant du réacteur (lot 2) ----------------------------------
 
 ## Vitesse de balayage, en degrés par seconde. **Négative** : à contresens de l'anneau

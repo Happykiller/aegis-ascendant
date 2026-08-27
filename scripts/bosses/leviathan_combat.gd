@@ -832,6 +832,25 @@ func node_alive(index: int) -> bool:
 func nodes_alive() -> int:
 	return _nodes_alive
 
+## Le joueur ne TRAVERSE pas les murs. Il est repoussé radialement, du côté d'où il vient.
+##
+## ⚠️ APPLIQUÉ ICI ET NON DANS LE CONTRÔLEUR DU JOUEUR : les murs n'existent que pendant la
+## plongée, et le chasseur n'a aucune raison de connaître le réacteur. La contrainte vit
+## avec ce qui la produit — c'est déjà la règle de l'aspiration (`pull_changed`).
+##
+## ⚠️ Et elle s'applique APRÈS le déplacement du joueur, pas à sa place : sa commande reste
+## pleine, on corrige seulement le résultat. Piloter à sa place se lirait comme une perte de
+## contrôle, ce que le projet refuse depuis `GravityWell.leaves_room()`.
+func _enforce_walls(origin: Vector2) -> void:
+	if _player == null or tuning.reactor_rings.is_empty():
+		return
+	var centre := _flux_origin(origin)
+	var local := _player.plane_position - centre
+	var freed := ReactorRings.push_out(tuning.reactor_rings, local, _age,
+		tuning.wall_clearance)
+	if not freed.is_equal_approx(local):
+		_player.plane_position = centre + freed
+
 ## Le faisceau qui balaie le réacteur. Il tourne en permanence pendant la plongée : c'est
 ## lui qui empêche de camper sous le noyau une fois le corridor trouvé.
 ##
@@ -1074,6 +1093,7 @@ func _run_dive(delta: float, origin: Vector2) -> void:
 		Dive.INSIDE:
 			pull_changed.emit(0.0, tuning.pull_radius, origin)
 			_orbit_nodes(origin)
+			_enforce_walls(origin)
 			_update_reactor_shield(origin)
 			_update_sweep(delta, origin)
 			if _dive_elapsed >= tuning.dive_time:

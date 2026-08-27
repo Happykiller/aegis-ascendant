@@ -165,6 +165,17 @@ func deploy_ratio(tuning: HarvesterTuning) -> float:
 ## les barres de vie de la griffe se recharger ».
 ##
 ## Rend 0 pour un appendice VIVANT : il ne repousse pas, il vit.
+## Remet l'appendice en service SUR-LE-CHAMP, entier.
+##
+## ⚠️ SERT LA FERMETURE DE L'IRIS, ET C'EST UNE REGLE DE LISIBILITE. L'iris se referme des
+## qu'UN appendice revient ; les deux autres restaient alors a terre, en repousse, pendant
+## que le boss redevenait invulnerable. Le joueur voyait « la faux toujours en regen et
+## inactive » alors que la porte etait deja close — trois etats differents sur une meme
+## rangee, pour un boss qui n'a qu'un seul etat.
+func restore() -> void:
+	_enter(State.ALIVE)
+	health = max_health
+
 func rebuild_ratio(tuning: HarvesterTuning) -> float:
 	if tuning == null or tuning.limb_rebuild_time <= 0.0 or state == State.ALIVE:
 		return 0.0

@@ -100,3 +100,57 @@ ne peut pas se permettre.
 - ⚠️ **Les anneaux se lisent comme de la peinture au sol** : posés sous le plan de jeu pour ne
   pas masquer les balles, ils passent sous les nervures du décor livré. Une hauteur à reprendre.
 - Les lots 2 à 5 du plan (lasers balayants, nodes, rails, décor animé) restent entiers.
+
+
+---
+
+## Amendement du 2026-08-27 (soir) — après playtest
+
+Le combat s'est révélé **infini** en jeu : « DERNIER ASSAUT » onze fois de suite. Puis
+l'opérateur a redressé la direction :
+
+> « Je comprends le côté labyrinthe qui tourne, mais les boules vertes, c'est pas logique :
+> elles sont dehors, donc je vois pas en quoi le laby gêne. Je propose qu'on revienne à
+> l'idée de base de tirer sur le noyau central, et la barre de vie générale du boss qui
+> descendra de 33 % à chaque phase interne. On garde l'idée du laby avec des murs mobiles
+> qui entravent la ligne de tir. Par contre déjà faut leur donner un corps, pas qu'un halo
+> de couleur, et faut intégrer au jeu un moteur de collision : on ne doit pas pouvoir
+> franchir les murs. »
+
+### Ce que ça change
+
+| | Avant | Après |
+|---|---|---|
+| Verrous orbitaux | quatre, verrouillaient le noyau | **éteints** (`node_count = 0`). Le mécanisme reste codé et testé — la spec lui prévoit deux autres rôles |
+| Anneaux | halos plats, franchissables | **des murs** : un prisme (deux parois, un dessus) et une **collision** |
+| Géométrie | 4,0 et 6,2, écart 1,2 | **2,2 et 5,8**, écart **2,60 u entre les faces** — ~1,5 largeur de chasseur |
+| Cible | le flux, derrière deux portes | **le noyau**, derrière une seule : les murs |
+
+⚠️ **« La barre descend de 33 % par phase » est déjà le cas** : c'est exactement ce que le
+plafond d'`ADR-0026` fait par construction. Rien à changer de ce côté.
+
+### La collision est ANALYTIQUE, pas un moteur physique
+
+Un anneau est un anneau : le point du joueur, en coordonnées polaires autour du noyau, est
+dans le mur si son rayon tombe dans la bande **et** que son azimut n'est pas dans une
+ouverture. On le repousse **radialement**, du côté d'où il vient.
+
+⚠️ **Radialement et non latéralement** : glisser le long du mur ferait franchir l'ouverture
+voisine à un joueur qui pousse contre la paroi, et l'anneau cesserait de fermer quoi que ce
+soit.
+
+⚠️ **Un cheveu au-delà du bord** (`EDGE_EPSILON`). Repousser *pile* sur la face laisse le
+point dans le mur au sens de la comparaison, et la passe suivante le repousse encore : le
+joueur reste collé, vibrant. Une garde l'a attrapé.
+
+⚠️ Et **la contrainte s'applique après le déplacement du joueur, jamais à sa place** : sa
+commande reste pleine, on corrige le résultat. C'est déjà la règle de l'aspiration.
+
+### Le rayon et l'épaisseur vivent avec les ouvertures
+
+Portés par `ReactorRing`, pas par le décor : **la collision et l'image lisent la même
+donnée**. Deux sources auraient fini par diverger, et le joueur se serait cogné à un mur
+qu'il ne voit pas — ou traversé celui qu'il voit.
+
+⚠️ Une garde a rattrapé une erreur de mesure au passage : l'écart demandé se mesure entre les
+**faces**, pas entre les centres. Le premier réglage donnait 1,70 u au lieu de 2,62.

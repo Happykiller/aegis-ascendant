@@ -307,6 +307,17 @@ func _close_iris(silent: bool) -> void:
 	if _boss != null:
 		_boss.vulnerable = false
 	if not silent:
+		# ⚠️ LA FERMETURE REMET LES TROIS ARMES EN SERVICE, D'UN COUP. Elle se declenche des
+		# qu'UN appendice revient ; les deux autres restaient a terre pendant que le boss
+		# redevenait invulnerable — « les 3 armes devraient passer direct a 100 % et etre
+		# actives alors que j'ai vu la faux toujours en regen et inactive » (playtest du
+		# 2026-08-27). Le boss n'a qu'un etat : ouvert ou ferme. Sa rangee de jauges doit
+		# dire la meme chose que son iris.
+		for limb in _limbs:
+			if not limb.is_up():
+				limb.restore()
+				limb_restored.emit(limb.kind)
+			_emit_gauge(limb)
 		iris_closed.emit()
 
 func _pose_iris() -> void:

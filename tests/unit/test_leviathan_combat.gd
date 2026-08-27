@@ -38,6 +38,16 @@ func _make() -> LeviathanCombat:
 	combat.setup(null, null, null)
 	return combat
 
+
+## Un reglage LIVRE, mais avec les verrous rallumes. Ils sont eteints en jeu depuis le
+## playtest du 2026-08-27 (« les boules vertes, c'est pas logique ») ; le mecanisme reste
+## code et teste, la spec lui prevoyant deux autres roles. Ces gardes portent donc sur LE
+## MECANISME, jamais sur la configuration livree — qui a sa propre garde ailleurs.
+func _tuning_with_locks() -> LeviathanTuning:
+	var t: LeviathanTuning = load("res://resources/bosses/pale_leviathan_tuning.tres").duplicate(true)
+	t.node_count = 4
+	return t
+
 func _kill_armour(combat: LeviathanCombat) -> void:
 	for plate in combat.plates():
 		combat._on_plate_hit(plate.max_health, plate.index)
@@ -721,7 +731,7 @@ func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
 ## rien produire a l'ecran se lit comme un defaut, pas comme une armure »).
 func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
 	var combat := _make()
-	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.tuning = _tuning_with_locks()
 	combat.dive_anchor = Vector2.ZERO
 	_kill_armour(combat)
 	combat.tick(0.016)
@@ -756,7 +766,7 @@ func test_the_shield_and_the_core_are_never_both_open_nor_both_shut() -> void:
 ## reviendrait a ce qu'elle etait.
 func test_a_single_surviving_lock_keeps_the_core_shut() -> void:
 	var combat := _make()
-	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.tuning = _tuning_with_locks()
 	combat.dive_anchor = Vector2.ZERO
 	_kill_armour(combat)
 	combat.tick(0.016)
@@ -782,7 +792,7 @@ func test_a_single_surviving_lock_keeps_the_core_shut() -> void:
 ## mal ») : ils reviennent AMOINDRIS. Un joueur qui en abat deux par passage progresse.
 func test_the_locks_come_back_diminished_like_the_armour() -> void:
 	var combat := _make()
-	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.tuning = _tuning_with_locks()
 	_kill_armour(combat)
 	combat.tick(0.016)
 	combat.tick(combat.tuning.dive_enter_time + 0.02)
@@ -829,7 +839,7 @@ func _flux_left(combat: LeviathanCombat) -> float:
 ## si les verrous se relevent entiers, il ne le touchera JAMAIS.
 func test_a_player_who_cannot_clear_the_locks_in_one_dive_still_progresses() -> void:
 	var combat := _make()
-	combat.tuning = load("res://resources/bosses/pale_leviathan_tuning.tres")
+	combat.tuning = _tuning_with_locks()
 	combat.dive_anchor = Vector2.ZERO
 	var reached := false
 	for attempt in 12:
