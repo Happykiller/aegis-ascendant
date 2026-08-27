@@ -223,23 +223,17 @@ func _ready() -> void:
 	add_child(_hit_stop)
 	if "--density-probe" in args and _bullets != null:
 		add_child(DensityProbe.make(_bullets, phase_label))
+	# Aucun de ces sauts n'éteint le semeur lui-même : `_set_phase()` le fait pour tout le
+	# monde, dès qu'on quitte `FIGHTER_WAVES`.
 	if "--skip-to-boss" in args:
 		_start_mini_boss()
 	elif "--skip-to-field" in args:
-		if _wave_spawner != null:
-			_wave_spawner.set_physics_process(false)
 		_start_asteroid_field()
 	elif "--skip-to-final" in args:
-		if _wave_spawner != null:
-			_wave_spawner.set_physics_process(false)
 		_start_final_boss()
 	elif "--skip-to-dock" in args:
-		if _wave_spawner != null:
-			_wave_spawner.set_physics_process(false)
 		_start_docking()
 	elif "--skip-to-victory" in args:
-		if _wave_spawner != null:
-			_wave_spawner.set_physics_process(false)
 		_game_state.add_score(28450)
 		_start_victory()
 	# Start the score. Runs after the --skip-to-* flags, so a skipped run opens on the
@@ -251,8 +245,20 @@ func _ready() -> void:
 # The level is the only thing that knows how the fight is going; MusicDirector turns
 # that into a state and AudioManager plays it. Nothing here picks a track by name.
 
+## ⚠️ ET IL ARRÊTE LE SEMEUR DE VAGUES, PARCE QUE C'EST LE SEUL POINT PAR LEQUEL TOUTES LES
+## PHASES PASSENT. L'extinction était répétée dans chaque branche de `--skip-to-*` — et
+## `--skip-to-boss`, la seule qui l'avait oubliée, faisait jouer le mini-boss AVEC la vague
+## d'éclaireurs par-dessus (playtest du 2026-08-27 : « avec le raccourci direct sur le mini
+## boss, il y avait les vagues d'ennemis »). Une règle recopiée cinq fois finit toujours par
+## manquer à la sixième ; posée ici, elle est vraie par construction : quitter
+## `FIGHTER_WAVES` ARRÊTE de semer, quel que soit le chemin — vague nettoyée, drapeau de
+## debug, ou tout ce qu'on ajoutera ensuite.
+##
+## Le champ d'astéroïdes a son PROPRE semeur (`_field_spawner`), que ceci ne touche pas.
 func _set_phase(phase: int) -> void:
 	_phase = phase
+	if phase != Phase.FIGHTER_WAVES and _wave_spawner != null:
+		_wave_spawner.set_physics_process(false)
 	_music.level_phase = phase
 	_update_music()
 
@@ -436,8 +442,6 @@ func _start_asteroid_field() -> void:
 	_music.wave_progress = 0.0
 	_set_phase(Phase.ASTEROID_FIELD)
 	print("[Level] ASTEROID FIELD")
-	if _wave_spawner != null:
-		_wave_spawner.set_physics_process(false)
 	if _field_spawner == null or _waves_disabled:
 		# Rien à traverser. On le DIT et on enchaîne : un arc qui s'arrête sur un nœud
 		# absent se lit comme un boss qui ne vient pas, et se cherche au mauvais endroit.
