@@ -93,21 +93,31 @@ signal reactor_shield_changed(open: bool)
 ## jauge en panne. Demandé au playtest du 2026-08-27 — la plongée a deux sorties, quota
 ## rempli ou temps écoulé, et seule la première se voyait.
 signal dive_time_left(ratio: float)
-## Un tir du joueur a heurté le blindage FERMÉ. Le niveau en fait une gerbe et un son.
-##
-## ⚠️ SANS LUI, LE BLINDAGE MENT. Le verrou est logique (`BulletTarget.enabled`), pas
-## physique : les bolts traversaient l'anneau plein sans rien produire. Le projet a déjà
-## nommé ce défaut sur le Harvester — « tirer dessus sans rien produire à l'écran se lit
-## comme un défaut, pas comme une armure ».
-signal shield_deflected(world_position: Vector3)
 ## L'état d'un verrou orbital : sa part de vie, et s'il tient encore. Le niveau en fait une
 ## pastille dans la rangée du HUD — celle-là même qui porte les plaques pendant l'armure.
 signal node_gauge_changed(index: int, ratio: float, alive: bool)
 ## Un verrou tombe. Le niveau en fait une explosion à sa position.
 signal node_destroyed(index: int, world_position: Vector3)
+## Un missile a fini sa course : `on_player` dit s'il a EXPLOSÉ SUR LE CHASSEUR ou s'il a été
+## abattu en vol. Le niveau en fait une explosion, une secousse et un son.
+##
+## ⚠️ SANS LUI, LE MISSILE NE FAIT RIEN — au sens propre, pour le joueur. Il touchait déjà
+## (22 de bouclier) et se laissait déjà abattre (40 PV), mais les deux issues se soldaient par
+## une disparition SILENCIEUSE : `missile.consume()` d'un côté, une valeur de retour
+## d'`apply_damage()` ignorée de l'autre. « Les missiles existent mais j'ai eu l'impression
+## qu'ils font rien à part me courir après » (opérateur, 2026-08-28). Une menace sans
+## conséquence visible n'est pas une menace : c'est un décor qui suit.
+signal missile_ended(world_position: Vector3, on_player: bool)
 ## Les verrous sont tous à terre : le réacteur redevient atteignable — quand le corridor
 ## s'ouvre. Émis une fois par plongée.
 signal nodes_cleared
+
+## Emplacements visuels de missiles. Le tableau logique est compacté au-delà de ce nombre
+## (voir `_tick_missiles`) : au-delà, il n'y a de toute façon plus rien de vivant à montrer.
+const MISSILE_SLOTS := 24
+## Hauteur du corps visible au-dessus du plan. Le même ordre de grandeur que les bolts, qui
+## volent au ras : de trop haut, l'ombre portée du décor passerait dessous.
+const MISSILE_LIFT := 0.05
 
 ## Graine et part de la dérive organique du flux. Une part modeste : la cible doit rester
 ## SUIVABLE — « assez pour qu'on suive, pas assez pour qu'on cherche » reste la règle.
@@ -117,9 +127,6 @@ const FLUX_ORGANIC_SHARE := 0.45
 ## État courant du blindage. Faux au repos : hors plongée, il n'y a pas de corridor, et
 ## annoncer « ouvert » ferait clignoter le signal à chaque entrée.
 var _reactor_open: bool = false
-## La cible qui ARRÊTE les tirs quand le corridor est fermé. Posée sur l'anneau, au droit du
-## joueur : c'est là que ses bolts croisent le blindage.
-var _shield_target: BulletTarget
 ## Le faisceau balayant du réacteur, et son horloge d'armement.
 var _sweep: Beam
 var _sweep_age: float = 0.0
@@ -129,14 +136,6 @@ var _sweep_age: float = 0.0
 var _node_targets: Array[BulletTarget] = []
 var _node_health: PackedFloat32Array = PackedFloat32Array()
 var _nodes_alive: int = 0
-
-## Rayon de la cible qui arrête les tirs. Assez large pour attraper les bolts des canons
-## d'aile, qui montent en parallèle et non depuis l'axe du chasseur.
-##
-## ⚠️ Un rayon FIXE l'accompagnait, celui de l'anneau extérieur, recopié depuis le décor. Il
-## est devenu faux le jour où les murs ont bougé — et il n'aurait de toute façon jamais
-## décrit un mur INTÉRIEUR. La position se calcule désormais.
-const SHIELD_CATCH_RADIUS := 0.95
 
 @export var tuning: LeviathanTuning
 @export var projectile: ProjectileData
@@ -161,6 +160,19 @@ var _flux_health: float = 0.0
 ## Dégâts déjà encaissés par le flux PENDANT la plongée en cours — le plafond d'un passage.
 var _dive_damage: float = 0.0
 var _missiles: Array[TargetableProjectile] = []
+## Les corps VISIBLES des missiles, un par emplacement, alloués une fois.
+##
+## ⚠️ ILS N'EXISTAIENT PAS, ET LES MISSILES NON PLUS À L'ÉCRAN. `_launch_missiles()` armait
+## trois projectiles à tête chercheuse, 40 PV, 22 de dégâts au contact — et rien, dans tout
+## le dépôt, ne les dessinait : `grep _missiles` ne sortait que ce fichier. Le joueur
+## encaissait donc 22 points de bouclier depuis un objet qu'il ne pouvait ni voir, ni
+## esquiver, ni abattre. Il ne les a découverts qu'en allumant l'overlay de collision — « je
+## voyais deux petits cercles que je suis pas arrivé à comprendre ce que c'est » (2026-08-28).
+##
+## Une attaque invisible n'est pas difficile, elle est fausse : elle retire au joueur la
+## seule chose que `TargetableProjectile` existe pour lui apprendre — qu'il peut RÉPONDRE à
+## un projectile au lieu de l'esquiver.
+var _missile_nodes: Array[MeshInstance3D] = []
 
 ## Rotation de la coquille, en radians — le tempo du temps 1.
 var _shell_rotation: float = 0.0
@@ -334,6 +346,7 @@ func setup(hull: Node3D, bullet_manager: BulletManager, player: PlayerFighterCon
 	_bind_shell_visual()
 	_measure_plate_layout()
 	_build_spines()
+	_build_missiles()
 	_collect_debris()
 	_arm_cycle(0)
 	_enter_phase(Phase.ARMOR)
@@ -474,15 +487,13 @@ func _build_flux() -> void:
 	_flux_target = BulletTarget.make(BulletManager.Team.ENEMY, tuning.flux_hitbox_radius,
 		Callable(self, "_on_flux_hit"))
 	_flux_target.enabled = false   # il n'existe que dans le noyau, pendant la plongée
-	# ⚠️ LA CIBLE D'ARRÊT PASSE EN PREMIER. `BulletManager._resolve_hits` parcourt les cibles
-	# dans l'ordre d'enregistrement et CONSOMME la balle sur la première qui la réclame. Le
-	# blindage doit donc être vu avant le flux — sinon un tir traverserait un anneau fermé
-	# pour aller toucher le noyau, ce qui est exactement ce qu'il est censé empêcher.
-	# (Les deux ne sont jamais actives en même temps, mais l'ordre est une garantie, pas un
-	# effet de bord d'un état.)
-	_shield_target = BulletTarget.make(BulletManager.Team.ENEMY, SHIELD_CATCH_RADIUS,
-		Callable(self, "_on_shield_hit"))
-	_shield_target.enabled = false
+	# ⚠️ IL N'Y A PLUS DE « CIBLE D'ARRÊT » ICI, et c'est le fond de l'affaire. Le blindage
+	# était une `BulletTarget` unique de rayon 0,95 posée sur la ligne joueur→noyau : elle
+	# n'arrêtait qu'un disque de mur, laissait passer tout le reste, et ratait par
+	# construction les flux latéraux des canons d'aile. Le mur est désormais un vrai écran,
+	# versé au `BulletManager` par le niveau (`fire_screens()`), et il arrête PARTOUT où on
+	# le voit. Ce qui se calcule encore ici, c'est le CORRIDOR — la question « le noyau
+	# est-il atteignable ? » —, pas la consommation des balles.
 	_node_targets.clear()
 	_node_health.resize(tuning.node_count)
 	for i in tuning.node_count:
@@ -496,7 +507,6 @@ func _build_flux() -> void:
 		# blindage aurait consommé des tirs destinés à ce qui le verrouille.
 		for node in _node_targets:
 			_bullet_manager.register_target(node)
-		_bullet_manager.register_target(_shield_target)
 		_bullet_manager.register_target(_flux_target)
 
 ## Résout la coquille, le cœur et le halo. Nuls en test (coque absente) : la boucle
@@ -778,16 +788,6 @@ func _update_reactor_shield(origin: Vector2) -> void:
 			tuning.bolt_radius)
 		open = hit == PlaneCollider.NO_HIT
 	_flux_target.enabled = open
-	# La cible d'arrêt vit à l'inverse : elle n'existe QUE quand le corridor est fermé, et
-	# elle se pose sur l'anneau, au droit du joueur — là où ses bolts croisent le blindage.
-	if _shield_target != null:
-		# ⚠️ LA CIBLE D'ARRÊT SE POSE LÀ OÙ LE MUR EST VRAIMENT, sur le premier point de la
-		# ligne de tir qui touche du plein. Elle était posée sur un rayon fixe et sur
-		# l'azimut du joueur : les bolts la manquaient et traversaient le mur — « les tirs
-		# aussi peuvent passer » (playtest du 2026-08-27).
-		_shield_target.enabled = not open and hit != PlaneCollider.NO_HIT
-		if _shield_target.enabled:
-			_shield_target.position = hit
 	if open != _reactor_open:
 		_reactor_open = open
 		reactor_shield_changed.emit(open)
@@ -1230,8 +1230,6 @@ func _set_dive(next: Dive) -> void:
 			dive_time_left.emit(-1.0)
 			_flux_target.enabled = false
 			_reactor_open = false
-			if _shield_target != null:
-				_shield_target.enabled = false
 			for node in _node_targets:
 				node.enabled = false
 			_nodes_alive = 0
@@ -1457,6 +1455,84 @@ func _fire_fans(origin: Vector2) -> void:
 			_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, muzzle,
 				Vector2(0.0, -1.0).rotated(spread), projectile)
 
+## La réserve de corps visibles. Un seul maillage et un seul matériau pour tous : ce sont
+## des ressources partagées, et vingt-quatre instances n'en font pas vingt-quatre copies.
+##
+## ⚠️ LA TAILLE SE DÉDUIT DE LA HITBOX, elle ne se choisit pas. La loi du projet est que
+## l'image et la collision lisent la même donnée ; un missile dessiné plus gros que ce qu'on
+## peut toucher rendrait le tir du joueur menteur dans l'autre sens.
+##
+## Rien hors de l'arbre : les tests montent ce module à la main, sans scène, comme pour les
+## faisceaux d'épines.
+func _build_missiles() -> void:
+	for node in _missile_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_missile_nodes.clear()
+	if not is_inside_tree() or tuning == null:
+		return
+	var material := ShaderMaterial.new()
+	material.shader = load("res://shaders/bullet_bolt.gdshader") as Shader
+	# Le rouge de danger de la charte, cœur blanc chaud — la même famille que le faisceau
+	# balayant, parce que c'est la même menace. `dart` élancé : un missile n'est pas une
+	# bille de danmaku, et sa forme doit dire qu'il a un CAP.
+	material.set_shader_parameter("core_color", Color(1.0, 0.95, 0.88))
+	material.set_shader_parameter("halo_color", Color("c93a31"))
+	# ⚠️ UNE OGIVE PLEINE, PAS UNE AIGUILLE. `dart` pince la lueur aux deux bouts : au réglage
+	# des bolts (0,30) le missile se perdait dans la gerbe de billes du boss, alors qu'il est
+	# la seule chose de l'écran qu'on puisse ABATTRE. Le corps reste dans son gabarit, c'est
+	# sa densité qui change.
+	material.set_shader_parameter("core_size", 0.46)
+	material.set_shader_parameter("halo_opacity", 0.70)
+	material.set_shader_parameter("energy", 3.2)
+	material.set_shader_parameter("dart", 1.0)
+	var mesh := PlaneMesh.new()
+	# UV.x est l'axe mince, UV.y l'axe long (contrat du shader) : la largeur vaut le
+	# diamètre de la hitbox, la longueur en fait trois — la silhouette d'une ogive.
+	var width := tuning.missile_hitbox_radius * 2.0
+	mesh.size = Vector2(width, width * 1.5)
+	mesh.material = material
+	for i in MISSILE_SLOTS:
+		var node := MeshInstance3D.new()
+		node.name = "Missile_%02d" % (i + 1)
+		node.mesh = mesh
+		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# ⚠️ `top_level`, POUR LA MÊME RAISON QUE LES FAISCEAUX. Ce module est un enfant du
+		# `BossController` : sans lui, la position du boss s'appliquerait une seconde fois et
+		# les missiles partiraient hors du cadre — sans erreur, et sans rien au journal.
+		node.top_level = true
+		node.visible = false
+		add_child(node)
+		_missile_nodes.append(node)
+
+## Pose les corps visibles sur les missiles vivants, dans l'ordre. Les emplacements en trop
+## s'éteignent — c'est ce qui les recycle, il n'y a rien à allouer ni à libérer.
+func _pose_missiles() -> void:
+	if _missile_nodes.is_empty():
+		return
+	var slot := 0
+	for missile in _missiles:
+		if not missile.alive or slot >= _missile_nodes.size():
+			continue
+		var node := _missile_nodes[slot]
+		slot += 1
+		node.visible = true
+		node.position = GameplayPlane.to_world(missile.plane_position) + Vector3(0.0, MISSILE_LIFT, 0.0)
+		node.basis = _heading_basis(missile.velocity)
+	for i in range(slot, _missile_nodes.size()):
+		_missile_nodes[i].visible = false
+
+## Le repère d'un corps qui file dans le plan : son axe long suit le cap, sa face reste
+## tournée vers la caméra. Composé à la main plutôt que par `look_at`, qui exige la
+## transformation globale et donc l'arbre de scène.
+func _heading_basis(velocity: Vector2) -> Basis:
+	var forward := Vector3(velocity.x, 0.0, -velocity.y)
+	if forward.length_squared() < 0.0001:
+		return Basis.IDENTITY
+	forward = forward.normalized()
+	var up := Vector3(0.0, 1.0, 0.0)
+	return Basis(up.cross(forward), up, forward)
+
 func _launch_missiles(origin: Vector2) -> void:
 	var aim := _player.plane_position if _player != null else origin + Vector2(0.0, -6.0)
 	for i in tuning.missile_count:
@@ -1464,7 +1540,13 @@ func _launch_missiles(origin: Vector2) -> void:
 		var direction := (aim - origin).normalized().rotated(spread)
 		var missile := TargetableProjectile.make(origin, direction * tuning.missile_speed,
 			tuning.missile_health, tuning.missile_hitbox_radius, tuning.missile_turn_rate,
-			tuning.missile_damage, Callable(self, "_on_missile_hit").bind(_missiles.size()))
+			tuning.missile_damage, Callable(self, "_on_missile_hit"))
+		# ⚠️ LE RAPPEL PORTE LE MISSILE, PAS SON INDEX. Il portait `_missiles.size()`, un
+		# rang dans un tableau que `_tick_missiles` COMPACTE dès qu'il dépasse ses
+		# emplacements : après le premier compactage, chaque rang désignait un autre
+		# projectile, et le tir du joueur blessait un missile qu'il n'avait pas visé — ou
+		# aucun. Un index dans une liste qui se réordonne n'est pas une identité.
+		missile.target.hit_callback = Callable(self, "_on_missile_hit").bind(missile)
 		_missiles.append(missile)
 		if _bullet_manager != null:
 			_bullet_manager.register_target(missile.target)
@@ -1478,6 +1560,7 @@ func _tick_missiles(delta: float) -> void:
 		if _player != null and missile.reaches(_player.plane_position, 0.25):
 			_player.take_contact_damage(missile.damage)
 			missile.consume()
+			missile_ended.emit(GameplayPlane.to_world(missile.plane_position), true)
 	# ⚠️ On ne compacte le tableau que lorsqu'il grossit : `filter()` alloue, et cette
 	# boucle tourne à chaque image pendant toute la durée du combat.
 	if _missiles.size() > 24:
@@ -1488,6 +1571,9 @@ func _tick_missiles(delta: float) -> void:
 			elif _bullet_manager != null:
 				_bullet_manager.unregister_target(missile.target)
 		_missiles = kept
+	# ⚠️ APRÈS LE COMPACTAGE, sans quoi un emplacement resterait allumé une image de plus sur
+	# un missile qui vient de disparaître.
+	_pose_missiles()
 
 # --- Transitions --------------------------------------------------------------
 
@@ -1575,11 +1661,6 @@ func _drop_spine(index: int) -> void:
 ## ⚠️ Aucun dégât, et c'est le point : ce n'est pas une armure à user, c'est une porte à
 ## trouver. Mais un tir qui disparaît sans rien produire se lit comme un défaut du jeu —
 ## d'où la gerbe. `damage` est ignoré volontairement.
-func _on_shield_hit(_damage: float) -> void:
-	if _shield_target == null:
-		return
-	shield_deflected.emit(GameplayPlane.to_world(_shield_target.position))
-
 func _on_flux_hit(damage: float) -> void:
 	if _phase != Phase.DIVE or _dive != Dive.INSIDE or _flux_health <= 0.0:
 		return
@@ -1616,10 +1697,17 @@ func _on_flux_hit(damage: float) -> void:
 		# plongée doit coûter du temps, pas l'enfermer.
 		_set_dive(Dive.EJECT)
 
-func _on_missile_hit(damage: float, index: int) -> void:
-	if index < 0 or index >= _missiles.size():
+## ⚠️ LA VALEUR DE RETOUR N'EST PAS DÉCORATIVE. `apply_damage()` ne rend vrai QUE sur l'image
+## où le projectile tombe — c'est précisément pour que l'appelant joue l'explosion une fois,
+## et pas une fois par balle. Elle était jetée : un missile abattu s'éteignait sans un bruit,
+## et le joueur n'apprenait jamais qu'il pouvait les abattre.
+func _on_missile_hit(damage: float, missile: TargetableProjectile) -> void:
+	if missile == null:
 		return
-	_missiles[index].apply_damage(damage)
+	# Pas de `_account()` : un missile abattu n'est pas de la structure de boss, et le compter
+	# ferait avancer la jauge du combat pour un projectile.
+	if missile.apply_damage(damage):
+		missile_ended.emit(GameplayPlane.to_world(missile.plane_position), false)
 
 func _account(damage: float) -> void:
 	_local_damage += damage
@@ -1732,13 +1820,13 @@ func release() -> void:
 		missile.target.enabled = false
 		_bullet_manager.unregister_target(missile.target)
 	_missiles.clear()
+	for node in _missile_nodes:
+		if is_instance_valid(node):
+			node.visible = false
 	for node in _node_targets:
 		node.enabled = false
 		_bullet_manager.unregister_target(node)
 	_node_targets.clear()
-	if _shield_target != null:
-		_shield_target.enabled = false
-		_bullet_manager.unregister_target(_shield_target)
 	if _flux_target != null:
 		_flux_target.enabled = false
 		_bullet_manager.unregister_target(_flux_target)

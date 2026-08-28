@@ -63,8 +63,9 @@ script = ExtResource("2_ring")
 ; un seul mur, a bonne distance, ni contre le reacteur ni tres loin, qui m'oblige soit a
 ; le contourner, soit a viser pendant la fenetre ou il n'est pas devant le reacteur ».
 ;
-; 6,8 : assez loin du noyau pour qu'un chasseur ENTIER (4,22 dans l'axe) tienne entre les
-; deux — face interne 6,55, bord du noyau 1,80, soit 4,75 de libre — et assez pres pour
+; 6,8 : assez loin du noyau pour qu'un chasseur ENTIER (2,46 dans l'axe depuis que la
+; capsule a cesse de s'allonger de son propre rayon) tienne entre les deux — face interne
+; 6,55, bord du noyau 1,80, soit 4,75 de libre — et assez pres pour
 ; rester un obstacle qu'on ne contourne pas gratuitement. Deux ouvertures larges (110 deg)
 ; a 24 deg/s : une fenetre toutes les 7,5 s, lisible.
 apertures = 2
@@ -112,7 +113,25 @@ spine_interval = 3.2
 ; ⚠️ Le DEFAUT du script reste a 2400, et c'est voulu : il n'a pas d'anneaux, donc pas de
 ; porte. Les deux valeurs decrivent deux configurations differentes, chacune coherente.
 ring_occupancy = 0.59
-flux_health = 1600.0
+; ⚠️ 1600 -> 2000, PARCE QUE LES DEGATS ARRIVENT ENFIN. Ce reglage a toujours ete calibre
+; contre un joueur qui place `flux_reference_dps` dans le noyau — et ce joueur n'existait
+; pas : le blindage etait simule par une fausse cible de rayon 0,95 posee sur la ligne
+; joueur->noyau, qui mangeait des bolts hors du mur et laissait passer les flux lateraux.
+; Le modele decrivait donc un combat que personne ne jouait. Les vrais ecrans (2026-08-28)
+; ont reconcilie les deux, et la plongee est devenue trop courte : « maintenant qu'on
+; arrive normalement a lui faire du degat c'est trop rapide » (operateur).
+;
+; ⚠️ ON MONTE DANS LA BANDE, ON NE VA PAS AU PLAFOND. `validate()` n'autorise le besoin par
+; plongee qu'entre 55 % et 100 % des degats atteignables ; 1600 le posait a 57 %, tout au
+; bord du « il meurt bien trop tot ». 2000 le met a 71 % — le milieu. Ce qui BORNE en
+; pratique n'est pas cette bande mais la duree cible : le combat passe de 40 s a 44 s, et
+; l'invariant 3 (40 +/- 10) refuse des 2600. Mesure, valeur par valeur :
+;
+;   1600 -> 57 %, plongee de reference 5,1 s, combat 40 s
+;   2000 -> 71 %, plongee de reference 6,4 s, combat 44 s   <- ici
+;   2400 -> 85 %, plongee de reference 7,7 s, combat 48 s   (2 s de marge, trop pres du mur)
+;   2600 -> refuse : le combat dure 50 s
+flux_health = 2000.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est

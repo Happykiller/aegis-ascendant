@@ -734,16 +734,19 @@ func test_the_regen_gauge_fills_while_the_armour_comes_back() -> void:
 	assert_almost_eq(seen[seen.size() - 1], 0.0, 0.001,
 		"puis s'efface quand l'armure est la — sinon elle resterait en travers du combat")
 
-## ⚠️ LES DEUX CIBLES SONT EXACTEMENT COMPLEMENTAIRES, et c'est ce qui rend le blindage
-## honnete. Jamais les deux (on toucherait le noyau ET le blindage), jamais aucune (les tirs
-## traverseraient sans rien produire — le defaut nomme sur le Harvester : « tirer dessus sans
-## rien produire a l'ecran se lit comme un defaut, pas comme une armure »).
-## ⚠️ SANS JOUEUR, IL N'Y A PAS DE LIGNE DE TIR — et donc rien a bloquer. Le blindage ne doit
-## alors JAMAIS pretendre arreter quoi que ce soit : une cible d'arret active sans tireur
-## consommerait les balles d'un autre.
+## ⚠️ SANS JOUEUR, IL N'Y A PAS DE LIGNE DE TIR — et donc aucune raison de fermer le
+## corridor. Le noyau doit rester atteignable : un blindage qui se ferme sur un tireur absent
+## rendrait la phase injouable pour la sonde d'equilibrage, qui tick sans chasseur.
 ##
-## L'invariant de complementarite lui-meme vit desormais dans `test_reactor_rings.gd` : il
-## porte sur la LIGNE DE TIR, qui est de la geometrie pure et se teste sans monter un joueur.
+## ⚠️ CE TEST INTERROGEAIT UNE « CIBLE D'ARRET » (`_shield_target`) QUI N'EXISTE PLUS. Elle
+## simulait le mur par une `BulletTarget` unique de rayon 0,95 posee sur la ligne
+## joueur->noyau : elle n'arretait qu'un disque de mur et laissait passer tout le reste
+## (relevee en jeu le 2026-08-28, overlay a l'appui). Le mur est desormais un vrai ecran
+## rendu par `fire_screens()` — c'est LUI qu'on interroge ici.
+##
+## ⚠️ Et le harnais a laisse passer la disparition : la ligne fautive levait une erreur de
+## script SANS faire rougir le test. Un acces a une propriete absente n'est pas un echec
+## d'assertion — d'ou la garde ci-dessous, qui NOMME ce qu'elle lit.
 func test_without_a_shooter_the_shield_claims_nothing() -> void:
 	var combat := _make()
 	combat.tuning = _tuning_with_locks()
@@ -756,9 +759,46 @@ func test_without_a_shooter_the_shield_claims_nothing() -> void:
 		combat.tick(0.05)
 		if combat._dive != CombatScript.Dive.INSIDE:
 			break
-		assert_false(combat._shield_target.enabled,
-			"aucun tireur : la cible d'arret reste eteinte")
-		assert_true(combat._flux_target.enabled, "et le noyau reste atteignable")
+		assert_true(combat._flux_target.enabled,
+			"aucun tireur : le noyau reste atteignable")
+		assert_true(combat.fire_screens().size() > 0,
+			"et les murs sont bien verses comme ecrans, tireur ou pas")
+
+## ⚠️ LE MUR ARRETE PARTOUT OU ON LE VOIT, ET PAS SEULEMENT DEVANT LE JOUEUR. C'est la
+## difference exacte entre un ecran et la fausse cible qu'il remplace : la seconde etait
+## posee sur la ligne joueur->noyau, donc un bolt tire a trois unites de cote traversait le
+## blindage plein. « On voit un cercle sur le mur qui bloque bien les tirs mais en dehors les
+## tirs passent » (operateur, 2026-08-28).
+func test_the_armour_screens_a_bolt_fired_far_from_the_core_axis() -> void:
+	var combat := _make()
+	combat.tuning = _tuning_with_locks()
+	combat.tuning.node_count = 0
+	combat.dive_anchor = Vector2.ZERO
+	_kill_armour(combat)
+	combat.tick(0.016)
+	combat.tick(combat.tuning.dive_enter_time + 0.02)
+	combat.tick(0.05)
+	var screens := combat.fire_screens()
+	assert_true(screens.size() > 0, "la chambre a des murs")
+	# On cherche un point du mur LOIN de l'axe vertical du noyau, et on verifie qu'un bolt
+	# qui monte droit dessus est arrete. `blocks` est la question exacte que se pose le
+	# BulletManager a chaque image.
+	var centre: Vector2 = combat.dive_anchor + CoreInterior.PLANE_OFFSET
+	var stopped := 0
+	for i in screens.size():
+		var radius: float = screens.param(i, 2)
+		var start: float = screens.param(i, 4)
+		var span: float = screens.param(i, 5)
+		# Le milieu de la portion PLEINE de l'arc : du mur, garanti.
+		var angle: float = deg_to_rad(start + span * 0.5)
+		var point: Vector2 = screens.centre_of(i) + Vector2(cos(angle), sin(angle)) * radius
+		if absf(point.x - centre.x) < 2.0:
+			continue   # trop pres de l'axe : ce n'est pas le cas qu'on veut prouver
+		assert_true(PlaneCollider.blocks(screens, point, 0.12),
+			"un bolt a x = %+.2f (soit %.2f u de l'axe du noyau) doit mourir sur le mur"
+				% [point.x, absf(point.x - centre.x)])
+		stopped += 1
+	assert_true(stopped > 0, "au moins un point de mur teste loin de l'axe")
 
 ## ⚠️ LES VERROUS SONT LA PREMIERE PORTE, ET ELLE EST ABSOLUE. Corridor ouvert ou non, tant
 ## qu'un node tient, le flux est intouchable. Sans cette garde, un reglage qui les
@@ -1017,3 +1057,105 @@ func test_the_hidden_body_is_not_a_target() -> void:
 	assert_false(boss._target.enabled, "cache, il ne l'est plus")
 	boss.set_body_targetable(true)
 	assert_true(boss._target.enabled, "et il le redevient a la sortie")
+
+
+# --- Missiles : ce que le joueur doit pouvoir voir et abattre ------------------
+
+## ⚠️ UN RANG DANS UNE LISTE QUI SE REORDONNE N'EST PAS UNE IDENTITE. Le rappel de degats
+## portait `_missiles.size()` au moment du lancement — un index. `_tick_missiles` COMPACTE le
+## tableau des qu'il depasse ses emplacements : apres le premier compactage, chaque index
+## designait un autre projectile, et le tir du joueur blessait un missile qu'il n'avait pas
+## vise. Le defaut ne produit ni erreur ni trace : il se lit seulement comme « mes tirs ne
+## font rien » sur un projectile qu'on croyait toucher.
+func test_shooting_a_missile_damages_that_missile_even_after_the_list_is_compacted() -> void:
+	var combat := _make()
+	combat.tuning = _tuning_with_locks()
+	# Neuf salves de trois : 27 missiles, au-dela du seuil de compactage (24).
+	for salvo in 9:
+		combat._launch_missiles(Vector2.ZERO)
+	assert_eq(combat._missiles.size(), 27, "les salves sont bien parties")
+	# On en abat un au milieu, puis on laisse le compactage passer.
+	var doomed: TargetableProjectile = combat._missiles[4]
+	doomed.target.hit_callback.call(combat.tuning.missile_health)
+	assert_false(doomed.alive, "celui qu'on visait est tombe")
+	combat._tick_missiles(0.016)
+	assert_true(combat._missiles.size() < 27, "le tableau a bien ete compacte")
+	# Et maintenant, le vrai test : viser un survivant precis doit blesser CELUI-LA.
+	var aimed: TargetableProjectile = combat._missiles[combat._missiles.size() - 1]
+	var witness: TargetableProjectile = combat._missiles[0]
+	aimed.target.hit_callback.call(combat.tuning.missile_health)
+	assert_false(aimed.alive, "le missile vise est tombe")
+	assert_true(witness.alive, "et aucun autre n'a pris le coup a sa place")
+
+## Le cap du corps visible. Pur, donc mesurable sans monter une scene — ce qui est tout
+## l'interet de le composer a la main plutot que par `look_at`.
+func test_a_missile_body_points_along_its_flight() -> void:
+	var combat := _make()
+	# Vers le HAUT de l'ecran : y positif dans le plan, -Z dans le monde.
+	var up_screen := combat._heading_basis(Vector2(0.0, 4.0))
+	assert_true(up_screen.z.distance_to(Vector3(0.0, 0.0, -1.0)) < 0.001,
+		"l'axe long suit le cap (%s)" % up_screen.z)
+	assert_true(up_screen.y.distance_to(Vector3(0.0, 1.0, 0.0)) < 0.001,
+		"et la face reste tournee vers la camera (%s)" % up_screen.y)
+	# Vers la droite.
+	var right := combat._heading_basis(Vector2(3.0, 0.0))
+	assert_true(right.z.distance_to(Vector3(1.0, 0.0, 0.0)) < 0.001,
+		"un missile qui file a droite se couche a droite (%s)" % right.z)
+	# Un projectile immobile n'a pas de cap : il ne doit pas rendre de NaN.
+	var still := combat._heading_basis(Vector2.ZERO)
+	assert_true(is_finite(still.z.x) and is_finite(still.z.z),
+		"une vitesse nulle rend un repere fini, pas des NaN")
+
+
+## ⚠️ UN MISSILE QUI DISPARAIT SANS UN BRUIT NE FAIT RIEN, AU SENS PROPRE. Les deux issues
+## etaient muettes : `consume()` sur le chasseur, et la valeur de retour d'`apply_damage()`
+## jetee a l'abattage. Le projectile touchait bel et bien (22 de bouclier) et se laissait
+## bel et bien abattre (40 PV) — mais aucune des deux ne produisait quoi que ce soit a
+## l'ecran. « Les missiles existent mais j'ai eu l'impression qu'ils font rien a part me
+## courir apres » (operateur, 2026-08-28).
+func test_a_missile_that_reaches_the_fighter_detonates_on_him() -> void:
+	var combat := _make()
+	combat.tuning = _tuning_with_locks()
+	var player := track(PlayerFighterController.new()) as PlayerFighterController
+	player.stats = load("res://resources/player/specter9_stats.tres")
+	player.plane_position = Vector2.ZERO
+	combat._player = player
+	var ends: Array[Array] = []
+	combat.missile_ended.connect(func(w: Vector3, on_player: bool) -> void:
+		ends.append([w, on_player]))
+	# Un missile pose SUR le chasseur, immobile : le contact est immediat.
+	combat._launch_missiles(Vector2.ZERO)
+	for missile in combat._missiles:
+		missile.plane_position = Vector2.ZERO
+		missile.velocity = Vector2.ZERO
+		missile.target.position = Vector2.ZERO
+	combat._tick_missiles(1.0 / 60.0)
+	assert_eq(ends.size(), combat.tuning.missile_count,
+		"chaque missile au contact a produit sa fin")
+	for entry in ends:
+		assert_true(bool(entry[1]), "et elle dit bien qu'elle a eu lieu SUR le chasseur")
+	# Et il ne repasse pas : une fois depense, il ne detone pas une seconde fois.
+	var seen := ends.size()
+	combat._tick_missiles(1.0 / 60.0)
+	assert_eq(ends.size(), seen, "un missile depense ne detone qu'une fois")
+
+## L'autre issue — celle que le joueur doit apprendre a produire.
+func test_shooting_a_missile_down_announces_it_exactly_once() -> void:
+	var combat := _make()
+	combat.tuning = _tuning_with_locks()
+	var ends: Array[Array] = []
+	combat.missile_ended.connect(func(w: Vector3, on_player: bool) -> void:
+		ends.append([w, on_player]))
+	combat._launch_missiles(Vector2.ZERO)
+	var missile: TargetableProjectile = combat._missiles[0]
+	# Un premier coup qui ne tue pas : rien ne doit etre annonce.
+	missile.target.hit_callback.call(combat.tuning.missile_health * 0.5)
+	assert_eq(ends.size(), 0, "un missile touche mais vivant n'annonce rien")
+	# Le coup fatal : une annonce, et une seule.
+	missile.target.hit_callback.call(combat.tuning.missile_health)
+	assert_eq(ends.size(), 1, "il tombe, et il l'annonce")
+	assert_false(bool(ends[0][1]), "abattu en vol, pas sur le chasseur")
+	# ⚠️ ET PAS UNE FOIS PAR BALLE. C'est tout l'interet de la valeur de retour
+	# d'`apply_damage()` : une salve entiere arrive dans la meme image.
+	missile.target.hit_callback.call(combat.tuning.missile_health)
+	assert_eq(ends.size(), 1, "les balles suivantes ne rejouent pas l'explosion")

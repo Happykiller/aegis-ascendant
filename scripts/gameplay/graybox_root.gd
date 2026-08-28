@@ -61,6 +61,10 @@ var _defeated: bool = false
 ## La vague du champ d'astéroïdes (ADR-0027) : montée et peuplée au même instant que
 ## la première, mais endormie. C'est `_start_asteroid_field()` qui la réveille.
 @onready var _field_spawner: WaveSpawner = get_node_or_null("AsteroidFieldSpawner")
+## Les deux semeurs, dans UN tableau alloué une fois. Les parcourir est un geste de chaque
+## image physique (obstacles, puis écrasements) : le littéral qui servait avant allouait un
+## `Array` à chaque passage, pour deux références figées au montage.
+@onready var _spawners: Array[WaveSpawner] = [_wave_spawner, _field_spawner]
 @onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
 @onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
 var _hit_stop: HitStop
@@ -99,21 +103,16 @@ var _leviathan: LeviathanCombat
 ## « les corps ne se chevauchent pas » applicable au boss suivant sans toucher à ce fichier.
 var _solids := PlaneShapes.new()
 
-## Sonde de plongée (`--dive-probe`) : voir `_probe_dive()`.
-var _dive_probe: bool = false
-var _probe_clock: float = 0.0
-## Enregistrement de partie (`--dive-trace`) : voir `_trace_dive()`. Accumulé en mémoire et
-## écrit à la sortie — écrire 60 lignes par seconde sur le disque fausserait ce qu'on mesure.
-var _dive_trace: bool = false
+## Les deux instruments du combat final (`--dive-probe`, `--dive-trace`), ou `null` si aucun
+## drapeau ne les appelle — auquel cas le niveau ne paie même pas un appel. Ils vivaient ici,
+## en cent dix lignes de formatage de CSV : voir `DiveInstruments`.
+var _dive_instruments: DiveInstruments = null
 ## Superposition des couches invisibles (corps, cibles, écrans de tir). Voir `SettingsData`.
 var _solids_overlay: SolidsOverlay = null
 ## +1 : tout forcé (`--show-solids`) ; -1 : tout coupé (`--hide-solids`) ; 0 : le réglage.
 var _overlay_force: int = 0
 const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
 @onready var _settings: SettingsManagerScript = get_node_or_null("/root/SettingsManager")
-var _trace_lines := PackedStringArray()
-var _trace_age: float = 0.0
-
 ## Le module de combat du mini-boss, gardé pour ses formes solides. ⚠️ Testé par
 ## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
 ## le niveau, et une référence morte lue une fois de trop planterait la partie sur la
@@ -154,6 +153,7 @@ func _ready() -> void:
 		enemy.hit.connect(_on_enemy_hit)
 	if _bullets != null:
 		_bullets.target_hit.connect(_on_bullet_hit)
+		_bullets.bullet_screened.connect(_on_bullet_screened)
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 		_wave_spawner.progress_changed.connect(_on_wave_progress)
@@ -242,14 +242,13 @@ func _ready() -> void:
 	# et le jeu se contredisent, c'est le JEU qui a raison — et il faut l'instrumenter, pas
 	# raffiner le banc. Elle imprime, quatre fois par seconde et seulement pendant la
 	# plongée, ce que le chasseur subit VRAIMENT : sa position, son contact, ce qui est versé.
-	_dive_probe = "--dive-probe" in args
 	# ⚠️ L'ENREGISTREMENT DE PARTIE (`--dive-trace`), demandé par l'opérateur après trois
 	# diagnostics qui se contredisaient : « enregistre le déplacement du vaisseau en même
 	# temps que la position des murs ». C'est la seule preuve qui ne dépende d'aucune
 	# hypothèse — ni la mienne, ni celle d'un banc. On écrit la COMMANDE en plus de la
 	# position : sans elle, une trace ne distingue pas « il va à droite » de « il est poussé
 	# à droite », et c'est exactement la question posée.
-	_dive_trace = "--dive-trace" in args
+	_dive_instruments = DiveInstruments.from_args(args)
 	ReactorRings.disabled = "--no-rings" in args
 	# ⚠️ LA REPRÉSENTATION PHYSIQUE, VISIBLE (`--show-solids`). Demandée par l'opérateur après
 	# quatre correctifs à l'aveugle : « faire apparaître la représentation dans l'espace des
@@ -447,6 +446,35 @@ func _bind_harvester(boss: BossController) -> void:
 func _on_boss_deflected(world_position: Vector3) -> void:
 	# Étincelle blanche et son de bouclier : la carapace RENVOIE le tir.
 	_boom(world_position, VfxExplosion.Category.IMPACT, 0.0)
+	_sfx(&"shield_impact")
+
+## Un missile a fini sa course. Deux issues, deux lectures, et il faut que le joueur les
+## distingue à l'oreille comme à l'œil :
+##
+## - **sur le chasseur** : il a encaissé. Explosion moyenne, secousse de caméra, et le son de
+##   coque — c'est un coup reçu, pas un fait d'armes ;
+## - **abattu en vol** : il a répondu. Explosion plus petite, aucune secousse, et le son
+##   d'explosion légère — la récompense de la leçon que ce projectile existe pour enseigner.
+##
+## ⚠️ LES DEUX ÉTAIENT MUETTES. Le missile touchait et disparaissait, ou tombait et
+## disparaissait : dans les deux cas, rien à l'écran. « J'ai eu l'impression qu'ils font rien
+## à part me courir après » — le joueur décrivait exactement ce qu'il voyait.
+func _on_leviathan_missile_ended(world_position: Vector3, on_player: bool) -> void:
+	if on_player:
+		_boom(world_position, VfxExplosion.Category.MEDIUM, 0.45)
+		_sfx(&"hull_impact")
+	else:
+		_boom(world_position, VfxExplosion.Category.SMALL, 0.0)
+		_sfx(&"medium_explosion", -3.0)
+
+## Un tir est mort sur un mur. Même gerbe que sur une carapace : ce que le joueur doit lire,
+## c'est « ça a été arrêté », et la source ne change rien à cette lecture.
+##
+## ⚠️ SANS LUI, LE BLINDAGE MENT. Le mode d'échec est nommé depuis le Harvester — « tirer
+## dessus sans rien produire à l'écran se lit comme un défaut, pas comme une armure » — et
+## il revient intact dès qu'un écran consomme une balle en silence.
+func _on_bullet_screened(plane_position: Vector2, _team: int) -> void:
+	_boom(GameplayPlane.to_world(plane_position), VfxExplosion.Category.IMPACT, 0.0)
 	_sfx(&"shield_impact")
 
 func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController) -> void:
@@ -714,8 +742,8 @@ func _bind_leviathan(boss: BossController) -> void:
 	combat.armour_reformed.connect(_on_leviathan_armour_reformed)
 	combat.armour_regen.connect(_on_leviathan_armour_regen)
 	combat.dive_time_left.connect(_on_leviathan_dive_time_left)
-	combat.shield_deflected.connect(_on_boss_deflected)
 	combat.node_gauge_changed.connect(_on_leviathan_node_gauge)
+	combat.missile_ended.connect(_on_leviathan_missile_ended)
 	combat.node_destroyed.connect(_on_leviathan_node_destroyed)
 
 ## La jauge du boss montre la PROGRESSION DU COMBAT — `fight_ratio()`, qui ne remonte
@@ -1056,7 +1084,8 @@ func _clear_core_interior() -> void:
 ## un retour au titre en pleine plongée, et l'écran-titre hériterait des bornes de la
 ## chambre.
 func _exit_tree() -> void:
-	_flush_dive_trace()
+	if _dive_instruments != null:
+		_dive_instruments.flush()
 	GameplayPlane.reset_bounds()
 
 ## Chaque transition du Leviathan, donnée à voir : bannière (les mots exacts du design),
@@ -1120,8 +1149,18 @@ func _leviathan_cycle_label(cycle: int, cycles: int) -> String:
 
 func _physics_process(delta: float) -> void:
 	_rebuild_solids()
-	_probe_dive(delta)
-	_trace_dive(delta)
+	if _dive_instruments != null:
+		_dive_instruments.tick(delta, _player, _solids, _phase == Phase.FINAL_BOSS,
+			is_instance_valid(_leviathan) \
+				and _leviathan.phase() == LeviathanCombat.Phase.DIVE,
+			_core_interior.reactor_plane_position() if _core_interior != null \
+				else Vector2.ZERO)
+	# ⚠️ LES ÉCRANS SE VERSENT ICI, ET NON DANS LE MODULE DE COMBAT. Le boss connaît la
+	# géométrie de son blindage ; il ne connaît pas le gestionnaire de projectiles, et c'est
+	# le niveau qui tient les deux. Hors plongée, `fire_screens()` rend un jeu vide : les
+	# balles ne paient alors aucun test.
+	if _bullets != null:
+		_bullets.screens = _leviathan.fire_screens() if is_instance_valid(_leviathan) else null
 	if _solids_overlay != null and _player != null and _player.stats != null:
 		var bodies := _overlay_force > 0
 		var targets := _overlay_force > 0
@@ -1168,85 +1207,18 @@ func _rebuild_solids() -> void:
 	# ⚠️ LES DEUX SEMEURS, et ils ne tournent jamais ensemble (ADR-0027 : la vague, puis le
 	# champ d'astéroïdes). Les interroger tous les deux coûte deux tests et évite d'avoir à
 	# savoir lequel est actif — ce que ce fichier n'a pas à connaître.
-	for spawner in [_wave_spawner, _field_spawner]:
+	#
+	# ⚠️ Le tableau est un MEMBRE, pas un littéral. `[_wave_spawner, _field_spawner]` alloue
+	# un `Array` à chaque appel, et cette fonction tourne à chaque image physique — comme
+	# `_crush_light_bodies()` juste en dessous, qui faisait la même chose. Deux allocations
+	# par image pour deux références qui ne changent jamais après le montage (spec §31 :
+	# zéro allocation dans les boucles critiques).
+	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			_solids.reserve(spawner.solid_capacity())
 			spawner.fill_solids(_solids, _crusher_mass(), _crush_ratio())
 	if _player != null and _player.solids != _solids:
 		_player.solids = _solids
-
-## Ce que le chasseur subit dans la chambre, mesuré dans le JEU et non dans un banc.
-##
-## Silencieuse sans `--dive-probe`, et muette hors de la plongée : c'est un instrument, pas
-## une trace de tous les jours.
-## Enregistre une image de plongée : le temps, la commande, la position, le contact, et
-## TOUTES les formes solides telles que la collision les voit — murs compris, avec leur
-## rotation du moment.
-func _trace_dive(delta: float) -> void:
-	if not _dive_trace or _player == null or _player.stats == null:
-		return
-	# ⚠️ TOUT LE COMBAT, ET PLUS SEULEMENT LA PLONGÉE. La première version ne s'armait que
-	# dans le noyau : si le défaut se produit dehors — pendant l'armure, l'approche — elle
-	# n'en garde aucune trace, et il faut refaire une partie pour rien. Un instrument qui ne
-	# regarde qu'où l'on croit que le problème est ne sert qu'à confirmer ce qu'on croit.
-	if _phase != Phase.FINAL_BOSS:
-		return
-	_trace_age += delta
-	var here := _player.plane_position
-	var forward := _player.plane_forward()
-	var half := _player.stats.body_half_length
-	var radius := _player.stats.body_radius
-	var touching := PlaneCollider.capsule_blocks(_solids, here, forward, half, radius)
-	var dive := 1 if _leviathan != null \
-		and _leviathan.phase() == LeviathanCombat.Phase.DIVE else 0
-	var line := "%.4f;%.3f;%.3f;%.3f;%.3f;%d;%d" % [_trace_age,
-		_player.last_input.x, _player.last_input.y, here.x, here.y,
-		1 if touching else 0, dive]
-	for i in _solids.size():
-		var c := _solids.centre_of(i)
-		line += "|%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % [_solids.kind_at(i), c.x, c.y,
-			_solids.param(i, 2), _solids.param(i, 3), _solids.param(i, 4), _solids.param(i, 5)]
-	_trace_lines.append(line)
-
-## Écrit l'enregistrement à côté de l'exécutable, comme la capture d'écran — c'est le seul
-## dossier que WSL peut relire après un lancement Windows.
-func _flush_dive_trace() -> void:
-	if not _dive_trace or _trace_lines.is_empty():
-		return
-	var path := OS.get_executable_path().get_base_dir().path_join("dive-trace.csv")
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("[DiveTrace] ecriture impossible : %s" % path)
-		return
-	file.store_line("t;input_x;input_y;pos_x;pos_y;contact;dive|formes(kind,p0..p5)")
-	for line in _trace_lines:
-		file.store_line(line)
-	file.close()
-	print("[DiveTrace] %d images -> %s" % [_trace_lines.size(), path])
-
-func _probe_dive(delta: float) -> void:
-	if not _dive_probe or _player == null or _player.stats == null:
-		return
-	if _leviathan == null or _leviathan.phase() != LeviathanCombat.Phase.DIVE:
-		_probe_clock = 0.0
-		return
-	_probe_clock -= delta
-	if _probe_clock > 0.0:
-		return
-	_probe_clock = 0.25
-	var here := _player.plane_position
-	var forward := _player.plane_forward()
-	var half := _player.stats.body_half_length
-	var radius := _player.stats.body_radius
-	var touching := PlaneCollider.capsule_blocks(_solids, here, forward, half, radius)
-	var freed := PlaneCollider.resolve_capsule(_solids, here, forward, half, radius)
-	var centre := _core_interior.reactor_plane_position() if _core_interior != null \
-		else Vector2.ZERO
-	print("[Dive] pos (%+.2f, %+.2f) | r=%.2f du centre | %s | poussee (%+.2f, %+.2f) | %d formes | bornes %.1f..%.1f"
-		% [here.x, here.y, here.distance_to(centre),
-			"CONTACT" if touching else "libre  ",
-			freed.x - here.x, freed.y - here.y, _solids.size(),
-			GameplayPlane.bounds.position.y, GameplayPlane.bounds.end.y])
 
 ## Le poids du chasseur, et le rapport à partir duquel il passe à travers. Zéro quand il n'y
 ## a pas de chasseur : personne n'écrase, tout est un mur — la règle d'avant la masse.
@@ -1268,7 +1240,7 @@ func _crush_light_bodies() -> void:
 	var mass := _crusher_mass()
 	var ratio := _crush_ratio()
 	var crushed := 0.0
-	for spawner in [_wave_spawner, _field_spawner]:
+	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			crushed += spawner.crush_contacts(_player.plane_position,
 				_player.plane_forward(), _player.stats.body_half_length,

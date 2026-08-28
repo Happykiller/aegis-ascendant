@@ -325,10 +325,13 @@ func _attack() -> void:
 				_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY, origin,
 					Vector2(t * 1.4, -1.0).normalized(), projectile)
 
+## L'ordre des motifs, alloué UNE fois. Il était reconstruit à chaque salve : un `Array` par
+## volée, sur un chemin de tir (spec §31).
+const PATTERN_CYCLE: Array[Pattern] = [Pattern.FAN, Pattern.AIMED_SPREAD, Pattern.RADIAL]
+
 func _age_pattern() -> Pattern:
 	# Cycle patterns over time; more variety at higher phases.
-	var patterns := [Pattern.FAN, Pattern.AIMED_SPREAD, Pattern.RADIAL]
-	return patterns[int(_age / 2.0) % patterns.size()]
+	return PATTERN_CYCLE[int(_age / 2.0) % PATTERN_CYCLE.size()]
 
 func health_ratio() -> float:
 	return _health / max_health

@@ -14,6 +14,17 @@ enum Team { PLAYER = 0, ENEMY = 1 }
 ## way to draw it.
 signal target_hit(plane_position: Vector2, victim_team: int)
 
+## Un projectile s'est arrêté sur un ÉCRAN — une forme du décor, pas une cible. `team` est
+## celle du projectile arrêté, pour que l'appelant colore la gerbe du bon côté.
+##
+## ⚠️ IL REMPLACE UNE FAUSSE CIBLE. Les balles n'étaient testées contre AUCUNE géométrie :
+## le blindage du Léviathan était simulé par une `BulletTarget` unique de rayon 0,95, posée
+## sur la ligne joueur→noyau. Elle attrapait donc un disque de mur, et un seul — « on voit un
+## cercle sur le mur qui bloque bien les tirs mais en dehors les tirs passent » (opérateur,
+## 2026-08-28, overlay `--show-solids` à l'appui). Pire, elle ratait par construction les
+## flux latéraux des canons d'aile, qui ne croisent jamais cette ligne.
+signal bullet_screened(plane_position: Vector2, team: int)
+
 const MAX_BULLETS := 600                       # spec §21.3 hard budget
 const TEAM_BUDGETS: PackedInt32Array = [150, 450]  # player / enemy sub-budgets
 ## Marge au-delà de `BOUNDS` avant qu'un projectile soit recyclé.
@@ -29,6 +40,18 @@ const TEAM_BUDGETS: PackedInt32Array = [150, 450]  # player / enemy sub-budgets
 ## trajet quand le terrain en fait 16. Rallonger le `ttl` n'aurait rien changé.
 const CULL_MARGIN := 5.0
 
+## Pas d'échantillonnage du segment parcouru dans l'image, quand on le confronte aux écrans.
+##
+## ⚠️ C'EST UNE AFFAIRE DE TUNNELING, PAS DE PRÉCISION. Un bolt joueur avance de 0,40 u par
+## image (24 u/s à 60 Hz) et le mur du réacteur n'est épais que de 0,50 : tester la seule
+## position d'arrivée suffirait aujourd'hui, et cesserait de suffire au premier tir rapide
+## ou au premier mur fin. On échantillonne donc le trajet, à un pas plus court que le plus
+## mince des murs.
+const SCREEN_SAMPLE_PITCH := 0.2
+## Borne haute du nombre de pas : un projectile aberrant ne doit pas coûter une boucle
+## illimitée dans le chemin critique.
+const SCREEN_MAX_STEPS := 8
+
 ## Fixed-capacity flat spatial grid over BOUNDS.grow(CULL_MARGIN).
 const GRID_COLS := 12
 const GRID_ROWS := 8
@@ -41,6 +64,9 @@ var _damages: PackedFloat32Array
 var _ttls: PackedFloat32Array
 var _teams: PackedInt32Array
 var _alive: PackedByteArray
+## Le projectile a-t-il ete DANS le plan au moins une fois ? Tant que non, en sortir ne le
+## tue pas — voir la garde de `step()`.
+var _entered: PackedByteArray
 var _free_stack: PackedInt32Array
 var _free_top: int = 0
 var _team_counts: PackedInt32Array
@@ -48,8 +74,23 @@ var _visible_counts: PackedInt32Array
 var _grid_counts: PackedInt32Array
 var _grid_data: PackedInt32Array
 var _grid_overflows: int = 0
+## Point de contact du dernier écran touché. Membre, et non valeur de retour composite :
+## la boucle de `step()` est un chemin critique et ne doit rien allouer (spec §31).
+var _screen_contact: Vector2 = Vector2.ZERO
+## L'enveloppe des écrans, mesurée UNE fois par image : centre, rayon englobant, et le rayon
+## du TROU au milieu (voir [method _measure_screens]).
+var _screen_centre: Vector2 = Vector2.ZERO
+var _screen_outer: float = 0.0
+var _screen_inner: float = 0.0
 var _grid_origin: Vector2
 var _cell_size: Vector2
+## Les formes qui ARRÊTENT un projectile — versées par le niveau, à l'image, et nulles le
+## reste du temps. Distinctes des corps solides qui arrêtent un VAISSEAU : un noyau peut
+## être infranchissable sans faire écran au tir qui le vise (c'est même exactement le piège
+## dans lequel ce boss est tombé une fois).
+##
+## Aucune allocation : le niveau passe la même instance d'image en image.
+var screens: PlaneShapes = null
 var _targets: Array[BulletTarget] = []
 ## Set while walking _targets, so a hit callback that unregisters its own target
 ## defers the erase instead of mutating the array under the loop.
@@ -66,6 +107,7 @@ func _init() -> void:
 	_ttls.resize(MAX_BULLETS)
 	_teams.resize(MAX_BULLETS)
 	_alive.resize(MAX_BULLETS)
+	_entered.resize(MAX_BULLETS)
 	_free_stack.resize(MAX_BULLETS)
 	for i in MAX_BULLETS:
 		_free_stack[i] = MAX_BULLETS - 1 - i   # pop order: 0, 1, 2, ...
@@ -82,9 +124,22 @@ func _init() -> void:
 	_grid_origin = grid_bounds.position
 	_cell_size = grid_bounds.size / Vector2(GRID_COLS, GRID_ROWS)
 
+## ⚠️ L'EN-TETE PROMETTAIT DEJA CE QUE LE CODE NE FAISAIT PAS. « Rendering is skipped when
+## the node is not inside a scene with its MultiMeshInstance3D children » : `get_node()`
+## rendait `null` et la ligne suivante levait une erreur de script — quatre par passage de
+## la suite de tests, depuis toujours. `step()` sait deja se passer des MultiMesh
+## (`var render := not _multimeshes.is_empty()`) ; il ne manquait que de ne pas mourir
+## avant. On nomme l'enfant absent plutot que de se taire : une VRAIE scene a qui il
+## manquerait un noeud doit se voir, sans pour autant rougir un test qui monte le
+## gestionnaire a la main.
 func _ready() -> void:
 	for child_name: String in ["PlayerBullets", "EnemyBullets"]:
-		var instance := get_node(child_name) as MultiMeshInstance3D
+		var instance := get_node_or_null(child_name) as MultiMeshInstance3D
+		if instance == null or instance.multimesh == null:
+			push_warning("[BulletManager] sans '%s' : rendu des projectiles desactive" % child_name)
+			_multimeshes.clear()
+			_buffers.clear()
+			return
 		var multimesh := instance.multimesh
 		multimesh.instance_count = MAX_BULLETS   # once only: reallocates GPU buffers
 		multimesh.visible_instance_count = 0
@@ -118,6 +173,13 @@ func spawn_bullet(team: int, pos: Vector2, vel: Vector2, radius: float,
 	_ttls[i] = ttl
 	_teams[i] = team
 	_alive[i] = 1
+	# ⚠️ UNE BOUCHE PEUT ETRE HORS DU PLAN, ET LA MOITIE DE LA GERBE MOURAIT LA. Le Leviathan
+	# tire depuis ses plaques, `origin + 2,6` : jusqu'a y = 14,5 quand la coupe est a 13,0.
+	# Le premier pas de ces balles les trouvait « dehors » et les recyclait a l'image de leur
+	# creation — sans erreur, sans trace, et avec un compteur de projectiles parfaitement
+	# juste. On ne retire pas ce qui n'est jamais entre ; le `ttl` borne l'attente, donc
+	# aucune balle ne peut courir indefiniment vers le vide.
+	_entered[i] = 1 if GameplayPlane.is_inside(pos, CULL_MARGIN) else 0
 	_team_counts[team] += 1
 	return i
 
@@ -163,12 +225,27 @@ func step(delta: float) -> void:
 	_visible_counts[Team.PLAYER] = 0
 	_visible_counts[Team.ENEMY] = 0
 	var render := not _multimeshes.is_empty()
+	var screening := screens != null and screens.size() > 0
+	if screening:
+		_measure_screens()
 	for i in MAX_BULLETS:
 		if _alive[i] == 0:
 			continue
 		_ttls[i] -= delta
 		var p := _positions[i] + _velocities[i] * delta
-		if _ttls[i] <= 0.0 or not GameplayPlane.is_inside(p, CULL_MARGIN):
+		if _ttls[i] <= 0.0:
+			_release(i)
+			continue
+		if GameplayPlane.is_inside(p, CULL_MARGIN):
+			_entered[i] = 1
+		elif _entered[i] == 1:
+			_release(i)
+			continue
+		if screening and _near_screens(p, _positions[i].distance_to(p), _radii[i]) \
+				and _crosses_screen(_positions[i], p, _radii[i]):
+			# ⚠️ LA POSITION D'ARRÊT EST CELLE DU CONTACT, pas celle d'arrivée : la gerbe se
+			# dessine sur la face du mur, là où le joueur a vu son tir mourir.
+			bullet_screened.emit(_screen_contact, _teams[i])
 			_release(i)
 			continue
 		_positions[i] = p
@@ -243,6 +320,69 @@ func _grid_insert(bullet_index: int, p: Vector2) -> void:
 		return
 	_grid_data[cell * CELL_CAP + count] = bullet_index
 	_grid_counts[cell] = count + 1
+
+## L'enveloppe des écrans pour cette image : un disque englobant, et le rayon du trou au
+## milieu quand tous les écrans sont des anneaux autour d'un même centre — ce qui est le cas
+## du seul décor qui en pose, la chambre du réacteur.
+##
+## ⚠️ ELLE EXISTE PARCE QUE LE TEST FIN COÛTAIT 1,55 ms PAR IMAGE, mesuré au banc sur le
+## budget plein de 150 bolts : dix fois le coût de la boucle de projectiles elle-même, et
+## 9 % du budget 60 Hz — dépensés pour des balles qui, pour la plupart, volent loin des murs
+## ou dans le puits central où il n'y a rien à toucher. Deux comparaisons de distance les
+## écartent. La mesure est CONSERVATRICE : elle ne peut qu'écarter des balles qui n'auraient
+## rien touché, jamais en rater une.
+func _measure_screens() -> void:
+	_screen_centre = screens.centre_of(0)
+	_screen_outer = 0.0
+	# Un trou n'existe que si TOUT est un anneau autour du même centre. Au moindre écran
+	# d'une autre nature, on renonce au raccourci plutôt que de risquer un tir qui traverse.
+	var hole := INF
+	for i in screens.size():
+		var c := screens.centre_of(i)
+		var reach := 0.0
+		match screens.kind_at(i):
+			PlaneShapes.Kind.DISC:
+				reach = screens.param(i, 2)
+				hole = 0.0
+			PlaneShapes.Kind.RING_ARC:
+				var r := screens.param(i, 2)
+				var half := screens.param(i, 3) * 0.5
+				reach = r + half
+				if c.is_equal_approx(_screen_centre):
+					hole = minf(hole, r - half)
+				else:
+					hole = 0.0
+			PlaneShapes.Kind.CAPSULE:
+				var b := Vector2(screens.param(i, 2), screens.param(i, 3))
+				c = (c + b) * 0.5
+				reach = c.distance_to(b) + screens.param(i, 4)
+				hole = 0.0
+		_screen_outer = maxf(_screen_outer, _screen_centre.distance_to(c) + reach)
+	_screen_inner = 0.0 if is_inf(hole) else maxf(hole, 0.0)
+
+## Ce projectile peut-il seulement approcher un écran cette image ? `travel` est la longueur
+## du pas, et la marge la couvre : juger sur le point d'arrivée suffit alors pour tout le
+## segment.
+func _near_screens(p: Vector2, travel: float, radius: float) -> bool:
+	var margin := travel + radius
+	var distance := p.distance_to(_screen_centre)
+	if distance > _screen_outer + margin:
+		return false
+	return distance >= _screen_inner - margin
+
+## Le trajet `from` -> `to` traverse-t-il un écran ? Écrit le point de contact dans
+## `_screen_contact`. Le pas d'échantillonnage se déduit de la distance parcourue, donc un
+## projectile lent ne paie pas le prix d'un rapide.
+func _crosses_screen(from: Vector2, to: Vector2, radius: float) -> bool:
+	var travel := from.distance_to(to)
+	var steps := clampi(int(ceil(travel / SCREEN_SAMPLE_PITCH)), 1, SCREEN_MAX_STEPS)
+	# On part de 1 : `from` a déjà été jugé libre à l'image précédente.
+	for s in range(1, steps + 1):
+		var point := from.lerp(to, float(s) / float(steps))
+		if PlaneCollider.blocks(screens, point, radius):
+			_screen_contact = point
+			return true
+	return false
 
 func _cell_of(p: Vector2) -> int:
 	var col := clampi(int((p.x - _grid_origin.x) / _cell_size.x), 0, GRID_COLS - 1)

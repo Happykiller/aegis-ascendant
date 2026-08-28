@@ -239,7 +239,7 @@ func test_the_two_walls_leave_room_to_fly_between_them() -> void:
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
 	# L'encombrement AXIAL : le segment de la capsule, plus son rayon aux deux bouts. C'est
 	# ce que `PlaneCollider` teste, donc c'est ce qui doit tenir.
-	var lengthwise := (stats.body_half_length + stats.body_radius) * 2.0
+	var lengthwise: float = stats.body_reach() * 2.0
 	assert_true(gap >= lengthwise,
 		"%.2f u entre les deux murs pour un chasseur qui en occupe %.2f dans l'axe"
 			% [gap, lengthwise])

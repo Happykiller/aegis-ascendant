@@ -212,15 +212,18 @@ extends Resource
 ## Encombrement du chasseur DEVANT LUI : demi-longueur + demi-largeur. Sert à placer le
 ## point d'entrée dans la chambre, rien d'autre — la collision, elle, lit une capsule.
 ##
-## ⚠️ 0,85 -> 2,11. Le premier chiffre valait « la demi-envergure, canons de bout d'aile
-## compris » — presque juste sur la largeur (±0,876 mesurés), et complètement muet sur la
-## LONGUEUR (±1,230). Un vaisseau décrit par un cercle laisse passer son NEZ : c'est ce que
-## le joueur a vu traverser les murs, capture à l'appui.
+## ⚠️ 0,85 -> 2,11 -> 1,23, et le détour par 2,11 mérite d'être gardé. Le premier chiffre
+## valait « la demi-envergure, canons de bout d'aile compris » — presque juste sur la
+## largeur (±0,876 mesurés), et complètement muet sur la LONGUEUR (±1,230). Un vaisseau
+## décrit par un cercle laisse passer son NEZ : c'est ce que le joueur a vu traverser les
+## murs, capture à l'appui. Le second, 2,11, corrigeait bien l'oubli mais recopiait une
+## capsule elle-même trop longue : `body_half_length` portait la demi-longueur de la coque
+## alors que le collisionneur la lit comme un demi-SEGMENT, et y ajoute le rayon. 1,23 est
+## la demi-longueur réellement mesurée sur `specter_9.glb`.
 ##
-## ⚠️ IL DOIT VALOIR `body_half_length + body_radius` du chasseur. Deux chiffres sur le même
-## fait, et ce dépôt sait ce que ça coûte : `test_the_wall_clearance_matches_the_real_fighter`
-## les confronte.
-@export var wall_clearance: float = 2.11
+## ⚠️ IL DOIT VALOIR `PlayerStats.body_reach()`. Deux chiffres sur le même fait, et ce dépôt
+## sait ce que ça coûte : `test_the_wall_clearance_matches_the_real_fighter` les confronte.
+@export var wall_clearance: float = 1.23
 
 ## Marge entre le mur le plus extérieur et le point où le chasseur apparaît dans la chambre.
 @export var dive_entry_margin: float = 0.30

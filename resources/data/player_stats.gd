@@ -10,7 +10,8 @@ extends Resource
 ## Logical hitbox radius; deliberately smaller than the visual model (spec §8.2).
 @export var hitbox_radius: float = 0.25
 
-## Demi-largeur du CORPS, pour la collision avec le décor solide.
+## Demi-largeur du CORPS, pour la collision avec le décor solide. C'est AUSSI le rayon de
+## la capsule, donc ce qui déborde aux deux bouts : voir [member body_half_length].
 ##
 ## ⚠️ MESURÉ SUR `specter_9.glb`, PAS ESTIMÉ (loi « les corps ne se chevauchent pas ») :
 ## X ±0,876, Z ±1,230, **transformations de nœuds appliquées**. Cette précision a coûté une
@@ -21,9 +22,26 @@ extends Resource
 ## le joueur — un shoot vertical se joue avec une hitbox plus petite que le vaisseau.
 @export var body_radius: float = 0.88
 
-## Demi-longueur du corps. C'est elle qui manquait : décrit par un disque de sa demi-largeur,
-## le chasseur laissait son NEZ dépasser de 0,38 et traverser les murs.
-@export var body_half_length: float = 1.23
+## Demi-longueur du SEGMENT de la capsule — PAS la demi-longueur du vaisseau.
+##
+## ⚠️ LA DISTINCTION EST TOUT LE PIÈGE, ET ELLE A COÛTÉ UN CORPS 71 % TROP LONG.
+## `PlaneCollider.capsule_blocks()` promène un disque de `body_radius` le long du segment
+## `−body_half_length … +body_half_length` : l'étendue réelle du corps dans l'axe vaut donc
+## **`body_half_length + body_radius`**, jamais `body_half_length` seule. La demi-longueur
+## mesurée sur le `.glb` (1,23) avait été versée ici telle quelle : la capsule s'étirait à
+## 2,11, soit 0,88 unité de coque fantôme DEVANT le nez et autant derrière. Le joueur l'a vu
+## avant le code, une fois l'overlay `--show-solids` allumé — « la zone de collision du
+## vaisseau est trop longue, surtout devant » (2026-08-28).
+##
+## La valeur juste se déduit, elle ne se choisit pas :
+## `demi-longueur de coque − body_radius`, soit `1,23 − 0,88 = 0,35`. La capsule épouse
+## alors exactement la boîte du `.glb` : 2,46 dans l'axe, 1,76 en travers.
+@export var body_half_length: float = 0.35
+
+## L'étendue RÉELLE du corps dans l'axe, celle qu'un décor doit dégager. Elle existe parce
+## que trois appelants la recalculaient à la main, et qu'un quatrième l'oublierait.
+func body_reach() -> float:
+	return body_half_length + body_radius
 
 ## Le POIDS du chasseur, dans la même unité arbitraire qu'[member EnemyData.mass].
 ##
@@ -76,9 +94,15 @@ func validate() -> PackedStringArray:
 		errors.append("hitbox_radius must be > 0")
 	if body_radius <= 0.0:
 		errors.append("body_radius must be > 0")
-	if body_half_length < body_radius:
-		errors.append("body_half_length (%.2f) < body_radius (%.2f) : un vaisseau n'est pas plus large que long"
-			% [body_half_length, body_radius])
+	# ⚠️ LE GARDE D'AVANT EXIGEAIT `body_half_length >= body_radius`, « un vaisseau n'est pas
+	# plus large que long » — vrai de la COQUE, faux du segment de la capsule, et c'est lui
+	# qui verrouillait l'erreur : il refusait précisément la valeur correcte (0,35). La
+	# question à poser porte sur l'étendue, la seule grandeur comparable à la largeur.
+	if body_half_length < 0.0:
+		errors.append("body_half_length must be >= 0 (c'est un demi-SEGMENT, pas une demi-longueur de coque)")
+	if body_reach() < body_radius:
+		errors.append("etendue du corps (%.2f) < body_radius (%.2f) : un vaisseau n'est pas plus large que long"
+			% [body_reach(), body_radius])
 	if fire_interval <= 0.0:
 		errors.append("fire_interval must be > 0")
 	if mass <= 0.0 or is_inf(mass) or is_nan(mass):

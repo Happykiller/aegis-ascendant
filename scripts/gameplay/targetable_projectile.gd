@@ -18,6 +18,31 @@ extends RefCounted
 ## le fait avancer dans son propre ordre, ce qui rend la boucle lisible d'un seul
 ## endroit — et le rend instanciable à la main en test.
 
+## Marge au-delà des bornes du plan avant qu'un projectile soit retiré. La MÊME que celle des
+## balles (`BulletManager.CULL_MARGIN`) : `BOUNDS` est le terrain de jeu, pas le champ
+## visible, et deux projectiles qui traversent le même monde n'ont aucune raison d'y mourir
+## à deux endroits différents.
+const CULL_MARGIN := 5.0
+
+## Combien de temps un projectile a le droit de vivre HORS du plan avant d'y être entré.
+##
+## ⚠️ SANS CE DÉLAI, LE LÉVIATHAN TIRAIT DANS LE VIDE DEPUIS TOUJOURS. Il lance ses salves
+## depuis son propre centre, et son centre est À y = 11,9 quand le plan s'arrête à 8,0. La
+## règle d'avant — « hors du plan, on retire » — s'appliquait donc dès le PREMIER pas :
+## `plane_position += velocity * delta` amenait le missile à 11,89, toujours dehors, et il
+## était retiré à l'image de sa création. Trois missiles armés, trois missiles morts, à
+## chaque salve, pendant tout le combat. Mesuré le 2026-08-28 :
+## `[DBG] salve depuis (0.00, 11.92) — dedans=false`.
+##
+## Rien ne le disait : pas d'erreur, pas de trace, et le compteur de projectiles restait
+## juste. C'est le mode d'échec le plus cher de ce fichier — une attaque qui n'existe pas.
+##
+## Le remède n'est pas d'agrandir la marge (le boss peut dériver plus haut) mais de changer
+## la QUESTION : on ne retire pas ce qui n'est pas encore entré, tant qu'il a une chance
+## d'entrer. Le délai borne cette chance, pour qu'un projectile tiré vers le dehors ne
+## traverse pas la galaxie.
+const ENTRY_GRACE := 3.0
+
 ## Vitesse en dessous de laquelle on ne tente plus de virer. Un projectile quasi
 ## immobile n'a pas de direction fiable, et `angle_to` sur un vecteur nul rendrait
 ## `NaN` — qui se propagerait dans la position jusqu'à sortir le missile du monde sans
@@ -34,6 +59,11 @@ var damage: float = 0.0
 var target: BulletTarget
 ## Faux dès que le projectile est abattu, sorti du plan, ou a frappé.
 var alive: bool = true
+## Vrai dès que le projectile a été DANS le plan au moins une fois. Tant qu'il ne l'a pas
+## été, en sortir ne le tue pas : il n'y est jamais entré.
+var _entered: bool = false
+## Âge du projectile, pour borner l'attente d'une entrée qui ne viendra pas.
+var _age: float = 0.0
 
 ## `hit_callback` reçoit les dégâts encaissés PAR LE PROJECTILE (tir du joueur), et non
 ## ceux qu'il inflige : c'est le contrat de `BulletTarget`.
@@ -50,6 +80,11 @@ static func make(p_position: Vector2, p_velocity: Vector2, p_health: float,
 	# Équipe ENEMY : ce sont les balles du JOUEUR qui le touchent (voir l'en-tête).
 	projectile.target = BulletTarget.make(BulletManager.Team.ENEMY, hitbox_radius, hit_callback)
 	projectile.target.position = p_position
+	# ⚠️ LE VERDICT SE PREND À LA NAISSANCE, PAS SEULEMENT APRÈS LE PREMIER PAS. Un projectile
+	# né DANS le plan et qui en sort d'un seul bond ne repasserait jamais par le point où l'on
+	# arme la sortie : il survivrait jusqu'à l'expiration du délai d'entrée, ce qui est
+	# exactement l'inverse de ce qu'on veut.
+	projectile._entered = GameplayPlane.is_inside(p_position, CULL_MARGIN)
 	return projectile
 
 ## Fait avancer le projectile d'une image. `chase` est la position à poursuivre ; le
@@ -68,9 +103,13 @@ func tick(delta: float, chase: Vector2) -> void:
 			velocity = velocity.rotated(turn)
 	plane_position += velocity * delta
 	target.position = plane_position
-	# Sorti du plan : on le retire plutôt que de le laisser courir. La marge évite
-	# qu'un missile né au bord ne meure à l'image de sa création.
-	if not GameplayPlane.is_inside(plane_position, 3.0):
+	_age += delta
+	# Sorti du plan : on le retire plutôt que de le laisser courir. Mais « sorti » suppose
+	# d'y être ENTRÉ — voir [constant ENTRY_GRACE], et le combat entier que cette nuance a
+	# coûté au Léviathan.
+	if GameplayPlane.is_inside(plane_position, CULL_MARGIN):
+		_entered = true
+	elif _entered or _age > ENTRY_GRACE:
 		_retire()
 
 ## Encaisse un tir du joueur. Retourne vrai **le seul frame où le projectile tombe**,

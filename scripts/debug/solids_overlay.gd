@@ -71,13 +71,20 @@ func _shapes(shapes: PlaneShapes, lift: float, green: Color) -> void:
 				var span := shapes.param(i, 5)
 				_arc(c, r - th * 0.5, a0, span, lift, green)
 				_arc(c, r + th * 0.5, a0, span, lift, green)
-				for edge in [a0, a0 + span]:
-					var d := Vector2(cos(deg_to_rad(edge)), sin(deg_to_rad(edge)))
-					_line(c + d * (r - th * 0.5), c + d * (r + th * 0.5), lift, green)
+				# Les deux bouts de l'arc, sans le littéral qui allouait un `Array` par arc
+				# et par image : cet overlay est allumé par défaut en build de développement.
+				_edge(c, r, th, a0, lift, green)
+				_edge(c, r, th, a0 + span, lift, green)
 			PlaneShapes.Kind.CAPSULE:
 				var a := shapes.centre_of(i)
 				var b := Vector2(shapes.param(i, 2), shapes.param(i, 3))
 				_capsule(a, b, shapes.param(i, 4), lift, green)
+
+## Le petit segment qui ferme un bout d'arc, de sa face interne à sa face externe.
+func _edge(c: Vector2, r: float, th: float, angle_deg: float, lift: float,
+		colour: Color) -> void:
+	var d := Vector2(cos(deg_to_rad(angle_deg)), sin(deg_to_rad(angle_deg)))
+	_line(c + d * (r - th * 0.5), c + d * (r + th * 0.5), lift, colour)
 
 func _line(a: Vector2, b: Vector2, lift: float, colour: Color) -> void:
 	_mesh.surface_set_color(colour)

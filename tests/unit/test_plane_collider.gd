@@ -185,7 +185,7 @@ func test_the_dive_entry_leaves_room_to_fly() -> void:
 	# valide un point d'apparition ou le chasseur nait le nez dans le mur et la queue hors du
 	# plan. Ce qui doit tenir sous lui, c'est ce que la collision teste — la capsule.
 	var room := entry.y - chamber.position.y
-	var demi_corps: float = stats.body_half_length + stats.body_radius
+	var demi_corps: float = stats.body_reach()
 	assert_true(room >= demi_corps,
 		"il reste %.2f u sous l'entree, pour un corps qui en occupe %.2f depuis son centre"
 			% [room, demi_corps])
@@ -203,7 +203,7 @@ func test_the_top_of_the_arena_is_not_inside_the_shield() -> void:
 	# Le haut de la CHAMBRE — et le corps entier, pour la meme raison que l'entree : ce qui
 	# doit passer au-dessus du blindage, c'est la capsule, pas un rayon.
 	var reach := GameplayPlane.CHAMBER_BOUNDS.end.y - CoreInterior.PLANE_OFFSET.y
-	var demi_corps: float = stats.body_half_length + stats.body_radius
+	var demi_corps: float = stats.body_reach()
 	assert_true(reach > outermost + demi_corps,
 		("le haut de la chambre est a %.2f du noyau, le blindage va jusqu'a %.2f corps compris"
 			% [reach, outermost + demi_corps]))
@@ -238,11 +238,51 @@ func test_no_wall_lives_inside_the_core() -> void:
 func test_the_wall_clearance_matches_the_real_fighter() -> void:
 	var tuning := _tuning()
 	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
-	var reach := stats.body_half_length + stats.body_radius
+	var reach: float = stats.body_reach()
 	assert_almost_eq(tuning.wall_clearance, reach, 0.05,
 		("wall_clearance vaut %.2f, l'encombrement du chasseur %.2f "
-			+ "(demi-longueur %.2f + demi-largeur %.2f)")
+			+ "(demi-segment %.2f + rayon %.2f)")
 			% [tuning.wall_clearance, reach, stats.body_half_length, stats.body_radius])
+
+## ⚠️ LA CAPSULE NE DOIT PAS DÉPASSER LA COQUE, et elle l'a fait de 0,88 u à chaque bout
+## pendant tout un chantier. `capsule_blocks()` promène un disque de `body_radius` le long
+## du segment : l'étendue vaut `half_length + radius`. La demi-longueur mesurée sur le
+## `.glb` (1,23) avait été versée dans `body_half_length` telle quelle, ce qui étirait le
+## corps à 2,11 — un chasseur de 4,22 dans l'axe pour une coque de 2,46.
+##
+## Personne ne l'a vu tant que la collision est restée un chiffre : il a fallu la DESSINER
+## (`--show-solids`) pour que l'opérateur le dise en une phrase — « la zone de collision du
+## vaisseau est trop longue, surtout devant » (2026-08-28). Ce test la remet dans la coque
+## et l'y garde. Les deux bornes sont mesurées sur `specter_9.glb`, hiérarchie parcourue.
+const HULL_HALF_LENGTH := 1.23
+const HULL_HALF_WIDTH := 0.876
+
+func test_the_collision_capsule_stays_inside_the_measured_hull() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	assert_almost_eq(stats.body_reach(), HULL_HALF_LENGTH, 0.02,
+		"le corps s'etend a %.2f dans l'axe, la coque mesure %.2f"
+			% [stats.body_reach(), HULL_HALF_LENGTH])
+	assert_almost_eq(stats.body_radius, HULL_HALF_WIDTH, 0.02,
+		"le corps s'etend a %.2f en travers, la coque mesure %.2f"
+			% [stats.body_radius, HULL_HALF_WIDTH])
+	# Et la mesure se refait sur la collision elle-meme, pas seulement sur les reglages :
+	# un mur pose juste AU-DELA du nez ne doit rien toucher.
+	var axis := Vector2(0.0, 1.0)
+	for signe: float in [1.0, -1.0]:
+		var beyond := PlaneShapes.new()
+		beyond.reserve(1)
+		var y: float = signe * (HULL_HALF_LENGTH + 0.06)
+		beyond.add_capsule(Vector2(-6.0, y), Vector2(6.0, y), 0.05)
+		assert_false(PlaneCollider.capsule_blocks(beyond, Vector2.ZERO, axis,
+				stats.body_half_length, stats.body_radius),
+			"un mur a %.2f (au-dela de la coque) ne doit pas etre touche" % y)
+		var inside := PlaneShapes.new()
+		inside.reserve(1)
+		var y_in: float = signe * (HULL_HALF_LENGTH - 0.06)
+		inside.add_capsule(Vector2(-6.0, y_in), Vector2(6.0, y_in), 0.05)
+		assert_true(PlaneCollider.capsule_blocks(inside, Vector2.ZERO, axis,
+				stats.body_half_length, stats.body_radius),
+			"un mur a %.2f (dans la coque) doit etre touche" % y_in)
 
 ## Le nez, précisément. C'est LUI qu'on a vu traverser, et un disque ne le décrit pas.
 func test_the_nose_is_stopped_where_a_disc_would_have_let_it_through() -> void:
@@ -250,7 +290,10 @@ func test_the_nose_is_stopped_where_a_disc_would_have_let_it_through() -> void:
 	var shapes := PlaneShapes.new()
 	shapes.reserve(1)
 	# Un mur droit devant, a portee du nez mais hors de portee d'un disque de demi-largeur.
-	var wall_y := stats.body_radius + (stats.body_half_length - stats.body_radius) * 0.5
+	# ⚠️ A MI-CHEMIN ENTRE LE RAYON ET L'ETENDUE, et non entre le rayon et le demi-segment.
+	# La premiere version melangeait les deux conventions : elle ne tenait que tant que
+	# `body_half_length` valait, a tort, la demi-longueur de la coque.
+	var wall_y: float = stats.body_radius + (stats.body_reach() - stats.body_radius) * 0.5
 	shapes.add_capsule(Vector2(-6.0, wall_y), Vector2(6.0, wall_y), 0.1)
 	assert_false(PlaneCollider.blocks(shapes, Vector2.ZERO, stats.body_radius),
 		"un DISQUE de sa demi-largeur ne verrait rien : c'est ainsi qu'il traversait")
@@ -397,7 +440,7 @@ func test_a_turning_wall_pushes_you_in_its_own_direction_and_no_further() -> voi
 	# rayon : son bout le plus eloigne est a r = 5 + 2,11 (demi-corps), et c'est la que le
 	# bout du mur le pousse — a 30 deg/s, sur deux secondes, ca fait ~7,4 u d'arc. Mesurer
 	# au centre (5,2 u) aurait ete une erreur de rayon, pas une preuve d'exces.
-	var farthest: float = 5.0 + stats.body_half_length + stats.body_radius
+	var farthest: float = 5.0 + stats.body_reach()
 	var wall_reach: float = deg_to_rad(60.0) * farthest
 	assert_true(travelled <= wall_reach * 1.05,
 		"pas plus vite que le mur au point de contact (%.2f u pour %.2f)" % [travelled, wall_reach])
@@ -542,7 +585,7 @@ func test_the_corridor_between_the_walls_is_a_place() -> void:
 	assert_true(rings.size() >= 1, "au moins un mur")
 	var bounds := _corridor_bounds(rings)
 	var corridor: float = bounds[1] - bounds[0]
-	var lengthwise := (stats.body_half_length + stats.body_radius) * 2.0
+	var lengthwise: float = stats.body_reach() * 2.0
 	assert_true(corridor >= lengthwise,
 		"couloir de %.2f u pour un chasseur qui en occupe %.2f dans l'axe" % [corridor, lengthwise])
 

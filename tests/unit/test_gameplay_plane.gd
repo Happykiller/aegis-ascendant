@@ -84,7 +84,7 @@ func test_the_chamber_holds_the_shield_and_the_fighter_under_it() -> void:
 			outer = maxf(outer, ring.radius + ring.thickness * 0.5)
 	# Le centre de la chambre, remonte par `CoreInterior.PLANE_OFFSET`.
 	var centre := 1.2
-	var demi_corps: float = stats.body_half_length + stats.body_radius
+	var demi_corps: float = stats.body_reach()
 	var besoin: float = centre - outer - demi_corps
 	assert_true(GameplayPlane.CHAMBER_BOUNDS.position.y <= besoin,
 		"il faut descendre a %.2f pour se poster sous le mur ; la chambre s'arrete a %.2f"

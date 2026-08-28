@@ -88,6 +88,47 @@ func test_it_survives_a_frame_spent_near_the_edge() -> void:
 	m.tick(0.1, Vector2.ZERO)
 	assert_true(m.alive, "juste au bord haut, il vit encore")
 
+## ⚠️ LE DEFAUT LE PLUS CHER DE CE FICHIER : une attaque qui n'existe pas. Le Leviathan lance
+## ses salves depuis son propre centre, a y = 11,9, quand le plan s'arrete a 8,0. La regle
+## « hors du plan, on retire » s'appliquait des le PREMIER pas : trois missiles armes, trois
+## missiles morts, a chaque salve, pendant tout le combat — sans erreur, sans trace, et avec
+## un compteur de projectiles parfaitement juste. Mesure en jeu le 2026-08-28 :
+## `[DBG] salve depuis (0.00, 11.92) — dedans=false`.
+func test_a_projectile_born_outside_the_plane_lives_until_it_gets_in() -> void:
+	GameplayPlane.reset_bounds()
+	# Le centre du Leviathan, mesure en jeu : hors de l'ancienne marge de 3,0.
+	var born_out := Vector2(0.0, 11.92)
+	assert_false(GameplayPlane.is_inside(born_out, 3.0),
+		"la position de tir du boss etait bien HORS de l'ancienne marge : c'etait le defaut")
+	# ⚠️ ET ON NE SE CONTENTE PAS D'AVOIR ELARGI LA MARGE. Elargir deplace le seuil, il ne
+	# le supprime pas : un boss qui deriverait plus haut ramenerait le defaut, en silence.
+	# C'est la REGLE qu'on mesure ici — on ne retire pas ce qui n'est jamais entre — et on
+	# la mesure donc TRES au-dela de la marge courante.
+	var far_out := Vector2(0.0, 24.0)
+	assert_false(GameplayPlane.is_inside(far_out, TargetableProjectile.CULL_MARGIN),
+		"le point de depart est hors du plan, marge courante comprise")
+	var m := TargetableProjectile.make(far_out, Vector2(0.0, -20.0), 40.0, 0.3, 0.0, 22.0,
+		Callable(self, "_on_hit"))
+	m.tick(1.0 / 60.0, Vector2.ZERO)
+	assert_true(m.alive, "il ne meurt pas a l'image de sa creation")
+	# Une seconde de vol vers le bas : il est entre, et il vit toujours.
+	for frame in 60:
+		m.tick(1.0 / 60.0, Vector2.ZERO)
+	assert_true(m.alive, "une seconde plus tard, il est dans le plan et vole")
+	assert_true(GameplayPlane.is_inside(m.plane_position, 0.0),
+		"et il est bel et bien entre (y = %.2f)" % m.plane_position.y)
+
+## Le pendant : la tolerance est BORNEE. Un projectile tire vers le dehors ne doit pas
+## traverser la galaxie en silence.
+func test_a_projectile_that_never_gets_in_is_retired_all_the_same() -> void:
+	GameplayPlane.reset_bounds()
+	var m := TargetableProjectile.make(Vector2(0.0, 24.0), Vector2(0.0, 4.0), 40.0, 0.3,
+		0.0, 22.0, Callable(self, "_on_hit"))
+	for frame in int(TargetableProjectile.ENTRY_GRACE * 60.0) + 10:
+		m.tick(1.0 / 60.0, Vector2.ZERO)
+	assert_false(m.alive, "jamais entre, il finit par etre retire")
+	assert_false(m.target.enabled, "cible retiree avec lui")
+
 func test_reach_uses_both_radii() -> void:
 	var m := _make()
 	assert_true(m.reaches(Vector2(0.0, 4.4), 0.25), "0,4 d'ecart pour 0,3 + 0,25 de portee")
