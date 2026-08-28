@@ -41,19 +41,24 @@ for path in sorted(glob.glob(os.path.join(BRIEFS, "*.md"))):
     txt = io.open(path, encoding="utf-8").read()
     m = re.search(r"\*\*Statut\*\* *: *([^\n]+)", txt)
     declared = m.group(1).strip() if m else "(aucun)"
+    # ⚠️ LE GRAS N'EST PAS UN STATUT. Un statut ecrit « **livré** (2026-08-28) — … »
+    # ne commençait par aucun des mots testes plus bas : il repassait pour OUVERT, et
+    # l'audit annoncait « 0 livres » un jour ou deux briefs venaient de l'etre
+    # (2026-08-28). On compare donc sur une forme normalisee, sans les asterisques.
+    probe = declared.lstrip("*_ ").lower()
     # ⚠️ DERIVE **OU** DECLARE-FINI. Le signal derive sert a rattraper ce que personne
     # n'a pense a marquer ; il ne doit JAMAIS annuler une declaration positive. Sans
     # cette disjonction, BRIEF-0037 et 0038 — declares « integre », mais dont les
     # livrables ne portent pas le numero du brief — repassaient pour ouverts.
     delivered = (tag.lower() in outs or tag in prov
-                 or declared.startswith(("livr", "intégr", "integr")))
+                 or probe.startswith(("livr", "intégr", "integr")))
     if delivered:
         stale.append((tag, name, declared, path))
-    elif not declared.startswith(("caduc", "abandon")):
+    elif not probe.startswith(("caduc", "abandon")):
         open_.append((tag, declared))
 
 print("BRIEFS — %d livres, %d encore ouverts" % (len(stale), len(open_)))
-menteurs = [s for s in stale if not s[2].startswith(("livr", "intégr", "integr"))]
+menteurs = [s for s in stale if not s[2].lstrip("*_ ").lower().startswith(("livr", "intégr", "integr"))]
 if menteurs:
     drift += len(menteurs)
     print("  %d livres dont le statut declare ment :" % len(menteurs))
