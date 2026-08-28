@@ -1,0 +1,89 @@
+{
+  "id": "CHR-0003",
+  "slug": "lyra-expressions",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "framing": "pied",
+  "purpose": {
+    "description": "Les TROIS calques d'expression qui manquent au jeu de calques pied-en-cap de CHR-0001.",
+    "game_context": "Ils servent l'accueil ET le portrait du HUD, qui est un recadrage du même jeu de calques. Une seule livraison débloque les deux écrans.",
+    "priority": "⚠️ SANS EUX, ELLE NE CLIGNE PAS ET SA BOUCHE CLAQUE. Le clignement est ce qui distingue le plus sûrement un personnage vivant d'une illustration posée ; la bouche intermédiaire est ce qui fait qu'elle parle au lieu de s'ouvrir et se fermer.",
+    "reference": "assets/source/characters/lyra/tete.png — LE FICHIER À RETOUCHER. C'est lui la base, pas la planche d'identité."
+  },
+  "method": {
+    "regle": "⚠️ RETOUCHE, PAS RÉGÉNÉRATION. Ces trois calques sont le fichier `tete.png` déjà livré, avec UNE zone repeinte. Il ne s'agit pas de redessiner Lyra avec une autre expression : il s'agit de modifier une image existante.",
+    "comment": "Utiliser l'ÉDITION d'image (retouche par masque / inpainting) en fournissant `tete.png` en entrée et en masquant uniquement la bouche, ou uniquement les yeux. Une génération neuve à partir d'un texte redessine tout — c'est ce qui a échoué.",
+    "cout": "Livraison du 2026-08-28 (buste) : les quatre têtes ont été régénérées. **38 % des pixels changeaient** au lieu des 3 % d'une bouche. Le visage entier différait — cheveux, mâchoire, col — et un recalage n'y pouvait rien : l'erreur tombait de 29,0 à 27,4 au lieu d'aller à zéro. Les substituer aurait fait sauter toute la tête à chaque syllabe, ce qui est PIRE qu'une bouche figée.",
+    "ce_qui_ne_doit_pas_bouger": [
+      "les cheveux, mèche par mèche",
+      "la mâchoire et l'ovale du visage",
+      "le col et sa gemme",
+      "le casque-micro et sa branche",
+      "la position et la direction du regard",
+      "les sourcils"
+    ]
+  },
+  "technical": {
+    "resolution_per_layer": "1024x1536",
+    "aspect_ratio": "2:3",
+    "canvas": "IDENTIQUE à `tete.png` — c'est le même fichier, retouché.",
+    "transparent_background": false,
+    "background": "pure_magenta",
+    "background_note": "⚠️ NE PAS demander un fond transparent : on reçoit un damier PEINT dans une image opaque (contrat texture, règle 3). Fond magenta uni, puis `python3 tools/bg-key-alpha.py` pour la découpe.",
+    "view": "de face, légère contre-plongée (la caméra du titre regarde légèrement vers le haut)",
+    "lighting": "clé froide venant de la gauche, jante cyan à droite — cohérente avec la scène 3D du titre",
+    "color_mode": "RGB",
+    "output_usage": "runtime_layer"
+  },
+  "layers": [
+    {
+      "name": "tete_bouche_mi",
+      "content": "La MÊME image que `tete`, bouche entrouverte — lèvres décollées, un peu de dents visibles. Rien d'autre ne bouge.",
+      "why": "Position intermédiaire de la synchro labiale. Sans elle, la bouche saute de fermée à grande ouverte et le personnage claque au lieu de parler."
+    },
+    {
+      "name": "tete_yeux_mi",
+      "content": "La MÊME image que `tete`, paupières à mi-course. Le regard reste dirigé au même endroit.",
+      "why": "Image intermédiaire du clignement. Un clignement en deux images se lit comme un défaut d'affichage ; en trois, comme une paupière."
+    },
+    {
+      "name": "tete_yeux_fermes",
+      "content": "La MÊME image que `tete`, yeux clos, cils posés. Les sourcils NE bougent PAS — un sourcil qui descend fait une grimace, pas un clignement.",
+      "why": "Fin du clignement. ⚠️ C'est le calque le plus important des trois : sans lui, elle ne cligne PAS, et rien ne distingue plus sûrement un personnage vivant d'une illustration."
+    }
+  ],
+  "color_palette": {
+    "required": [
+      "#1C2B5E bleu profond (combinaison)",
+      "#EDEAE3 blanc cassé (panneaux)",
+      "#E4B54A or (liserés)",
+      "orange cuivré (cheveux)"
+    ],
+    "restricted": [
+      "#3FD9E8 cyan — UNIQUEMENT sur les hologrammes, l'oreillette, la pince et les liserés fins"
+    ],
+    "forbidden": [
+      "#FF5A3D corail — réservé au tir ennemi",
+      "tout aplat de cyan sur le corps ou le vêtement"
+    ],
+    "why": "Le cyan et le corail portent la lisibilité des projectiles (charte §3, LOI-LIS-01). Un personnage qui en fait un aplat vole cette lisibilité au gameplay."
+  },
+  "constraints": [
+    "Aucun fond, décor ni interface : le fond reste le magenta uni de `tete.png`.",
+    "Aucun changement hors de la zone retouchée. Le contrôle refuse au-delà de 12 % de pixels modifiés.",
+    "Les trois calques dérivent du MÊME `tete.png`, pas les uns des autres."
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "bloquante pour l'animation du visage — tout le reste fonctionne déjà",
+    "target_dir": "assets/imported/ui/characters/lyra/",
+    "file_pattern": "<nom_du_calque>.png",
+    "verify": [
+      "python3 tools/characters/check_delivery.py <dossier> --base tete — il DOIT être vert avant intégration",
+      "chaque variante change moins de 12 % des pixels (une bouche en fait ~3, des yeux moins)",
+      "superposer la variante sur `tete.png` : seule la zone voulue doit clignoter"
+    ],
+    "provenance_csv_line": "lyra_pied_<nom>,assets/imported/ui/characters/lyra/<nom>.png,character-layer,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/characters/CHR-0003-lyra-expressions.json,,\"Calque <nom> de Lyra (CHR-0003), retouche de tete.png\""
+  }
+}

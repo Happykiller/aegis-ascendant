@@ -47,6 +47,12 @@ var _muting_focus: bool = false
 var _scrim_alpha: float = 0.0
 var _center_rest_y: float = 0.0
 var _tween: Tween
+var _lyra: LyraPortrait
+var _brief_panel: PanelContainer
+var _brief_kicker: Label
+var _brief_title: Label
+var _brief_desc: Label
+var _brief_objectives: VBoxContainer
 
 func _ready() -> void:
 	visible = false
@@ -55,6 +61,7 @@ func _ready() -> void:
 	_scrim_alpha = _scrim.color.a
 	_center_rest_y = _center.position.y
 	_build_label.text = GameVersion.label()
+	_build_briefing()
 	for button in _buttons():
 		button.focus_entered.connect(_on_focus_changed)
 	var args := OS.get_cmdline_user_args()
@@ -65,6 +72,104 @@ func _ready() -> void:
 	if "--options-demo" in args:
 		_open.call_deferred()
 		_open_options.call_deferred()
+
+# --- Le briefing de secteur (ADR-0035, pas 3) --------------------------------
+
+const LyraPortraitScript := preload("res://scripts/ui/lyra_portrait.gd")
+
+## La colonne de gauche : Lyra et ce qu'il faut savoir. ⚠️ ELLE EST À GAUCHE ICI, ET À DROITE
+## EN JEU, et ce n'est pas une incohérence : en pause, c'est ELLE qu'on vient lire, donc elle
+## prend le bord que l'œil balaie en premier. En jeu, elle ne doit pas disputer sa place au
+## champ de tir — d'où le coin libre.
+const BRIEF_COLUMN := 0.42
+## ⚠️ LE CENTRE RESTE DÉGAGÉ. Le jeu est toujours là derrière, figé sous le voile : c'est ce
+## que l'opérateur a retenu de la maquette (« la fenêtre du jeu visible figé »). Le remplir
+## d'interface reviendrait à le cacher, et la pause perdrait ce qu'elle a de mieux — on voit
+## ce qu'on a laissé en plan.
+func _build_briefing() -> void:
+	_lyra = LyraPortraitScript.new()
+	_lyra.name = "Lyra"
+	_lyra.layer_dir = "res://assets/imported/ui/characters/lyra"
+	_lyra.rig = preload("res://resources/dialogue/lyra_rig.tres")
+	# Elle se tient sur un socle : pied-en-cap, sans lui, elle flotte.
+	_lyra.pedestal = true
+	_lyra.anchor_right = 0.20
+	_lyra.anchor_bottom = 1.0
+	_lyra.offset_left = 44.0
+	_lyra.offset_top = 168.0
+	_lyra.offset_bottom = -150.0
+	_overlay.add_child(_lyra)
+
+	_brief_panel = PanelContainer.new()
+	_brief_panel.name = "Briefing"
+	_brief_panel.anchor_left = 0.20
+	_brief_panel.anchor_right = BRIEF_COLUMN
+	_brief_panel.anchor_top = 0.0
+	_brief_panel.offset_left = 24.0
+	_brief_panel.offset_top = 200.0
+	_brief_panel.offset_right = 300.0
+	_brief_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_brief_panel.add_theme_stylebox_override("panel", _brief_frame())
+	_brief_panel.visible = false
+	_overlay.add_child(_brief_panel)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	_brief_panel.add_child(column)
+
+	_brief_kicker = _brief_label(column, 11, Color(0.161, 0.902, 1.0, 0.85))
+	_brief_title = _brief_label(column, 30, Color(0.95, 0.98, 1.0))
+	_brief_desc = _brief_label(column, 18, Color(0.875, 0.965, 1.0, 0.85), true)
+
+	var rule := ColorRect.new()
+	rule.color = Color(0.161, 0.902, 1.0, 0.35)
+	rule.custom_minimum_size = Vector2(0, 1)
+	column.add_child(rule)
+
+	_brief_label(column, 11, Color(0.894, 0.71, 0.29, 0.9)).text = "OBJECTIFS DE MISSION"
+	_brief_objectives = VBoxContainer.new()
+	_brief_objectives.add_theme_constant_override("separation", 6)
+	column.add_child(_brief_objectives)
+
+func _brief_frame() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.02, 0.05, 0.10, 0.88)
+	box.border_color = Color(0.161, 0.902, 1.0, 0.7)
+	box.set_border_width_all(2)
+	box.corner_radius_top_left = 14
+	box.corner_radius_bottom_right = 14
+	box.set_content_margin_all(20)
+	return box
+
+func _brief_label(parent: Control, size: int, colour: Color, wrap: bool = false) -> Label:
+	var label := Label.new()
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", colour)
+	if wrap:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(label)
+	return label
+
+## Le niveau pousse le briefing de la phase courante. ⚠️ C'EST LUI QUI SAIT, PAS L'ÉCRAN : la
+## pause ne connaît ni les phases, ni le boss, ni le champ d'astéroïdes — et elle n'a aucune
+## raison de l'apprendre. `null` la laisse muette plutôt que fautive.
+func show_briefing(briefing: SectorBriefing) -> void:
+	if _brief_panel == null:
+		return
+	if briefing == null:
+		_brief_panel.visible = false
+		return
+	_brief_kicker.text = briefing.kicker
+	_brief_title.text = briefing.title
+	_brief_desc.text = briefing.description
+	for child in _brief_objectives.get_children():
+		child.queue_free()
+	for objective in briefing.objectives:
+		var line := _brief_label(_brief_objectives, 16, Color(0.95, 0.98, 1.0, 0.92))
+		# Le losange d'Helios, le même que sur les bonus : la puce dit la faction avant que
+		# le texte ne dise la consigne.
+		line.text = "◆  %s" % objective
+	_brief_panel.visible = true
 
 func _buttons() -> Array[Button]:
 	var found: Array[Button] = []

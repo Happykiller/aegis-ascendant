@@ -56,6 +56,15 @@ const DEFEAT_HOLD := 1.6
 ## `game_over` empilerait un deuxième rapport par-dessus le premier.
 var _defeated: bool = false
 
+## Ce que Lyra dit pendant le combat (`ADR-0035`). Le texte vit dans une Resource : c'est la
+## règle du projet pour tout contenu, et c'est ce qui rendra la traduction possible.
+const LYRA_LINES := preload("res://resources/dialogue/lyra_ingame.tres")
+## Ce que l'écran de pause rappelle : le lieu et les objectifs de la phase en cours.
+const BRIEFINGS := preload("res://resources/dialogue/sector_briefings.tres")
+
+## L'écran de pause, gardé pour lui pousser le briefing de la phase courante.
+var _pause: PauseScreen = null
+
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
 ## La vague du champ d'astéroïdes (ADR-0027) : montée et peuplée au même instant que
@@ -176,9 +185,9 @@ func _ready() -> void:
 	# COMMS en bas à gauche, comme l'accueil) : ces places sont celles du HUD, et deux
 	# blocs de texte superposés ne se lisent ni l'un ni l'autre. Le HUD s'efface donc
 	# le temps de la pause. Il n'en sait rien — c'est le niveau qui les raccorde.
-	var pause := get_node_or_null("PauseScreen") as PauseScreen
-	if pause != null and _hud != null:
-		pause.pause_toggled.connect(_on_pause_toggled)
+	_pause = get_node_or_null("PauseScreen") as PauseScreen
+	if _pause != null and _hud != null:
+		_pause.pause_toggled.connect(_on_pause_toggled)
 	if _pickups != null:
 		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
@@ -347,6 +356,12 @@ func _frame_chamber() -> void:
 func _on_pause_toggled(is_paused: bool) -> void:
 	if _hud != null:
 		_hud.visible = not is_paused
+	# ⚠️ AU MOMENT DE LA PAUSE, PAS AU MONTAGE. Le briefing suit la phase, et la phase change
+	# six fois dans une partie : le poser une fois pour toutes afficherait « patrouille
+	# avancée » au milieu du boss final. C'est le NIVEAU qui sait où l'on en est — l'écran de
+	# pause ne connaît ni les phases, ni le boss, et n'a aucune raison de l'apprendre.
+	if is_paused and _pause != null:
+		_pause.show_briefing(BRIEFINGS.find(StringName(phase_label())))
 
 # --- Fighter waves -----------------------------------------------------------
 
@@ -354,6 +369,7 @@ func _on_wave_cleared() -> void:
 	if _phase != Phase.FIGHTER_WAVES:
 		return
 	print("[Level] waves cleared — mini-boss incoming")
+	_lyra(&"waves_cleared")
 	_start_mini_boss()
 
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
@@ -501,11 +517,13 @@ func _on_harvester_iris_opened(boss: BossController) -> void:
 	_sfx(&"boss_phase_shift")
 	if _hud != null:
 		_hud.show_banner("NOYAU EXPOSE", Color("d93d9c"), 1.4)
+		_lyra(&"core_exposed")
 
 func _on_harvester_iris_closed() -> void:
 	_sfx(&"docking_lock")
 	if _hud != null:
 		_hud.show_banner("CARAPACE REFERMEE", Color("e4b54a"), 1.0)
+		_lyra(&"core_shielded")
 
 func _on_boss_health(ratio: float) -> void:
 	if _hud != null:
@@ -560,6 +578,7 @@ func _start_asteroid_field() -> void:
 func _reveal_asteroid_field() -> void:
 	_show_moon_flyby(true)
 	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
+	_lyra(&"asteroid_field")
 
 ## La vague ne part qu'une fois le voile rouvert. Peupler l'écran derrière un voile
 ## fermé offrirait au joueur des mines déjà à mi-course quand il retrouve la vue.
@@ -722,6 +741,7 @@ func _start_final_boss() -> void:
 	if combat != null:
 		combat.publish_gauges()
 	_banner(_final_boss.display_name, _COLOR_GOLD, 1.6)
+	_lyra(&"boss_approach")
 
 ## Raccorde le module du Pale Leviathan au reste du niveau. Câblé AVANT `begin()` : c'est
 ## `begin` qui déclenche le montage du module et la première émission de phase.
@@ -898,6 +918,7 @@ func _on_leviathan_dive_started(cycle: int, centre: Vector2) -> void:
 	# du terrain gagné ; « encore » se lit comme du surplace.
 	_banner("DANS LE NOYAU" if cycle == 0 else "NOYAU — PASSAGE %d" % (cycle + 1),
 		_BANNER_MAGENTA, 1.2)
+	_lyra(&"dive_entered")
 	if _hud != null:
 		_hud.set_boss_limbs(PackedStringArray())   # plus de plaques : la rangée s'éteint
 	_build_core_interior()
@@ -996,6 +1017,7 @@ func _on_leviathan_dive_ended(_cycle: int, flux_down: bool) -> void:
 func _on_leviathan_armour_reformed(_cycle: int, plates: int) -> void:
 	_sfx(&"danger_alarm")
 	_banner("ARMURE REFORMEE — %d PLAQUES" % plates, _BANNER_IVORY, 1.4)
+	_lyra(&"armour_reformed")
 	if _hud != null:
 		_hud.set_boss_limbs(_LEVIATHAN_PLATE_LABELS.slice(0, plates))
 
@@ -1387,6 +1409,24 @@ func _banner(text: String, color: Color, duration: float) -> void:
 	if _hud != null:
 		_hud.show_banner(text, color, duration)
 	_sfx(&"ui_banner")
+
+## Lyra commente ce qui vient d'arriver. ⚠️ ELLE DOUBLE LA BANNIÈRE, ELLE NE LA REMPLACE
+## PAS : le titre en deux mots se lit d'un coup d'œil au milieu d'un combat, sa phrase
+## demande une seconde qu'on n'a pas toujours (`ADR-0035`). La maquette porte les deux.
+##
+## Muette si la clé n'existe pas — un moment sans réplique est un moment sans réplique, pas
+## une erreur : le combat ne doit pas s'arrêter parce qu'on n'a rien écrit pour lui.
+func _lyra(key: StringName) -> void:
+	if _hud == null:
+		return
+	var line := LYRA_LINES.find(key)
+	_hud.say(line)
+	# ⚠️ LE PANNEAU AFFICHE, IL NE PARLE PAS. Contrairement à la bulle de l'accueil, le HUD
+	# n'émet aucun signal de voix — c'est le niveau qui déclenche, parce que c'est lui qui
+	# tient l'`AudioManager`. Sans cette ligne, les sept répliques étaient muettes alors que
+	# leurs fichiers existaient et que leurs cues résolvaient : tout était prêt SAUF l'appel.
+	if line != null and line.voice_cue != &"":
+		_sfx(line.voice_cue)
 
 func _boom(world_position: Vector3, category: VfxExplosion.Category, trauma: float) -> void:
 	if _vfx != null:

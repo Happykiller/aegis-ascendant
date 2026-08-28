@@ -63,3 +63,19 @@ func test_rate_limited_cues_have_a_pitch_range() -> void:
 		if cue.min_interval > 0.0 and cue.min_interval <= 0.1:
 			assert_true(cue.pitch_max > cue.pitch_min,
 				"fast cue %s varies its pitch" % cue.id)
+## ⚠️ UNE REPLIQUE NE PEUT PAS PARTAGER LE POOL DE SONS COURTS. Les seize lecteurs tournent
+## en rond : en combat, seize tirs les recyclent en moins d'une seconde, et une phrase de
+## quatre secondes se fait voler le sien EN PLEIN MILIEU. « La voix se coupe au milieu des
+## phrases » (operateur, en jeu, 2026-08-28). Ce test tient la separation : toute cue de voix
+## doit declarer le bus `Voice`, seul chemin qui mene au lecteur reserve.
+func test_every_voice_line_declares_the_voice_bus() -> void:
+	var bank: AudioCueBank = load("res://resources/audio/sfx_bank.tres")
+	var voix := 0
+	for cue in bank.cues:
+		if cue == null or not String(cue.id).begins_with("lyra_"):
+			continue
+		voix += 1
+		assert_eq(cue.bus, "Voice",
+			"la replique `%s` passe par le bus `%s` — elle serait coupee par le pool"
+				% [cue.id, cue.bus])
+	assert_true(voix >= 11, "les repliques livrees sont bien dans la banque (%d)" % voix)

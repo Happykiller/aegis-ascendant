@@ -21,6 +21,17 @@ const _MUSIC_OFF_DB := -60.0
 var _index: Dictionary = {}
 var _music_index: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
+## Le lecteur RÉSERVÉ à la voix.
+##
+## ⚠️ UNE RÉPLIQUE NE PEUT PAS PARTAGER LE POOL. Les seize lecteurs tournent en rond : en
+## combat, seize tirs et explosions les recyclent en moins d'une seconde, et une réplique de
+## quatre secondes se fait voler le sien EN PLEINE PHRASE. « La voix se coupe au milieu des
+## phrases, tout n'est pas dit » (opérateur, en jeu, 2026-08-28). Un son court survit au
+## round-robin ; une phrase, non.
+##
+## Un seul lecteur, et c'est voulu : une seconde réplique interrompt la première. Lyra ne se
+## parle pas par-dessus.
+var _voice: AudioStreamPlayer
 var _next: int = 0
 var _throttle: SfxThrottle = SfxThrottleScript.new()
 var _rng := RandomNumberGenerator.new()
@@ -48,6 +59,9 @@ func _ready() -> void:
 		player.bus = _resolve_bus("SFX")
 		add_child(player)
 		_players.append(player)
+	_voice = AudioStreamPlayer.new()
+	_voice.bus = _resolve_bus("Voice")
+	add_child(_voice)
 	_engine = AudioStreamPlayer.new()
 	_engine.bus = _resolve_bus("SFX")
 	add_child(_engine)
@@ -84,14 +98,19 @@ func play(cue: StringName, volume_db: float = 0.0) -> void:
 	var now := float(Time.get_ticks_msec()) / 1000.0
 	if not _throttle.should_play(cue, data.min_interval, now):
 		return
-	var player := _players[_next]
-	_next = (_next + 1) % _POOL_SIZE
+	# ⚠️ LA VOIX A SON PROPRE LECTEUR, jamais le pool — voir `_voice`.
+	var player := _voice if data.bus == "Voice" and _voice != null else _players[_next]
+	if player != _voice:
+		_next = (_next + 1) % _POOL_SIZE
 	player.stream = data.stream
 	player.bus = _resolve_bus(data.bus)
 	player.volume_db = data.volume_db + volume_db
 	player.pitch_scale = _rng.randf_range(data.pitch_min, data.pitch_max)
 	player.play()
 
+## ⚠️ ELLE NE COUPE PAS LA VOIX. Le garde-fou contre la mort en chaîne vide les projectiles
+## et leurs sons ; faire taire Lyra au milieu d'une phrase parce que le joueur vient de mourir
+## ajouterait une coupure là où il faut au contraire une explication.
 func stop_all_sfx() -> void:
 	for player in _players:
 		player.stop()

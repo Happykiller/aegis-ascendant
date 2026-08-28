@@ -31,6 +31,9 @@ Deux états, et le second est le plus utile à connaître :
 | `pickups/power_core.svg` | copie runtime | `imported/sprites/pickups/power_core.svg` |
 | `pickups/shield_cell.svg` | copie runtime | `imported/sprites/pickups/shield_cell.svg` |
 | `pickups/score_prism.svg` | copie runtime | `imported/sprites/pickups/score_prism.svg` |
+| `characters/lyra/figure.png` (fond magenta) | `tools/bg-key-alpha.py --mode chroma --key auto` | `imported/ui/characters/lyra/figure.png` (CHR-0004) |
+| `characters/lyra/holo_sphere.png` | idem | `imported/ui/characters/lyra/holo_sphere.png` |
+| `characters/lyra/{tete,tete_bouche_ouverte,cheveux_arriere,meches_avant}.png` | idem + recadrage (120,30,900,1080) | `imported/ui/characters/lyra_buste/*.png` — le portrait du HUD |
 
 > Les **coques 3D** n'ont pas de fichier source ici : elles sont **générées par script** —
 > `tools/blender/build_*.py` écrit directement dans `imported/models/`. Leur « source » est le code
@@ -41,6 +44,8 @@ Deux états, et le second est le plus utile à connaître :
 
 | Source | Pourquoi |
 |---|---|
+| `characters/lyra/holo_bracelet.png` | **retiré** (opérateur, 2026-08-28) : à l'échelle du titre, un anneau de 30 px sur l'avant-bras se lit comme une tache |
+| `characters/lyra/{bras_droit,bras_gauche,buste,queue_de_cheval}.png` | **remplacés — CHR-0004** : les morceaux d'un générateur ne s'assemblent pas (proportions, coiffure, frange doublée). La figure est livrée d'un seul tenant. Ne pas les réintégrer |
 | `textures/citadel/citadel_wear_mask.png` | **en attente** : l'encrassement doit être fondu dans la carte de multiplication du blindage — `StandardMaterial3D` n'empile pas deux albedo |
 | `textures/citadel/citadel_deck_markings_mask.png` | **en attente** : le poser sur le seul pont demande un contrôle **par face** que la projection en boîte ne donne pas ; l'appliquer à un matériau entier peindrait des hachures sur toute la coque |
 | `ui/screens/pause_frame.svg` | **écarté — ADR-0012** : la pause est bâtie en langage d'interface |

@@ -1,0 +1,81 @@
+{
+  "id": "VOX-0001",
+  "slug": "lyra-accueil",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "context": "Écran-titre (scenes/boot/boot.tscn). Les quatre répliques s'enchaînent seules et BOUCLENT : le joueur qui revient au menu après une partie les réentendra. Elles doivent supporter la réécoute — pas d'effet qui s'use au troisième passage.",
+  "purpose": {
+    "description": "La voix de la navigatrice qui accueille le joueur, en français.",
+    "priority": "⚠️ C'EST LE PREMIER SON HUMAIN DU JEU. Tout le reste est moteur, tir et explosion. Une voix ratée ici décide de ce que le joueur pense du personnage pour toute la partie."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI REVERBERATION, NI FILTRE RADIO, NI COMPRESSION FORTE. Le jeu applique sa propre chaîne comms sur le bus `Voice` (passe-haut 300 Hz, passe-bas 3400 Hz, distorsion 0,18, compresseur). Une voix déjà filtrée passerait DEUX fois et deviendrait inintelligible — et le filtre du jeu ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage, elle ne vend rien",
+    "register": "calme par défaut, y compris sur un danger — c'est ce calme qui rendra l'alerte crédible le jour où elle le perd",
+    "address": "elle dit « Pilote », jamais un prénom",
+    "pace": "posé — le texte s'écrit à 45 caractères/seconde à l'écran, la voix ne court pas devant",
+    "language": "français, accents et liaisons naturels"
+  },
+  "lines": [
+    {
+      "cue": "lyra_title_1",
+      "text": "Bienvenue, Pilote.\nJe suis Lyra Vantella, votre navigatrice.",
+      "text_lines": [
+        "Bienvenue, Pilote.",
+        "Je suis Lyra Vantella, votre navigatrice."
+      ],
+      "direction": "Premier contact. Chaleureuse mais professionnelle : elle se presente, elle ne seduit pas. Une legere montee sur son propre nom — c'est la seule fois du jeu ou elle le dit."
+    },
+    {
+      "cue": "lyra_title_2",
+      "text": "Liaison de navigation établie.\nComms sécurisées, canal 09.",
+      "text_lines": [
+        "Liaison de navigation établie.",
+        "Comms sécurisées, canal 09."
+      ],
+      "direction": "Purement technique, debit egal. C'est la replique la plus plate des quatre, et elle doit l'etre : elle installe le calme dont les autres se detachent."
+    },
+    {
+      "cue": "lyra_title_3",
+      "text": "Le Null Choir avance sur les colonies.\nLa Vanguard tient la ligne — et vous en êtes.",
+      "text_lines": [
+        "Le Null Choir avance sur les colonies.",
+        "La Vanguard tient la ligne — et vous en êtes."
+      ],
+      "direction": "La seule ou l'enjeu monte. Pas de gravite appuyee : elle enonce un fait de guerre comme on lit un rapport, et c'est « et vous en etes » qui porte, sur une legere accroche."
+    },
+    {
+      "cue": "lyra_title_4",
+      "text": "Les étoiles nous appellent.\nPrêt à décoller ?",
+      "text_lines": [
+        "Les étoiles nous appellent.",
+        "Prêt à décoller ?"
+      ],
+      "direction": "L'invitation. Sourire audible, et une VRAIE question a la fin — pas une formule. C'est la derniere chose entendue avant que le joueur appuie sur Nouvelle Partie."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "non bloquante — la bulle, l'oscillogramme et la bouche fonctionnent sans voix",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique correspondante de `resources/dialogue/lyra_title.tres`. Rien d'autre à câbler : le crête-mètre du bus prend le relais de la frappe tout seul.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS",
+      "moins de 100 ms de silence en tête — sinon la bouche du portrait décale d'autant",
+      "écouter APRÈS le filtre du jeu, jamais avant : c'est le seul rendu qui compte",
+      "les réécouter quatre fois de suite — elles bouclent"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0001-lyra-accueil.json,,\"Réplique <cue> de Lyra Vantella, écran-titre (VOX-0001)\""
+  }
+}

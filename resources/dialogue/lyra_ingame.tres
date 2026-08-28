@@ -1,0 +1,99 @@
+[gd_resource type="Resource" script_class="DialogueScript" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://resources/data/dialogue_script.gd" id="1_script"]
+[ext_resource type="Script" path="res://resources/data/dialogue_line.gd" id="2_line"]
+
+; Ce que Lyra dit PENDANT le combat (ADR-0035, pas 2).
+;
+; ⚠️ ELLES NE REMPLACENT PAS LES BANNIÈRES, elles les doublent. La bannière donne le titre en
+; deux mots (« CHAMP D'ASTEROIDES ») ; Lyra dit ce qu'il faut en faire. La maquette
+; `lyra_hud_alert_mockup.png` porte les deux à la fois, et c'est juste : un titre se lit d'un
+; coup d'œil au milieu d'un combat, une phrase demande une seconde qu'on n'a pas toujours.
+;
+; ⚠️ CHAQUE RÉPLIQUE PORTE UNE CLÉ, jamais un rang. Le jeu les déclenche sur des événements,
+; pas dans l'ordre : `find(&"dive_entered")`, jamais `line_at(2)`.
+;
+; Deux textes viennent MOT POUR MOT des maquettes validées par l'opérateur — « Restez
+; mobile, Pilote » et « Le réacteur est exposé » : ce qui a plu ne se réécrit pas.
+
+[sub_resource type="Resource" id="line_0"]
+script = ExtResource("2_line")
+key = &"asteroid_field"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Champ d’astéroïdes détecté. Restez mobile, Pilote.
+Je vais vous ouvrir une route sûre."
+mood = 0
+voice_cue = &"lyra_asteroid_field"
+hold = 7.5
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("2_line")
+key = &"boss_approach"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Signature massive droit devant.
+C’est lui. Tenez la ligne."
+mood = 1
+voice_cue = &"lyra_boss_approach"
+hold = 6.5
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("2_line")
+key = &"dive_entered"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Entrée dans le noyau confirmée.
+Concentrez-vous sur le réacteur principal."
+mood = 1
+voice_cue = &"lyra_dive_entered"
+hold = 7.5
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("2_line")
+key = &"core_exposed"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Le réacteur est exposé.
+Frappez maintenant !"
+mood = 1
+voice_cue = &"lyra_core_exposed"
+hold = 5.0
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("2_line")
+key = &"core_shielded"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "La carapace s’est refermée.
+Attendez la prochaine ouverture."
+mood = 0
+voice_cue = &"lyra_core_shielded"
+hold = 6.0
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("2_line")
+key = &"armour_reformed"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Son blindage repousse, mais plus mal qu’avant.
+Continuez."
+mood = 0
+voice_cue = &"lyra_armour_reformed"
+hold = 6.5
+
+[sub_resource type="Resource" id="line_6"]
+script = ExtResource("2_line")
+key = &"waves_cleared"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Secteur dégagé, Pilote.
+Quelque chose de plus gros arrive."
+mood = 0
+voice_cue = &"lyra_waves_cleared"
+hold = 6.5
+
+[resource]
+script = ExtResource("1_script")
+id = &"lyra_ingame"
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6")]

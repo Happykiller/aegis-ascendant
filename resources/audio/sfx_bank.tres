@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioCueBank" load_steps=44 format=3]
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=66 format=3]
 
 [ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
 [ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
@@ -22,6 +22,17 @@
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/ui_select.wav" id="20_ui_select"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/ui_confirm.wav" id="21_ui_confirm"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/sfx/engine_loop.wav" id="22_engine_loop"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_title_1.ogg" id="90_voice_1"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_title_2.ogg" id="90_voice_2"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_title_3.ogg" id="90_voice_3"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_title_4.ogg" id="90_voice_4"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_asteroid_field.ogg" id="91_v_asteroid_field"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_boss_approach.ogg" id="91_v_boss_approach"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_dive_entered.ogg" id="91_v_dive_entered"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_core_exposed.ogg" id="91_v_core_exposed"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_core_shielded.ogg" id="91_v_core_shielded"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_armour_reformed.ogg" id="91_v_armour_reformed"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_waves_cleared.ogg" id="91_v_waves_cleared"]
 
 [sub_resource type="Resource" id="cue_player_pulse"]
 script = ExtResource("2_cue")
@@ -243,6 +254,127 @@ pitch_max = 1.0
 min_interval = 0.0
 looping = true
 
+[sub_resource type="Resource" id="cue_lyra_title_1"]
+script = ExtResource("2_cue")
+id = &"lyra_title_1"
+stream = ExtResource("90_voice_1")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_title_2"]
+script = ExtResource("2_cue")
+id = &"lyra_title_2"
+stream = ExtResource("90_voice_2")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_title_3"]
+script = ExtResource("2_cue")
+id = &"lyra_title_3"
+stream = ExtResource("90_voice_3")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_title_4"]
+script = ExtResource("2_cue")
+id = &"lyra_title_4"
+stream = ExtResource("90_voice_4")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_asteroid_field"]
+script = ExtResource("2_cue")
+id = &"lyra_asteroid_field"
+stream = ExtResource("91_v_asteroid_field")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_boss_approach"]
+script = ExtResource("2_cue")
+id = &"lyra_boss_approach"
+stream = ExtResource("91_v_boss_approach")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_dive_entered"]
+script = ExtResource("2_cue")
+id = &"lyra_dive_entered"
+stream = ExtResource("91_v_dive_entered")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_core_exposed"]
+script = ExtResource("2_cue")
+id = &"lyra_core_exposed"
+stream = ExtResource("91_v_core_exposed")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_core_shielded"]
+script = ExtResource("2_cue")
+id = &"lyra_core_shielded"
+stream = ExtResource("91_v_core_shielded")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_armour_reformed"]
+script = ExtResource("2_cue")
+id = &"lyra_armour_reformed"
+stream = ExtResource("91_v_armour_reformed")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_waves_cleared"]
+script = ExtResource("2_cue")
+id = &"lyra_waves_cleared"
+stream = ExtResource("91_v_waves_cleared")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
 [resource]
 script = ExtResource("1_bank")
-cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop")])
+cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop"), SubResource("cue_lyra_title_1"), SubResource("cue_lyra_title_2"), SubResource("cue_lyra_title_3"), SubResource("cue_lyra_title_4"), SubResource("cue_lyra_asteroid_field"), SubResource("cue_lyra_boss_approach"), SubResource("cue_lyra_dive_entered"), SubResource("cue_lyra_core_exposed"), SubResource("cue_lyra_core_shielded"), SubResource("cue_lyra_armour_reformed"), SubResource("cue_lyra_waves_cleared")])

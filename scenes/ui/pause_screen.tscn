@@ -116,14 +116,19 @@ text = "v0.0.0"
 ; Même bande verticale que le bloc central de l'accueil : en ouvrant la pause, le
 ; titre tombe à la hauteur où AEGIS ASCENDANT se tenait. C'est la même interface qui
 ; se rabat, pas une autre qui s'ouvre.
+; ⚠️ COLONNE DE DROITE DEPUIS ADR-0035. Lyra et le briefing occupent la gauche ; le CENTRE
+; reste degage pour que le jeu FIGE se voie derriere — c'est ce que l'operateur a retenu de
+; la maquette, et une pause qui cache la partie perd ce qu'elle a de mieux.
+; Le noeud garde son nom `Center` : le renommer casserait `%Center` et l'animation
+; d'ouverture qui memorise sa position de repos.
 [node name="Center" type="VBoxContainer" parent="Overlay"]
 unique_name_in_owner = true
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -540.0
+anchor_left = 0.58
+anchor_right = 1.0
+offset_left = 24.0
 offset_top = 236.0
-offset_right = 540.0
-offset_bottom = 700.0
+offset_right = -72.0
+offset_bottom = 760.0
 theme_override_constants/separation = 16
 alignment = 1
 mouse_filter = 2
@@ -133,7 +138,7 @@ theme = ExtResource("2_theme")
 theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.85)
 theme_override_font_sizes/font_size = 14
 text = "HELIOS VANGUARD  //  ASCENDANT PROGRAM"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="Title" type="Label" parent="Overlay/Center"]
 theme = ExtResource("2_theme")
@@ -144,7 +149,7 @@ theme_override_constants/shadow_offset_y = 0
 theme_override_constants/shadow_outline_size = 10
 theme_override_font_sizes/font_size = 54
 text = "PAUSE"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 ; Or, pas cyan : la DA (§10) réserve l'ambre aux états tenus ou dégradés. Le cyan
 ; dirait « tout va bien », or la simulation est arrêtée.
@@ -153,7 +158,7 @@ theme = ExtResource("2_theme")
 theme_override_colors/font_color = Color(0.894, 0.71, 0.29, 0.9)
 theme_override_font_sizes/font_size = 15
 text = "SIMULATION SUSPENDUE  ·  LA LIGNE TIENT"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="Spacer" type="Control" parent="Overlay/Center"]
 custom_minimum_size = Vector2(0, 28)

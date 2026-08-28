@@ -15,11 +15,15 @@
 ; matérialise — sinon la liste devient un mur de rectangles et le curseur ne
 ; se lit plus.
 [sub_resource type="StyleBoxFlat" id="btn_normal"]
+content_margin_left = 18.0
+content_margin_right = 18.0
 bg_color = Color(0.024, 0.039, 0.078, 0)
 border_width_left = 3
 border_color = Color(0.161, 0.902, 1, 0)
 
 [sub_resource type="StyleBoxFlat" id="btn_hover"]
+content_margin_left = 18.0
+content_margin_right = 18.0
 bg_color = Color(0.024, 0.039, 0.078, 0.82)
 border_width_left = 3
 border_width_top = 3
@@ -31,6 +35,8 @@ shadow_size = 0
 shadow_offset = Vector2(4, 4)
 
 [sub_resource type="StyleBoxFlat" id="btn_pressed"]
+content_margin_left = 18.0
+content_margin_right = 18.0
 bg_color = Color(0.161, 0.902, 1, 0.18)
 border_width_left = 3
 border_width_top = 3

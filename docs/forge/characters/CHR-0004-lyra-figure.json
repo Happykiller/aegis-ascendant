@@ -1,0 +1,71 @@
+{
+  "id": "CHR-0004",
+  "slug": "lyra-figure",
+  "schema_version": "1.1",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "framing": "pied",
+  "supersedes": ["CHR-0001", "CHR-0003"],
+  "purpose": {
+    "description": "Lyra Vantella pied-en-cap D'UN SEUL TENANT — corps, tête, cheveux et bras dans UNE image —, sans ses hologrammes. Elle remplace le puzzle de dix calques de CHR-0001.",
+    "game_context": "Écran-titre (à droite, toute la hauteur, devant la scène 3D), HUD (recadrage en buste, bas droite) et briefing. Le rendu passe sous le post-process rétro à 1920×1080.",
+    "priority": "⚠️ C'EST LA DEMANDE QUI DÉBLOQUE. Trois mises en jeu de CHR-0001 ont échoué au même endroit : les pièces livrées séparément n'ont NI la même échelle NI la même coiffure, et aucun réglage ne peut les rendre cohérentes (voir `why_one_piece`).",
+    "reference": "assets/reference/concepts/lyra_vantella_character_sheet.png — la figure y est cohérente et belle. C'est CELLE-LÀ qu'on veut, telle quelle, sans le mobilier d'interface, sans les hologrammes, sur fond magenta."
+  },
+  "why_one_piece": {
+    "constat": "Le générateur réussit une FIGURE ENTIÈRE et échoue sur des MORCEAUX. Livraison CHR-0001 mesurée le 2026-08-28 : la manche des bras à l'épaule fait 2,3× la largeur de l'épaulette du buste, alors que leur longueur voudrait une échelle 0,75 — deux échelles incompatibles pour la même pièce ; `tete` porte déjà sa frange et `meches_avant` en peint une seconde par-dessus (le « faux raccord » vu en jeu) ; `cheveux_arriere`, `queue_de_cheval` et la tête ne racontent pas la même coiffure.",
+    "consequence": "L'animation en jeu n'a PLUS BESOIN de morceaux : la respiration et le balancement sont une translation de toute la figure, quantifiée au pixel (lyra_portrait.gd). Seuls les hologrammes bougent seuls — et ils sont déjà livrés et validés (`holo_sphere`, `holo_bracelet`).",
+    "ce_qu_on_perd": "Le clignement et la bouche, tant que les variantes ne sont pas livrées (voir `variants`). Une figure figée mais cohérente vaut mieux qu'un puzzle animé qui se contredit."
+  },
+  "technical": {
+    "resolution": "1024x1536",
+    "aspect_ratio": "2:3",
+    "canvas": "La figure remplit la hauteur à ~92 % (marge haut et bas), centrée. Pas de recadrage aux genoux : les bottes doivent être entières, elles se posent sur un socle holographique dessiné par le jeu.",
+    "transparent_background": false,
+    "background": "pure_magenta",
+    "background_note": "⚠️ NE PAS demander un fond transparent : on reçoit un damier PEINT (contrat texture, règle 3). Fond magenta uni #FF00FF, puis `python3 tools/bg-key-alpha.py --mode chroma --key auto`.",
+    "view": "de face, légère contre-plongée",
+    "lighting": "clé froide venant de la gauche, jante cyan à droite",
+    "color_mode": "RGB",
+    "output_usage": "runtime_layer"
+  },
+  "pose": {
+    "description": "Celle de la planche d'identité : appui sur une jambe, main droite ouverte paume vers le haut à hauteur de la taille (elle PORTERA la sphère holo — donc rien au-dessus de la paume), main gauche levée index dressé près du visage, poignet gauche NU (le bracelet holo vient par-dessus).",
+    "interdit": "Aucun hologramme, aucune sphère, aucun anneau, aucune lueur cyan flottante : ils sont des calques séparés déjà en jeu. Un halo peint sur la figure ne pourrait plus tourner."
+  },
+  "layers": [
+    {
+      "name": "figure",
+      "content": "Lyra entière : cheveux (crinière arrière ET queue de cheval ET frange, une seule coiffure), tête, casque-micro, buste, les deux bras, jambes, bottes. Livrée Helios : combinaison bleu profond à panneaux blancs, liserés or, ceinture à gemme cyan.",
+      "animation": "Translation entière (respiration, balancement) — rien à découper"
+    }
+  ],
+  "variants": {
+    "regle": "⚠️ OPTIONNELLES et SEULEMENT si l'outil permet l'ÉDITION PAR MASQUE du fichier `figure` : `figure_bouche_ouverte` (bouche seule repeinte) et `figure_yeux_fermes` (paupières seules). Une génération neuve est REFUSÉE d'office : les trois livraisons d'expressions de CHR-0002/0003 ont été régénérées (38 %, 23 % de pixels changés) et n'ont jamais servi. Si l'outil ne sait pas retoucher, livrer `figure` seule : c'est déjà la livraison qui compte.",
+    "controle": "python3 tools/characters/check_delivery.py <dossier> --base-file figure.png — refuse au-delà de 12 % de pixels changés."
+  },
+  "color_palette": {
+    "required": ["#1C2B5E bleu profond (combinaison)", "#EDEAE3 blanc cassé (panneaux)", "#E4B54A or (liserés)", "orange cuivré (cheveux)"],
+    "restricted": ["#3FD9E8 cyan — UNIQUEMENT oreillette, pince, gemme et liserés fins"],
+    "forbidden": ["#FF5A3D corail — réservé au tir ennemi", "tout aplat de cyan sur le corps", "tout élément magenta sur la figure (il serait découpé avec le fond)"]
+  },
+  "constraints": [
+    "AUCUN fond, décor, cadre, jauge, texte ni élément d'interface.",
+    "AUCUN logo ni marquage identifiable d'une licence existante (spec §0.2).",
+    "UNE image, UNE génération. Pas d'assemblage de morceaux : c'est précisément ce qu'on abandonne."
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "bloquante — l'accueil et le HUD tournent sur le puzzle incohérent de CHR-0001",
+    "target_dir": "assets/imported/ui/characters/lyra/",
+    "file_pattern": "figure.png (+ figure_bouche_ouverte.png, figure_yeux_fermes.png si retouchées)",
+    "verify": [
+      "python3 tools/bg-key-alpha.py --mode chroma --key auto <src> <dst>, puis regarder les bords sur fond sombre",
+      "python3 tools/characters/check_delivery.py <dossier> --base-file figure.png si des variantes sont livrées",
+      "poser `holo_sphere` au-dessus de la paume droite et `holo_bracelet` au poignet gauche dans lyra_rig.tres — deux offsets à régler, plus dix",
+      "capture de l'accueil (howto-verifier-un-rendu.md) confrontée à lyra_title_screen_mockup.png"
+    ],
+    "provenance_csv_line": "lyra_layer_figure,assets/imported/ui/characters/lyra/figure.png,character-layer,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/characters/CHR-0004-lyra-figure.json,,\"Lyra Vantella pied-en-cap d'un seul tenant, sans hologrammes (CHR-0004)\""
+  },
+  "prompt_suggestion": "Full-body illustration of Lyra Vantella, exactly as in the attached character sheet (same face, same hairstyle: copper-orange hair with high ponytail and side fringe, headset with mic boom). Helios navigator uniform: deep navy jumpsuit with off-white panels and thin gold trim, belt with a small cyan gem, white boots. Pose: weight on one leg, right hand open palm-up at waist height with NOTHING above it, left hand raised near the face with index finger pointing up, bare wrists. Front view, slight low angle, cool key light from the left, cyan rim light on the right. Clean anime cel-shading. Whole figure visible from hair to boot soles, centered, ~92% of the canvas height. FLAT SOLID MAGENTA BACKGROUND #FF00FF, no holograms, no glow, no UI, no text, no frame, no planet, no nebula. 1024x1536."
+}

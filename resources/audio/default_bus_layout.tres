@@ -7,6 +7,31 @@ ceiling_db = -0.5
 threshold = -18.0
 ratio = 3.0
 
+; ⚠️ LA CHAINE « COMMS » DU BUS VOICE (ADR-0035). C'est elle qui fait sortir Lyra de la
+; radio du vaisseau plutot que d'un studio : sans elle, une voix de synthese propre sonne
+; comme une bande-annonce posee par-dessus le jeu, et la fiction de la navigatrice tombe.
+;
+; Passe-haut 300 Hz + passe-bas 3400 Hz : la bande telephonique, celle que l'oreille
+; reconnait comme « transmission » sans qu'on ait a le dire. La distorsion reste TRES basse
+; (0,18) — au-dela elle mange l'intelligibilite, et une info qu'on ne comprend pas ne sert a
+; rien. Le compresseur egalise ce que la synthese rend inegal d'une replique a l'autre.
+[sub_resource type="AudioEffectHighPassFilter" id="AudioEffectHighPassFilter_voice"]
+cutoff_hz = 300.0
+resonance = 0.4
+
+[sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_voice"]
+cutoff_hz = 3400.0
+resonance = 0.4
+
+[sub_resource type="AudioEffectDistortion" id="AudioEffectDistortion_voice"]
+mode = 2
+drive = 0.18
+post_gain = -1.0
+
+[sub_resource type="AudioEffectCompressor" id="AudioEffectCompressor_voice"]
+threshold = -16.0
+ratio = 4.0
+
 [resource]
 bus/0/effect/0/effect = SubResource("AudioEffectHardLimiter_y3dgf")
 bus/0/effect/0/enabled = true
@@ -30,3 +55,11 @@ bus/3/mute = false
 bus/3/bypass_fx = false
 bus/3/volume_db = 0.0
 bus/3/send = &"Master"
+bus/3/effect/0/effect = SubResource("AudioEffectHighPassFilter_voice")
+bus/3/effect/0/enabled = true
+bus/3/effect/1/effect = SubResource("AudioEffectLowPassFilter_voice")
+bus/3/effect/1/enabled = true
+bus/3/effect/2/effect = SubResource("AudioEffectDistortion_voice")
+bus/3/effect/2/enabled = true
+bus/3/effect/3/effect = SubResource("AudioEffectCompressor_voice")
+bus/3/effect/3/enabled = true

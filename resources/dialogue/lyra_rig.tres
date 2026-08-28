@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="CharacterRig" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://resources/data/character_rig.gd" id="1_rig"]
+[ext_resource type="Script" path="res://resources/data/layer_pose.gd" id="2_pose"]
+
+; Le greement de Lyra Vantella, pied-en-cap (ADR-0035, revision du 2026-08-28).
+;
+; ⚠️ TROIS CALQUES, PLUS DIX. La figure (CHR-0004) est livree D'UN SEUL TENANT : corps, tete,
+; cheveux et bras dans une image, a l'echelle 1, sans decalage. Les dix pieces de CHR-0001
+; n'ont jamais pu s'assembler — manches 2,3x trop larges pour l'epaule, frange peinte deux
+; fois, trois coiffures — et le jeu n'en a plus besoin : la respiration est une translation
+; de toute la figure. Seuls les hologrammes bougent seuls, donc seuls eux sont a part.
+;
+; ⚠️ LE BRACELET A ETE RETIRE (operateur, 2026-08-28, « c'est tres mauvais ») : a l'echelle du
+; titre un anneau de 30 px sur un avant-bras ne se lit pas, il se lit comme une tache. Son
+; calque dort dans assets/source/. La sphere reste, telle quelle.
+;
+; ⚠️ LES DEUX HOLOS ONT ETE POSES EN BOUCLE D'OBSERVATION, CONTRE LA PLANCHE D'IDENTITE (huit
+; passes composees hors du jeu, chacune regardee). La planche tranche ce que le gout hesite a
+; dire : la sphere est POSEE DANS la paume droite (gauche de l'image) et chevauche les doigts —
+; a la passe 3 elle flottait a 65 px au-dessus, « c'est bien » a mes yeux, faux aux siens ; le
+; bracelet est une BANDE LARGE sur l'avant-bras gauche, SOUS le revers du gant — pas un anneau
+; fin sur le gant. Leur boite alpha inclut un long halo, donc leur centre mesure n'est pas leur
+; centre visuel : les cibles se reglent en pixels, pas par calcul. Leur boite alpha
+; inclut un halo, donc leur centre mesure n'est PAS leur centre visuel : c'est pour ca que
+; les deux premieres passes les mettaient trop haut.
+
+[sub_resource type="Resource" id="pose_0"]
+script = ExtResource("2_pose")
+layer = &"figure"
+group = &"figure"
+scale = 1.0000
+offset = Vector2(0.0, 0.0)
+
+; ⚠️ LA VARIANTE DE BOUCHE PARTAGE LE PLACEMENT DE LA FIGURE — meme groupe, donc validate()
+; refuse qu'elle s'en ecarte. Elle est une GREFFE (tools/characters/graft_mouth.py) sur la
+; figure elle-meme, pas une livraison : elle en a la toile et l'echelle par construction.
+[sub_resource type="Resource" id="pose_1"]
+script = ExtResource("2_pose")
+layer = &"figure_bouche_ouverte"
+group = &"figure"
+scale = 1.0000
+offset = Vector2(0.0, 0.0)
+
+[sub_resource type="Resource" id="pose_2"]
+script = ExtResource("2_pose")
+layer = &"holo_sphere"
+group = &"holo_s"
+scale = 0.2933
+offset = Vector2(-316.9, -202.9)
+
+[resource]
+script = ExtResource("1_rig")
+canvas = Vector2(1024, 1536)
+layers = [SubResource("pose_0"), SubResource("pose_1"), SubResource("pose_2")]

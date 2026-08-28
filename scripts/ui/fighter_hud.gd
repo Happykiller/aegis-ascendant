@@ -111,7 +111,93 @@ func _ready() -> void:
 	_build_lives_panel()
 	_build_boss_panel()
 	_build_banner()
+	_build_lyra()
 	set_process(true)
+
+# --- Lyra Vantella, en jeu (ADR-0035, pas 2) ---------------------------------
+
+const LyraPortraitScript := preload("res://scripts/ui/lyra_portrait.gd")
+
+## Le panneau de Lyra, en BAS À DROITE.
+##
+## ⚠️ LA MAQUETTE LE MET À GAUCHE, LE JEU LE MET À DROITE, et c'est l'opérateur qui a vu
+## juste : les quatre panneaux existants occupent haut-gauche (bouclier 430×150), haut-droite
+## (score 322×98), bas-gauche (vies 360×72) et haut-centre (bannière boss). **Le bas-droite
+## est le seul coin libre.** Reprendre la maquette telle quelle aurait posé Lyra sur le
+## compteur de vies.
+const LYRA_SIZE := Vector2(462.0, 204.0)
+## Combien de temps une réplique tient à l'écran au-delà de son propre `hold`, le temps que
+## le fondu de sortie se joue.
+const LYRA_FADE := 0.45
+
+var _lyra_panel: Panel
+var _lyra_portrait: LyraPortrait
+var _lyra_text: Label
+var _lyra_name: Label
+var _lyra_left: float = 0.0
+
+func _build_lyra() -> void:
+	_lyra_panel = _panel(Vector2(1, 1), Vector2(-MARGIN, -MARGIN), LYRA_SIZE)
+	_lyra_panel.visible = false
+	_lyra_panel.modulate.a = 0.0
+
+	# Le buste occupe la gauche du panneau, le texte la droite — c'est le cadrage des deux
+	# maquettes HUD, et il tient parce qu'on lit de gauche à droite : le visage d'abord,
+	# ce qu'il dit ensuite.
+	_lyra_portrait = LyraPortraitScript.new()
+	_lyra_portrait.name = "Portrait"
+	_lyra_portrait.layer_dir = "res://assets/imported/ui/characters/lyra_buste"
+	_lyra_portrait.anchor_bottom = 1.0
+	_lyra_portrait.offset_left = 10.0
+	_lyra_portrait.offset_right = 150.0
+	_lyra_portrait.offset_top = 10.0
+	_lyra_portrait.offset_bottom = -10.0
+	_lyra_panel.add_child(_lyra_portrait)
+
+	_lyra_name = _label(_lyra_panel, "LYRA VANTELLA", _LABEL_FONT, 11, ACCENT, Vector2(162, 16))
+	_lyra_text = _label(_lyra_panel, "", _VALUE_FONT, 21, TEXT_LIGHT, Vector2(162, 40),
+		int(LYRA_SIZE.x - 178.0))
+	_lyra_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+## Lyra dit une réplique. ⚠️ ELLE DOUBLE LA BANNIÈRE, ELLE NE LA REMPLACE PAS : le titre en
+## deux mots se lit d'un coup d'œil au milieu d'un combat, la phrase demande une seconde
+## qu'on n'a pas toujours. Les deux maquettes HUD portent les deux à la fois.
+func say(line: DialogueLine) -> void:
+	if line == null or _lyra_panel == null:
+		return
+	var colour := line.mood_colour()
+	_lyra_name.text = String(line.speaker)
+	_lyra_name.add_theme_color_override("font_color", colour)
+	_lyra_text.text = line.text
+	if _lyra_portrait != null:
+		_lyra_portrait.set_mood(colour)
+	# Le CADRE porte le régime, pas seulement le visage : à cette taille une expression seule
+	# ne se lit pas (`docs/KB/DAF/signaux.md`, loi 2).
+	var style := _lyra_panel.get_theme_stylebox("panel") as StyleBoxFlat
+	if style != null:
+		style.border_color = colour
+		style.shadow_color = Color(colour.r, colour.g, colour.b, 0.25)
+	_lyra_left = maxf(line.hold, 1.0) + LYRA_FADE
+	_lyra_panel.visible = true
+	var tween := create_tween()
+	tween.tween_property(_lyra_panel, "modulate:a", 1.0, 0.22)
+
+## Elle se retire toute seule. ⚠️ Un panneau qui resterait à l'écran après sa réplique volerait
+## le coin bas-droite au reste de la partie — et le joueur relirait une consigne périmée.
+func _tick_lyra(delta: float) -> void:
+	if _lyra_panel == null or not _lyra_panel.visible:
+		return
+	_lyra_left -= delta
+	if _lyra_left > LYRA_FADE:
+		return
+	if _lyra_left <= 0.0:
+		_lyra_panel.visible = false
+		_lyra_panel.modulate.a = 0.0
+		return
+	_lyra_panel.modulate.a = clampf(_lyra_left / LYRA_FADE, 0.0, 1.0)
+
+func lyra_is_speaking() -> bool:
+	return _lyra_panel != null and _lyra_panel.visible
 
 # --- Builders -----------------------------------------------------------------
 
@@ -596,6 +682,9 @@ func _on_lives_changed(lives: int) -> void:
 # --- Alert blink --------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	# ⚠️ AVANT LE RETOUR ANTICIPÉ de l'alerte. Posé après, le panneau de Lyra ne se serait
+	# retiré QUE pendant une alerte de bouclier — un fondu qui dépend d'un état sans rapport.
+	_tick_lyra(delta)
 	if not _alert:
 		return
 	_alert_time += delta

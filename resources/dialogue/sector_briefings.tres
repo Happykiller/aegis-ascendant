@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="BriefingBook" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://resources/data/briefing_book.gd" id="1_book"]
+[ext_resource type="Script" path="res://resources/data/sector_briefing.gd" id="2_brief"]
+
+; Ce que l'ecran de pause rappelle : ou l'on est, et ce qu'on a a y faire (ADR-0035, pas 3).
+;
+; ⚠️ LE JEU NE LE DISAIT NULLE PART. Les bannieres annoncent une phase 1,6 seconde, au moment
+; precis ou le joueur regarde ailleurs — il esquive. Apres quoi plus rien ne rappelle
+; l'objectif, a aucun moment de la partie.
+;
+; Le texte du champ d'asteroides vient MOT POUR MOT de la maquette de briefing validee par
+; l'operateur : ce qui a plu ne se reecrit pas.
+
+[sub_resource type="Resource" id="brief_0"]
+script = ExtResource("2_brief")
+phase = &"FIGHTER_WAVES"
+kicker = "SECTEUR"
+title = "PATROUILLE AVANCÉE"
+description = "Les éclaireurs du Null Choir sondent nos lignes.
+Ils sont légers, nombreux, et ils ne reculent pas."
+objectives = PackedStringArray("Nettoyer les vagues", "Ramasser les modules de puissance", "Garder le bouclier au-dessus de la moitié")
+
+[sub_resource type="Resource" id="brief_1"]
+script = ExtResource("2_brief")
+phase = &"MINI_BOSS"
+kicker = "CONTACT"
+title = "CHOIR HARVESTER"
+description = "Trois bras, un noyau protégé au centre.
+Les bras repoussent : le noyau, lui, ne se répare pas."
+objectives = PackedStringArray("Abattre les trois bras", "Frapper le noyau pendant l'ouverture", "Ne pas rester sous la faux")
+
+[sub_resource type="Resource" id="brief_2"]
+script = ExtResource("2_brief")
+phase = &"ASTEROID_FIELD"
+kicker = "NOUVEAU SECTEUR"
+title = "CHAMP D'ASTÉROÏDES"
+description = "Un vaste champ instable rempli de débris rocheux
+aux trajectoires imprévisibles.
+Seules la précision et la vigilance permettent de le traverser."
+objectives = PackedStringArray("Éviter les trajectoires rocheuses", "Suivre le couloir sûr", "Détruire les drones sentinelles")
+
+[sub_resource type="Resource" id="brief_3"]
+script = ExtResource("2_brief")
+phase = &"FINAL_BOSS"
+kicker = "ALERTE"
+title = "THE PALE LEVIATHAN"
+description = "Le vaisseau-amiral. Son blindage tourne, son noyau est dedans.
+On n'entre pas : il vous aspire — et c'est là qu'il est vulnérable."
+objectives = PackedStringArray("Briser les plaques exposées", "Plonger dans le noyau", "Frapper le réacteur quand le corridor s'ouvre")
+
+[sub_resource type="Resource" id="brief_4"]
+script = ExtResource("2_brief")
+phase = &"DOCKING"
+kicker = "RETOUR"
+title = "APPONTAGE"
+description = "L'Aurora Spear vous récupère.
+Le plus dur est fait ; il reste à se poser proprement."
+objectives = PackedStringArray("Suivre le couloir d'approche", "Garder l'axe")
+
+[resource]
+script = ExtResource("1_book")
+briefings = [SubResource("brief_0"), SubResource("brief_1"), SubResource("brief_2"), SubResource("brief_3"), SubResource("brief_4")]

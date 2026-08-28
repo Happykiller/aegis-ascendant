@@ -230,3 +230,26 @@ Et une correction de l'opérateur qui vaut consigne : **demander une texture doi
   garde. D'où `scripts/lint-regles.sh` : les règles dures de `CLAUDE.md` **appliquées** (étape 2/3
   de `check.sh`), pointeurs de doc morts compris, et `godot-reviewer` branché dessus au lieu de les
   redériver en prose.
+- **2026-08-28 (nuit)** — *La voix du jeu prend un visage.* Six concepts fournis par l'opérateur
+  nomment le personnage : **Lyra Vantella**, navigatrice // IA guide. [`ADR-0035`](../decisions/ADR-0035-la-voix-du-jeu-a-un-visage.md)
+  tranche la question posée — « deux modèles 3D animés » — au profit d'une **illustration déformée
+  par squelette 2D** : les maquettes validées SONT en 2D, le dépôt n'a aucun pipeline organique, et
+  le retro-post écraserait le détail d'un personnage 3D. Trois écrans livrés en trois pas :
+  - **l'accueil** — menu en colonne de gauche avec ses sous-titres, bulle de dialogue paginée qui
+    s'écrit et **boucle**, oscillogramme repris de `CommsTrace` (celui de la pause, pas un second
+    qui dériverait) ;
+  - **le HUD** — portrait **en bas à droite** et non à gauche comme la maquette : c'est le seul
+    coin libre des cinq panneaux, relevé par l'opérateur et vérifié dans le code. Elle **double**
+    la bannière au lieu de la remplacer ;
+  - **la pause** — Lyra et les **objectifs de mission** à gauche, menu à droite, et le centre
+    laissé au jeu figé. Le jeu ne rappelait son objectif **nulle part** : les bannières durent
+    1,6 s, au moment où le joueur esquive.
+
+  Trois manques de référentiel comblés au passage : la charte créative n'avait **aucune section
+  personnage**, et il n'existait de gabarit ni pour commander une planche (`docs/forge/characters/`)
+  ni pour commander une voix (`docs/forge/voice/`). Le bus `Voice` existait sans sa chaîne comms.
+
+  Et une règle réaffirmée trois fois dans la même soirée : **on nomme, on ne compte pas.** Répliques
+  de combat, briefings de secteur — tous cherchés par clé, jamais par rang, parce qu'un rang dans
+  une liste qu'on réordonne n'est pas une identité (la leçon des missiles du Léviathan, le matin
+  même).

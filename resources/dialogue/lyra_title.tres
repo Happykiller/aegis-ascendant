@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="DialogueScript" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://resources/data/dialogue_script.gd" id="1_script"]
+[ext_resource type="Script" path="res://resources/data/dialogue_line.gd" id="2_line"]
+
+; Les quatre répliques de l'accueil. Elles reprennent le texte de la maquette
+; (assets/reference/concepts/lyra_title_screen_mockup.png) et le prolongent : la maquette
+; n'en montrait qu'une, mais annonçait « Message 1/4 ».
+;
+; ⚠️ LES SAUTS DE LIGNE SONT ÉCRITS À LA MAIN, et c'est voulu. Ce sont eux qui donnent son
+; rythme à la lecture — un texte laissé au retour automatique casse où il peut, jamais où la
+; phrase respire.
+;
+; ⚠️ ET LES ACCENTS SONT LÀ. `PressStart2P` et `VT323` couvrent tout le Latin-1 accentué,
+; l'em-dash, les guillemets et l'apostrophe typographique — vérifié le 2026-08-28 en lisant
+; leurs tables `cmap` (656 et 568 glyphes). Rien n'oblige à écrire un français mutilé.
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("2_line")
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Bienvenue, Pilote.
+Je suis Lyra Vantella, votre navigatrice."
+mood = 0
+voice_cue = &"lyra_title_1"
+hold = 3.4
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("2_line")
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Liaison de navigation établie.
+Comms sécurisées, canal 09."
+mood = 0
+voice_cue = &"lyra_title_2"
+hold = 3.0
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("2_line")
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Le Null Choir avance sur les colonies.
+La Vanguard tient la ligne — et vous en êtes."
+mood = 0
+voice_cue = &"lyra_title_3"
+hold = 3.8
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("2_line")
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Les étoiles nous appellent.
+Prêt à décoller ?"
+mood = 0
+voice_cue = &"lyra_title_4"
+hold = 3.2
+
+[resource]
+script = ExtResource("1_script")
+id = &"lyra_title"
+lines = [SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4")]

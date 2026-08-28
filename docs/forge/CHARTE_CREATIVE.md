@@ -23,6 +23,7 @@ cohérent, spectaculaire.
 | Vaisseau-amiral ennemi | **The Pale Leviathan** | organo-mécanique, anneau incomplet, noyau visible |
 | Mini-boss | **Choir Harvester** | trois bras, noyau central protégé |
 | Constructeur du Specter-9 | **Arsenal Orbital Talvern** | chantier Helios ; s'affiche dans le bestiaire (BRIEF-0037) |
+| Navigatrice du joueur | **Lyra Vantella** | IA guide d'Helios Vanguard ; **le seul personnage du canon** (ADR-0035) |
 
 ## 3. Palettes
 
@@ -56,6 +57,61 @@ cohérent, spectaculaire.
 | Overdrive Shard | magenta | éclat |
 | Score Prism | vert | prisme |
 | Rescue Beacon | blanc | étoile |
+
+## 3 bis. Personnages
+
+⚠️ **CETTE SECTION N'EXISTAIT PAS, ET LE DÉPÔT N'AVAIT JAMAIS PRODUIT D'HUMAIN.** La charte ne
+décrivait que des factions, des coques et des palettes. Toute production d'un personnage sans ce
+référentiel repart d'une feuille blanche à chaque planche, et la silhouette dérive d'une image à
+l'autre — le défaut que la section « silhouettes » interdit déjà pour les vaisseaux.
+
+### Lyra Vantella — navigatrice // IA guide
+
+Elle **incarne la voix du jeu** : ce que les bannières et le journal disaient en texte, elle le dit
+en personne — à l'accueil, en jeu, au briefing. Un seul personnage, trois cadrages.
+
+**Ce qui est immuable d'une planche à l'autre** (fait foi :
+`assets/reference/concepts/lyra_vantella_character_sheet.png`) :
+
+| Trait | Valeur |
+|---|---|
+| Livrée | Combinaison **bleu profond `#1C2B5E`** + panneaux **blanc cassé `#EDEAE3`**, liserés **or `#E4B54A`** |
+| Cheveux | Orange cuivré, longs, **queue haute** tenue par une pince cyan |
+| Tête | Casque-micro à branche droite, oreillette cyan |
+| Accessoires | **Bracelet holographique cyan `#3FD9E8`** au poignet gauche, sphère de navigation holo en main droite |
+| Ceinture | Boucle à gemme cyan, étui de cuisse à gauche |
+| Bottes | Blanches, talon, liseré cyan |
+
+Elle porte donc **la palette Helios sans exception** : c'est ce qui la rattache à la faction sans
+qu'aucun logo n'ait à le dire.
+
+### Deux régimes, et ils se lisent à la couleur du cadre
+
+| Régime | Cadre | Expression | Quand |
+|---|---|---|---|
+| **Calme** | Cyan `#3FD9E8` | sourire, posture ouverte | accueil, information, progression |
+| **Alerte** | Rouge sécurité `#C93A31` | urgence, bouche ouverte | danger immédiat, point faible ouvert |
+
+⚠️ C'est le **cadre** qui porte le régime, pas seulement le visage : à la taille où le portrait
+s'affiche en jeu, une expression seule ne se lit pas. Deux signaux valent mieux qu'un
+(cf. `docs/KB/DAF/signaux.md`, loi n°2).
+
+### ⛔ Un personnage se livre D'UN SEUL TENANT — seules les pièces qui bougent seules sont à part
+
+> Règle **retournée le 2026-08-28**. Elle disait « en calques, jamais aplati », pour un squelette
+> 2D. Mesuré sur la livraison : un générateur d'images réussit une figure entière et échoue sur
+> des morceaux — bras aux mauvaises proportions, frange peinte deux fois, trois coiffures. Et le
+> jeu anime par translation de toute la figure, qui n'a besoin d'aucune découpe (`ADR-0035`,
+> révision).
+
+```
+figure                          entière, sans hologrammes, sur fond magenta
+holo_bracelet · holo_sphere     ils dérivent et tournent seuls
+figure_bouche_* · figure_yeux_* OPTIONNELS, par retouche de masque — jamais régénérés
+```
+
+PNG sur fond uni (magenta), découpé par `tools/bg-key-alpha.py --mode chroma`. Le contrat complet
+et son gabarit JSON : [`docs/forge/characters/README.md`](characters/README.md).
 
 ## 4. Règles de silhouettes (spec §15.3–15.5)
 

@@ -1,0 +1,122 @@
+{
+  "id": "VOX-0002",
+  "slug": "lyra-secteurs",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "context": "En jeu, panneau du HUD en bas à droite. Elle parle PENDANT que le joueur se bat : il ne la regarde pas, il l'entend. C'est l'inverse de l'accueil, où elle est regardée.",
+  "purpose": {
+    "description": "Les sept annonces de secteur et de phase, en français.",
+    "priority": "⚠️ ELLE PARLE PAR-DESSUS LE COMBAT. La voix doit passer à travers les explosions et la musique sans monter le volume : c'est la CLARTÉ de diction qui porte, pas la puissance. Une réplique qu'on n'a pas comprise du premier coup est perdue — le joueur ne peut pas la rejouer."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "calme par défaut — c'est ce calme qui rend l'alerte crédible quand elle le perd. Deux répliques seulement sont en ALERTE, et elles doivent trancher.",
+    "address": "elle dit « Pilote », jamais un prénom",
+    "pace": "un cran plus vif qu'à l'accueil : le joueur est occupé. Mais jamais précipité — l'information doit passer du premier coup.",
+    "language": "français, accents et liaisons naturels"
+  },
+  "lines": [
+    {
+      "cue": "lyra_asteroid_field",
+      "dialogue_key": "asteroid_field",
+      "text": "Champ d’astéroïdes détecté. Restez mobile, Pilote.\nJe vais vous ouvrir une route sûre.",
+      "text_lines": [
+        "Champ d’astéroïdes détecté. Restez mobile, Pilote.",
+        "Je vais vous ouvrir une route sûre."
+      ],
+      "mood": "CALME",
+      "direction": "Calme, presque rassurante. Elle annonce un danger mais elle a une solution — c'est le « je vais vous ouvrir une route » qui porte, pas le champ d'astéroïdes."
+    },
+    {
+      "cue": "lyra_boss_approach",
+      "dialogue_key": "boss_approach",
+      "text": "Signature massive droit devant.\nC’est lui. Tenez la ligne.",
+      "text_lines": [
+        "Signature massive droit devant.",
+        "C’est lui. Tenez la ligne."
+      ],
+      "mood": "ALERTE",
+      "direction": "Tendue, sèche. Trois mots par souffle. C'est le moment où elle cesse d'informer et où elle prévient."
+    },
+    {
+      "cue": "lyra_dive_entered",
+      "dialogue_key": "dive_entered",
+      "text": "Entrée dans le noyau confirmée.\nConcentrez-vous sur le réacteur principal.",
+      "text_lines": [
+        "Entrée dans le noyau confirmée.",
+        "Concentrez-vous sur le réacteur principal."
+      ],
+      "mood": "ALERTE",
+      "direction": "Urgence maîtrisée. Elle donne un ordre, pas un conseil — « concentrez-vous » doit s'entendre comme un cap, pas comme une suggestion."
+    },
+    {
+      "cue": "lyra_core_exposed",
+      "dialogue_key": "core_exposed",
+      "text": "Le réacteur est exposé.\nFrappez maintenant !",
+      "text_lines": [
+        "Le réacteur est exposé.",
+        "Frappez maintenant !"
+      ],
+      "mood": "ALERTE",
+      "direction": "La seule réplique où elle hausse le ton. Courte, coupée. « Frappez maintenant ! » est un cri contenu, pas un hurlement — elle reste une professionnelle."
+    },
+    {
+      "cue": "lyra_core_shielded",
+      "dialogue_key": "core_shielded",
+      "text": "La carapace s’est refermée.\nAttendez la prochaine ouverture.",
+      "text_lines": [
+        "La carapace s’est refermée.",
+        "Attendez la prochaine ouverture."
+      ],
+      "mood": "CALME",
+      "direction": "Elle redescend aussitôt. C'est le contraste avec la précédente qui fait tout : si les deux sonnent pareil, l'alerte ne veut plus rien dire."
+    },
+    {
+      "cue": "lyra_armour_reformed",
+      "dialogue_key": "armour_reformed",
+      "text": "Son blindage repousse, mais plus mal qu’avant.\nContinuez.",
+      "text_lines": [
+        "Son blindage repousse, mais plus mal qu’avant.",
+        "Continuez."
+      ],
+      "mood": "CALME",
+      "direction": "Constat encourageant. Elle relève un progrès dans une mauvaise nouvelle — « mais plus mal qu'avant » est la moitié qui compte."
+    },
+    {
+      "cue": "lyra_waves_cleared",
+      "dialogue_key": "waves_cleared",
+      "text": "Secteur dégagé, Pilote.\nQuelque chose de plus gros arrive.",
+      "text_lines": [
+        "Secteur dégagé, Pilote.",
+        "Quelque chose de plus gros arrive."
+      ],
+      "mood": "CALME",
+      "direction": "Satisfaction brève, puis une bascule sur « quelque chose de plus gros » : la phrase change d'humeur en son milieu, et l'acteur doit l'entendre."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "non bloquante — le panneau, le portrait et le texte fonctionnent sans voix",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique de même `key` dans `resources/dialogue/lyra_ingame.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu ET par-dessus le combat : c'est le seul rendu qui compte",
+      "les deux répliques d'ALERTE doivent trancher nettement sur les cinq autres",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0002-lyra-secteurs.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0002-lyra-secteurs.json,,\"Réplique <cue> de Lyra Vantella, en jeu (VOX-0002)\""
+  }
+}

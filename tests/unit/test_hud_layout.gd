@@ -49,10 +49,62 @@ func _panels(hud: CanvasLayer) -> Array[Panel]:
 			found.append(panel)
 	return found
 
-func test_the_hud_builds_its_four_panels() -> void:
+func test_the_hud_builds_its_five_panels() -> void:
 	var hud := _hud()
-	assert_eq(_panels(hud).size(), 4, "shield, score, lives and boss panels are built")
+	assert_eq(_panels(hud).size(), 5,
+		"bouclier, score, vies, banniere de boss — et Lyra depuis ADR-0035")
 	hud.free()
+
+## ⚠️ LE BAS-DROITE ETAIT LE SEUL COIN LIBRE, et c'est pour ca que Lyra y est plutot qu'a
+## gauche comme sur la maquette. Ce test tient la place : si un futur panneau vient la
+## disputer, il faudra trancher plutot que les empiler.
+func test_lyra_takes_the_bottom_right_corner_and_disturbs_nobody() -> void:
+	var hud := _hud()
+	var size := _viewport()
+	hud.say(_line("Champ d'asteroides detecte."))
+	var lyra := _rect_of(hud._lyra_panel)
+	assert_almost_eq(lyra.end.x, size.x - 28.0, 0.5, "elle se cale sur la marge droite")
+	assert_almost_eq(lyra.end.y, size.y - 28.0, 0.5, "et sur la marge basse")
+	for panel in _panels(hud):
+		if panel == hud._lyra_panel:
+			continue
+		assert_false(lyra.intersects(_rect_of(panel)),
+			"le panneau de Lyra (%s) ne recouvre pas celui en %s" % [lyra, _rect_of(panel)])
+	hud.free()
+
+## ⚠️ ELLE SE RETIRE TOUTE SEULE. Un panneau qui resterait a l'ecran apres sa replique
+## volerait le coin au reste de la partie — et le joueur relirait une consigne perimee.
+func test_lyra_leaves_the_screen_when_she_has_finished() -> void:
+	var hud := _hud()
+	var line := _line("Le reacteur est expose.")
+	line.hold = 1.0
+	hud.say(line)
+	assert_true(hud.lyra_is_speaking(), "elle est la pendant sa replique")
+	for frame in 200:
+		hud._process(1.0 / 60.0)
+	assert_false(hud.lyra_is_speaking(),
+		"et elle est partie une fois sa duree ecoulee (%.1f s + le fondu)" % line.hold)
+	hud.free()
+
+## Le regime se lit au CADRE, pas au visage : a cette taille une expression seule ne se lit
+## pas. Deux repliques de regimes differents ne doivent pas rendre le meme bord.
+func test_the_frame_carries_the_mood() -> void:
+	var hud := _hud()
+	var calme := _line("Secteur degage.")
+	hud.say(calme)
+	var bord_calme: Color = (hud._lyra_panel.get_theme_stylebox("panel") as StyleBoxFlat).border_color
+	var alerte := _line("Frappez maintenant !")
+	alerte.mood = DialogueLine.Mood.ALERT
+	hud.say(alerte)
+	var bord_alerte: Color = (hud._lyra_panel.get_theme_stylebox("panel") as StyleBoxFlat).border_color
+	assert_true(bord_calme != bord_alerte,
+		"calme (%s) et alerte (%s) ne peignent pas le meme bord" % [bord_calme, bord_alerte])
+	hud.free()
+
+func _line(text: String) -> DialogueLine:
+	var line: DialogueLine = load("res://resources/data/dialogue_line.gd").new()
+	line.text = text
+	return line
 
 ## LE test. Le bandeau de boss est le seul panneau ancré au centre : c'est lui que
 ## l'erreur de géométrie envoyait sur la jauge de bouclier.

@@ -1,0 +1,144 @@
+{
+  "id": "CHR-0001",
+  "slug": "lyra-pied",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "framing": "pied",
+  "purpose": {
+    "description": "Lyra Vantella pied-en-cap, DÉCOUPÉE EN CALQUES, pour l'écran-titre. Elle y accueille le joueur et lui parle.",
+    "game_context": "Écran-titre (scenes/boot/boot.tscn). Elle se tient à DROITE de l'écran, sur toute la hauteur, devant la scène 3D (citadelle, escorte, fond spatial). Le menu et sa bulle de dialogue occupent la gauche. Le rendu final passe sous le post-process rétro (scanlines + lift 1,25), à 1920×1080.",
+    "priority": "⚠️ ELLE EST LE PREMIER VISAGE DU JEU. C'est le seul moment où le joueur regarde un écran sans rien avoir à faire : la présence prime sur le détail. Une pose ouverte et un regard qui accroche valent mieux qu'une texture de tissu.",
+    "reference": "assets/reference/concepts/lyra_vantella_character_sheet.png — fait foi sur la silhouette, la livrée et la palette. Les autres maquettes montrent des cadres et du mobilier d'interface qui NE FONT PAS PARTIE de la livraison."
+  },
+  "technical": {
+    "resolution_per_layer": "1024x1536",
+    "aspect_ratio": "2:3",
+    "canvas": "Toile identique pour tous les calques D'UN MÊME GROUPE (tête, corps, bras, holo). ⚠️ Entre groupes, l'échelle DIFFÈRE et c'est attendu : un générateur d'images cadre chaque pièce pour remplir sa toile — il ne sait pas qu'il dessine la pièce d'un puzzle. L'assemblage se règle dans le jeu. Vérifié à la livraison du 2026-08-28.",
+    "transparent_background": false,
+    "background": "pure_magenta",
+    "background_note": "⚠️ NE PAS demander un fond transparent : on reçoit un damier PEINT dans une image opaque (contrat texture, règle 3). Fond magenta uni, puis `python3 tools/bg-key-alpha.py` pour la découpe.",
+    "view": "de face, légère contre-plongée (la caméra du titre regarde légèrement vers le haut)",
+    "lighting": "clé froide venant de la gauche, jante cyan à droite — cohérente avec la scène 3D du titre",
+    "color_mode": "RGB",
+    "output_usage": "runtime_layer"
+  },
+  "layers": [
+    {
+      "name": "cheveux_arriere",
+      "content": "La masse de cheveux orange cuivré derrière le buste et les épaules, jusqu'aux hanches. Inclut ce qui passe derrière les bras.",
+      "animation": "Balance en retard sur le buste"
+    },
+    {
+      "name": "queue_de_cheval",
+      "content": "La queue haute, tenue par la pince cyan, séparée de la masse arrière.",
+      "animation": "Balance plus ample, retard plus long"
+    },
+    {
+      "name": "bras_gauche",
+      "content": "Bras gauche entier depuis l'épaule, main levée index dressé, manche bleue à revers blanc.",
+      "animation": "Épaule + coude"
+    },
+    {
+      "name": "bras_droit",
+      "content": "Bras droit entier depuis l'épaule, main ouverte paume vers le haut.",
+      "animation": "Épaule + coude ; porte la sphère holo"
+    },
+    {
+      "name": "buste",
+      "content": "Corps sans la tête ni les bras : combinaison bleu profond à panneaux blancs, liserés or, ceinture à gemme cyan, jambes et bottes blanches.",
+      "animation": "Pièce maîtresse, respire"
+    },
+    {
+      "name": "tete",
+      "content": "Tête complète yeux ouverts bouche fermée : visage, oreillette et branche de micro, base des cheveux avant.",
+      "animation": "Tourne légèrement, suit le buste avec retard"
+    },
+    {
+      "name": "meches_avant",
+      "content": "Les mèches qui passent DEVANT le visage et les épaules.",
+      "animation": "Balance courte, devant tout"
+    },
+    {
+      "name": "holo_bracelet",
+      "content": "L'anneau holographique cyan au poignet gauche, seul, sur fond de découpe.",
+      "animation": "Dérive lente en boucle"
+    },
+    {
+      "name": "holo_sphere",
+      "content": "La sphère de navigation holographique cyan au-dessus de la main droite, seule.",
+      "animation": "Rotation continue"
+    },
+    {
+      "name": "tete_bouche_mi",
+      "content": "La MÊME tête, bouche entrouverte. Cadrage rigoureusement identique à `tete`.",
+      "animation": "Synchro labiale"
+    },
+    {
+      "name": "tete_bouche_ouverte",
+      "content": "La MÊME tête, bouche franchement ouverte (elle parle fort). Cadrage identique.",
+      "animation": "Synchro labiale"
+    },
+    {
+      "name": "tete_yeux_mi",
+      "content": "La MÊME tête, paupières à mi-course. Cadrage identique.",
+      "animation": "Clignement"
+    },
+    {
+      "name": "tete_yeux_fermes",
+      "content": "La MÊME tête, yeux clos. Cadrage identique.",
+      "animation": "Clignement"
+    }
+  ],
+  "overlap": {
+    "rule": "Chaque pièce déborde de 20 à 40 px SOUS la pièce voisine à chaque articulation (épaules, cou, hanches, poignets).",
+    "why": "Une découpe au ras de l'articulation ouvre un trou dès trois degrés de rotation. Le trou ne se voit pas sur la planche livrée : il apparaît en animation, quand il est trop tard."
+  },
+  "color_palette": {
+    "required": [
+      "#1C2B5E bleu profond (combinaison)",
+      "#EDEAE3 blanc cassé (panneaux)",
+      "#E4B54A or (liserés)",
+      "orange cuivré (cheveux)"
+    ],
+    "restricted": [
+      "#3FD9E8 cyan — UNIQUEMENT sur les hologrammes, l'oreillette, la pince et les liserés fins"
+    ],
+    "forbidden": [
+      "#FF5A3D corail — réservé au tir ennemi",
+      "tout aplat de cyan sur le corps ou le vêtement"
+    ],
+    "why": "Le cyan et le corail portent la lisibilité des projectiles (charte §3, LOI-LIS-01). Un personnage qui en fait un aplat vole cette lisibilité au gameplay."
+  },
+  "constraints": [
+    "AUCUN fond, décor, nébuleuse, planète, cadre, jauge, texte ni élément d'interface. Les maquettes en portent : le runtime n'en veut rien.",
+    "AUCUN logo ni marquage identifiable d'une licence existante (spec §0.2).",
+    "Pose IDENTIQUE d'un calque à l'autre — seules changent la pièce isolée et, pour les têtes, la bouche ou les paupières.",
+    "Les treize calques viennent de LA MÊME illustration. Treize dessins voisins ne se superposent pas."
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "bloquante — l'intégration tourne sur une doublure tant qu'elle n'est pas livrée",
+    "target_dir": "assets/imported/ui/characters/lyra/",
+    "file_pattern": "<nom_du_calque>.png",
+    "verify": [
+      "python3 tools/characters/check_delivery.py <dossier> — même toile, variantes qui SUBSTITUENT, fond uniforme",
+      "⚠️ NE PAS se contenter des dimensions : les deux livraisons du 2026-08-28 avaient la bonne taille et échouaient ailleurs",
+      "python3 tools/bg-key-alpha.py --mode chroma <src> <dst> (clé mesurée au bord), puis regarder les bords SUR FOND SOMBRE",
+      "empiler les pièces d'un MÊME groupe : elles doivent coïncider sans recalage"
+    ],
+    "provenance_csv_line": "lyra_layer_<nom>,assets/imported/ui/characters/lyra/<nom>.png,character-layer,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/characters/CHR-0001-lyra-pied.json,,\"Calque <nom> de Lyra Vantella pied-en-cap (CHR-0001)\""
+  },
+  "expressions": {
+    "regle": "⚠️ UNE VARIANTE EST UNE SUBSTITUTION, PAS UN NOUVEAU DESSIN. `tete_bouche_ouverte` doit être le fichier `tete` avec la bouche redessinée — et RIEN d'autre : mêmes cheveux au pixel près, même mâchoire, même col, même casque. Concrètement : partir du fichier `tete` et ne repeindre que la zone concernée.",
+    "cout": "Livraison du 2026-08-28 (buste) : les quatre têtes étaient redessinées. **38 % des pixels changeaient** au lieu des 3 % d'une bouche, et un recalage n'y pouvait rien (l'erreur tombait de 29,0 à 27,4 au lieu d'aller à zéro). Les substituer aurait fait sauter toute la tête à chaque syllabe — pire qu'une bouche figée.",
+    "controle": "python3 tools/characters/check_delivery.py <dossier> — il refuse au-delà de 12 % de pixels changés. À passer AVANT toute intégration.",
+    "jeux": [
+      "tete (base : yeux ouverts, bouche fermée)",
+      "tete_bouche_mi",
+      "tete_bouche_ouverte",
+      "tete_yeux_mi",
+      "tete_yeux_fermes"
+    ]
+  }
+}

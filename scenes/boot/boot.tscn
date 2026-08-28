@@ -177,24 +177,23 @@ theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.75)
 theme_override_font_sizes/font_size = 10
 text = "HV-09  //  SPECTER-9"
 
+; ⚠️ COLONNE DE GAUCHE DEPUIS ADR-0035, ET PLUS UN BLOC CENTRE. Lyra Vantella occupe le
+; tiers droit de l'ecran (`LYRA_COLUMN` dans title_menu.gd) : un titre centre lui passait
+; dessus. Le nom du noeud reste `Center` — le renommer casserait `%Menu` et la navigation
+; au clavier que `_build_menu_focus()` etablit dessus.
 [node name="Center" type="VBoxContainer" parent="TitleUI"]
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -540.0
-offset_top = 236.0
-offset_right = 540.0
-offset_bottom = 700.0
-theme_override_constants/separation = 16
-alignment = 1
+anchor_right = 0.66
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = 196.0
+offset_right = -24.0
+offset_bottom = -232.0
+theme_override_constants/separation = 14
 mouse_filter = 2
 
-[node name="Kicker" type="Label" parent="TitleUI/Center"]
-theme = ExtResource("10_theme")
-theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.85)
-theme_override_font_sizes/font_size = 14
-text = "HELIOS VANGUARD  //  ASCENDANT PROGRAM"
-horizontal_alignment = 1
-
+; ⚠️ LE KICKER A ETE RETIRE (ADR-0035) : il repetait « HELIOS VANGUARD // ASCENDANT
+; PROGRAM » que le bloc Identity affiche deja a 200 px au-dessus. Centre, les deux ne se
+; voyaient pas ; en colonne de gauche, la repetition saute aux yeux.
 [node name="Title" type="Label" parent="TitleUI/Center"]
 theme = ExtResource("10_theme")
 theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
@@ -204,14 +203,14 @@ theme_override_constants/shadow_offset_y = 0
 theme_override_constants/shadow_outline_size = 10
 theme_override_font_sizes/font_size = 54
 text = "AEGIS ASCENDANT"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="Tagline" type="Label" parent="TitleUI/Center"]
 theme = ExtResource("10_theme")
 theme_override_colors/font_color = Color(0.161, 0.902, 1, 0.9)
 theme_override_font_sizes/font_size = 15
 text = "TAKE THE SKY  ·  HOLD THE LINE  ·  ASCEND"
-horizontal_alignment = 1
+horizontal_alignment = 0
 
 [node name="Spacer" type="Control" parent="TitleUI/Center"]
 custom_minimum_size = Vector2(0, 28)
