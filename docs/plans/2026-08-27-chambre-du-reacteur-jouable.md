@@ -7,6 +7,19 @@
   (« le couloir n'est pas un lieu — à trancher »).
 - **État** : **clos le 2026-08-28** — cinq lots livrés, plongée jouée jusqu'à l'appontage. ⚠️ La cause racine n'était dans aucun lot : le décor tournait à l'envers de sa collision (voir `pratique-dessiner-avant-de-raisonner.md`). Reste ouvert, au backlog : remettre ou non un second mur
 
+> ⛔ **AVERTISSEMENT DU 2026-08-28 — le chiffre qui fonde ce plan était faux.**
+> Tout le dimensionnement ci-dessous part d'un chasseur de **4,22 × 1,76**. Le corps réel fait
+> **2,46 × 1,76** : `PlaneCollider.capsule_blocks()` ajoute le rayon aux DEUX bouts du segment, et
+> la demi-longueur du `.glb` avait été versée telle quelle dans `body_half_length`. Le chasseur
+> était donc décrit **71 % trop long** dans l'axe (voir
+> [`ADR-0034`](../decisions/ADR-0034-un-mur-arrete-un-tir.md)).
+>
+> **Le raisonnement d'époque est laissé intact** — c'est un document daté, et le réécrire
+> falsifierait le compte rendu. Mais aucune de ses conclusions chiffrées ne doit être reprise telle
+> quelle : l'agrandissement de la chambre tient (elle est jouable, `tools/dive_bench.gd` est vert),
+> il a simplement été décidé contre un corps qui n'existait pas. En particulier, la conclusion
+> « le couloir n'est pas un lieu » **mérite d'être rejouée** avec les bonnes dimensions.
+
 ## Le constat, mesuré
 
 > « La physique ne marche pas du tout. Je n'arrivais pas à me déplacer en évitant les murs qui

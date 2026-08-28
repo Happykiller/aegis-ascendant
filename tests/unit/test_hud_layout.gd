@@ -109,7 +109,12 @@ func test_right_and_bottom_anchored_panels_hang_off_their_edge() -> void:
 ## dise la vérité : une sous-cible à mi-repousse doit occuper la MOITIÉ de sa jauge, pas la
 ## totalité.
 func test_a_regrowing_target_shows_how_far_it_has_come_not_a_full_bar() -> void:
-	var hud: Control = track(FighterHudScript.new()) as Control
+	# ⚠️ `CanvasLayer`, ET C'EST TOUT LE SUJET. Ces deux tests ecrivaient `as Control` sur un
+	# HUD qui est un `CanvasLayer` : le transtypage rendait `null`, la premiere ligne levait
+	# une erreur de script, la methode etait ABANDONNEE — et le harnais annoncait « PASS ».
+	# Ils n'ont donc rien garde depuis leur ecriture. Le harnais refuse desormais une methode
+	# qui n'execute aucune assertion (voir `test_runner.gd`).
+	var hud: CanvasLayer = track(FighterHudScript.new()) as CanvasLayer
 	hud._ready()
 	hud.show_boss("TEST")
 	hud.set_boss_limbs(PackedStringArray(["A", "B", "C"]))
@@ -125,7 +130,7 @@ func test_a_regrowing_target_shows_how_far_it_has_come_not_a_full_bar() -> void:
 ## Elle s'efface dès que la sous-cible est revenue — sinon elle resterait en travers d'une
 ## jauge de santé qui, elle, redevient la vérité.
 func test_the_regrowth_bar_clears_the_moment_the_target_is_back() -> void:
-	var hud: Control = track(FighterHudScript.new()) as Control
+	var hud: CanvasLayer = track(FighterHudScript.new()) as CanvasLayer
 	hud._ready()
 	hud.show_boss("TEST")
 	hud.set_boss_limbs(PackedStringArray(["A", "B", "C"]))

@@ -64,7 +64,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-conformite-bible.md`](plans/2026-08-27-conformite-bible.md) | Fermer les écarts du rapport de conformité — secousse exposée, `FAN`/`AIMED` en jeu, manette, ouverture calme, hit stop | **lots 0, 1 et 2 livrés** ; lots 3-5 bloqués |
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
-| [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule** de 4,22 × 1,76 et n'entre pas dans le couloir (2,60). Agrandir l'arène — décidé par l'opérateur | **lots 1-4 livrés**, reste la plongée jouée |
+| [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
@@ -249,6 +249,28 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 | **Bestiaire** (menu d'accueil) | ✅ cinq coques sur présentoir 3D — rotation souris/clavier, zoom, pièces mobiles animées en démonstration, fiche technique HUD qui vire au camp. Dimensions et polygones **mesurés** sur la coque, PV/vitesse/cadence/score **lus** dans les Resources de gameplay (aucune recopie) ; fiction produite par la forge (**BRIEF-0037**) — **ADR-0015** |
 
 ---
+
+## Ouvert par la revue du 2026-08-28 (ADR-0034)
+
+Deux lignes de comptabilité, pour que personne ne les redécouvre ni ne les repropose à l'aveugle.
+
+- **Défaut LATENT de la gerbe du Léviathan.** `_fire_fans()` tire depuis `origin + 2,6` : une
+  bouche peut naître au-dessus de la coupe des projectiles (13,0) et la balle mourrait à l'image
+  de sa création, en silence. **Mesuré en jeu : zéro occurrence** sur 110 s de boss — les plaques
+  qui tirent sont toujours sous la ligne. `BulletManager` a été **durci** (on ne retire pas ce qui
+  n'est jamais entré, le `ttl` borne l'attente), donc le piège est refermé sans que le jeu change.
+  ⚠️ Ne pas rouvrir en croyant corriger un bug vivant : ce n'en est pas un. Il l'était en revanche
+  sur les **missiles**, qui naissent au centre du boss.
+- **Découper la présentation de la plongée hors de `graybox_root.gd` : ÉVALUÉ ET ÉCARTÉ.** Les
+  ~300 lignes de la section « plongée » ne forment pas un module : elles appellent `_sfx`,
+  `_banner`, `_hud`, `_boom`, `_frame_chamber`, `GameplayPlane.use_bounds`, et touchent `_player`,
+  `_leviathan`, `_final_boss`, `_regen_plates`, `_core_marker_age`. Les sortir demanderait soit une
+  référence arrière vers le niveau (un couplage pire), soit **huit signaux de retour** — dix appels
+  directs et lisibles remplacés par de l'indirection. Ce n'est pas un mélange de modules, c'est le
+  **script d'un acte**. Le seul vrai candidat, si le sujet revient : la présentation de la chambre
+  (décor, caméra, fond, repère de cible), en assumant les signaux.
+  ✅ Ce qui a été extrait, lui, était propre : les instruments `--dive-probe` / `--dive-trace` →
+  `scripts/debug/dive_instruments.gd`, désormais **testable** (il ne l'était par rien).
 
 ## Ouvert par le chantier collision (2026-08-27)
 

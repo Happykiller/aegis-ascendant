@@ -67,6 +67,38 @@ C'est la seule façon d'attribuer un coût. Exemple réel (nébuleuse en domain 
 
 Verdict : soutenable. Sans cette isolation, on n'aurait eu qu'un chiffre absolu ininterprétable.
 
+## ⛔ Un témoin se PROUVE avant de conclure : hasher le `.pck` (28/08/2026)
+
+Un différentiel « avec / sans » suppose **deux builds différents**. Ce n'est pas acquis, et quand
+ça rate, ça ne dit rien : ça rend simplement deux fois le même chiffre — qui se lit comme
+« aucun effet ».
+
+Vécu le 28/08/2026, sur un changement de règle de recyclage des projectiles. Deux mesures de
+densité en jeu, deux relevés **identiques au dixième** : moyenne 29,5, pic 56, 103 relevés. Conclu
+« le correctif ne change rien ». Faux : le premier témoin **n'avait jamais été construit**.
+
+La chaîne qui a menti, et elle est normale :
+
+1. `export-win.sh` passe par `check.sh` — c'est voulu, on n'exporte pas du rouge ;
+2. le témoin retirait un correctif que **trois tests gardaient** : la porte a rougi ;
+3. l'export ne s'est pas fait, et `deploy-win.sh` — qui **n'exporte pas** — a rejoué l'exe
+   précédent, sans un mot ;
+4. la « mesure du témoin » mesurait donc le build corrigé.
+
+**Le réflexe, en une ligne :**
+
+```bash
+md5sum build/windows/*.pck    # avant ET après le second export — ils DOIVENT différer
+```
+
+⚠️ **Corollaire** : pour bâtir un témoin qui viole un garde, il faut **neutraliser aussi le
+garde** (renommer les tests concernés le temps d'une mesure, puis les restaurer). Sinon il n'y a
+pas de témoin, il n'y a qu'une copie.
+
+⚠️ **Et un différentiel nul est une alerte, pas un résultat.** Deux chiffres rigoureusement égaux
+sur une centaine de relevés d'une démo déterministe, c'est presque toujours le même binaire — pas
+une absence d'effet. Vérifier avant de rédiger la conclusion.
+
 ## ⚠️ `--novsync` fausse un différentiel dès que la scène est vivante (26/08/2026)
 
 L'exemple du haut de cette page mesure en `--novsync`, et c'est bon pour une scène **statique**. Dès

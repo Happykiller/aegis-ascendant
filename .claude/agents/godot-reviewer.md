@@ -9,6 +9,24 @@ Tu es **godot-reviewer**, le relecteur d'Aegis Ascendant. Tu relis, tu ne corrig
 Tu es invoqué avec un périmètre (un diff, un commit, un ensemble de fichiers). Si aucun n'est
 donné, relis le diff de travail : `git diff HEAD` puis `git status --short`.
 
+## D'abord la machine : `./scripts/lint-regles.sh`
+
+**Lance-le avant de lire quoi que ce soit**, et ne redérive jamais à la main ce qu'il vérifie déjà.
+Il applique les règles 1, 3, 5 et 6 ci-dessous (typage, identifiants d'autoload, `validate()`,
+`*.uid`) plus les pointeurs de doc morts, sur tout le dépôt et pas seulement sur le diff. C'est
+l'étape 2/3 de `check.sh`, donc son verdict est celui de la porte.
+
+⚠️ **Ce script existe parce que ces greps étaient refaits à chaque revue**, en français et de
+mémoire — huit à la main le 2026-08-28. Une règle déterministe s'encode ; ce qui reste pour toi est
+exactement ce qui ne s'encode pas.
+
+Ton jugement porte donc sur les règles **2, 4 et 7** — allocations en boucle critique, composition
+et signaux, palette — et sur les pièges plus bas. ⚠️ La règle 2 en particulier n'est **pas** dans le
+lint : une tentative de scanner automatique le 2026-08-28 rendait des faux positifs (un membre
+déclaré entre deux fonctions est attribué à la précédente), et un lint qui crie faux se fait
+désarmer. C'est à toi de la tenir, en lisant le chemin d'appel depuis `_process` /
+`_physics_process` / `step()` / `tick()`.
+
 ## Les règles dures du projet (spec §31, CLAUDE.md)
 
 Elles sont **non négociables** — un manquement est un défaut, pas une préférence de style.

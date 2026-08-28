@@ -2,7 +2,7 @@
 titre: La loi des signaux — un effet qui ne se montre pas n'existe pas
 type: reference
 statut: actif
-maj: 2026-08-27
+maj: 2026-08-28
 ---
 
 # La loi des signaux
@@ -51,6 +51,35 @@ ligne et échoué à dire ce qu'elle signifie — il enseignait l'inverse de la 
 - **Un mouvement dit ce qu'une valeur ne dit pas.** La coque de la mine qui se *rabat* montre le
   pardon ; la même règle sans animation claquait d'une image à l'autre et se lisait comme un
   clignotement de bug.
+
+## Le cas extrême, le 2026-08-28 : l'entité qui n'existe pas
+
+Les cas de 2026-08-26 étaient des mécaniques **visibles mais illisibles**. Les missiles du Pale
+Leviathan sont un cran plus loin : **l'objet lui-même n'avait aucune image**. Trois par salve,
+toutes les 6 s, 40 PV, **22 de bouclier au contact** — et `grep` sur tout le dépôt ne sortait que le
+fichier qui les crée. Rien ne les dessinait.
+
+> « Les missiles existent mais j'ai eu l'impression qu'ils font rien à part me courir après » —
+> l'opérateur, après les avoir découverts **par l'overlay de collision**, seule chose à l'écran qui
+> en portait la trace : deux petits cercles qu'il ne comprenait pas.
+
+Trois enseignements qui n'étaient pas dans la page :
+
+- **Une attaque invisible n'est pas difficile, elle est FAUSSE.** Elle retire au joueur la seule
+  chose que ce projectile existe pour lui apprendre — qu'il peut *répondre* à un tir au lieu de
+  l'esquiver. Ce n'est pas un défaut de lisibilité, c'est une mécanique qui n'est pas jouable.
+- **Une FIN est un signal, au même titre qu'un début.** Les deux issues du missile étaient muettes,
+  chacune pour sa propre raison : `consume()` d'un côté, et de l'autre la valeur de retour
+  d'`apply_damage()` — qui ne vaut vrai **que sur l'image où le projectile tombe**, précisément pour
+  que l'appelant joue l'explosion une fois — **jetée**. Le joueur pouvait déjà les abattre ; rien ne
+  le lui disait, donc il ne l'a jamais appris.
+- **Et les deux fins ne se lisent pas pareil.** Sur le chasseur : explosion moyenne, secousse, son
+  de coque — un coup reçu. Abattu en vol : explosion plus petite, pas de secousse, son léger — une
+  récompense. Les jouer identiques dirait au joueur que réussir et échouer se valent.
+
+⚠️ **Le réflexe qui aurait attrapé ça** n'est pas dans les deux questions ci-dessous : c'est de
+demander, pour toute entité qui inflige des dégâts, *qu'est-ce qui la DESSINE ?* — et de répondre
+par un fichier, pas par une intention. Voir [`ADR-0034`](../../decisions/ADR-0034-un-mur-arrete-un-tir.md).
 
 ## La contrepartie : ne pas promettre ce qu'on ne tient pas
 

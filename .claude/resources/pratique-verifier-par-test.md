@@ -138,6 +138,32 @@ Et quand aucune donnée ne porte le seuil, c'est souvent qu'on mesure la mauvais
 question « combien d'images bousculées ? » n'avait pas de bonne réponse ; « le joueur garde-t-il
 le contrôle en longeant ? » en avait une, et binaire.
 
+## ⛔ Ce qu'un module monté SANS SA COQUE ne prouve pas (28/08/2026)
+
+`LeviathanCombat.setup(null, …)` est le montage normal en test — la coque est un `.glb`, les tests
+tournent en `--script`, il n'y a pas d'arbre. C'est **légitime pour la logique** : phases, dégâts,
+transitions, cadences. Toute la suite du boss est bâtie dessus et elle a raison de l'être.
+
+**Ce n'est PAS légitime pour la géométrie.** Sans coque, `_measure_plate_layout()` ne trouve ni
+`Shell_Ring` ni `Plate_NN` et retombe sur des angles et des rayons de **repli** — des chiffres
+valides, plausibles, et qui ne sont pas ceux du jeu.
+
+Le coût, le 28/08/2026 : un modèle headless bâti sur ce montage annonçait que **100 % des positions
+de joueur** faisaient naître un projectile hors du plan de vol, donc recyclé à l'image de sa
+création. Instrumenté dans le vrai jeu, le même défaut a été compté :
+
+```
+[DBG] nées hors du plan : 0        # sur 110 s de boss final
+```
+
+Le modèle n'était pas imprécis, il était **structurellement faux** — et il ne levait aucune erreur.
+Deux mesures de densité en jeu le disaient déjà, et j'ai d'abord cru que c'étaient elles qui
+mentaient.
+
+**La règle** : un test qui monte un boss sans coque peut prouver ce que le module **décide**, jamais
+où ses pièces **sont**. Pour la géométrie, il faut le jeu — ou une coque. Et quand le banc et le jeu
+se contredisent, [c'est le jeu qui a raison](pratique-dessiner-avant-de-raisonner.md).
+
 ## Mesurer un `.glb` : parcourir la hiérarchie, ou se tromper (27/08/2026, 2ᵉ fois)
 
 Lire les `min`/`max` des accesseurs `POSITION` donne les bornes **en espace local de chaque

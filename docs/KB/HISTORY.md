@@ -195,3 +195,38 @@ Et une correction de l'opérateur qui vaut consigne : **demander une texture doi
   `move_capsule`), noyau qui se faisait écran à sa propre cible, corps du boss caché mais
   touchable, un seul mur reconstruit, section Options → Débogage. Leçon :
   `.claude/resources/pratique-dessiner-avant-de-raisonner.md`.
+- **2026-08-28 (soir)** — *Ce que l'overlay a montré en une partie*, puis une revue de tout le
+  dépôt. Trois observations de l'opérateur, trois défauts de modèle ([`ADR-0034`](../decisions/ADR-0034-un-mur-arrete-un-tir.md)) :
+  - **Une capsule n'est pas une boîte.** `capsule_blocks()` ajoute le rayon aux DEUX bouts :
+    l'étendue vaut `half_length + radius`. La demi-longueur du `.glb` (1,23) versée dans
+    `body_half_length` donnait un chasseur de **4,22 dans l'axe pour une coque de 2,46** — et le
+    garde de `validate()` refusait précisément la valeur juste (0,35). `PlayerStats.body_reach()`
+    porte désormais l'étendue.
+  - **Les balles n'étaient testées contre aucune géométrie.** Le blindage du Léviathan était une
+    fausse cible de rayon 0,95 posée sur la ligne joueur→noyau : elle attrapait un disque de mur et
+    ratait par construction les flux latéraux des canons d'aile. `BulletManager.screens` fait du
+    mur un vrai écran. Coût mesuré 1,55 ms/image, ramené à **0,23 ms** par une phase large
+    (disque englobant + **trou central**).
+  - **Une attaque invisible n'est pas difficile, elle est fausse.** Les missiles du boss n'avaient
+    aucun visuel — et mouraient de toute façon à l'image de leur création, le boss tirant depuis
+    `y = 11,9` quand le plan s'arrête à 8,0. **On ne retire pas ce qui n'est jamais entré.**
+  - Conséquence d'équilibrage : le noyau était calibré contre un joueur qui place ses dégâts, et ce
+    joueur n'existait pas. `flux_health` 1600 → 2000 (57 % → 71 % de la bande autorisée).
+
+  Et deux leçons de méthode :
+  - **Un test vert peut être mort** — GDScript abandonne la méthode sur un `SCRIPT ERROR` et le
+    harnais annonce `[PASS]`. Deux gardes de `test_hud_layout` n'avaient jamais rien gardé.
+    `.claude/resources/pratique-un-test-vert-peut-etre-mort.md`.
+  - **Un modèle headless peut être structurellement faux sans erreur** : monté sans coque, il
+    annonçait 100 % de projectiles perdus là où le jeu instrumenté en comptait **zéro**.
+  - **Un témoin A/B se prouve** : deux mesures identiques venaient du même binaire — `export-win.sh`
+    passe par `check.sh`, le témoin cassait la porte, et `deploy-win.sh` a rejoué l'exe précédent
+    sans un mot. `md5sum build/windows/*.pck` avant de conclure.
+
+  Et la capitalisation elle-même a trouvé de la doc **devenue fausse**, ce que rien ne pouvait
+  voir : `MOTEUR.md` pointait encore la fonction `_trace_dive` dans le niveau six heures après
+  son déménagement, le backlog portait le chasseur de 4,22, et la loi des corps citait
+  la mesure de `.glb` **sans parcours de hiérarchie** — celle-là même contre laquelle elle met en
+  garde. D'où `scripts/lint-regles.sh` : les règles dures de `CLAUDE.md` **appliquées** (étape 2/3
+  de `check.sh`), pointeurs de doc morts compris, et `godot-reviewer` branché dessus au lieu de les
+  redériver en prose.

@@ -44,6 +44,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   configuration atteint l'image N à un **temps de jeu différent**, donc avec moins d'ennemis à
   l'écran — et le biais gonfle l'écart dans le sens qu'on veut voir. Mesurer à **60 Hz** quand on
   compare des configurations.
+  ⛔ **Un témoin se PROUVE** : `md5sum build/windows/*.pck` avant/après, ils doivent DIFFÉRER. `export-win.sh` passe par `check.sh` — un témoin qui casse la porte n'est jamais construit, et `deploy-win.sh` rejoue l'exe précédent **sans un mot**. Deux relevés identiques au dixième sur une démo déterministe, c'est le même binaire, pas une absence d'effet (vécu le 28/08).
 - [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
   exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
   tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par
@@ -130,6 +131,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   collision sans lui. ⚠️ Un banc qui **recopie** la boucle ment — `tools/dive_bench.gd` pilote le
   vrai `_slide_to()`. ⚠️ `check.sh | grep && git commit` prend le code de retour de **grep** : un
   commit est passé rouge.
+- [Un test vert peut être mort](pratique-un-test-vert-peut-etre-mort.md) — **GDScript n'a pas
+  d'exception** : sur un appel invalide il journalise `SCRIPT ERROR` et **abandonne la méthode**.
+  Le tableau des échecs reste vide, et le harnais annonce `[PASS]`. Deux gardes de
+  `test_hud_layout` n'ont ainsi **rien gardé depuis leur écriture** (`as Control` sur un
+  `CanvasLayer` → `null`). Deux filets, et il faut les deux : **zéro assertion = échec**
+  (`test_runner.gd`) et **`SCRIPT ERROR` = porte rouge** (`check.sh`, en ne filtrant QUE
+  `SCRIPT ERROR:` — les `ERROR:` sont provoqués exprès). ⚠️ Après avoir supprimé un membre, relire
+  la SORTIE des tests, pas leur verdict. ⚠️ Et vérifier un garde **en le faisant tomber**.
 - [Vérifier par test, pas par capture chanceuse](pratique-verifier-par-test.md) — si l'événement à
   observer est probabiliste, la capture d'écran est le mauvais outil. ⚠️ **Un test qui construit un
   `Node` le fuit** (mode `--script` : pas d'arbre, donc pas de parent pour le récupérer) — passer par
@@ -146,6 +155,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   ⛔ **Une garde qui RECOPIE le pas d'image ne teste rien** : extraire le pas et l'appeler.
   ⛔ **Mesurer un `.glb` sans parcourir la hiérarchie** donne 1,30 au lieu de 1,752 sur le
   Specter-9 — deux fois la même erreur, 25/08 puis 27/08.
+  ⛔ **Un module monté sans sa coque ne prouve pas sa géométrie** : `setup(null, …)` fait retomber `_measure_plate_layout()` sur des angles de **repli**, plausibles et faux. Un modèle bâti dessus annonçait 100 % là où le jeu instrumenté comptait **zéro** (28/08). Légitime pour la logique, jamais pour les positions.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et

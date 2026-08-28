@@ -25,6 +25,18 @@ s'arrête et on demande.
 
 - **Ne pas contourner un test. Ne pas cacher une erreur d'import ou d'export.** Un check vert obtenu
   en désarmant l'instrument ne vaut rien.
+- ⚠️ **Un test peut être vert et MORT, sans que personne n'ait rien désarmé.** GDScript n'a pas
+  d'exception : sur un appel invalide il journalise `SCRIPT ERROR` et **abandonne la méthode**. Les
+  assertions restantes ne tournent jamais, le tableau des échecs reste vide, le harnais annonce
+  `[PASS]`. Deux gardes de `test_hud_layout` n'ont ainsi **rien gardé depuis leur écriture**
+  (`as Control` sur un `CanvasLayer` → `null`), et la disparition d'un membre interrogé par un test
+  est passée au travers le 2026-08-28. Deux filets, et il faut **les deux** : **zéro assertion =
+  échec** (`tests/test_runner.gd`) et **`SCRIPT ERROR` = porte rouge** (`scripts/check.sh`, en ne
+  filtrant QUE `SCRIPT ERROR:` — les `ERROR:` sont provoqués exprès et annoncés).
+  Le détail : [`.claude/resources/pratique-un-test-vert-peut-etre-mort.md`](../../../.claude/resources/pratique-un-test-vert-peut-etre-mort.md).
+- **Un garde se vérifie en le faisant TOMBER.** Injecter l'erreur qu'il doit attraper, constater la
+  porte rouge, retirer l'injection. Un garde jamais vu rougir n'est pas un garde — c'est exactement
+  ce que le cas ci-dessus démontre.
 - Ne jamais lancer Godot **sans `--headless`** dans WSL (ADR-0002).
 
 ## Les corps ne se chevauchent pas (posée le 2026-08-27)
@@ -39,8 +51,34 @@ s'arrête et on demande.
   Un obstacle nouveau se déclare en **forme** ; il n'ajoute pas de code de collision.
 - **Un corps se décrit par sa taille RÉELLE, mesurée sur le modèle**, jamais par un chiffre
   plausible. ⚠️ Le chasseur a été donné pour un disque de 0,85 alors que `specter_9.glb` mesure
-  1,30 × 2,41 : le disque couvrait les ailes et **pas le nez**, qui traversait les murs. Un
-  vaisseau est plus long que large — il se décrit en **capsule**, pas en cercle.
+  **1,752 × 2,46** (hiérarchie parcourue, transformations appliquées) : le disque couvrait les
+  ailes et **pas le nez**, qui traversait les murs. Un vaisseau est plus long que large — il se
+  décrit en **capsule**, pas en cercle.
+  ⚠️ **Cette loi a elle-même porté un chiffre faux — 1,30 × 2,41 — pendant trois jours.** C'est
+  la lecture des bornes brutes des accesseurs du `.glb`, sans composer les transformations des
+  nœuds : les canons de bout d'aile sont montés décalés, donc ils manquent à l'appel. **Un `.glb`
+  ne se mesure pas sans parcourir sa hiérarchie**, et le projet s'est fait prendre trois fois
+  (25/08, 27/08, 28/08).
+- **Une capsule n'est pas une boîte : le rayon s'ajoute aux DEUX bouts.**
+  `PlaneCollider.capsule_blocks()` promène un disque de `body_radius` le long du segment
+  `−half_length … +half_length`, donc l'étendue réelle vaut **`half_length + radius`**, jamais
+  `half_length` seule. Mesurer juste ne suffit pas : il faut **convertir**. La demi-longueur du
+  `.glb` (1,23) versée telle quelle dans `body_half_length` a donné un chasseur de **4,22 dans
+  l'axe pour une coque de 2,46** — 0,88 unité de coque fantôme devant le nez, et autant derrière
+  (`ADR-0034`). L'étendue se lit par `PlayerStats.body_reach()`, jamais recalculée à la main.
+- ⚠️ **Un garde qui refuse la valeur juste encode une convention fausse — suspecter le garde.**
+  Ici `validate()` exigeait `body_half_length >= body_radius` (« un vaisseau n'est pas plus large
+  que long ») : vrai de la COQUE, faux du segment. Il rendait 0,35 impossible et a **verrouillé
+  l'erreur** au lieu de l'attraper. Un invariant se pose sur la grandeur comparable — ici
+  l'étendue, pas le demi-segment.
+- **Ce qui arrête un CORPS et ce qui arrête un TIR sont deux questions distinctes**, et deux
+  listes : `fill_solids()` d'un côté, `fire_screens()` de l'autre. Un noyau peut être
+  infranchissable sans faire écran au tir qui le vise. Les confondre a désactivé une phase
+  entière — versé parmi ce qui bloque une balle, le noyau se faisait **écran à sa propre cible**,
+  et le joueur voyait des impacts sans que la jauge bouge (`ADR-0034`). ⚠️ Et un écran est de la
+  **géométrie**, jamais une cible posée à l'endroit où l'on croit que le tir passe : la fausse
+  cible qui simulait le blindage n'arrêtait qu'un disque de mur et ratait par construction les
+  flux latéraux des canons d'aile.
 - **La collision et l'image lisent la même donnée.** Si l'une change, l'autre suit dans le même
   commit. Un mur qui bloque ailleurs qu'où il est dessiné est le pire défaut possible : le joueur
   ne peut pas l'apprendre.

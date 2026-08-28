@@ -64,7 +64,21 @@ func _run_unit_tests() -> Dictionary:
 			case.call("free_tracked")   # reaps the Nodes the method built by hand
 			methods += 1
 			asserts += case.assert_count
-			if case.failures.is_empty():
+			# ⚠️ UNE ERREUR DE SCRIPT INTERROMPT LA METHODE, ET LE HARNAIS DISAIT « PASS ».
+			# GDScript n'a pas d'exception : sur un appel invalide, il journalise
+			# `SCRIPT ERROR` et ABANDONNE la fonction. Le tableau des echecs reste donc
+			# vide, et un test mort a sa premiere ligne se declarait vert. Vecu :
+			# `test_hud_layout` construisait son HUD avec `as Control` sur un `CanvasLayer`,
+			# obtenait `null`, et ses deux gardes n'ont RIEN garde depuis leur ecriture. Le
+			# meme trou a laisse passer la disparition de `_shield_target` le 2026-08-28.
+			#
+			# On ne peut pas attraper l'erreur, mais on peut refuser son SYMPTOME : une
+			# methode qui n'a mesure rien du tout n'est pas un test vert.
+			if case.assert_count == 0:
+				failures += 1
+				printerr("[FAIL] %s :: %s — aucune assertion executee : la methode a ete interrompue (voir le SCRIPT ERROR au-dessus) ou elle ne mesure rien"
+					% [file, name])
+			elif case.failures.is_empty():
 				print("[PASS] %s :: %s" % [file, name])
 			else:
 				failures += case.failures.size()
