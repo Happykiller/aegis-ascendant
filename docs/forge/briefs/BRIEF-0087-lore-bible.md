@@ -1,6 +1,9 @@
 # BRIEF-0087 — La bible narrative d'Aegis Ascendant
 
-- **Statut** : livré (docs/lore/BIBLE.md) — intégration en attente, voir docs/BACKLOG.md
+- **Statut** : **intégré** (2026-08-28). La bible est livrée (`docs/lore/BIBLE.md`), et ce qu'elle
+  demandait est fait : les **trois moments muets** qu'elle avait identifiés (§3.0, §3.5, §3.6) ont
+  leurs répliques — `VOX-0003`, jouées en `mission_start` / `docking` / `mission_complete`. Le nom
+  du pilote est passé au canon de `docs/forge/CHARTE_CREATIVE.md`.
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-28
