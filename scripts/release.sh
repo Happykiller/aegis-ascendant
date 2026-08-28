@@ -94,11 +94,20 @@ if [ "$PUBLIER" -eq 0 ]; then
 fi
 
 command -v gh >/dev/null || { log "gh introuvable — publication impossible"; exit 1; }
-log "publication de $TAG sur $DEPOT_RELEASES"
-gh release create "$TAG" "$SORTIE" \
-	--repo "$DEPOT_RELEASES" \
-	--title "Aegis Ascendant $PROJET_VERSION" \
-	--notes-file - <<NOTES
+
+# ⚠️ LES NOTES SONT UNE PAGE D'ACCUEIL, PAS UN MODE D'EMPLOI. C'est le seul endroit ou
+# quelqu'un qui n'a jamais lance le jeu lit ce qu'il est — l'operateur l'a demande ainsi
+# le 2026-08-28 : « on pourrait mettre le lore sur la page d'accueil de la release ».
+# Elles vivent donc dans `docs/releases/vX.Y.Z.md`, versionnees et relues comme du
+# contenu. Le texte generique ci-dessous ne sert que de repli, pour qu'une release
+# reste possible si personne n'a ecrit ses notes.
+NOTES_FILE="docs/releases/$TAG.md"
+if [ -f "$NOTES_FILE" ]; then
+	log "notes : $NOTES_FILE"
+else
+	NOTES_FILE="$(mktemp)"
+	log "⚠️ pas de docs/releases/$TAG.md — notes generiques"
+	cat > "$NOTES_FILE" <<NOTES
 Telechargez **AegisAscendant.exe** et double-cliquez. Rien a installer.
 
 - Windows 10/11 x64
@@ -107,4 +116,11 @@ Telechargez **AegisAscendant.exe** et double-cliquez. Rien a installer.
 
 Prototype : le contenu evolue d'une version a l'autre.
 NOTES
+fi
+
+log "publication de $TAG sur $DEPOT_RELEASES"
+gh release create "$TAG" "$SORTIE" \
+	--repo "$DEPOT_RELEASES" \
+	--title "Aegis Ascendant $PROJET_VERSION" \
+	--notes-file "$NOTES_FILE"
 log "publie : https://github.com/$DEPOT_RELEASES/releases/tag/$TAG"
