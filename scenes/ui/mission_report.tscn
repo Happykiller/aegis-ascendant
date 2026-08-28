@@ -192,6 +192,24 @@ theme_override_font_sizes/font_size = 30
 text = "S"
 horizontal_alignment = 2
 
+[node name="RelayRow" type="HBoxContainer" parent="Overlay/Center/Readout/Pad/Rows"]
+
+[node name="Name" type="Label" parent="Overlay/Center/Readout/Pad/Rows/RelayRow"]
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.875, 0.965, 1, 0.72)
+theme_override_font_sizes/font_size = 14
+text = "RELAIS 07"
+
+[node name="RelayValue" type="Label" parent="Overlay/Center/Readout/Pad/Rows/RelayRow"]
+unique_name_in_owner = true
+theme = ExtResource("2_theme")
+theme_override_colors/font_color = Color(0.95, 0.98, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "+40 MS"
+horizontal_alignment = 2
+
 [node name="Spacer2" type="Control" parent="Overlay/Center"]
 custom_minimum_size = Vector2(0, 20)
 mouse_filter = 2

@@ -100,7 +100,7 @@ func test_a_value_left_at_its_default_is_still_read() -> void:
 		"same for an int export")
 	assert_eq(CodexEntry._script_default(script, &"nonexistent_property"), 0.0,
 		"an unknown property stays at zero instead of erroring")
-	var harvester := _named("Choir Harvester")
+	var harvester := _named("Graft Harvester")
 	assert_eq(harvester.phase_count(), 1, "the Harvester reports its single phase")
 
 ## Le bestiaire annonce huit profils de vol pour une seule coque de Needle Scout.

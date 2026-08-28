@@ -9,27 +9,47 @@
 ; precis ou le joueur regarde ailleurs — il esquive. Apres quoi plus rien ne rappelle
 ; l'objectif, a aucun moment de la partie.
 ;
+; ⚠️ LA REGLE D'EMPLOI, DEPUIS L'INFUSION DU LORE (2026-08-28) : la `description` dit POURQUOI
+; on est la, les `objectives` disent ce qu'on y fait. Les deux se melangeaient ; c'est le seul
+; ecran du jeu ou le joueur a le TEMPS DE LIRE, et le gacher a decrire une manoeuvre qu'il
+; connait deja est un gachis. Matiere : `docs/lore/EXPLOITATION.md` §2.
+;
+; ⚠️ ET SURTOUT : CHAQUE PAGE A UN PLAFOND DE REVELATION. Le niveau 1 est l'ouverture d'une
+; campagne de douze (`docs/lore/CAMPAGNE.md`) ; ce qui est dit ici trop tot ne pourra plus
+; l'etre plus tard. Les plafonds sont rappeles page par page, ce ne sont pas des suggestions.
+;
 ; Le texte du champ d'asteroides vient MOT POUR MOT de la maquette de briefing validee par
-; l'operateur : ce qui a plu ne se reecrit pas.
+; l'operateur : ses deux premieres phrases ne se reecrivent pas.
 
+; ⛔ PLAFOND — ne pas dire CE QU'ILS RELEVENT, ni POUR QUI. Le mot « releve » suffit : il fait
+; le travail tout seul, parce qu'un ennemi qui mesure au lieu d'attaquer inquiete plus qu'un
+; ennemi qui charge.
 [sub_resource type="Resource" id="brief_0"]
 script = ExtResource("2_brief")
 phase = &"FIGHTER_WAVES"
 kicker = "SECTEUR"
 title = "PATROUILLE AVANCÉE"
-description = "Les éclaireurs du Null Choir sondent nos lignes.
-Ils sont légers, nombreux, et ils ne reculent pas."
+description = "Le relais 07 rend une horloge en avance de 40 ms. Une vérification
+de routine — sauf qu'il y a des appareils dans le couloir.
+Ils ne chassent pas : ils relèvent. Et ils n'ont rien à faire ici."
 objectives = PackedStringArray("Nettoyer les vagues", "Ramasser les modules de puissance", "Garder le bouclier au-dessus de la moitié")
 
+; ⛔ PLAFOND — pas de Voix, pas de Voix Fausse, aucune explication de ses assemblages uniques.
+; « Il travaille » est le mot qui porte tout : le noyau s'ouvre parce que c'est la qu'il ecrit,
+; et on n'ecrit pas a couvert. Le joueur doit comprendre le RYTHME, pas la cause.
 [sub_resource type="Resource" id="brief_1"]
 script = ExtResource("2_brief")
 phase = &"MINI_BOSS"
 kicker = "CONTACT"
-title = "CHOIR HARVESTER"
-description = "Trois bras, un noyau protégé au centre.
-Les bras repoussent : le noyau, lui, ne se répare pas."
+title = "GRAFT HARVESTER"
+description = "Il ne se défend pas : il travaille, et il continue sous le feu.
+Les trois bras suivent un cycle, le noyau s'ouvre entre deux passes.
+Quelque chose a jugé ce couloir digne d'être préparé."
 objectives = PackedStringArray("Abattre les trois bras", "Frapper le noyau pendant l'ouverture", "Ne pas rester sous la faux")
 
+; ⚠️ LES DEUX PREMIERES PHRASES SONT VALIDEES MOT POUR MOT — ne pas les reecrire. La
+; troisieme est un AJOUT du lore : les bornes du champ sont POSEES, pas derivantes.
+; ⛔ PLAFOND — ne pas les dater, ne pas dire qu'elles marquaient un chantier.
 [sub_resource type="Resource" id="brief_2"]
 script = ExtResource("2_brief")
 phase = &"ASTEROID_FIELD"
@@ -37,26 +57,39 @@ kicker = "NOUVEAU SECTEUR"
 title = "CHAMP D'ASTÉROÏDES"
 description = "Un vaste champ instable rempli de débris rocheux
 aux trajectoires imprévisibles.
-Seules la précision et la vigilance permettent de le traverser."
+Seules la précision et la vigilance permettent de le traverser.
+Ce qui vous y attend n'y dérive pas : c'est posé là, et ça attend."
 objectives = PackedStringArray("Éviter les trajectoires rocheuses", "Suivre le couloir sûr", "Détruire les drones sentinelles")
 
+; ⛔ PLAFOND — SURTOUT NE PAS EXPLIQUER LA DEGRADATION. Que le blindage repousse « plus mal
+; qu'avant » est la demonstration la plus precieuse de toute la campagne : le joueur doit la
+; VOIR et la prendre pour de la fatigue. On l'annonce comme une observation, jamais comme une
+; cause.
 [sub_resource type="Resource" id="brief_3"]
 script = ExtResource("2_brief")
 phase = &"FINAL_BOSS"
 kicker = "ALERTE"
 title = "THE PALE LEVIATHAN"
-description = "Le vaisseau-amiral. Son blindage tourne, son noyau est dedans.
-On n'entre pas : il vous aspire — et c'est là qu'il est vulnérable."
+description = "Rien de cette masse n'est censé tenir dans un couloir intérieur.
+Son blindage tourne, son noyau est dedans — et il se répare.
+On n'entre pas : il vous aspire, et c'est là qu'il est vulnérable."
 objectives = PackedStringArray("Briser les plaques exposées", "Plonger dans le noyau", "Frapper le réacteur quand le corridor s'ouvre")
 
+; ⚠️ CETTE PAGE MENTAIT. Elle demandait de « suivre le couloir d'approche » et de « garder
+; l'axe » alors que l'appontage se joue en AUTOPILOTE : le joueur n'a rien a tenir, et Lyra
+; lui dit meme de relacher les commandes. Trois sources qui se contredisaient sur la meme
+; phase, et c'est le joueur qui arbitrait en constatant que ses commandes ne repondaient plus.
+; ⛔ PLAFOND — l'arriere-pensee de la commandante reste hors champ. On la fait sentir par la
+; breviete, jamais on ne l'enonce.
 [sub_resource type="Resource" id="brief_4"]
 script = ExtResource("2_brief")
 phase = &"DOCKING"
 kicker = "RETOUR"
 title = "APPONTAGE"
-description = "L'Aurora Spear vous récupère.
-Le plus dur est fait ; il reste à se poser proprement."
-objectives = PackedStringArray("Suivre le couloir d'approche", "Garder l'axe")
+description = "L'Aurora Spear vous récupère. L'autopilote a la main :
+il n'y a plus rien à tenir. Ce qui reste à faire est un rapport,
+et quelqu'un, sur cette passerelle, attend cette réponse-là."
+objectives = PackedStringArray("Relâcher les commandes", "Laisser l'approche se terminer")
 
 [resource]
 script = ExtResource("1_book")

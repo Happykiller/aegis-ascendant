@@ -19,11 +19,14 @@ cohérent, spectaculaire.
 | Chasseur du joueur | **Specter-9** | chasseur spatial léger triangulaire |
 | Porte-chasseur | **Aurora Spear** | vaisseau de lancement du joueur |
 | Forteresse mobile | **Aegis Citadel** | prisme axial, deux bras-batteries, noyau énergétique |
-| Ennemi | **The Null Choir** | intelligence collective biomécanique |
-| Vaisseau-amiral ennemi | **The Pale Leviathan** | organo-mécanique, anneau incomplet, noyau visible |
-| Mini-boss | **Choir Harvester** | trois bras, noyau central protégé |
+| Ennemi | **The Unison** — *l'Unisson* | Un système d'entretien qui a survécu à ses commanditaires : il cherche de la structure cohérente et l'archive. ⚠️ **Remplace « The Null Choir »**, rejeté par l'opérateur le 2026-08-28 (`docs/lore/NULL_CHOIR.md` §1). Les identifiants de fichiers gardent leur nom : le joueur ne les voit pas |
+| Vaisseau-amiral ennemi | **The Pale Leviathan** | organo-mécanique, anneau incomplet, noyau visible. **Boss d'étape**, pas l'aboutissement de la campagne |
+| Mini-boss | **Graft Harvester** | trois bras, noyau central protégé. ⚠️ ex-« Choir Harvester » : il prélève et il greffe |
+| Mine du champ | **Anchor Mine** | ⚠️ ex-« Choir Mine » : elle ancre et elle interdit une zone |
 | Constructeur du Specter-9 | **Arsenal Orbital Talvern** | chantier Helios ; s'affiche dans le bestiaire (BRIEF-0037) |
-| Navigatrice du joueur | **Lyra Vantella** | IA guide d'Helios Vanguard ; **le seul personnage du canon** (ADR-0035) |
+| Navigatrice du joueur | **Lyra Vantella** | Instance de navigation d'Helios Vanguard ; **le seul personnage INCARNÉ** — le seul à avoir un visage à l'écran (ADR-0035, amendé). Sept autres personnes sont nommées dans `docs/lore/PERSONNAGES.md` ; aucune n'a de portrait |
+| Monde d'origine | **Orvane** | La planète qu'on a quittée — évacuée, pas détruite. Le système d'arrivée est **Helios** ; ne pas confondre avec la coalition **Helios Vanguard** qui en tire son nom |
+| Pilote (le joueur) | **Wren Adaire**, indicatif **Halyard** | ⚠️ **pour la fiction seulement** — codex, journal de bord, écran de résultats. **Jamais dans la bouche de Lyra**, qui dit « Pilote » et rien d'autre (`docs/lore/BIBLE.md` §1). Aucun visage à l'écran |
 
 ## 3. Palettes
 

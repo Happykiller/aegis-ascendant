@@ -1,0 +1,56 @@
+{
+  "id": "VOX-0004",
+  "slug": "lyra-defaite",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "context": "L'écran de rapport, issue DÉFAITE. La troisième cellule du hangar est perdue, donc le pilote aussi. C'est le seul dénouement du jeu qui n'avait pas un mot — on perdait, un écran rouge se levait, et la navigatrice qui venait de parler pendant toute la mission se taisait.",
+  "purpose": {
+    "description": "La réplique de défaite, en français. Une seule.",
+    "priority": "⚠️ ELLE PARLE SANS ÊTRE ÉCOUTÉE, et c'est le seul moment du jeu où c'est vrai. Le pilote n'est plus là ; elle finit sa tâche parce que c'est sa fonction. Toute la force de la réplique tient dans ce décalage — et il ne s'entend QUE si la comédienne ne le joue pas."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "⚠️ FROID. Pas triste, pas grave, pas solennel — administratif. Elle rapporte, elle ne console pas et elle ne s'excuse pas. C'est le registre exact qui rend l'écran insoutenable ; une Lyra émue serait un contresens et volerait au joueur le seul moment où le jeu lui montre ce qu'est vraiment cette civilisation.",
+    "address": "elle dit « Pilote » — à quelqu'un qui ne l'entend plus. ⚠️ Ne rien changer à sa façon habituelle de le dire : c'est l'identité de l'adresse qui fait le vertige, pas une inflexion.",
+    "pace": "posé, régulier, sans ralentissement final. Elle ne laisse pas la phrase retomber : elle la termine et elle passe à la suite.",
+    "language": "français, accents et liaisons naturels"
+  },
+  "lines": [
+    {
+      "cue": "lyra_mission_failed",
+      "dialogue_key": "mission_failed",
+      "text": "Specter-9 perdu. C’était la dernière cellule.\nJe porte l’entrée au Registre, Pilote. C’est la procédure.",
+      "text_lines": [
+        "Specter-9 perdu. C’était la dernière cellule.",
+        "Je porte l’entrée au Registre, Pilote. C’est la procédure."
+      ],
+      "mood": "CALME",
+      "direction": "Deux constats et une procédure. « C'est la procédure » est la dernière chose que le joueur entend d'elle, et elle doit se dire comme on referme un dossier — sans appui, sans regret, sans pause avant. ⚠️ NE PAS jouer le deuil : la seule chose qui doit s'entendre, c'est que rien dans sa voix n'a changé."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "non bloquante — l'écran de rapport fonctionne sans voix",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter le `cue` dans le champ `voice_cue` de la réplique `mission_failed` de `resources/dialogue/lyra_ingame.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`. Déclenchée par `graybox_root._on_game_over()`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu : c'est le seul rendu qui compte",
+      "⚠️ l'écouter juste après `mission_complete` : si les deux ne sonnent pas du MÊME calme, la défaite est ratée",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0004-lyra-defaite.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0004-lyra-defaite.json,tools/voice/forge_voice.py,\"Replique <cue> de Lyra Vantella, ecran de defaite (VOX-0004). ⚠️ BRUTE : la chaine comms est dans le jeu, sur le bus Voice\""
+  }
+}

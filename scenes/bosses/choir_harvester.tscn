@@ -8,7 +8,7 @@
 
 [node name="ChoirHarvester" type="Node3D"]
 script = ExtResource("1_boss")
-display_name = "Choir Harvester"
+display_name = "Graft Harvester"
 hull_scene = ExtResource("2_hull")
 max_health = 4800.0
 hitbox_radius = 2.0

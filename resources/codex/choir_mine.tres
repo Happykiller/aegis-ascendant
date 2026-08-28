@@ -6,13 +6,13 @@
 
 [resource]
 script = ExtResource("1_entry")
-display_name = "Choir Mine"
+display_name = "Anchor Mine"
 camp = 1
 designation = "NX-051"
 hull_class = "CHARGE DORMANTE A COURONNE"
 builder = "INCONNU - SEMIS ORBITAL"
 status = "MENACE CONFIRMEE"
-notice = "Elle ne manoeuvre pas. Elle dérive avec le champ de débris et attend qu'on vienne à elle: le mouvement relatif est le nôtre, jamais le sien. À portée, six plaques s'écartent et le noyau vire au blanc pendant sept dixièmes de seconde. Ce qui s'allume part, même si l'on recule. Un tir à distance la neutralise sans qu'elle ait rien coûté."
+notice = "Elle ne manoeuvre pas, et ne dérive pas non plus: relevée deux fois au même point à onze jours d'intervalle. Son rayon de veille est sans proportion avec sa charge. À portée, six plaques s'écartent et le noyau vire au blanc pendant sept dixièmes de seconde. Ce qui s'allume part, même si l'on recule. Un appareil qui entre et ressort dans la seconde n'est jamais engagé."
 mass_t = 0.34
 crew = 0
 hull_scene = ExtResource("2_hull")

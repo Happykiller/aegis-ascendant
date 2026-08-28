@@ -14,6 +14,18 @@
 ; ⚠️ ET LES ACCENTS SONT LÀ. `PressStart2P` et `VT323` couvrent tout le Latin-1 accentué,
 ; l'em-dash, les guillemets et l'apostrophe typographique — vérifié le 2026-08-28 en lisant
 ; leurs tables `cmap` (656 et 568 glyphes). Rien n'oblige à écrire un français mutilé.
+;
+; ⚠️ L'ACCUEIL NE DÉCLARE PLUS LA GUERRE (infusion du lore, 2026-08-28). Les répliques 3 et 4
+; annonçaient « Le Null Choir avance sur les colonies » et « Les étoiles nous appellent » : le
+; joueur était recruté dans une invasion avant d'avoir décollé. Le niveau 1 est l'ouverture
+; d'une campagne de douze (`docs/lore/CAMPAGNE.md`), et ce qu'il découvre doit RESTER à
+; découvrir. Elles disent maintenant une anomalie d'horloge et une mission de vérification —
+; « une vérification, rien de plus » est la dernière chose qu'on entend avant de décoller, et
+; elle sera démentie dans les quatre-vingt-dix secondes.
+;
+; ⛔ PLAFOND (`docs/lore/EXPLOITATION.md` §1) : pas d'invasion, pas de menace sur les colonies,
+; pas de nom d'ennemi. La boucle doit pouvoir être réentendue APRÈS une partie sans mentir sur
+; ce que le joueur vient de vivre.
 
 [sub_resource type="Resource" id="line_1"]
 script = ExtResource("2_line")
@@ -33,27 +45,27 @@ text = "Liaison de navigation établie.
 Comms sécurisées, canal 09."
 mood = 0
 voice_cue = &"lyra_title_2"
-hold = 3.0
+hold = 3.4
 
 [sub_resource type="Resource" id="line_3"]
 script = ExtResource("2_line")
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Le Null Choir avance sur les colonies.
-La Vanguard tient la ligne — et vous en êtes."
+text = "Le relais 07 avance de quarante millisecondes.
+Troisième relevé en six ans. Les deux premiers sont classés avarie."
 mood = 0
 voice_cue = &"lyra_title_3"
-hold = 3.8
+hold = 4.5
 
 [sub_resource type="Resource" id="line_4"]
 script = ExtResource("2_line")
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Les étoiles nous appellent.
-Prêt à décoller ?"
+text = "Le couloir d’Ossane vous attend, Pilote.
+Une vérification, rien de plus. Prêt à décoller ?"
 mood = 0
 voice_cue = &"lyra_title_4"
-hold = 3.2
+hold = 4.7
 
 [resource]
 script = ExtResource("1_script")

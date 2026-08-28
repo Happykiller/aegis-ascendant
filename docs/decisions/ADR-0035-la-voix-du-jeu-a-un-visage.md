@@ -1,6 +1,10 @@
 # ADR-0035 — La voix du jeu a un visage, et ce visage est une illustration déformée
 
-- **Statut** : accepté
+- **Statut** : accepté — ⚠️ **amendé par [`ADR-0036`](ADR-0036-l-ennemi-s-appelle-l-unisson.md)**
+  (2026-08-28) : « Lyra est le seul personnage du canon » devient « le seul personnage
+  **INCARNÉ** ». Huit personnes sont désormais nommées dans `docs/lore/PERSONNAGES.md` ; la
+  décision tient sur le fond — Lyra reste la seule à avoir un visage à l'écran, et le pilote reste
+  vu de l'extérieur.
 - **Date** : 2026-08-28
 - **Contexte** : demande de l'opérateur — « incarner nos discussions, les infos données »
 - **Amende** : la charte créative, qui n'avait **aucune section personnage** ; `ADR-0028` (la

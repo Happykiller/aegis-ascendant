@@ -253,3 +253,42 @@ Et une correction de l'opérateur qui vaut consigne : **demander une texture doi
   de combat, briefings de secteur — tous cherchés par clé, jamais par rang, parce qu'un rang dans
   une liste qu'on réordonne n'est pas une identité (la leçon des missiles du Léviathan, le matin
   même).
+- **2026-08-28** — *Lyra parle aux trois bornes de la mission, et un `hold` se règle sur une mesure.*
+  La bible narrative (`BRIEF-0087`) avait relevé les trois seuls moments muets du niveau : le
+  départ, l'appontage, le rapport. `VOX-0003` les comble — le jeu n'a plus de trou de parole.
+  Trois enseignements, tous du même genre : **ce qui n'est mesuré nulle part se règle faux.**
+  - le **`hold` d'une réplique en jeu doit couvrir la durée de son fichier**, parce que
+    `FighterHUD.say()` ne connaît que `maxf(hold, 1.0) + 0,45 s` — ni frappe du texte, ni attente
+    de l'audio, contrairement à la bulle de l'accueil dont `dialogue_line.gd` décrit en réalité le
+    comportement. Les valeurs estimées du plan coupaient deux répliques sur trois ; un garde les
+    tient désormais contre la durée réelle du `.ogg` ;
+  - un garde qui **nomme sa source en dur** finit désarmé : `test_the_ingame_voice_request…`
+    comparait le nombre de répliques de `VOX-0002` au `.tres`, donc ajouter du contenu conforme le
+    cassait. Il balaye le dossier et apparie par clé — dans les deux sens ;
+  - `_lyra()` **imprime sa clé**. Sans trace, une réplique qui ne part pas ne laisse rien à lire —
+    c'est ce qui avait laissé les sept premières muettes une soirée entière, fichiers en place.
+- **2026-08-28 (suite)** — *Le jeu a une histoire, et il la raconte à chaque écran.* Le dépôt avait
+  un monde par accident : des noms, des coques, une navigatrice — et rien qui dise **pourquoi**.
+  Une bible de sept pages (1 649 lignes, `docs/lore/`) le comble, commandée en trois temps qui ont
+  chacun changé l'échelle du précédent : « la totale », puis le rejet du nom **Null Choir**, puis
+  « dix, douze niveaux ». [`ADR-0036`](../decisions/ADR-0036-l-ennemi-s-appelle-l-unisson.md) acte
+  ce qui en sort :
+  - l'ennemi devient **l'Unisson** — un système d'entretien qui a survécu à ses commanditaires et
+    archive tout ce qui tient une forme. Le nom **retourne au niveau 12** : neutre à l'ouverture,
+    menaçant une fois qu'on sait ce que « prendre à l'unisson » veut dire. Coût mesuré : **une seule
+    re-synthèse**, la seule voix qui prononçait l'ancien nom, et elle était déjà à refaire ;
+  - le jeu **ouvre sur une patrouille de routine** : une horloge en avance de 40 ms. Le niveau 1
+    n'est plus l'histoire, il en est l'ouverture — et ce qu'il révèle tient en une ligne pour que
+    les onze suivants aient encore quelque chose à dire ;
+  - la **défaite cesse d'être muette**. Lyra rapporte, froidement, parce qu'il n'y a plus personne
+    pour l'entendre ; et le rapport affiche le relais à **0 ms** au lieu de +40, sans un mot
+    d'explication ;
+  - ⚠️ **un lore ne s'infuse pas, il se dose.** Chaque écran porte désormais son **plafond de
+    révélation** dans son propre fichier. La tentation permanente est de faire expliquer l'histoire
+    par le personnage qui a la parole ; `docs/lore/EXPLOITATION.md` existe pour l'en empêcher.
+  - ⚠️ Deux occurrences du nom rejeté avaient échappé à l'inventaire : la traduction française
+    « Choeur Nul », dans deux fiches de codex. **Un renommage se vérifie dans les deux langues.**
+  - Et les gardes du dépôt ont attrapé trois excès en une passe : cinq notices de codex débordaient
+    de leur cadre, un test cherchait le mini-boss par son ancien nom, et **deux répliques
+    d'accueil quittaient l'écran avant la fin de leur propre voix** — dont une **avant** cette
+    session. La bulle et le HUD n'ont pas la même arithmétique de durée ; il leur faut deux gardes.

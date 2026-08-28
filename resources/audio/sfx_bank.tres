@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioCueBank" load_steps=66 format=3]
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=74 format=3]
 
 [ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
 [ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
@@ -33,6 +33,10 @@
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_core_shielded.ogg" id="91_v_core_shielded"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_armour_reformed.ogg" id="91_v_armour_reformed"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_waves_cleared.ogg" id="91_v_waves_cleared"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_mission_start.ogg" id="92_v_mission_start"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_docking.ogg" id="92_v_docking"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_mission_complete.ogg" id="92_v_mission_complete"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_mission_failed.ogg" id="93_v_mission_failed"]
 
 [sub_resource type="Resource" id="cue_player_pulse"]
 script = ExtResource("2_cue")
@@ -375,6 +379,55 @@ pitch_max = 1.0
 min_interval = 0.0
 looping = false
 
+; Les trois BORNES de la mission (VOX-0003). Même bus `Voice` que les autres répliques, et
+; c'est vital : le pool de sons courts recycle ses seize lecteurs en moins d'une seconde de
+; combat, et couperait une phrase en plein milieu (`test_every_voice_line_declares_the_voice_bus`).
+
+[sub_resource type="Resource" id="cue_lyra_mission_start"]
+script = ExtResource("2_cue")
+id = &"lyra_mission_start"
+stream = ExtResource("92_v_mission_start")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_docking"]
+script = ExtResource("2_cue")
+id = &"lyra_docking"
+stream = ExtResource("92_v_docking")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+[sub_resource type="Resource" id="cue_lyra_mission_complete"]
+script = ExtResource("2_cue")
+id = &"lyra_mission_complete"
+stream = ExtResource("92_v_mission_complete")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
+; La DEFAITE (VOX-0004). Le seul denouement du jeu qui n'avait pas un mot.
+[sub_resource type="Resource" id="cue_lyra_mission_failed"]
+script = ExtResource("2_cue")
+id = &"lyra_mission_failed"
+stream = ExtResource("93_v_mission_failed")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
+
 [resource]
 script = ExtResource("1_bank")
-cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop"), SubResource("cue_lyra_title_1"), SubResource("cue_lyra_title_2"), SubResource("cue_lyra_title_3"), SubResource("cue_lyra_title_4"), SubResource("cue_lyra_asteroid_field"), SubResource("cue_lyra_boss_approach"), SubResource("cue_lyra_dive_entered"), SubResource("cue_lyra_core_exposed"), SubResource("cue_lyra_core_shielded"), SubResource("cue_lyra_armour_reformed"), SubResource("cue_lyra_waves_cleared")])
+cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop"), SubResource("cue_lyra_title_1"), SubResource("cue_lyra_title_2"), SubResource("cue_lyra_title_3"), SubResource("cue_lyra_title_4"), SubResource("cue_lyra_asteroid_field"), SubResource("cue_lyra_boss_approach"), SubResource("cue_lyra_dive_entered"), SubResource("cue_lyra_core_exposed"), SubResource("cue_lyra_core_shielded"), SubResource("cue_lyra_armour_reformed"), SubResource("cue_lyra_waves_cleared"), SubResource("cue_lyra_mission_start"), SubResource("cue_lyra_docking"), SubResource("cue_lyra_mission_complete"), SubResource("cue_lyra_mission_failed")])

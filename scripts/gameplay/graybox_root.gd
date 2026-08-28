@@ -296,7 +296,17 @@ func _ready() -> void:
 	# Start the score. Runs after the --skip-to-* flags, so a skipped run opens on the
 	# state it actually jumped to instead of fading out of Launch.
 	_update_music()
-	print("[Level] ready — phase FIGHTER_WAVES")
+	# Lyra ouvre la mission. ⚠️ SEULEMENT SI ON PART DU DÉBUT : les `--skip-to-*` ci-dessus ont
+	# déjà changé de phase, et l'entendre annoncer un secteur qu'on vient de survoler serait
+	# pire que le silence. Le test est sur `_phase`, pas sur les arguments — un futur drapeau
+	# de saut serait couvert sans qu'on y pense.
+	if _phase == Phase.FIGHTER_WAVES:
+		_lyra(&"mission_start")
+	# ⚠️ LA PHASE, PAS UNE CONSTANTE. Cette ligne annonçait `FIGHTER_WAVES` quoi qu'il arrive,
+	# donc un `--skip-to-dock` la faisait paraître APRÈS `[Level] DOCKING` : un journal qui
+	# ment sur la phase envoie la lecture suivante dans le mur, et c'est le journal qui sert
+	# de preuve ici (relevé en jouant, 2026-08-28).
+	print("[Level] ready — phase %s" % Phase.keys()[_phase])
 
 # --- Adaptive music (spec §18.2) ---------------------------------------------
 # The level is the only thing that knows how the fight is going; MusicDirector turns
@@ -691,6 +701,7 @@ func _leave_asteroid_field() -> void:
 
 func _start_docking() -> void:
 	_set_phase(Phase.DOCKING)
+	_lyra(&"docking")
 	print("[Level] DOCKING")
 	_citadel = CitadelScene.instantiate() as AegisCitadel
 	_citadel.plane_position = Vector2(0.0, 22.0) # off-screen above
@@ -1327,6 +1338,11 @@ func _fire_helios_lance(target: Vector3) -> void:
 
 func _start_victory() -> void:
 	_set_phase(Phase.VICTORY)
+	# ⚠️ CELLE-CI S'ENTEND SANS SE LIRE, et l'ordre des lignes n'y change rien : `_show_report()`
+	# cache le HUD, donc le panneau de Lyra avec lui. La voix, elle, passe par l'`AudioManager`
+	# et survit. Assumé pour l'instant — si le texte doit être lu sur le rapport, c'est au
+	# rapport de le porter, pas au HUD de rester ouvert sous lui.
+	_lyra(&"mission_complete")
 	print("[Level] VICTORY — score %d" % _game_state.score)
 	_show_report(MissionReport.Outcome.VICTORY)
 
@@ -1382,6 +1398,12 @@ func _on_game_over() -> void:
 	if _phase == Phase.VICTORY or _defeated:
 		return
 	_defeated = true
+	# ⚠️ LE SEUL DÉNOUEMENT DU JEU QUI N'AVAIT PAS UN MOT. On perdait, un écran rouge se levait,
+	# et la navigatrice qui venait de parler pendant toute la mission se taisait. Elle rapporte
+	# maintenant — froidement, parce que c'est sa fonction et qu'il n'y a plus personne pour
+	# l'entendre (`docs/lore/EXPLOITATION.md` §4). Comme `mission_complete`, elle s'entend sans
+	# se lire : le rapport cache le HUD.
+	_lyra(&"mission_failed")
 	print("[Level] all fighters lost — DEFEAT, score %d" % _game_state.score)
 	_game_state.transition_to(GameStateScript.State.GAME_OVER)
 	# Le rapport se lève APRÈS l'explosion du dernier chasseur : le poser dans la même
@@ -1420,6 +1442,14 @@ func _lyra(key: StringName) -> void:
 	if _hud == null:
 		return
 	var line := LYRA_LINES.find(key)
+	# ⚠️ UNE RÉPLIQUE QUI NE PART PAS NE SE VOIT NULLE PART. Les sept premières sont restées
+	# muettes une soirée entière avec leurs fichiers en place ; le journal ne portait rien à
+	# lire. Une ligne par réplique, et la clé introuvable DITE : elle reste inoffensive pour
+	# le combat, mais elle cesse d'être invisible.
+	if line == null:
+		print("[Lyra] clé inconnue : %s" % key)
+	else:
+		print("[Lyra] %s" % key)
 	_hud.say(line)
 	# ⚠️ LE PANNEAU AFFICHE, IL NE PARLE PAS. Contrairement à la bulle de l'accueil, le HUD
 	# n'émet aucun signal de voix — c'est le niveau qui déclenche, parce que c'est lui qui

@@ -38,16 +38,19 @@
 
 ## Outillage de développement — demandé le 2026-08-28
 
-- **Afficher les zones de collision, toujours, en développement.** Livré : `SolidsOverlay`
+> ✅ **Les deux lignes ci-dessous sont LIVRÉES** (commits `c745be5` et `f821292`, 2026-08-28).
+> Laissées ici pour mémoire ; ne rien y rouvrir.
+
+- [x] **Afficher les zones de collision, toujours, en développement.** `SolidsOverlay`
   (`--show-solids`, actif par défaut en build debug, `--hide-solids` pour une capture propre,
   jamais en release). C'est cet outil, et lui seul, qui a montré que le décor de la chambre
-  tournait **à l'envers** de sa collision après quatre correctifs à l'aveugle. Reste à faire :
-  **une option dans le menu** pour l'activer/désactiver en jeu (`SettingsData` + `OptionsMenu`),
-  comme l'opérateur l'a suggéré — « voire même laisser une option dans le menu ».
-- **L'étendre aux autres lieux** : l'overlay ne dessine que ce que `_rebuild_solids()` verse ;
-  les cibles de tir (`BulletTarget`) n'y sont pas. Les ajouter (couleur distincte) rendrait
-  visible l'écart entre « ce qui arrête un corps » et « ce qui arrête une balle » — le second
-  défaut de la soirée, le noyau qui se faisait écran, se serait vu du premier coup.
+  tournait **à l'envers** de sa collision après quatre correctifs à l'aveugle. ✅ **L'option de
+  menu existe** : une section DÉBOGAGE dans les Options, comme l'opérateur l'avait suggéré —
+  « voire même laisser une option dans le menu ».
+- [x] **L'étendre aux autres lieux** — ✅ l'overlay dessine désormais aussi ce qu'une **balle**
+  touche (`BulletTarget`), dans une couleur distincte. L'écart entre « ce qui arrête un corps » et
+  « ce qui arrête une balle » se voit : le second défaut de la soirée, le noyau qui se faisait
+  écran, se serait vu du premier coup.
 
 ## ⚠️ Les plans datés font foi sur « ce qui reste »
 
@@ -599,37 +602,64 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
 - **Références visuelles** : `assets/reference/inspiration/` (`REFERENCE_INDEX.md`) — cible d'inspiration
   du rendu, versionnées (ADR-0009 supersede la quarantaine d'ADR-0005). Production toujours originale.
 
-## Point de reprise — bible narrative et 3 répliques manquantes (2026-08-28)
+## ✅ Bible narrative et 3 répliques manquantes — LIVRÉ le 2026-08-28
 
-**Fait** : `docs/lore/BIBLE.md` livré par `asset-forge` (brief `docs/forge/briefs/BRIEF-0087-lore-bible.md`,
-statut à passer à "livré"). Pilote nommé **Wren Adaire**, indicatif **Halyard** — jamais prononcé
-par Lyra (elle dit « Pilote »). Null Choir caractérisé (« absorbe des structures », pas un
-massacre) ; § 3 couvre les 6 phases et identifie précisément les **trois seuls moments du jeu sans
-réplique** : avant la première vague, DOCKING, VICTORY.
+`docs/lore/BIBLE.md` (BRIEF-0087) avait relevé les **trois seuls moments du jeu sans réplique** :
+avant la première vague, DOCKING, VICTORY. Ils sont comblés — `VOX-0003`, trois `DialogueLine`
+dans `lyra_ingame.tres`, trois cues sur le bus `Voice`, câblage dans `graybox_root.gd`
+(`mission_start` seulement si `_phase == Phase.FIGHTER_WAVES`, donc jamais sur un `--skip-to-*`).
+Le pilote **Wren Adaire / Halyard** est passé au canon de `docs/forge/CHARTE_CREATIVE.md`, avec sa
+réserve : jamais dans la bouche de Lyra.
 
-**Restant, dans l'ordre** :
+**Ce que le chantier a appris, et qui vaut pour la prochaine réplique** :
 
-1. Écrire `docs/forge/voice/VOX-0003-lyra-mission-et-fin.json` (gabarit : copier VOX-0002) pour
-   trois répliques, textes déjà rédigés (piocher dans `docs/lore/BIBLE.md` §3.0/3.5/3.6) :
-   - clé `mission_start`, cue `lyra_mission_start`, mood CALM :
-     « Verrouillage télémétrique confirmé.\nSecteur ouvert, Pilote — je reste sur le canal. »
-   - clé `docking`, cue `lyra_docking`, mood CALM :
-     « Autopilote engagé, retour à l'Aurora Spear.\nRelâchez les commandes, Pilote. Vous l'avez arrêté. »
-   - clé `mission_complete`, cue `lyra_mission_complete`, mood CALM :
-     « Avant-garde neutralisée, Pilote.\nLa ligne tient — parce que vous avez tenu. »
-2. Ajouter ces 3 `DialogueLine` à `resources/dialogue/lyra_ingame.tres` (même patron que les 7
-   existantes ; `hold` ≈ 5,5–6,5).
-3. `python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0003-... --preview` puis, **après
-   écoute de l'opérateur** (règle du skill `forger-voix` — ne pas sauter cette étape), `--deposer`.
-4. Câbler dans `scripts/gameplay/graybox_root.gd` :
-   - `_lyra(&"mission_start")` à la fin de `_ready()`, seulement si `_phase == Phase.FIGHTER_WAVES`
-     (donc jamais sur un `--skip-to-*`) — juste avant `print("[Level] ready — phase FIGHTER_WAVES")`.
-   - `_lyra(&"docking")` dans `_start_docking()`, juste après `_set_phase(Phase.DOCKING)`.
-   - `_lyra(&"mission_complete")` dans `_start_victory()`, juste après `_set_phase(Phase.VICTORY)`,
-     avant `_show_report(...)`.
-5. `./scripts/check.sh` — `test_every_voice_line_declares_the_voice_bus` (générique, `>= 11`) et
-   `test_the_ingame_voice_request_matches_the_game` doivent passer sans modification.
-6. `/jouer` : vérifier les trois répliques en situation réelle (une partie complète, pas un
-   `--skip-to-*`, pour entendre `mission_start`) avant de committer.
-7. Mettre à jour le statut de `BRIEF-0087` (assigné → livré → intégré) et sa ligne dans
-   `docs/forge/CHARTE_CREATIVE.md` si un nom y devient canon (le pilote n'y figure pas encore).
+- ⚠️ **Le `hold` du `.tres` doit couvrir la durée du fichier — le panneau du HUD ne le sait pas.**
+  `FighterHUD.say()` ne tient que `maxf(hold, 1.0) + 0,45 s` : ni frappe du texte, ni attente de
+  l'audio, contrairement à la bulle de l'accueil où le temps de frappe s'ajoute. Le commentaire de
+  `dialogue_line.gd` (« c'est l'audio qui commande, `hold` devient un plancher ») ne décrit donc
+  que `dialogue_box.gd`. Les `hold` estimés du plan (5,5–6,5 s) coupaient deux répliques de 6,10 et
+  6,72 s. **Mesurer le fichier, régler ensuite.** Garde posé :
+  `test_a_line_never_leaves_the_screen_while_it_is_still_speaking`.
+- ⚠️ **`mission_complete` s'entend sans se lire**, et aucun ordre d'appel n'y change rien :
+  `_show_report()` cache le HUD, donc le panneau de Lyra avec lui. Assumé — si le texte doit être
+  lu sur l'écran de résultats, **c'est au rapport de le porter**. À juger en jouant.
+- Le garde `test_the_ingame_voice_request_matches_the_game` **nommait `VOX-0002` en dur** et
+  comparait son nombre de répliques au `.tres` : ajouter du contenu conforme le cassait. Il balaye
+  désormais `docs/forge/voice/`, apparie par clé, et vérifie les deux sens.
+- `tools/voice/forge_voice.py` écrivait ses préversions dans `/mnt/c/Users/faro/Desktop`, **codé en
+  dur sur un utilisateur qui n'existe pas** : `--preview` mourait sur un `PermissionError` après
+  avoir tout synthétisé. Le Bureau se demande maintenant à Windows.
+- `_lyra()` **imprime désormais la clé** (`[Lyra] <clé>`, et `clé inconnue` le cas échéant). Sans
+  ça, une réplique qui ne part pas ne laisse aucune trace — c'est ce qui avait laissé les sept
+  premières muettes une soirée entière avec leurs fichiers en place.
+
+**Vérifié en jeu** (`balance-prober`, 5 lancements, 2026-08-28) : les **10 clés** de `_lyra()`
+partent, dans l'ordre attendu, **zéro** `clé inconnue`, **zéro** cue non résolue. `mission_start`
+sort bien dans `_ready()` sur une partie complète, et **ne sort pas** sur un `--skip-to-*`.
+
+**Reste dû** : l'écoute des trois `_comms` par l'opérateur (règle du skill `forger-voix` — un
+fichier produit n'est pas une voix validée). Elles sont sur le Bureau, dans
+`lyra-mission-et-fin-essais-voix/`. Si le timbre ne convient pas, `--voix` / `--cadence` puis
+`--deposer` à nouveau : rien d'autre ne bouge.
+
+## Ouvert par la partie de vérification du 2026-08-28 (sans rapport avec les voix)
+
+Trois défauts relevés en jouant l'arc en démo pour vérifier les répliques. **Aucun n'appartient au
+chantier de la voix** ; ils sont ici pour ne pas être redécouverts.
+
+- ⚠️ **Le combat CONTINUE après la défaite.** Constaté : `[Level] all fighters lost — DEFEAT,
+  score 4860`, puis le Léviathan enchaîne `CYCLE 2 / 3 — armure` deux secondes plus tard, avec sa
+  réplique de Lyra. Le rapport de mission se lève sur un boss qui se bat encore. `_defeated` verrouille
+  le second rapport, mais **rien n'arrête le boss** — c'est le pendant exact du trou comblé à
+  l'inverse (le boss qui ne mourait jamais). Le plus probable : une passe d'extinction manquante
+  dans le chemin `game_over`.
+- ⚠️ **Le mini-boss bloque le pilote automatique, de façon reproductible (3 runs sur 3).** L'iris du
+  Choir Harvester s'ouvre **une fois** — les trois appendices à terre simultanément — puis les
+  membres se reconstruisent (`limb_rebuild_time` = 14 s) et il ne se rouvre **jamais** : la démo
+  n'atteint plus la victoire, quel que soit le temps laissé. Ce n'est pas de la lenteur, c'est une
+  impasse. ⚠️ **Conséquence d'outillage** : `balance-prober` ne peut plus relever une chronologie
+  d'arc complète, et c'est son objet même. À juger aussi à la main : si le pilote automatique n'y
+  arrive pas, la fenêtre est peut-être trop étroite pour un joueur humain aussi.
+- [x] ~~`[Level] ready — phase FIGHTER_WAVES` imprimé inconditionnellement~~ — corrigé le
+  2026-08-28 : la ligne annonçait `FIGHTER_WAVES` même après un `--skip-to-dock`, donc elle
+  paraissait **après** `[Level] DOCKING`. Elle imprime maintenant la phase réelle.

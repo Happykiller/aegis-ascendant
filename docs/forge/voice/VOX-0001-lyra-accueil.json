@@ -47,21 +47,21 @@
     },
     {
       "cue": "lyra_title_3",
-      "text": "Le Null Choir avance sur les colonies.\nLa Vanguard tient la ligne — et vous en êtes.",
+      "text": "Le relais 07 avance de quarante millisecondes.\nTroisième relevé en six ans. Les deux premiers sont classés avarie.",
       "text_lines": [
-        "Le Null Choir avance sur les colonies.",
-        "La Vanguard tient la ligne — et vous en êtes."
+        "Le relais 07 avance de quarante millisecondes.",
+        "Troisième relevé en six ans. Les deux premiers sont classés avarie."
       ],
-      "direction": "La seule ou l'enjeu monte. Pas de gravite appuyee : elle enonce un fait de guerre comme on lit un rapport, et c'est « et vous en etes » qui porte, sur une legere accroche."
+      "direction": "⚠️ RÉÉCRITE le 2026-08-28 — elle annonçait l'invasion (« Le Null Choir avance sur les colonies ») et enrôlait le joueur dans une guerre qu'il ignore encore. Le jeu ouvre désormais sur une patrouille de vérification. Registre : constat de dossier, absolument plat. Elle lit un relevé, elle n'avertit de rien. ⚠️ NE PAS jouer l'inquiétude — c'est le joueur qui doit la sentir, et il ne la sentira que si elle, non. Le « troisième » n'est pas souligné : c'est un chiffre parmi d'autres, et c'est exactement ce qui le rend glaçant à la réécoute."
     },
     {
       "cue": "lyra_title_4",
-      "text": "Les étoiles nous appellent.\nPrêt à décoller ?",
+      "text": "Le couloir d’Ossane vous attend, Pilote.\nUne vérification, rien de plus. Prêt à décoller ?",
       "text_lines": [
-        "Les étoiles nous appellent.",
-        "Prêt à décoller ?"
+        "Le couloir d’Ossane vous attend, Pilote.",
+        "Une vérification, rien de plus. Prêt à décoller ?"
       ],
-      "direction": "L'invitation. Sourire audible, et une VRAIE question a la fin — pas une formule. C'est la derniere chose entendue avant que le joueur appuie sur Nouvelle Partie."
+      "direction": "⚠️ RÉÉCRITE le 2026-08-28 — « Les étoiles nous appellent » était la seule envolée du jeu et sonnait faux devant une mission de calibrage. L'invitation reste : sourire audible, et une VRAIE question à la fin, pas une formule — c'est la dernière chose entendue avant que le joueur appuie sur Nouvelle Partie. « Une vérification, rien de plus » se dit sans appuyer : c'est une phrase que le jeu va démentir dans les quatre-vingt-dix secondes, et elle ne doit pas prévenir."
     }
   ],
   "x_delivery": {

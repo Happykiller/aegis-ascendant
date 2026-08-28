@@ -6,13 +6,13 @@
 
 [resource]
 script = ExtResource("1_entry")
-display_name = "Choir Harvester"
+display_name = "Graft Harvester"
 camp = 1
 designation = "NX-208"
 hull_class = "PLATEFORME DE COLLECTE ARMEE"
 builder = "INCONNU - ASSEMBLAGE UNIQUE"
 status = "MENACE MAJEURE"
-notice = "Assemblage isolé, jamais observé deux fois à l'identique: cinq pétales et trois bras articulés refermés sur un noyau. Les bras travaillent en séquence et découvrent le noyau entre deux passes, assez longtemps pour être exploité. Aucune pièce ne paraît usinée."
+notice = "Assemblage isolé, jamais observé deux fois à l'identique: cinq pétales et trois bras articulés refermés sur un noyau. Les bras suivent une séquence et découvrent le noyau entre deux passes, assez longtemps pour être exploité. Le point qui trouble les équipages n'est pas sa masse: c'est que la séquence ne s'interrompt pas quand on tire dessus. Il ne se défend pas, il continue. Aucune pièce ne paraît usinée."
 mass_t = 12.4
 crew = 0
 hull_scene = ExtResource("2_hull")

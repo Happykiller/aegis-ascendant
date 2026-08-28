@@ -1,0 +1,79 @@
+{
+  "id": "VOX-0003",
+  "slug": "lyra-mission-et-fin",
+  "schema_version": "1.0",
+  "date": "2026-08-28",
+  "character": "Lyra Vantella",
+  "context": "Les trois seuls moments du niveau où elle se taisait (`docs/lore/BIBLE.md` §3.0, §3.5, §3.6) : le départ, l'appontage, le rapport de mission. Ce sont les bornes de la mission — le joueur les entend une fois chacune, et jamais pendant qu'il se bat.",
+  "purpose": {
+    "description": "Les trois répliques d'ouverture et de clôture, en français.",
+    "priority": "⚠️ ELLE NE PARLE PLUS PAR-DESSUS LE COMBAT. C'est l'inverse de VOX-0002 : ici rien ne demande d'action au pilote, donc rien ne force la diction. Ces trois répliques peuvent RESPIRER — et elles le doivent, sinon les bornes du niveau sonnent comme une annonce de secteur de plus."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "calme aux trois répliques — c'est voulu. Aucune n'est une alerte : le combat n'a pas commencé, ou il est fini.",
+    "address": "elle dit « Pilote », jamais un prénom. ⚠️ Le pilote s'appelle Wren Adaire, indicatif Halyard (`docs/lore/BIBLE.md` §1) — elle ne le prononce à aucun moment du jeu.",
+    "pace": "posé, un cran plus lent que VOX-0002. Le joueur n'a rien à faire pendant qu'elle parle : c'est la seule occasion du niveau où une phrase peut prendre son temps.",
+    "language": "français, accents et liaisons naturels"
+  },
+  "lines": [
+    {
+      "cue": "lyra_mission_start",
+      "dialogue_key": "mission_start",
+      "text": "Verrouillage télémétrique confirmé.\nSecteur ouvert, Pilote — je reste sur le canal.",
+      "text_lines": [
+        "Verrouillage télémétrique confirmé.",
+        "Secteur ouvert, Pilote — je reste sur le canal."
+      ],
+      "mood": "CALME",
+      "direction": "Sobriété professionnelle, dans le prolongement direct de « Liaison de navigation établie » (VOX-0001). Ce qui doit s'entendre est la seconde moitié : « je reste sur le canal » est un engagement, pas une formule — c'est la première sortie du pilote sous sa garde."
+    },
+    {
+      "cue": "lyra_docking",
+      "dialogue_key": "docking",
+      "text": "Autopilote engagé, retour à l’Aurora Spear.\nRelâchez les commandes, Pilote. Vous l’avez arrêté.",
+      "text_lines": [
+        "Autopilote engagé, retour à l’Aurora Spear.",
+        "Relâchez les commandes, Pilote. Vous l’avez arrêté."
+      ],
+      "mood": "CALME",
+      "direction": "Descente de tension. Le seul moment du niveau où son rôle n'est ni de prévenir ni d'ordonner mais d'accompagner. « Relâchez les commandes » rassure sans infantiliser ; « vous l'avez arrêté » est un constat factuel, jamais une félicitation appuyée."
+    },
+    {
+      "cue": "lyra_mission_complete",
+      "dialogue_key": "mission_complete",
+      "text": "Avant-garde neutralisée, Pilote.\nLa ligne tient — parce que vous avez tenu.",
+      "text_lines": [
+        "Avant-garde neutralisée, Pilote.",
+        "La ligne tient — parce que vous avez tenu."
+      ],
+      "mood": "CALME",
+      "direction": "Clôture professionnelle, pas triomphale : le Null Choir n'est pas vaincu, seule son avant-garde l'a été (BIBLE §2). Le tiret porte une vraie pause — c'est elle qui fait entendre que le mérite revient au pilote, sans lyrisme et sans promettre de suite."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "non bloquante — le panneau, le portrait et le texte fonctionnent sans voix",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique de même `key` dans `resources/dialogue/lyra_ingame.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu : c'est le seul rendu qui compte",
+      "⚠️ `mission_start` ne s'entend qu'en partie COMPLÈTE — un `--skip-to-*` ne la déclenche jamais",
+      "les trois doivent sonner plus posées que les sept de VOX-0002, sinon les bornes du niveau se confondent avec ses annonces",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0003-lyra-mission-et-fin.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0003-lyra-mission-et-fin.json,tools/voice/forge_voice.py,\"Replique <cue> de Lyra Vantella, bornes de mission (VOX-0003). ⚠️ BRUTE : la chaine comms est dans le jeu, sur le bus Voice\""
+  }
+}

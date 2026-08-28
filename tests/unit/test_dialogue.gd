@@ -141,28 +141,113 @@ func test_the_voice_request_asks_for_exactly_what_the_game_says() -> void:
 		assert_eq(commande, attendu,
 			"replique %d : la demande dit « %s », le jeu dit « %s »"
 				% [i + 1, commande.replace("\n", " "), attendu.replace("\n", " ")])
-## Le meme garde que pour l'accueil, sur les repliques de COMBAT : la demande de voix derive
-## du `.tres`, et les deux ne doivent jamais diverger. Ici elles se retrouvent par CLE, pas
-## par rang — c'est ainsi que le jeu les demande.
-func test_the_ingame_voice_request_matches_the_game() -> void:
-	var raw := FileAccess.get_file_as_string("res://docs/forge/voice/VOX-0002-lyra-secteurs.json")
-	assert_false(raw.is_empty(), "la demande VOX-0002 se lit")
-	var doc: Variant = JSON.parse_string(raw)
-	assert_true(doc is Dictionary, "et c'est du JSON valide")
-	var script: DialogueScript = load("res://resources/dialogue/lyra_ingame.tres")
-	var demandees: Array = (doc as Dictionary)["lines"]
-	assert_eq(demandees.size(), script.size(),
-		"%d repliques commandees pour %d en jeu" % [demandees.size(), script.size()])
-	for entree in demandees:
-		var cle := StringName(String((entree as Dictionary)["dialogue_key"]))
-		var ligne := script.find(cle)
-		assert_true(ligne != null, "la cle `%s` existe dans le jeu" % cle)
-		if ligne == null:
+## Toutes les repliques COMMANDEES pour le jeu, quelle que soit la demande qui les porte.
+##
+## ⚠️ ON BALAYE LE DOSSIER, ON NE LISTE PAS LES DEMANDES. Ce test nommait `VOX-0002` en dur et
+## comparait son NOMBRE de repliques a celui du `.tres` : ajouter les trois bornes de mission
+## par `VOX-0003` (2026-08-28) le faisait echouer alors que rien n'etait faux. Un garde qui se
+## brise quand on ajoute du contenu conforme finit par etre desarme au lieu d'etre lu.
+##
+## L'appariement se fait par CLE, jamais par rang : c'est ainsi que le jeu les demande. Les
+## repliques de l'accueil s'enchainent, elles, et n'ont pas de cle — le filtre sur
+## `dialogue_key` les laisse a leur propre garde, juste au-dessus.
+func _ingame_requests() -> Dictionary:
+	var par_cle := {}
+	var dossier := "res://docs/forge/voice/"
+	for nom in DirAccess.get_files_at(dossier):
+		if not nom.begins_with("VOX-") or not nom.ends_with(".json"):
 			continue
-		assert_eq(String((entree as Dictionary)["text"]), ligne.text,
+		var raw := FileAccess.get_file_as_string(dossier + nom)
+		assert_false(raw.is_empty(), "la demande %s se lit" % nom)
+		var doc: Variant = JSON.parse_string(raw)
+		assert_true(doc is Dictionary, "%s est du JSON valide" % nom)
+		if not (doc is Dictionary):
+			continue
+		for entree in ((doc as Dictionary)["lines"] as Array):
+			var cle := String((entree as Dictionary).get("dialogue_key", ""))
+			if cle.is_empty():
+				continue
+			assert_false(par_cle.has(cle),
+				"la cle `%s` est commandee deux fois (doublon dans %s)" % [cle, nom])
+			par_cle[cle] = entree
+	return par_cle
+## ⚠️ TROIS SOURCES SUR LE MEME TEXTE, ici aussi : le `.tres`, la demande, et le `voice_cue`
+## qui les relie. Si elles divergent, on fait enregistrer une phrase que le jeu n'affiche pas.
+func test_the_ingame_voice_request_matches_the_game() -> void:
+	var demandees := _ingame_requests()
+	var script: DialogueScript = load("res://resources/dialogue/lyra_ingame.tres")
+	assert_true(script.size() > 0, "le script de jeu porte des repliques")
+	for i in script.size():
+		var ligne := script.line_at(i)
+		var cle := String(ligne.key)
+		assert_true(demandees.has(cle),
+			"la replique `%s` est affichee par le jeu mais commandee nulle part" % cle)
+		if not demandees.has(cle):
+			continue
+		var entree: Dictionary = demandees[cle]
+		assert_eq(String(entree["text"]), ligne.text,
 			"replique `%s` : la demande et le jeu disent la meme chose" % cle)
 		# ⚠️ LE REGIME AUSSI. Une replique enregistree sur le mauvais ton se remarque plus
 		# qu'un mot faux : c'est le contraste calme/alerte qui porte l'information.
 		var attendu := "ALERTE" if ligne.mood == DialogueLine.Mood.ALERT else "CALME"
-		assert_eq(String((entree as Dictionary)["mood"]), attendu,
+		assert_eq(String(entree["mood"]), attendu,
 			"replique `%s` : la direction d'acteur suit le regime du jeu" % cle)
+		demandees.erase(cle)
+	# Le sens inverse : une replique commandee que le jeu n'affiche plus, c'est une voix
+	# qu'on fait enregistrer pour rien — et un fichier qui dort dans `imported/`.
+	assert_eq(demandees.size(), 0,
+		"repliques commandees mais absentes du jeu : %s" % ", ".join(demandees.keys()))
+## ⚠️ LE PANNEAU DU HUD NE SAIT RIEN DE LA DUREE DE LA VOIX. `FighterHUD.say()` ne tient que
+## `maxf(hold, 1.0) + LYRA_FADE` : contrairement a la bulle de l'accueil, il n'y a ici NI
+## frappe du texte NI attente de l'audio. Un `hold` trop court coupe donc la replique au
+## milieu d'un mot, et rien ne le signale — le fichier existe, la cue resout, le son part.
+##
+## Le cas s'est presente : `mission_start` et `docking` (VOX-0003) avaient recu les `hold`
+## ESTIMES du plan de reprise (5,5-6,5 s) pour des voix de 6,10 et 6,72 s. Mesure d'abord,
+## reglage ensuite.
+func test_a_line_never_leaves_the_screen_while_it_is_still_speaking() -> void:
+	const FADE := 0.45 # FighterHUD.LYRA_FADE — le panneau vit encore pendant son fondu
+	var bank: AudioCueBank = load("res://resources/audio/sfx_bank.tres")
+	var par_cue := bank.build_index()
+	var script: DialogueScript = load("res://resources/dialogue/lyra_ingame.tres")
+	var mesurees := 0
+	for i in script.size():
+		var ligne := script.line_at(i)
+		if ligne.voice_cue == &"":
+			continue
+		var cue: AudioCueData = par_cue.get(ligne.voice_cue)
+		assert_true(cue != null,
+			"la cue `%s` de la replique `%s` est declaree dans la banque"
+				% [ligne.voice_cue, ligne.key])
+		if cue == null or cue.stream == null:
+			continue
+		mesurees += 1
+		var duree := cue.stream.get_length()
+		assert_true(ligne.hold + FADE >= duree,
+			"replique `%s` : elle dure %.2f s et le panneau la tient %.2f s"
+				% [ligne.key, duree, ligne.hold + FADE])
+	assert_true(mesurees > 0, "des repliques ont bien ete mesurees (%d)" % mesurees)
+## Le meme garde sur l'ACCUEIL, dont l'arithmetique est differente — et c'est bien pour ca
+## qu'il lui faut son propre test. La bulle (`dialogue_box.gd`) ECRIT le texte avant de le
+## tenir : le temps a l'ecran vaut `longueur / TYPE_SPEED + hold`, la frappe s'ajoutant au
+## maintien. Un `hold` qui suffirait au HUD peut donc etre trop court ici, et l'inverse.
+##
+## Le cas s'est presente le 2026-08-28 : les deux repliques d'accueil reecrites pour l'ouverture
+## en patrouille de routine ont ete synthetisees plus longues que les anciennes, et `title_4`
+## quittait l'ecran 0,22 s avant la fin de sa propre voix. Rien ne l'aurait signale.
+func test_a_title_line_never_leaves_the_bubble_while_it_is_still_speaking() -> void:
+	const TYPE_SPEED := 45.0 # DialogueBox.TYPE_SPEED — caracteres par seconde
+	var bank: AudioCueBank = load("res://resources/audio/sfx_bank.tres")
+	var par_cue := bank.build_index()
+	var script: DialogueScript = load(TITLE)
+	for i in script.size():
+		var ligne := script.line_at(i)
+		if ligne.voice_cue == &"":
+			continue
+		var cue: AudioCueData = par_cue.get(ligne.voice_cue)
+		if cue == null or cue.stream == null:
+			continue
+		var a_l_ecran := float(ligne.text.length()) / TYPE_SPEED + ligne.hold
+		assert_true(a_l_ecran >= cue.stream.get_length(),
+			"replique %d de l'accueil : elle dure %.2f s et la bulle la tient %.2f s"
+				% [i + 1, cue.stream.get_length(), a_l_ecran])

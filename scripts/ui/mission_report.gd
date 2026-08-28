@@ -42,9 +42,23 @@ const _TITLE: Dictionary = {
 	Outcome.VICTORY: "VICTOIRE",
 	Outcome.DEFEAT: "DEFAITE",
 }
+## ⚠️ LE MOT JUSTE EST « EMPÊCHÉ », PAS « GAGNÉ » (`docs/lore/EXPLOITATION.md` §4). Ce que le
+## pilote a tenu, c'est un couloir de vérification, un jour, avec trois cellules — pas une
+## guerre. Et la défaite ne se raconte pas en bataille perdue : le Registre porte une entrée,
+## et le pilote devient une ligne retirée d'un document. C'est administratif, et c'est
+## exactement là qu'est la violence de cet écran.
 const _TAGLINE: Dictionary = {
-	Outcome.VICTORY: "PALE LEVIATHAN DETRUIT  ·  SECTEUR SECURISE",
-	Outcome.DEFEAT: "SPECTER-9 PERDU  ·  MISSION INTERROMPUE",
+	Outcome.VICTORY: "PALE LEVIATHAN DETRUIT  ·  COULOIR REOUVERT",
+	Outcome.DEFEAT: "SPECTER-9 PERDU  ·  ENTREE PORTEE AU REGISTRE",
+}
+## Le relevé qui a motivé la sortie, et ce qu'il est devenu. ⚠️ C'EST LA SEULE CHOSE DE CET
+## ÉCRAN QUI N'EXPLIQUE RIEN ET DIT TOUT : l'anomalie de l'écran-titre était une horloge en
+## avance de 40 ms. Gagnée, elle est corrigée. Perdue, elle ne dérive plus du tout — parce
+## qu'elle s'est mise à l'heure de quelque chose d'autre. Le joueur n'a pas besoin qu'on lui
+## dise pourquoi c'est pire.
+const _RELAY: Dictionary = {
+	Outcome.VICTORY: "REMIS A L'HEURE",
+	Outcome.DEFEAT: "0 MS  ·  RADIE",
 }
 const _REPLAY_LABEL: Dictionary = {
 	Outcome.VICTORY: "REJOUER",
@@ -87,6 +101,9 @@ func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
 	title.add_theme_color_override("font_color", VICTORY_GOLD if won else DEFEAT_RED)
 	title.add_theme_color_override("font_shadow_color", VICTORY_GLOW if won else DEFEAT_GLOW)
 	(%Tagline as Label).text = _TAGLINE[outcome]
+	var relay := %RelayValue as Label
+	relay.text = _RELAY[outcome]
+	relay.add_theme_color_override("font_color", CHANNEL_CLEAR if won else CHANNEL_LOST)
 	(%ReplayButton as Button).text = _REPLAY_LABEL[outcome]
 	# Le canal : dégagé quand la mission est remplie, perdu quand le chasseur l'est.
 	var comms := %CommsText as Label

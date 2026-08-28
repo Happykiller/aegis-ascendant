@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueScript" load_steps=10 format=3]
+[gd_resource type="Resource" script_class="DialogueScript" load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://resources/data/dialogue_script.gd" id="1_script"]
 [ext_resource type="Script" path="res://resources/data/dialogue_line.gd" id="2_line"]
@@ -93,7 +93,73 @@ mood = 0
 voice_cue = &"lyra_waves_cleared"
 hold = 6.5
 
+; Les trois BORNES de la mission (VOX-0003), ajoutées le 2026-08-28. Elles ne commentent pas
+; un événement de combat : elles ouvrent et elles referment. C'est pour ça qu'elles sont toutes
+; les trois CALMES — le combat n'a pas commencé, ou il est fini.
+;
+; ⚠️ `mission_start` ne se déclenche QUE sur une partie complète. Un `--skip-to-*` ouvre sur
+; une phase qui n'est pas la première, et le niveau la saute exprès : l'entendre annoncer un
+; secteur qu'on vient de survoler serait pire que le silence.
+
+[sub_resource type="Resource" id="line_7"]
+script = ExtResource("2_line")
+key = &"mission_start"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Verrouillage télémétrique confirmé.
+Secteur ouvert, Pilote — je reste sur le canal."
+mood = 0
+voice_cue = &"lyra_mission_start"
+hold = 7.5
+
+[sub_resource type="Resource" id="line_8"]
+script = ExtResource("2_line")
+key = &"docking"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Autopilote engagé, retour à l’Aurora Spear.
+Relâchez les commandes, Pilote. Vous l’avez arrêté."
+mood = 0
+voice_cue = &"lyra_docking"
+hold = 8.0
+
+[sub_resource type="Resource" id="line_9"]
+script = ExtResource("2_line")
+key = &"mission_complete"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Avant-garde neutralisée, Pilote.
+La ligne tient — parce que vous avez tenu."
+mood = 0
+voice_cue = &"lyra_mission_complete"
+hold = 6.0
+
+; La DÉFAITE (VOX-0004, 2026-08-28). C'était le seul dénouement du jeu sans un mot : on
+; perdait, un écran rouge se levait, et la navigatrice qui avait parlé pendant toute la
+; mission se taisait.
+;
+; ⚠️ ELLE NE CONSOLE PAS, ELLE RAPPORTE. C'est la seule réplique du jeu où elle parle sans
+; être écoutée — le pilote n'est plus là. Elle finit sa tâche, et c'est insoutenable
+; exactement pour ça (`docs/lore/EXPLOITATION.md` §4). Régime CALME : l'écran doit être
+; FROID. Une Lyra émue ici serait un contresens, et volerait au joueur le seul moment où le
+; jeu lui montre ce qu'est vraiment cette civilisation.
+;
+; ⛔ PLAFOND : ne pas expliquer ce qu'est une radiation (niveau 2), ne pas suggérer qu'elle
+; en souffre (dernier tiers). Et ne rien écrire qui FERME l'histoire : le bouton REESSAYER
+; rouvre le dossier, et un dossier qui se rouvre est la chose la plus banale de ce monde.
+
+[sub_resource type="Resource" id="line_10"]
+script = ExtResource("2_line")
+key = &"mission_failed"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Specter-9 perdu. C’était la dernière cellule.
+Je porte l’entrée au Registre, Pilote. C’est la procédure."
+mood = 0
+voice_cue = &"lyra_mission_failed"
+hold = 7.5
+
 [resource]
 script = ExtResource("1_script")
 id = &"lyra_ingame"
-lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6")]
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_9"), SubResource("line_10")]

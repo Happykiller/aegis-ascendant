@@ -57,4 +57,19 @@ réplique correspondante (`resources/dialogue/*.tres`).
 | Fichier | Sujet | Statut |
 |---|---|---|
 | [`VOX-0001-lyra-accueil.json`](VOX-0001-lyra-accueil.json) | les quatre répliques de l'écran-titre | ✅ livrée en synthèse locale (`piper fr_FR-siwis-medium`), en jeu — à remplacer si le timbre ne convient pas |
-| [`VOX-0002-lyra-secteurs.json`](VOX-0002-lyra-secteurs.json) | les **sept** annonces de secteur et de phase, en jeu | **à commander** |
+| [`VOX-0002-lyra-secteurs.json`](VOX-0002-lyra-secteurs.json) | les **sept** annonces de secteur et de phase, en jeu | ✅ livrée en synthèse locale, en jeu |
+| [`VOX-0003-lyra-mission-et-fin.json`](VOX-0003-lyra-mission-et-fin.json) | les **trois bornes** de la mission : départ, appontage, rapport | ✅ livrée en synthèse locale, en jeu |
+
+Avec VOX-0003, **Lyra parle à tous les moments du niveau** que la bible narrative avait relevés
+comme muets (`docs/lore/BIBLE.md` §3.0, §3.5, §3.6).
+
+## ⚠️ Le `hold` du `.tres` doit couvrir la durée du fichier
+
+Pour les répliques **en jeu**, et pour elles seules. `FighterHUD.say()` ne tient le panneau que
+`maxf(hold, 1.0) + 0,45 s` : il n'y a ni frappe du texte, ni attente de la fin de l'audio —
+contrairement à la bulle de l'accueil, où le temps de frappe s'ajoute. Un `hold` trop court coupe
+donc la réplique **au milieu d'un mot**, sans que rien ne le signale.
+
+Mesurer le fichier livré (`ffprobe -show_entries format=duration`) et régler le `hold` ensuite,
+jamais l'inverse. Le garde
+`test_a_line_never_leaves_the_screen_while_it_is_still_speaking` le tient depuis le 2026-08-28.

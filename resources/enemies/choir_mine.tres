@@ -65,7 +65,7 @@
 script = ExtResource("1_data")
 path = 9
 fire = 4
-display_name = "Choir Mine"
+display_name = "Anchor Mine"
 ; ⚠️ PV MULTIPLIES PAR 11 le 2026-08-27, sur retour de playtest : « autant les ennemis
 ; en mouvement representent une menace, autant eux non ». Une unite qui ne poursuit pas
 ; n'a qu'un moyen d'exister : DURER. A 44 PV elle tombait d'une salve, et le barrage
