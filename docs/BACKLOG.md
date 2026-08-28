@@ -598,3 +598,38 @@ Windows (4 phases, HUD, aspiration ; GPU 0,92 ms) + 2 tests montés sur un vrai 
   → `.claude/resources/pratique-ecrivain-unique.md`
 - **Références visuelles** : `assets/reference/inspiration/` (`REFERENCE_INDEX.md`) — cible d'inspiration
   du rendu, versionnées (ADR-0009 supersede la quarantaine d'ADR-0005). Production toujours originale.
+
+## Point de reprise — bible narrative et 3 répliques manquantes (2026-08-28)
+
+**Fait** : `docs/lore/BIBLE.md` livré par `asset-forge` (brief `docs/forge/briefs/BRIEF-0087-lore-bible.md`,
+statut à passer à "livré"). Pilote nommé **Wren Adaire**, indicatif **Halyard** — jamais prononcé
+par Lyra (elle dit « Pilote »). Null Choir caractérisé (« absorbe des structures », pas un
+massacre) ; § 3 couvre les 6 phases et identifie précisément les **trois seuls moments du jeu sans
+réplique** : avant la première vague, DOCKING, VICTORY.
+
+**Restant, dans l'ordre** :
+
+1. Écrire `docs/forge/voice/VOX-0003-lyra-mission-et-fin.json` (gabarit : copier VOX-0002) pour
+   trois répliques, textes déjà rédigés (piocher dans `docs/lore/BIBLE.md` §3.0/3.5/3.6) :
+   - clé `mission_start`, cue `lyra_mission_start`, mood CALM :
+     « Verrouillage télémétrique confirmé.\nSecteur ouvert, Pilote — je reste sur le canal. »
+   - clé `docking`, cue `lyra_docking`, mood CALM :
+     « Autopilote engagé, retour à l'Aurora Spear.\nRelâchez les commandes, Pilote. Vous l'avez arrêté. »
+   - clé `mission_complete`, cue `lyra_mission_complete`, mood CALM :
+     « Avant-garde neutralisée, Pilote.\nLa ligne tient — parce que vous avez tenu. »
+2. Ajouter ces 3 `DialogueLine` à `resources/dialogue/lyra_ingame.tres` (même patron que les 7
+   existantes ; `hold` ≈ 5,5–6,5).
+3. `python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0003-... --preview` puis, **après
+   écoute de l'opérateur** (règle du skill `forger-voix` — ne pas sauter cette étape), `--deposer`.
+4. Câbler dans `scripts/gameplay/graybox_root.gd` :
+   - `_lyra(&"mission_start")` à la fin de `_ready()`, seulement si `_phase == Phase.FIGHTER_WAVES`
+     (donc jamais sur un `--skip-to-*`) — juste avant `print("[Level] ready — phase FIGHTER_WAVES")`.
+   - `_lyra(&"docking")` dans `_start_docking()`, juste après `_set_phase(Phase.DOCKING)`.
+   - `_lyra(&"mission_complete")` dans `_start_victory()`, juste après `_set_phase(Phase.VICTORY)`,
+     avant `_show_report(...)`.
+5. `./scripts/check.sh` — `test_every_voice_line_declares_the_voice_bus` (générique, `>= 11`) et
+   `test_the_ingame_voice_request_matches_the_game` doivent passer sans modification.
+6. `/jouer` : vérifier les trois répliques en situation réelle (une partie complète, pas un
+   `--skip-to-*`, pour entendre `mission_start`) avant de committer.
+7. Mettre à jour le statut de `BRIEF-0087` (assigné → livré → intégré) et sa ligne dans
+   `docs/forge/CHARTE_CREATIVE.md` si un nom y devient canon (le pilote n'y figure pas encore).
