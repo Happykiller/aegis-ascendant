@@ -51,6 +51,31 @@ def dire(message: str) -> None:
     print("[voix] %s" % message, flush=True)
 
 
+def bureau_windows() -> Path:
+    """Où déposer les essais à écouter, côté Windows.
+
+    ⚠️ LE NOM D'UTILISATEUR NE S'ÉCRIT PAS EN DUR. Il l'a été (`/mnt/c/Users/faro/Desktop`) et
+    `--preview` mourait sur un `PermissionError` après avoir synthétisé les répliques : le
+    travail était fait, seul le dépôt échouait. On demande le profil à Windows lui-même ; à
+    défaut, on retombe sur le home WSL, qui existe toujours mais ne s'ouvre pas d'un
+    double-clic.
+    """
+    try:
+        # ⚠️ OCTETS, PAS TEXTE. Lancé depuis un chemin WSL, `cmd.exe` avertit sur stderr dans
+        # la page de code Windows (cp850) : décoder en UTF-8 lève, et la préversion meurt sur
+        # un message qu'on n'allait même pas lire.
+        brut = subprocess.run(["cmd.exe", "/c", "echo %USERPROFILE%"],
+                              capture_output=True, timeout=10, cwd="/").stdout
+        profil = brut.decode("utf-8", errors="replace").strip()
+        if profil.startswith("C:\\"):
+            bureau = Path("/mnt/c") / profil[3:].replace("\\", "/") / "Desktop"
+            if bureau.is_dir():
+                return bureau
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return Path.home() / "essais-voix"
+
+
 def outil(nom: str) -> str:
     chemin = shutil.which(nom)
     if not chemin:
@@ -133,7 +158,7 @@ def main() -> int:
     modele = modele_pret(args.voix)
 
     ecoute = Path(args.ecoute) if args.ecoute else \
-        Path("/mnt/c/Users/faro/Desktop") / ("%s-essais-voix" % demande["slug"])
+        bureau_windows() / ("%s-essais-voix" % demande["slug"])
     brut_dir = ATELIER / "brut" / demande["slug"]
     brut_dir.mkdir(parents=True, exist_ok=True)
 
