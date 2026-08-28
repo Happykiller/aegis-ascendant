@@ -95,6 +95,23 @@ fi
 
 command -v gh >/dev/null || { log "gh introuvable — publication impossible"; exit 1; }
 
+# ⚠️ `gh` EST AUTHENTIFIE SUR DEUX COMPTES, ET L'ACTIF EST CELUI DU TRAVAIL PRO.
+# Cette machine porte `f-rosito-fitdesk` (pro) et `Happykiller` (perso, proprietaire du
+# depot de releases). Quand l'actif est le mauvais, `gh release create` echoue sur un
+# message qui envoie dans le mur : « workflow scope may be required » — il ne s'agit
+# pas d'un scope manquant, mais d'un compte qui n'a aucun droit sur ce depot. Une
+# demi-heure perdue le 2026-08-28 a rafraichir des scopes qui n'y etaient pour rien.
+# On bascule donc pour la duree de la publication, et on RESTAURE — l'operateur
+# travaille aussi sur des depots pro, et son compte actif ne nous appartient pas.
+PROPRIO="${DEPOT_RELEASES%%/*}"
+ACTIF="$(gh auth status 2>/dev/null | grep -B2 'Active account: true' | sed -n 's/.*account \([A-Za-z0-9-]*\).*/\1/p' | head -1)"
+if [ -n "$ACTIF" ] && [ "$ACTIF" != "$PROPRIO" ]; then
+	log "compte gh actif : $ACTIF — bascule vers $PROPRIO le temps de publier"
+	gh auth switch --user "$PROPRIO" >/dev/null 2>&1 \
+		|| { log "bascule impossible — 'gh auth login' pour $PROPRIO ?"; exit 1; }
+	trap 'gh auth switch --user "$ACTIF" >/dev/null 2>&1 || true' EXIT
+fi
+
 # ⚠️ LES NOTES SONT UNE PAGE D'ACCUEIL, PAS UN MODE D'EMPLOI. C'est le seul endroit ou
 # quelqu'un qui n'a jamais lance le jeu lit ce qu'il est — l'operateur l'a demande ainsi
 # le 2026-08-28 : « on pourrait mettre le lore sur la page d'accueil de la release ».
