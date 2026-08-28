@@ -32,6 +32,32 @@ Conséquence pratique : **ce qui doit rester discret doit être FIN**, pas trans
 liseré, un trait. Sur ce projet, baisser l'opacité d'une grande forme ne la rend pas discrète — ça
 la rend seulement plus pâle une fois relevée par le lift, ce qui n'est pas la même chose.
 
+## ⚠️ `--capture-after` compte des IMAGES, pas des secondes
+
+Et avec `--novsync`, une image ne dure pas 1/60ᵉ de seconde : le jeu tourne à plus de mille images
+par seconde sur la RTX 4080. **`--capture-after=850` capture donc vers 0,85 s de jeu, pas vers
+14 s.**
+
+Coût, le 2026-08-28 : deux captures perdues à vouloir attraper la troisième réplique d'une bulle
+qui en enchaîne quatre. Les deux images montraient la première réplique, à un caractère près — ce
+qui *ressemblait* à une capture qui ne s'arme pas, alors que tout marchait.
+
+Le repère : entre 260 et 850 images, la frappe du texte n'avait avancé que de 25 caractères. À
+45 caractères par seconde, cela fait **0,55 seconde pour 590 images**. Si une capture semble figée
+sur un instant très précoce, ce n'est pas la capture qui rate, c'est l'échelle.
+
+Pour viser un instant tardif : soit multiplier par le rapport mesuré, soit **retirer `--novsync`**
+et retrouver 60 images par seconde. Pour un écran statique (rapport, pause, codex), la question ne
+se pose pas — 400 images suffisent toujours.
+
+## ⚠️ Un pipe masque un lancement en arrière-plan
+
+`./scripts/play.sh … | tail -40` lancé avec `run_in_background` **ne montre rien tant que le jeu
+n'est pas fermé** : `tail` bufferise, donc le fichier de sortie reste vide et l'on croit que rien
+ne démarre. Vécu le 2026-08-28, un lancement perdu à attendre une sortie qui existait déjà.
+
+En arrière-plan, **ne pipe pas** : filtre à la lecture du fichier de sortie, pas à l'écriture.
+
 ## Les trois pièges qui coûtent une itération chacun
 
 **0. Le PNG périmé — le plus vicieux, parce qu'il déguise les deux autres.** `capture.png` **reste

@@ -63,13 +63,40 @@ réplique correspondante (`resources/dialogue/*.tres`).
 Avec VOX-0003, **Lyra parle à tous les moments du niveau** que la bible narrative avait relevés
 comme muets (`docs/lore/BIBLE.md` §3.0, §3.5, §3.6).
 
-## ⚠️ Le `hold` du `.tres` doit couvrir la durée du fichier
+## ⚠️ Le `hold` doit couvrir la durée du fichier — et les deux écrans ne comptent pas pareil
 
-Pour les répliques **en jeu**, et pour elles seules. `FighterHUD.say()` ne tient le panneau que
-`maxf(hold, 1.0) + 0,45 s` : il n'y a ni frappe du texte, ni attente de la fin de l'audio —
-contrairement à la bulle de l'accueil, où le temps de frappe s'ajoute. Un `hold` trop court coupe
-donc la réplique **au milieu d'un mot**, sans que rien ne le signale.
+**Aucun des deux affichages ne connaît la durée de l'audio.** Le `hold` est la seule chose qui les
+fait vivre, et son arithmétique diffère :
 
-Mesurer le fichier livré (`ffprobe -show_entries format=duration`) et régler le `hold` ensuite,
-jamais l'inverse. Le garde
-`test_a_line_never_leaves_the_screen_while_it_is_still_speaking` le tient depuis le 2026-08-28.
+| Écran | Temps à l'écran | Pourquoi |
+|---|---|---|
+| **HUD en jeu** (`FighterHUD.say()`) | `max(hold, 1) + 0,45 s` | Le texte s'affiche d'un coup : ni frappe, ni attente de l'audio |
+| **Bulle d'accueil** (`dialogue_box.gd`) | `longueur / 45 + hold` | Le texte s'ÉCRIT d'abord, à 45 caractères/seconde, et le `hold` ne court qu'ensuite |
+
+Conséquence : un `hold` qui suffit au HUD peut être trop court dans la bulle, et l'inverse. Un
+`hold` trop court coupe la réplique **au milieu d'un mot**, et rien ne le signale — le fichier
+existe, la cue résout, le son part.
+
+⚠️ **Le commentaire de `dialogue_line.gd` dit que « l'audio commande et `hold` devient un
+plancher ». C'est vrai de la bulle seulement**, et encore : ce qui s'ajoute est le temps de
+frappe, pas la durée du son.
+
+**Mesurer d'abord, régler ensuite** (`ffprobe -v error -show_entries format=duration`). Les valeurs
+estimées du plan de reprise du 2026-08-28 (5,5–6,5 s) coupaient deux répliques sur trois. Deux
+gardes tiennent désormais les deux arithmétiques :
+`test_a_line_never_leaves_the_screen_while_it_is_still_speaking` et
+`test_a_title_line_never_leaves_the_bubble_while_it_is_still_speaking` — le second a révélé une
+réplique d'accueil **déjà** trop courte avant qu'on y touche.
+
+## ⚠️ `--deposer` réécrit TOUTES les répliques de la demande
+
+Pas seulement celles qu'on vient de changer. Et la synthèse **ne redonne pas exactement le même
+fichier** : `loudnorm` recale, la durée bouge de quelques centièmes. Deux conséquences payées le
+2026-08-28 en modifiant deux répliques d'accueil sur quatre :
+
+- les deux autres, **déjà validées à l'oreille par l'opérateur**, ont été remplacées en silence ;
+- leur durée ayant changé, un `hold` qui passait est devenu trop court.
+
+**Restaurer ce qu'on ne voulait pas refaire** — `git checkout -- <fichier>.ogg` — puis revérifier
+les `hold` de tout ce qui a bougé. Le contrôle qui le rend visible : `git status` après un
+`--deposer` liste toutes les répliques modifiées, pas seulement les vôtres.

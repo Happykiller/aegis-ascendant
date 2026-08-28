@@ -42,3 +42,9 @@ Source : `docs/SPEC_AEGIS_ASCENDANT.md` §31, rappelée dans `CLAUDE.md`.
   désigne jamais son coupable. Coût de l'oubli : **789 objets fuités** dans la sortie du check, un
   diagnostic hérité faux pendant des semaines, et l'instrument rendu aveugle à une vraie fuite.
   → `.claude/resources/pratique-verifier-par-test.md`.
+- ⚠️ **Un garde ne nomme pas sa source en dur, et ne compare pas un NOMBRE d'éléments.** Le test
+  qui vérifiait que les répliques de jeu correspondaient à leur demande de voix nommait
+  `VOX-0002` et comparait sa taille au `.tres` : ajouter du contenu **conforme** le faisait
+  échouer. Un garde qui se brise quand on ajoute ce qu'il est censé protéger finit désarmé au
+  lieu d'être lu. Il balaie désormais son dossier et apparie par **clé**, dans les deux sens —
+  affiché sans commande, et commandé sans affichage. Constaté le 2026-08-28.

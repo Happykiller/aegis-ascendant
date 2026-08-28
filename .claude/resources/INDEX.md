@@ -131,6 +131,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   collision sans lui. ⚠️ Un banc qui **recopie** la boucle ment — `tools/dive_bench.gd` pilote le
   vrai `_slide_to()`. ⚠️ `check.sh | grep && git commit` prend le code de retour de **grep** : un
   commit est passé rouge.
+- [Renommer ce que le joueur lit](pratique-renommer-ce-que-le-joueur-lit.md) — un nom de fiction
+  change (« Null Choir » rejeté après huit mois). **Nom affiché ≠ identifiant** : les `.tres`,
+  `.tscn`, `.glb`, clés et `voice_cue` ne bougent pas, seul ce qui est à l'écran change — 89
+  occurrences, dont 71 en doc et une dizaine de fichiers réels. ⚠️ **Vérifier dans les DEUX
+  langues** : deux fiches disaient « Choeur Nul » et le grep anglais ne les voyait pas. Et un nom
+  se choisit sur ce qu'il **devient** au dernier niveau, pas sur ce qu'il évoque au premier.
 - [Un test vert peut être mort](pratique-un-test-vert-peut-etre-mort.md) — **GDScript n'a pas
   d'exception** : sur un appel invalide il journalise `SCRIPT ERROR` et **abandonne la méthode**.
   Le tableau des échecs reste vide, et le harnais annonce `[PASS]`. Deux gardes de
