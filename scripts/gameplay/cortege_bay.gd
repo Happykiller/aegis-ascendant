@@ -67,17 +67,32 @@ const HATCH_TINT := Color("d93d9c")
 ## dans la classe la plus chaude du jeu, pour une animation qui ne dure pas une seconde. La
 ## silhouette qui monte est donc décorative ; la vraie coque s'active à l'instant où elle
 ## atteint la bouche, exactement là où elle était.
+# ⚠️ QUATRE TEMPS, ET C'EST LA PLANCHE DE L'OPÉRATEUR QUI LES NOMME :
+#
+#   1. APPAREIL AU REPOS   — il est là, moteurs éteints, on le voit
+#   2. ALLUMAGE            — les moteurs s'allument, il ne bouge pas encore
+#   3. DÉCOLLAGE           — il monte, franchit la bouche, et entre en jeu
+#   4. PUITS VIDE          — refroidissement, la porte se referme
+#
+## ⚠️ LE PREMIER TEMPS EST LE PLUS IMPORTANT, ET C'EST LE MOINS SPECTACULAIRE. C'est lui qui
+## dit au joueur que la structure PRODUIT : un vaisseau immobile dans une cavité se comprend
+## sans un mot. Les trois autres ne font que confirmer.
+const REST_TIME := 0.75
+const IGNITION_TIME := 0.45
 const LAUNCH_TIME := 0.85
+## Le temps où le puits reste ouvert et vide après le départ. Sans lui, la porte se referme sur
+## la queue du vaisseau et la séquence n'a pas de fin — elle a une coupure.
+const COOLDOWN_TIME := 0.5
 ## La silhouette part du fond du puits et sort par la bouche, en avançant vers le joueur.
-const LAUNCH_FROM := Vector3(0.0, -0.66, 0.0)
-const LAUNCH_TO := Vector3(0.0, 0.35, 1.9)
-## ⚠️ SOMBRE SUR FOND CLAIR, ET C'EST L'INVERSE DE MON PREMIER ESSAI. Une silhouette pâle et
-## légèrement émissive se noyait dans le magenta du puits — vu en capture : on devinait deux
-## formes, on ne lisait pas un décollage. Le fond de la baie est ce qu'il y a de plus lumineux
-## sur toute la coque ; ce qui s'en détache est ce qui est SOMBRE.
-const RISER_LENGTH := 1.55
-const RISER_WIDTH := 0.86
-
+## Le repos : au fond du puits, sur les rails. Le décollage : sorti de la bouche, en avant.
+##
+## ⚠️ CETTE HAUTEUR SUIT LA COQUE, ET ELLE EST PROVISOIRE. Le puits actuel ne fait que 0,78 m
+## (`build_bay` pose un coaming, pas une cavité) : y descendre l'appareil de 1,55 m
+## l'enterrerait dans le bordé. `BRIEF-0091` livre une cavité de 1,80 m ; **à sa réception, cette
+## valeur passe à −1,55** et l'appareil se posera vraiment au fond. La laisser fausse dans
+## l'intervalle donnerait un vaisseau à moitié dans la tôle — un défaut visible, pas une nuance.
+const LAUNCH_FROM := Vector3(0.0, -0.70, -0.3)
+const LAUNCH_TO := Vector3(0.0, 0.45, 2.1)
 # --- Les portes ----------------------------------------------------------------
 #
 ## ⚠️ IL MANQUAIT LA PORTE, ET C'EST CE QUI FAISAIT « DES FORMES CARRÉES ». La première version
@@ -117,7 +132,6 @@ var _world: Vector3 = Vector3.ZERO
 ## Les décollages en cours. ⚠️ UN TABLEAU PRÉALLOUÉ ET NON UNE FILE QUI GRANDIT : deux coques
 ## par lâcher, et le lâcher suivant ne peut pas commencer avant la fin de celui-ci (l'intervalle
 ## est plus long que l'animation). Rien ne s'alloue pendant la partie (spec §26.1).
-var _risers: Array[MeshInstance3D] = []
 var _riser_age: PackedFloat32Array = PackedFloat32Array()
 var _riser_enemy: Array[EnemyController] = []
 
@@ -226,52 +240,12 @@ func _build_doors() -> void:
 
 ## Les silhouettes qui montent du puits. Une par coque d'un lâcher, montées au démarrage et
 ## réutilisées — comme tout le reste.
+## ⚠️ IL N'Y A PLUS DE SILHOUETTE DÉCORATIVE. Les places de décollage ne portent plus que des
+## références vers de VRAIES coques du pool : c'est la même que celle qui va tirer sur le joueur
+## une seconde plus tard, et c'est ce qui rend la production compréhensible. Une maquette en
+## boîtes disait « quelque chose sort » ; la coque dit « CELLE-CI sort ».
 func _build_risers() -> void:
-	var skin := StandardMaterial3D.new()
-	skin.albedo_color = Color(0.09, 0.08, 0.11)
-	skin.metallic = 0.6
-	skin.roughness = 0.38
-	var burn := StandardMaterial3D.new()
-	burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	burn.albedo_color = Color(1.0, 0.55, 0.30)
-	burn.emission_enabled = true
-	burn.emission = Color(1.0, 0.55, 0.30)
-	burn.emission_energy_multiplier = 2.2
 	for i in maxi(tuning.bay_release_count, 1):
-		var riser := MeshInstance3D.new()
-		riser.name = "Riser%d" % i
-		# ⚠️ UNE COQUE, PAS UN PRISME. Un prisme se lit comme une flèche de menu ; ce qui doit
-		# sortir d'un pont d'envol, c'est un vaisseau. Trois boîtes suffisent à cette taille —
-		# un fuselage et deux ailes en flèche — et c'est la SILHOUETTE qui porte la lecture,
-		# pas le détail, dont rien ne survit à 23 px/m.
-		var body := BoxMesh.new()
-		body.size = Vector3(RISER_WIDTH * 0.34, 0.16, RISER_LENGTH)
-		riser.mesh = body
-		riser.material_override = skin
-		riser.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		for side in [-1.0, 1.0]:
-			var wing := MeshInstance3D.new()
-			var pane := BoxMesh.new()
-			pane.size = Vector3(RISER_WIDTH * 0.46, 0.09, RISER_LENGTH * 0.42)
-			wing.mesh = pane
-			wing.material_override = skin
-			wing.position = Vector3(side * RISER_WIDTH * 0.38, -0.02, RISER_LENGTH * 0.18)
-			wing.rotation.y = side * 0.22
-			wing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			riser.add_child(wing)
-		# La lueur de propulsion, à l'ARRIÈRE : c'est elle qui dit que la chose décolle au lieu
-		# d'être posée sur un monte-charge.
-		var flame := MeshInstance3D.new()
-		var jet := BoxMesh.new()
-		jet.size = Vector3(RISER_WIDTH * 0.22, 0.1, 0.26)
-		flame.mesh = jet
-		flame.material_override = burn
-		flame.position.z = RISER_LENGTH * 0.5
-		flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		riser.add_child(flame)
-		riser.visible = false
-		add_child(riser)
-		_risers.append(riser)
 		_riser_age.append(-1.0)
 		_riser_enemy.append(null)
 
@@ -320,7 +294,7 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 ## elle vient avant qu'elle ne le concerne.
 func _release(_here: Vector2) -> void:
 	var launched := 0
-	for slot in _risers.size():
+	for slot in _riser_enemy.size():
 		if launched >= tuning.bay_release_count:
 			break
 		if _riser_age[slot] >= 0.0:
@@ -330,12 +304,12 @@ func _release(_here: Vector2) -> void:
 			break
 		_riser_enemy[slot] = enemy
 		_riser_age[slot] = 0.0
-		_risers[slot].visible = true
 		launched += 1
 	if launched > 0:
 		# ⚠️ LA PORTE S'OUVRE AVANT QUE LA COQUE NE MONTE : c'est l'ordre qui rend la séquence
 		# lisible. Ouvrir pendant la montée donnerait un vaisseau qui traverse un battant.
-		_door_hold = DOOR_TIME + LAUNCH_TIME + DOOR_TIME
+		# La porte reste ouverte le temps des quatre temps, refroidissement compris.
+		_door_hold = DOOR_TIME + REST_TIME + IGNITION_TIME + LAUNCH_TIME + COOLDOWN_TIME
 		_pulse_hatch()
 
 func _take_from_pool() -> EnemyController:
@@ -346,36 +320,51 @@ func _take_from_pool() -> EnemyController:
 			return enemy
 	return null
 
-## Fait monter les silhouettes, et met la vraie coque en jeu à l'arrivée.
+## Joue les quatre temps, place par place, et met la coque en jeu à la fin du troisième.
 func _advance_risers(delta: float, here: Vector2) -> void:
-	# ⚠️ RIEN NE MONTE TANT QUE LA PORTE N'EST PAS OUVERTE. Sans ce verrou, la coque traverse le
-	# battant pendant qu'il coulisse — et une séquence qui se chevauche ne se lit pas comme une
-	# séquence, elle se lit comme un défaut.
+	# ⚠️ RIEN NE COMMENCE TANT QUE LA PORTE N'EST PAS OUVERTE. Sans ce verrou, l'appareil est
+	# posé sous un battant fermé : on ne le voit pas, et le premier temps — le seul qui compte —
+	# est perdu.
 	if _door_open < 0.85:
 		return
-	for slot in _risers.size():
+	for slot in _riser_enemy.size():
 		if _riser_age[slot] < 0.0:
 			continue
-		_riser_age[slot] += delta
-		var t := clampf(_riser_age[slot] / LAUNCH_TIME, 0.0, 1.0)
-		# ⚠️ ELLE ACCÉLÈRE. Une montée linéaire se lit comme un ascenseur ; un décollage
-		# commence lentement et part — c'est la seule chose qui distingue les deux.
-		var eased := t * t
-		var spread := 1.1 * (float(slot) - float(_risers.size() - 1) * 0.5)
-		_risers[slot].position = LAUNCH_FROM.lerp(LAUNCH_TO, eased) + Vector3(spread, 0.0, 0.0)
-		if t < 1.0:
-			continue
-		_risers[slot].visible = false
-		_riser_age[slot] = -1.0
 		var enemy: EnemyController = _riser_enemy[slot]
-		_riser_enemy[slot] = null
 		if enemy == null:
+			_riser_age[slot] = -1.0
 			continue
-		# ⚠️ LA COQUE NAÎT LÀ OÙ LA SILHOUETTE EST ARRIVÉE, pas au centre du puits : sinon elle
-		# ferait un saut en arrière au moment précis où le joueur la regarde.
-		var mouth := here + Vector2(spread, -LAUNCH_TO.z)
-		enemy.activate(mouth, randf() * TAU)
+		_riser_age[slot] += delta
+		var t: float = _riser_age[slot]
+		var spread := 1.15 * (float(slot) - float(_riser_enemy.size() - 1) * 0.5)
+		if t < REST_TIME:
+			# 1. AU REPOS — posé sur les rails, moteurs éteints.
+			enemy.park(_well_point(spread, 0.0), 0.0)
+			continue
+		if t < REST_TIME + IGNITION_TIME:
+			# 2. ALLUMAGE — il ne bouge toujours pas, mais son moteur monte. C'est le seul
+			# instant où le joueur peut encore décider de tirer sur le pont plutôt que sur lui.
+			var heat := (t - REST_TIME) / IGNITION_TIME
+			enemy.park(_well_point(spread, 0.0), heat)
+			continue
+		var climb := (t - REST_TIME - IGNITION_TIME) / LAUNCH_TIME
+		if climb < 1.0:
+			# 3. DÉCOLLAGE — il accélère. ⚠️ Une montée linéaire se lit comme un ascenseur ; un
+			# décollage commence lentement et part.
+			enemy.park(_well_point(spread, climb * climb), 1.0)
+			continue
+		# 4. Il entre en jeu, là où la montée l'a laissé — jamais au centre du puits, sinon il
+		# ferait un saut en arrière à l'instant précis où le joueur le regarde.
+		_riser_age[slot] = -1.0
+		_riser_enemy[slot] = null
+		enemy.activate(here + Vector2(spread, -LAUNCH_TO.z), randf() * TAU)
 		released.emit(enemy)
+
+## Où en est la coque dans son puits, en coordonnées MONDE. `climb` va de 0 (au fond) à 1 (sortie).
+func _well_point(spread: float, climb: float) -> Vector3:
+	var local := LAUNCH_FROM.lerp(LAUNCH_TO, climb) + Vector3(spread, 0.0, 0.0)
+	return to_global(local)
+
 
 ## Fait coulisser les battants. ⚠️ LE FOND N'EST VISIBLE QUE QUAND ILS SONT OUVERTS : la lueur
 ## du puits est masquée à la fermeture, ce qui fait qu'un pont au repos — ou abattu — est un
@@ -413,8 +402,12 @@ func _take_damage(damage: float) -> void:
 	# ⚠️ CE QUI DÉCOLLAIT MEURT AVEC LE PONT. Une silhouette figée à mi-hauteur dans un puits
 	# éteint se lirait comme un bug — et surtout, la coque qu'elle réservait ne serait jamais
 	# rendue au pool : le pont resterait « plein » alors qu'il est mort.
-	for slot in _risers.size():
-		_risers[slot].visible = false
+	for slot in _riser_enemy.size():
+		var waiting: EnemyController = _riser_enemy[slot]
+		if waiting != null:
+			# ⚠️ ELLE RENTRE, ELLE NE MEURT PAS. Un pont abattu pendant qu'il chargeait ne doit
+			# pas offrir une coque gratuite au score : ce qui est détruit, c'est le pont.
+			waiting.unpark()
 		_riser_age[slot] = -1.0
 		_riser_enemy[slot] = null
 	# ⚠️ ET LES PORTES SE REFERMENT POUR DE BON. Un pont abattu qui resterait ouvert sur sa lueur

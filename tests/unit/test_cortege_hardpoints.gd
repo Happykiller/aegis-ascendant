@@ -441,7 +441,13 @@ func test_a_bay_shows_the_launch_before_the_hull_is_in_play() -> void:
 		ecoule += pas
 	# ⚠️ Sans pool cable (`build()` n'a pas ete appele), aucune coque n'est reservee : ce que ce
 	# test garde est le DELAI, pas le nombre. Le nombre est garde par l'invariant du reglage.
-	assert_true(BayScript.LAUNCH_TIME > 0.3,
-		"la montee dure assez longtemps pour se voir (%.2f s)" % BayScript.LAUNCH_TIME)
-	assert_true(BayScript.LAUNCH_TIME < TUNING.bay_release_interval,
-		"et elle finit avant le lacher suivant, sinon les places de decollage s'epuisent")
+	# ⚠️ QUATRE TEMPS, ET C'EST LE PREMIER QUI COMPTE. « Appareil au repos » est le seul qui
+	# explique la mecanique : un vrai vaisseau immobile dans une cavite dit que la structure
+	# PRODUIT, sans un mot. Les trois autres ne font que confirmer.
+	assert_true(BayScript.REST_TIME >= 0.5,
+		"l'appareil reste pose assez longtemps pour etre vu (%.2f s)" % BayScript.REST_TIME)
+	assert_true(BayScript.IGNITION_TIME > 0.2,
+		"l'allumage se voit avant que ça ne bouge (%.2f s)" % BayScript.IGNITION_TIME)
+	var sequence := BayScript.REST_TIME + BayScript.IGNITION_TIME + BayScript.LAUNCH_TIME
+	assert_true(sequence < TUNING.bay_release_interval + BayScript.LAUNCH_TIME,
+		"la sequence (%.2f s) tient dans la cadence du pont, sinon les places s'epuisent" % sequence)

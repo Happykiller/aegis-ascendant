@@ -279,6 +279,41 @@ func activate(spawn_plane_position: Vector2, drift_seed: float = EnemyPath.NO_DR
 func deactivate() -> void:
 	_set_active(false)
 
+## Met la coque EN SCÈNE sans la mettre EN JEU : visible, immobile, intouchable, à la place
+## qu'on lui donne.
+##
+## ⚠️ ELLE EXISTE POUR QUE LE JOUEUR VOIE D'OÙ SORTENT LES ENNEMIS. Les ponts d'envol du
+## niveau 2 les faisaient apparaître d'un coup au-dessus d'un puits — « les ennemis apparaissent
+## par magie » (opérateur, en jouant). Ce qui manquait n'est pas un effet : c'est de voir un
+## VRAI vaisseau posé dans une cavité, moteurs éteints, avant qu'ils ne s'allument. Un décor en
+## forme de vaisseau ne l'aurait pas dit — le joueur reconnaît la coque qui va lui tirer dessus.
+##
+## ⚠️ ELLE N'EST NI ACTIVE NI CIBLABLE. `active` reste faux, donc `_physics_process` ne tourne
+## pas : la coque ne bouge que si on la repose à chaque image, et c'est voulu — c'est le pont
+## qui la tient, pas elle. Sa cible reste désenregistrée : on ne tire pas sur un appareil qui
+## n'est pas encore sorti, sinon abattre un pont deviendrait accessoire.
+##
+## `throttle` : 0 au repos, 1 à l'allumage. C'est le seul signal qui dit « il va partir ».
+func park(world_position: Vector3, throttle: float = 0.0) -> void:
+	if active:
+		return
+	global_position = world_position
+	visible = true
+	if _plume != null:
+		# ⚠️ `set_throttle` et NON `snap_throttle` : ici on veut justement voir le moteur
+		# s'allumer devant le joueur. C'est l'inverse exact du recyclage, où un allumage
+		# visible trahirait le pool.
+		_plume.set_throttle(throttle)
+
+## Range une coque mise en scène : invisible, moteurs éteints. À appeler si le décollage est
+## annulé — un pont abattu pendant qu'il chargeait, par exemple.
+func unpark() -> void:
+	if active:
+		return
+	visible = false
+	if _plume != null:
+		_plume.snap_throttle(0.0)
+
 func _set_active(value: bool) -> void:
 	active = value
 	visible = value
