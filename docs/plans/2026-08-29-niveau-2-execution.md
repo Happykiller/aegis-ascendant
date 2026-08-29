@@ -251,3 +251,39 @@ conventionnel. **Aucun push.**
 - Il n'ajoute **ni bombes ni jauge d'énergie** (présentes sur les planches, absentes du jeu).
 - Il ne va **pas jusqu'à la poupe** : sections 6 et 7 réservées au niveau 3.
 - Il ne **détruit pas** le Cortège — il continue sa route, et c'est ce qui doit rester de lui.
+
+
+---
+
+# ÉTAT AU 2026-08-29, FIN D'EXÉCUTION
+
+**Lots A à G livrés.** Le niveau se joue de bout en bout : 208 s, cinq tronçons, dix-sept
+tourelles, sept ponts, cinq nœuds, huit répliques voisées, cinq briefings de pause, un rapport
+qui lui est propre. `check.sh` ALL GREEN, `lint-regles.sh` OK, `build-hull.sh --check`
+déterministe. **Rien n'est poussé** — consigne de l'opérateur.
+
+## Ce qui reste, et qui ne dépend pas de moi
+
+| Reste | Pourquoi il n'est pas fait |
+|---|---|
+| **Les cinq images de texture** | `TEX-0010` à `TEX-0014` sont écrites, validées contre les six règles et portent leur prompt. C'est la **voie de l'opérateur** (`ADR-0028`) : il génère, je câble. `CortegeSkin` les attend et le journal dit « coque NUE » tant qu'elles manquent. |
+| **La mesure GPU sur la Quadro T1000** | ⚠️ **Impossible depuis ce poste.** Toutes les mesures de cette session portent la ligne Vulkan **RTX 4080** : 0,93 à 1,71 ms par image selon la section. La machine qui CONTRAINT le budget est l'autre, et le rapport entre les deux est de **×14** — ce qui placerait le niveau entre 13 et 24 ms sur 16,67 disponibles. ⚠️ Mais le facteur ×14 ne se transpose pas tel quel ici : le survol **remplace** le fond spatial complet (13,05 ms mesurés sur T1000) par un ciel `deep_sky` presque gratuit. Le solde peut être favorable comme défavorable — **il faut le mesurer**, et jusque-là on ne sait pas. |
+| **Un playtest humain** | Le pilote automatique n'a détruit qu'UNE cible de coque en 208 s : il esquive et tire droit devant, il ne vise pas un bordé. Les points de vie des tourelles, ponts et nœuds sont **dimensionnés** (invariants de `CortegeTuning`), pas **mesurés en jeu** (`ADR-0019`). |
+
+## Ce que le plan n'avait pas prévu, et qui a été fait quand même
+
+- **`WaveSpawner` à la proue.** Une mesure a trouvé 27 s de temps mort à l'ouverture, qu'aucun
+  réglage ne refermait. Le plan ne prévoyait aucune vague dans ce niveau.
+- **L'épilogue par niveau.** Le rapport de mission annonçait le dénouement du niveau 1 au bout
+  du niveau 2. Le plan ne l'avait pas vu.
+- **`tools/lint-textures.py`.** Les six règles du contrat de texture n'étaient vérifiées par rien.
+- **La loi de non-chevauchement du HUD, généralisée.** Elle ne tenait que pour Lyra, et c'est
+  elle qui a tranché la place de la jauge de traversée.
+- **Le huitième matériau d'Ambry** (`BRIEF-0090`). Le plan prévoyait une texture « bordé humain » ;
+  la géométrie livrée la rendait impossible à appliquer à Ambry seule.
+
+## Ce que le plan prévoyait et qui n'a PAS été fait
+
+- **Sept demandes de texture** — il y en a **cinq**. Les UV des tronçons sont à une seule échelle :
+  c'est le MATÉRIAU qui commande, pas le sujet, et deux des sept sujets prévus étaient le même
+  matériau. `AA_Trim` est écarté sur mesure : 1,72 % de l'aire.

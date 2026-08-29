@@ -302,6 +302,22 @@ laissent, en revanche, n'appartient à aucun d'eux :
   1,26, lot 4). On voit le sol jusqu'au bord de l'écran au lieu du mur du fond. Choix assumé —
   l'alternative rendait l'entrée de plongée impossible — mais **non jugé par l'opérateur**.
 
+## ⚠️ Niveau 2 — la seule vérification qui manque (2026-08-29)
+
+- [ ] **Mesurer le coût GPU du survol sur la Quadro T1000.** Toutes les mesures de la session
+      portent la ligne Vulkan **RTX 4080** : 0,93 à 1,71 ms par image. La machine qui CONTRAINT
+      est l'autre, et le rapport entre les deux est de **×14** — ce qui placerait le niveau entre
+      13 et 24 ms sur les 16,67 disponibles à 60 Hz. ⚠️ **Mais le facteur ne se transpose pas tel
+      quel** : le survol REMPLACE le fond spatial complet (13,05 ms mesurés sur T1000) par un ciel
+      `deep_sky` presque gratuit. Le solde peut être favorable ; tant qu'il n'est pas mesuré, on
+      ne sait pas. Protocole : `.claude/resources/howto-mesurer-la-perf.md`, à 60 Hz, trois tirs
+      alternés, **jamais `--novsync`**.
+- [ ] **Les cinq images de texture** (`TEX-0010` à `TEX-0014`) — voie de l'opérateur (`ADR-0028`).
+      Les demandes sont écrites, validées et portent leur prompt ; `CortegeSkin` les attend et le
+      journal dit « coque NUE » tant qu'elles manquent.
+- [ ] **Un playtest humain du niveau 2.** Le pilote automatique n'a détruit qu'UNE cible de coque
+      en 208 s : il ne vise pas un bordé. Les PV sont **dimensionnés**, pas **mesurés** (ADR-0019).
+
 ## P0 — Rendre la démo irréprochable
 
 - [x] **Contenu de la phase chasseur** — une **seconde vague** existe : le champ d'astéroïdes
