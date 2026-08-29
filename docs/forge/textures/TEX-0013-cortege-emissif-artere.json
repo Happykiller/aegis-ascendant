@@ -1,0 +1,200 @@
+{
+  "id": "TEX-0013",
+  "slug": "cortege-emissif-artere",
+  "schema_version": "1.0",
+  "date": "2026-08-29",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "L'émissif du Long Cortège — matériau `AA_Emissive_Engine` : l'artère lumineuse qui court sur six kilomètres, et le fond des sept puits d'envol",
+    "game_context": "Niveau 2. Deux pièces partagent ce matériau et il n'y en a qu'un : (1) l'ÉPINE DORSALE, un ruban lumineux continu sur toute la longueur du vaisseau, ponctué de cinq bulbes qui sont des cibles de jeu ; (2) le FOND des sept puits d'envol hexagonaux, d'où sortent les appareils. Le moteur pose par-dessus ses propres signaux — un bulbe violet par nœud, un couvercle hexagonal magenta par puits — qui portent l'ÉTAT (vivant, touché, abattu) ; cette texture porte la MATIÈRE.",
+    "priority": "⚠️ ELLE EST LE SEUL LEVIER D'AMBIANCE DU NIVEAU. Le survol remplace le fond spatial complet par un ciel presque nu (chemin `deep_sky`) pour tenir le budget GPU : il ne reste donc que la coque et cette lumière. ⚠️ ET C'EST LA SEULE TUILE DU JEU QUI A LE DROIT AU MAGENTA SATURÉ — le magenta est aussi une couleur de tir ennemi (charte SS3). Le brief de forge a déjà dû rentrer le cœur émissif des baies à 66 % pour cette raison : une nappe pleine de 35 m² par baie disputerait la lisibilité aux balles. La texture doit tenir cette discipline, pas la défaire."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "color",
+    "alpha_usage": "none",
+    "output_usage": "albedo_and_emission"
+  },
+  "world_scale": {
+    "texture_width_m": 5.0,
+    "texture_height_m": 5.0,
+    "reference_element": "Dépliage commun de l'objet, 0,200 tuile/m. L'artère fait environ 2 m de large : elle n'échantillonne donc que ~0,4 tuile en travers.",
+    "confidence": "measured",
+    "rationale": "Échelle MESURÉE, pas décidée : elle est imposée par le dépliage déjà livré. `build_long_cortege.py` déplie les cinq tronçons par projection en boîte à `HULL_TEXELS_PER_METER = 0,200` tuile/m, soit **5,00 m par tuile** — et ce chiffre n'est pas un goût. Le rapport `BRIEF-0089-report.md` le démontre : cinq objets dépliés chacun dans son repère local font sauter `v` d'une demi-tuile à chaque jonction si `L x densité` n'est pas ENTIER. Avec des tronçons de 100 m, `100 x 0,200 = 20` — entier, donc les jonctions sont invisibles. Toute autre densité doit vérifier `100 x densité ∈ ℤ` (0,15 / 0,25 / 0,30 conviennent ; 0,22 non). Densité de texels qui en découle : 1024 px / 5,00 m = **205 texels/m**. À l'écran, la coque est 4,3 m sous le plan de jeu, dans un cadre de 41,60 m de large : 1920 px / 41,60 m = 46 px/m, et **23 px/m après le post-process rétro à 960x540**. Rapport de 8,9:1 — la tuile est largement sur-échantillonnée, ce qui garantit qu'elle ne floute pas, mais **rien de plus fin que ~9 cm de monde ne survit** (2 px à l'écran). La demande l'interdit plutôt que de le subir. ⚠️ CONSÉQUENCE CRITIQUE POUR CE SUJET : l'artère ne prélève qu'une BANDE de 0,4 tuile de large dans l'image, et le fond d'un puits qu'un carré de 0,9 tuile. Ni l'une ni l'autre ne voit l'image entière. L'image doit donc être riche en `u` COMME en `v`, sans motif qui n'ait de sens qu'à pleine tuile — une belle figure centrée serait invisible sur l'artère et bancale dans les puits."
+  },
+  "composition": {
+    "main_elements": [
+      "des canaux lumineux longitudinaux de 10 à 25 cm de large, parallèles, d'intensités inégales",
+      "des grilles de diffusion sombres qui découpent la lumière en segments réguliers",
+      "des nœuds de raccordement plus brillants tous les 1 à 2 m",
+      "une structure porteuse SOMBRE et non lumineuse occupant au moins la moitié de l'aire",
+      "quelques segments manifestement éteints, plus sombres que leurs voisins"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "Les canaux traversent les quatre bords dans le sens de la longueur et s'y raccordent exactement.",
+    "empty_space": "⚠️ LA MOITIÉ AU MOINS DE L'IMAGE EST SOMBRE ET NON ÉMISSIVE. C'est la condition pour que la lumière se lise comme une lumière et non comme un aplat."
+  },
+  "visual": {
+    "subject": "Conduit d'énergie vu de dessus : canaux lumineux parallèles, grilles de diffusion, nœuds de raccordement, structure porteuse sombre",
+    "materials": [
+      "verre de diffusion",
+      "structure métallique sombre",
+      "grilles"
+    ],
+    "details": [
+      "canaux d'intensités inégales",
+      "grilles régulières",
+      "nœuds plus brillants",
+      "segments éteints",
+      "traces de brûlure aux raccords"
+    ],
+    "style": "conduite d'énergie industrielle, froide et fonctionnelle — pas un néon, pas une enseigne",
+    "color_palette": {
+      "dominant": [
+        "magenta #D93D9C",
+        "violet #7A4DE8"
+      ],
+      "secondary": [
+        "gris très sombre de la structure porteuse",
+        "blanc rosé au cœur des canaux les plus vifs"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "orange",
+        "vert",
+        "jaune",
+        "bleu franc",
+        "arc-en-ciel",
+        "dégradé multicolore",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "rouille",
+        "texte",
+        "lettres",
+        "chiffres",
+        "numéro de coque",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste"
+      ]
+    },
+    "surface_character": "La lumière est CONTENUE : elle sort de canaux étroits, elle ne baigne pas la surface. Le halo est le travail du moteur (bloom), pas de l'image.",
+    "age_and_damage": "En service depuis très longtemps : quelques segments éteints, des dépôts sombres aux raccords, une brillance inégale d'un canal à l'autre. ⚠️ Rien de cassé — l'artère alimente encore dix-sept tourelles."
+  },
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "Ce n'est PAS une carte de données : c'est une couleur, et le seul cas du niveau 2 où la couleur est motivée au sens d'ADR-0013 §3 (croûte émissive). La luminance servira de masque d'émission, dérivé à l'intégration.",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage EXTERNE cuit. La lumière propre des canaux, elle, EST le sujet — mais elle ne doit pas éclairer la structure autour d'eux : c'est le moteur qui s'en charge, et une lueur peinte doublerait la sienne.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ au moins la moitié de l'aire SOMBRE et non émissive — sans quoi la lumière n'en est plus une",
+      "des canaux qui traversent l'image de bord à bord dans le sens de la longueur",
+      "des intensités inégales : une lumière parfaitement homogène se lit comme un aplat de couleur"
+    ],
+    "must_not_have": [
+      "aplat lumineux plein cadre",
+      "halo",
+      "flou",
+      "bloom peint",
+      "lueur diffuse",
+      "dégradé de fond",
+      "cyan",
+      "corail",
+      "texte lumineux",
+      "symbole lumineux",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "numéro de coque",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais par l'œil",
+      "⚠️ La couture en `v` défilerait sur l'artère toutes les 2,1 s, et l'artère est la pièce la plus regardée du niveau : c'est LA couture à ne pas rater."
+    ],
+    "readability_requirements": [
+      "à 23 px/m, l'artère fait 46 px de large : les canaux doivent s'y compter, sans se confondre en une seule barre",
+      "⚠️ ET LE CRITÈRE QUI PRIME : posée en jeu, elle ne doit pas disputer la lecture aux TIRS ENNEMIS, qui sont magenta eux aussi. Si le doute existe à la capture, baisser l'émission côté moteur avant de retoucher l'image."
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Matériau `AA_Emissive_Engine` des cinq `Section_01..05` : ruban d'épine dorsale (`build_spine_bulb` et la lisse centrale) et cœur des sept puits (`build_bay`).",
+    "shader_usage": "StandardMaterial3D, `emission_enabled`. La texture sert d'`albedo_texture` ET d'`emission_texture` ; l'`emission_energy_multiplier` reste le réglage moteur. ⚠️ NE PAS dériver de normale de cette image : c'est une couleur, pas une hauteur — la règle 2 du contrat ne s'applique qu'aux cartes de relief.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/cortege_emissive_1024.png --out assets/imported/textures/cortege --name cortege_emissive --check-tiling --preview /tmp/cortege_emissive.png   (sans --mul : ce n'est pas une hauteur)",
+    "additional_notes": "⚠️ LE MOTEUR POSE DÉJÀ SES PROPRES SIGNAUX PAR-DESSUS, et ils sont prioritaires : un bulbe violet par nœud d'épine (`cortege_spine_node.gd`) et un couvercle hexagonal magenta par puits (`cortege_bay.gd`, rayon 2,4 m). Ceux-là portent l'ÉTAT — vivant, endommagé, abattu — et doivent rester distinguables de la matière environnante. Une texture trop brillante les noierait, et le joueur ne verrait plus ce qu'il a détruit. ⚠️ Rappel mesuré : le post-traitement rétro applique un `lift` de 1,25 et le bloom ravive tout ce qui est saturé. Ce qui semble juste dans l'image sera plus vif à l'écran."
+  },
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "obligatoire",
+    "source_path": "assets/source/textures/cortege/cortege_emissive_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "cortege_emissive_nrm.png",
+      "cortege_emissive_rough.png",
+      "cortege_emissive_ao.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD, et le test des quatre coins S'INVERSE ICI : la tuile est pleine cadre, ses quatre coins doivent porter de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper.",
+      "⚠️ mesurer la part de l'image au-dessus de 60 % de luminance : elle doit rester SOUS la moitié. Au-delà, la lumière n'est plus une lumière, et elle disputera la lecture aux tirs ennemis, qui sont magenta eux aussi.",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK — jamais l'œil : le précédent `hull_greebles` du dépôt mesure 16 % d'écart au bord et a dû être écarté après coup",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "⚠️ puis EN JEU, en capture regardée (ADR-0006) : la densité annoncée (205 texels/m pour 23 px/m à l'écran) se vérifie là, pas sur parole"
+    ],
+    "provenance_csv_line": "cortege_emissive,assets/source/textures/cortege/cortege_emissive_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,<date>,docs/forge/textures/TEX-0013-cortege-emissif-artere.json,,\"Emissif du Long Cortege (materiau AA_Emissive_Engine, niveau 2) : artere dorsale et fond des sept puits d'envol. COULEUR motivee (ADR-0013 §3, croute emissive). 5,00 m par tuile\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\nConduit d'énergie industriel vu de dessus, en couleur : canaux lumineux magenta et violets courant dans une structure métallique SOMBRE.\n\nVue orthogonale strictement de dessus, aucune perspective, aucune ombre portée, aucun reflet. La lumière propre des canaux est le sujet — mais elle ne doit PAS éclairer la structure autour d'eux : pas de halo, pas de lueur diffuse, pas de flou, pas de bloom peint. La lumière est CONTENUE : elle sort de canaux étroits, elle ne baigne pas la surface.\n\nMotif répétable sans couture sur les quatre bords : chaque élément traverse naturellement les bords et s'y raccorde, et aucun élément ne doit trahir la taille de la tuile.\n\nÉchelle réelle : la tuile couvre 5 mètres sur 5 mètres. Des canaux lumineux longitudinaux de 10 à 25 cm de large, parallèles, d'intensités INÉGALES, traversent l'image de bord à bord dans le sens de la longueur. Des grilles de diffusion sombres les découpent en segments réguliers. Tous les 1 à 2 m, un nœud de raccordement plus brillant. Quelques segments manifestement éteints, plus sombres que leurs voisins. Des traces de brûlure aux raccords.\n\n⚠️ AU MOINS LA MOITIÉ DE L'IMAGE EST SOMBRE ET NON LUMINEUSE — la structure porteuse. C'est la condition pour que la lumière se lise comme une lumière et non comme un aplat de couleur. Un aplat lumineux plein cadre est un échec de la demande.\n\nCouleurs : magenta #D93D9C et violet #7A4DE8 dominants dans les canaux, blanc rosé au cœur des plus vifs, gris très sombre pour la structure. INTERDITS ABSOLUS : le cyan #3FD9E8 et le corail #FF5A3D, réservés aux tirs du jeu — ainsi que l'orange, le vert, le jaune, le bleu franc, tout dégradé multicolore. Aucun texte lumineux, aucun symbole, aucun logo, aucune signature.\n\nEn service depuis très longtemps, mais rien de cassé : quelques segments éteints, des dépôts sombres aux raccords, une brillance inégale d'un canal à l'autre."
+  }
+}

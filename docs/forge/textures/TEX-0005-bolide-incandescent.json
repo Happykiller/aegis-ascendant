@@ -3,15 +3,12 @@
   "slug": "bolide-incandescent",
   "schema_version": "1.0",
   "date": "2026-08-26",
-
   "texture_type": "sprite",
-
   "purpose": {
     "description": "La tête du bolide qui percute la lune : une roche en train de brûler, vue de trois quarts en chute",
     "game_context": "Phase 2 de l'arc (ADR-0027). Trois impacts à 11, 26 et 40 s. La tête est rendue à ~130 px de haut à l'écran, sur fond de ciel étoilé ou de surface lunaire. Elle remplace une coque 3D éclairée dont le rendu ne tient pas : à cette taille, le halo de bloom des fissures déborde et remplit les plaques.",
     "priority": "Le CONTRASTE entre plaques sombres et fissures incandescentes. C'est lui qui fait lire une roche qui brûle plutôt qu'une braise informe."
   },
-
   "technical": {
     "resolution": "1024x1024",
     "aspect_ratio": "1:1",
@@ -24,7 +21,6 @@
     "alpha_usage": "none",
     "output_usage": "emissive"
   },
-
   "world_scale": {
     "texture_width_m": 2.5,
     "texture_height_m": 2.5,
@@ -32,7 +28,6 @@
     "confidence": "measured",
     "rationale": "Mesuré sur capture le 2026-08-26 : bloc de 130 x 120 px. ⚠️ C'est la mesure qui justifie une image AUTORISÉE À LA TAILLE D'AFFICHAGE plutôt qu'une tuile : à 130 px, du détail échantillonné depuis une tuile de 1024 étalée sur 8 m ne survit pas, et l'émission procédurale déborde."
   },
-
   "composition": {
     "main_elements": [
       "un bloc rocheux ovoïde, plus long que large, vu de trois quarts",
@@ -44,39 +39,72 @@
     "edge_behavior": "L'objet est ISOLÉ au centre, entouré de noir pur — il sera détouré",
     "empty_space": "Une marge noire tout autour, au moins 10 % de la largeur"
   },
-
   "visual": {
     "subject": "Un météore en train de brûler : roche sombre fracturée dont les fissures rougeoient, le bord d'attaque chauffé à blanc",
-    "materials": ["roche fracturée", "lave"],
-    "details": ["plaques polygonales sombres", "fissures incandescentes", "bord d'attaque blanc-jaune", "quelques éclats qui se détachent"],
+    "materials": [
+      "roche fracturée",
+      "lave"
+    ],
+    "details": [
+      "plaques polygonales sombres",
+      "fissures incandescentes",
+      "bord d'attaque blanc-jaune",
+      "quelques éclats qui se détachent"
+    ],
     "style": "peint, lisible à petite taille, contraste franc entre le sombre et le brûlant",
     "color_palette": {
-      "dominant": ["gris très sombre", "noir de roche"],
-      "secondary": ["orange incandescent", "rouge profond", "blanc-jaune au bord d'attaque"],
-      "forbidden": ["cyan #3FD9E8", "corail #FF5A3D", "magenta", "violet"]
+      "dominant": [
+        "gris très sombre",
+        "noir de roche"
+      ],
+      "secondary": [
+        "orange incandescent",
+        "rouge profond",
+        "blanc-jaune au bord d'attaque"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "magenta",
+        "violet"
+      ]
     },
     "surface_character": "Croûte sèche et craquelée, chaude sous les fractures",
     "age_and_damage": "Elle se désagrège : quelques plaques ont déjà sauté"
   },
-
-  "data_semantics": { "enabled": false, "meaning": "", "black": "", "gray": "", "white": "" },
-
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
   "lighting": {
     "enabled": true,
     "direction": "La chaleur vient de l'INTÉRIEUR et du bord d'attaque, en bas à droite de l'image",
     "character": "Auto-éclairée : c'est l'objet qui brûle, aucune lumière extérieure ne doit se lire",
     "shadows": "none"
   },
-
   "constraints": {
     "must_have": [
       "des plaques VRAIMENT sombres — c'est le noir autour qui fait brûler le reste",
       "un gradient de température : le bord d'attaque plus chaud que l'arrière"
     ],
     "must_not_have": [
-      "fond autre que noir pur", "halo débordant sur le fond", "perspective de sol",
-      "traînée ou flamme (elles sont dans TEX-0006)", "cyan", "corail", "magenta",
-      "objet globalement clair", "texte", "lettres", "chiffres", "logo", "filigrane", "signature"
+      "fond autre que noir pur",
+      "halo débordant sur le fond",
+      "perspective de sol",
+      "traînée ou flamme (elles sont dans TEX-0006)",
+      "cyan",
+      "corail",
+      "magenta",
+      "objet globalement clair",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature"
     ],
     "seamless_requirements": [],
     "readability_requirements": [
@@ -84,20 +112,20 @@
       "sur fond de surface lunaire claire, la silhouette doit rester lisible"
     ]
   },
-
   "integration_notes": {
     "engine_usage": "Panneau orienté sur la course du bolide (scripts/vfx/moon_flyby.gd), en remplacement du matériau posé sur la coque bolide.glb",
     "shader_usage": "Non éclairé, alpha détouré du noir. ⚠️ Émission MODÉRÉE : le halo de bloom déborde et remplit les plaques dès qu'on dépasse le seuil (1,6) — c'est le défaut exact qu'on corrige.",
     "post_processing": "python3 tools/bg-key-alpha.py --mode black <source>",
     "additional_notes": "⚠️ La coque forgée bolide.glb (BRIEF-0086) reste au dépôt et garde sa valeur : elle sert de repli quand l'image manque, et son erratum documente pourquoi. Ce n'est pas un remplacement du travail de la forge, c'est un changement de technique imposé par la taille d'affichage."
   },
-
   "x_delivery": {
     "status": "à commander",
     "priority": "obligatoire",
     "source_path": "assets/source/vfx/bolide_incandescent_1024.png",
     "derived_dir": "assets/imported/vfx",
-    "derived_files": ["bolide_incandescent.png"],
+    "derived_files": [
+      "bolide_incandescent.png"
+    ],
     "verify": [
       "la marge est-elle du NOIR PUR (0,0,0) et non un gris sombre ?",
       "capture regardée à 1:1 via tools/inspect-capture.py, jamais une réduction",
@@ -105,9 +133,8 @@
     ],
     "provenance_csv_line": "bolide_incandescent,assets/source/vfx/bolide_incandescent_1024.png,raster_texture,\"ChatGPT imagegen\",,tiers (genere IA),proprietary-internal,2026-08-26,docs/forge/textures/TEX-0005-bolide-incandescent.json,,\"Tete du bolide d impact de la phase 2 (ADR-0027), peinte a la taille d affichage (~130 px). Remplace un rendu 3D eclaire dont les fissures procedurales debordaient sous le bloom. La coque bolide.glb de BRIEF-0086 reste comme repli.\""
   },
-
   "x_prompt_fr": {
-    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
-    "text": "Un météore en train de brûler, isolé au centre d'un fond NOIR PUR, vu de trois quarts comme s'il tombait vers la droite en bas.\n\nC'est un bloc de roche ovoïde, plus long que large, dont la croûte sombre est fracturée en plaques polygonales. Entre les plaques court un réseau de fissures INCANDESCENTES, orange vif à rouge profond. Le bord d'attaque, en bas à droite, est chauffé à blanc-jaune ; l'arrière est presque éteint. Quelques petites plaques se sont déjà détachées.\n\n⚠️ Les plaques doivent rester VRAIMENT SOMBRES — presque noires. C'est ce noir qui fait brûler les fissures ; une roche globalement claire ou orange ne se lira pas comme quelque chose d'incandescent.\n\nAucune traînée, aucune flamme, aucune fumée : seulement le bloc. Une marge noire d'au moins un dixième de la largeur tout autour, et aucun halo qui déborde sur le fond.\n\nStyle peint, contraste franc, lisible réduit à la taille d'une vignette.\n\nÉviter absolument : fond autre que noir pur, halo ou lueur débordant sur le fond, traînée, flamme, fumée, sol, horizon, perspective de paysage, cyan, turquoise, corail, magenta, violet, objet globalement clair, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main. ⚠️ Régénéré le 2026-08-29 pour HISSER LA CONSIGNE DE FOND EN TÊTE : le README annonce cette correction comme « appliquée à tous les x_prompt_fr » depuis le 2026-08-26, et elle ne l'avait été qu'à partir de TEX-0007. `tools/lint-textures.py` l'a relevé. L'image livrée n'est pas concernée — ce champ est une sortie.",
+    "text": "⚠️ FOND : NOIR PUR ABSOLU (#000000) sur toute la surface que le sujet n'occupe pas. Pas de dégradé, pas de vignettage, pas de halo de fond, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor — RIEN d'autre que le sujet sur du noir. Le sujet est isolé au centre, avec une large marge noire tout autour.\n\nUn météore en train de brûler, isolé au centre d'un fond NOIR PUR, vu de trois quarts comme s'il tombait vers la droite en bas.\n\nC'est un bloc de roche ovoïde, plus long que large, dont la croûte sombre est fracturée en plaques polygonales. Entre les plaques court un réseau de fissures INCANDESCENTES, orange vif à rouge profond. Le bord d'attaque, en bas à droite, est chauffé à blanc-jaune ; l'arrière est presque éteint. Quelques petites plaques se sont déjà détachées.\n\n⚠️ Les plaques doivent rester VRAIMENT SOMBRES — presque noires. C'est ce noir qui fait brûler les fissures ; une roche globalement claire ou orange ne se lira pas comme quelque chose d'incandescent.\n\nAucune traînée, aucune flamme, aucune fumée : seulement le bloc. Une marge noire d'au moins un dixième de la largeur tout autour, et aucun halo qui déborde sur le fond.\n\nStyle peint, contraste franc, lisible réduit à la taille d'une vignette.\n\nÉviter absolument : fond autre que noir pur, halo ou lueur débordant sur le fond, traînée, flamme, fumée, sol, horizon, perspective de paysage, cyan, turquoise, corail, magenta, violet, objet globalement clair, texte, lettres, chiffres, logo, filigrane, signature, nom de marque ou d'artiste."
   }
 }

@@ -198,6 +198,33 @@ HULL_TEXELS_PER_METER = HULL_TILES_PER_SECTION / SECTION_LENGTH
 AMBRY_TEXELS_PER_METER = 0.70
 
 # --------------------------------------------------------------------------
+# LE HUITIEME SLOT — declare ICI, et pas dans le kit (BRIEF-0090)
+# --------------------------------------------------------------------------
+# Le kit fige SEPT slots (`ak.MATERIAL_ORDER`) et une seule faction par coque :
+# `ak.material()` refuse tout nom hors de sa table et `set_faction()` refuse de
+# melanger deux palettes. Sous la palette de l'Unisson, `AA_Hull` EST l'anthracite
+# `#24252B` : Ambry, l'avant-poste HUMAIN, sortait donc de la matiere meme de ce
+# qui l'a emporte, et son contraste ne tenait qu'a `AA_Trim` (2,29 pct de l'aire).
+#
+# ⚠️ ECART AU KIT, ASSUME ET ECRIT : ce fichier declare LOCALEMENT un huitieme
+# materiau, sur le precedent de `build_moon_flyby.py` qui refait son export sans
+# passer par `ak.export_hull()`. Le kit n'est PAS modifie — les sept slots gardent
+# leurs index, le nouveau vient en huitieme position, et rien d'autre au depot ne
+# le voit. La raison de ne pas l'y remonter : « une coque = une faction » est une
+# bonne regle, et Ambry est le seul endroit du jeu ou une greffe humaine vit sur
+# une coque ennemie. Une exception ne fait pas une regle de kit.
+#
+# La vraie raison technique du slot separe n'est pas la couleur, c'est L'ECHELLE :
+# Ambry est depliee a 0,700 tuile/m quand le borde est a 0,200. Toute face d'Ambry
+# qui resterait sur un slot du borde recevrait sa carte 3,5 fois trop fine.
+AMBRY_HULL = "AA_Hull_Ambry"
+#: Les 7 slots du kit, PUIS celui d'Ambry : aucun index du kit ne bouge.
+MATERIAL_ORDER: tuple[str, ...] = ak.MATERIAL_ORDER + (AMBRY_HULL,)
+#: Le gris-ivoire des coques Helios Vanguard, lu dans la palette du kit et non
+#: recopie a la main : si la charte change, ce slot change avec elle.
+AMBRY_HULL_HEX = ak.PALETTES[ak.FACTION_VANGUARD]["hull"]      # #EDEAE3
+
+# --------------------------------------------------------------------------
 # La section transversale — moitie tribord, de la crete a la quille
 # --------------------------------------------------------------------------
 # (x, y, materiau du segment qui part de ce point). Le dernier materiau est ignore.
@@ -405,8 +432,48 @@ RING_SIZE = 2 * len(PROFILE) - 2
 # ==========================================================================
 
 
+def _ambry_material() -> bpy.types.Material:
+    """Le materiau propre a Ambry — COPIE d'`AA_Hull`, recolorise en Vanguard.
+
+    Une copie et non une declaration a la main : `AA_Hull` porte deja le rendu
+    d'une coque du kit (metallic 0,05, roughness 0,45 — une tole PEINTE, quand
+    `AA_Trim` est a 0,85/0,28, une carapace POLIE). Ambry doit sortir de la meme
+    famille de surface que les coques d'Helios Vanguard, pas de la carapace de
+    l'Unisson : la difference de speculaire est un quatrieme signal, gratuit et
+    independant de toute texture, apres l'orthogonalite, la valeur et l'absence
+    de magenta.
+
+    ⚠️ Memoise par le nom, comme `ak.material()` : deux appels rendent le meme
+    datablock, sans quoi les cinq troncons porteraient cinq materiaux differents
+    et l'exporteur en sortirait cinq copies.
+    """
+    existing = bpy.data.materials.get(AMBRY_HULL)
+    if existing is not None:
+        return existing
+    mat = ak.material("AA_Hull").copy()
+    mat.name = AMBRY_HULL
+    color = ak.srgb_hex_to_linear(AMBRY_HULL_HEX)
+    mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
+    mat.diffuse_color = color
+    return mat
+
+
+def _mat_index(name: str) -> int:
+    """Index de slot dans `MATERIAL_ORDER` — les 7 du kit, plus Ambry.
+
+    Remplace `ak.mat_index()`, qui ne connait que les sept. Les sept gardent
+    exactement leur index : seul le huitieme est nouveau.
+    """
+    try:
+        return MATERIAL_ORDER.index(name)
+    except ValueError as exc:
+        raise ak.ContractError(
+            f"materiau inconnu de ce decor : {name!r} "
+            f"(attendus : {list(MATERIAL_ORDER)})") from exc
+
+
 def _new_object(name: str, bm: bmesh.types.BMesh) -> bpy.types.Object:
-    """Objet a 7 slots normalises, SANS `recalc_face_normals`.
+    """Objet a 8 slots (les 7 du kit + celui d'Ambry), SANS `recalc_face_normals`.
 
     ⚠️ Difference volontaire avec `ak.new_object()`. Les troncons 2 a 5 sont des
     tubes ouverts aux deux bouts : l'heuristique de bmesh peut y retourner toute la
@@ -415,6 +482,17 @@ def _new_object(name: str, bm: bmesh.types.BMesh) -> bpy.types.Object:
     """
     mesh = bpy.data.meshes.new(name)
     ak.apply_material_slots(mesh)
+    # ⚠️ APRES le kit, jamais avant : `apply_material_slots()` refuse d'ecraser
+    # des slots existants, et un `materials.clear()` remettrait a zero le
+    # `material_index` de TOUS les polygones, en silence. Les cinq troncons
+    # portent les huit slots meme si quatre d'entre eux n'utilisent pas le
+    # huitieme : ainsi la fusion d'Ambry dans le troncon 5 n'a aucun index a
+    # remapper, et `_mat_index()` reste vrai partout.
+    mesh.materials.append(_ambry_material())
+    if [m.name for m in mesh.materials] != list(MATERIAL_ORDER):
+        raise ak.ContractError(
+            f"{name} : slots {[m.name for m in mesh.materials]} au lieu de "
+            f"{list(MATERIAL_ORDER)}")
     bm.to_mesh(mesh)
     bm.free()
     obj = bpy.data.objects.new(name, mesh)
@@ -442,7 +520,7 @@ def _face(bm: bmesh.types.BMesh, verts: list, material: str):
         face = bm.faces.new(clean)
     except ValueError:
         return None
-    face.material_index = ak.mat_index(material)
+    face.material_index = _mat_index(material)
     return face
 
 
@@ -991,11 +1069,17 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
        de longueurs toutes differentes — c'est le « re-plombe » du brief, et c'est
        ce qui dit qu'on a POSE cela sur un vaisseau qui n'etait pas fait pour le
        recevoir.
-    2. **La valeur.** `AA_Trim` (ivoire froid `#DDDCD2`) domine, contre `AA_Hull`
-       anthracite `#24252B` partout ailleurs — un rapport de 1 a 12 en luminance.
-       ⚠️ Le brief demande « materiaux AA_Hull / AA_Trim CLAIRS » : sous la palette
-       Null Choir, `AA_Hull` EST l'anthracite. Le contraste ne peut donc venir que
-       d'`AA_Trim`, et c'est ce qui est fait. Voir le compte-rendu, section 6.
+    2. **La valeur, et depuis BRIEF-0090 elle a son propre slot.** Ambry est
+       dominee par `AA_Hull_Ambry`, huitieme materiau declare en tete de ce
+       fichier : le gris-ivoire `#EDEAE3` des coques Helios Vanguard, contre
+       l'anthracite `#24252B` de l'Unisson partout ailleurs — 1 a 15 en
+       luminance. AVANT, ces memes faces etaient en `AA_Trim` (l'ivoire froid
+       `#DDDCD2` de l'Unisson) : la valeur y etait deja, mais la MATIERE etait
+       celle de l'ennemi, et une carte propre a Ambry etait impossible.
+       ⚠️ Deux endroits gardent volontairement `AA_Hull` anthracite : les deux
+       colliers de greffe (ils appartiennent au vaisseau, pas a l'avant-poste)
+       et le pas d'appontage (un pont clair de plus effacerait le pas ; c'est sa
+       valeur SOMBRE qui le fait lire comme un pas). Voir le compte-rendu §6.
     3. **L'absence de magenta.** Aucune face `AA_Emissive_Engine` sur Ambry. La
        seule couleur y est le vert maladif `#7C9E52` (`AA_Marking_Red` sous cette
        palette) de la serre — le seul emploi de cette couleur des 500 m.
@@ -1031,7 +1115,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     # --- le radeau, ses douze bequilles et ses deux colliers de greffe --------
     rx0, rx1 = x0 + 0.30, x1 - 0.20
     rs0, rs1 = s0 + 0.5, s1 - 0.5
-    slab(rx0, rx1, rs0, rs1, under, raft, "AA_Greeble", "AA_Trim")
+    slab(rx0, rx1, rs0, rs1, under, raft, "AA_Greeble", AMBRY_HULL)
     for sx in (rx0 + 0.5, (rx0 + rx1) * 0.5, rx1 - 0.5):
         for ss in (rs0 + 2.0, rs0 + 9.0, rs0 + 18.0, rs1 - 1.5):
             foot = _surface_y(ss, sx) - 0.35
@@ -1049,7 +1133,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     for k in range(4):
         ms = rs0 + 1.0 + k * 4.6
         slab(rx0 + 0.25, rx0 + 3.35, ms, ms + 4.0, raft - 0.14, module_top,
-             "AA_Trim", "AA_Trim", draft=0.12)
+             AMBRY_HULL, AMBRY_HULL, draft=0.12)
         # Capot technique. Sa base est ENFONCEE de 28 cm dans le module : posee
         # a fleur, elle serait coplanaire avec le toit et scintillerait.
         slab(rx0 + 0.85, rx0 + 2.75, ms + 0.75, ms + 3.25,
@@ -1059,7 +1143,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
 
     # --- la passerelle, continue d'un bout a l'autre, et son pas d'appontage --
     slab(rx0 + 3.65, rx0 + 5.05, rs0 + 0.4, rs1 - 0.4, raft - 0.12, raft + 0.22,
-         "AA_Greeble", "AA_Trim")
+         "AA_Greeble", AMBRY_HULL)
     slab(rx0 + 3.65, rx1 - 0.05, rs0 + 3.2, rs0 + 8.2, raft - 0.12, raft + 0.22,
          "AA_Greeble", "AA_Hull")
     for k in range(11):
@@ -1109,15 +1193,15 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     # des bulbes de l'arete dorsale, et 20 cm sous le plafond du jeu.
     mast_top = BUILD_CEILING_Y
     slab(ax - 0.62, ax + 0.62, asx - 0.72, asx + 0.72, raft - 0.12, raft + 0.30,
-         "AA_Greeble", "AA_Trim")
+         "AA_Greeble", AMBRY_HULL)
     slab(ax - 0.17, ax + 0.17, asx - 0.17, asx + 0.17, raft + 0.16, mast_top,
          "AA_Greeble", "AA_Greeble")
     for span, y in ((1.05, mast_top - 1.02), (0.76, mast_top - 0.72),
                     (0.48, mast_top - 0.46)):
         slab(ax - span, ax + span, asx - 0.08, asx + 0.08, y, y + 0.11,
-             "AA_Trim", "AA_Trim")
+             AMBRY_HULL, AMBRY_HULL)
         slab(ax - 0.08, ax + 0.08, asx - span, asx + span, y, y + 0.11,
-             "AA_Trim", "AA_Trim")
+             AMBRY_HULL, AMBRY_HULL)
     stats["mast_top"] = mast_top
 
     top = max(tops)
@@ -1594,6 +1678,9 @@ def _audit(path: str) -> dict:
     density_source: dict[str, list] = {}
     emissive_area = 0.0
     total_area = 0.0
+    area_by_material: dict[str, float] = {}
+    ambry_slot_strays = 0
+    ambry_slot_tris = 0
 
     for index in roots:
         node = nodes[index]
@@ -1700,10 +1787,13 @@ def _audit(path: str) -> dict:
         problems.append(
             f"{prims_total - prims_tan} primitive(s) sur {prims_total} sans TANGENT")
 
-    # --- materiaux : les 7 AA_*, aucune couleur de tir, aucune texture ---------
-    for name in ak.MATERIAL_ORDER:
+    # --- materiaux : les 8 AA_*, aucune couleur de tir, aucune texture ---------
+    # ⚠️ HUIT depuis BRIEF-0090 : les sept du kit plus `AA_Hull_Ambry`, declare
+    # localement (voir la tete du fichier). Ce harnais est ce qui empeche le
+    # huitieme de disparaitre en silence le jour ou l'on retouchera Ambry.
+    for name in MATERIAL_ORDER:
         if name not in materials:
-            problems.append(f"materiau '{name}' absent du .glb (les 7 sont requis)")
+            problems.append(f"materiau '{name}' absent du .glb (les 8 sont requis)")
         elif name not in used_materials:
             problems.append(f"materiau '{name}' present mais assigne a aucune face")
     forbidden = [ak.srgb_hex_to_linear(h)[:3] for h in FORBIDDEN_HEX]
@@ -1779,11 +1869,32 @@ def _audit(path: str) -> dict:
                 pa = Vector(points[ia])
                 area = (Vector(points[ib]) - pa).cross(Vector(points[ic]) - pa).length
                 total_area += area * 0.5
+                area_by_material[material] = \
+                    area_by_material.get(material, 0.0) + area * 0.5
                 if material == "AA_Emissive_Engine":
                     emissive_area += area * 0.5
+                # ⚠️ LE HUITIEME SLOT NE SORT PAS D'AMBRY (BRIEF-0090). Un
+                # gris-ivoire qui deborderait sur le borde de l'Unisson volerait
+                # la lecture a tout le niveau — c'est la lecon mesuree du rendu
+                # precedent : sur 500 m, un materiau clair pose sur une arete
+                # CONTINUE occupe plus de pixels qu'une piece entiere. Le
+                # controle est triangle par triangle, sur le binaire, et il
+                # echoue le build.
+                if material == AMBRY_HULL:
+                    ambry_slot_tris += 1
+                    if not in_keepout:
+                        ambry_slot_strays += 1
         density[name] = _texel_density(pts, uvs, tris)
         if ambry_tris:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
+
+    if ambry_slot_strays:
+        problems.append(
+            f"{ambry_slot_strays} triangle(s) en '{AMBRY_HULL}' hors de l'emprise "
+            "d'Ambry — ce slot lui est reserve (BRIEF-0090)")
+    if ambry_slot_tris == 0:
+        problems.append(f"aucun triangle en '{AMBRY_HULL}' : le slot propre a "
+                        "Ambry a disparu")
 
     # ⚠️ Le plancher n'est pas la cible : une projection EN BOITE etire par
     # 1/cos(angle a l'axe dominant), et le pire cas geometrique est la normale
@@ -1822,6 +1933,9 @@ def _audit(path: str) -> dict:
         "primitives": (prims_uv, prims_tan, prims_total),
         "triangles": triangles_total,
         "materials": sorted(used_materials),
+        "area_by_material": area_by_material,
+        "total_area": total_area,
+        "ambry_slot_triangles": ambry_slot_tris,
         "top": top_of_decor,
         "width": 2 * widest,
         "emissive_ratio": emissive_area / total_area if total_area else 0.0,
@@ -1920,7 +2034,20 @@ def _print_report(report: dict) -> None:
 
     print(f"\n  primitives : {report['primitives'][0]}/{report['primitives'][2]} "
           f"TEXCOORD_0, {report['primitives'][1]}/{report['primitives'][2]} TANGENT")
-    print(f"  materiaux  : {', '.join(report['materials'])}")
+
+    # ⚠️ La repartition en AIRE, et non en triangles : c'est elle qui dit combien
+    # de PIXELS un materiau prendra. Le rendu precedent l'a prouve a ses depens —
+    # `AA_Trim` faisait moins de 6 pct de l'aire dans la version qui lisait comme
+    # une piste d'aeroport. Un chiffre imprime a chaque build est ce qui permet de
+    # comparer deux forges au lieu de les regarder l'une apres l'autre.
+    print(f"\n  repartition en aire des {len(report['materials'])} materiaux "
+          "assignes (relevee sur le .glb)")
+    total = report["total_area"] or 1.0
+    for name, area in sorted(report["area_by_material"].items(),
+                             key=lambda kv: -kv[1]):
+        flag = "   <- propre a Ambry" if name == AMBRY_HULL else ""
+        print(f"    {name:<20} {area:10.1f} m2   {100.0 * area / total:6.2f} %{flag}")
+    print(f"    {'TOTAL':<20} {total:10.1f} m2")
     print(f"  emissif    : {100.0 * report['emissive_ratio']:.2f} % de l'aire totale")
     print(f"  octets     : {report['bytes']}")
 
@@ -1960,9 +2087,10 @@ def main() -> None:
 # Planche de recette — `--plate`
 # ==========================================================================
 # Un livrable de la forge n'est pas un asset valide tant qu'il n'a pas ete rendu et
-# REGARDE (ADR-0006). Huit vignettes : la perspective du jeu avec le Specter-9 reel a
+# REGARDE (ADR-0006). NEUF vignettes : la perspective du jeu avec le Specter-9 reel a
 # l'echelle, les cinq troncons de dessus a la MEME echelle, une elevation du troncon
-# 5 ou le plafond Y = -3 est materialise, et le damier UV.
+# 5 ou le plafond Y = -3 est materialise, LE CONTRASTE D'AMBRY (BRIEF-0090 : elle et
+# le borde dans le MEME cadre, sans quoi rien n'est prouve), et le damier UV.
 
 TILE_W = 1440
 SCENE_H = 600
@@ -2298,6 +2426,54 @@ def _tile_elevation(path: str, report: dict) -> None:
     _render(path, TILE_W, ELEV_H)
 
 
+def _tile_ambry(path: str, report: dict) -> None:
+    """AMBRY ET LE BORDE SUR LA MEME VIGNETTE — l'exigence de BRIEF-0090.
+
+    Deux vignettes separees ne prouveraient rien : ce qui est en jeu, c'est un
+    CONTRASTE, et un contraste ne se juge que dans un seul cadre, a l'eclairage
+    du jeu et a la perspective du jeu. On prend donc EXACTEMENT la camera de
+    `graybox.tscn` — pas un cadrage flatteur — et l'on decale le decor pour
+    qu'Ambry tombe au centre du champ. Le borde de l'Unisson occupe alors toute
+    la moitie babord du cadre, la crete lumineuse passe au milieu, et l'on voit
+    du meme coup les deux choses qui comptent :
+
+      * Ambry se detache-t-elle de la masse anthracite ? (c'est l'objet du brief)
+      * son gris-ivoire vole-t-il la lecture au reste ? (c'est le piege du brief)
+
+    Le Specter-9 REEL y est a sa taille et a sa place de jeu (ADR-0025) : si les
+    344 m2 d'Ambry passaient devant le chasseur, cela se verrait ici.
+    """
+    _plate_reset()
+    # Le decor est decale pour que le CENTRE d'Ambry tombe la ou la camera du jeu
+    # regarde le pont — calcule, jamais approche a l'œil.
+    deck = -4.30
+    aim_z = CAM_POS.z + CAM_FORWARD.z * _frame_coverage(deck)["depth"]
+    shift = 0.5 * (AMBRY_S[0] + AMBRY_S[1]) + aim_z
+    decor = _import(OUTPUT, "Decor", Vector((0.0, 0.0, shift)))
+    _import(FIGHTER, "Player", Vector((0.0, 0.0, 3.4)))
+    _plate_lights()
+    camera = _plate_camera("ambry", _to_blender(CAM_POS), _to_blender(CAM_FORWARD),
+                           _to_blender(CAM_UP), CAM_FOV_V)
+    area = report["area_by_material"].get(AMBRY_HULL, 0.0)
+    share = 100.0 * area / (report["total_area"] or 1.0)
+    _label(camera, "AMBRY ET LE BORDE DANS LE MEME CADRE — perspective du jeu, "
+                   "tribord a droite",
+           -0.96, 0.86, 0.045, TILE_W, SCENE_H, (1.0, 0.88, 0.55))
+    _label(camera, f"{AMBRY_HULL} {AMBRY_HULL_HEX} (coques Helios Vanguard) = "
+                   f"{area:.0f} m2, soit {share:.2f} % de l'aire — le borde reste "
+                   f"anthracite {ak.PALETTES[ak.FACTION_NULL_CHOIR]['hull'].upper()}",
+           -0.96, 0.76, 0.032, TILE_W, SCENE_H)
+    _label(camera, f"depliage propre : {AMBRY_TEXELS_PER_METER:.3f} tuile/m sur "
+                   f"Ambry ({1 / AMBRY_TEXELS_PER_METER:.2f} m/tuile) contre "
+                   f"{HULL_TEXELS_PER_METER:.3f} sur le borde "
+                   f"({1 / HULL_TEXELS_PER_METER:.2f} m/tuile)",
+           -0.96, -0.84, 0.032, TILE_W, SCENE_H, (0.72, 0.84, 1.0))
+    _label(camera, "Specter-9 reel a sa place de jeu : les balles doivent se lire "
+                   "par-dessus (ADR-0006)",
+           -0.96, -0.91, 0.030, TILE_W, SCENE_H, (0.72, 0.84, 1.0))
+    _render(path, TILE_W, SCENE_H)
+
+
 def _compose(tiles: list[tuple[str, int]], out: str) -> None:
     """Empile les vignettes. Pas de PIL dans le Python de Blender : numpy."""
     import numpy as np
@@ -2339,6 +2515,9 @@ def render_plate(report: dict) -> None:
         path = os.path.join(staging, "elev.png")
         _tile_elevation(path, report)
         tiles.append((path, ELEV_H))
+        path = os.path.join(staging, "ambry.png")
+        _tile_ambry(path, report)
+        tiles.append((path, SCENE_H))
         path = os.path.join(staging, "uv.png")
         _tile_scene(path, report, checker=True)
         tiles.append((path, UV_H))

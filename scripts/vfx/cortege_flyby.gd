@@ -129,6 +129,13 @@ func _build() -> void:
 		add_child(decor)
 		_decor = decor
 		_collect_sections(decor)
+		# ⚠️ FACULTATIF ET SILENCIEUX QUAND IL MANQUE. Les cartes viennent de l'opérateur
+		# (`ADR-0028`, demandes `TEX-0010` à `TEX-0014`) et n'existent pas encore : la coque
+		# se joue nue, avec les seules couleurs de palette du `.glb`. Le journal dit lequel
+		# des deux états on regarde — sans quoi on jugerait un rendu texturé qui ne l'est pas.
+		var dressed := CortegeSkin.apply(decor)
+		print("[Cortege] coque %s" % ("habillée — %d surfaces" % dressed if dressed > 0
+			else "NUE — aucune carte dans %s" % CortegeSkin.MAPS_DIR.get_base_dir().get_file()))
 	if _sections.is_empty():
 		_is_stand_in = true
 		_decor = Node3D.new()

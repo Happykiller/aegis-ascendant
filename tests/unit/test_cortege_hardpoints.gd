@@ -236,3 +236,31 @@ func test_the_last_node_silences_nothing_and_says_nothing() -> void:
 	node.target().hit_callback.call(TUNING.node_health)
 	assert_false(node.is_alive(), "le second noeud est tombe")
 	assert_eq(heard[0], 0, "aucune extinction annoncee — il n'y a rien a eteindre")
+
+# --- L'habillage de la coque : facultatif, jamais fatal ------------------------
+
+const SkinScript := preload("res://scripts/fx/cortege_skin.gd")
+
+func test_the_skin_is_harmless_when_the_operator_has_not_supplied_the_maps() -> void:
+	# ⚠️ C'EST L'ETAT NORMAL DU DEPOT, PAS UN CAS D'ERREUR. Les cartes viennent de l'operateur
+	# (ADR-0028, demandes TEX-0010 a TEX-0014) et le niveau doit se jouer sans elles. Le piege
+	# evite ici est un `preload` sur un fichier absent : en GDScript c'est une erreur de
+	# COMPILATION, donc le niveau entier cesserait de se monter — pour un habillage facultatif.
+	var mesh := track(MeshInstance3D.new()) as MeshInstance3D
+	mesh.mesh = BoxMesh.new()
+	var material := StandardMaterial3D.new()
+	material.resource_name = "AA_Hull"
+	mesh.set_surface_override_material(0, material)
+	var dressed := SkinScript.apply(mesh)
+	assert_eq(dressed, 0, "sans carte, rien n'est habille — et rien ne casse")
+	assert_eq(mesh.get_active_material(0), material,
+		"le materiau importe est laisse INTACT : on ne remplace pas par une copie vide")
+
+func test_the_skin_leaves_materials_it_does_not_know_alone() -> void:
+	var mesh := track(MeshInstance3D.new()) as MeshInstance3D
+	mesh.mesh = BoxMesh.new()
+	var material := StandardMaterial3D.new()
+	material.resource_name = "AA_Marking_Red"
+	mesh.set_surface_override_material(0, material)
+	assert_eq(SkinScript.apply(mesh), 0,
+		"un materiau hors contrat n'est pas touche — le contrat de nommage vient de la forge")

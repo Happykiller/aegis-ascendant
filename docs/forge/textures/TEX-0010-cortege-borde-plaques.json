@@ -1,0 +1,201 @@
+{
+  "id": "TEX-0010",
+  "slug": "cortege-borde-plaques",
+  "schema_version": "1.0",
+  "date": "2026-08-29",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du bordé du Long Cortège — la surface dominante du niveau 2, matériau `AA_Hull`, celle qu'on survole pendant trois minutes et demie",
+    "game_context": "Niveau 2 : le survol d'un vaisseau de 6,8 km, longé de la proue vers l'arrière. La coque livrée (`assets/imported/models/backgrounds/long_cortege.glb`, BRIEF-0089) fait 500 unités sur 28, en cinq tronçons de 100, et `AA_Hull` en couvre l'écrasante majorité — les plaques, nervures, lisses et greffes du bordé sont de la géométrie posée DESSUS, pas des zones distinctes. La caméra plonge à ~70°, la coque est 4,3 m sous le plan de jeu, et le joueur la regarde SANS INTERRUPTION du début à la fin du niveau : c'est la seule surface du jeu qu'on observe aussi longtemps.",
+    "priority": "⚠️ ELLE PORTE L'ÉCHELLE DU VAISSEAU, ET C'EST UNE INFORMATION DE JEU. Le Long Cortège doit se lire comme un OUVRAGE de six kilomètres, pas comme un mur. Ce qui donne cette lecture n'est pas la finesse du détail mais sa RÉPÉTITION à la bonne taille : des plaques de 2 à 4 m défilant à 2,4 m/s donnent une cadence, et c'est cette cadence qui dit la vitesse et la taille. Une tuile trop fine rendrait la coque petite et le niveau court. ⚠️ Et elle passe DERRIÈRE le gameplay (LOI-LIS-01) : elle ne doit jamais disputer la lecture aux tourelles, aux puits magenta ni aux projectiles."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 5.0,
+    "texture_height_m": 5.0,
+    "reference_element": "Le dépliage livré : `HULL_TEXELS_PER_METER = 0,200` tuile/m dans `tools/blender/build_long_cortege.py`, soit 5,00 m par tuile, mesuré dans le binaire à 0,197-0,198 de moyenne (anisotropie 1,60-1,73, borne théorique √3 d'une projection en boîte).",
+    "confidence": "measured",
+    "rationale": "Échelle MESURÉE, pas décidée : elle est imposée par le dépliage déjà livré. `build_long_cortege.py` déplie les cinq tronçons par projection en boîte à `HULL_TEXELS_PER_METER = 0,200` tuile/m, soit **5,00 m par tuile** — et ce chiffre n'est pas un goût. Le rapport `BRIEF-0089-report.md` le démontre : cinq objets dépliés chacun dans son repère local font sauter `v` d'une demi-tuile à chaque jonction si `L x densité` n'est pas ENTIER. Avec des tronçons de 100 m, `100 x 0,200 = 20` — entier, donc les jonctions sont invisibles. Toute autre densité doit vérifier `100 x densité ∈ ℤ` (0,15 / 0,25 / 0,30 conviennent ; 0,22 non). Densité de texels qui en découle : 1024 px / 5,00 m = **205 texels/m**. À l'écran, la coque est 4,3 m sous le plan de jeu, dans un cadre de 41,60 m de large : 1920 px / 41,60 m = 46 px/m, et **23 px/m après le post-process rétro à 960x540**. Rapport de 8,9:1 — la tuile est largement sur-échantillonnée, ce qui garantit qu'elle ne floute pas, mais **rien de plus fin que ~9 cm de monde ne survit** (2 px à l'écran). La demande l'interdit plutôt que de le subir."
+  },
+  "composition": {
+    "main_elements": [
+      "6 à 10 plaques de bordé par tuile, de 1,5 à 3,5 m de côté, appareillées et décalées, jamais en damier",
+      "des joints de 8 à 15 cm entre les plaques, PEU PROFONDS, interrompus et décalés",
+      "deux ou trois rangs de rivets affleurants de 10 à 15 cm, le long des bords de plaque seulement",
+      "une ou deux bandes de recouvrement plates traversant la tuile en biais",
+      "quelques trappes d'accès rectangulaires de 60 à 90 cm, à peine saillantes"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "Plaques, joints et bandes traversent les quatre bords et s'y raccordent. ⚠️ Aucune plaque entière centrée : elle trahirait la taille de la tuile, et sur 500 m elle défilerait vingt fois.",
+    "empty_space": "De larges plages de tôle nue au centre des plaques — c'est ce qui donne la masse. Une tuile chargée partout rendrait un bruit uniforme à 23 px/m."
+  },
+  "visual": {
+    "subject": "Bordé de coque de très grand vaisseau vu de dessus : tôles appareillées, joints, rivets, bandes de recouvrement, trappes",
+    "materials": [
+      "tôle de coque épaisse",
+      "bandes de recouvrement",
+      "rivetage affleurant"
+    ],
+    "details": [
+      "bords de plaque légèrement chanfreinés",
+      "rangs de rivets affleurants",
+      "bandes de recouvrement plates",
+      "trappes d'accès rectangulaires",
+      "éraflures longues dans le sens de la longueur"
+    ],
+    "style": "ouvrage industriel froid, méthodique, sans ornement — construit pour durer, pas pour impressionner",
+    "color_palette": {
+      "dominant": [
+        "gris moyen"
+      ],
+      "secondary": [
+        "gris clair sur les seules arêtes saillantes"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "rouille",
+        "texte",
+        "lettres",
+        "chiffres",
+        "numéro de coque",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "couleur",
+        "teinte",
+        "émissif",
+        "noir absolu",
+        "magenta",
+        "violet"
+      ]
+    },
+    "surface_character": "Métal MAT, jamais poli. Plat et massif : l'épaisseur se lit aux bords des plaques, pas à un effet de matière.",
+    "age_and_damage": "Entretenu, mais depuis très longtemps. Éraflures longues, cabossages peu profonds, quelques plaques manifestement remplacées et non raccordées au même appareillage. ⚠️ AUCUNE déchirure, aucun trou : ce vaisseau n'a jamais été attaqué."
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosité et AO en sont DÉRIVÉES par tools/derive-maps.py — aucune carte de normale n'est demandée (règle 2 du contrat).",
+    "black": "⚠️ INTERDIT. Le fond de joint s'arrête vers 70/255 : un joint au noir se lirait comme une fente ouverte sur une coque qui n'en a aucune.",
+    "gray": "face de référence de la tôle, ~150/255",
+    "white": "bandes de recouvrement, têtes de rivet, arêtes de trappe"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit : le moteur éclaire, et la coque DÉFILE. Une ombre portée peinte glisserait avec elle et contredirait la lumière de la scène en permanence — sur trois minutes et demie de survol continu, c'est le défaut qu'on finit forcément par voir.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ une lecture immédiate « très grand ouvrage » — c'est l'information de jeu que porte cette surface",
+      "une plage dynamique RESSERRÉE : le creux le plus profond reste un gris (~70/255)",
+      "des joints interrompus et décalés, jamais un sillon rectiligne d'un bord à l'autre",
+      "un appareillage inégal : plaques de tailles différentes, non alignées"
+    ],
+    "must_not_have": [
+      "grille",
+      "caillebotis",
+      "fente",
+      "hublot",
+      "perforation",
+      "trou traversant",
+      "damier régulier",
+      "plaques toutes identiques",
+      "longue ligne sombre continue traversant l'image",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "numéro de coque",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais par l'œil",
+      "⚠️ LA COUTURE EN `v` EST CELLE QUI COÛTERAIT LE PLUS. Le vaisseau défile dans l'axe : une couture transversale remonterait l'écran toutes les 2,1 secondes, cent fois dans le niveau, et se lirait comme un battement. Les jonctions de tronçons tombent déjà sur `v` entier (20 tuiles par tronçon) — une couture visible s'y superposerait exactement."
+    ],
+    "readability_requirements": [
+      "à 23 px/m après le post-process rétro, une plaque de 2 m fait 46 px : l'appareillage doit s'y lire, et rien de plus fin que ~9 cm de monde ne doit porter d'information",
+      "⚠️ la surface passe DERRIÈRE le jeu : les puits magenta, les yeux de tourelle et les projectiles doivent rester les choses les plus lisibles de l'image (critère final, en capture regardée — ADR-0006)"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Matériau `AA_Hull` des cinq `Section_01..05` de assets/imported/models/backgrounds/long_cortege.glb, monté par scripts/vfx/cortege_flyby.gd.",
+    "shader_usage": "StandardMaterial3D. Normale, rugosité et AO DÉRIVÉES de cette hauteur. La carte de multiplication (--mul) sert d'`albedo_texture` par-dessus l'`albedo_color` anthracite importée du .glb : albedo = albedo_texture x albedo_color, la teinte de faction reste et seuls les creux s'assombrissent (ADR-0011, cf. scripts/fx/hull_detail.gd). C'est ce qui rend inutile une seconde génération d'albédo.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/cortege_hull_height_1024.png --out assets/imported/textures/cortege --name cortege_hull --mul --check-tiling --preview /tmp/cortege_hull.png",
+    "additional_notes": "⚠️ NE PAS RÉGLER `uv1_scale` À L'INTÉGRATION. Le dépliage livré est déjà MÉTRIQUE (0,200 tuile/m) : toute mise à l'échelle côté moteur casserait la continuité aux jonctions de tronçons, qui ne tient que parce que `100 x 0,200` est entier. C'est l'inverse du Specter-9, où `uv1_scale` est le réglage principal (`HullDetail.UV_SCALE`). ⚠️ Et le post-traitement rétro applique un `lift` de 1,25 qui RELÈVE les tons moyens : une première doublure de coque réglée à 0,10 d'albédo est ressortie BEIGE à l'écran. Juger après le post-traitement, jamais avant."
+  },
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "obligatoire",
+    "source_path": "assets/source/textures/cortege/cortege_hull_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "cortege_hull_nrm.png",
+      "cortege_hull_rough.png",
+      "cortege_hull_ao.png",
+      "cortege_hull_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD, et le test des quatre coins S'INVERSE ICI : la tuile est pleine cadre, ses quatre coins doivent porter de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper.",
+      "mesurer le point le plus sombre de l'image : il doit rester au-dessus du seuil annoncé dans data_semantics.black, jamais 0",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK — jamais l'œil : le précédent `hull_greebles` du dépôt mesure 16 % d'écart au bord et a dû être écarté après coup",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "⚠️ puis EN JEU, en capture regardée (ADR-0006) : la densité annoncée (205 texels/m pour 23 px/m à l'écran) se vérifie là, pas sur parole"
+    ],
+    "provenance_csv_line": "cortege_hull_height,assets/source/textures/cortege/cortege_hull_height_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,<date>,docs/forge/textures/TEX-0010-cortege-borde-plaques.json,,\"Hauteur du borde du Long Cortege (materiau AA_Hull, niveau 2). Tuile repetable, 1024 px pour 5,00 m x 5,00 m — echelle IMPOSEE par le depliage livre (HULL_TEXELS_PER_METER = 0.200 dans tools/blender/build_long_cortege.py)\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\nCarte de hauteur en niveaux de gris du bordé d'un très grand vaisseau spatial. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun reflet spéculaire. Image strictement monochrome : c'est une carte de HAUTEUR, pas une carte de relief colorée.\n\nMotif répétable sans couture sur les quatre bords : chaque élément traverse naturellement les bords et s'y raccorde, et aucun élément ne doit trahir la taille de la tuile.\n\nÉchelle réelle : la tuile couvre 5 mètres sur 5 mètres de coque. Six à dix plaques de tôle épaisse par tuile, de 1,5 à 3,5 m de côté, appareillées et décalées les unes par rapport aux autres, jamais alignées en damier. Entre elles court un joint de 8 à 15 cm, PEU PROFOND, interrompu et décalé — jamais un sillon rectiligne d'un bord à l'autre. Le long des bords de plaque seulement : deux ou trois rangs de rivets affleurants de 10 à 15 cm. Une ou deux bandes de recouvrement plates traversent la tuile en biais. Quelques trappes d'accès rectangulaires de 60 à 90 cm, à peine saillantes.\n\n⚠️ CETTE SURFACE DIT LA TAILLE DU VAISSEAU. Il fait six kilomètres huit. Ce qui donne cette lecture n'est pas la finesse du détail mais la RÉPÉTITION à la bonne taille : de larges plages de tôle nue au centre des plaques, c'est ce qui donne la masse. Une tuile chargée partout rendrait un bruit uniforme. Rien de plus fin que 9 cm.\n\nL'ouvrage est entretenu, mais depuis très longtemps : éraflures longues dans le sens de la longueur, cabossages peu profonds, quelques plaques manifestement remplacées et raccordées à un autre appareillage. AUCUNE déchirure, aucun trou, aucune brèche, aucune rouille — ce vaisseau n'a jamais été attaqué.\n\nLe gris code la HAUTEUR et rien d'autre : gris moyen ~150/255 pour la face de la tôle, blanc pour les bandes de recouvrement, les têtes de rivet et les arêtes de trappe, et le fond de joint ne descend JAMAIS plus bas que 70/255 — un joint au noir se lirait comme une fente ouverte. Aucune couleur, aucune teinte, aucun texte, aucun chiffre, aucun logo, aucune signature."
+  }
+}

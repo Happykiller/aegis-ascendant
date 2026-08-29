@@ -106,6 +106,18 @@ if [[ -n "$DEAD_SYMBOLS" ]]; then
   printf '%s\n' "$DEAD_SYMBOLS" | sed 's/^/  /' >&2
 fi
 
+# Les six regles du contrat d'expression de besoin des textures.
+#
+# ⚠️ ELLES N'ETAIENT VERIFIEES PAR RIEN. Le contrat ecrit « un fichier qui viole
+# l'une d'elles ne part pas au generateur », mais aucun outil ne disait laquelle —
+# et chacune de ces regles est une iteration deja perdue. Au premier passage,
+# l'outil a trouve que la correction « la consigne de fond ouvre le prompt »,
+# annoncee comme appliquee A TOUS les x_prompt_fr, ne l'avait ete qu'a partir de
+# TEX-0007.
+if ! python3 tools/lint-textures.py; then
+  bad "demandes de texture non conformes — voir docs/forge/textures/README.md"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
   say "$FAILURES règle(s) dure(s) violée(s) — voir CLAUDE.md § Règles de code"
   exit 1
