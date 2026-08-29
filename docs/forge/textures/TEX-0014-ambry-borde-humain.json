@@ -178,10 +178,10 @@
     "engine_usage": "Matériau `AA_Hull_Ambry` de la géométrie d'Ambry, dans `Section_05` de long_cortege.glb. Le slot a été posé par `BRIEF-0090` : 344,9 m², soit 0,57 pct du modèle, et un harnais de build vérifie triangle par triangle qu'il ne SORT PAS de l'emprise d'Ambry. ⚠️ La vraie raison de ce slot n'est pas la couleur mais l'ÉCHELLE : toute face d'Ambry restée sur un slot du bordé aurait reçu sa carte 3,5 fois trop fine — un défaut latent, incorrigible sans reforge une fois les images générées.",
     "shader_usage": "Identique à TEX-0010 : normale/rugosité/AO dérivées, `--mul` en `albedo_texture` par-dessus l'`albedo_color` gris-ivoire du nouveau slot.",
     "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_hull_height_1024.png --out assets/imported/textures/cortege --name ambry_hull --mul --check-tiling --preview /tmp/ambry_hull.png",
-    "additional_notes": "⚠️ NE PAS RÉGLER `uv1_scale` : le dépliage d'Ambry est déjà métrique à 0,700 tuile/m, et c'est ce rapport de 3,5 avec le bordé qui porte la révélation. Le corriger côté moteur la détruirait. ⚠️ Et le piège inverse, relevé par la forge sur `AA_Trim` : sur 500 m, une surface claire occupe plus de pixels qu'on ne le croit. Ambry fait 60 m sur 6 800 ; si son ivoire déborde, il volera la lecture à tout le niveau. À juger en capture, Ambry et un tronçon de bordé dans le même cadre (ADR-0006)."
+    "additional_notes": "⚠️ NE PAS RÉGLER `uv1_scale` : le dépliage d'Ambry est déjà métrique à 0,700 tuile/m, et c'est ce rapport de 3,5 avec le bordé qui porte la révélation. Le corriger côté moteur la détruirait. ⚠️ Et le piège inverse, relevé par la forge sur `AA_Trim` : sur 500 m, une surface claire occupe plus de pixels qu'on ne le croit. Ambry fait 60 m sur 6 800 ; si son ivoire déborde, il volera la lecture à tout le niveau. À juger en capture, Ambry et un tronçon de bordé dans le même cadre (ADR-0006). ⚠️ AMBRY GARDE SON ÉCHELLE (`AMBRY_UV_SCALE = 1.0`) alors que les quatre tuiles du bordé sont passées à 10 m : elle est un objet unique, sans jonction à assurer, et son dépliage serré EST la révélation. L'agrandir la ramènerait à l'échelle du vaisseau qui l'a emportée."
   },
   "x_delivery": {
-    "status": "à commander",
+    "status": "livrée et intégrée le 2026-08-29",
     "priority": "haute",
     "source_path": "assets/source/textures/cortege/ambry_hull_height_1024.png",
     "derived_dir": "assets/imported/textures/cortege",

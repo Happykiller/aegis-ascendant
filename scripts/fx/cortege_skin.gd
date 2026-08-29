@@ -2,19 +2,11 @@ class_name CortegeSkin
 ## Habille les matériaux nommés de la coque du Long Cortège avec les cartes dérivées.
 ##
 ## ⚠️ CE N'EST PAS `HullDetail`, ET LA DIFFÉRENCE EST TOUT LE FICHIER. `HullDetail` pose UNE
-## feuille de détail sur TOUTES les surfaces d'un chasseur, et son réglage principal est
-## `uv1_scale` : les coques de chasseur sont dépliées en tuiles/unité, pas en mètres, donc
-## l'échelle se rattrape au moteur. Ici c'est l'inverse : la forge a déplié le Cortège en
-## MÈTRES (`HULL_TEXELS_PER_METER = 0,200`, soit 5,00 m par tuile), et cette métrique est ce
-## qui rend les jonctions de tronçons invisibles — elle ne tient que parce que `100 × 0,200`
-## est entier (`BRIEF-0089-report.md`). **Toucher à `uv1_scale` ici rouvrirait une couture
-## tous les 100 m, cinq fois dans le niveau.** Aucune mise à l'échelle, donc.
+## feuille de détail sur TOUTES les surfaces d'un chasseur ; ici c'est une carte par matériau,
+## parce que le bordé, les greffes, la machinerie et l'artère racontent quatre choses
+## différentes — c'est même le seul moyen qu'a le niveau de dire que ce vaisseau est *agrégé*
+## et non construit.
 ##
-## ⚠️ ET C'EST UNE CARTE PAR MATÉRIAU, pas une feuille pour tout le monde. Le bordé, les
-## greffes rapportées, la machinerie et l'artère lumineuse racontent quatre choses
-## différentes — c'est même le seul moyen qu'a le niveau de dire que ce vaisseau est
-## *agrégé* et non construit. Une feuille unique les rendrait tous identiques, et l'on aurait
-## payé quatre images pour un seul matériau.
 ##
 ## ⚠️ RIEN N'EST `preload`. Les cartes viennent de l'opérateur (`ADR-0028` : la texture est sa
 ## voie) et n'existent pas tant qu'il ne les a pas fournies. Un `preload` sur un fichier absent
@@ -46,7 +38,29 @@ const EMISSIVE_MAP := "cortege_emissive"
 
 ## ⚠️ Discret. Le relief d'un bordé de 500 m se lit à 23 px/m après le post-traitement rétro :
 ## au-delà, la coque prend l'aspect martelé qu'`ADR-0011` a déjà payé sur le Specter-9 à 1,5.
-const NORMAL_SCALE := 0.7
+const NORMAL_SCALE := 0.45
+
+## Agrandissement des tuiles du bordé de l'Unisson. **< 1 agrandit** : `uv1_scale` multiplie les
+## coordonnées, donc 0,5 fait couvrir DEUX FOIS plus de monde à la même image.
+##
+## ⚠️ IL A FALLU MESURER POUR LE VOULOIR. À l'échelle livrée — 5,00 m par tuile —, une plaque de
+## 2 m fait 46 px à l'écran mais un joint de 10 cm n'en fait que 2 : une fois les mipmaps
+## activées (et il le fallait, sans elles la coque SCINTILLE), le filtrage moyenne ce détail
+## jusqu'à le faire disparaître. Résultat mesuré : la coque perdait **33 % de luminance** — le
+## prix du relief et de l'occlusion — pour un détail qu'on ne voyait plus. C'est exactement le
+## marché qu'`ADR-0016` a déjà refusé une fois sur ce projet.
+##
+## ⚠️ ET C'EST AUTORISÉ, CONTRE TOUTE ATTENTE. La règle de la forge n'interdit pas de mettre à
+## l'échelle : elle exige que `100 × densité` reste ENTIER, sans quoi `v` saute d'une demi-tuile
+## à chaque jonction de tronçon (`BRIEF-0089-report.md`). Or 0,200 × 0,5 = 0,100, et
+## 100 × 0,100 = 10 — entier. Les cinq jonctions restent invisibles. Toute autre valeur doit
+## refaire ce calcul : 0,5 et 0,25 passent, 0,4 (densité 0,08, produit 8) passe aussi, 0,3 non.
+const HULL_UV_SCALE := 0.5
+
+## ⚠️ AMBRY GARDE LA SIENNE. Elle est un objet unique, sans jonction à assurer, et son dépliage
+## serré (1,43 m par tuile) EST la révélation du niveau : c'est lui qui la fait lire construite
+## à l'échelle de la main. L'agrandir la ramènerait à l'échelle du vaisseau qui l'a emportée.
+const AMBRY_UV_SCALE := 1.0
 
 ## Habille la coque. Renvoie le nombre de surfaces effectivement retexturées — zéro quand
 ## l'opérateur n'a pas encore fourni les images, et c'est un état normal, pas une panne.
@@ -62,7 +76,8 @@ static func apply(hull: Node) -> int:
 			if name == EMISSIVE_MATERIAL:
 				tuned = _skin_emissive(base)
 			elif SKINS.has(name):
-				tuned = _skin_surface(base, String(SKINS[name]))
+				var scale := AMBRY_UV_SCALE if name == &"AA_Hull_Ambry" else HULL_UV_SCALE
+				tuned = _skin_surface(base, String(SKINS[name]), scale)
 			if tuned == null:
 				continue
 			mesh.set_surface_override_material(i, tuned)
@@ -71,7 +86,8 @@ static func apply(hull: Node) -> int:
 
 ## Une surface de relief : hauteur dérivée en normale, rugosité et AO, plus la carte de
 ## multiplication en albédo.
-static func _skin_surface(base: StandardMaterial3D, stem: String) -> StandardMaterial3D:
+static func _skin_surface(base: StandardMaterial3D, stem: String,
+		uv_scale: float) -> StandardMaterial3D:
 	var nrm := _map(stem, "nrm")
 	var mul := _map(stem, "mul")
 	# ⚠️ TOUT OU RIEN, PAR MATÉRIAU. Poser la multiplication sans la normale donnerait des
@@ -83,6 +99,7 @@ static func _skin_surface(base: StandardMaterial3D, stem: String) -> StandardMat
 	# On DUPLIQUE : le matériau importé appartient au `.glb`, et l'écrire en place mute une
 	# ressource partagée que rien ne remettra en état.
 	var tuned: StandardMaterial3D = base.duplicate()
+	tuned.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
 	tuned.albedo_texture = mul
 	tuned.normal_enabled = true
 	tuned.normal_texture = nrm
@@ -103,18 +120,28 @@ static func _skin_surface(base: StandardMaterial3D, stem: String) -> StandardMat
 
 ## L'artère et le fond des puits : la même image en albédo et en émission.
 ##
-## ⚠️ L'INTENSITÉ RESTE CELLE DU `.glb`. `aegis_kit` pose l'émissif à 2,5, et c'est le réglage
-## qui a été jugé en capture sur la coque nue. La texture apporte un MOTIF, pas une puissance :
-## la remonter ici noierait les signaux que le moteur pose par-dessus — le bulbe d'un nœud
-## d'épine, le couvercle d'un puits — et le joueur ne verrait plus ce qu'il a détruit.
+## ⚠️ L'INTENSITÉ BAISSE AVEC L'ARRIVÉE DE LA TEXTURE, ET C'EST L'INVERSE DE CE QUE J'AVAIS
+## ÉCRIT ICI. `aegis_kit` pose l'émissif à 2,5, et ce réglage a été jugé en capture sur une
+## COULEUR PLATE : il fallait 2,5 pour qu'un aplat sombre lise comme une lumière. La texture,
+## elle, porte déjà ses propres canaux quasi blancs sur un fond noir — 2,5 par-dessus les fait
+## sortir de la plage, le bloom achève le travail, et l'artère devient une barre BLANCHE. Elle
+## perd alors sa couleur, c'est-à-dire son appartenance à l'Unisson. Vu en capture.
+##
+## ⚠️ Et l'enjeu n'est pas que l'ambiance : les signaux que le moteur pose PAR-DESSUS — le bulbe
+## d'un nœud d'épine, le couvercle d'un puits — doivent rester distinguables de la matière. Une
+## artère saturée les noie, et le joueur ne voit plus ce qu'il a détruit.
+const EMISSIVE_ENERGY := 1.0
+
 static func _skin_emissive(base: StandardMaterial3D) -> StandardMaterial3D:
 	var map := _map(EMISSIVE_MAP, "")
 	if map == null:
 		return null
 	var tuned: StandardMaterial3D = base.duplicate()
+	tuned.uv1_scale = Vector3(HULL_UV_SCALE, HULL_UV_SCALE, HULL_UV_SCALE)
 	tuned.albedo_texture = map
 	tuned.emission_enabled = true
 	tuned.emission_texture = map
+	tuned.emission_energy_multiplier = EMISSIVE_ENERGY
 	return tuned
 
 ## Une carte, ou `null` si l'opérateur ne l'a pas encore fournie.

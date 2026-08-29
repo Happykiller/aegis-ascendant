@@ -169,10 +169,10 @@
     "engine_usage": "Matériau `AA_Greeble` des cinq `Section_01..05` de long_cortege.glb : socles de tourelle (`build_turret_pad`), coamings de baie (`build_bay`), nervures.",
     "shader_usage": "Identique à TEX-0010.",
     "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/cortege_greeble_height_1024.png --out assets/imported/textures/cortege --name cortege_greeble --mul --check-tiling --preview /tmp/cortege_greeble.png",
-    "additional_notes": "⚠️ LE PRÉCÉDENT À NE PAS REJOUER : la feuille de greebles déjà au dépôt (`hull_greebles`) mesure 16 % d'écart au bord, soit une couture franche tous les 42 cm, et `hull_detail.gd` a dû l'ÉCARTER en le documentant. Le tuilage de celle-ci se mesure avant intégration, pas après."
+    "additional_notes": "⚠️ LE PRÉCÉDENT À NE PAS REJOUER : la feuille de greebles déjà au dépôt (`hull_greebles`) mesure 16 % d'écart au bord, soit une couture franche tous les 42 cm, et `hull_detail.gd` a dû l'ÉCARTER en le documentant. Le tuilage de celle-ci se mesure avant intégration, pas après. ⚠️ DÉCISION D'INTÉGRATION, PRISE APRÈS AVOIR REGARDÉ (2026-08-29) : le moteur affiche cette tuile à 10,00 m et non 5,00, via `CortegeSkin.HULL_UV_SCALE = 0.5`. La raison est mesurée : une fois les mipmaps activées — et il le fallait, sans elles la coque SCINTILLE —, le filtrage moyennait le détail de 10 cm jusqu'à le faire disparaître, et la coque perdait 33 % de luminance pour un relief qu'on ne voyait plus. ⚠️ Et c'est AUTORISÉ : la règle de la forge n'interdit pas la mise à l'échelle, elle exige que `100 × densité` reste entier. 0,200 × 0,5 = 0,100, et 100 × 0,100 = 10. Les cinq jonctions de tronçon restent invisibles. Une future image pour ce matériau doit donc être pensée pour 10 m, pas 5."
   },
   "x_delivery": {
-    "status": "à commander",
+    "status": "livrée et intégrée le 2026-08-29",
     "priority": "haute",
     "source_path": "assets/source/textures/cortege/cortege_greeble_height_1024.png",
     "derived_dir": "assets/imported/textures/cortege",

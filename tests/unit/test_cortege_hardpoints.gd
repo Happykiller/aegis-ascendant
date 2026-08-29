@@ -241,20 +241,39 @@ func test_the_last_node_silences_nothing_and_says_nothing() -> void:
 
 const SkinScript := preload("res://scripts/fx/cortege_skin.gd")
 
-func test_the_skin_is_harmless_when_the_operator_has_not_supplied_the_maps() -> void:
-	# ⚠️ C'EST L'ETAT NORMAL DU DEPOT, PAS UN CAS D'ERREUR. Les cartes viennent de l'operateur
-	# (ADR-0028, demandes TEX-0010 a TEX-0014) et le niveau doit se jouer sans elles. Le piege
-	# evite ici est un `preload` sur un fichier absent : en GDScript c'est une erreur de
-	# COMPILATION, donc le niveau entier cesserait de se monter — pour un habillage facultatif.
+## ⚠️ CE TEST EN REMPLACE UN AUTRE, ET LE PREMIER A FAIT SON TRAVAIL EN TOMBANT. Il verifiait
+## que sans cartes rien ne casse — l'etat du depot tant que l'operateur n'avait pas livre ses
+## images (ADR-0028). Elles sont arrivees le 2026-08-29 : la propriete gardee change, et c'est
+## normal. Ce qui peut mal tourner desormais n'est plus l'absence, c'est le NOM.
+func test_the_skin_dresses_the_hull_now_that_the_maps_are_there() -> void:
 	var mesh := track(MeshInstance3D.new()) as MeshInstance3D
 	mesh.mesh = BoxMesh.new()
 	var material := StandardMaterial3D.new()
 	material.resource_name = "AA_Hull"
 	mesh.set_surface_override_material(0, material)
-	var dressed := SkinScript.apply(mesh)
-	assert_eq(dressed, 0, "sans carte, rien n'est habille — et rien ne casse")
-	assert_eq(mesh.get_active_material(0), material,
-		"le materiau importe est laisse INTACT : on ne remplace pas par une copie vide")
+	assert_eq(SkinScript.apply(mesh), 1, "le borde est habille")
+	var tuned := mesh.get_active_material(0) as StandardMaterial3D
+	assert_true(tuned != material,
+		"le materiau importe n'est PAS mute en place : il appartient au .glb et rien ne le remettrait en etat")
+	# ⚠️ TOUT OU RIEN. Poser la multiplication sans la normale donnerait des rainures PEINTES
+	# que la lumiere ne voit pas — la coque resterait un aplat, et l'on conclurait que la
+	# texture ne sert a rien. C'est la leçon d'ADR-0013, ecrite en tete de `hull_detail.gd`.
+	assert_true(tuned.albedo_texture != null, "l'albedo porte la carte de multiplication")
+	assert_true(tuned.normal_enabled and tuned.normal_texture != null,
+		"et le RELIEF est la : sans lui la carte ne fait que peindre des rainures plates")
+
+## ⚠️ LA GARDE QUI COMPTE MAINTENANT : chaque entree de `SKINS` trouve ses fichiers. Un nom
+## change d'un cote sans l'autre ne casse rien — la piece est simplement sautee, et la coque
+## sort NUE a cet endroit-la, sans une ligne au journal pour le dire.
+func test_every_declared_skin_finds_its_maps_on_disk() -> void:
+	for materiau in SkinScript.SKINS:
+		var stem: String = SkinScript.SKINS[materiau]
+		for suffixe in ["nrm", "mul", "rough", "ao"]:
+			var chemin := "%s%s_%s.png" % [SkinScript.MAPS_DIR, stem, suffixe]
+			assert_true(ResourceLoader.exists(chemin),
+				"`%s` declare la carte %s, absente du depot" % [materiau, chemin])
+	var emissif := "%s%s.png" % [SkinScript.MAPS_DIR, SkinScript.EMISSIVE_MAP]
+	assert_true(ResourceLoader.exists(emissif), "l'emissif de l'artere est la : %s" % emissif)
 
 func test_the_skin_leaves_materials_it_does_not_know_alone() -> void:
 	var mesh := track(MeshInstance3D.new()) as MeshInstance3D

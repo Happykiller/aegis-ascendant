@@ -171,10 +171,10 @@
     "engine_usage": "Matériau `AA_Panel` des cinq `Section_01..05` de long_cortege.glb.",
     "shader_usage": "Identique à TEX-0010 : normale/rugosité/AO dérivées, `--mul` en `albedo_texture` par-dessus l'`albedo_color` du .glb.",
     "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/cortege_panel_height_1024.png --out assets/imported/textures/cortege --name cortege_panel --mul --check-tiling --preview /tmp/cortege_panel.png",
-    "additional_notes": "⚠️ Même interdiction de `uv1_scale` que TEX-0010, et pour la même raison : l'UV est métrique et cuite."
+    "additional_notes": "⚠️ Même interdiction de `uv1_scale` que TEX-0010, et pour la même raison : l'UV est métrique et cuite. ⚠️ DÉCISION D'INTÉGRATION, PRISE APRÈS AVOIR REGARDÉ (2026-08-29) : le moteur affiche cette tuile à 10,00 m et non 5,00, via `CortegeSkin.HULL_UV_SCALE = 0.5`. La raison est mesurée : une fois les mipmaps activées — et il le fallait, sans elles la coque SCINTILLE —, le filtrage moyennait le détail de 10 cm jusqu'à le faire disparaître, et la coque perdait 33 % de luminance pour un relief qu'on ne voyait plus. ⚠️ Et c'est AUTORISÉ : la règle de la forge n'interdit pas la mise à l'échelle, elle exige que `100 × densité` reste entier. 0,200 × 0,5 = 0,100, et 100 × 0,100 = 10. Les cinq jonctions de tronçon restent invisibles. Une future image pour ce matériau doit donc être pensée pour 10 m, pas 5."
   },
   "x_delivery": {
-    "status": "à commander",
+    "status": "livrée et intégrée le 2026-08-29",
     "priority": "haute",
     "source_path": "assets/source/textures/cortege/cortege_panel_height_1024.png",
     "derived_dir": "assets/imported/textures/cortege",
