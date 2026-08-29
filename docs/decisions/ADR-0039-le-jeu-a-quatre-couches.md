@@ -105,12 +105,35 @@ d'organisation de Godot, et c'est ce qui rend une scène de boss réutilisable a
   et l'ordre changeait d'un lancement à l'autre. Trouvé **en jouant**, par l'opérateur : le
   journal annonçait « nœud d'épine 04 abattu » pendant qu'il survolait le premier tronçon.
 
-## Ce que cette décision ne fait pas encore
+## L'arc aussi est une donnée (ajouté le 2026-08-29, même session)
 
-L'**arc** d'un niveau reste du code : `graybox_root.gd` enchaîne ses six phases à la main. Le
-transformer en donnée (`EncounterDirector` piloté par une Resource) est l'étape suivante, déjà
-au backlog. Elle est désormais possible sans rien casser d'autre — c'est tout l'objet de ce
-travail-ci.
+`LevelBeat` + `LevelArc` + `EncounterDirector`. L'arc du niveau 1 vit dans
+`resources/levels/ossane_arc.tres` : **sept temps déclarés, dans l'ordre**, avec leurs
+bannières, leurs répliques, leurs vagues et leurs boss.
+
+⚠️ **Le directeur ne sait faire que deux choses tout seul** — une vague, un boss. Trois temps
+sur sept en profitent ; les quatre autres sont déclarés `SCRIPTED` et rendus au niveau : le
+puits qui monte, l'appontage de la Citadelle, la finale Helios, la victoire. **C'est délibéré.**
+Prétendre mettre en données un survol de lune ou une séquence d'appontage aurait produit une
+Resource à trente champs dont vingt-huit valent zéro — une façon compliquée d'écrire du code,
+pas une donnée. Ce qui devient une donnée, c'est **l'ordre et l'identité des temps** ; le
+sur-mesure reste du code, mais **à sa place dans l'arc**.
+
+⚠️ **Les raccourcis `--skip-to-*` passent par l'arc** (`jump_to`), et posent le rang juste avant
+le temps visé pour emprunter exactement le même chemin d'entrée qu'un enchaînement normal —
+musique, bornes, décor, bannière. Un saut qui monterait le temps « à la main » finirait par
+diverger, et l'on découvrirait avec un raccourci ce qui est cassé sans lui.
+
+⚠️ **Deux crochets rendent la main au niveau, et chacun paie une dette précise** :
+`should_skip_beat()` — sans lui, `--no-wave` laisserait l'arc bloqué sur un semeur qui ne se
+videra jamais ; et `on_boss_defeated()` qui rend `true` — la finale Helios dure 1,8 s, et
+enchaîner l'appontage par-dessus l'escamoterait.
+
+⚠️ **Le niveau 2 n'a pas d'arc, et c'est un choix.** Le survol du Long Cortège est un seul temps
+continu ; lui déclarer un arc d'un élément serait de la cérémonie, pas de la structure. Le socle
+supporte les deux.
+
+`graybox_root.gd` : **1 469 → 816 lignes.**
 
 ## Ce que cette décision coûte
 

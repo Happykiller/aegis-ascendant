@@ -304,13 +304,6 @@ laissent, en revanche, n'appartient à aucun d'eux :
 
 ## ⚠️ Ce qui reste après la session du 2026-08-29
 
-- [ ] **L'arc d'un niveau devient une donnée** (`EncounterDirector`). C'est la dernière couche du
-      chantier structurel d'`ADR-0039` : `graybox_root.gd` enchaîne encore ses six phases à la
-      main. ⚠️ **Volontairement laissé de côté ce soir** : ce chantier est INVISIBLE dans une
-      partie, et l'engager aurait mis en risque le build que l'opérateur allait tester. Il est
-      désormais possible sans rien casser d'autre — c'était tout l'objet des quatre étapes
-      précédentes.
-
 ## ⚠️ Niveau 2 — la seule vérification qui manque (2026-08-29)
 
 - [ ] **Mesurer le coût GPU du survol sur la Quadro T1000.** Toutes les mesures de la session

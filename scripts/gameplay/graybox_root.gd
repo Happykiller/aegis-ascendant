@@ -57,6 +57,7 @@ var _defeated: bool = false
 ## règle du projet pour tout contenu, et c'est ce qui rendra la traduction possible.
 const LYRA_LINES := preload("res://resources/dialogue/lyra_ingame.tres")
 ## Ce que l'écran de pause rappelle : le lieu et les objectifs de la phase en cours.
+const ARC := preload("res://resources/levels/ossane_arc.tres")
 const BRIEFINGS := preload("res://resources/dialogue/sector_briefings.tres")
 
 ## L'écran de pause, gardé pour lui pousser le briefing de la phase courante.
@@ -132,7 +133,6 @@ var _flyby_disabled: bool = false
 var _surface_maps_disabled: bool = false
 ## Le voile de raccord entre deux décors (lot 5 du plan inter-boss). Monté au MONTAGE et
 ## caché, comme le survol : un raccord alloué au moment où il sert arriverait en retard.
-var _transition: PhaseTransition
 ## L'approche du boss final : le dernier puits gravitique qui monte (`BossApproach`).
 ## Pas une phase de l'enum — `MusicContext.LevelPhase` le reflète PAR VALEUR et
 ## `test_music_director.gd` le vérifie, donc y insérer une entrée décalerait la musique
@@ -156,14 +156,14 @@ func _ready() -> void:
 	# convoquer. Elles étaient dans ce fichier, et un second niveau n'avait donc aucun moyen
 	# d'en hériter — c'est ce que l'opérateur a constaté en jouant le niveau 2 muet, sans
 	# explosions et sans écrasement.
+	# ⚠️ SEULE LA PROGRESSION RESTE ICI : elle alimente la musique, qui appartient au niveau. La
+	# FIN d'une vague, elle, ferme un temps de l'arc — c'est le directeur qui l'écoute.
 	if _wave_spawner != null:
-		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 		_wave_spawner.progress_changed.connect(_on_wave_progress)
 	# Deux vagues, deux fins distinctes : celle des chasseurs ouvre sur le mini-boss,
 	# celle du champ sur le boss final. La progression, elle, alimente la MÊME jauge
 	# musicale — c'est toujours « où en est la vague en cours ».
 	if _field_spawner != null:
-		_field_spawner.wave_cleared.connect(_on_asteroid_field_cleared)
 		_field_spawner.progress_changed.connect(_on_wave_progress)
 	if _player != null:
 		_player.hit_taken.connect(_on_player_hit)
@@ -226,7 +226,6 @@ func _ready() -> void:
 	# ⚠️ AVANT les sauts de phase : `--skip-to-field` entre dans le champ depuis ce même
 	# bloc, et il lui faut son décor déjà monté.
 	_build_moon_flyby()
-	_build_transition()
 	# Le gel d'impact. Monté en code : il n'a ni transform ni enfant, et l'ajouter aux
 	# trois scènes qui portent un CameraDirector n'apporterait rien de plus.
 	# ⚠️ ON EMPRUNTE CEUX DU RUNTIME, on n'en crée pas. L'arrêt sur image et l'état musical
@@ -266,17 +265,27 @@ func _ready() -> void:
 		add_child(DensityProbe.make(_bullets, phase_label))
 	# Aucun de ces sauts n'éteint le semeur lui-même : `_set_phase()` le fait pour tout le
 	# monde, dès qu'on quitte `FIGHTER_WAVES`.
+	# ⚠️ LES SAUTS PASSENT PAR L'ARC, PLUS PAR DES APPELS DIRECTS. Un saut qui monterait le temps
+	# « à la main » finirait par diverger de l'enchaînement normal — et l'on découvrirait avec
+	# un raccourci ce qui est cassé sans lui. `jump_to` emprunte exactement le même chemin
+	# d'entrée : musique, bornes, décor, bannière.
+	_director = setup_arc(ARC)
+	_director.beat_entering.connect(_on_beat_entering)
+	_director.beat_revealed.connect(_on_beat_revealed)
+	_director.beat_scripted.connect(_on_beat_scripted)
 	if "--skip-to-boss" in args:
-		_start_mini_boss()
+		_director.jump_to(&"MINI_BOSS")
 	elif "--skip-to-field" in args:
-		_start_asteroid_field()
+		_director.jump_to(&"ASTEROID_FIELD")
 	elif "--skip-to-final" in args:
-		_start_final_boss()
+		_director.jump_to(&"FINAL_BOSS")
 	elif "--skip-to-dock" in args:
-		_start_docking()
+		_director.jump_to(&"DOCKING")
 	elif "--skip-to-victory" in args:
 		_game_state.add_score(28450)
-		_start_victory()
+		_director.jump_to(&"VICTORY")
+	else:
+		_director.begin()
 	# Start the score. Runs after the --skip-to-* flags, so a skipped run opens on the
 	# state it actually jumped to instead of fading out of Launch.
 	_update_music()
@@ -291,6 +300,70 @@ func _ready() -> void:
 	# ment sur la phase envoie la lecture suivante dans le mur, et c'est le journal qui sert
 	# de preuve ici (relevé en jouant, 2026-08-28).
 	print("[Level] ready — phase %s" % Phase.keys()[_phase])
+
+# --- L'arc, temps par temps --------------------------------------------------
+#
+# ⚠️ CE QUI RESTE ICI EST CE QUI N'APPARTIENT QU'AU COULOIR D'OSSANE. La séquence, les noms,
+# les bannières, les répliques, les vagues et les boss sont dans `ossane_arc.tres`. Ce fichier
+# ne garde que ses décors sur mesure : le survol de lune, le puits qui monte, l'appontage.
+
+## Le temps commence, rien n'est encore affiché. ⚠️ LA MUSIQUE ET LES BORNES D'ABORD : un temps
+## qui les réglerait après son décor ferait entendre la phase précédente sous la nouvelle.
+func _on_beat_entering(beat: LevelBeat) -> void:
+	# ⚠️ Le nom du temps N'EST PAS forcément une phase. `BOSS_APPROACH` n'en est pas une : le
+	# puits monte pendant qu'on est encore dans le champ d'astéroïdes, et c'est bien ce
+	# briefing-là que l'écran de pause doit montrer.
+	var phase: Variant = Phase.get(String(beat.id))
+	if phase != null:
+		if beat.id == &"ASTEROID_FIELD":
+			# AVANT `_set_phase` : celui-ci résout la musique, et il la résoudrait sur la
+			# progression de la vague PRÉCÉDENTE — donc sur Fleet Battle à 1,0, alors que la
+			# traversée est censée s'ouvrir sur son propre lit.
+			_music.wave_progress = 0.0
+		_set_phase(phase)
+
+## Le voile est plein : c'est ici, et nulle part ailleurs, que le décor bascule.
+func _on_beat_revealed(beat: LevelBeat) -> void:
+	match beat.id:
+		&"ASTEROID_FIELD":
+			_show_moon_flyby(true)
+		&"FINAL_BOSS":
+			# ⚠️ ICI ET PAS À LA FIN DU CHAMP : c'est le seul point par lequel TOUS les chemins
+			# passent, `--skip-to-final` compris. Un décor qui survivrait à sa phase se
+			# retrouverait sous le boss final.
+			_show_moon_flyby(false)
+
+## Les temps que le directeur ne sait pas jouer : ceux qui sont du sur-mesure.
+func _on_beat_scripted(beat: LevelBeat) -> void:
+	match beat.id:
+		&"BOSS_APPROACH":
+			_start_boss_approach()
+		&"DOCKING":
+			_start_docking()
+		&"VICTORY":
+			_start_victory()
+
+## ⚠️ `--no-wave` SUPPRIME LES DEUX VAGUES, et l'approche avec elles — sans joueur à aspirer,
+## elle serait trois secondes d'écran vide. Sans ce crochet, l'arc s'arrêterait sur un semeur
+## qui ne se videra jamais.
+func should_skip_beat(beat: LevelBeat) -> bool:
+	if beat.kind == LevelBeat.Kind.WAVE:
+		return _waves_disabled
+	if beat.id == &"BOSS_APPROACH":
+		return _waves_disabled or _player == null
+	return false
+
+## La mise en scène du boss reçoit les services du niveau, et le boss final est retenu : le
+## HUD, les obstacles et les écrans de tir le consultent à chaque image.
+func dress_boss_stage(stage: BossStage, beat: LevelBeat) -> void:
+	super.dress_boss_stage(stage, beat)
+	var leviathan := stage as LeviathanStage
+	if leviathan == null:
+		return
+	# ⚠️ LE FOND EST AU NIVEAU, LA PLONGÉE LE DEMANDE. Il s'en sert aussi pour le survol de
+	# lune : deux propriétaires du même état finiraient par se contredire.
+	leviathan.backdrop_gate = _set_backdrop_hidden
+	_final_stage = leviathan
 
 # --- Adaptive music (spec §18.2) ---------------------------------------------
 # The level is the only thing that knows how the fight is going; MusicDirector turns
@@ -359,12 +432,6 @@ func _on_pause_toggled(is_paused: bool) -> void:
 
 # --- Fighter waves -----------------------------------------------------------
 
-func _on_wave_cleared() -> void:
-	if _phase != Phase.FIGHTER_WAVES:
-		return
-	print("[Level] waves cleared — mini-boss incoming")
-	say(&"waves_cleared")
-	_start_mini_boss()
 
 ## One cue per kind: a bonus has to be identifiable without looking straight at it
 ## (docs/forge/CHARTE_CREATIVE.md — never colour alone).
@@ -395,24 +462,6 @@ func _on_player_shield_changed(ratio: float, _current: float, _maximum: float) -
 	elif not _alarm_armed and ratio >= _ALARM_REARM_RATIO:
 		_alarm_armed = true
 
-# --- Mini-boss ---------------------------------------------------------------
-
-func _start_mini_boss() -> void:
-	_set_phase(Phase.MINI_BOSS)
-	# ⚠️ LE NIVEAU NE MET PLUS EN SCÈNE LE BOSS, IL LE CONVOQUE. Monter la coque, câbler ses
-	# signaux, relayer ses jauges, figer l'image à sa mort : rien de tout cela n'appartient au
-	# couloir d'Ossane. `HarvesterStage` le fait, et un autre niveau pourra le refaire sans
-	# recopier trente fonctions.
-	_mini_stage = HarvesterStage.new()
-	_mini_stage.name = "HarvesterStage"
-	add_child(_mini_stage)
-	_mini_stage.bind(_runtime, _hud, _game_state, _bullet_manager, _player, LYRA_LINES)
-	_mini_stage.score_value = 5000
-	_mini_stage.defeated.connect(_on_mini_boss_defeated)
-	_boss = _mini_stage.mount(MiniBossScene, self)
-
-
-
 
 func _on_boss_health(ratio: float) -> void:
 	if _hud != null:
@@ -422,14 +471,6 @@ func _on_boss_health(ratio: float) -> void:
 		_music.boss_health_ratio = ratio
 		_update_music()
 
-## ⚠️ IL NE RESTE QUE CE QUI APPARTIENT AU NIVEAU : ce que la mort du boss OUVRE. Le score,
-## l'explosion, l'arrêt sur image et le nettoyage du HUD sont des lois de combat, et elles sont
-## dans `BossStage`.
-func _on_mini_boss_defeated(_world_position: Vector3) -> void:
-	print("[Level] mini-boss defeated — score %d" % _game_state.score)
-	_boss = null
-	_start_asteroid_field()
-
 
 # --- Champ d'astéroïdes (ADR-0027) -------------------------------------------
 #
@@ -438,37 +479,8 @@ func _on_mini_boss_defeated(_world_position: Vector3) -> void:
 # qu'aucune rencontre ne les emploie. Le décor viendra par-dessus (lot 2 du plan),
 # sans rien changer à cet enchaînement.
 
-func _start_asteroid_field() -> void:
-	# AVANT `_set_phase` : celui-ci résout déjà la musique, et il la résoudrait sur la
-	# progression de la vague PRÉCÉDENTE — donc sur Fleet Battle, à 1,0, alors que la
-	# traversée est censée s'ouvrir sur son propre lit.
-	_music.wave_progress = 0.0
-	_set_phase(Phase.ASTEROID_FIELD)
-	print("[Level] ASTEROID FIELD")
-	if _field_spawner == null or _waves_disabled:
-		# Rien à traverser. On le DIT et on enchaîne : un arc qui s'arrête sur un nœud
-		# absent se lit comme un boss qui ne vient pas, et se cherche au mauvais endroit.
-		if _field_spawner == null:
-			push_error("[Level] AsteroidFieldSpawner missing — straight to the final boss")
-		_show_moon_flyby(true)
-		_start_final_boss()
-		return
-	# Le décor ne commute plus : il change SOUS un voile fermé (lot 5). La bannière est
-	# posée au même instant — elle vit sur le HUD, au-dessus du voile, et s'inscrit donc
-	# sur l'écran éteint avant que le survol n'apparaisse dessous.
-	_veil(_reveal_asteroid_field, _begin_asteroid_field)
 
-## Le décor bascule ici, et nulle part ailleurs : appelé quand le voile est plein.
-func _reveal_asteroid_field() -> void:
-	_show_moon_flyby(true)
-	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
-	say(&"asteroid_field")
 
-## La vague ne part qu'une fois le voile rouvert. Peupler l'écran derrière un voile
-## fermé offrirait au joueur des mines déjà à mi-course quand il retrouve la vue.
-func _begin_asteroid_field() -> void:
-	if _field_spawner != null:
-		_field_spawner.begin()
 
 ## Monte le survol, caché. ⚠️ La doublure procédurale s'annonce dans le journal : un décor
 ## en doublure ne doit jamais passer pour l'asset final (ADR-0006, et la leçon d'`ADR-0025`
@@ -493,10 +505,6 @@ func _build_moon_flyby() -> void:
 ## Monte le voile de raccord, caché. Bâti par code et non posé dans `graybox.tscn` : la
 ## scène est éditée par une autre session, et un `.tscn` se fusionne très mal à deux —
 ## même raison que pour `CoreInterior`.
-func _build_transition() -> void:
-	_transition = PhaseTransition.new()
-	_transition.name = "PhaseTransition"
-	add_child(_transition)
 
 ## Joue un raccord : `on_midpoint` est appelé voile fermé (c'est là qu'on change le
 ## décor), `on_finished` voile rouvert (c'est là qu'on rend la main à l'arc).
@@ -505,14 +513,6 @@ func _build_transition() -> void:
 ## tolérer d'être absente : `--skip-to-*` et les tests montent le niveau sans passer par
 ## les chemins qui la construisent, et un arc qui s'arrêterait là se lirait comme un boss
 ## qui ne vient pas — exactement le défaut que `_start_asteroid_field()` évite déjà.
-func _veil(on_midpoint: Callable, on_finished: Callable) -> void:
-	if _transition == null:
-		on_midpoint.call()
-		on_finished.call()
-		return
-	_transition.midpoint.connect(on_midpoint, CONNECT_ONE_SHOT)
-	_transition.finished.connect(on_finished, CONNECT_ONE_SHOT)
-	_transition.play()
 
 ## Bascule le décor de la phase. Le fond spatial CÈDE LA PLACE au lieu de s'y ajouter :
 ## c'est la décision d'`ADR-0027`, et elle vient autant du budget GPU que de la demande
@@ -523,11 +523,6 @@ func _show_moon_flyby(on: bool) -> void:
 	_moon_flyby.reveal(on)
 	_set_backdrop_hidden(on)
 
-func _on_asteroid_field_cleared() -> void:
-	if _phase != Phase.ASTEROID_FIELD:
-		return
-	print("[Level] asteroid field cleared — final boss incoming")
-	_start_boss_approach()
 
 # --- L'approche du Leviathan : le dernier puits monte (lot 5, option D) -------
 #
@@ -541,7 +536,7 @@ func _start_boss_approach() -> void:
 	# Sans joueur à aspirer, l'approche n'a aucun sujet : elle serait trois secondes
 	# d'écran vide. `--no-wave` saute aussi, pour la même raison qu'il saute la vague.
 	if _player == null or _waves_disabled:
-		_veil(_leave_asteroid_field, _start_final_boss)
+		veil(_leave_asteroid_field, _director.advance)
 		return
 	_approach_active = true
 	_approach_time = 0.0
@@ -563,7 +558,7 @@ func _advance_boss_approach(delta: float) -> void:
 	if not BossApproach.is_over(_approach_time, BossApproach.DURATION):
 		return
 	_approach_active = false
-	_veil(_leave_asteroid_field, _start_final_boss)
+	veil(_leave_asteroid_field, _director.advance)
 
 ## Le survol s'éteint sous le voile fermé. ⚠️ `_start_final_boss()` garde SA propre
 ## extinction : c'est le seul point par lequel tous les chemins passent, `--skip-to-final`
@@ -593,30 +588,7 @@ func _on_player_docked() -> void:
 	_sfx(&"docking_lock")
 	if _player != null:
 		_player.stow()
-	_start_victory()
-
-func _start_final_boss() -> void:
-	# Le survol s'éteint ici et pas dans `_on_asteroid_field_cleared` : c'est le SEUL point par
-	# lequel tous les chemins passent — la vague nettoyée, mais aussi `--skip-to-final` et
-	# l'échappement de `--no-wave`. Un décor qui survivrait à sa phase se retrouverait sous le
-	# boss final.
-	_show_moon_flyby(false)
-	_set_phase(Phase.FINAL_BOSS)
-	print("[Level] FINAL BOSS")
-	_final_stage = LeviathanStage.new()
-	_final_stage.name = "LeviathanStage"
-	add_child(_final_stage)
-	_final_stage.bind(_runtime, _hud, _game_state, _bullet_manager, _player, LYRA_LINES,
-		get_node_or_null("CameraDirector"))
-	# ⚠️ LE FOND EST AU NIVEAU, LA PLONGÉE LE DEMANDE. Il s'en sert aussi pour le survol de
-	# lune : deux propriétaires du même état finiraient par se contredire.
-	_final_stage.backdrop_gate = _set_backdrop_hidden
-	# ⚠️ Le bandeau AVANT `begin()` pour ce boss-là : `show_boss` éteint les pastilles, et c'est
-	# `begin()` qui les rallume en émettant sa première phase.
-	_final_stage.show_boss_before_begin = true
-	_final_stage.defeated.connect(_on_final_boss_defeated)
-	_final_boss = _final_stage.mount(FinalBossScene, self)
-	_leviathan = _final_stage.combat_module()
+	_director.advance()
 
 
 func _set_backdrop_hidden(hidden: bool) -> void:
@@ -714,18 +686,17 @@ func _crush_light_bodies() -> void:
 		_runtime.crush()
 
 
-func _on_final_boss_defeated(world_position: Vector3) -> void:
-	_game_state.add_score(20000)
-	if _hit_stop != null:
-		_hit_stop.freeze(HitStop.BOSS)
-	if _hud != null:
-		_hud.hide_boss()
-	# The boss is destroyed: remove its hull so it does not linger through the
-	# finale and the docking close (it was staying visible before — ADR-0010).
-	if _final_boss != null:
-		_final_boss.queue_free()
-		_final_boss = null
+## ⚠️ LE NIVEAU PREND LA MAIN, ET C'EST TOUT L'OBJET DU `true`. La finale Helios dure 1,8 s ;
+## laisser le directeur enchaîner l'appontage par-dessus l'escamoterait, et c'est le seul moment
+## spectaculaire du niveau. Le score, l'arrêt sur image, le bandeau et la libération de la coque
+## sont déjà faits par `BossStage` — il ne reste ici que ce qui n'appartient qu'à Ossane.
+func on_boss_defeated(beat: LevelBeat, _stage: BossStage, world_position: Vector3) -> bool:
+	if beat == null or beat.id != &"FINAL_BOSS":
+		return false
+	_final_boss = null
 	_fire_helios_lance(world_position)
+	return true
+
 
 func _fire_helios_lance(target: Vector3) -> void:
 	# Spectacular finish: heavy explosions along the boss + strong shake, then victory.
@@ -736,7 +707,8 @@ func _fire_helios_lance(target: Vector3) -> void:
 		var offset := Vector3(randf_range(-4.0, 4.0), 0.0, randf_range(-3.0, 3.0))
 		get_tree().create_timer(0.12 * i).timeout.connect(
 			_boom.bind(target + offset, VfxExplosion.Category.HEAVY, 0.7))
-	get_tree().create_timer(1.8).timeout.connect(_start_docking)
+	# ⚠️ C'est ce minuteur qui rend la main à l'arc : la finale finie, le temps suivant s'ouvre.
+	get_tree().create_timer(1.8).timeout.connect(_director.advance)
 
 func _start_victory() -> void:
 	_set_phase(Phase.VICTORY)
@@ -823,10 +795,6 @@ func _update_engine_hum() -> void:
 		_audio.stop_engine()
 
 ## A banner is a beat, not just a label: it gets a swell so it reads without being read.
-func _banner(text: String, color: Color, duration: float) -> void:
-	if _hud != null:
-		_hud.show_banner(text, color, duration)
-	_sfx(&"ui_banner")
 
 ## Lyra commente ce qui vient d'arriver. ⚠️ ELLE DOUBLE LA BANNIÈRE, ELLE NE LA REMPLACE
 ## PAS : le titre en deux mots se lit d'un coup d'œil au milieu d'un combat, sa phrase

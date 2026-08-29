@@ -96,9 +96,13 @@ script = ExtResource("10_capture")
 [node name="PlayerFighter" parent="." instance=ExtResource("2_player")]
 bullet_manager_path = NodePath("../BulletManager")
 
+; ⚠️ `autostart = false` DEPUIS QUE L'ARC EST UNE DONNEE. C'est le directeur qui ouvre le
+; premier temps, comme il ouvre tous les autres : un semeur qui demarre tout seul jouerait sa
+; vague meme sur un `--skip-to-final`, sous le boss.
 [node name="WaveSpawner" type="Node" parent="."]
 script = ExtResource("4_spawner")
 wave = ExtResource("5_wave")
+autostart = false
 bullet_manager_path = NodePath("../BulletManager")
 player_path = NodePath("../PlayerFighter")
 

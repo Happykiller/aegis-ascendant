@@ -50,6 +50,14 @@ var _camera: Node = null
 ## les oublier, et `scripts/lint-regles.sh` refuse un script racine qui ne les convoque pas.
 var _runtime: CombatRuntime = null
 
+## Le voile de transition. ⚠️ AU SOCLE PARCE QU'IL SERT À L'ARC : un temps qui change le décor
+## le fait à l'écran éteint, et c'est le directeur qui le demande — pas le niveau.
+var _transition: PhaseTransition = null
+
+## L'arc, et celui qui le joue. Un niveau sans arc n'en monte pas : le survol du Long Cortège
+## n'a qu'un seul temps, et le déclarer serait plus de cérémonie que de structure.
+var _director: EncounterDirector = null
+
 ## Les obstacles du plan, reconstruits à chaque image physique par le niveau.
 var _solids: PlaneShapes = PlaneShapes.new()
 var _solids_overlay: SolidsOverlay = null
@@ -77,6 +85,9 @@ func setup_level() -> void:
 	_setup_hud()
 	_setup_pause()
 	_setup_debug()
+	_transition = PhaseTransition.new()
+	_transition.name = "PhaseTransition"
+	add_child(_transition)
 
 ## ⚠️ APRÈS que le niveau ait monté SES sources d'unités. Le runtime adopte par le groupe : les
 ## unités doivent être dans l'arbre. Le niveau 2 monte sept pools de ponts d'envol dans son
@@ -172,9 +183,55 @@ func say(key: StringName) -> void:
 	if _runtime != null:
 		_runtime.say(dialogue(), key)
 
+## Monte le directeur et lui donne l'arc. À appeler après `setup_level()`, quand la scène est
+## prête à jouer son premier temps.
+func setup_arc(arc: LevelArc) -> EncounterDirector:
+	_director = EncounterDirector.new()
+	_director.name = "EncounterDirector"
+	add_child(_director)
+	_director.bind(self, arc)
+	return _director
+
+## Ferme l'écran, appelle `on_midpoint` quand il est plein, `on_finished` quand il rouvre.
+##
+## ⚠️ SANS VOILE, LES DEUX RAPPELS PARTENT QUAND MÊME, dans l'ordre. Un niveau monté sans nœud de
+## transition — un banc, un mode dégradé — doit jouer son arc jusqu'au bout : un décor qui
+## commute sèchement est un défaut visuel, un arc qui s'arrête est un jeu cassé.
+func veil(on_midpoint: Callable, on_finished: Callable) -> void:
+	if _transition == null:
+		on_midpoint.call()
+		on_finished.call()
+		return
+	_transition.midpoint.connect(on_midpoint, CONNECT_ONE_SHOT)
+	_transition.finished.connect(on_finished, CONNECT_ONE_SHOT)
+	_transition.play()
+
+## Annonce. ⚠️ Bandeau ET son : un bandeau muet apparaît au moment où le joueur regarde
+## ailleurs — il esquive — et il est déjà parti quand il revient.
+func banner(text: String, colour: Color, hold: float) -> void:
+	if _runtime != null:
+		_runtime.banner(text, colour, hold)
+
 # ==========================================================================
 # Ce que le NIVEAU doit dire — le socle ne peut pas le savoir
 # ==========================================================================
+
+## Câble une mise en scène de boss avec les services de CE niveau. ⚠️ Le socle ne peut pas le
+## faire : il ne connaît ni les répliques du niveau, ni son fond spatial, ni les réglages propres
+## à tel boss.
+func dress_boss_stage(stage: BossStage, _beat: LevelBeat) -> void:
+	stage.bind(_runtime, _hud, _game_state, _bullets, _player, dialogue(), _camera)
+
+## Ce que la mort d'un boss OUVRE. ⚠️ REND `true` QUAND LE NIVEAU PREND LA MAIN sur la suite :
+## la finale Helios du niveau 1 dure 1,8 s, et enchaîner l'appontage par-dessus l'escamoterait.
+## Rendre `false` laisse le directeur avancer tout de suite.
+func on_boss_defeated(_beat: LevelBeat, _stage: BossStage, _world_position: Vector3) -> bool:
+	return false
+
+## ⚠️ UN TEMPS PEUT ÊTRE SAUTÉ, ET C'EST LE NIVEAU QUI LE SAIT. `--no-wave` supprime les deux
+## vagues ; sans ce crochet, l'arc s'arrêterait sur un semeur qui ne se videra jamais.
+func should_skip_beat(_beat: LevelBeat) -> bool:
+	return false
 
 ## Où l'on en est, sous la forme que le livre de briefings emploie comme clé.
 func phase_label() -> String:

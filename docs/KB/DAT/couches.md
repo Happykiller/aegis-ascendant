@@ -24,7 +24,7 @@ zones de debug. Quatre défauts, **aucun message d'erreur**.
 | **Données** | `resources/data/*.gd` + `resources/**/*.tres` | Ce qu'est une chose. `EnemyData` porte 38 caractéristiques : tir, cadence, projectile, poids, hitbox, surface de contact, trajectoire, effet. **Une caractéristique nouvelle va ici, pas dans un script.** |
 | **Moteur** | `scripts/gameplay/`, `scripts/projectiles/`, `scripts/enemies/`, `scripts/core/` | Comment ça marche. Modules purs, testables seuls : `BulletManager`, `GameplayPlane`, `PlaneCollider`, `MassRules`, `HealthComponent`, `EnemyPath/Fire/Homing`, `WaveSpawner`. |
 | **Runtime** | `combat_runtime.gd`, `level_root.gd`, `boss_stage.gd` | Les LOIS d'une partie : mourir, toucher, percuter, annoncer, parler. Le montage d'un niveau. La mise en scène d'un boss. |
-| **Level design** | `graybox_root.gd`, `cortege_root.gd`, Resources de contenu | Ce qui n'est vrai que d'ICI : quelles vagues, quels boss, quel décor, quel enchaînement, quelles répliques. |
+| **Level design** | `ossane_arc.tres` (l'ORDRE), `graybox_root.gd`, `cortege_root.gd` (le sur-mesure) | Ce qui n'est vrai que d'ICI. ⚠️ **L'arc est une donnée** : sept temps déclarés avec leurs bannières, répliques, vagues et boss. Le directeur en joue trois tout seul ; les quatre autres sont `SCRIPTED` et rendus au niveau — le sur-mesure reste du code, **mais à sa place dans l'arc**. |
 
 ## Les trois pièges que cette structure supprime
 
@@ -39,11 +39,14 @@ niveau 2 en a huit.
 ⚠️ **`setup_level()` s'appelle explicitement.** Ce n'est pas `_ready()` : un `super._ready()`
 oublié ne se voit pas à la lecture, une ligne manquante si.
 
-## Ce qui reste à faire
+## Où ajouter un temps à un niveau
 
-L'**arc** d'un niveau est encore du code — `graybox_root.gd` enchaîne ses six phases à la main.
-Le transformer en donnée (`EncounterDirector` piloté par une Resource) est l'étape suivante,
-au backlog. Elle est possible sans rien casser depuis `ADR-0039`.
+Dans son `.tres` d'arc. Un temps de type `WAVE` ou `BOSS` ne demande **aucune ligne de code** :
+le directeur le joue. Un temps sur mesure se déclare `SCRIPTED` et le niveau l'implémente dans
+`_on_beat_scripted()`, puis rappelle `advance()`.
+
+⚠️ **Le nom d'un temps est aussi la clé de son briefing de pause.** Un nom qui ne correspond à
+aucune entrée du `BriefingBook` laisse l'écran de pause muet — sans erreur.
 
 ## La garde
 

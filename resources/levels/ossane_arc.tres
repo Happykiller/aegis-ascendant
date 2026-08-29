@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="LevelArc" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://resources/data/level_arc.gd" id="1_arc"]
+[ext_resource type="Script" path="res://resources/data/level_beat.gd" id="2_beat"]
+[ext_resource type="PackedScene" path="res://scenes/bosses/choir_harvester.tscn" id="3_mini"]
+[ext_resource type="PackedScene" path="res://scenes/bosses/pale_leviathan.tscn" id="4_final"]
+
+; L'ARC DU NIVEAU 1 — le couloir d'Ossane, sept temps.
+;
+; ⚠️ IL N'EXISTAIT NULLE PART AVANT CE FICHIER. Chaque temps appelait le suivant depuis son
+; propre evenement de fin, a travers 1 469 lignes : `_on_wave_cleared` -> `_start_mini_boss` ->
+; `_on_mini_boss_defeated` -> `_start_asteroid_field` -> ... Personne ne pouvait dire « voici
+; l'arc » sans lire le fichier entier, et le reordonner demandait de relire les six.
+;
+; ⚠️ TROIS TEMPS SUR SEPT SONT JOUES PAR LE DIRECTEUR SEUL — les deux vagues et les deux boss.
+; Les quatre autres sont `SCRIPTED` et rendus au niveau : le puits qui monte, l'appontage de la
+; Citadelle, la finale Helios. C'est deliberé. Pretendre les mettre en donnees aurait produit
+; une Resource a trente champs dont vingt-huit valent zero — une façon compliquee d'ecrire du
+; code, pas une donnee.
+;
+; ⚠️ LES NOMS SONT LE VOCABULAIRE DE L'ARC, pas les cles de briefing. Celles-ci restent les noms
+; de l'enum `Phase` du niveau, resolus par `phase_label()` : `BOSS_APPROACH` n'est pas une phase
+; — pendant qu'il se joue, on est toujours dans le champ d'asteroides, et c'est son briefing que
+; l'ecran de pause doit montrer.
+
+[sub_resource type="Resource" id="b_waves"]
+script = ExtResource("2_beat")
+id = &"FIGHTER_WAVES"
+kind = 0
+spawner_name = &"WaveSpawner"
+
+[sub_resource type="Resource" id="b_mini"]
+script = ExtResource("2_beat")
+id = &"MINI_BOSS"
+kind = 1
+lyra_key = &"waves_cleared"
+boss_scene = ExtResource("3_mini")
+boss_stage = &"harvester"
+boss_score = 5000
+
+; ⚠️ SOUS UN VOILE : le decor bascule a l'ecran eteint (ADR-0027). La banniere vit sur le HUD,
+; au-dessus du voile — elle s'inscrit donc sur le noir, et le joueur la lit avant de decouvrir
+; ce qu'elle annonce.
+[sub_resource type="Resource" id="b_field"]
+script = ExtResource("2_beat")
+id = &"ASTEROID_FIELD"
+kind = 0
+veiled = true
+banner_text = "CHAMP D'ASTEROIDES"
+banner_colour = Color(0.894, 0.71, 0.29, 1)
+banner_hold = 1.6
+lyra_key = &"asteroid_field"
+spawner_name = &"AsteroidFieldSpawner"
+
+; Le dernier puits monte et aspire le joueur. Sur mesure : trois secondes de fonctions pures.
+[sub_resource type="Resource" id="b_approach"]
+script = ExtResource("2_beat")
+id = &"BOSS_APPROACH"
+kind = 2
+
+; ⚠️ LA BANNIERE AVANT `begin()` POUR CELUI-CI. `show_boss` ETEINT la rangee de pastilles ;
+; `begin()` monte le module, qui les rallume en emettant sa premiere phase. L'ordre inverse
+; afficherait quatre pastilles eteintes sur un boss intact, sans erreur ni test rouge.
+[sub_resource type="Resource" id="b_final"]
+script = ExtResource("2_beat")
+id = &"FINAL_BOSS"
+kind = 1
+boss_scene = ExtResource("4_final")
+boss_stage = &"leviathan"
+boss_banner_first = true
+
+[sub_resource type="Resource" id="b_dock"]
+script = ExtResource("2_beat")
+id = &"DOCKING"
+kind = 2
+
+[sub_resource type="Resource" id="b_victory"]
+script = ExtResource("2_beat")
+id = &"VICTORY"
+kind = 2
+
+[resource]
+script = ExtResource("1_arc")
+beats = [SubResource("b_waves"), SubResource("b_mini"), SubResource("b_field"), SubResource("b_approach"), SubResource("b_final"), SubResource("b_dock"), SubResource("b_victory")]
