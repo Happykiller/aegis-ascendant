@@ -87,12 +87,14 @@ Notation : **Lieu · Enjeu · Révélation · Adversaire · Personnages.**
 - **Adversaire** — l'essaim de relevé, puis le Graft Harvester, puis le Pale Leviathan.
 - **Personnages** — Marchant envoie une recrue sur une mission qu'elle sait ne pas être une routine. Lyra guide son premier pilote et tait ce qu'elle a lu au dossier.
 
-**Niveau 2 — Ambry**
-- **Lieu** — l'avant-poste où Wren a grandi, silencieux depuis 379.
-- **Enjeu** — y aller. Officiellement, relever une antenne.
-- **Révélation** — Ambry n'est pas détruit : il est **debout, intact, re-plombé** — et il a été **radié** du Registre, pas déclaré perdu. Le mot prend son poids.
-- **Adversaire** — les premières greffes : de la coque humaine avec quelque chose qui pousse dessus et qui tire.
+**Niveau 2 — Le Long Cortège** *(le survol — `docs/plans/2026-08-29-niveau-2-le-survol.md`)*
+- **Lieu** — la coque d'un vaisseau de **six kilomètres et huit cents mètres**, survolée de la proue à la poupe pendant tout le niveau. On ne va pas à Ambry : on survole **ce qui l'emporte**.
+- **Enjeu** — le rattraper avant qu'il ne sorte de la ligne, et comprendre ce qu'il transporte.
+- **Révélation** — **Ambry est là, greffé sur sa coque**, vers la poupe. Debout, intact, **re-plombé** — et **radié** du Registre, pas déclaré perdu. Le mot prend son poids au terme d'une traversée, pas à l'arrivée dans un lieu.
+- **Adversaire** — la coque elle-même : tourelles fixées au bordé, ponts d'envol qui produisent, et l'**épine dorsale** qui les alimente. Rien ne poursuit le chasseur : le vaisseau ne le chasse pas, il l'écarte d'un ouvrage.
 - **Personnages** — Wren apprend la radiation, **et que Lyra le savait**. Première fracture, et elle ne se referme pas vite.
+
+> ⚠️ **Ce niveau ne se gagne pas, il se traverse.** Le Long Cortège n'est pas abattu à la fin — il continue sa route. C'est le premier adversaire du jeu que le joueur ne peut pas détruire, et c'est ce qui doit rester de lui.
 
 **Niveau 3 — L'Arsenal Orbital Talvern**
 - **Lieu** — les chantiers en orbite de Ténare. Chez nous, au milieu de tout le monde.

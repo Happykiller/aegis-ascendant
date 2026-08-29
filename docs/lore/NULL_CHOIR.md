@@ -418,6 +418,35 @@ Elle est envoyée en avant pour **consolider** ce qu'un secteur contient avant q
 grande n'arrive. Sa présence dans le couloir d'Ossane est la première mauvaise nouvelle du
 niveau 1 : quelque chose a jugé ce couloir digne d'être préparé.
 
+### The Long Cortège — *le convoi* `[niv. 2]`
+
+⚠️ **Le nom vient de nous, et il a déjà servi.** « Long Cortège » figurait dans un rapport de la
+Vanguard de l'an 344 et fut un moment envisagé pour désigner l'ennemi tout entier (§1, candidat
+n° 4) : *un convoi qui accompagne quelque chose de mort depuis très longtemps*. Écarté pour la
+faction — trop étroit — il retrouve ici l'objet exact qu'il décrivait.
+
+Six kilomètres huit. Aucun catalogue n'en contenait avant, et le codex du Pale Leviathan
+(« la seule de cette masse à ce jour ») disait vrai le jour où il a été écrit.
+
+**Ce qu'il fait**, et c'est tout : il **emporte**. Il ne poursuit pas, il ne bombarde pas, il ne
+tient aucun territoire. Il traverse un secteur et ce qui s'y trouvait de cohérent repart avec lui,
+**greffé sur son bordé** — un relais, une antenne, un avant-poste de quatre-vingts personnes. Il
+est la démonstration à l'échelle de ce que fait la moindre de ses unités : *prendre à l'unisson*
+n'est pas une figure de style, c'est une opération de déménagement.
+
+Il se défend comme on écarte quelqu'un d'un chantier, pas comme on livre bataille : des tourelles
+sur les flancs, des baies qui relâchent des unités de relevé, et rien qui prenne l'initiative de
+suivre le chasseur hors de sa route.
+
+⚠️ **Son artère n'est pas blindée.** L'axe lumineux qui court d'un bout à l'autre alimente les
+tourelles, et il est nu — parce qu'un ouvrage n'a jamais eu à se défendre d'un intérieur. C'est le
+seul défaut du vaisseau, et il est structurel : il ne sera jamais corrigé, parce que le corriger
+supposerait d'avoir compris qu'on lui fait la guerre.
+
+**Ce qu'il n'est pas** : un vaisseau-amiral. Personne ne le commande, il ne commande rien, et il
+n'y a pas de bataille à gagner contre lui. Il ne peut pas être détruit dans le niveau 2 — il
+continue sa route, et c'est ce qui doit rester de lui.
+
 ### The Pale Leviathan — NX-001, *la fonderie*
 
 Le métier : **conserver et refaire**. C'est une Voix (§4) : une masse qui détient une part entière

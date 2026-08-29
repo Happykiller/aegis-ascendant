@@ -3,7 +3,7 @@ titre: Niveau 2 — le survol du vaisseau-monde
 type: plan
 auteur: concepteur principal
 date: 2026-08-29
-état: à appliquer
+état: lots 0 et 1 LIVRÉS (planche déposée, lore écrit) ; lots 2-6 à faire
 périmètre: architecture de campagne, nouveau niveau jouable, coque de forge
 supersède: rien — premier plan multi-niveaux du projet
 ---
@@ -37,12 +37,16 @@ FINAL_BOSS → DOCKING → VICTORY`). Ce qu'on appelait « le niveau 2, le champ
 À partir d'ici : **niveau** = une mission complète avec son propre écran de rapport ; **phase** =
 un segment à l'intérieur d'un niveau. Le survol est le **niveau 2**.
 
-## 1. Lore — où ça s'accroche `[à valider]`
+## 1. Lore — ✅ TRANCHÉ ET ÉCRIT (2026-08-29)
 
 `CAMPAGNE.md` donne aujourd'hui **Ambry** au niveau 2 : l'avant-poste où le pilote a grandi,
 silencieux depuis 379, qu'on découvre *debout, intact, re-plombé* — et **radié**.
 
-**Proposition : ne pas choisir entre les deux, les fusionner.** Le vaisseau-monde est **ce qui a
+**Validé par l'opérateur : on fusionne.** Le vaisseau s'appelle **The Long Cortège**, nom
+repris d'un candidat écarté au nom de la faction (`NULL_CHOIR.md` §1, rapport de l'an 344) —
+« un convoi qui accompagne quelque chose de mort depuis très longtemps ».
+
+**Le principe :** Le vaisseau-monde est **ce qui a
 pris Ambry**. On ne va pas à l'avant-poste : on survole la chose qui l'emporte, et l'avant-poste
 est **greffé sur sa coque**, quelque part vers la poupe — intact, re-plombé, éclairé.
 
@@ -134,8 +138,8 @@ parce qu'il n'a jamais eu à se défendre d'un intérieur. C'est un ouvrage, pas
 
 | Lot | Contenu | Vérification |
 |---|---|---|
-| **0** | Déposer la planche dans `assets/reference/inspiration/` + provenance | `check.sh` vert, ligne au CSV |
-| **1** | Le lore : trancher la fusion avec Ambry, mettre `CAMPAGNE.md` à jour | relecture |
+| ~~**0**~~ | ✅ Planche déposée, indexée, tracée | fait le 2026-08-29 |
+| ~~**1**~~ | ✅ Lore écrit : `CAMPAGNE.md` niveau 2, `NULL_CHOIR.md`, charte | fait le 2026-08-29 |
 | **2** | Architecture de campagne (`LevelData`, `CampaignBook`, CONTINUER, progression) | **le niveau 1 se joue à l'identique** |
 | **3** | `BRIEF-00NN` à la forge : la coque du vaisseau-monde, par tronçons | rendue et **regardée** (ADR-0006) |
 | **4** | Le survol : défilement, tourelles, ponts d'envol | jouable de bout en bout |

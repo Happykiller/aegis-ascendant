@@ -21,6 +21,7 @@ cohérent, spectaculaire.
 | Forteresse mobile | **Aegis Citadel** | prisme axial, deux bras-batteries, noyau énergétique |
 | Ennemi | **The Unison** — *l'Unisson* | Un système d'entretien qui a survécu à ses commanditaires : il cherche de la structure cohérente et l'archive. ⚠️ **Remplace « The Null Choir »**, rejeté par l'opérateur le 2026-08-28 (`docs/lore/NULL_CHOIR.md` §1). Les identifiants de fichiers gardent leur nom : le joueur ne les voit pas |
 | Vaisseau-amiral ennemi | **The Pale Leviathan** | organo-mécanique, anneau incomplet, noyau visible. **Boss d'étape**, pas l'aboutissement de la campagne |
+| Convoi (niveau 2) | **The Long Cortège** | 6,8 km, survolé de la proue à la poupe. Il **emporte** des structures entières, greffées sur son bordé — il ne livre pas bataille et **ne peut pas être détruit**. ⚠️ Ni « vaisseau-amiral » ni « flagship » : notre ennemi n'est pas une marine (`docs/lore/NULL_CHOIR.md`) |
 | Mini-boss | **Graft Harvester** | trois bras, noyau central protégé. ⚠️ ex-« Choir Harvester » : il prélève et il greffe |
 | Mine du champ | **Anchor Mine** | ⚠️ ex-« Choir Mine » : elle ancre et elle interdit une zone |
 | Constructeur du Specter-9 | **Arsenal Orbital Talvern** | chantier Helios ; s'affiche dans le bestiaire (BRIEF-0037) |
