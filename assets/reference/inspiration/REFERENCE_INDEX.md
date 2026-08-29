@@ -19,6 +19,38 @@ posture serait à revoir (voir ADR-0009).
 
 ## Fichiers
 
+### `reference_enemy_capital_worldship.png`
+
+Planche de vaisseau capital ennemi, fournie par l'opérateur le 2026-08-29 pour le **niveau 2**
+(`docs/plans/2026-08-29-niveau-2-le-survol.md`). Vue de dessus en grand format, trois vues
+orthographiques (face, profil, arrière) et une fiche technique.
+
+Éléments observés :
+
+- une coque **très allongée et symétrique**, à segments empilés — la lecture se fait de la proue
+  à la poupe, ce qui est exactement le sens du survol prévu ;
+- des **superstructures saillantes** réparties le long des flancs : autant d'emplacements naturels
+  pour des tourelles et des baies ;
+- des **puits lumineux magenta** ponctuant l'axe central sur toute la longueur ;
+- une poupe à **quatre à cinq réacteurs** groupés, nettement plus lumineux que le reste ;
+- une palette **anthracite + magenta** sur fond spatial sombre ;
+- des astéroïdes en arrière-plan qui donnent l'échelle.
+
+⚠️ **Ce qu'on retient, et ce qu'on écarte.** La *forme* est la cible : silhouette allongée,
+segmentation, axe lumineux, poupe massive. Le *vocabulaire* de sa fiche technique
+(« FLAGSHIP », « SINGULARITY LANCE », « CORRUPTION FIELD ») **n'entre pas au canon** : notre
+ennemi n'est pas une marine de guerre, et son lore refuse explicitement ce registre
+(`docs/lore/NULL_CHOIR.md` §2, « ce que l'Unisson n'est pas »). Deux de ces armements ont
+néanmoins un équivalent chez nous : le *Gravity Pulsar* est un `GravityWell`, les *Spawn Drones*
+sont les ponts d'envol.
+
+⚠️ La palette magenta de la planche **coïncide** avec celle de l'Unisson (charte §3) : c'est une
+convergence, pas une source — la palette du projet est antérieure.
+
+Usages : silhouette et découpe en tronçons de la coque du niveau 2, emplacement des tourelles et
+des ponts d'envol, traitement de l'axe lumineux (dont l'**épine dorsale** est la mécanique).
+
+
 ### `reference_fortress_battle_scene.png`
 
 Planche d'ambiance montrant une bataille spatiale en vue verticale autour d'une forteresse.
