@@ -17,7 +17,7 @@ pas**. L'émissif a été posé là où il est physiquement — sur les faces ar
 caméra de jeu est inclinée d'environ 20° au-dessus du plan, c'est-à-dire presque à la verticale.
 Elle ne regarde jamais l'arrière d'un vaisseau. Tout l'émissif dépensé là est invisible.
 
-Or c'est l'émissif qui porte l'identité de faction (cyan Vanguard / magenta Chœur Nul), et c'est lui
+Or c'est l'émissif qui porte l'identité de faction (cyan Vanguard / magenta Unisson), et c'est lui
 qui déclenche le glow. Les planches de concept le montrent d'ailleurs bien : les lignes d'énergie
 courent sur le **dessus** des coques, pas seulement dans les tuyères.
 

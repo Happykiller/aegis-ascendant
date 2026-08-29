@@ -116,7 +116,7 @@ portés par le matériau glTF. Noms imposés (les scènes Godot s'y raccrochent)
 | `AA_Emissive_Engine` | Cyan `#3FD9E8` | tuyères, lignes lumineuses |
 | `AA_Marking_Red` | Rouge sécurité `#C93A31` | marquages restreints |
 
-Pour le Chœur Nul (ennemis/boss), la palette antagoniste de la charte se substitue :
+Pour l'Unisson (ennemis/boss), la palette antagoniste de la charte se substitue :
 `#24252B`, `#452663`, `#DDDCD2`, magenta `#D93D9C` en émissif.
 
 **Le détail vient de la géométrie**, pas des textures : biseaux (bevel), découpes et enfoncements

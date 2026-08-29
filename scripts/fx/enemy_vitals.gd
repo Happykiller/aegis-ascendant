@@ -48,7 +48,7 @@ const DORMANT_DIM := 0.40
 ## DANS la dispersion du repos, donc invisible. Les pixels du noyau étaient déjà à
 ## 244-255, et multiplier par 2,4 une valeur écrêtée est une opération nulle.
 ##
-## Le fond n'aide pas : la nébuleuse est magenta, exactement la teinte du Chœur Nul.
+## Le fond n'aide pas : la nébuleuse est magenta, exactement la teinte de l'Unisson.
 ## Ce qui se voit sur un fond lumineux n'est pas l'intensité, c'est le CHANGEMENT DE
 ## TEINTE. Le Leviathan avait déjà tranché pareil pour son halo de cible : « rester
 ## dans la teinte de coque le faisait lire comme un reflet » (leviathan_combat.gd).

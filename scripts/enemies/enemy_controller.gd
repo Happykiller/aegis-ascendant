@@ -186,7 +186,7 @@ const AURA_RING_THICKNESS := 0.09
 ## Le champ peint (`TEX-0008`). Chargé à l'exécution : sans lui, le tore procédural reprend
 ## la main — le bestiaire doit rester jouable sans ses images.
 const AURA_SPRITE := "res://assets/imported/vfx/champ_porteur.png"
-## Violet du Chœur Nul. ⚠️ Ni cyan ni corail : ces deux teintes appartiennent au tir
+## Violet de l'Unisson. ⚠️ Ni cyan ni corail : ces deux teintes appartiennent au tir
 ## allié et au tir ennemi, et un champ qui les emprunterait leur volerait leur lisibilité.
 const AURA_TINT := Color(0.78, 0.32, 0.98)
 ## Respiration du champ, en secondes. La même que celle des pièces d'une unité passive :

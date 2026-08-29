@@ -9,8 +9,8 @@ extends "res://tests/test_case.gd"
 ##
 ## Deux causes, et aucune n'était visible depuis le code : les pixels du noyau
 ## étaient déjà écrêtés (244-255), donc multiplier leur énergie était une opération
-## nulle ; et le fond du jeu est une nébuleuse magenta, exactement la teinte du
-## Chœur Nul. Sur un fond lumineux, ce qui se voit n'est pas l'intensité mais le
+## nulle ; et le fond du jeu est une nébuleuse magenta, exactement la teinte de
+## l'Unisson. Sur un fond lumineux, ce qui se voit n'est pas l'intensité mais le
 ## CHANGEMENT DE TEINTE.
 ##
 ## D'où ces tests : ils portent sur la teinte, parce que c'est la grandeur qui

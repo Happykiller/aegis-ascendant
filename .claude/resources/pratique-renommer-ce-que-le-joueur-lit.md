@@ -28,11 +28,21 @@ répliques). Deux fiches de codex disaient **« Choeur Nul »** — la traductio
 une session qui avait bien fait son travail. `grep "Null Choir"` ne les voyait pas.
 
 ```bash
-grep -rn "Null Choir\|Choeur Nul" resources/ scripts/ scenes/ docs/
+# ⚠️ DEUX MOTIFS SÉPARÉS, jamais une classe de caractères
+grep -rn "Null Choir" . ; grep -rn "Choeur Nul" . ; grep -rn "Chœur Nul" .
 ```
 
-**Chercher la traduction avant de conclure**, y compris ses variantes sans accent (`Choeur` /
-`Chœur`). Un renommage « terminé à 90 % » laisse justement les occurrences que personne ne relira.
+**Chercher la traduction avant de conclure**, y compris ses variantes de graphie. Un renommage
+« terminé à 90 % » laisse justement les occurrences que personne ne relira.
+
+⚠️ **Et la ligature `œ` est un piège dans le piège.** Ce grep-ci, écrit le 2026-08-28 pour ne plus
+se faire avoir, s'est fait avoir : il cherchait `Choeur` en deux lettres, et **43 occurrences de
+`Chœur` avec la ligature** lui ont échappé — dont trois dans du code vivant, relevées le lendemain.
+
+Pire, la parade qui vient naturellement ne marche pas : `Ch[œo]eur` est une **classe d'octets**,
+pas de caractères. « œ » est multi-octets en UTF-8, donc la classe est silencieusement fausse et
+le grep rend zéro résultat en ayant l'air de fonctionner. Écrire **deux motifs séparés**, ou
+`grep -P`. Même famille : `æ`, `’` contre `'`, `—` contre `-`, `É` composé contre précomposé.
 
 ## 3. Le nom se choisit sur ce qu'il devient, pas sur ce qu'il évoque
 
