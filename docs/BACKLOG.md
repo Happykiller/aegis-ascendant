@@ -345,9 +345,22 @@ laissent, en revanche, n'appartient à aucun d'eux :
       `deep_sky` presque gratuit. Le solde peut être favorable ; tant qu'il n'est pas mesuré, on
       ne sait pas. Protocole : `.claude/resources/howto-mesurer-la-perf.md`, à 60 Hz, trois tirs
       alternés, **jamais `--novsync`**.
-- [ ] **Les cinq images de texture** (`TEX-0010` à `TEX-0014`) — voie de l'opérateur (`ADR-0028`).
-      Les demandes sont écrites, validées et portent leur prompt ; `CortegeSkin` les attend et le
-      journal dit « coque NUE » tant qu'elles manquent.
+- [x] ~~**Les cinq images de texture** (`TEX-0010` à `TEX-0014`)~~ — livrées par l'opérateur,
+      dérivées et câblées. Le journal dit « coque habillée — 21 surfaces ».
+- [ ] **LOT 6 — la décoration**, dernier lot de la refonte de géométrie du niveau 2. ⚠️ **Il
+      attend explicitement la validation des lots 1 à 5 par l'opérateur**, et c'est le plan qui
+      le dit : décorer avant que les fonctions soient jugées lisibles, c'est ajouter du bruit
+      par-dessus une hiérarchie non validée. Les lots 1 à 5 sont livrés et vérifiés en capture ;
+      il manque une **partie jouée**.
+- [ ] **Le neuvième slot `AA_Gear` (grège moyen)** — proposé par la forge au `BRIEF-0094`, pas
+      créé. La palette de l'Unisson n'a rien entre `AA_Hull` (#24252B) et `AA_Trim` (#DDDCD2),
+      ce qui empêche de tenir les 15 % d'appareillage sans forcer `AA_Trim` — or un matériau
+      clair sur une arête continue occupe plus de pixels qu'une pièce entière (`BRIEF-0089`). Il
+      appellerait une carte neuve, donc un `TEX-NNNN` : à prendre le jour où un asset le demande
+      pour lui-même, pas pour rattraper un pourcentage.
+- [ ] **`build_bay_kit._tile_close()` porte la même expression de caméra roulée** que celle que
+      la forge a corrigée dans le kit de tourelle. Sans effet sur le `.glb` — c'est un helper de
+      rendu de planche — mais il rendra une vignette fausse au prochain usage.
 - [ ] **Un playtest humain du niveau 2.** Le pilote automatique n'a détruit qu'UNE cible de coque
       en 208 s : il ne vise pas un bordé. Les PV sont **dimensionnés**, pas **mesurés** (ADR-0019).
 

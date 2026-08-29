@@ -88,8 +88,8 @@ brief.
 
 | Demande | Ce qu'elle habille |
 |---|---|
-| [`TEX-0001-moon-regolith-height.json`](../textures/TEX-0001-moon-regolith-height.json) | le grain et les petits cratères de `Moon_Cap` |
-| [`TEX-0002-asteroid-rock-height.json`](../textures/TEX-0002-asteroid-rock-height.json) | la roche des trois `Asteroid_*`, matériau **partagé** |
+| [`TEX-0001-moon-regolith-height.json`](../../textures/TEX-0001-moon-regolith-height.json) | le grain et les petits cratères de `Moon_Cap` |
+| [`TEX-0002-asteroid-rock-height.json`](../../textures/TEX-0002-asteroid-rock-height.json) | la roche des trois `Asteroid_*`, matériau **partagé** |
 
 Deux conditionnelles existent — `TEX-0003` (ejectas clairs) et `TEX-0004` — et **ne se commandent
 pas sur plan** : `derive-maps.py --mul` dérive déjà l'assombrissement des creux depuis la hauteur.

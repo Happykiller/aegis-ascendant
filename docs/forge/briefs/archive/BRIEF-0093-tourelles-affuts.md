@@ -1,6 +1,6 @@
 # BRIEF-0093 — Les tourelles deviennent des affûts
 
-- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lot 2
+- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lot 2
 - **Planche de consignes** : `assets/reference/concepts/BRIEF-0091-planche-consignes.png` — **la
   regarder avant de lire la suite**, section 1 « TOURELLE DE DÉFENSE »
 - **Modifie** : `assets/imported/models/backgrounds/long_cortege.glb` — retrait des socles cuits

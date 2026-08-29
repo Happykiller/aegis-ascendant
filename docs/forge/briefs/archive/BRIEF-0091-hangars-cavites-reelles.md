@@ -4,7 +4,7 @@
 > doit **perdre** ses coamings de baie et **gagner** ses ouvertures, et le kit doit s'y loger au
 > millimètre. Les séparer garantirait qu'ils ne s'emboîtent pas.
 
-- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lot 1
+- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lot 1
 - **Planche de consignes** : `assets/reference/concepts/BRIEF-0091-planche-consignes.png` — **la
   regarder avant de lire la suite**, section 2 « PONT D'ENVOL (HANGAR) »
 - **Modifie** : `assets/imported/models/backgrounds/long_cortege.glb` (livré par `BRIEF-0089`)

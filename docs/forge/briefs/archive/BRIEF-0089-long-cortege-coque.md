@@ -1,6 +1,6 @@
 # BRIEF-0089 — La coque du Long Cortège, en cinq tronçons
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-29

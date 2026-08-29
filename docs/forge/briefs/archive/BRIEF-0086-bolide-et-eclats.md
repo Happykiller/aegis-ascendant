@@ -57,7 +57,7 @@ maillage mais **la traînée et la gerbe** — qui sont du **code**, et que je t
 ## Texture (ADR-0028)
 
 **Aucune demande nouvelle.** Les deux pièces réutilisent
-[`TEX-0002-asteroid-rock-height.json`](../textures/TEX-0002-asteroid-rock-height.json) — c'est de la
+[`TEX-0002-asteroid-rock-height.json`](../../textures/TEX-0002-asteroid-rock-height.json) — c'est de la
 roche d'astéroïde, et c'en est. Les cartes sont déjà dérivées et en jeu.
 
 ⚠️ **Conséquence sur tes UV, et elle est stricte** : la tuile de `TEX-0002` est calée sur **8 m de

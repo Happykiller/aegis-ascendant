@@ -1,6 +1,6 @@
 # BRIEF-0088 — La grande bible de l'univers d'Aegis Ascendant
 
-- **Statut** : **livré** (2026-08-28) — 7 fichiers, 1 649 lignes dans `docs/lore/`. Review de
+- **Statut** : livré
   conformité faite : périmètre respecté (rien hors `docs/lore/`), bandeaux d'en-tête présents,
   aucune ligne de provenance requise, deux réflexes IP corrects (un candidat de nom écarté pour
   proximité avec une faction existante, une lune renommée pour un morphème de fantasy connue).

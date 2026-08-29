@@ -4,7 +4,7 @@
 > Trois reforges séparées coûteraient trois fois le même temps de maillage et risqueraient de se
 > contredire. Ils sont **classés par priorité** — si tu dois t'arrêter, arrête-toi par la fin.
 
-- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lots 3 à 5
+- **Plan** : [`2026-08-29-niveau-2-refonte-geometrie.md`](../../../plans/2026-08-29-niveau-2-refonte-geometrie.md), lots 3 à 5
 - **Planche de consignes** : `assets/reference/concepts/BRIEF-0091-planche-consignes.png` —
   section 3 « EXEMPLE IN-GAME » et section 4 « PALETTE & LISIBILITÉ »
 - **Modifie** : `assets/imported/models/backgrounds/long_cortege.glb`

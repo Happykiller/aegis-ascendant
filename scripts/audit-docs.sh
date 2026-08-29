@@ -27,8 +27,41 @@ drift = 0
 
 def move(src, dst_dir):
     os.makedirs(dst_dir, exist_ok=True)
-    subprocess.run(["git", "mv", src, os.path.join(dst_dir, os.path.basename(src))],
-                   check=False, capture_output=True)
+    dst = os.path.join(dst_dir, os.path.basename(src))
+    subprocess.run(["git", "mv", src, dst], check=False, capture_output=True)
+    relink(src, dst)
+
+def relink(src, dst):
+    """Recale les liens relatifs d'un document qui vient de changer de dossier.
+
+    ⚠️ RANGER CASSAIT CE QU'IL RANGEAIT. Un brief archive descend d'un cran, donc chacun de ses
+    `../` pointe un cran trop haut. Mesure du 2026-08-29, avant correctif : **6 liens relatifs
+    morts sur 6** dans 52 briefs archives — autrement dit, tout lien relatif ayant traverse
+    l'archivage etait mort, depuis le premier jour. Le defaut ne se voyait pas parce qu'un brief
+    archive ne se relit presque jamais... jusqu'au jour ou on cherche precisement le plan qui
+    l'a motive.
+
+    On re-resout chaque cible depuis l'ancien dossier, puis on la re-exprime depuis le nouveau.
+    Les liens qui pointaient deja dans le vide sont laisses tels quels : les reparer serait
+    deviner, et ce script ne devine pas.
+    """
+    if not os.path.exists(dst):
+        return
+    old_dir, new_dir = os.path.dirname(src), os.path.dirname(dst)
+    txt = io.open(dst, encoding="utf-8").read()
+
+    def fix(match):
+        target = match.group(1)
+        if "://" in target or target.startswith(("/", "#")):
+            return match.group(0)
+        absolute = os.path.normpath(os.path.join(old_dir, target))
+        if not os.path.exists(absolute):
+            return match.group(0)
+        return "](%s)" % os.path.relpath(absolute, new_dir)
+
+    fixed = re.sub(r"\]\(([^)]+)\)", fix, txt)
+    if fixed != txt:
+        io.open(dst, "w", encoding="utf-8").write(fixed)
 
 # --- BRIEFS : livre = une sortie OU une ligne de provenance ----------------
 stale, open_ = [], []
