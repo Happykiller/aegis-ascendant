@@ -75,6 +75,14 @@ func freeze(duration: float) -> void:
 	if hit_stop != null:
 		hit_stop.freeze(duration)
 
+## ANNONCER. ⚠️ Un bandeau SANS SON n'est pas une annonce : il apparaît au moment où le joueur
+## regarde ailleurs — il esquive — et il est déjà parti quand il revient. Les deux vont
+## ensemble, dans tout le jeu, et c'est pour ça que ça ne se recopie pas.
+func banner(text: String, colour: Color, duration: float) -> void:
+	if _hud != null and _hud.has_method("show_banner"):
+		_hud.show_banner(text, colour, duration)
+	sfx(&"ui_banner")
+
 ## Pousse l'état musical courant vers le mélangeur.
 func push_music() -> void:
 	if _audio != null and _audio.has_method("set_music_state"):

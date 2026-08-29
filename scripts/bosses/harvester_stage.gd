@@ -37,9 +37,8 @@ func _after_begin(mounted: BossController) -> void:
 ## consomme une balle en silence.
 func _on_limb_destroyed(_kind: StringName, mounted: BossController) -> void:
 	# `boom` porte déjà la secousse : la redemander ici la doublerait.
-	if _runtime != null:
-		_runtime.boom(mounted.global_position, VfxExplosion.Category.MEDIUM, 0.5)
-		_runtime.sfx(&"medium_explosion")
+	_boom(mounted.global_position, VfxExplosion.Category.MEDIUM, 0.5)
+	_sfx(&"medium_explosion")
 
 func _on_limb_rebuild(index: int, ratio: float) -> void:
 	if _hud != null:
@@ -51,16 +50,14 @@ func _on_limb_gauge(index: int, ratio: float, alive: bool) -> void:
 
 ## Le moment du combat : la carapace s'ouvre.
 func _on_iris_opened(mounted: BossController) -> void:
-	if _runtime != null:
-		_runtime.boom(mounted.global_position, VfxExplosion.Category.MEDIUM, 0.9)
-		_runtime.sfx(&"boss_phase_shift")
+	_boom(mounted.global_position, VfxExplosion.Category.MEDIUM, 0.9)
+	_sfx(&"boss_phase_shift")
 	if _hud != null:
 		_hud.show_banner("NOYAU EXPOSE", Color("d93d9c"), 1.4)
 	_say(&"core_exposed")
 
 func _on_iris_closed() -> void:
-	if _runtime != null:
-		_runtime.sfx(&"docking_lock")
+	_sfx(&"docking_lock")
 	if _hud != null:
 		_hud.show_banner("CARAPACE REFERMEE", Color("e4b54a"), 1.0)
 	_say(&"core_shielded")

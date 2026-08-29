@@ -14,7 +14,11 @@ extends "res://tests/test_case.gd"
 ## La lecon du depot, appliquee : un test d'unite ne remplace pas un test de branchement.
 
 const CombatScript := preload("res://scripts/bosses/leviathan_combat.gd")
-const LevelScript := preload("res://scripts/gameplay/graybox_root.gd")
+## ⚠️ LE RELAIS A DEMENAGE, ET LE TEST L'A SUIVI. Il visait `graybox_root.gd` — le script du
+## NIVEAU — parce que c'est la que vivait la mise en scene du boss. Elle est desormais dans
+## `LeviathanStage`, ou elle est reutilisable : ce que ce test garde n'a pas change d'un mot,
+## seul son sujet a retrouve sa place.
+const LevelScript := preload("res://scripts/bosses/leviathan_stage.gd")
 
 ## Un HUD reduit a ce que le relais lui demande : il n'affiche rien, il note tout.
 ## `CanvasLayer` parce que `_hud` est type ainsi dans le niveau.
@@ -36,7 +40,7 @@ func _make_level(combat: LeviathanCombat) -> Node:
 	var spy := HudSpy.new()
 	level.add_child(spy)          # possede par le niveau : libere avec lui
 	level._hud = spy
-	level._leviathan = combat
+	level._combat = combat
 	return level
 
 func _make_combat() -> LeviathanCombat:
@@ -84,7 +88,7 @@ func test_the_hud_gauge_shows_the_fight_not_the_current_target() -> void:
 	assert_almost_eq(combat.structure_ratio(), 1.0, 0.001,
 		"pre-requis : la cible courante s'est bien remplie")
 	assert_true(combat.fight_ratio() < 1.0, "pre-requis : la progression, elle, a baisse")
-	level._on_leviathan_structure(combat.structure_ratio())
+	level._on_structure(combat.structure_ratio())
 	var spy: HudSpy = level._hud
 	assert_eq(spy.health.size(), 1, "le HUD a bien recu une valeur")
 	assert_almost_eq(spy.health[0], combat.fight_ratio(), 0.001,
@@ -96,11 +100,11 @@ func test_the_hud_gauge_never_climbs_back_up() -> void:
 	var combat := _make_combat()
 	var level := _make_level(combat)
 	for cycle in 3:
-		level._on_leviathan_structure(combat.structure_ratio())
+		level._on_structure(combat.structure_ratio())
 		_kill_armour(combat)
-		level._on_leviathan_structure(combat.structure_ratio())
+		level._on_structure(combat.structure_ratio())
 		_ride_dive_and_hit(combat)
-	level._on_leviathan_structure(combat.structure_ratio())
+	level._on_structure(combat.structure_ratio())
 	var spy: HudSpy = level._hud
 	assert_true(spy.health.size() >= 7, "les sept relais ont eu lieu")
 	for i in range(1, spy.health.size()):
@@ -115,8 +119,8 @@ func test_the_hud_gauge_never_climbs_back_up() -> void:
 func test_the_cycle_counter_reads_as_a_player_would_say_it() -> void:
 	var combat := _make_combat()
 	var level := _make_level(combat)
-	assert_eq(level._leviathan_cycle_label(0, 3), "CYCLE 1 / 3", "premier cycle, 1-indexe")
-	assert_eq(level._leviathan_cycle_label(2, 3), "CYCLE 3 / 3", "dernier cycle prevu")
+	assert_eq(level._cycle_label(0, 3), "CYCLE 1 / 3", "premier cycle, 1-indexe")
+	assert_eq(level._cycle_label(2, 3), "CYCLE 3 / 3", "dernier cycle prevu")
 
 func test_beyond_the_last_cycle_the_counter_is_NAMED_not_numbered() -> void:
 	# ⚠️ LE COMBAT N'EST PAS BORNE A `cycle_count` et ne l'a jamais ete :
@@ -129,7 +133,7 @@ func test_beyond_the_last_cycle_the_counter_is_NAMED_not_numbered() -> void:
 	var combat := _make_combat()
 	var level := _make_level(combat)
 	for cycle in [3, 4, 9]:
-		var label: String = level._leviathan_cycle_label(cycle, 3)
+		var label: String = level._cycle_label(cycle, 3)
 		assert_eq(label, "DERNIER ASSAUT", "au-dela du dernier cycle, on NOMME le depassement")
 		assert_false(label.contains("/"), "et surtout on ne compte plus : jamais de « 4 / 3 »")
 
@@ -150,7 +154,7 @@ func test_a_fourth_cycle_is_playable_and_the_gauge_tells_the_truth() -> void:
 	assert_true(combat.plates().size() > 0, "et l'armure est revenue : le combat continue")
 	assert_almost_eq(combat.fight_ratio(), 1.0, 0.001,
 		"quatre cycles sans toucher le flux : la barre du boss est INTACTE, et elle a raison")
-	level._on_leviathan_structure(combat.structure_ratio())
+	level._on_structure(combat.structure_ratio())
 	var spy: HudSpy = level._hud
 	assert_almost_eq(spy.health[spy.health.size() - 1], 1.0, 0.001,
 		"et c'est bien ce que le HUD affiche")

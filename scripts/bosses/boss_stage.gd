@@ -27,9 +27,22 @@ var _hud: CanvasLayer = null
 var _game_state: Object = null
 var _bullets: BulletManager = null
 var _player: PlayerFighterController = null
+## ⚠️ INJECTÉE, jamais cherchée par `get_node("CameraDirector")`. Une mise en scène qui cherche
+## un nœud par son chemin suppose l'arbre du niveau qui l'héberge — et cesse d'être réutilisable
+## le jour où un autre niveau range ses nœuds autrement.
+var _camera: Node = null
 ## Les répliques du niveau. ⚠️ INJECTÉES ET NON PRÉCHARGÉES : ce sont du CONTENU, il change
 ## d'un niveau à l'autre, et un boss rejoué ailleurs n'y dirait pas les mêmes choses.
 var _lines: DialogueScript = null
+
+## ⚠️ L'ORDRE DU BANDEAU N'EST PAS LE MÊME POUR TOUS, ET LE PERDRE COÛTERAIT UNE RANGÉE DE
+## PASTILLES ÉTEINTES SUR UN BOSS INTACT. `show_boss()` ÉTEINT les pastilles ; `begin()` monte
+## le module, qui les rallume en émettant sa première phase. Le Pale Leviathan a donc besoin du
+## bandeau AVANT `begin()`. Le Choir Harvester, lui, ne rallume rien depuis `begin()` : il
+## publie ses jauges après, et le bandeau doit venir d'abord pour ne pas les effacer. Deux
+## boss, deux ordres, et aucun des deux ne se devine — d'où ce drapeau plutôt qu'un choix
+## implicite.
+var show_boss_before_begin: bool = false
 
 ## Ce que la mort du boss vaut au score. Zéro par défaut : un boss qui ne rapporte rien est un
 ## choix de conception, pas un oubli — mais il doit être écrit quelque part.
@@ -37,13 +50,14 @@ var score_value: int = 0
 
 func bind(runtime: CombatRuntime, hud: CanvasLayer, game_state: Object,
 		bullets: BulletManager, player: PlayerFighterController,
-		lines: DialogueScript = null) -> void:
+		lines: DialogueScript = null, camera: Node = null) -> void:
 	_runtime = runtime
 	_hud = hud
 	_game_state = game_state
 	_bullets = bullets
 	_player = player
 	_lines = lines
+	_camera = camera
 
 ## Monte le boss et le met en scène.
 ##
@@ -53,6 +67,9 @@ func bind(runtime: CombatRuntime, hud: CanvasLayer, game_state: Object,
 ## sur un boss intact.
 func mount(scene: PackedScene, parent: Node) -> BossController:
 	boss = scene.instantiate() as BossController
+	# ⚠️ AVANT `add_child` : une pose ou une échelle appliquée après le montage se voit à
+	# l'écran le temps d'une image, et sur un boss de huit mètres ça ne passe pas inaperçu.
+	_configure(boss)
 	parent.add_child(boss)
 	boss.health_changed.connect(_on_health)
 	boss.defeated.connect(_on_defeated)
@@ -61,13 +78,19 @@ func mount(scene: PackedScene, parent: Node) -> BossController:
 	# tous ne le déclenchent pas.
 	boss.deflected.connect(_on_deflected)
 	_wire(boss)
+	if show_boss_before_begin and _hud != null:
+		_hud.show_boss(boss.display_name)
 	boss.begin(_bullets, _player)
 	if _runtime != null:
 		_runtime.sfx(&"danger_alarm")
-	if _hud != null:
+	if not show_boss_before_begin and _hud != null:
 		_hud.show_boss(boss.display_name)
 	_after_begin(boss)
 	return boss
+
+## Point d'accroche des sous-types : poser la coque avant qu'elle n'entre dans l'arbre.
+func _configure(_mounted: BossController) -> void:
+	pass
 
 ## Point d'accroche des sous-types : câbler le module propre à CE boss. Rien par défaut.
 func _wire(_mounted: BossController) -> void:
@@ -130,6 +153,41 @@ func fill_solids(shapes: PlaneShapes) -> void:
 ## Point d'accroche des sous-types : défaire ce qu'ils ont monté. Rien par défaut.
 func _teardown() -> void:
 	pass
+
+# --- Les gestes du runtime, avec leur garde ----------------------------------
+#
+# ⚠️ ILS EXISTENT POUR QUE LA MISE EN SCÈNE SOIT TESTABLE SANS RUNTIME. Un banc monte le boss
+# et son module, rien d'autre : `_runtime` y est nul, et un appel direct fait tomber le test
+# sur une erreur qui ne dit rien du comportement gardé. Les gardes sont ici, une fois, plutôt
+# que recopiées à chaque appel — il y en a une quarantaine.
+
+## L'état musical. Un exemplaire de rechange quand il n'y a pas de runtime : la mise en scène
+## peut alors écrire dedans sans que personne ne le lise, ce qui est exactement ce qu'un banc
+## veut.
+var _spare_music: MusicContext = MusicContext.new()
+
+func _music() -> MusicContext:
+	return _runtime.music if _runtime != null else _spare_music
+
+func _push_music() -> void:
+	if _runtime != null:
+		_runtime.push_music()
+
+func _sfx(cue: StringName, volume_db: float = 0.0) -> void:
+	if _runtime != null:
+		_runtime.sfx(cue, volume_db)
+
+func _boom(world_position: Vector3, category: VfxExplosion.Category, trauma: float) -> void:
+	if _runtime != null:
+		_runtime.boom(world_position, category, trauma)
+
+func _banner(text: String, colour: Color, duration: float) -> void:
+	if _runtime != null:
+		_runtime.banner(text, colour, duration)
+
+func _freeze(duration: float) -> void:
+	if _runtime != null:
+		_runtime.freeze(duration)
 
 ## Raccourci de réplique — le sous-type en dit plusieurs, et la garde de nullité ne doit pas
 ## être recopiée à chaque fois.
