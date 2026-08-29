@@ -67,9 +67,24 @@ nœuds racines juxtaposés, sommets en coordonnées absolues.
 | Tronçons | **5 nœuds racines** `Section_01` … `Section_05`, **sans enfants maillés** |
 | Placement | chaque tronçon porte **sa translation** ; ils s'enchaînent le long de l'axe de survol, bout à bout, **sans trou ni recouvrement visible** |
 | Largeur | **28 unités** de bord à bord (le plan de jeu fait 28 : la coque emplit l'écran) |
-| Longueur | **≈ 34 unités par tronçon**, à ajuster pour que la jonction soit invisible |
+| Longueur | **≈ 100 unités par tronçon** (≈ 500 au total), à ajuster pour que la jonction soit invisible |
 | ⚠️ Hauteur | **rien au-dessus de `Y = -3`** — c'est le plafond du plan de jeu. Harnais **bloquant**, comme `moon_flyby._audit()` |
-| Budget | **≤ 90 000 triangles au total**, ≤ 18 000 par tronçon. Repère : `core_interior` fait 36 tri/m² d'emprise, le plus bas du dépôt pour un grand décor |
+| Budget | **≤ 90 000 triangles au total**, ≤ 18 000 par tronçon |
+
+⚠️ **CORRIGÉ APRÈS COUP (2026-08-29).** Ce brief a d'abord annoncé « ≈ 34 unités par tronçon ».
+C'était faux, et le défaut ne s'est vu qu'en dimensionnant le défilement : à 34 unités, les 42 s
+par section imposaient 0,8 u/s, soit **20 secondes pour traverser l'écran**. Une dérive, pas un
+survol. À 2,4 u/s — le haut de la plage du niveau 1, où la lune défile à 1,2 et ses rochers
+jusqu'à 3,2 — un tronçon fait 100 unités et se traverse en 6,7 s.
+
+⚠️ **Et la conséquence est une contrainte de méthode.** À 500 × 28 unités, 90 000 triangles font
+**6,4 tri/m² d'emprise** — contre 36 pour `core_interior` et 195 pour le Pale Leviathan. Une coque
+modelée pièce par pièce n'y entrera pas. La géométrie doit être **modulaire et répétée** : un
+vocabulaire de plaques, nervures et superstructures instancié le long du tronçon, plus quelques
+accidents forts (baies, tourelles, arête centrale) qui portent la lecture. C'est exactement ce que
+montrent les maquettes. **Le détail perçu viendra des textures, pas des triangles** — d'où
+l'importance du dépliage. Si 90 000 ne suffit pas, le dire au compte-rendu **avec un chiffre** :
+le plafond de classe « structure » est 120 000 (ADR-0011) et il reste de la marge.
 
 ### Les marqueurs — c'est par eux que le jeu accroche son gameplay
 

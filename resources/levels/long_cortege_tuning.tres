@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="CortegeTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/cortege_tuning.gd" id="1_tuning"]
+
+; Les reglages du survol du Long Cortege (niveau 2).
+;
+; ⚠️ AUCUN DE CES CHIFFRES N'EST UN GOUT. Chacun est tenu par un invariant de `validate()`, et
+; le plus important dit qu'une cible doit pouvoir TOMBER dans la fenetre ou elle est a l'ecran :
+; un survol ne revient jamais en arriere. Au-dessus de cette borne, la cible est indestructible
+; en pratique et le joueur croira mal jouer — le defaut qu'ADR-0024 a paye sur le flux.
+;
+; Les valeurs de depart sont dimensionnees, pas mesurees : elles se recalent en JOUANT
+; (`ADR-0019`), et l'invariant refusera tout recalage qui rend une cible intenable.
+
+[resource]
+script = ExtResource("1_tuning")
+reference_dps = 420.0
+node_reference_dps = 208.0
+scroll_speed = 2.4
+occupancy_hull = 0.55
+occupancy_node = 0.35
+section_count = 5
+section_length = 100.0
+target_duration = 210.0
+duration_tolerance = 30.0
+turret_visible_span = 20.0
+turret_health = 480.0
+turret_windup_time = 0.8
+turret_beam_time = 0.7
+turret_recover_time = 1.1
+turret_interval = 2.6
+turret_damage = 18.0
+bay_visible_span = 24.0
+bay_health = 1500.0
+bay_release_interval = 3.5
+bay_release_count = 2
+node_visible_span = 14.0
+node_health = 300.0
+node_silences_next_section = true
