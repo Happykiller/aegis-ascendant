@@ -92,6 +92,7 @@ var _class: Label
 var _builder: Label
 var _status_pip: ColorRect
 var _status_text: Label
+var _loadout_text: Label
 var _notice: Label
 
 var _readouts: Dictionary[StringName, Label] = {}
@@ -298,6 +299,7 @@ func _build_subject() -> void:
 	_status_pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_status_pip)
 	_status_text = _label(root, "", _LABEL_FONT, 10, GOLD, Vector2(MARGIN + 18.0, y + 138.0), LEFT_WIDTH)
+	_loadout_text = _label(root, "", _LABEL_FONT, 10, GOLD, Vector2(MARGIN + 18.0, y + 162.0), LEFT_WIDTH)
 
 ## Colonne d'instruments, à droite. Trois blocs : gabarit, structure, armement.
 func _build_readouts() -> void:
@@ -400,10 +402,29 @@ func _build_notice() -> void:
 	panel.add_child(_notice)
 
 ## Mobilier bas de l'accueil : rappel de touches au centre, devise à droite.
+## La pastille « coque emmenée », sous le statut. Elle ne s'affiche que sur une fiche
+## JOUABLE : sur le Pale Leviathan, la question n'a pas de sens.
+func _set_loadout_mark(entry: CodexEntry) -> void:
+	if _loadout_text == null:
+		return
+	if entry.playable_hull == null:
+		_loadout_text.text = ""
+		return
+	var settings := get_node_or_null("/root/SettingsManager")
+	var choisie: String = settings.get_loadout().hull if settings != null else ""
+	var chemin: String = entry.playable_hull.resource_path
+	# Le defaut (reglage vide) designe la coque en service : c'est celle que la scene
+	# du chasseur porte deja, et aucun reglage n'est necessaire pour l'emmener.
+	var active := chemin == choisie or (choisie.is_empty() and entry.camp == CodexEntry.Camp.HELIOS \
+		and chemin.ends_with("specter_9.glb"))
+	_loadout_text.text = "► COQUE EMMENEE" if active else "ENTREE POUR L'EMMENER"
+	_loadout_text.add_theme_color_override("font_color",
+		Color(0.35, 0.85, 0.6, 0.95) if active else Color(GOLD.r, GOLD.g, GOLD.b, 0.65))
+
 func _build_furniture() -> void:
 	var root := _root()
 	var controls := _label(root,
-		"COQUE  ← →     ·     ROTATION  SOURIS / A D W S     ·     ZOOM  MOLETTE     ·     RECADRER  R     ·     RETOUR  ECHAP",
+		"COQUE  ← →     ·     ROTATION  SOURIS / A D W S     ·     ZOOM  MOLETTE     ·     RECADRER  R     ·     EMMENER  ENTREE     ·     RETOUR  ECHAP",
 		_LABEL_FONT, 10, Color(GOLD.r, GOLD.g, GOLD.b, 0.7), Vector2(0, 0), 0.0,
 		HORIZONTAL_ALIGNMENT_CENTER)
 	controls.anchor_top = 1.0
@@ -478,6 +499,11 @@ func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int,
 	_class.text = entry.hull_class.to_upper() if not entry.hull_class.is_empty() else "CLASSIFICATION EN ATTENTE"
 	_builder.text = entry.builder.to_upper() if not entry.builder.is_empty() else "ORIGINE NON ETABLIE"
 	_status_text.text = entry.status.to_upper() if not entry.status.is_empty() else "DOSSIER INCOMPLET"
+	# ⚠️ LE STATUT DE FICTION ET L'ETAT REEL SONT DEUX CHOSES. La ligne ci-dessus dit ce
+	# que la Vanguard pense de cette coque ; celle du dessous dit ce que le joueur
+	# decollera avec. Les melanger ferait lire « NON RETENUE A CE JOUR » sur le vaisseau
+	# qu'on vient justement de choisir.
+	_set_loadout_mark(entry)
 	_notice.text = entry.notice if not entry.notice.is_empty() else \
 		"Notice non versee au dossier. Les releves de structure et de vol ci-contre sont mesures sur la coque."
 

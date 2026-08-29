@@ -1,0 +1,55 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9_b.glb" id="1_glb"]
+
+; ⚠️ CETTE SCÈNE N'EXISTE QUE POUR RENDRE UNE COQUE ÉTRANGÈRE JOUABLE, et elle doit
+; exister : le maillage livré est d'un seul tenant, sans rien de ce que le chasseur
+; attend de sa coque.
+;
+; ÉCHELLE. Le maillage mesure 0,989 unité de long ; la cellule en service en fait 2,415.
+; Le présentoir du bestiaire cadre sur la boîte englobante, donc il ne voyait rien — le
+; jeu, lui, ne cadre pas : monté brut, ce chasseur volerait à 40 % de sa taille, plus
+; petit que les mines qu'il esquive. Le facteur égalise la LONGUEUR, l'axe de vol.
+; L'envergure suit et dépasse celle du Specter-9 : c'est sa silhouette, pas une erreur.
+;
+; POINTS D'ACCROCHE. Le contrôleur cherche sept bouches (`Muzzle_*`) et deux réacteurs
+; (`Engine_*`) PAR LEUR NOM, dans la coque. Sans eux, il journalise neuf erreurs, les
+; tirs partent du centre du fuselage et le vaisseau vole sans plume — vérifié en jeu
+; avant de poser ces nœuds. Ils sont ici, et non dans le `.glb`, pour que le fichier
+; d'origine reste exactement ce que son auteur a livré.
+;
+; ⚠️ La hitbox NE CHANGE PAS : elle vient des Resources de gameplay, jamais du maillage
+; (`ADR-0034`). Les deux coques se jouent exactement pareil — on compare des
+; carrosseries, pas des statistiques.
+
+[node name="Specter9B" type="Node3D"]
+transform = Transform3D(2.441, 0, 0, 0, 2.441, 0, 0, 0, 2.441, 0, 0, 0)
+
+[node name="Hull" parent="." instance=ExtResource("1_glb")]
+
+[node name="Muzzle_C" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, -0.53)
+
+[node name="Muzzle_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.035, -0.02, -0.52)
+
+[node name="Muzzle_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.035, -0.02, -0.52)
+
+[node name="Muzzle_Wing_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.21, -0.01, -0.02)
+
+[node name="Muzzle_Wing_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.21, -0.01, -0.02)
+
+[node name="Muzzle_Tip_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, -0.005, 0.06)
+
+[node name="Muzzle_Tip_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, -0.005, 0.06)
+
+[node name="Engine_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.13, -0.01, 0.4)
+
+[node name="Engine_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13, -0.01, 0.4)

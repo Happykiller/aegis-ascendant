@@ -10,6 +10,7 @@ const SETTINGS_PATH := "user://settings.cfg"
 const _SECTION := "audio"
 const _SECTION_GRAPHICS := "graphics"
 const _SECTION_DEBUG := "debug"
+const _SECTION_LOADOUT := "loadout"
 ## Dragging a slider fires continuously; writing the file on every frame would hammer
 ## the disk for nothing.
 const _SAVE_DEBOUNCE := 0.5
@@ -38,6 +39,10 @@ func get_graphics() -> SettingsData:
 	return _data
 
 ## Même objet, troisième vue : les couches de débogage.
+## L'équipement du joueur — aujourd'hui sa coque, et rien d'autre.
+func get_loadout() -> SettingsData:
+	return _data
+
 func get_debug() -> SettingsData:
 	return _data
 
@@ -47,6 +52,13 @@ func set_debug_layer(layer: StringName, enabled: bool) -> void:
 	_data.set_debug_layer(layer, enabled)
 	debug_changed.emit(_data)
 	_schedule_save()
+
+## La coque choisie au bestiaire. Persistée aussitôt : le joueur qui la choisit
+## quitte souvent l'écran dans la foulée, et un réglage qui attend la fermeture
+## propre du jeu est un réglage qu'on perd.
+func set_hull(scene_path: String) -> void:
+	_data.hull = scene_path
+	save_settings()
 
 func set_pixelation(enabled: bool) -> void:
 	if _data.pixelation == enabled:
@@ -96,6 +108,8 @@ func load_settings() -> void:
 		graphics[key] = config.get_value(_SECTION_GRAPHICS, key)
 	_data.graphics_from_dict(graphics)
 	var debug := {}
+	if config.has_section_key(_SECTION_LOADOUT, "hull"):
+		_data.hull = str(config.get_value(_SECTION_LOADOUT, "hull", ""))
 	for key in config.get_section_keys(_SECTION_DEBUG) if config.has_section(_SECTION_DEBUG) else []:
 		debug[key] = config.get_value(_SECTION_DEBUG, key)
 	_data.debug_from_dict(debug)
@@ -104,6 +118,7 @@ func save_settings() -> void:
 	var config := ConfigFile.new()
 	for bus in SettingsData.BUSES:
 		config.set_value(_SECTION, String(bus), _data.get_linear(bus))
+	config.set_value(_SECTION_LOADOUT, "hull", _data.hull)
 	config.set_value(_SECTION_GRAPHICS, "pixelation", _data.pixelation)
 	config.set_value(_SECTION_GRAPHICS, "shake", _data.shake)
 	for layer in SettingsData.DEBUG_LAYERS:

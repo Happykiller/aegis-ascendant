@@ -16,5 +16,6 @@ notice = "Coque monoplace en décubitus ventral, dimensionnée au strict volume 
 mass_t = 1.42
 crew = 1
 hull_scene = ExtResource("2_hull")
+playable_hull = ExtResource("2_hull")
 frame_distance = 0.0
 player_stats = ExtResource("3_stats")

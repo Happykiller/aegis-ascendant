@@ -141,6 +141,7 @@ func _ready() -> void:
 		for error in primary_projectile.validate():
 			push_error("[PlayerFighter] invalid projectile: %s" % error)
 	position = GameplayPlane.to_world(plane_position) + Vector3(0.0, plane_lift, 0.0)
+	_swap_hull_if_chosen()
 	# Same detail sheet the title screen puts on its hulls: the .glb ships with no
 	# texture (ADR-0008), so without this the fighter reads as smooth plastic in
 	# combat while looking panelled on the menu. Safe on a shared imported material —
@@ -462,6 +463,43 @@ func _attach_point(point_name: String) -> Vector3:
 ## Read each gun's plane-space offset from the ship origin, once. The hull is
 ## modelled nose-forward (-Z, no yaw on the player instance) so we project through
 ## its transform for good measure; a missing gun falls back to the centre.
+## Monte la coque choisie au bestiaire, s'il y en a une.
+##
+## ⚠️ AVANT `HullDetail`, `_cache_muzzles()` ET `ShipFlight` — tous les trois lisent
+## `_hull`. Echanger apres leur passage donnerait une coque neuve sans feuille de
+## detail, sans points de tir en cache et sans animation de volets : elle volerait
+## muette et lisse, et rien ne le dirait.
+##
+## ⚠️ ET ON NE BLOQUE JAMAIS LE DECOLLAGE. Un chemin qui ne resout pas — fichier
+## renomme, reglage d'une version anterieure — retombe sur la coque de la scene et
+## le DIT au journal. Un joueur qui perd sa carrosserie prefere voler dans l'autre
+## que rester au hangar.
+func _swap_hull_if_chosen() -> void:
+	var settings := get_node_or_null("/root/SettingsManager")
+	if settings == null:
+		return
+	var chemin: String = settings.get_loadout().hull
+	if chemin.is_empty() or chemin == scene_file_path:
+		return
+	if not ResourceLoader.exists(chemin):
+		push_warning("[PlayerFighter] coque introuvable (%s) — on garde celle de la scene" % chemin)
+		return
+	var paquet: PackedScene = load(chemin) as PackedScene
+	if paquet == null:
+		push_warning("[PlayerFighter] %s n'est pas une scene — on garde celle de la scene" % chemin)
+		return
+	var neuve := paquet.instantiate() as Node3D
+	if neuve == null:
+		push_warning("[PlayerFighter] %s ne monte pas un Node3D — on garde celle de la scene" % chemin)
+		return
+	var ancienne := _hull
+	neuve.name = "Hull"
+	_visual_root.remove_child(ancienne)
+	ancienne.queue_free()
+	_visual_root.add_child(neuve)
+	_hull = neuve
+	print("[PlayerFighter] coque : %s" % chemin.get_file())
+
 func _cache_muzzles() -> void:
 	for muzzle_name in MUZZLE_NAMES:
 		var world: Vector3 = _hull.transform * _attach_point(muzzle_name)

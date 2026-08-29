@@ -450,6 +450,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("codex_reset"):
 		_reset_view()
 		_audio.play(&"ui_select")
+	elif event.is_action_pressed("ui_accept"):
+		_take_hull()
 
 func _on_mouse_button(button: InputEventMouseButton) -> void:
 	match button.button_index:
@@ -464,6 +466,28 @@ func _on_mouse_button(button: InputEventMouseButton) -> void:
 			if button.pressed:
 				_zoom = clampf(_zoom + ZOOM_WHEEL_STEP, ZOOM_MIN, ZOOM_MAX)
 				_idle = 0.0
+
+## Emmener la coque de la fiche courante. ⚠️ C'EST LE SEUL ENDROIT DU JEU OU LE JOUEUR
+## CHOISIT SON VAISSEAU, et le bestiaire s'y prêtait déjà : il montre les coques en 3D,
+## il les fait tourner, il donne leurs chiffres. Ajouter un écran d'équipement à côté
+## aurait dédoublé tout ça pour une seule décision.
+##
+## Sans effet — et SANS BRUIT — sur une fiche qui n'est pas jouable : appuyer sur Entrée
+## devant le Pale Leviathan ne doit ni le sélectionner, ni jouer un son de refus. Le
+## rappel de touche n'apparaît que sur les fiches concernées.
+func _take_hull() -> void:
+	var entry := ROSTER[_index]
+	if entry.playable_hull == null:
+		return
+	var settings := get_node_or_null("/root/SettingsManager")
+	if settings == null:
+		return
+	settings.set_hull(entry.playable_hull.resource_path)
+	_audio.play(&"ui_confirm")
+	print("[Codex] coque emmenee : %s" % entry.display_name)
+	# On redessine la fiche courante pour que la pastille bascule sous les yeux du
+	# joueur : un choix qui ne se voit pas est un choix dont on doute.
+	_show(_index)
 
 func _step(direction: int) -> void:
 	_audio.play(&"ui_select")

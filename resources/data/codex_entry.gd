@@ -60,6 +60,16 @@ enum Family { FIGHTER, FORTRESS }
 ## la scène de gameplay. On les lit SANS instancier (voir `_scene_value`).
 @export var boss_scene: PackedScene
 
+@export_group("Équipement")
+## La coque que cette fiche permet d'EMMENER EN PARTIE. Vide = fiche de consultation,
+## et c'est le cas de tout ce qui n'est pas un chasseur du joueur.
+##
+## ⚠️ ELLE EST DISTINCTE DE `hull_scene`. Le présentoir du bestiaire cadre sur la boîte
+## englobante, donc l'échelle du modèle lui est indifférente ; le jeu, lui, ne cadre
+## pas. Une coque dont le maillage n'est pas à l'échelle du Specter-9 passe par une
+## scène d'ajustement, et c'est celle-là qu'on monte — jamais le `.glb` brut.
+@export var playable_hull: PackedScene
+
 @export_group("Variantes")
 ## Profils de vol partageant cette coque. Le Needle Scout en a huit : les faire
 ## défiler comme huit fiches montrerait huit fois le même modèle.

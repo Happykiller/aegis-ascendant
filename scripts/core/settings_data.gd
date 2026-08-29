@@ -40,6 +40,19 @@ var pixelation: bool = true
 ## pas d'une session à l'autre.
 var shake: float = 1.0
 
+# --- Équipement : quelle coque le joueur emmène ------------------------------
+
+## Chemin de la scène de coque choisie au bestiaire. **Vide = celle que la scène du
+## chasseur porte déjà** — c'est le défaut, et il ne dépend d'aucun réglage.
+##
+## ⚠️ ON STOCKE UN CHEMIN, PAS UN INDEX. Un index dans le catalogue du bestiaire
+## désignerait une autre coque le jour où une fiche s'insère au milieu — et le joueur
+## décollerait dans un vaisseau qu'il n'a pas choisi, sans que rien ne le signale.
+##
+## Une coque dont le fichier a disparu ne bloque pas le décollage : le contrôleur
+## retombe sur la coque de la scène et le dit au journal.
+var hull: String = ""
+
 # --- Débogage : les couches invisibles du jeu, rendues visibles ---------------
 #
 # ⚠️ ELLES EXISTENT PARCE QU'UNE SOIRÉE ENTIÈRE A ÉTÉ PERDUE À NE PAS LES VOIR. Le décor de
