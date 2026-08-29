@@ -208,28 +208,37 @@ AMBRY_TEXELS_PER_METER = 0.70
 # l'arete dorsale (+0,40) SOUS le plafond de construction -3,20. Le decor a
 # 0,62 m de relief utile, tout le vocabulaire en decoule.
 
+# ⚠️ La repartition des materiaux a ete REFAITE apres le premier rendu, et c'est
+# la correction la plus lourde du chantier. Premiere version : crete ivoire sur
+# 1,64 m, arete lumineuse de 0,52 m, lisse d'epaule ivoire sur 500 m. A la
+# perspective du jeu, le Cortege lisait comme une piste d'aeroport — trois rubans
+# blancs et un neon magenta plein cadre — quand les trois maquettes montrent une
+# masse anthracite ou l'ivoire et le magenta sont RARES. La lecon vaut au-dela de
+# ce fichier : sur 500 m, un materiau clair applique a une arete CONTINUE occupe
+# plus de pixels qu'une piece entiere, et le compte de triangles ne le dit pas.
 PROFILE: tuple[tuple[float, float, str], ...] = (
-    (0.00, -3.62, "AA_Emissive_Engine"),   # 0  la ligne lumineuse de l'arete
-    (0.26, -3.64, "AA_Trim"),              # 1  crete, dessus ivoire
-    (0.82, -3.72, "AA_Trim"),              # 2  epaule de crete
-    (1.20, -4.02, "AA_Greeble"),           # 3  flanc de crete, dans l'ombre
-    (1.58, -4.20, "AA_Hull"),              # 4  pied de crete
-    (2.20, -4.26, "AA_Hull"),              # 5  pont interieur
-    (5.10, -4.30, "AA_Hull"),              # 6  pont interieur
-    (6.80, -4.34, "AA_Greeble"),           # 7  levre de chine
-    (7.35, -4.94, "AA_Hull"),              # 8  pont median (les baies)
-    (10.30, -4.99, "AA_Hull"),             # 9  pont median
-    (12.35, -5.10, "AA_Panel"),            # 10 facette exterieure
-    (13.35, -6.35, "AA_Panel"),            # 11 facette exterieure
-    (13.88, -7.65, "AA_Trim"),             # 12 lisse d'epaule
-    (14.00, -8.95, "AA_Greeble"),          # 13 BORD — 14,00 exactement
-    (13.30, -10.60, "AA_Greeble"),         # 14 sous-chine
-    (10.40, -11.90, "AA_Greeble"),         # 15 pente de fond
-    (5.00, -12.40, "AA_Greeble"),          # 16 fond
-    (0.00, -12.60, "AA_Greeble"),          # 17 quille
+    (0.00, -3.62, "AA_Emissive_Engine"),   # 0  la ligne lumineuse : 0,28 m au TOTAL
+    (0.14, -3.63, "AA_Trim"),              # 1  son liseré ivoire, 0,64 m
+    (0.46, -3.68, "AA_Greeble"),           # 2  dessus de crete, sombre
+    (0.95, -3.78, "AA_Hull"),              # 3  epaule de crete
+    (1.28, -4.06, "AA_Greeble"),           # 4  flanc de crete, dans l'ombre
+    (1.62, -4.21, "AA_Hull"),              # 5  pied de crete
+    (2.20, -4.26, "AA_Hull"),              # 6  pont interieur
+    (5.10, -4.30, "AA_Hull"),              # 7  pont interieur
+    (6.80, -4.34, "AA_Greeble"),           # 8  levre de chine
+    (7.35, -4.94, "AA_Hull"),              # 9  pont median (les baies)
+    (10.30, -4.99, "AA_Hull"),             # 10 pont median
+    (12.35, -5.10, "AA_Panel"),            # 11 facette exterieure
+    (13.35, -6.35, "AA_Panel"),            # 12 facette exterieure
+    (13.88, -7.65, "AA_Hull"),             # 13 lisse d'epaule
+    (14.00, -8.95, "AA_Greeble"),          # 14 BORD — 14,00 exactement
+    (13.30, -10.60, "AA_Greeble"),         # 15 sous-chine
+    (10.40, -11.90, "AA_Greeble"),         # 16 pente de fond
+    (5.00, -12.40, "AA_Greeble"),          # 17 fond
+    (0.00, -12.60, "AA_Greeble"),          # 18 quille
 )
 #: Indice du dernier point de la moitie SUPERIEURE (le bord, x = 14).
-DECK_LAST = 13
+DECK_LAST = 14
 #: Pivot vertical du fuseau de proue : la section se contracte autour de lui.
 Y_PIVOT = -6.9
 
@@ -309,6 +318,23 @@ JOINT_CLEARANCE = 1.5
 
 #: Couleurs reservees aux TIRS (charte SS3) : interdites sur cette coque.
 FORBIDDEN_HEX = ("#3FD9E8", "#FF5A3D")
+
+
+#: Origine du troncon en cours de construction, en `s`. ⚠️ TOUT le vocabulaire
+#: raisonne en `s` GLOBAL (distance depuis la pointe de proue), parce que c'est
+#: `s` qui donne la forme de la section a travers le fuseau de proue. Mais les
+#: sommets doivent sortir en coordonnees LOCALES au troncon, puisque c'est le nœud
+#: qui porte la translation. `_z()` fait la conversion, en un seul endroit.
+#: Le defaut a ete paye : les cinq familles de modules ecrivaient `-s` directement,
+#: si bien que le troncon 5 posait ses plaques 400 m derriere lui — le `.glb` etait
+#: parfaitement valide, la bbox de chaque troncon faisait cinq fois la bonne
+#: longueur, et rien d'autre que le harnais de jonction ne l'a vu.
+_ORIGIN = 0.0
+
+
+def _z(s: float) -> float:
+    """`s` global (depuis la proue) -> z LOCAL au troncon en cours."""
+    return -(s - _ORIGIN)
 
 
 def _smoothstep(t: float) -> float:
@@ -482,8 +508,8 @@ def _surface_box(bm: bmesh.types.BMesh, x0: float, x1: float,
     ys = [_surface_y(s, x) for x, s in plan]
     top_y = min(ys) + rise
     bottom_y = min(ys) - sink
-    bottom = [Vector((x, bottom_y, -s)) for x, s in plan]
-    top = [Vector((x, top_y, -s)) for x, s in inner]
+    bottom = [Vector((x, bottom_y, _z(s))) for x, s in plan]
+    top = [Vector((x, top_y, _z(s))) for x, s in inner]
     _box_from_corners(bm, bottom, top, side_material, top_material)
     return top_y
 
@@ -496,7 +522,7 @@ def _lathe(bm: bmesh.types.BMesh, cx: float, cs: float,
     Meme convention que `ak.add_lathe(axis="Y")`, refaite ici pour poser les
     materiaux segment par segment et garantir le bobinage sortant.
     """
-    cz = -cs
+    cz = _z(cs)
     rings: list = []
     for y, r, _ in contour:
         if r <= 1e-6:
@@ -554,11 +580,9 @@ def _stations(index: int) -> list[float]:
 
 def build_skin(bm: bmesh.types.BMesh, index: int) -> None:
     """Le prisme du troncon, en coordonnees LOCALES (z de 0 a -100)."""
-    origin = index * SECTION_LENGTH
     rings: list[list] = []
     for s in _stations(index):
-        ring = [bm.verts.new(Vector((x, y, -(s - origin))))
-                for x, y in _ring(s)]
+        ring = [bm.verts.new(Vector((x, y, _z(s)))) for x, y in _ring(s)]
         rings.append(ring)
     for front, back in zip(rings, rings[1:]):
         _bridge(bm, front, back, RING_MATERIALS)
@@ -576,15 +600,23 @@ def build_skin(bm: bmesh.types.BMesh, index: int) -> None:
 # ==========================================================================
 
 
-def _clip_lane(s: float, x0: float, x1: float) -> tuple[float, float] | None:
-    """Rabat une voie sur la demi-largeur reelle a la station `s` (fuseau)."""
+def _clip_lane(s: float, x0: float, x1: float,
+               minimum: float = 0.9) -> tuple[float, float] | None:
+    """Rabat une voie sur la demi-largeur reelle a la station `s` (fuseau).
+
+    ⚠️ `minimum` n'a pas de valeur unique. Il a d'abord ete cable a 0,9 m, ce qui
+    a fait DISPARAITRE EN SILENCE les lisses (0,36 m de large) et les 400
+    pastilles (0,56 m) : le build restait vert, le contrat aussi, et seul le
+    compte de modules imprime a chaque build a montre deux colonnes a zero.
+    C'est pourquoi ce compte est imprime.
+    """
     limit = _half_width(s) - 0.45
     lo, hi = x0, x1
     if lo < -limit:
         lo = -limit
     if hi > limit:
         hi = limit
-    if hi - lo < 0.9:
+    if hi - lo < minimum:
         return None
     return lo, hi
 
@@ -637,7 +669,10 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
                     continue
                 inset = rng.uniform(0.06, 0.20)
                 rise = 0.14 if roll < 0.62 else 0.22
-                material = "AA_Hull" if roll < 0.80 else "AA_Panel"
+                # 12 pct de violet et non 20 : au premier rendu, une plaque sur
+                # cinq en `AA_Panel` faisait un confetti visible d'un bout a
+                # l'autre du troncon.
+                material = "AA_Hull" if roll < 0.88 else "AA_Panel"
                 _surface_box(bm, x0 + inset, x1 - inset, s, s + length,
                              rise, 0.55, "AA_Greeble", material, draft=0.055)
                 count += 1
@@ -653,20 +688,26 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
     exterieure inclinee a 51 deg.
     """
     origin = index * SECTION_LENGTH
-    spans = ((1.70, 6.60), (7.50, 12.10), (12.45, 13.85))
+    spans = ((1.75, 6.60), (7.50, 12.10), (12.45, 13.85))
     count = 0
-    ribs = 7
+    # Le nombre varie d'un troncon a l'autre : sinon les cinq vues de dessus sont
+    # des copies, la peau etant identique de la section 2 a la 5.
+    ribs = (6, 7, 8, 7, 9)[index]
     for k in range(ribs):
         s = origin + JOINT_CLEARANCE + 3.0 + (SECTION_LENGTH - 12.0) * k / (ribs - 1)
+        s += rng.uniform(-1.4, 1.4)
         width = rng.uniform(0.85, 1.45)
         rise = 0.45 if k % 2 == 0 else 0.32
+        # ⚠️ Une nervure sur trois seulement recoit l'ivoire. Toutes en `AA_Trim`,
+        # elles lisaient comme des passages pietons en travers de la coque.
+        top = "AA_Trim" if k % 3 == 1 else "AA_Hull"
         for side in (1.0, -1.0):
             for a, b in spans:
                 lane = _clip_lane(s, min(side * a, side * b), max(side * a, side * b))
                 if lane is None or _ambry_clash(s, s + width, lane[0], lane[1]):
                     continue
                 _surface_box(bm, lane[0], lane[1], s, s + width,
-                             rise, 0.60, "AA_Greeble", "AA_Trim", draft=0.10)
+                             rise, 0.60, "AA_Greeble", top, draft=0.10)
                 count += 1
     return count
 
@@ -682,17 +723,22 @@ def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
     s1 = origin + SECTION_LENGTH - JOINT_CLEARANCE - 1.0
     count = 0
     for side in (1.0, -1.0):
+        # ⚠️ UNE SEULE des trois lisses est claire. Une lisse fait 97 m de long :
+        # trois lignes ivoire par flanc, c'etait six rubans blancs d'un bout a
+        # l'autre du vaisseau.
         for a, b, rise, material in ((6.62, 6.98, 0.16, "AA_Trim"),
-                                     (12.15, 12.45, 0.14, "AA_Trim"),
-                                     (1.62, 1.98, 0.12, "AA_Greeble")):
-            lane = _clip_lane(s1, min(side * a, side * b), max(side * a, side * b))
+                                     (12.15, 12.45, 0.14, "AA_Hull"),
+                                     (1.66, 2.02, 0.12, "AA_Greeble")):
+            lane = _clip_lane(s1, min(side * a, side * b), max(side * a, side * b),
+                              minimum=0.25)
             if lane is None:
                 continue
             start = s0
             if index == 0:
                 # Sur le fuseau, la lisse ne commence que la ou la bande existe.
                 while start < s1 and _clip_lane(
-                        start, min(side * a, side * b), max(side * a, side * b)) is None:
+                        start, min(side * a, side * b), max(side * a, side * b),
+                        minimum=0.25) is None:
                     start += 2.0
             if s1 - start < 8.0:
                 continue
@@ -727,20 +773,28 @@ def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
         if _ambry_clash(s, s + length, lane[0], lane[1]):
             continue
         x0, x1 = lane
-        layers = rng.randint(2, 3)
+        wanted = rng.randint(2, 3)
         rise = 0.0
-        for layer in range(layers):
+        layers = 0
+        for layer in range(wanted):
             shrink = 0.22 * layer
             step = rng.uniform(0.28, 0.42)
-            top = _surface_box(
+            # ⚠️ On verifie AVANT de poser, jamais apres : une version precedente
+            # posait la couche puis sortait de la boucle, et deux troncons
+            # culminaient a -3,14 pour un plafond de construction de -3,20.
+            headroom = BUILD_CEILING_Y - _surface_y(s + length * 0.5, (x0 + x1) * 0.5)
+            if rise + step > headroom:
+                break
+            _surface_box(
                 bm,
                 x0 + width * shrink, x1 - width * shrink,
                 s + length * shrink * 0.55, s + length * (1.0 - shrink * 0.55),
                 rise + step, 0.70 + rise,
                 "AA_Greeble", "AA_Panel" if layer == 0 else "AA_Hull", draft=0.09)
             rise += step
-            if top > BUILD_CEILING_Y:
-                break
+            layers += 1
+        if layers == 0:
+            continue
         count += layers
         # L'echine : une lame etroite sur le dessus, qui casse le profil plat.
         if rng.random() < 0.55:
@@ -769,7 +823,7 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
                                  SECTION_LENGTH - JOINT_CLEARANCE - 1.0)
         band = BAND_INNER if rng.random() < 0.5 else BAND_MID
         x = rng.uniform(*band) * (1.0 if rng.random() < 0.5 else -1.0)
-        lane = _clip_lane(s, x - 0.28, x + 0.28)
+        lane = _clip_lane(s, x - 0.28, x + 0.28, minimum=0.45)
         if lane is None or _ambry_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
             continue
         long_pip = rng.random() < 0.45
@@ -796,14 +850,14 @@ def build_turret_pad(bm: bmesh.types.BMesh, s: float, x: float,
     deep = min(y for y, _ in around) - 0.55
     rim = _surface_y(s, x) + 0.55
     contour = [
-        (deep, radius, "AA_Greeble"),
-        (rim - 0.14, radius, "AA_Panel"),
-        (rim, radius * 0.94, "AA_Trim"),
-        (rim, radius * 0.80, "AA_Greeble"),
-        (rim - 0.34, radius * 0.72, "AA_Greeble"),
-        (rim - 0.34, radius * 0.46, "AA_Panel"),
-        (rim - 0.20, radius * 0.34, "AA_Emissive_Engine"),
-        (rim - 0.16, 0.0, "AA_Emissive_Engine"),
+        (deep, radius, "AA_Greeble"),          # mur exterieur, enterre
+        (rim - 0.16, radius, "AA_Hull"),       # chanfrein
+        (rim, radius * 0.95, "AA_Trim"),       # liseré ivoire, 5 pct du rayon
+        (rim, radius * 0.88, "AA_Hull"),       # couronne sombre
+        (rim - 0.36, radius * 0.66, "AA_Greeble"),   # cuvette
+        (rim - 0.36, radius * 0.36, "AA_Emissive_Engine"),  # cœur
+        (rim - 0.24, radius * 0.26, "AA_Emissive_Engine"),
+        (rim - 0.18, 0.0, "AA_Emissive_Engine"),
     ]
     _lathe(bm, x, s, contour, 20)
     return rim, deep
@@ -826,18 +880,35 @@ def build_bay(bm: bmesh.types.BMesh, s: float, x: float) -> float:
     Retourne le Y de la bouche (ou le jeu fera sortir ses chasseurs).
     """
     hx, hz = 3.40, 3.20
-    rim = -3.90
-    floor = rim - 1.75
+    # ⚠️ LE DEFAUT QUE LA PLANCHE A ATTRAPE, ET QU'AUCUN HARNAIS N'AURAIT VU.
+    # Premiere version : levre a -3,90 et sol a -5,65, « un puits de 1,75 m ».
+    # Sauf que la peau n'est PAS trouee (voir plus haut : pas de booleen) et
+    # qu'elle court a -4,30 sous la bouche. Le pont occultait donc entierement le
+    # sol emissif : les sept baies rendaient en hexagones VIDES, contrat vert,
+    # UV vertes, budget vert. C'est exactement le genre de faute que l'ADR-0006
+    # existe pour attraper — elle ne se voit qu'en regardant.
+    # Le sol passe donc AU-DESSUS du pont le plus haut de l'emprise (-4,30) et la
+    # levre monte d'autant : puits de 1,22 m, entierement visible du dessus.
+    rim = -3.42
+    floor = -4.20
     outer = [(x + dx * hx * 1.30, s + dz * hz * 1.30) for dx, dz in _HEX]
     lip = [(x + dx * hx * 1.12, s + dz * hz * 1.12) for dx, dz in _HEX]
     mouth = [(x + dx * hx, s + dz * hz) for dx, dz in _HEX]
+    # ⚠️ Le sol n'est PAS emissif de bord a bord. Premiere version : hexagone plein
+    # de 6,8 x 6,4 m en `AA_Emissive_Engine`, sept fois dans le niveau. Le magenta
+    # est aussi une couleur de TIR ennemi (charte SS3) : une nappe de 35 m2 par
+    # baie disputerait la lisibilite aux balles. Le cœur emissif est rentre a 66 pct
+    # et cercle d'un `AA_Panel` sombre — 44 pct de l'aire, et un puits qui se lit
+    # mieux parce qu'il a maintenant un bord.
+    core = [(x + dx * hx * 0.66, s + dz * hz * 0.66) for dx, dz in _HEX]
 
-    base_v = [bm.verts.new(Vector((px, _surface_y(ps, px) - 0.60, -ps)))
+    base_v = [bm.verts.new(Vector((px, _surface_y(ps, px) - 0.60, _z(ps))))
               for px, ps in outer]
-    rim_out = [bm.verts.new(Vector((px, rim, -ps))) for px, ps in outer]
-    rim_in = [bm.verts.new(Vector((px, rim, -ps))) for px, ps in lip]
-    mouth_v = [bm.verts.new(Vector((px, rim - 0.28, -ps))) for px, ps in mouth]
-    floor_v = [bm.verts.new(Vector((px, floor, -ps))) for px, ps in mouth]
+    rim_out = [bm.verts.new(Vector((px, rim, _z(ps)))) for px, ps in outer]
+    rim_in = [bm.verts.new(Vector((px, rim, _z(ps)))) for px, ps in lip]
+    mouth_v = [bm.verts.new(Vector((px, rim - 0.20, _z(ps)))) for px, ps in mouth]
+    floor_v = [bm.verts.new(Vector((px, floor, _z(ps)))) for px, ps in mouth]
+    core_v = [bm.verts.new(Vector((px, floor, _z(ps)))) for px, ps in core]
 
     n = len(_HEX)
     for i in range(n):
@@ -845,24 +916,25 @@ def build_bay(bm: bmesh.types.BMesh, s: float, x: float) -> float:
         # ⚠️ Le sens : l'hexagone `_HEX` tourne dans le sens ou (dx, dz) croit en
         # angle, donc (x, -z) tourne dans l'autre sens. Les murs exterieurs se
         # bobinent donc bas -> haut avec i puis j inverses.
-        _quad(bm, base_v[j], base_v[i], rim_out[i], rim_out[j], "AA_Panel")
+        _quad(bm, base_v[j], base_v[i], rim_out[i], rim_out[j], "AA_Hull")
         _quad(bm, rim_out[j], rim_out[i], rim_in[i], rim_in[j], "AA_Trim")
         _quad(bm, rim_in[j], rim_in[i], mouth_v[i], mouth_v[j], "AA_Greeble")
-        _quad(bm, mouth_v[j], mouth_v[i], floor_v[i], floor_v[j], "AA_Greeble")
-    _face(bm, list(reversed(floor_v)), "AA_Emissive_Engine")
+        _quad(bm, mouth_v[j], mouth_v[i], floor_v[i], floor_v[j], "AA_Panel")
+        _quad(bm, core_v[i], core_v[j], floor_v[j], floor_v[i], "AA_Panel")
+    _face(bm, list(reversed(core_v)), "AA_Emissive_Engine")
 
     # Deux rails de lancement au fond : ils donnent l'echelle du puits.
-    for offset in (-1.30, 1.30):
+    for offset in (-1.15, 1.15):
         _box_from_corners(
             bm,
-            [Vector((x + offset - 0.24, floor, -(s - hz * 0.72))),
-             Vector((x + offset + 0.24, floor, -(s - hz * 0.72))),
-             Vector((x + offset + 0.24, floor, -(s + hz * 0.72))),
-             Vector((x + offset - 0.24, floor, -(s + hz * 0.72)))],
-            [Vector((x + offset - 0.18, floor + 0.22, -(s - hz * 0.68))),
-             Vector((x + offset + 0.18, floor + 0.22, -(s - hz * 0.68))),
-             Vector((x + offset + 0.18, floor + 0.22, -(s + hz * 0.68))),
-             Vector((x + offset - 0.18, floor + 0.22, -(s + hz * 0.68)))],
+            [Vector((x + offset - 0.24, floor, _z(s - hz * 0.52))),
+             Vector((x + offset + 0.24, floor, _z(s - hz * 0.52))),
+             Vector((x + offset + 0.24, floor, _z(s + hz * 0.52))),
+             Vector((x + offset - 0.24, floor, _z(s + hz * 0.52)))],
+            [Vector((x + offset - 0.18, floor + 0.22, _z(s - hz * 0.48))),
+             Vector((x + offset + 0.18, floor + 0.22, _z(s - hz * 0.48))),
+             Vector((x + offset + 0.18, floor + 0.22, _z(s + hz * 0.48))),
+             Vector((x + offset - 0.18, floor + 0.22, _z(s + hz * 0.48)))],
             "AA_Greeble", "AA_Trim")
     # Six taquets sur la levre : la baie doit lire comme un ouvrage, pas un trou.
     for i in range(n):
@@ -870,7 +942,7 @@ def build_bay(bm: bmesh.types.BMesh, s: float, x: float) -> float:
         cx = x + (px - x) * 1.02
         cs = s + (ps - s) * 1.02
         _surface_box(bm, cx - 0.34, cx + 0.34, cs - 0.34, cs + 0.34,
-                     max(0.10, rim - _surface_y(cs, cx) + 0.16), 0.30,
+                     max(0.10, rim - _surface_y(cs, cx) + 0.12), 0.30,
                      "AA_Greeble", "AA_Trim", draft=0.06)
     return rim - 0.04
 
@@ -908,7 +980,7 @@ def build_spine_bulb(bm: bmesh.types.BMesh, s: float) -> float:
 # ==========================================================================
 
 
-def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
+def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     """Un avant-poste humain de quatre-vingts personnes, greffe sur le borde.
 
     Il doit JURER, et il jure par trois moyens qui ne dependent d'aucune texture :
@@ -938,7 +1010,7 @@ def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
     survol : greffe, habitation, serre, antenne — le joueur les decouvre dans cet
     ordre parce qu'il les survole dans cet ordre.
     """
-    s0, s1 = AMBRY_S[0] - origin, AMBRY_S[1] - origin
+    s0, s1 = AMBRY_S            # ⚠️ en `s` GLOBAL, comme tout le vocabulaire
     x0, x1 = AMBRY_X
     raft = AMBRY_RAFT_Y
     under = raft - AMBRY_RAFT_THICK
@@ -951,8 +1023,8 @@ def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
                  (ax1 - draft, as1 - draft), (ax0 + draft, as1 - draft))
         _box_from_corners(
             bm,
-            [Vector((x, y_bottom, -s)) for x, s in plan],
-            [Vector((x, y_top, -s)) for x, s in inner],
+            [Vector((x, y_bottom, _z(s))) for x, s in plan],
+            [Vector((x, y_top, _z(s))) for x, s in inner],
             side_mat, top_mat)
         tops.append(y_top)
 
@@ -962,7 +1034,7 @@ def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
     slab(rx0, rx1, rs0, rs1, under, raft, "AA_Greeble", "AA_Trim")
     for sx in (rx0 + 0.5, (rx0 + rx1) * 0.5, rx1 - 0.5):
         for ss in (rs0 + 2.0, rs0 + 9.0, rs0 + 18.0, rs1 - 1.5):
-            foot = _surface_y(ss + origin, sx) - 0.35
+            foot = _surface_y(ss, sx) - 0.35
             # ⚠️ +0,14 et non `under` : une face du dessus coplanaire avec le
             # dessous du radeau scintillerait. Toutes les pieces empilees
             # d'Ambry sont enfoncees dans leur support pour la meme raison.
@@ -1014,10 +1086,10 @@ def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
         for i in range(len(arc) - 1):
             c0, v0 = arc[i]
             c1, v1 = arc[i + 1]
-            a = bm.verts.new(Vector((cx + rx * c0, raft + 0.30 + vault * v0, -ga)))
-            b = bm.verts.new(Vector((cx + rx * c1, raft + 0.30 + vault * v1, -ga)))
-            c = bm.verts.new(Vector((cx + rx * c1, raft + 0.30 + vault * v1, -gb)))
-            d = bm.verts.new(Vector((cx + rx * c0, raft + 0.30 + vault * v0, -gb)))
+            a = bm.verts.new(Vector((cx + rx * c0, raft + 0.30 + vault * v0, _z(ga))))
+            b = bm.verts.new(Vector((cx + rx * c1, raft + 0.30 + vault * v1, _z(ga))))
+            c = bm.verts.new(Vector((cx + rx * c1, raft + 0.30 + vault * v1, _z(gb))))
+            d = bm.verts.new(Vector((cx + rx * c0, raft + 0.30 + vault * v0, _z(gb))))
             # ⚠️ (a, d, c, b) et non (a, b, c, d) : l'arc parcourt les angles
             # CROISSANTS, donc x DECROISSANT, et l'ordre naif rentre la voute a
             # l'envers. Verifie par `_assert_outward()`.
@@ -1054,13 +1126,31 @@ def build_ambry(bm: bmesh.types.BMesh, origin: float) -> tuple[Vector, dict]:
             f"Ambry culmine a {top:.3f} > plafond de construction {BUILD_CEILING_Y}")
     stats["top"] = top
     stats["footprint"] = (AMBRY_X, AMBRY_S)
-    anchor = Vector(((rx0 + rx1) * 0.5, raft + 0.28, -((rs0 + rs1) * 0.5)))
+    anchor = Vector(((rx0 + rx1) * 0.5, raft + 0.28, _z((rs0 + rs1) * 0.5)))
     return anchor, stats
 
 
 # ==========================================================================
 # Assemblage d'un troncon
 # ==========================================================================
+
+
+def _object_density(obj: bpy.types.Object) -> dict:
+    """Densite de texels d'un objet Blender, sur la TOTALITE de ses faces.
+
+    Sert au seul cas d'Ambry : fusionnee dans le troncon 5, elle ne peut etre
+    isolee du `.glb` que par une boite, qui laisse ses bequilles dehors. Cette
+    mesure-ci est complete, et elle sert de recoupement a celle du binaire.
+    """
+    mesh = obj.data
+    uv_layer = mesh.uv_layers.active
+    points = [tuple(v.co) for v in mesh.vertices]
+    uvs = [(0.0, 0.0)] * len(points)
+    for loop in mesh.loops:
+        uvs[loop.vertex_index] = tuple(uv_layer.data[loop.index].uv)
+    mesh.calc_loop_triangles()
+    tris = [tuple(t.vertices) for t in mesh.loop_triangles]
+    return _texel_density(points, uvs, tris)
 
 
 def _triangulate_ngons(obj: bpy.types.Object) -> None:
@@ -1121,16 +1211,30 @@ def _assert_skin_outward(bm: bmesh.types.BMesh, name: str) -> None:
 
 
 def _assert_build_ceiling(obj: bpy.types.Object) -> float:
+    """Le plafond du JEU est -3,00 ; celui que le script s'impose est -3,20.
+
+    Les deux sont bloquants, et c'est volontaire : la marge de 20 cm n'est pas une
+    politesse, c'est la place que le concepteur aura pour poser des tourelles, des
+    nœuds et des ponts SUR les points d'attache. Une coque qui mangerait cette
+    marge obligerait a reforger.
+    """
     top = max(v.co.y for v in obj.data.vertices)
     if top > CEILING_Y:
         raise ak.ContractError(
-            f"{obj.name} : culmine a Y = {top:.3f} > plafond {CEILING_Y}")
+            f"{obj.name} : culmine a Y = {top:.3f} > plafond du jeu {CEILING_Y}")
+    if top > BUILD_CEILING_Y + 1e-6:
+        raise ak.ContractError(
+            f"{obj.name} : culmine a Y = {top:.3f} > plafond de construction "
+            f"{BUILD_CEILING_Y} — la marge est reservee a ce que le jeu posera "
+            "sur les points d'attache")
     return top
 
 
 def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     """Un troncon complet et ses points d'attache, en coordonnees LOCALES."""
+    global _ORIGIN
     origin = index * SECTION_LENGTH
+    _ORIGIN = origin
     name = f"Section_{index + 1:02d}"
     rng = random.Random(0xC0F1 + index * 977)
 
@@ -1150,21 +1254,21 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     for number, (s, x) in enumerate(TURRETS, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        rim, _ = build_turret_pad(bm, s - origin, x, PAD_RADIUS[index])
-        anchors.append((f"Turret_{number:02d}", Vector((x, rim + 0.10, -(s - origin)))))
+        rim, _ = build_turret_pad(bm, s, x, PAD_RADIUS[index])
+        anchors.append((f"Turret_{number:02d}", Vector((x, rim + 0.10, _z(s)))))
         pads += 1
     bays = 0
     for number, (s, x) in enumerate(BAYS, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        mouth = build_bay(bm, s - origin, x)
-        anchors.append((f"Bay_{number:02d}", Vector((x, mouth, -(s - origin)))))
+        mouth = build_bay(bm, s, x)
+        anchors.append((f"Bay_{number:02d}", Vector((x, mouth, _z(s)))))
         bays += 1
     for number, s in enumerate(SPINES, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        top = build_spine_bulb(bm, s - origin)
-        anchors.append((f"Spine_{number:02d}", Vector((0.0, top + 0.06, -(s - origin)))))
+        top = build_spine_bulb(bm, s)
+        anchors.append((f"Spine_{number:02d}", Vector((0.0, top + 0.06, _z(s)))))
     counts["plateformes"] = pads
     counts["baies"] = bays
 
@@ -1176,7 +1280,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
 
     if index == SECTION_COUNT - 1:
         abm = bmesh.new()
-        anchor, ambry_stats = build_ambry(abm, origin)
+        anchor, ambry_stats = build_ambry(abm)
         ambry = _new_object(name + "_Ambry", abm)
         _weld(ambry)
         _triangulate_ngons(ambry)
@@ -1186,6 +1290,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         # echelles peuvent coexister. La fusion conserve la couche UV (meme nom).
         ak.box_project_uv(ambry, AMBRY_TEXELS_PER_METER)
         counts["ambry"] = len(ambry.data.polygons)
+        counts["ambry_density"] = _object_density(ambry)
         hull = ak.join_objects([hull, ambry], name)
         anchors.append(("Ambry", anchor))
         counts["ambry_stats"] = ambry_stats
@@ -1198,28 +1303,48 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
 # Export — meme chaine d'axes que le kit, refaite ici (voir l'en-tete)
 # ==========================================================================
 
-_AXIS_FIX = Matrix.Rotation(math.pi, 4, "Z")
 _YUP = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
-#: Repere Godot -> repere d'auteur ADR-0008 : (x, y, z) -> (-x, z, y).
-_TO_AUTHOR = Matrix(((-1, 0, 0, 0), (0, 0, 1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+
+#: Repere GODOT -> repere d'auteur ADR-0008, correction d'axe COMPRISE, en une
+#: seule matrice a coefficients ENTIERS : (x, y, z) -> (x, -z, y).
+#:
+#: ⚠️ Elle vaut exactement `_AXIS_FIX @ _TO_AUTHOR` du kit (rotation d'un demi-tour
+#: autour de Z composee avec (x, y, z) -> (-x, z, y)) — c'est la meme chaine, et
+#: `_assert_axis_chain()` le reverifie. Mais le kit la compose a partir de
+#: `Matrix.Rotation(pi, 4, "Z")`, dont Blender calcule `cos(pi) = -0.99999976` en
+#: simple precision. A 78 m (le survol de lune) l'erreur vaut 7 µm et personne ne
+#: la voit ; a 400 m (le troncon 5) elle vaut 35 µm et elle sort dans la
+#: TRANSLATION DU NŒUD, que le moteur relit. On la refuse a la source : ces
+#: coefficients-la sont exacts, et deux executions donnent le meme binaire.
+_AUTHOR_FIX = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
 
 
 def _author(v: Vector) -> Vector:
-    return Vector((-v.x, v.z, v.y))
+    """Repere Godot -> repere d'auteur, correction d'axe comprise. Exact."""
+    return Vector((v.x, -v.z, v.y))
 
 
 def _assert_axis_chain() -> None:
     """La chaine complete doit rendre l'identite, sur des temoins ASYMETRIQUES.
 
-    Si quelqu'un « corrige » `_AXIS_FIX` en identite, tout le Cortege part a
-    180 deg : la proue arrive par le bas de l'ecran et Ambry passe a babord. La
-    bounding box ne le verrait pas — elle est presque symetrique. Ceci le voit.
+    Si quelqu'un « simplifie » `_AUTHOR_FIX` en identite, tout le Cortege part a
+    180 deg : la proue arriverait par le bas de l'ecran et Ambry passerait a
+    babord. La bounding box ne le verrait pas — elle est presque symetrique. Ceci
+    le voit, et il verifie en plus l'EQUIVALENCE avec la chaine du kit.
     """
-    chain = _YUP @ _AXIS_FIX
+    kit = Matrix.Rotation(math.pi, 4, "Z") @ \
+        Matrix(((-1, 0, 0, 0), (0, 0, 1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
     for probe in (Vector((1.0, 2.0, 3.0)), Vector((-9.3, -4.9, -436.0)),
                   Vector((0.0, -3.62, -500.0))):
-        got = chain.to_3x3() @ _author(probe)
-        if (got - probe).length > 1e-4:
+        author = _author(probe)
+        if (author - _AUTHOR_FIX.to_3x3() @ probe).length > 1e-9:
+            raise ak.ContractError("_author() et _AUTHOR_FIX divergent")
+        if (author - kit.to_3x3() @ probe).length > 1e-3:
+            raise ak.ContractError(
+                "la chaine d'axes n'est plus celle du kit : "
+                f"{tuple(author)} vs {tuple(kit.to_3x3() @ probe)}")
+        got = _YUP.to_3x3() @ author
+        if (got - probe).length > 1e-9:
             raise ak.ContractError(
                 f"chaine d'axes rompue : {tuple(probe)} -> {tuple(got)}")
 
@@ -1252,11 +1377,9 @@ def export(sections: list[tuple[bpy.types.Object, list]], filepath: str) -> dict
     _assert_axis_chain()
     empties: list[bpy.types.Object] = []
     for index, (obj, anchors) in enumerate(sections):
-        obj.data.transform(_TO_AUTHOR)
-        obj.data.transform(_AXIS_FIX)
+        obj.data.transform(_AUTHOR_FIX)
         obj.data.update()
-        translation = Vector((0.0, 0.0, -index * SECTION_LENGTH))
-        obj.location = _AXIS_FIX @ _author(translation)
+        obj.location = _author(Vector((0.0, 0.0, -index * SECTION_LENGTH)))
         for name, local in anchors:
             empty = bpy.data.objects.new(name, None)
             empty.empty_display_type = "PLAIN_AXES"
@@ -1266,7 +1389,7 @@ def export(sections: list[tuple[bpy.types.Object, list]], filepath: str) -> dict
             # l'inverse de la matrice du parent et le marqueur partirait deux fois.
             empty.parent = obj
             empty.matrix_parent_inverse = Matrix.Identity(4)
-            empty.location = _AXIS_FIX @ _author(local)
+            empty.location = _author(local)
             empties.append(empty)
 
     bpy.ops.object.select_all(action="DESELECT")
@@ -1594,14 +1717,27 @@ def _audit(path: str) -> dict:
         problems.append("le .glb embarque des images : interdit par ADR-0028")
 
     # --- densite de texels, par piece ------------------------------------------
-    ambry_box = None
-    for name, packs in density_source.items():
-        if name != f"Section_{SECTION_COUNT:02d}":
-            continue
-        (ax0, ax1), (as0, as1) = AMBRY_X, AMBRY_S
-        origin = (SECTION_COUNT - 1) * SECTION_LENGTH
-        ambry_box = (ax0 - 1.6, ax1 + 1.6,
-                     -(as1 - origin) - 2.0, -(as0 - origin) + 2.0, AMBRY_RAFT_Y - 1.2)
+    # ⚠️ Ambry est FUSIONNEE dans le maillage du troncon 5 (le brief exige cinq
+    # racines et aucun enfant maille) : rien dans le `.glb` ne la nomme. On la
+    # separe donc geometriquement, et en DEUX TEMPS, parce qu'un seul seuil ne
+    # peut pas faire les deux travaux a la fois :
+    #
+    #   * l'emprise (x, z) sort du calcul du BORDE tout ce qui est sous Ambry —
+    #     y compris le pont qu'elle couvre. C'est ce qui garantit qu'aucun de ses
+    #     triangles a 0,70 tuile/m ne contamine la mesure a 0,20 ;
+    #   * un plancher en Y, 5 cm sous le dessous du radeau, decide de ce qui entre
+    #     dans la mesure d'AMBRY. Il laisse dehors les douze bequilles, qui
+    #     plongent jusqu'au borde — elles portent la meme echelle, et la mesure
+    #     complete est faite en plus cote Blender (`ambry_density`).
+    origin = (SECTION_COUNT - 1) * SECTION_LENGTH
+    keep_x = AMBRY_KEEPOUT_X
+    keep_z = (-(AMBRY_KEEPOUT_S[1] - origin), -(AMBRY_KEEPOUT_S[0] - origin))
+    ambry_floor = AMBRY_RAFT_Y - AMBRY_RAFT_THICK - 0.05
+    # ⚠️ Le bord inboard de la fenetre d'Ambry est a 7,40 et non a 6,90 : la
+    # CONTREMARCHE DE CHINE monte de -4,94 a -4,34 entre x = 6,80 et x = 7,35,
+    # donc au-dessus du plancher. Avec la borne large, elle etait comptee comme
+    # ambryenne et tirait la densite minimale d'Ambry a 0,147.
+    ambry_x = (AMBRY_X[0] - 0.20, HALF_WIDTH + 0.05)
 
     density: dict[str, dict] = {}
     for name, packs in density_source.items():
@@ -1618,15 +1754,16 @@ def _audit(path: str) -> dict:
             abase = len(ambry_pts)
             ambry_pts += points
             ambry_uvs += uv
+            last = name == f"Section_{SECTION_COUNT:02d}"
             for ia, ib, ic in triangles:
                 cx = (points[ia][0] + points[ib][0] + points[ic][0]) / 3.0
                 cy = (points[ia][1] + points[ib][1] + points[ic][1]) / 3.0
                 cz = (points[ia][2] + points[ib][2] + points[ic][2]) / 3.0
-                inside = ambry_box is not None and \
-                    ambry_box[0] <= cx <= ambry_box[1] and \
-                    ambry_box[2] <= cz <= ambry_box[3] and cy >= ambry_box[4]
-                if inside:
-                    ambry_tris.append((abase + ia, abase + ib, abase + ic))
+                in_keepout = last and keep_x[0] <= cx <= keep_x[1] \
+                    and keep_z[0] <= cz <= keep_z[1]
+                if in_keepout:
+                    if cy >= ambry_floor and ambry_x[0] <= cx <= ambry_x[1]:
+                        ambry_tris.append((abase + ia, abase + ib, abase + ic))
                 else:
                     tris.append((base + ia, base + ib, base + ic))
                 pa = Vector(points[ia])
@@ -1638,14 +1775,31 @@ def _audit(path: str) -> dict:
         if ambry_tris:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
 
+    # ⚠️ Le plancher n'est pas la cible : une projection EN BOITE etire par
+    # 1/cos(angle a l'axe dominant), et le pire cas geometrique est la normale
+    # (1,1,1)/sqrt(3), a 54,74 deg de son axe dominant, soit sqrt(3) = 1,732. Une
+    # densite minimale de cible/1,73 n'est donc pas un defaut de depliage : c'est
+    # la BORNE de la methode que le brief a choisie. Exiger la cible partout
+    # reviendrait a exiger un depliage continu, que le brief n'a pas demande.
+    # Ce qui doit tenir, en revanche, c'est la MOYENNE (l'echelle annoncee) et le
+    # fait qu'aucune face ne descende SOUS la borne theorique.
     for name, measure in density.items():
         if not measure:
             continue
         target = AMBRY_TEXELS_PER_METER if name == "Ambry" else HULL_TEXELS_PER_METER
-        if measure["tiles_per_m_min"] < target * 0.90:
+        floor = target / math.sqrt(3.0) * 0.98
+        if measure["tiles_per_m_min"] < floor:
             problems.append(
                 f"{name} : densite minimale {measure['tiles_per_m_min']:.4f} "
-                f"tuile/m, sous la cible {target:.4f} — le depliage a compresse")
+                f"tuile/m, sous la borne {floor:.4f} de la projection en boite")
+        if measure["tiles_per_m_max"] > target * 1.02:
+            problems.append(
+                f"{name} : densite maximale {measure['tiles_per_m_max']:.4f} "
+                f"tuile/m, au-dessus de la cible {target:.4f} — echelle fausse")
+        if abs(measure["tiles_per_m_mean"] - target) > target * 0.14:
+            problems.append(
+                f"{name} : densite moyenne {measure['tiles_per_m_mean']:.4f} "
+                f"tuile/m, a plus de 14 pct de la cible {target:.4f}")
 
     if problems:
         raise ak.ContractError(
@@ -1736,11 +1890,11 @@ def _print_report(report: dict) -> None:
           f"{100.0 * report['triangles'] / TRI_BUDGET_TOTAL:>7.1f}%   "
           f"largeur {report['width']:.4f} m, sommet {report['top']:+.3f} "
           f"(plafond {CEILING_Y})")
-    for label, count in zip(("plaques", "nervures", "lisses", "greffes",
-                             "pastilles", "plateformes", "baies"),
-                            range(7)):
+    for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
+                  "plateformes", "baies"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
-        print(f"  modules {label:<12} {line}")
+        total = sum(c.get(label, 0) for c in report["counts"])
+        print(f"  modules {label:<12} {line}   = {total}")
 
     print("\n  densite de texels (valeurs singulieres, triangle par triangle)")
     for name in sorted(report["density"]):
@@ -1890,7 +2044,13 @@ def _ceiling_slab(z0: float, z1: float) -> None:
     bm.to_mesh(mesh)
     bm.free()
     obj = bpy.data.objects.new("Ceiling", mesh)
+    # ⚠️ Elle ne doit ni ombrer NI ECLAIRER : sur le premier tirage, ses 2,2 unites
+    # d'emission doraient toute la partie haute d'Ambry et la planche mentait sur
+    # la couleur du seul element clair du decor.
     obj.visible_shadow = False
+    obj.visible_diffuse = False
+    obj.visible_glossy = False
+    obj.visible_transmission = False
     bpy.context.collection.objects.link(obj)
 
 
@@ -2096,16 +2256,22 @@ def _tile_elevation(path: str, report: dict) -> None:
     _import(OUTPUT, "Decor", Vector((0.0, 0.0, 0.0)))
     _ceiling_slab(-500.0, -400.0)
     _plate_lights()
-    ortho = 18.6
+    # ⚠️ Cadre serre sur Ambry (43 m sur 500) et non sur le troncon entier : a
+    # 100 m de large pour 9 m de haut, l'elevation rendait un trait, et la seule
+    # chose qu'elle devait prouver — que RIEN ne touche la dalle — y etait
+    # illisible.
+    ortho = 7.6
+    centre = -(AMBRY_S[0] + AMBRY_S[1]) * 0.5
     camera = _plate_camera(
-        "elev", _to_blender(Vector((90.0, -6.6, -450.0))),
+        "elev", _to_blender(Vector((90.0, -5.9, centre))),
         _to_blender(Vector((-1.0, 0.0, 0.0))), _to_blender(Vector((0.0, 1.0, 0.0))),
         math.radians(30.0), ortho=ortho)
-    _label(camera, f"ELEVATION TRIBORD DU TRONCON 5 — la dalle ambre EST le plafond "
-                   f"Y = {CEILING_Y:.0f}",
+    _label(camera, f"ELEVATION TRIBORD SUR AMBRY (43 m) — la dalle ambre EST le "
+                   f"plafond du jeu Y = {CEILING_Y:.0f}",
            -0.985, 0.84, 0.085, TILE_W, ELEV_H, (1.0, 0.88, 0.55))
     _label(camera, f"sommet de la coque entiere Y = {report['top']:+.3f} "
-                   f"(marge {CEILING_Y - report['top']:.3f} m) — Ambry a droite",
+                   f"(marge {CEILING_Y - report['top']:.3f} m) — le mat d'antenne "
+                   f"est le point le plus haut des 500 m",
            -0.985, -0.84, 0.075, TILE_W, ELEV_H)
     _render(path, TILE_W, ELEV_H)
 

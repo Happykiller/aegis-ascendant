@@ -58,8 +58,29 @@ func test_the_sections_are_laid_end_to_end_without_a_gap() -> void:
 	for i in 4:
 		var a := FlybyScript.section_z_at(i, length, 0.0)
 		var b := FlybyScript.section_z_at(i + 1, length, 0.0)
-		assert_almost_eq(b - a, length, 0.001,
-			"le troncon %d suit le %d a exactement une longueur — ni trou, ni recouvrement" % [i + 1, i])
+		assert_almost_eq(a - b, length, 0.001,
+			"le troncon %d precede le %d d'exactement une longueur — ni trou, ni recouvrement" % [i, i + 1])
+
+## ⚠️ Le troncon 1 est SOUS le joueur au depart, le 5 est loin devant. C'est le sens de la
+## traversee : on remonte le vaisseau de la proue vers l'arriere.
+func test_the_first_section_is_under_the_player_and_the_last_is_far_ahead() -> void:
+	assert_almost_eq(FlybyScript.section_z_at(0, 100.0, 0.0), -FlybyScript.LEAD_IN, 0.001,
+		"au depart le premier troncon est DEVANT le joueur, pas sous lui — il faut le voir venir")
+	assert_true(FlybyScript.section_z_at(4, 100.0, 0.0) < -300.0, "le dernier, loin devant")
+
+## ⚠️ Le survol ne s'arrete qu'une fois le lead-in ET les cinq troncons parcourus. Sans ça, la
+## traversee se terminerait 25 secondes trop tot, sur le quatrieme.
+func test_the_survey_ends_only_after_the_lead_in_and_every_section() -> void:
+	var f := _flyby()
+	f.reveal(true)
+	var total := f.section_length * float(f.section_count) + FlybyScript.LEAD_IN
+	f._travelled = total - 1.0
+	f._process(0.0)
+	assert_false(f._finished, "a une unite de la fin, le survol continue")
+	f._travelled = total + 1.0
+	f._process(0.0)
+	assert_true(f._finished, "au-dela, il est termine")
+	f.free()
 
 func test_the_section_under_the_player_follows_the_distance_travelled() -> void:
 	assert_eq(FlybyScript.section_at(0.0, 100.0, 5), 0, "au depart, le premier")

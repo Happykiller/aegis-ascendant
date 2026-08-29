@@ -29,18 +29,30 @@ const CEILING_Y := -3.0
 const SKY_Y := -38.0
 const SKY_SIZE := Vector2(320.0, 260.0)
 
-## La coque vit à cette hauteur : assez bas pour passer sous le plafond, assez haut pour emplir
-## le cadre à FOV 62°.
-const HULL_Y := -12.0
+## ⚠️ LA COQUE LIVRÉE PORTE DÉJÀ SA HAUTEUR. Ses sommets vont de -12,60 à -3,20 : la forge l'a
+## dessinée pour tenir juste sous le plafond du plan de jeu. Y ajouter un décalage la
+## renfoncerait de douze unités et rendrait faux tout ce qu'elle a calculé. La doublure, elle,
+## est bâtie à cette même hauteur pour que les deux se remplacent sans rien changer d'autre.
+const HULL_Y := -8.0
 
-## Largeur de la coque, en unités. Le plan de jeu fait 28 de large : elle l'emplit.
-const HULL_WIDTH := 28.0
+## Largeur de la coque, en unités.
+##
+## ⚠️ ELLE NE REMPLIT PAS LE CADRE, ET C'EST VOULU. La caméra plonge à 70° et voit très loin
+## devant : à Z = -70, le cadre fait 170 unités de large. Aucune coque rigide ne peut couvrir
+## à la fois cette distance et le premier plan — la lune du niveau 1 n'y arrive qu'en étant une
+## sphère de 60 de rayon. Les trois maquettes tranchent la question : la coque y occupe le
+## centre, et l'espace se voit de part et d'autre. 44 unités la font tenir les deux tiers du
+## cadre au premier plan, comme sur les planches. Mesuré en capture, pas estimé.
+const HULL_WIDTH := 44.0
 
-## Où un tronçon entre et où il sort, le long de l'axe de vol (monde -Z = haut de l'écran).
-## ⚠️ Le tronçon apparaît LOIN devant et sort LOIN derrière : à FOV 62° et caméra plongeante,
-## un objet visible à l'écran couvre bien plus que les 16 unités du plan de jeu.
-const SPAWN_Z := -70.0
-const RETIRE_Z := 46.0
+## De combien le vaisseau commence EN AVANT du joueur.
+##
+## ⚠️ SANS LUI, LE SURVOL COMMENCE AU MILIEU DE LA PROUE. La coque livrée s'étend de Z = -500
+## (l'arrière, où Ambry est greffé) à Z = 0 (la proue) : à distance nulle, le joueur démarre
+## déjà posé sur le premier tronçon, sans l'avoir vu venir. Vingt-deux unités, soit neuf
+## secondes à la vitesse de croisière, lui laissent le temps de voir arriver ce qu'il survole —
+## et c'est la première image du niveau.
+const LEAD_IN := 22.0
 
 signal section_entered(index: int)
 signal survey_finished()
@@ -51,6 +63,11 @@ var scroll_speed: float = 2.4
 var section_length: float = 100.0
 var section_count: int = 5
 
+## Le nœud qui porte les cinq tronçons. ⚠️ C'EST LUI QU'ON DÉPLACE, ET LUI SEUL. La forge a
+## livré les tourelles, les baies et les nœuds d'épine comme ENFANTS de leur tronçon : déplacer
+## chaque tronçon séparément les emmènerait, mais déplacer le décor entier revient au même en
+## une seule écriture — et surtout, ça ne peut pas désynchroniser un marqueur de sa section.
+var _decor: Node3D
 var _sections: Array[Node3D] = []
 var _sky: MeshInstance3D
 var _is_stand_in: bool = false
@@ -74,6 +91,14 @@ func reveal(on: bool) -> void:
 	_finished = false
 	_place_sections()
 
+## Place le survol au début d'un tronçon. Pour la vérification uniquement — le jeu ne saute
+## jamais : un survol se traverse.
+func skip_to_section(index: int) -> void:
+	_travelled = float(clampi(index, 0, section_count - 1)) * section_length
+	_entered = -1
+	_finished = false
+	_place_sections()
+
 func is_stand_in() -> bool:
 	return _is_stand_in
 
@@ -93,10 +118,15 @@ func _build() -> void:
 		if packed != null:
 			decor = packed.instantiate() as Node3D
 	if decor != null:
+		decor.name = "Hull"
 		add_child(decor)
+		_decor = decor
 		_collect_sections(decor)
 	if _sections.is_empty():
 		_is_stand_in = true
+		_decor = Node3D.new()
+		_decor.name = "Hull"
+		add_child(_decor)
 		_build_stand_in()
 	_silence_shadows()
 	_place_sections()
@@ -123,36 +153,40 @@ func _build_stand_in() -> void:
 		var mat := StandardMaterial3D.new()
 		# Anthracite de l'Unisson (charte §3), plus clair d'un tronçon à l'autre pour que la
 		# jonction se voie pendant la mise au point.
-		var teinte := 0.10 + 0.015 * float(i)
-		mat.albedo_color = Color(teinte, teinte, teinte * 1.08)
-		mat.roughness = 0.55
+		#
+		# ⚠️ BIEN PLUS SOMBRE QUE LA VALEUR DE CHARTE, et ce n'est pas une erreur : le
+		# post-traitement rétro applique un `lift` de 1,25 qui remonte les tons moyens
+		# (`ADR-0016`). Une première doublure à 0,10 est ressortie BEIGE à l'écran. Ce qu'on
+		# règle ici est ce qui sort du shader, pas ce qui entre.
+		var teinte := 0.035 + 0.006 * float(i)
+		mat.albedo_color = Color(teinte, teinte, teinte * 1.15)
+		mat.roughness = 0.72
+		mat.metallic = 0.15
 		plate.material_override = mat
 		section.add_child(plate)
-		add_child(section)
+		# ⚠️ La doublure reproduit l'espacement du `.glb` livré : tronçon N à Z = -N × longueur,
+		# et la hauteur portée par la géométrie. Sans quoi passer de l'une à l'autre déplacerait
+		# le décor sans que rien ne le dise.
+		section.position = Vector3(0.0, HULL_Y, -float(i) * section_length)
+		_decor.add_child(section)
 		_sections.append(section)
 
-## Les tronçons sont posés bout à bout le long de l'axe de vol, décalés de ce qui a déjà défilé.
+## Place la coque selon ce qui a défilé. Le décor avance vers +Z, c'est-à-dire vers le bas de
+## l'écran : le joueur remonte le vaisseau de la proue vers l'arrière.
 func _place_sections() -> void:
-	for i in _sections.size():
-		_sections[i].position = Vector3(0.0, HULL_Y, _section_z(i))
-
-func _section_z(index: int) -> float:
-	# Le tronçon 0 entre en premier : il part loin devant et remonte vers le joueur.
-	return SPAWN_Z + float(index) * section_length + _travelled
+	if _decor != null:
+		_decor.position.z = _travelled - LEAD_IN
 
 func _process(delta: float) -> void:
 	if _finished:
 		return
 	_travelled += scroll_speed * delta
-	for i in _sections.size():
-		var z := _section_z(i)
-		_sections[i].position.z = z
-		_sections[i].visible = z < RETIRE_Z + section_length
+	_place_sections()
 	var section := current_section()
 	if section != _entered:
 		_entered = section
 		section_entered.emit(section)
-	if _travelled >= section_length * float(section_count):
+	if _travelled >= section_length * float(section_count) + LEAD_IN:
 		_finished = true
 		survey_finished.emit()
 
@@ -176,6 +210,11 @@ func _make_sky() -> MeshInstance3D:
 		mat.shader = backdrop
 		mat.set_shader_parameter(&"deep_sky", true)
 		mat.set_shader_parameter(&"scroll_speed", -0.5)
+		# ⚠️ Le chemin `deep_sky` ne rend que des étoiles sur une couleur de fond — c'est ce qui
+		# le rend presque gratuit. Cette couleur est donc le SEUL levier d'ambiance disponible
+		# ici, et les maquettes demandent un fond violacé, pas un noir neutre. Elle ne coûte
+		# rien : c'est la constante sur laquelle les étoiles sont additionnées.
+		mat.set_shader_parameter(&"deep_color", Color(0.035, 0.012, 0.055))
 		_sky.material_override = mat
 		_sky.material_override.render_priority = -1
 	return _sky
@@ -199,8 +238,10 @@ func _all_meshes(root: Node) -> Array[MeshInstance3D]:
 
 ## Où se trouve un tronçon après une distance parcourue. ⚠️ STATIQUE ET PURE, comme
 ## `MoonFlyby.drifted()` : c'est ce qui permet de tester le défilement sans monter la scène.
+##
+## Le tronçon N est posé à -N × longueur dans le `.glb` ; le décor entier avance vers +Z.
 static func section_z_at(index: int, length: float, travelled: float) -> float:
-	return SPAWN_Z + float(index) * length + travelled
+	return -float(index) * length + travelled - LEAD_IN
 
 ## Le tronçon sous le joueur après cette distance.
 static func section_at(travelled: float, length: float, count: int) -> int:

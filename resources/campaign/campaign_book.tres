@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="CampaignBook" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="CampaignBook" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://resources/data/campaign_book.gd" id="1_book"]
 [ext_resource type="Script" path="res://resources/data/level_data.gd" id="2_level"]
 [ext_resource type="PackedScene" path="res://scenes/gameplay/graybox.tscn" id="3_lvl1"]
 [ext_resource type="Resource" path="res://resources/dialogue/sector_briefings.tres" id="4_brief1"]
+[ext_resource type="PackedScene" path="res://scenes/gameplay/cortege.tscn" id="5_lvl2"]
 
 ; L'ordre des niveaux de la campagne. Une seule liste, et c'est elle qui fait foi.
 ;
@@ -22,6 +23,14 @@ display_name = "LE COULOIR D'OSSANE"
 scene = ExtResource("3_lvl1")
 briefings = ExtResource("4_brief1")
 
+; ⚠️ LE NIVEAU 2 N'EST PAS UNE PHASE DU 1. Il a sa scene, son script racine et son rapport ;
+; le rapport du niveau 1 propose donc CONTINUER des qu'il figure ici.
+[sub_resource type="Resource" id="level_2"]
+script = ExtResource("2_level")
+id = &"long_cortege"
+display_name = "LE LONG CORTEGE"
+scene = ExtResource("5_lvl2")
+
 [resource]
 script = ExtResource("1_book")
-levels = [SubResource("level_1")]
+levels = [SubResource("level_1"), SubResource("level_2")]

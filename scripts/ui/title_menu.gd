@@ -67,7 +67,11 @@ func _ready() -> void:
 	print("[TitleMenu] ready (v%s)" % version)
 	# Hooks de test (args après le séparateur `++`) : sauter droit à un écran.
 	var args := OS.get_cmdline_user_args()
-	if "--goto-graybox" in args:
+	if _has_prefix(args, "--goto-level"):
+		# `--goto-level=<id>` : ouvre un niveau de la campagne par son NOM, jamais par son rang.
+		# Un rang désignerait un autre niveau le jour où l'un s'insère au milieu.
+		_goto_level.call_deferred(_arg_value(args, "--goto-level="))
+	elif "--goto-graybox" in args:
 		_start_game.call_deferred()
 	elif "--goto-codex" in args:
 		_open_codex.call_deferred()
@@ -75,6 +79,31 @@ func _ready() -> void:
 		# `--goto-lab` ou `--goto-lab=<unite>` : le banc lit lui-même l'unité.
 		_scene_router.goto_scene.call_deferred(BESTIARY_LAB_SCENE)
 
+
+## La valeur d'un argument `--clé=valeur`, ou une chaîne vide.
+func _arg_value(args: PackedStringArray, prefix: String) -> String:
+	for arg in args:
+		if arg.begins_with(prefix):
+			return arg.substr(prefix.length())
+	return ""
+
+## Saute directement à un niveau de la campagne, pour l'essai. ⚠️ Il POSE le niveau courant
+## avant de router : sans ça, le rapport de mission proposerait « CONTINUER » vers le niveau
+## d'après celui qu'on n'a pas joué.
+func _goto_level(level_id: String) -> void:
+	var campaign := get_node_or_null("/root/Campaign")
+	if campaign == null:
+		push_error("[TitleMenu] pas de Campaign — --goto-level ignoré")
+		return
+	campaign.current_id = StringName(level_id)
+	var level: LevelData = campaign.current()
+	if level == null or level.scene == null:
+		push_error("[TitleMenu] niveau inconnu : %s" % level_id)
+		return
+	if not _game_state.transition_to(GameStateScript.State.FIGHTER_COMBAT):
+		return
+	print("[TitleMenu] saut direct : %s" % level.id)
+	_scene_router.goto_scene(level.scene.resource_path)
 
 # --- Lyra Vantella, la voix du jeu (ADR-0035) --------------------------------
 
