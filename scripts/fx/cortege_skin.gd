@@ -32,9 +32,10 @@ const SKINS: Dictionary = {
 	&"AA_Hull": "cortege_hull",
 	&"AA_Panel": "cortege_panel",
 	&"AA_Greeble": "cortege_greeble",
-	# ⚠️ Demandé par `BRIEF-0090` et absent de la première livraison : tant que la forge n'a pas
-	# reposé ce slot, Ambry partage `AA_Hull` avec toute la coque et cette entrée ne trouve rien.
-	# C'est sans conséquence — une entrée qui ne correspond à aucun matériau est sautée.
+	# ⚠️ POSÉ PAR `BRIEF-0090`, ET SA RAISON N'EST PAS LA COULEUR : c'est l'ÉCHELLE. Ambry est
+	# déplié à 0,700 tuile/m contre 0,200 pour le bordé ; toute face d'Ambry restée sur un slot
+	# du bordé aurait reçu sa carte 3,5 fois trop fine — un défaut latent qu'on n'aurait
+	# découvert qu'une fois les images générées, et qui aurait demandé une reforge.
 	&"AA_Hull_Ambry": "ambry_hull",
 }
 

@@ -256,8 +256,10 @@ d'appontage, une serre voûtée et un mât d'antenne.
 Il est **intact et re-plombé**, jamais en ruine : c'est ce qui doit rendre la découverte
 insoutenable. Il jure par trois moyens qui ne dépendent d'aucune texture — l'**orthogonalité**
 (tout est aligné sur deux axes, au-dessus d'une coque faite de facettes), la **valeur**
-(`AA_Trim` ivoire `#DDDCD2` contre `AA_Hull` anthracite `#24252B`, rapport de 1 à 12 en luminance),
-et l'**absence totale de magenta**.
+(*état d'origine* : `AA_Trim` ivoire `#DDDCD2` contre `AA_Hull` anthracite `#24252B`, contraste
+11,1:1 — **depuis BRIEF-0090 c'est `AA_Hull_Ambry` `#EDEAE3` et 12,7:1**, voir §6 bis), et
+l'**absence totale de magenta**. Un **quatrième** signal s'y est ajouté avec l'avenant : le
+**fini** — Ambry est une tôle peinte (metallic 0,05) au milieu d'une carapace polie (0,85).
 
 > ⚠️ **ÉCART ASSUMÉ, PUIS TRANCHÉ.** Le brief BRIEF-0089 demandait « matériaux `AA_Hull` /
 > `AA_Trim` **clairs** contre l'anthracite » ; sous la palette de l'Unisson, `AA_Hull` **EST**

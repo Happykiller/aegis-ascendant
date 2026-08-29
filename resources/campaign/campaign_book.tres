@@ -22,6 +22,13 @@ id = &"ossane_corridor"
 display_name = "LE COULOIR D'OSSANE"
 scene = ExtResource("3_lvl1")
 briefings = ExtResource("4_brief1")
+; L'epilogue du niveau 1 — exactement les lignes que l'ecran portait en dur avant
+; qu'un deuxieme niveau ne les rende fausses. Rien n'a change de ce que le joueur lit.
+report_readout_label = "RELAIS 07"
+report_readout_victory = "REMIS A L'HEURE"
+report_readout_defeat = "0 MS  ·  RADIE"
+report_tagline_victory = "PALE LEVIATHAN DETRUIT  ·  COULOIR REOUVERT"
+report_tagline_defeat = "SPECTER-9 PERDU  ·  ENTREE PORTEE AU REGISTRE"
 
 ; ⚠️ LE NIVEAU 2 N'EST PAS UNE PHASE DU 1. Il a sa scene, son script racine et son rapport ;
 ; le rapport du niveau 1 propose donc CONTINUER des qu'il figure ici.
@@ -30,6 +37,18 @@ script = ExtResource("2_level")
 id = &"long_cortege"
 display_name = "LE LONG CORTEGE"
 scene = ExtResource("5_lvl2")
+; ⚠️ ICI LE RELEVE N'EST PLUS UNE HORLOGE, C'EST UN AVANT-POSTE. Et le mot de la victoire
+; n'est ni « detruit » ni « repousse » : le Long Cortege continue sa route, c'est ce qui doit
+; rester de lui (`docs/lore/NULL_CHOIR.md`). Ce que le pilote rapporte, c'est un RELEVE — et
+; un mot du Registre qui n'est pas « perdu ».
+;
+; ⛔ PLAFOND — « radie » sans un mot d'explication. Radie n'est pas perdu, et c'est au joueur
+; de sentir la difference ; qui l'a porte et pourquoi appartient a l'acte II.
+report_readout_label = "AMBRY"
+report_readout_victory = "GREFFE  ·  RADIE"
+report_readout_defeat = "GREFFE  ·  NON RELEVE"
+report_tagline_victory = "DEUX TIERS DE COQUE RELEVES  ·  LE CORTEGE POURSUIT SA ROUTE"
+report_tagline_defeat = "SPECTER-9 PERDU  ·  LE CORTEGE N'A PAS DEVIE"
 
 [resource]
 script = ExtResource("1_book")

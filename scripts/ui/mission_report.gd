@@ -123,7 +123,37 @@ func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
 	(%Pip as ColorRect).color = CHANNEL_CLEAR if won else CHANNEL_LOST
 	(%Controls as Label).text = _CONTROLS[outcome]
 
+## L'épilogue du niveau qu'on vient de jouer, s'il en porte un.
+##
+## ⚠️ IL ETAIT EN DUR DANS CET ECRAN, ET DONC FAUX DES LE DEUXIEME NIVEAU. « PALE LEVIATHAN
+## DETRUIT · COULOIR REOUVERT » et un relais « REMIS A L'HEURE » sont le dénouement du niveau 1,
+## écrits quand il n'y en avait qu'un. Au terme du survol du Long Cortège — qui ne détruit rien
+## et ne rouvre aucun couloir — ils auraient raconté au joueur une mission qu'il n'a pas faite,
+## et rien à l'écran ne l'aurait contredit.
+##
+## ⚠️ ET C'EST ICI, PAS DANS `setup()`. `setup()` tourne entre `instantiate()` et `add_child()` :
+## le nœud n'est pas dans l'arbre, et `get_node("/root/Campaign")` y lève « Can't use get_node()
+## with absolute paths from outside the active scene tree ». Le fichier le disait déjà en tête ;
+## la leçon a été payée une fois, elle ne se repaie pas.
+func _apply_level_epilogue() -> void:
+	var campaign := get_node_or_null("/root/Campaign")
+	if campaign == null or not campaign.has_method("current"):
+		return
+	var level: LevelData = campaign.current()
+	if level == null:
+		return
+	var won := _outcome == Outcome.VICTORY
+	var tagline := level.report_tagline_victory if won else level.report_tagline_defeat
+	var readout := level.report_readout_victory if won else level.report_readout_defeat
+	if not level.report_readout_label.strip_edges().is_empty():
+		(%Name as Label).text = level.report_readout_label
+	if not tagline.strip_edges().is_empty():
+		(%Tagline as Label).text = tagline
+	if not readout.strip_edges().is_empty():
+		(%RelayValue as Label).text = readout
+
 func _ready() -> void:
+	_apply_level_epilogue()
 	# Dans l'arbre : l'autoload est enfin adressable. Le bouton passe à CONTINUER s'il reste
 	# un niveau JOUABLE — et le rappel de touches nomme la même action que lui, faute de quoi
 	# on retomberait dans le défaut que ce fichier a déjà corrigé une fois.
