@@ -2,7 +2,7 @@
 titre: DAF — Dossier d'Architecture Fonctionnelle
 type: index
 statut: actif
-maj: 2026-08-26
+maj: 2026-08-29
 ---
 
 # DAF — architecture fonctionnelle
@@ -12,7 +12,7 @@ Ce que le jeu fait, pour qui, et sous quels invariants.
 | Page | Ce qu'elle couvre | Statut | MAJ |
 |---|---|---|---|
 | [signaux.md](signaux.md) | Un effet qui change l'état du jeu **sans le montrer** se lit comme un défaut ; et un signal **mal lu** est pire qu'un signal absent — il enseigne une règle fausse. Cinq mécaniques prises en défaut le même jour | actif | 2026-08-26 |
-| [arc-de-jeu.md](arc-de-jeu.md) | La boucle complète d'une partie, ses cinq phases, et l'écart entre la doc de 07/2026 et le code | actif | 2026-08-23 |
+| [arc-de-jeu.md](arc-de-jeu.md) | La campagne et ses deux niveaux, les six phases du premier, la traversée du second — et ⚠️ le vocabulaire « niveau / phase / tronçon », qui a changé le 29/08 | actif | 2026-08-29 |
 
 ## Les domaines fonctionnels, et où ils sont décrits
 
@@ -22,7 +22,7 @@ est l'aiguillage — elle dit **où lire**, et **ce qui s'est décidé depuis**.
 | Domaine | Où c'est décrit | Décisions qui l'amendent |
 |---|---|---|
 | Pitch, univers, factions | `ARCHITECTURE_FONCTIONNELLE.md` §1, §6 | ADR-0009 (référence d'inspiration réinstaurée) |
-| Arc de la partie | [arc-de-jeu.md](arc-de-jeu.md) | **ADR-0010** |
+| Arc de la partie | [arc-de-jeu.md](arc-de-jeu.md) | **ADR-0010**, puis **ADR-0038** (le jeu est une campagne ; un survol n'est pas un niveau de plus) |
 | Contrôles | `ARCHITECTURE_FONCTIONNELLE.md` §3 | — |
 | Montée en puissance (Pulse Array 1→5) | `ARCHITECTURE_FONCTIONNELLE.md` §4.1 | — |
 | Bouclier & survie | `ARCHITECTURE_FONCTIONNELLE.md` §4.2 | — |

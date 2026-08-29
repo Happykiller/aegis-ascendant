@@ -1,8 +1,8 @@
 ---
-titre: L'arc d'une partie — six phases, un seul vaisseau
+titre: L'arc d'une partie — une campagne de deux niveaux, un seul vaisseau
 type: daf
 statut: actif
-maj: 2026-08-25
+maj: 2026-08-29
 ---
 
 # L'arc d'une partie
@@ -13,17 +13,62 @@ Le joueur **pilote le chasseur Specter-9 du début à la fin**. Aucune transform
 changement de véhicule en cours de niveau. C'est la décision **ADR-0010** (2026-07-19), prise après
 usage : le changement de vaisseau cassait le flow et la lisibilité de l'arme du joueur.
 
-## Le vocabulaire de l'opérateur — « niveau » et « phase »
+## ⚠️ Le vocabulaire a changé le 2026-08-29 — « niveau 2 » existe maintenant
 
-Fixé le 2026-08-25, après une ambiguïté en session : **le jeu n'a qu'un NIVEAU** (le premier), et
-ce niveau contient des **phases**. Quand l'opérateur dit « la phase 2 », il parle du **champ
-d'astéroïdes** ; « la phase 1 », ce sont les vagues de chasseurs et le mini-boss qui les clôt.
+**Cette page disait l'inverse jusqu'au 2026-08-29**, et c'était juste à l'époque : « le jeu n'a
+qu'un NIVEAU, et un niveau 2 n'existe pas — si on l'entend, c'est de la phase 2 qu'il s'agit ».
+`ADR-0038` a rendu cette phrase fausse, et la laisser aurait fait lire « champ d'astéroïdes »
+partout où l'opérateur dit « le deuxième niveau ».
 
-⚠️ Ne pas confondre avec l'`enum Phase` du director, qui en compte six et nomme aussi le docking
-et la victoire : le décompte de l'opérateur est celui des **sections jouées**, pas des états du
-code. Un « niveau 2 » n'existe pas — si on l'entend, c'est de la phase 2 qu'il s'agit.
+L'état actuel, vérifié dans `resources/campaign/campaign_book.tres` :
 
-## Les six phases
+| Ce que dit l'opérateur | Ce que c'est |
+|---|---|
+| « le niveau 1 » | le couloir d'Ossane, `scenes/gameplay/graybox.tscn` — six phases, ~3 min |
+| « la phase 1 » / « la phase 2 » | **des phases DU NIVEAU 1** : les vagues, puis le champ d'astéroïdes |
+| « le niveau 2 » | le survol du Long Cortège, `scenes/gameplay/cortege.tscn` — **cinq tronçons, pas de phases**, ~3 min 40 |
+
+⚠️ Et le niveau 2 **n'a pas de phases du tout** : il a une traversée. Parler de « la phase 3 du
+niveau 2 » n'a pas de sens ; on dit **le tronçon 3**. La confusion à surveiller n'est plus
+niveau/phase mais phase/tronçon.
+
+⚠️ Ne pas confondre non plus avec l'`enum Phase` du director du niveau 1, qui en compte six et
+nomme aussi le docking et la victoire : le décompte de l'opérateur est celui des **sections
+jouées**, pas des états du code.
+
+## La campagne
+
+`Campaign` (autoload) lit un `CampaignBook` de `LevelData` typées : l'écran-titre route vers le
+niveau courant, et le rapport de mission propose **CONTINUER** quand il y en a un suivant. La
+bible narrative en prévoit douze (`docs/lore/CAMPAGNE.md`) ; deux sont jouables.
+
+`--goto-level=<id>` ouvre un niveau par son nom depuis l'écran-titre. ⚠️ Il POSE le niveau courant
+avant de router — sinon le rapport proposerait « CONTINUER » vers le niveau d'après celui qu'on
+n'a pas joué.
+
+## Le niveau 2 — le survol du Long Cortège
+
+Il ne ressemble à rien de ce qui précède, et c'est ce qu'il faut savoir avant d'y toucher :
+
+- **il n'y a pas de phases**, cinq tronçons de 100 unités défilent à 2,4 u/s, soit ~208 s ;
+- **rien ne change à l'écran** d'un bout à l'autre — même bordé, même artère, mêmes tourelles.
+  La progression du joueur est dans ce qu'il COMPREND : cinq briefings de pause et huit répliques
+  de Lyra ne sont pas de l'habillage, ils sont la structure du niveau ;
+- **trois mécaniques de coque** : tourelles (télégraphe obligatoire), ponts d'envol (ils
+  produisent tant qu'ils vivent), nœuds d'épine (abattre l'un éteint les tourelles du tronçon
+  SUIVANT) ;
+- **le Cortège ne se détruit pas.** Le niveau se traverse ; il continue sa route.
+
+⚠️ **Un survol ne revient jamais en arrière.** Chaque cible n'est tirable que pendant la fenêtre
+où elle est à l'écran, et c'est ce qui dimensionne tous ses points de vie
+(`resources/data/cortege_tuning.gd`, six invariants). Des PV choisis à la main au-dessus de cette
+fenêtre rendent la cible indestructible EN PRATIQUE, et le joueur croira mal jouer.
+
+⚠️ **Le pilote automatique ne mesure rien ici.** Une partie complète en `--demo` (208 s) n'a
+détruit qu'UNE cible de coque : il esquive et tire droit devant, il ne vise pas un bordé. Pour
+juger l'équilibrage de ce niveau, il faut un humain — ou le banc de `tests/unit/test_cortege_hardpoints.gd`.
+
+## Les six phases du niveau 1
 
 ```
 FIGHTER_WAVES → MINI_BOSS → ASTEROID_FIELD → FINAL_BOSS → DOCKING → VICTORY

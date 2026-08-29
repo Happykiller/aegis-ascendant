@@ -2,7 +2,7 @@
 titre: HISTORY — index chronologique des sujets abordés
 type: index
 statut: actif
-maj: 2026-08-28
+maj: 2026-08-29
 ---
 
 # Historique des sujets
@@ -292,3 +292,51 @@ Et une correction de l'opérateur qui vaut consigne : **demander une texture doi
     de leur cadre, un test cherchait le mini-boss par son ancien nom, et **deux répliques
     d'accueil quittaient l'écran avant la fin de leur propre voix** — dont une **avant** cette
     session. La bulle et le HUD n'ont pas la même arithmétique de durée ; il leur faut deux gardes.
+
+### 2026-08-29 — Le niveau 2 : le survol du Long Cortège, de bout en bout
+
+L'opérateur demande **le deuxième niveau entier**, à bâtir en son absence : un vaisseau de
+6,8 km survolé de la proue jusqu'aux deux tiers, avec ses voix, ses dialogues, sa coque, ses
+mécaniques, ses patterns — et **toutes les demandes de texture**, qu'il fournira au retour.
+Consigne : *tout sauf le push*.
+
+Ce qui en sort :
+
+- une **campagne** : un niveau est une donnée (`CampaignBook`, `LevelData`), le rapport propose
+  CONTINUER. ⚠️ Le niveau 1 y entre **sans changer d'un octet**, et c'est la recette qui a validé
+  le changement ([ADR-0038](../decisions/ADR-0038-le-jeu-est-une-campagne.md)) ;
+- une **coque de 500 unités en cinq tronçons** (39 434 tri, 44 % du budget), livrée par la forge
+  avec 30 marqueurs — et une décision qu'elle a prise seule et qui a tout simplifié : **les
+  marqueurs sont ENFANTS de leur tronçon**, donc déplacer le décor emmène tout, et rien ne peut
+  se désynchroniser ;
+- **trois mécaniques** : tourelles à télégraphe, ponts d'envol qui produisent tant qu'ils vivent,
+  nœuds d'épine qui éteignent le tronçon suivant ;
+- **huit répliques, huit voix, cinq briefings** — qui ne sont pas de l'habillage : un survol ne
+  change pas d'écran pendant trois minutes et demie, ils SONT la progression ;
+- **cinq demandes de texture** et l'outil qui les vérifie.
+
+⚠️ **Ce que les mesures ont trouvé, et qu'aucun ressenti n'aurait dit** :
+
+- **un temps mort de 27 secondes à l'ouverture.** La proue de la coque est nue sur 65 unités.
+  Et **aucun réglage ne le refermait** — cherché sur toute la plage jouable, l'ouverture ne
+  descend jamais sous 17,6 s. C'était un problème de CONTENU : une réception de proue le comble ;
+- le reste de la même mesure a **évité de toucher au reste** : pic de trois cibles simultanées,
+  3,6 % du temps. Le risque de lisibilité que le plan redoutait n'existait pas ;
+- **le pilote automatique ne mesure rien sur ce niveau.** Une partie complète en `--demo` (208 s)
+  n'a détruit qu'UNE cible de coque : il esquive et tire droit devant, il ne vise pas un bordé.
+  Tout ce qui devait être prouvé l'a été **au banc**, en donnant leur position aux pièces au lieu
+  de la leur faire lire dans l'arbre.
+
+⚠️ **Et trois gardes ont attrapé leurs auteurs le jour même** :
+
+- le premier test écrit sur les ponts a trouvé une faute **dans mon propre invariant** : il
+  comptait les lâchers sur la fenêtre de TIR (10 s) au lieu du temps passé au-dessus du TERRAIN
+  (6,7 s), et promettait deux lâchers là où il n'y en avait qu'un ;
+- `test_hud_layout.gd` a refusé la jauge de traversée en bas à droite, en citant sa propre
+  consigne : *« si un futur panneau vient disputer ce coin, il faudra TRANCHER plutôt que les
+  empiler »*. La loi est désormais **généralisée à tous les panneaux** ;
+- `tools/lint-textures.py`, écrit pour vérifier les six règles du contrat de texture que **rien
+  ne vérifiait**, a trouvé que la correction « la consigne de fond ouvre le prompt », annoncée
+  comme appliquée partout, ne l'avait été qu'à partir de TEX-0007. ⚠️ Et sa première version
+  s'est fait piéger elle-même : elle cherchait « fond » et validait « le fond des cratères ». Un
+  contrôle qu'un homonyme trompe est pire que pas de contrôle.

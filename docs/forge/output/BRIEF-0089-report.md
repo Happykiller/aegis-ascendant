@@ -245,7 +245,7 @@ d'erreur en X dans la translation du nœud à 400 m (remplacée par une matrice 
 entiers) ; et `_clip_lane` avait un minimum de 0,9 m qui supprimait **en silence** les 30 lisses
 (0,36 m) et les 410 pastilles (0,56 m) — d'où le compte de modules imprimé à chaque build.
 
-## 6. Ambry — et un écart au brief qu'il faut trancher
+## 6. Ambry — et l'écart au brief, tranché depuis par BRIEF-0090
 
 L'avant-poste humain est un **ruban de 27 × 5,5 m** greffé sur le bordé tribord du tronçon 5
 (`s` 446 → 474, `x` 7,60 → 13,60), 414 faces. Radeau plan à −4,48, douze béquilles de longueurs
@@ -312,11 +312,32 @@ C'est ce que le slot séparé achète, bien plus que la teinte.
 `AA_Trim` **ne touche plus Ambry du tout** : il redevient un matériau purement Unisson (liseré de
 crête, une nervure sur trois, lisses, couronnes de socle, lèvres de baie).
 
-> ⚠️ **Les deux exceptions `AA_Hull` ci-dessus recevront la carte du bordé à 1,43 m/tuile au lieu
-> de 5,00.** C'est assumé et c'est chiffré : 21,8 m² pour le pas, 12,4 m² pour les colliers, soit
-> **0,06 % de l'aire du modèle**. Sur des surfaces qui doivent lire *sombre* et *rapportée*, un
-> grain 3,5 × plus fin ne dit rien de faux. Si `TEX-0010` finit par y trahir un motif reconnaissable,
-> une ligne du script les bascule sur `AA_Hull_Ambry`.
+> ⚠️ **Le pas d'appontage recevra donc la carte du bordé à 1,43 m/tuile au lieu de 5,00.** C'est
+> assumé et c'est chiffré : **9,00 m² exactement**, soit **0,015 % du modèle** et 1,1 % d'Ambry.
+> Sur une surface qui doit lire *sombre*, un grain 3,5 × plus fin ne dit rien de faux. Si `TEX-0010`
+> finit par y trahir un motif reconnaissable, **une ligne du script** le bascule sur
+> `AA_Hull_Ambry`. Les deux colliers de greffe, eux, ne posent pas la question : ils mordent le
+> bordé **sous** le radeau, ils appartiennent géométriquement à la bande de peau du vaisseau.
+
+### Ce dont Ambry est faite, en aire — relevé sur le binaire
+
+Mesure faite sur les triangles de `Section_05` dont le centre est dans l'emprise d'Ambry **et
+au-dessus du dessous du radeau** (−4,89) : c'est la structure de l'avant-poste, béquilles et
+colliers exclus (ils plongent plus bas).
+
+| Slot | Aire | Part d'Ambry | Part du modèle |
+|---|---|---|---|
+| **`AA_Hull_Ambry`** | **344,9 m²** | **42,6 %** | **0,571 %** |
+| `AA_Greeble` | 327,8 m² | 40,5 % | 0,543 % |
+| `AA_Marking_Red` (la serre) | 85,7 m² | 10,6 % | 0,142 % |
+| `AA_Glass` (la voûte) | 25,5 m² | 3,1 % | 0,042 % |
+| `AA_Panel` (capots) | 16,3 m² | 2,0 % | 0,027 % |
+| `AA_Hull` (le pas d'appontage) | 9,0 m² | 1,1 % | 0,015 % |
+| **TOTAL** | **809,1 m²** | | 1,34 % |
+
+`AA_Greeble` pèse presque autant que le nouveau slot, mais **il ne se voit pas** : ce sont les
+dessous de caisse, les flancs et les montants. Ce qui regarde la caméra du jeu est très
+majoritairement `AA_Hull_Ambry`.
 
 ### L'aire du nouveau slot — le chiffre que le brief exige
 
@@ -364,20 +385,47 @@ ennemie. Une exception ne fait pas une règle de kit.
   "ambry_hull"`), et l'échelle de `TEX-0014` (1,43 m/tuile, `measured`) est celle du dépliage
   effectivement livré.
 
+### La vignette exigée — Ambry et le bordé dans le même cadre
+
+La planche passe de 8 à **9 vignettes**. La nouvelle (7ᵉ position, 1440 × 600) est prise à la
+**caméra de `graybox.tscn` sans retouche** — `(0, 14, 5)`, FOV 62, 70° sous l'horizontale — et le
+décor y est décalé d'une valeur **calculée** pour qu'Ambry tombe au centre du champ. Deux vignettes
+séparées n'auraient rien prouvé : un contraste ne se juge que dans un seul cadre, au même éclairage.
+Le Specter-9 réel y est à sa place de jeu (`ADR-0025`).
+
+Ce que le regard donne, et que les chiffres seuls ne donnaient pas :
+
+- **Le contraste fonctionne, et il est franc** : Ambry est un ruban clair sur le cinquième tribord
+  du cadre, le reste est anthracite et violet. Aucune ambiguïté possible sur « ce n'est pas du même
+  vaisseau ».
+- **Le pas d'appontage tient son rôle** : à 0,271 contre 0,798 pour le radeau, il se lit comme un
+  pas et non comme une plaque de plus. La décision de le laisser en `AA_Hull` se vérifie à l'œil.
+- **Les capots violets sont ce qui casse la masse blanche.** Sans eux (et sans les arêtes sombres
+  des flancs de caisse en `AA_Greeble`), les quatre modules, la passerelle et le radeau
+  fusionneraient en un seul aplat — la planche est rendue **sans aucune ombre portée**, donc c'est
+  le pire cas ; en jeu, Ambry est à 19 m de la caméra pour un
+  `directional_shadow_max_distance = 40`, elle recevra donc ses propres ombres.
+- ⚠️ **Réserve honnête** : le violet `#452663` des capots est une couleur de l'Unisson posée sur un
+  bâtiment humain. Elle sert bien (elle casse le blanc, elle contraste), mais elle est
+  sémantiquement fausse. Je ne l'ai pas changée — le brief dit « rien d'autre ne change » — et je la
+  signale : 16,3 m², six boîtes, une ligne du script.
+
 ## 7. Palette, émissif, et la réserve de lisibilité
 
-Les **7 matériaux `AA_*` sont présents et assignés** (le build échoue si l'un est présent mais non
-assigné). Répartition **en aire**, relevée sur le `.glb` :
+Les **8 matériaux `AA_*` sont présents et assignés** (le build échoue si l'un est présent mais non
+assigné). Répartition **en aire**, relevée sur le `.glb` — et désormais **imprimée à chaque build**,
+ce qui permet de comparer deux forges au lieu de les regarder l'une après l'autre :
 
-| Matériau | Couleur (charte) | Aire | Part |
-|---|---|---|---|
-| `AA_Greeble` | `#141419` | 38 841 m² | 64,33 % |
-| `AA_Hull` | `#24252B` anthracite | 15 106 m² | 25,02 % |
-| `AA_Panel` | `#452663` violet sombre | 4 545 m² | 7,53 % |
-| `AA_Trim` | `#DDDCD2` ivoire froid | 1 381 m² | 2,29 % |
-| `AA_Emissive_Engine` | `#D93D9C` magenta | 390 m² | **0,65 %** |
-| `AA_Marking_Red` | `#7C9E52` vert maladif | 86 m² | 0,14 % |
-| `AA_Glass` | `#0A0910` | 25 m² | 0,04 % |
+| Matériau | Couleur (charte) | Aire | Part | avant BRIEF-0090 |
+|---|---|---|---|---|
+| `AA_Greeble` | `#141419` | 38 841 m² | 64,33 % | = |
+| `AA_Hull` | `#24252B` anthracite | 15 106 m² | 25,02 % | = |
+| `AA_Panel` | `#452663` violet sombre | 4 545 m² | 7,53 % | = |
+| `AA_Trim` | `#DDDCD2` ivoire froid | 1 036 m² | **1,72 %** | 1 381 m² / 2,29 % |
+| `AA_Emissive_Engine` | `#D93D9C` magenta | 390 m² | **0,65 %** | = |
+| **`AA_Hull_Ambry`** | **`#EDEAE3` blanc cassé Vanguard** | **345 m²** | **0,57 %** | *(n'existait pas)* |
+| `AA_Marking_Red` | `#7C9E52` vert maladif | 86 m² | 0,14 % | = |
+| `AA_Glass` | `#0A0910` | 25 m² | 0,04 % | = |
 
 > `AA_Greeble` domine parce qu'il porte **toute la carène** — ventre, sous-chine, dessous des
 > modules — qui n'est jamais vue depuis la caméra du jeu. Sur les seules faces tournées vers le
@@ -399,7 +447,7 @@ assigné). Répartition **en aire**, relevée sur le `.glb` :
 ## 8. ⛔ Aucune texture (`ADR-0028`) — et ce que la géométrie donne au LOT C
 
 Le `.glb` ne porte **aucune image, aucune `baseColorTexture`, aucune `normalTexture`, aucune
-`occlusionTexture`, aucune `emissiveTexture`** : sept matériaux en couleur unie par facteurs. Le
+`occlusionTexture`, aucune `emissiveTexture`** : **huit** matériaux en couleur unie par facteurs. Le
 harnais échoue le build si l'un d'eux apparaît. Le damier de la planche de recette **n'existe que
 dans le rendu**.
 
@@ -413,7 +461,7 @@ qui donne l'échelle monde** :
 | panneaux d'usure / greffes | `AA_Panel` | **5,00 m/tuile** | 7,5 % de l'aire, en plaques |
 | émissif d'épine | `AA_Emissive_Engine` | bande de **0,28 m** de large sur 500 m | 1 tuile = 5 m de longueur |
 | émissif de baie | `AA_Emissive_Engine` | hexagone de **4,49 × 4,22 m** | 0,9 tuile ; une seule tuile suffit |
-| bordé d'Ambry | `AA_Trim` | **1,43 m/tuile** | ⚠️ voir §6 : slot partagé |
+| bordé d'Ambry | **`AA_Hull_Ambry`** | **1,43 m/tuile** | slot **propre** depuis BRIEF-0090 (§6 bis) — c'est `TEX-0014` |
 
 ## 9. Cadrage — une mesure que le brief demandait sans le savoir
 
@@ -452,11 +500,16 @@ de `build_moon_flyby.py` :
    face, sur trois familles (pont, fond, flancs), **avant** que le moindre module ne soit posé.
 3. **`cleanup()`**, pour la même raison : `_weld()` ne soude que les doubles.
 
-Le kit fournit tout le reste sans retouche : `set_faction()`, `material()`,
-`apply_material_slots()`, `mat_index()`, `box_project_uv()`, `srgb_hex_to_linear()`, `join_objects()`,
-`shade_smooth_by_angle()`, `ContractError`.
+4. **`mat_index()`**, depuis l'avenant BRIEF-0090 : il ne connaît que les sept slots du kit, et ce
+   décor en a huit (§6 bis). `_mat_index()` le remplace, en gardant **exactement** les index du kit
+   pour les sept premiers. `ak.apply_material_slots()`, lui, est bien appelé — le huitième slot est
+   simplement ajouté **après**, jamais à sa place.
 
-## 11. Les onze harnais bloquants
+Le kit fournit tout le reste sans retouche : `set_faction()`, `material()`,
+`apply_material_slots()`, `PALETTES`, `box_project_uv()`, `srgb_hex_to_linear()`, `join_objects()`,
+`shade_smooth_by_angle()`, `ContractError`. **Il n'est modifié en rien**, avenant compris.
+
+## 11. Les douze harnais bloquants
 
 Tous relisent le **`.glb` produit** (sauf 1, 2 et 11, qui portent sur la scène avant export) :
 
@@ -469,15 +522,29 @@ Tous relisent le **`.glb` produit** (sauf 1, 2 et 11, qui portent sur la scène 
 7. jonctions bout à bout **et** égalité des deux anneaux de peau ;
 8. `TEXCOORD_0` **et** `TANGENT` comptés sur **27/27** primitives ;
 9. densité de texels : plancher théorique de la projection en boîte, plafond à la cible, moyenne à ±14 % ;
-10. les 7 matériaux présents **et assignés**, aucune couleur de tir, aucune texture, aucune image ;
-11. budgets (18 000 par tronçon, 90 000 au total) et largeur hors-tout à 10⁻³ près.
+10. les **8** matériaux présents **et assignés**, aucune couleur de tir, aucune texture, aucune image ;
+11. budgets (18 000 par tronçon, 90 000 au total) et largeur hors-tout à 10⁻³ près ;
+12. **(BRIEF-0090)** `AA_Hull_Ambry` **ne sort pas de l'emprise d'Ambry** — triangle par triangle,
+    sur le binaire — **et il ne disparaît pas** (le build échoue aussi si plus aucune face ne le
+    porte, ce qui arriverait au premier remaniement d'Ambry fait sans y penser).
 
 ## 12. Limites connues
 
 - **La coque ne couvre que 67 % de la largeur du cadre** à la caméra actuelle (§9). Réglage
   concepteur, pas reforge.
-- **Ambry partage les matériaux du bordé** (§6) : une carte qui lui serait propre demande un slot
-  supplémentaire.
+- ~~Ambry partage les matériaux du bordé~~ — **levé par l'avenant BRIEF-0090** (§6 bis). Reste
+  une seule surface d'Ambry sur un slot du bordé, le pas d'appontage (9,00 m², 0,015 % du modèle),
+  et c'est délibéré.
+- ⚠️ **Ambry est maintenant aussi claire que le Specter-9, et c'est à surveiller en capture.**
+  Mesuré sur la nouvelle vignette : radeau 0,798 de luminance écran, coque du chasseur 0,703, bordé
+  anthracite 0,134. C'est le fond du sujet — Ambry est faite de la *même matière que le vaisseau du
+  joueur*, et c'est ce qui la dit « de chez nous » sans un logo ni un mot. Mais un tir cyan
+  `#3FD9E8` passant **au-dessus** d'un blanc à 0,80 y perd du contraste, alors qu'il en gagnait sur
+  l'anthracite à 0,134. Ambry n'est en vue qu'environ **11 s** sur les ~208 s du survol (27 m à
+  2,4 u/s), donc l'exposition est brève ; il reste que c'est exactement le genre de chose qu'une
+  capture tranche et qu'aucun harnais ne verra (`ADR-0006`). Deux leviers si besoin, sans reforge :
+  la carte `ambry_hull` de `TEX-0014` (une multiplication qui assombrit suffit) ou le
+  `albedo_color` posé par `CortegeSkin`.
 - **Les sections 2 à 5 ont exactement la même peau.** C'est un choix : moduler le profil ferait
   courir un risque de marche aux jonctions, et la variation vient des modules (nombre de nervures
   6/7/8/7/9, greffes plus grosses vers la poupe, densité de tourelles croissante). Vu de dessus,
@@ -487,6 +554,12 @@ Tous relisent le **`.glb` produit** (sauf 1, 2 et 11, qui portent sur la scène 
   différence ne se voit pas ; elle se verrait à la rasante, ce que la caméra ne fait jamais.
 - **Aucune tourelle, aucun pont, aucun nœud modélisé** : hors périmètre, uniquement leurs points
   d'attache — comme demandé.
+- ⚠️ **`BRIEF-0090` ne porte pas de section `## Texture`** (obligatoire depuis `ADR-0028`). Ce
+  n'est pas resté une devinette : ses « Contraintes reconduites » écrivent noir sur blanc
+  « ⛔ Aucune texture (`ADR-0028`) : géométrie, UV et slots seulement », et les cinq demandes
+  `TEX-0010` à `TEX-0014` existent déjà côté concepteur. La livraison porte donc ses UV et **aucune
+  image**, comme si la section disait « aucune demande nommée, et voici pourquoi ». Je le signale
+  quand même : l'information était complète, la **forme** ne l'était pas.
 - La planche de recette **ne simule pas** le post-process rétro ni le bloom du jeu
   (`glow_hdr_threshold = 1,6` alors que l'émissif est à 2,5) : les cœurs de tourelle et l'arête
   seront **plus larges** à l'écran qu'ici. C'est une raison de plus de vérifier la lisibilité des
