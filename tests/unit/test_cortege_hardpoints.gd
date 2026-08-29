@@ -451,3 +451,19 @@ func test_a_bay_shows_the_launch_before_the_hull_is_in_play() -> void:
 	var sequence := BayScript.REST_TIME + BayScript.IGNITION_TIME + BayScript.LAUNCH_TIME
 	assert_true(sequence < TUNING.bay_release_interval + BayScript.LAUNCH_TIME,
 		"la sequence (%.2f s) tient dans la cadence du pont, sinon les places s'epuisent" % sequence)
+
+## ⚠️ CE TEST GARDE UNE FORMULE QUI A ETE FAUSSE, ET QUI NE POUVAIT PAS ETRE PRISE EN DEFAUT.
+## L'orientation du rotateur valait `-angle + PI/2` : juste sur l'axe X, fausse de 180 deg vers
+## le haut de l'ecran. Elle n'a jamais rougi parce que la tete n'etait JAMAIS construite — un
+## mauvais type la faisait echouer a l'execution, et la tourelle tirait quand meme. Deux defauts
+## qui se cachaient l'un l'autre, et une porte de qualite verte par-dessus.
+func test_the_barrel_points_where_the_turret_aims() -> void:
+	# Le tube pointe vers son +z local ; une rotation de theta autour de Y l'emmene sur
+	# (sin theta, 0, cos theta). Le plan de jeu envoie (x, y) sur le monde (x, 0, -y).
+	for aim in [Vector2(1, 0), Vector2(0, 1), Vector2(-1, 0), Vector2(0, -1),
+			Vector2(0.6, 0.8), Vector2(-0.6, -0.8)]:
+		var yaw := TurretScript.barrel_yaw(aim)
+		var pointe := Vector3(sin(yaw), 0.0, cos(yaw))
+		var voulu := Vector3(aim.x, 0.0, -aim.y).normalized()
+		assert_true(pointe.distance_to(voulu) < 0.0001,
+			"vise %s -> le tube pointe %s, il devrait pointer %s" % [aim, pointe, voulu])

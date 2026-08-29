@@ -58,27 +58,45 @@ const SHOT := preload("res://resources/weapons/cortege_turret_shot.tres")
 ## pas par un clignotement.
 const SEEK_SPAN_FACTOR := 2.0
 
-## Le CANON. ⚠️ IL EXISTE PARCE QU'UNE TOURELLE DOIT SE VOIR AVANT DE TIRER. La coupole est
-## cuite dans le tronçon et ne bouge pas ; sans une pièce mobile, rien à l'écran ne dit où
-## regarde la tourelle — et un faisceau qui sort d'un décor immobile se lit comme un piège, pas
-## comme une machine. Le canon tourne, donc on lit son intention une seconde avant qu'elle ne
-## compte.
-const BARREL_LENGTH := 1.15
-const BARREL_WIDTH := 0.19
-const BARREL_GAP := 0.22
-const HEAD_LIFT := 0.34
-const HEAD_RADIUS := 0.58
-const HEAD_HEIGHT := 0.34
+# --- L'affût, assemblé depuis le kit de la forge -------------------------------
+#
+## ⚠️ HUIT PIÈCES, ET UN NŒUD INTERMÉDIAIRE QUI TOURNE. Le socle et l'appareillage sont FIXES,
+## posés sur le marqueur ; la couronne, le bloc et les deux tubes tournent EN BLOC autour de
+## l'axe du marqueur. C'est ce qui distingue la partie ancrée de la partie mobile — et donc ce
+## qui rend l'orientation lisible d'un coup d'œil, ce que la version précédente (une barre noire
+## et une boule rose) ne faisait pas.
+const KIT_PATH := "res://assets/imported/models/backgrounds/turret_kit.glb"
+
+## Positions d'assemblage, mesurées sur le binaire livré (BRIEF-0093) — pas recopiées d'un brief.
+const RING_LIFT := 0.02
+const BODY_LIFT := 0.37
+const BARREL_LIFT := 0.90
+## ⚠️ LA CULASSE EST AU FOND DU MASQUE, PAS SUR LA FACE AVANT. C'est la différence entre un tube
+## « logé » et un tube « collé devant » — 12 cm qui font toute la lecture du blindage.
+const BARREL_SEAT_Z := 0.60
+## Où l'appareillage se pose autour du socle.
+const SERVICE_RADIUS := 1.46
+const SERVICE_LIFT := 0.14
+
+## Les trois familles du kit, telles que la forge les a réglées. ⚠️ LA VARIÉTÉ EST UN LIVRABLE :
+## dix-sept tourelles identiques se liraient comme dix-sept fois la même. Aucune géométrie neuve
+## n'est nécessaire — jupe ou non, tube long ou court, écartement, angles de l'appareillage.
+const FAMILIES: Array = [
+	# jupe, tube,                  écartement, coffrets,        conduite
+	[false, "turret_barrel_short", 0.72, [128.0],          -1.0],
+	[true,  "turret_barrel",       0.86, [118.0, -118.0],  180.0],
+	[true,  "turret_barrel",       0.98, [96.0, -142.0],   205.0],
+]
 
 ## L'œil de la tourelle. ⚠️ IL EXISTE PARCE QUE LA GÉOMÉTRIE LIVRÉE EST CUITE DANS LE TRONÇON :
 ## les coupoles font partie du maillage de la section et partagent leurs matériaux avec elle. On
 ## ne peut donc PAS éteindre une tourelle en touchant à la coque — il faudrait éteindre les dix-
 ## sept. L'état de la pièce est porté par un volume à nous, ajouté au marqueur : il s'allume au
 ## télégraphe, il s'éteint à la mort. C'est la seule chose que le joueur ait à lire.
-const EYE_RADIUS := 0.24
-## D'où sort la balle : le bout des canons. ⚠️ Une balle née au centre de la coupole se verrait
-## sortir du décor, ce qui est exactement ce qu'on reproche à un tir qu'on ne comprend pas.
-const MUZZLE_REACH := 1.45
+## D'où sort la balle : le bout des tubes, mesuré — culasse à +0,60 plus 2,90 m de tube.
+## ⚠️ Une balle née au centre de la coupole se verrait sortir du décor, ce qui est exactement ce
+## qu'on reproche à un tir qu'on ne comprend pas.
+const MUZZLE_REACH := 3.50
 
 signal destroyed(turret: CortegeTurret)
 
@@ -90,8 +108,10 @@ var _bullet_manager: BulletManager
 var _player: PlayerFighterController
 var _vfx: VFXManager
 var _target: BulletTarget
-var _eye: MeshInstance3D
-var _eye_material: StandardMaterial3D
+## Les matériaux émissifs PROPRES à cette tourelle — l'œil, au fond du masque.
+var _glow: Array[StandardMaterial3D] = []
+## Son rang de montage, pour que la famille se tire de la position et non du hasard.
+var serial: int = 0
 
 var _pass: Pass = Pass.AHEAD
 ## ⚠️ `Node3D` ET NON `MeshInstance3D` : la tête est un ASSEMBLAGE — un dôme, deux canons, une
@@ -136,72 +156,76 @@ func setup(bullet_manager: BulletManager, player: PlayerFighterController,
 func _ready() -> void:
 	_build_head()
 
-## La tourelle : une TÊTE qui pivote, deux canons, et une bouche qui s'allume au tir.
+## Assemble l'affût. Le socle et l'appareillage restent sur le marqueur ; tout le reste va sous
+## un nœud qui tourne.
 ##
-## ⚠️ ELLE ÉTAIT « HIDEUSE », ET LE MOT EST DE L'OPÉRATEUR. La première version posait une barre
-## noire et une boule rose sur la coupole cuite dans la coque : deux primitives sans rapport,
-## qui ne se lisaient ni comme une machine ni comme une menace. Ce qui manquait n'est pas du
-## détail — à 23 px/m il n'en survivrait aucun — c'est une SILHOUETTE : un volume qui tourne,
-## des canons qu'on voit pointer, une bouche qui dit quand ça part.
-##
-## ⚠️ ET ELLE EST BÂTIE SUR LE SOCLE DE LA FORGE, PAS À CÔTÉ. La coupole est cuite dans le
-## tronçon et ne bouge pas ; la tête se pose dessus et tourne. C'est ce qui distingue la partie
-## fixe de la partie mobile, et donc ce qui rend l'orientation lisible.
+## ⚠️ LA FAMILLE SE TIRE DE LA POSITION, PAS DU HASARD. Un tirage aléatoire donnerait une
+## répartition différente à chaque lancement, donc une capture qu'on ne peut pas comparer à la
+## précédente — et l'équilibrage d'un survol se lit en comparant deux passages.
 func _build_head() -> void:
-	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color(0.13, 0.12, 0.16)
-	steel.metallic = 0.72
-	steel.roughness = 0.34
+	var packed: PackedScene = load(KIT_PATH) as PackedScene
+	if packed == null:
+		push_error("[Cortege] kit de tourelle introuvable : %s" % KIT_PATH)
+		return
+	var kit := packed.instantiate()
+	var family: Array = FAMILIES[(serial + section) % FAMILIES.size()]
+	_place(kit, "turret_pad", Vector3.ZERO, 0.0, self)
+	if bool(family[0]):
+		_place(kit, "turret_anchor_skirt", Vector3.ZERO, 0.0, self)
+	for angle in family[3]:
+		_place_around(kit, "turret_service_box", float(angle), self)
+	if float(family[4]) >= 0.0:
+		_place_around(kit, "turret_pipe", float(family[4]), self)
+	# ⚠️ LE ROTATEUR EST À L'ORIGINE DU MARQUEUR, SUR L'AXE. Si son origine s'en écartait d'un
+	# centimètre, la tourelle balaierait en décrivant un cercle au lieu de pivoter sur place —
+	# et ça ne se verrait qu'en jeu, en mouvement.
 	_barrel = Node3D.new()
-	_barrel.name = "Head"
-	_barrel.position.y = HEAD_LIFT
+	_barrel.name = "Rotator"
 	add_child(_barrel)
-	# La tête : un cylindre bas. Douze pans — on la voit toujours de dessus, et dix-sept
-	# tourelles à soixante-quatre pans coûteraient mille triangles pour un contour identique.
-	var dome := MeshInstance3D.new()
-	var dome_mesh := CylinderMesh.new()
-	dome_mesh.top_radius = HEAD_RADIUS * 0.82
-	dome_mesh.bottom_radius = HEAD_RADIUS
-	dome_mesh.height = HEAD_HEIGHT
-	dome_mesh.radial_segments = 12
-	dome_mesh.rings = 0
-	dome.mesh = dome_mesh
-	dome.material_override = steel
-	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_barrel.add_child(dome)
-	# Les deux canons, cote à cote. ⚠️ LEUR PIVOT EST À LA TÊTE, pas en leur milieu : une
-	# `BoxMesh` est centrée sur son origine, donc on les décale de la moitié de leur longueur.
-	# Sans ça ils tournent autour de leur centre et sortent par l'arrière à chaque quart de tour.
+	_place(kit, "turret_ring", Vector3(0.0, RING_LIFT, 0.0), 0.0, _barrel)
+	_place(kit, "turret_body", Vector3(0.0, BODY_LIFT, 0.0), 0.0, _barrel)
+	var gauge := float(family[2])
 	for side in [-1.0, 1.0]:
-		var tube := MeshInstance3D.new()
-		var bar := BoxMesh.new()
-		bar.size = Vector3(BARREL_WIDTH, BARREL_WIDTH, BARREL_LENGTH)
-		tube.mesh = bar
-		tube.position = Vector3(side * BARREL_GAP, 0.0, -BARREL_LENGTH * 0.5 - HEAD_RADIUS * 0.4)
-		tube.material_override = steel
-		tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_barrel.add_child(tube)
-	# La bouche : le seul volume émissif, et il porte TOUT l'état de la pièce — vivante, en
-	# train de tirer, éteinte, morte. Un joueur doit pouvoir compter les tourelles encore
-	# dangereuses d'un coup d'œil.
-	_eye_material = StandardMaterial3D.new()
-	_eye_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_eye_material.albedo_color = BEAM_EDGE
-	_eye_material.emission_enabled = true
-	_eye_material.emission = BEAM_EDGE
-	_eye_material.emission_energy_multiplier = 1.4
-	_eye = MeshInstance3D.new()
-	_eye.name = "Muzzle"
-	var glow := SphereMesh.new()
-	glow.radius = EYE_RADIUS
-	glow.height = EYE_RADIUS * 2.0
-	glow.radial_segments = 8
-	glow.rings = 4
-	_eye.mesh = glow
-	_eye.material_override = _eye_material
-	_eye.position.z = -MUZZLE_REACH
-	_eye.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_barrel.add_child(_eye)
+		_place(kit, String(family[1]),
+			Vector3(side * gauge * 0.5, BARREL_LIFT, BARREL_SEAT_Z), 0.0, _barrel)
+	kit.queue_free()
+
+func _place(kit: Node, part: String, offset: Vector3, yaw: float, parent: Node) -> void:
+	var source := kit.get_node_or_null(part) as MeshInstance3D
+	if source == null:
+		push_error("[Cortege] pièce de kit manquante : %s" % part)
+		return
+	var piece := MeshInstance3D.new()
+	piece.name = part
+	piece.mesh = source.mesh
+	piece.position = offset
+	piece.rotation.y = yaw
+	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_claim_glow(piece, source)
+	parent.add_child(piece)
+
+## Pose une pièce d'appareillage autour du socle, à l'angle voulu.
+func _place_around(kit: Node, part: String, degrees: float, parent: Node) -> void:
+	var a := deg_to_rad(degrees)
+	_place(kit, part, Vector3(cos(a) * SERVICE_RADIUS, SERVICE_LIFT, sin(a) * SERVICE_RADIUS),
+		-a, parent)
+
+## Donne à CETTE tourelle sa propre copie du matériau émissif — l'œil.
+##
+## ⚠️ SANS CETTE COPIE, ÉTEINDRE UNE TOURELLE ABATTUE LES ÉTEINDRAIT TOUTES LES DIX-SEPT. Même
+## piège que sur les puits, et il a déjà été payé deux fois : un état par pièce demande un
+## matériau par pièce.
+func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
+	for i in source.mesh.get_surface_count():
+		var base := source.mesh.surface_get_material(i) as StandardMaterial3D
+		if base == null:
+			continue
+		if not base.emission_enabled:
+			piece.set_surface_override_material(i, base)
+			continue
+		var mine: StandardMaterial3D = base.duplicate()
+		piece.set_surface_override_material(i, mine)
+		_glow.append(mine)
 
 
 func is_alive() -> bool:
@@ -322,7 +346,7 @@ func _turn_toward(delta: float, here: Vector2) -> void:
 ## signe et le quart de tour.
 func _aim_barrel() -> void:
 	if _barrel != null:
-		_barrel.rotation.y = -_aim.angle() + PI * 0.5
+		_barrel.rotation.y = barrel_yaw(_aim)
 
 ## Dans sa fenêtre de TIR — plus étroite que sa fenêtre de recherche.
 func _in_window(here: Vector2) -> bool:
@@ -336,8 +360,8 @@ func _direction_to_player(here: Vector2) -> Vector2:
 	return offset.normalized() if offset.length_squared() > 0.0001 else Vector2.DOWN
 
 func _set_eye(energy: float) -> void:
-	if _eye_material != null:
-		_eye_material.emission_energy_multiplier = energy
+	for material in _glow:
+		material.emission_energy_multiplier = energy
 
 func _take_damage(damage: float) -> void:
 	if not _alive:
@@ -347,8 +371,6 @@ func _take_damage(damage: float) -> void:
 		return
 	_alive = false
 	_set_eye(0.0)
-	if _eye_material != null:
-		_eye_material.albedo_color = Color(0.06, 0.05, 0.07)
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM)
 	_retire()
@@ -371,6 +393,20 @@ func _retire() -> void:
 ## demanderait un vrai `PlayerFighterController` ; ici il n'y a que trois nombres.
 static func turn_step(current: float, wanted: float, rate_deg: float, delta: float) -> float:
 	return rotate_toward(current, wanted, deg_to_rad(rate_deg) * delta)
+
+## L'angle du rotateur pour viser cette direction du plan de jeu.
+##
+## ⚠️ ELLE A ÉTÉ FAUSSE, ET JE NE POUVAIS PAS LE VOIR. La formule était `-angle + π/2`, juste sur
+## l'axe X et fausse partout ailleurs — de 180° vers le haut de l'écran. Elle n'a jamais été
+## prise en défaut parce que la tête n'était **jamais construite** : un mauvais type l'avait fait
+## échouer à l'exécution, et la tourelle tirait quand même. Deux défauts qui se cachaient l'un
+## l'autre.
+##
+## Le calcul, posé : le tube pointe vers son `+z` local ; une rotation de θ autour de Y l'emmène
+## sur `(sin θ, 0, cos θ)`. Le plan de jeu envoie `(x, y)` sur le monde `(x, 0, −y)`. Donc
+## `sin θ = aim.x` et `cos θ = −aim.y`, soit `θ = atan2(aim.x, −aim.y)`.
+static func barrel_yaw(aim: Vector2) -> float:
+	return atan2(aim.x, -aim.y)
 
 ## La tourelle est-elle dans sa fenêtre de tir, à cette position du plan ? ⚠️ STATIQUE ET PURE :
 ## c'est ce qui permet de tester la fenêtre sans monter le niveau, et donc de la tester du tout.

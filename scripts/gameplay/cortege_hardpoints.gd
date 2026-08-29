@@ -76,6 +76,7 @@ func build(sections: Array[Node3D], p_tuning: CortegeTuning, bullet_manager: Bul
 func _add_turret(marker: Node3D, section: int, bullet_manager: BulletManager,
 		player: PlayerFighterController, vfx: VFXManager) -> void:
 	var turret := CortegeTurret.make(tuning, section)
+	turret.serial = _turrets.size()
 	turret.name = "Turret"
 	turret.setup(bullet_manager, player, vfx)
 	turret.destroyed.connect(_on_turret_destroyed)

@@ -86,7 +86,7 @@ Le budget est donc alle a QUATRE choses, et a rien d'autre :
     des angles d'appareillage libres.
 
 Rien n'a ete depense en rivets, en vis, en grilles ni en petits reliefs. Les
-revolutions sont a 20 segments (socle, couronne) et 16 (tubes) : a 23 px/m le
+revolutions sont a 24 segments (socle, couronne) et 16 (tubes) : a 23 px/m le
 contour est identique a 64.
 
 
@@ -150,14 +150,14 @@ PAD_RIM_H = 0.18
 PAD_SHELF_Y = 0.14
 PAD_SHELF_R0 = 1.24
 #: Profondeur ENTERREE du socle. ⚠️ Elle n'est pas decorative. Le pourtour du
-#: socle accuse jusqu'a 0,658 m de denivele (mesure sur les 17 emplacements,
+#: socle accuse jusqu'a 0,683 m de denivele (mesure sur les 17 emplacements,
 #: table au compte-rendu) : sans jupe, le socle ne poserait que d'un cote,
 #: exactement comme le coaming du hangar avant BRIEF-0091.
 PAD_BURIED = 0.85
 #: La cuvette ou la couronne s'enfonce. Son fond, et son rayon interieur.
 PAD_WELL_Y = 0.02
 PAD_WELL_R = 1.16
-PAD_SEG = 20
+PAD_SEG = 24
 
 #: Jupe d'ancrage SUPPLEMENTAIRE — la premiere des trois familles de variete.
 #: Le moteur la pose ou non ; sans elle le socle est identique.
@@ -169,27 +169,42 @@ SKIRT_BURIED = 0.80
 RING_D = 2.25
 RING_R = RING_D * 0.5
 RING_H = 0.35
-RING_SEG = 20
+RING_SEG = 24
 #: Elle se pose au fond de la cuvette : elle emerge donc de 0,19 m seulement
 #: au-dessus du bourrelet. C'est ça, « enfoncee dans le socle ».
 RING_BASE = PAD_WELL_Y
 RING_TOP = RING_BASE + RING_H
 
 #: Le bloc canon blinde — RECTANGULAIRE TRAPU, surtout pas une sphere.
-BODY_HX = 0.81
-BODY_Z0, BODY_Z1 = -0.94, 0.72
+#: ⚠️ 1,92 m DE LARGE POUR 1,52 m DE LONG, ET C'EST LA LARGEUR QUI EST CALCULEE,
+#: pas choisie : le masque doit LOGER les deux tubes, manchons de recul compris,
+#: a l'ecartement maximal que la variete autorise. Le manchon fait 0,44 m de
+#: diametre, l'entraxe maximal 1,00 m ; il faut donc 1,44 m de face avant PLATE,
+#: donc 1,48 m de facette entre les deux chanfreins, donc 1,92 m hors tout. Un
+#: bloc plus etroit rendrait « des canons colles devant une boite » — le defaut
+#: exact que le brief demande de corriger.
+BODY_HX = 0.96
+BODY_Z0, BODY_Z1 = -0.80, 0.72
 BODY_H = 1.01
 BODY_CHAMFER = 0.22
 BODY_BASE = RING_TOP
 BODY_TOP = BODY_BASE + BODY_H
+#: Demi-largeur de la FACETTE AVANT PLATE : c'est l'ouverture du masque.
+MANTLET_HX = BODY_HX - BODY_CHAMFER
 #: Le viseur : la seule chose qui monte plus haut que le bloc, et elle est
 #: etroite. Elle porte la cote de hauteur totale du brief.
 SIGHT_H = 0.32
 #: Hauteur totale de la tourelle au-dessus de l'assise. Brief : 1,70 m.
 TURRET_H = BODY_TOP + SIGHT_H
 
-#: Le masque : les canons sont LOGES dedans, pas colles devant.
+#: Le masque : les canons sont LOGES dedans, pas colles devant. Toute la facette
+#: avant du bloc est en retrait de 12 cm — pas une plaque posee, un CREUX, qui
+#: porte une ombre sur toute sa largeur. Une ombre survit au downscale, un rivet
+#: non.
 MANTLET_DEPTH = 0.12
+#: Draft du creux : le fond est legerement plus petit que la bouche. Une paroi
+#: verticale rend une valeur unique ; une paroi en depouille en rend deux.
+MANTLET_DRAFT = 0.03
 
 #: LES CANONS SONT EXAGERES, ET C'EST DELIBERE. Un tube physiquement juste mais
 #: fin disparait apres le post-traitement : a 23 px/m, 12 cm font trois pixels.
@@ -197,31 +212,37 @@ MANTLET_DEPTH = 0.12
 BARREL_LEN = 2.90
 BARREL_SHORT_LEN = 2.20
 BARREL_R = 0.17
+#: Rayon du manchon de recul, a la culasse. C'est LUI qui dimensionne le masque.
+BARREL_SLEEVE = BARREL_R * 1.30
 BARREL_SEG = 16
-#: Hauteur de l'axe des tubes, a mi-bloc.
-BARREL_Y = 0.86
+#: Hauteur de l'axe des tubes. A mi-bloc (0,53 sur 1,01 en repere bloc), et assez
+#: haut pour que le manchon passe AU-DESSUS des coffrets quand la tourelle pivote.
+BARREL_Y = 0.90
+#: Z de la CULASSE : au fond du masque, pas sur la face avant. C'est la
+#: difference entre « loge dans un masque » et « colle devant une boite ».
+BARREL_Z = BODY_Z1 - MANTLET_DEPTH
 #: Entraxe des deux tubes. 0,43 + 0,17 = 0,60 de demi-largeur -> 1,20 m hors
 #: tout, la cote du brief. Le moteur peut l'ecarter (variete) sans sortir du
-#: bloc : la borne est verifiee au harnais.
+#: masque : la borne est verifiee au harnais.
 BARREL_GAUGE = 0.86
-BARREL_GAUGE_MAX = 1.06
+BARREL_GAUGE_MAX = 0.98
 
 #: L'appareillage.
-BOX_W, BOX_D, BOX_H = 0.78, 0.44, 0.50
+BOX_W, BOX_D, BOX_H = 0.78, 0.44, 0.42
 PIPE_R = 0.07
 PIPE_LEN = 1.05
 #: Rayon ou l'appareillage se pose sur le plateau du socle.
 FITTING_R = 1.46
 
-#: L'œil energetique. Brief : <= 25 pct de la tourelle — regle DURE.
-EYE_R = 0.20
-EYE_SINK = 0.06
+#: L'œil energetique. Brief : <= 25 pct de la tourelle — regle DURE. Il est au
+#: FOND du masque, entre les deux tubes : il ne peut pas baver sur la silhouette.
+EYE_R = 0.18
+EYE_RISE = 0.06
 
 #: Emprise hors-tout de l'installation posee sur la peau, jupe comprise. ⚠️ Elle
-#: doit tenir dans la reservation par troncon `cortege.PAD_RADIUS`, dont le garde
-#: mutuel de BRIEF-0092 se sert pour arbitrer les proximites tourelle/pont. Le
-#: kit RETRECIT l'emprise (2,08 contre 2,30 au minimum reserve) : aucune
-#: proximite arbitree la-bas ne peut donc empirer ici. Verifie au harnais.
+#: doit valoir `cortege.TURRET_FOOTPRINT_R` AU CENTIMETRE : c'est avec ce rayon
+#: que la coque echantillonne sa peau pour calculer l'assise du marqueur. Deux
+#: valeurs qui derivent, c'est un socle qui flotte d'un cote. Verifie au harnais.
 FOOTPRINT_R = SKIRT_R
 
 #: Meme densite que le borde : voir l'en-tete (deux echelles sur un meme slot).
@@ -261,8 +282,8 @@ ASSEMBLY_OFFSET: dict[str, tuple[float, float, float]] = {
     "turret_anchor_skirt": (0.0, 0.0, 0.0),
     "turret_ring": (0.0, RING_BASE, 0.0),
     "turret_body": (0.0, BODY_BASE, 0.0),
-    "turret_barrel": (-BARREL_GAUGE * 0.5, BARREL_Y, BODY_Z1),
-    "turret_barrel_short": (BARREL_GAUGE * 0.5, BARREL_Y, BODY_Z1),
+    "turret_barrel": (-BARREL_GAUGE * 0.5, BARREL_Y, BARREL_Z),
+    "turret_barrel_short": (BARREL_GAUGE * 0.5, BARREL_Y, BARREL_Z),
     "turret_service_box": (0.0, PAD_SHELF_Y, FITTING_R),
     "turret_pipe": (0.0, PAD_SHELF_Y, -FITTING_R),
 }
@@ -283,7 +304,7 @@ ASSEMBLY_COPIES.update({"turret_barrel": 2, "turret_barrel_short": 0,
 FAMILIES: tuple[tuple, ...] = (
     ("A - avancee", False, "turret_barrel_short", 0.72, 1, (128.0,), False, 0.0),
     ("B - de borde", True, "turret_barrel", 0.86, 2, (118.0, -118.0), True, 180.0),
-    ("C - lourde", True, "turret_barrel", 1.02, 2, (96.0, -142.0), True, 205.0),
+    ("C - lourde", True, "turret_barrel", 0.98, 2, (96.0, -142.0), True, 205.0),
 )
 
 
@@ -373,39 +394,79 @@ def _octagon(hx: float, hz: float, chamfer: float) -> list[tuple[float, float]]:
 
 def _loft_y(bm: bmesh.types.BMesh,
             rings: list[tuple[list[tuple[float, float]], float]],
-            materials: list[str], outward: bool = True) -> list[list]:
+            materials: list[str],
+            skip: set[tuple[int, int]] | None = None) -> list[list]:
     """Relie des anneaux fermes empiles en Y. Rend les sommets, anneau par anneau.
 
-    `rings` : (points (x, z), y), du bas vers le haut. `materials` : un par bande.
-    Le sens des faces est CALCULE a partir du rayon local : ecrit a la main, il
-    serait faux des qu'un anneau passe de l'autre cote de l'axe.
+    `rings` : (points (x, z), y), du bas vers le haut, PUIS vers l'interieur si le
+    profil rentre (une cuvette, une gorge). `materials` : un par bande.
+    `skip` : les (bande, segment) a ne pas emettre — c'est ainsi qu'on PERCE une
+    facette pour y creuser un masque, sans jamais supprimer une face apres coup.
+
+    ⚠️ LE SENS DES FACES EST CALCULE PAR PRODUIT VECTORIEL, ET LA REGLE A CHANGE
+    LE 2026-08-29. Elle etait « la normale part du cote oppose a l'axe ». C'est
+    FAUX partout ou le profil rentre, et c'est mesure, pas suppose : le socle
+    sortait avec 41 faces retournees — tout son plateau, toute la paroi de sa
+    cuvette et son fond — parce qu'une surface qui regarde vers le haut ou vers
+    l'interieur d'un creux ne regarde pas « loin de l'axe ». Elles auraient
+    disparu en jeu par culling arriere, sans une ligne au journal, et le harnais
+    d'alors les declarait bonnes.
+
+    La regle juste ne parle pas de l'axe du tout : les anneaux etant ordonnes dans
+    le sens trigonometrique, la normale sortante d'un quad vaut
+
+        (montee du profil)  x  (sens de parcours de l'anneau)
+
+    Elle rend le bon cote pour une paroi verticale, pour un plafond, pour un fond
+    de cuvette et pour une gorge, sans qu'on ait a le declarer nulle part.
     """
     verts = [[bm.verts.new(Vector((x, y, z))) for x, z in points]
              for points, y in rings]
+    blocked = skip or set()
     for k in range(len(rings) - 1):
         low, high = verts[k], verts[k + 1]
         count = len(low)
         for i in range(count):
+            if (k, i) in blocked:
+                continue
             j = (i + 1) % count
-            mid = (low[i].co + low[j].co + high[i].co + high[j].co) * 0.25
-            radial = Vector((mid.x, 0.0, mid.z))
-            if radial.length > 1e-6:
-                radial.normalize()
-            want = radial if outward else -radial
+            climb = (high[i].co + high[j].co - low[i].co - low[j].co) * 0.5
+            along = low[j].co - low[i].co
+            want = climb.cross(along)
+            if want.length < 1e-9:
+                want = (high[j].co - high[i].co).cross(climb)
             _quad_facing(bm, low[i], low[j], high[j], high[i], materials[k], want)
     return verts
 
 
-def _cap(bm: bmesh.types.BMesh, ring: list, material: str, want: Vector) -> None:
-    """Ferme un anneau par une face unique orientee du cote `want`."""
-    _face_facing(bm, list(ring), material, want)
+def _cap_low(bm: bmesh.types.BMesh, ring: list, material: str) -> None:
+    """Ferme le PREMIER anneau d'un empilement en Y : la face regarde vers -Y."""
+    _face_facing(bm, list(ring), material, Vector((0.0, -1.0, 0.0)))
+
+
+def _cap_high(bm: bmesh.types.BMesh, ring: list, material: str) -> None:
+    """Ferme le DERNIER anneau d'un empilement en Y : la face regarde vers +Y.
+
+    ⚠️ ET C'EST LA QU'ON S'ETAIT TROMPE. Le socle et la jupe fermaient leur
+    dernier anneau vers le BAS — le fond de la cuvette regardait le sol. Deux
+    faces, invisibles a toute mesure de bbox, de triangles ou d'UV, et le fond de
+    la cuvette disparaissait en jeu. Les deux fonctions existent donc separement
+    plutot qu'un `want` passe a l'appel : un sens qu'on ECRIT a chaque appel est
+    un sens qu'on finit par ecrire a l'envers. `_assert_solid()` le reverifie.
+    """
+    _face_facing(bm, list(ring), material, Vector((0.0, 1.0, 0.0)))
 
 
 def _loft_z(bm: bmesh.types.BMesh, stops: list[tuple[float, float]],
-            segments: int, materials: list[str]) -> list[list]:
-    """Un tube : anneaux circulaires empiles le long de +Z, normales SORTANTES.
+            segments: int, materials: list[str],
+            cx: float = 0.0, cy: float = 0.0) -> list[list]:
+    """Un tube : anneaux circulaires empiles le long de +Z. Normales calculees.
 
     `stops` : (z, rayon) de la culasse vers la bouche. Un materiau par bande.
+    Meme regle que `_loft_y` — (montee) x (parcours) — et pour la meme raison :
+    la bouche du canon est CREUSEE, donc son cone regarde vers l'axe. La regle
+    radiale d'avant refusait ces 16 faces-la, qui etaient justes, et acceptait les
+    41 du socle, qui ne l'etaient pas.
     """
     verts = []
     for z, radius in stops:
@@ -413,43 +474,64 @@ def _loft_z(bm: bmesh.types.BMesh, stops: list[tuple[float, float]],
         for k in range(segments):
             a = 2.0 * math.pi * k / segments
             ring.append(bm.verts.new(
-                Vector((radius * math.cos(a), radius * math.sin(a), z))))
+                Vector((cx + radius * math.cos(a), cy + radius * math.sin(a), z))))
         verts.append(ring)
     for k in range(len(stops) - 1):
         low, high = verts[k], verts[k + 1]
         for i in range(segments):
             j = (i + 1) % segments
-            mid = (low[i].co + low[j].co + high[i].co + high[j].co) * 0.25
-            want = Vector((mid.x, mid.y, 0.0))
-            if want.length < 1e-6:
-                want = Vector((1.0, 0.0, 0.0))
+            climb = (high[i].co + high[j].co - low[i].co - low[j].co) * 0.5
+            along = low[j].co - low[i].co
+            # ⚠️ `along x climb` et non l'inverse : les anneaux de `_loft_z`
+            # tournent dans l'autre sens que ceux de `_loft_y` (l'angle y decrit
+            # (x, y), ici (x, z)). Verifie sur un temoin au demarrage.
+            want = along.cross(climb)
+            if want.length < 1e-9:
+                want = Vector((0.0, 0.0, 1.0))
             _quad_facing(bm, low[i], low[j], high[j], high[i], materials[k], want)
     return verts
+
+
+def _cap_z(bm: bmesh.types.BMesh, ring: list, material: str,
+           entering: bool) -> None:
+    """Ferme un anneau de `_loft_z` : -Z a l'entree du profil, +Z a sa sortie."""
+    _face_facing(bm, list(ring), material,
+                 Vector((0.0, 0.0, -1.0 if entering else 1.0)))
 
 
 def _chamfered_block(bm: bmesh.types.BMesh, hx: float, hz: float,
                      y0: float, y1: float, chamfer: float, inset: float,
                      side_material: str, top_material: str,
-                     bottom: bool = True) -> list[list]:
-    """Un pave dont les DOUZE grandes aretes sont coupees.
+                     cx: float = 0.0, cz: float = 0.0,
+                     skip: set[tuple[int, int]] | None = None) -> list[list]:
+    """Un pave dont les DOUZE grandes aretes sont coupees. Coque FERMEE.
 
     Quatre aretes verticales par l'octogone, quatre en haut et quatre en bas par
     un anneau en retrait de `inset`. C'est le seul detail que ce kit s'autorise a
     repeter : il coute 16 triangles par arete et il rend de la lumiere a toutes
     les resolutions, ce qu'aucun rivet ne fait.
+
+    ⚠️ Le fond est TOUJOURS ferme, meme enterre dans une autre piece. Un pave
+    ouvert par-dessous n'est pas un solide : sa normale de bord ne se verifie pas,
+    et le harnais de coque ne peut plus prouver que rien n'est retourne. Deux
+    triangles invisibles sont moins chers qu'un controle qu'on ne peut plus faire.
     """
     lip = min(inset, (y1 - y0) * 0.35)
-    rings = [
-        (_octagon(hx - inset, hz - inset, max(chamfer - inset, 0.04)), y0),
-        (_octagon(hx, hz, chamfer), y0 + lip),
-        (_octagon(hx, hz, chamfer), y1 - lip),
-        (_octagon(hx - inset, hz - inset, max(chamfer - inset, 0.04)), y1),
-    ]
-    verts = _loft_y(bm, rings, [side_material] * 3, outward=True)
-    _cap(bm, verts[-1], top_material, Vector((0.0, 1.0, 0.0)))
-    if bottom:
-        _cap(bm, verts[0], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
+    profile = [_shift_xz(_octagon(hx - inset, hz - inset,
+                                  max(chamfer - inset, 0.04)), cx, cz),
+               _shift_xz(_octagon(hx, hz, chamfer), cx, cz)]
+    rings = [(profile[0], y0), (profile[1], y0 + lip),
+             (profile[1], y1 - lip), (profile[0], y1)]
+    verts = _loft_y(bm, rings, [side_material] * 3, skip=skip)
+    _cap_high(bm, verts[-1], top_material)
+    _cap_low(bm, verts[0], "AA_Greeble")
     return verts
+
+
+def _shift_xz(points: list[tuple[float, float]], dx: float,
+              dz: float) -> list[tuple[float, float]]:
+    """Decale un profil (x, z)."""
+    return [(x + dx, z + dz) for x, z in points]
 
 
 # ==========================================================================
@@ -462,7 +544,7 @@ def build_pad() -> bpy.types.Object:
 
     Sept anneaux, six bandes, et chacune fait un travail :
 
-        -0,85 -> -0,10   la JUPE ENTERREE, en depouille. Elle absorbe les 0,658 m
+        -0,85 -> -0,10   la JUPE ENTERREE, en depouille. Elle absorbe les 0,683 m
                          de denivele mesures sur le pourtour des dix-sept
                          emplacements : sans elle le socle poserait d'un cote et
                          flotterait de l'autre, exactement comme le coaming du
@@ -472,8 +554,8 @@ def build_pad() -> bpy.types.Object:
         +0,04 -> +0,18   le BOURRELET. 18 cm : au-dessus du seuil de 9 cm sous
                          lequel le downscale efface tout relief.
         +0,18 -> +0,14   le PLATEAU, ou se posent coffrets et conduites.
-        plateau -> cuvette  la marche interieure, en creux.
-        cuvette          le fond ou la couronne s'ENFONCE de 16 cm.
+        +0,14 -> +0,18   la levre de cuvette, en relief.
+        +0,18 -> +0,02   la paroi de la CUVETTE, ou la couronne s'enfonce.
 
     ⛔ AUCUN EMISSIF ICI. Le socle de BRIEF-0089 avait un cœur magenta plein — un
     « jeton lumineux », precisement ce que ce brief remplace. La lumiere de la
@@ -494,15 +576,13 @@ def build_pad() -> bpy.types.Object:
                     ["AA_Greeble",   # jupe enterree
                      "AA_Hull",      # chanfrein d'assise
                      "AA_Hull",      # bourrelet
-                     "AA_Hull",      # descente vers le plateau
-                     "AA_Trim",      # la marche interieure : le seul liseré clair
-                     "AA_Greeble"],  # paroi de la cuvette
-                    outward=True)
-    # ⚠️ La bande "plateau -> marche interieure" regarde vers l'INTERIEUR : elle
-    # remonte du plateau (r 1,24) vers le rebord de cuvette (r 1,22). `_loft_y`
-    # calcule le sens par le rayon, elle sort donc naturellement du bon cote.
-    _cap(bm, verts[-1], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
-    _cap(bm, verts[0], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
+                     "AA_Hull",      # plateau
+                     "AA_Trim",      # levre de cuvette : le seul liseré clair
+                     "AA_Greeble"])  # paroi de la cuvette
+    # ⚠️ Le dernier anneau est le FOND DE LA CUVETTE, et il regarde le CIEL.
+    # Il regardait le sol jusqu'au 2026-08-29 — voir `_cap_high()`.
+    _cap_high(bm, verts[-1], "AA_Greeble")
+    _cap_low(bm, verts[0], "AA_Greeble")
     return _new_object("turret_pad", bm)
 
 
@@ -515,24 +595,43 @@ def build_anchor_skirt() -> bpy.types.Object:
     reservait deja (« de plus en plus massives vers la poupe »), sans qu'aucune
     geometrie nouvelle ne soit necessaire.
 
-    ⚠️ Son rayon hors-tout, 2,08 m, est l'EMPRISE MAXIMALE du kit. Il tient dans
-    la plus petite reservation de la coque (2,30 m au troncon 1) : le garde mutuel
-    tourelle/pont de BRIEF-0092 arbitrait donc sur une emprise PLUS GRANDE que
-    celle qui est reellement posee, et aucune de ses proximites ne peut empirer.
+    ⚠️ Son rayon hors-tout, 2,08 m, EST l'emprise du kit — la meme valeur que
+    `cortege.TURRET_FOOTPRINT_R`, avec laquelle la coque echantillonne sa peau
+    pour poser l'assise du marqueur. Le harnais refuse qu'elles divergent.
     """
     bm = bmesh.new()
+    # ⚠️ UN ANNEAU FERME, PAS UN DISQUE. La jupe se refermait par un couvercle
+    # plein de 1,66 m de rayon, tout entier sous le socle : 8,66 m2 de surface
+    # que rien ne peut voir, comptes comme visibles dans la repartition par
+    # materiau. Le profil revient donc sur lui-meme — il n'y a plus de couvercle,
+    # plus de fond, et la piece reste une coque fermee (`_assert_solid()`).
+    outer_low = _circle(SKIRT_R - 0.22, PAD_SEG)
     rings = [
-        (_circle(SKIRT_R - 0.22, PAD_SEG), -SKIRT_BURIED),
+        (outer_low, -SKIRT_BURIED),
         (_circle(SKIRT_R, PAD_SEG), -0.16),
         (_circle(SKIRT_R, PAD_SEG), -0.04),
         (_circle(SKIRT_R - 0.16, PAD_SEG), SKIRT_TOP),
-        (_circle(PAD_R - 0.04, PAD_SEG), SKIRT_TOP),
+        (_circle(PAD_R - 0.06, PAD_SEG), SKIRT_TOP),   # sous la levre du socle
+        (_circle(PAD_R - 0.12, PAD_SEG), -0.12),       # paroi interieure
+        (_circle(PAD_R - 0.12, PAD_SEG), -SKIRT_BURIED + 0.06),
+        (outer_low, -SKIRT_BURIED),                    # le profil se referme
     ]
-    verts = _loft_y(bm, rings,
-                    ["AA_Greeble", "AA_Hull", "AA_Hull", "AA_Hull"],
-                    outward=True)
-    _cap(bm, verts[-1], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
-    _cap(bm, verts[0], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
+    # ⚠️ LA COURONNE VISIBLE EST EN `AA_Hull`, PAS EN `AA_Trim`, ET C'EST UNE
+    # CORRECTION DE RENDU, PAS UN GOUT. L'ivoire froid de l'Unisson (#DDDCD2) sur
+    # un anneau de 2,9 m2 qui fait le TOUR de la piece, c'est la faute que
+    # BRIEF-0089 a chiffree : un materiau clair pose sur une arete CONTINUE
+    # occupe plus de pixels qu'une piece entiere. Regarde sur la planche, l'effet
+    # etait un halo blanc autour de chaque tourelle, qui volait le contraste aux
+    # projectiles. L'ivoire reste sur ce qui est PETIT et POSE : coffrets,
+    # conduites, radiateur, levre de cuvette.
+    _loft_y(bm, rings,
+            ["AA_Greeble",   # depouille exterieure, enterree
+             "AA_Hull",      # chanfrein d'assise
+             "AA_Hull",      # bandeau
+             "AA_Hull",      # la couronne visible autour du socle
+             "AA_Greeble",   # paroi interieure, sous le socle
+             "AA_Greeble",
+             "AA_Greeble"])  # fond annulaire
     return _new_object("turret_anchor_skirt", bm)
 
 
@@ -551,7 +650,7 @@ def build_ring() -> bpy.types.Object:
     EN MOUVEMENT, donc jamais sur une planche. `_assert_on_axis()` le relit sur le
     binaire produit.
 
-    Six anneaux : une portee basse en retrait (l'ombre qui dit « enfonce »), le
+    Sept anneaux : une portee basse en retrait (l'ombre qui dit « enfonce »), le
     fut chanfreine en haut et en bas, une gorge en violet sombre a mi-hauteur —
     elle casse le cylindre en deux et donne un pas de rotation lisible quand la
     piece tourne — puis la portee superieure ou s'assied le bloc.
@@ -572,16 +671,21 @@ def build_ring() -> bpy.types.Object:
                      "AA_Panel",     # la gorge : violet sombre, un seul tour
                      "AA_Panel",
                      "AA_Hull",      # fut haut
-                     "AA_Hull"],     # chanfrein de couronnement
-                    outward=True)
-    _cap(bm, verts[-1], "AA_Hull", Vector((0.0, 1.0, 0.0)))
-    _cap(bm, verts[0], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
+                     "AA_Hull"])     # chanfrein de couronnement
+    _cap_high(bm, verts[-1], "AA_Hull")
+    _cap_low(bm, verts[0], "AA_Greeble")
     return _new_object("turret_ring", bm)
 
 
 # ==========================================================================
-# LE BLOC BLINDE — rectangulaire trapu, et son masque creuse
+# LE BLOC BLINDE — rectangulaire trapu, et son masque REELLEMENT creuse
 # ==========================================================================
+
+#: Le masque occupe TOUTE la facette avant plate de la bande mediane du bloc.
+#: L'index 1 est le segment (sommet 1 -> sommet 2) de l'octogone, c'est-a-dire sa
+#: face +Z ; la bande 1 est celle qui va de `lip` a `BODY_H - 0,16`.
+_MANTLET_BAND = 1
+_MANTLET_FACET = 1
 
 
 def build_body() -> bpy.types.Object:
@@ -592,86 +696,92 @@ def build_body() -> bpy.types.Object:
     de l'operateur. Un pave chanfreine, lui, montre trois faces de valeurs
     differentes des qu'une lumiere cle l'eclaire : il a un AVANT.
 
-    Trois volumes, et pas un de plus :
+    Quatre volumes, et pas un de plus :
 
-        1. le pave principal, 1,62 x 1,66 x 1,01, chanfreine sur ses douze aretes ;
-        2. le MASQUE, creuse de 12 cm dans la face avant — les canons y sont
-           LOGES, ils ne sont pas colles devant. Le creux porte une ombre, qui
-           survit au downscale ; un rivet non ;
-        3. le viseur, etroit, qui porte la cote de hauteur totale (1,70 m).
+        1. le pave principal, 1,92 x 1,52 x 1,01, chanfreine sur ses douze aretes,
+           et dont la FACETTE AVANT EST PERCEE ;
+        2. le MASQUE : la facette percee est refermee 12 cm plus loin, en
+           depouille. Les canons y sont LOGES — leur culasse est au fond du creux,
+           pas sur la face avant. C'est la seule difference entre « un affut » et
+           « deux tubes colles devant une boite », et elle se lit a l'ombre que le
+           creux porte sur toute la largeur du bloc ;
+        3. le viseur, etroit, qui porte la cote de hauteur totale (1,70 m) ;
+        4. le bloc de recul arriere, en surplomb : il donne une POUPE au bloc, ce
+           qui fait qu'on lit d'un coup d'œil ou la tourelle regarde, meme
+           immobile et meme en noir et blanc.
 
-    Plus l'ŒIL : un seul emissif dans tout le kit, 0,40 m de large pour une
-    tourelle de 1,70 m — 23,5 pct, sous la regle dure des 25 pct du brief.
+    Plus l'ŒIL : un seul emissif dans tout le kit, 0,36 m de large pour une
+    tourelle de 1,70 m — 21,2 pct, sous la regle dure des 25 pct du brief.
+
+    ⚠️ QUATRE COQUES FERMEES, PAS UN AMAS DE FACES. Le viseur et le bloc de recul
+    sont des solides a part entiere, poses en intersection. C'est ce qui permet a
+    `_assert_solid()` de prouver, composante par composante, que rien n'est
+    retourne : une nappe ouverte n'a pas de volume, donc pas de preuve.
     """
     bm = bmesh.new()
-    # 1. Le pave. Il est plus long que large et plus large que haut : trapu.
     hz = (BODY_Z1 - BODY_Z0) * 0.5
     cz = (BODY_Z1 + BODY_Z0) * 0.5
     lip = 0.11
+
+    # 1. Le pave, sa facette avant PERCEE (le masque la refermera).
+    top_lip = 0.16
     rings = [
         (_shift(_octagon(BODY_HX - lip, hz - lip, BODY_CHAMFER - lip), cz), 0.0),
         (_shift(_octagon(BODY_HX, hz, BODY_CHAMFER), cz), lip),
-        (_shift(_octagon(BODY_HX, hz, BODY_CHAMFER), cz), BODY_H - 0.16),
+        (_shift(_octagon(BODY_HX, hz, BODY_CHAMFER), cz), BODY_H - top_lip),
         (_shift(_octagon(BODY_HX - 0.09, hz - 0.09, BODY_CHAMFER - 0.05), cz),
          BODY_H),
     ]
-    verts = _loft_y(bm, rings, ["AA_Hull", "AA_Hull", "AA_Hull"], outward=True)
-    _cap(bm, verts[-1], "AA_Hull", Vector((0.0, 1.0, 0.0)))
-    _cap(bm, verts[0], "AA_Greeble", Vector((0.0, -1.0, 0.0)))
+    verts = _loft_y(bm, rings, ["AA_Hull", "AA_Hull", "AA_Hull"],
+                    skip={(_MANTLET_BAND, _MANTLET_FACET)})
+    _cap_high(bm, verts[-1], "AA_Hull")
+    _cap_low(bm, verts[0], "AA_Greeble")
 
-    # 2. Le masque : une boite en creux dans la face avant. Le fond est en
-    #    `AA_Greeble` — ce qui regarde l'interieur d'un creux est plus sombre que
-    #    ce qui regarde le ciel, la regle est la meme que dans le puits du hangar.
-    mx, my0, my1 = 0.66, 0.30, 1.42
-    front = BODY_Z1
-    back = BODY_Z1 - MANTLET_DEPTH
-    lip_pts = [(-mx, my0), (mx, my0), (mx, my1), (-mx, my1)]
-    deep_pts = [(-mx + 0.07, my0 + 0.07), (mx - 0.07, my0 + 0.07),
-                (mx - 0.07, my1 - 0.07), (-mx + 0.07, my1 - 0.07)]
-    lip_v = [bm.verts.new(Vector((x, y, front))) for x, y in lip_pts]
-    deep_v = [bm.verts.new(Vector((x, y, back))) for x, y in deep_pts]
-    for i in range(4):
-        j = (i + 1) % 4
-        mid = (lip_v[i].co + lip_v[j].co + deep_v[i].co + deep_v[j].co) * 0.25
-        want = Vector((mid.x, mid.y - (my0 + my1) * 0.5, 0.0))
-        if want.length < 1e-6:
+    # 2. LE MASQUE. Les quatre sommets du trou, dans l'ordre ou `_loft_y` les
+    #    aurait employes, puis le fond en retrait et en depouille.
+    lo, hi = verts[_MANTLET_BAND], verts[_MANTLET_BAND + 1]
+    i, j = _MANTLET_FACET, _MANTLET_FACET + 1
+    rim = [lo[i], lo[j], hi[j], hi[i]]
+    floor_z = BODY_Z1 - MANTLET_DEPTH
+    d = MANTLET_DRAFT
+    deep = [bm.verts.new(Vector((v.co.x - math.copysign(d, v.co.x),
+                                 v.co.y + (d if k >= 2 else -d), floor_z)))
+            for k, v in enumerate(rim)]
+    centre = Vector((0.0, (lo[i].co.y + hi[i].co.y) * 0.5, floor_z))
+    for k in range(4):
+        m = (k + 1) % 4
+        mid = (rim[k].co + rim[m].co + deep[k].co + deep[m].co) * 0.25
+        want = centre - mid
+        want.z = 0.0
+        if want.length < 1e-9:
             want = Vector((0.0, 0.0, 1.0))
-        _quad_facing(bm, lip_v[i], lip_v[j], deep_v[j], deep_v[i],
-                     "AA_Greeble", want)
-    _face_facing(bm, deep_v, "AA_Greeble", Vector((0.0, 0.0, 1.0)))
-
-    # L'ŒIL, au centre du masque, entre les deux tubes. Enfonce : il ne peut pas
-    # baver sur la silhouette, et il reste lisible eteint (c'est un trou).
-    eye_y = (my0 + my1) * 0.5
-    eye_ring = [(EYE_R * math.cos(2 * math.pi * k / 12) ,
-                 eye_y + EYE_R * math.sin(2 * math.pi * k / 12))
-                for k in range(12)]
-    outer_v = [bm.verts.new(Vector((x, y, back))) for x, y in eye_ring]
-    inner = [(x * 0.62, eye_y + (y - eye_y) * 0.62) for x, y in eye_ring]
-    inner_v = [bm.verts.new(Vector((x, y, back - EYE_SINK))) for x, y in inner]
-    for i in range(12):
-        j = (i + 1) % 12
-        mid = (outer_v[i].co + outer_v[j].co) * 0.5
-        want = Vector((mid.x, mid.y - eye_y, 0.0))
-        if want.length < 1e-6:
-            want = Vector((0.0, 0.0, 1.0))
-        _quad_facing(bm, outer_v[i], outer_v[j], inner_v[j], inner_v[i],
-                     "AA_Greeble", want)
-    _face_facing(bm, inner_v, "AA_Emissive_Engine", Vector((0.0, 0.0, 1.0)))
+        _quad_facing(bm, rim[k], rim[m], deep[m], deep[k], "AA_Greeble", want)
+    _face_facing(bm, deep, "AA_Greeble", Vector((0.0, 0.0, 1.0)))
 
     # 3. Le viseur : le seul volume qui monte au-dessus du bloc. Il est ETROIT —
     #    c'est ce qui fait qu'une tourelle n'a pas la meme tete de face et de
     #    profil, donc qu'on lit ou elle regarde meme immobile.
     _chamfered_block(bm, 0.30, 0.34, BODY_H - 0.04, BODY_H + SIGHT_H, 0.09, 0.06,
-                     "AA_Hull", "AA_Trim", bottom=False)
-    # Les deux joues d'ejection, a l'arriere : elles cassent la symetrie
-    # avant/arriere du pave et donnent une poupe au bloc.
-    for side in (-1.0, 1.0):
-        _chamfered_block(bm, 0.17, 0.30,
-                         0.24, 0.74,
-                         0.05, 0.04, "AA_Trim", "AA_Trim", bottom=False)
-        for vert in bm.verts[-40:]:
-            pass
+                     "AA_Hull", "AA_Trim", cz=cz + 0.14)
+    # 4. Le bloc de recul / radiateur, en surplomb a l'arriere. Il est POSE assez
+    #    haut pour que la rotation ne le fasse jamais passer sur un coffret :
+    #    le harnais mesure ce degagement, il n'est pas laisse a l'œil.
+    _chamfered_block(bm, 0.52, 0.15, 0.32, 0.84, 0.10, 0.07,
+                     "AA_Hull", "AA_Trim", cz=BODY_Z0 - 0.11)
+
+    # L'ŒIL, au fond du masque, entre les deux tubes. Une lentille legerement
+    # conique, en saillie de 6 cm sur le fond du creux mais toujours 6 cm EN
+    # RETRAIT de la face avant : elle ne peut pas baver sur la silhouette, et
+    # eteinte elle reste lisible — c'est un relief dans une ombre.
+    eye_y = BARREL_Y - BODY_BASE
+    eye = _loft_z(bm, [(floor_z - 0.04, EYE_R * 0.72),
+                       (floor_z, EYE_R),
+                       (floor_z + EYE_RISE * 0.45, EYE_R),
+                       (floor_z + EYE_RISE, EYE_R * 0.78)],
+                  12, ["AA_Greeble", "AA_Greeble", "AA_Emissive_Engine"],
+                  cy=eye_y)
+    _cap_z(bm, eye[0], "AA_Greeble", entering=True)
+    _cap_z(bm, eye[-1], "AA_Emissive_Engine", entering=False)
     return _new_object("turret_body", bm)
 
 
@@ -692,23 +802,30 @@ def _barrel(name: str, length: float) -> bpy.types.Object:
     Le profil a cinq paliers et chacun est une lecture, pas un ornement :
 
         0,00 -> 0,26   le MANCHON de recul, plus gros que le tube. C'est lui qui
-                       dit que le canon sort d'un mecanisme et non d'un trou.
+                       dit que le canon sort d'un mecanisme et non d'un trou, et
+                       c'est lui qui dimensionne l'ouverture du masque.
         0,26 -> 0,42   le chanfrein de manchon.
         0,42 -> L-0,55 le TUBE, legerement conique (17 -> 15 cm de rayon) : un
                        tube parfaitement cylindrique se lit comme une paille.
         L-0,55 -> L-0,10  le FREIN DE BOUCHE, un renflement.
-        L-0,10 -> L    la bouche, creusee.
+        L-0,10 -> L    la bouche, CREUSEE.
 
     ⚠️ 34 cm de diametre pour un canon de vaisseau, c'est ENORME, et c'est
     delibere : a 23 px/m de detail utile, un tube physiquement juste de 12 cm fait
     trois pixels et disparait apres le post-traitement. Ce n'est pas une erreur
     d'echelle, c'est la regle de lisibilite du brief.
+
+    ⚠️ ET LA BOUCHE CREUSEE EST CE QUI A FAIT ECHOUER LE HARNAIS D'ORIENTATION
+    D'AVANT. Son cone regarde vers l'axe du tube — il le doit, c'est un trou — et
+    la regle « toute face regarde loin de l'axe » le declarait retourne. Les 16
+    faces refusees etaient justes ; ce sont les 41 du socle, acceptees, qui ne
+    l'etaient pas. Voir `_assert_solid()`.
     """
     bm = bmesh.new()
     r = BARREL_R
     stops = [
-        (0.0, r * 1.30),
-        (0.26, r * 1.30),
+        (0.0, BARREL_SLEEVE),
+        (0.26, BARREL_SLEEVE),
         (0.42, r),
         (length - 0.55, r * 0.90),
         (length - 0.44, r * 1.16),
@@ -724,7 +841,7 @@ def _barrel(name: str, length: float) -> bpy.types.Object:
                  "AA_Hull",
                  "AA_Hull"]
     verts = _loft_z(bm, stops, BARREL_SEG, materials)
-    _cap(bm, verts[0], "AA_Greeble", Vector((0.0, 0.0, -1.0)))
+    _cap_z(bm, verts[0], "AA_Greeble", entering=True)
     # La bouche est CREUSEE : un disque plein se lit comme un bouchon.
     mouth = []
     for k in range(BARREL_SEG):
@@ -734,11 +851,9 @@ def _barrel(name: str, length: float) -> bpy.types.Object:
                                           length - 0.14))))
     for i in range(BARREL_SEG):
         j = (i + 1) % BARREL_SEG
-        mid = (verts[-1][i].co + verts[-1][j].co) * 0.5
         _quad_facing(bm, verts[-1][i], verts[-1][j], mouth[j], mouth[i],
                      "AA_Greeble", Vector((0.0, 0.0, 1.0)))
-        del mid
-    _cap(bm, mouth, "AA_Greeble", Vector((0.0, 0.0, 1.0)))
+    _cap_z(bm, mouth, "AA_Greeble", entering=False)
     return _new_object(name, bm)
 
 
@@ -761,17 +876,28 @@ def build_service_box() -> bpy.types.Object:
 
     Le moteur en pose 0, 1 ou 2, a l'angle qu'il veut sur le plateau du socle :
     c'est la deuxieme famille de variete. Sa profondeur radiale (0,44 m) est
-    calee sur la largeur du plateau (1,24 -> 1,70 m) : pose a r = 1,46 il ne
-    deborde ni sur la cuvette ni hors du socle.
+    calee sur la largeur du plateau (1,24 -> 1,60 m) : pose a r = 1,46 il ne
+    deborde ni sur la cuvette ni hors du bourrelet.
+
+    ⚠️ SA GORGE EST DANS LE PROFIL, PLUS UN RUBAN POSE DESSUS. Elle etait un
+    second loft, 3 cm PLUS PETIT que le coffret : entierement a l'interieur, donc
+    invisible, et 16 aretes de bord dans une piece qu'on croyait pleine. Un creux
+    qui ne creuse pas ne coute pas moins cher qu'un creux — il coute pareil et il
+    ne rend rien.
     """
     bm = bmesh.new()
-    _chamfered_block(bm, BOX_W * 0.5, BOX_D * 0.5, 0.0, BOX_H, 0.11, 0.07,
-                     "AA_Trim", "AA_Hull", bottom=True)
-    # Une gorge sombre a mi-hauteur : elle coupe le coffret en deux valeurs, ce
-    # qui suffit a le distinguer du bloc a distance sans un seul detail fin.
-    _loft_y(bm, [(_octagon(BOX_W * 0.5 - 0.03, BOX_D * 0.5 - 0.03, 0.09), 0.20),
-                 (_octagon(BOX_W * 0.5 - 0.03, BOX_D * 0.5 - 0.03, 0.09), 0.31)],
-            ["AA_Greeble"], outward=True)
+    hx, hz, ch = BOX_W * 0.5, BOX_D * 0.5, 0.11
+    body = _octagon(hx, hz, ch)
+    foot = _octagon(hx - 0.07, hz - 0.07, 0.04)
+    groove = _octagon(hx - 0.06, hz - 0.06, 0.05)
+    rings = [(foot, 0.0), (body, 0.06), (body, 0.17), (groove, 0.20),
+             (groove, 0.28), (body, 0.31), (body, BOX_H - 0.06),
+             (foot, BOX_H)]
+    verts = _loft_y(bm, rings,
+                    ["AA_Trim", "AA_Trim", "AA_Greeble", "AA_Greeble",
+                     "AA_Greeble", "AA_Trim", "AA_Trim"])
+    _cap_high(bm, verts[-1], "AA_Hull")
+    _cap_low(bm, verts[0], "AA_Greeble")
     return _new_object("turret_service_box", bm)
 
 
@@ -786,55 +912,55 @@ def build_pipe() -> bpy.types.Object:
     Il court TANGENTIELLEMENT au socle (le long de X, dans son repere), ce qui
     lui donne une orientation propre : pose a deux angles differents, le meme
     faisceau ne donne pas la meme silhouette.
+
+    ⚠️ LES DEUX COLLIERS SONT A DEUX ENDROITS. Ils etaient tous les deux a x = 0,
+    la boucle qui devait les ecarter n'utilisant pas sa variable : le soudage des
+    doublons les fusionnait en un seul, au milieu. Un faisceau tenu par un collier
+    unique ne se lit pas comme un faisceau.
     """
     bm = bmesh.new()
     for k, offset in enumerate((-0.17, 0.0, 0.17)):
         lift = 0.10 + 0.05 * (1 - abs(k - 1))
-        rings = [
-            (_shift_x(_circle(PIPE_R, 8), offset), lift),
-            (_shift_x(_circle(PIPE_R, 8), offset), lift + 0.0),
-        ]
-        del rings
-        # Un tube couche : on le construit en Z puis on le bascule sur X.
-        stops = [(-PIPE_LEN * 0.5, PIPE_R), (-PIPE_LEN * 0.5 + 0.08, PIPE_R),
-                 (PIPE_LEN * 0.5 - 0.08, PIPE_R), (PIPE_LEN * 0.5, PIPE_R)]
+        stops = [(-PIPE_LEN * 0.5, PIPE_R * 0.62),
+                 (-PIPE_LEN * 0.5 + 0.08, PIPE_R),
+                 (PIPE_LEN * 0.5 - 0.08, PIPE_R),
+                 (PIPE_LEN * 0.5, PIPE_R * 0.62)]
+        # Un tube couche : construit le long de Z, puis bascule sur X. Les
+        # anneaux sont ecrits directement dans le repere final — une rotation
+        # appliquee apres coup rendrait le sens des faces indemontrable.
         ring_verts = []
         for z, radius in stops:
             ring = []
             for i in range(8):
                 a = 2.0 * math.pi * i / 8
-                # axe le long de X : (z) -> x, (cos, sin) -> (y, z_local)
                 ring.append(bm.verts.new(Vector((
-                    z, lift + radius * math.sin(a), offset + radius * math.cos(a)))))
+                    z, lift + radius * math.sin(a),
+                    offset + radius * math.cos(a)))))
             ring_verts.append(ring)
         for b in range(3):
             low, high = ring_verts[b], ring_verts[b + 1]
             for i in range(8):
                 j = (i + 1) % 8
-                mid = (low[i].co + low[j].co + high[i].co + high[j].co) * 0.25
-                want = Vector((0.0, mid.y - lift, mid.z - offset))
-                if want.length < 1e-6:
-                    want = Vector((0.0, 1.0, 0.0))
+                climb = (high[i].co + high[j].co - low[i].co - low[j].co) * 0.5
+                along = low[j].co - low[i].co
+                # « conduites » : la part grege du brief (15 pct), avec les
+                # coffrets et le radiateur.
                 _quad_facing(bm, low[i], low[j], high[j], high[i],
-                             "AA_Hull", want)
-        _cap(bm, ring_verts[0], "AA_Greeble", Vector((-1.0, 0.0, 0.0)))
-        _cap(bm, ring_verts[-1], "AA_Greeble", Vector((1.0, 0.0, 0.0)))
+                             "AA_Trim", climb.cross(along))
+        _face_facing(bm, list(ring_verts[0]), "AA_Greeble",
+                     Vector((-1.0, 0.0, 0.0)))
+        _face_facing(bm, list(ring_verts[-1]), "AA_Greeble",
+                     Vector((1.0, 0.0, 0.0)))
     # Les deux colliers : ce sont eux qui font du faisceau UNE piece et non trois
     # tuyaux poses cote a cote.
     for cx in (-0.30, 0.30):
-        _loft_y(bm, [(_octagon(0.07, 0.30, 0.05), 0.0),
-                     (_shift(_octagon(0.07, 0.30, 0.05), 0.0), 0.05),
-                     (_shift(_octagon(0.06, 0.28, 0.05), 0.0), 0.28)],
-                ["AA_Trim", "AA_Trim"], outward=True)
-        for vert in bm.verts:
-            pass
-        del cx
+        collar = _shift_xz(_octagon(0.07, 0.27, 0.05), cx, 0.0)
+        narrow = _shift_xz(_octagon(0.06, 0.25, 0.05), cx, 0.0)
+        verts = _loft_y(bm, [(collar, 0.0), (collar, 0.05), (narrow, 0.28)],
+                        ["AA_Greeble", "AA_Greeble"])
+        _cap_high(bm, verts[-1], "AA_Greeble")
+        _cap_low(bm, verts[0], "AA_Greeble")
     return _new_object("turret_pipe", bm)
-
-
-def _shift_x(points: list[tuple[float, float]],
-             dx: float) -> list[tuple[float, float]]:
-    return [(x + dx, z) for x, z in points]
 
 
 # ==========================================================================
@@ -842,41 +968,136 @@ def _shift_x(points: list[tuple[float, float]],
 # ==========================================================================
 
 
-def _assert_outward(obj: bpy.types.Object, mode: str) -> None:
-    """Les faces d'une piece regardent-elles du bon cote ?
+def _shell_report(mesh: bpy.types.Mesh) -> dict:
+    """Topologie et volume signe de chaque coque connexe d'un maillage.
 
-    ⚠️ CE HARNAIS EXISTE PARCE QUE LE DEFAUT EST TOTALEMENT SILENCIEUX. Une piece
-    retournee ne rate aucune bbox, aucun compte de triangles, aucune mesure d'UV :
-    elle DISPARAIT en jeu (culling arriere), et le journal reste muet.
+    Trois mesures, et aucune n'est une opinion :
 
-    `mode` : "radial_y" pour un solide de revolution autour de Y (socle, jupe,
-    couronne), "radial_z" pour un tube le long de Z (les canons).
+      * les aretes de BORD (une seule face) — une nappe ouverte n'est pas un
+        solide, et on ne peut rien prouver dessus ;
+      * les aretes INCOHERENTES (deux faces qui la parcourent dans le meme sens)
+        — c'est la signature exacte d'une plaque retournee, ou qu'elle soit ;
+      * le VOLUME SIGNE de chaque coque (theoreme de la divergence) — une coque
+        entierement retournee est parfaitement coherente avec elle-meme, seul son
+        volume la trahit, en devenant negatif.
     """
-    mesh = obj.data
-    wrong = 0
-    checked = 0
-    for polygon in mesh.polygons:
-        centre = polygon.center
-        if mode == "radial_y":
-            radial = Vector((centre.x, 0.0, centre.z))
-            normal = Vector((polygon.normal.x, 0.0, polygon.normal.z))
-        else:
-            radial = Vector((centre.x, centre.y, 0.0))
-            normal = Vector((polygon.normal.x, polygon.normal.y, 0.0))
-        if radial.length < 0.05 or normal.length < 0.5:
-            continue
-        radial.normalize()
-        normal.normalize()
-        checked += 1
-        if normal.dot(radial) < -0.35:
-            wrong += 1
-    if checked < 12:
-        raise ak.ContractError(f"{obj.name} : {checked} faces controlables, "
-                               "le harnais d'orientation ne prouve rien")
-    if wrong:
+    use: dict[tuple[int, int], list[int]] = {}
+    for poly in mesh.polygons:
+        loop = list(poly.vertices)
+        for k, a in enumerate(loop):
+            b = loop[(k + 1) % len(loop)]
+            use.setdefault((min(a, b), max(a, b)), []).append(1 if a < b else -1)
+    boundary = [e for e, d in use.items() if len(d) == 1]
+    excess = [e for e, d in use.items() if len(d) > 2]
+    flipped = [e for e, d in use.items() if len(d) == 2 and d[0] == d[1]]
+
+    parent = list(range(len(mesh.vertices)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for poly in mesh.polygons:
+        loop = list(poly.vertices)
+        for v in loop[1:]:
+            ra, rb = root(loop[0]), root(v)
+            if ra != rb:
+                parent[rb] = ra
+    volumes: dict[int, float] = {}
+    for poly in mesh.polygons:
+        loop = [mesh.vertices[i].co for i in poly.vertices]
+        key = root(poly.vertices[0])
+        acc = 0.0
+        for k in range(1, len(loop) - 1):
+            acc += loop[0].dot(loop[k].cross(loop[k + 1])) / 6.0
+        volumes[key] = volumes.get(key, 0.0) + acc
+    return {"boundary": boundary, "excess": excess, "flipped": flipped,
+            "volumes": volumes}
+
+
+def _assert_solid(obj: bpy.types.Object) -> None:
+    """LA PIECE EST-ELLE UN SOLIDE, ET REGARDE-T-ELLE DEHORS ?
+
+    ⚠️ CE HARNAIS A REMPLACE `_assert_outward()` LE 2026-08-29, ET IL NE L'A PAS
+    ASSOUPLI — IL L'A RETOURNE. L'ancien demandait a chaque face de regarder « du
+    cote oppose a l'axe ». C'est une bonne question pour un cylindre plein et une
+    mauvaise pour toute piece qui CREUSE, ce que ce kit fait partout. Mesure sur
+    les huit pieces, avant correction :
+
+        turret_barrel   16 faces REFUSEES et pourtant justes — la bouche est
+                        percee, son cone regarde forcement vers l'axe du tube ;
+        turret_pad      41 faces ACCEPTEES et pourtant retournees — tout le
+                        plateau, toute la paroi de la cuvette et son fond ;
+        turret_anchor_skirt  une couronne superieure retournee, idem.
+
+    Le harnais bloquait donc le build sur les faces correctes et laissait passer
+    les fausses. Un controle qui se trompe dans les deux sens est pire que pas de
+    controle : il fait perdre du temps ET il rassure.
+
+    La question juste ne parle pas de l'axe. Une piece est bonne si :
+
+      1. elle est FERMEE — aucune arete de bord, aucune arete a plus de deux
+         faces. Sans cela, « dedans » et « dehors » n'ont pas de sens ;
+      2. son bobinage est COHERENT — toute arete interieure est parcourue une
+         fois dans chaque sens. Une seule plaque retournee casse cette propriete,
+         qu'elle soit sur une bosse, dans un creux ou sur un plafond ;
+      3. le volume signe de CHAQUE coque connexe est POSITIF. Les points 1 et 2
+         ne distinguent pas un solide d'un solide integralement retourne ; le
+         volume, si.
+
+    Les trois ensemble prouvent ce que le brief a besoin de savoir : aucune face
+    ne disparaitra par culling arriere. Et le defaut reste totalement silencieux
+    sans eux — ni bbox, ni compte de triangles, ni mesure d'UV ne le voit.
+    """
+    report = _shell_report(obj.data)
+    if report["boundary"]:
         raise ak.ContractError(
-            f"{obj.name} : {wrong} faces sur {checked} regardent vers l'axe — la "
-            "piece disparaitrait en jeu sans un mot")
+            f"{obj.name} : {len(report['boundary'])} arete(s) de BORD — la piece "
+            "n'est pas une coque fermee, on ne peut pas prouver de quel cote elle "
+            "regarde (ex. sommets "
+            f"{report['boundary'][0]})")
+    if report["excess"]:
+        raise ak.ContractError(
+            f"{obj.name} : {len(report['excess'])} arete(s) a plus de deux faces "
+            "— maillage non manifold")
+    if report["flipped"]:
+        raise ak.ContractError(
+            f"{obj.name} : {len(report['flipped'])} arete(s) parcourue(s) deux "
+            "fois dans le meme sens — une plaque est RETOURNEE et disparaitrait "
+            "en jeu sans un mot (culling arriere)")
+    for key, volume in sorted(report["volumes"].items()):
+        if volume <= 1e-6:
+            raise ak.ContractError(
+                f"{obj.name} : une coque connexe a un volume signe de "
+                f"{volume:+.6f} m3 — elle est retournee EN ENTIER, ce qu'un "
+                "bobinage coherent ne suffit pas a voir")
+
+
+#: ⚠️ COMBIEN DE COQUES FERMEES PAR PIECE, ET C'EST UN CONTRAT. Un volume qui
+#: apparait ou qui disparait est une faute de frappe qui ne se voit sur aucune
+#: planche : deux colliers de conduite fusionnes en un seul ont vecu ainsi
+#: jusqu'au 2026-08-29. Le compte est donc ECRIT, et relu apres soudage.
+SHELL_COUNT: dict[str, int] = {
+    "turret_pad": 1,
+    "turret_anchor_skirt": 1,
+    "turret_ring": 1,
+    "turret_body": 4,          # pave+masque, viseur, bloc de recul, œil
+    "turret_barrel": 1,
+    "turret_barrel_short": 1,
+    "turret_service_box": 1,
+    "turret_pipe": 5,          # trois conduites, deux colliers
+}
+
+
+def _assert_shell_count(obj: bpy.types.Object) -> None:
+    found = len(_shell_report(obj.data)["volumes"])
+    want = SHELL_COUNT[obj.name]
+    if found != want:
+        raise ak.ContractError(
+            f"{obj.name} : {found} coque(s) fermee(s) au lieu de {want} — un "
+            "volume a fusionne avec un autre ou n'a pas ete emis")
 
 
 def build_parts() -> list[bpy.types.Object]:
@@ -888,16 +1109,18 @@ def build_parts() -> list[bpy.types.Object]:
     if names != list(PART_NAMES):
         raise ak.ContractError(
             f"contrat de noms rompu : {names} au lieu de {list(PART_NAMES)}")
-    for name in ("turret_pad", "turret_anchor_skirt", "turret_ring"):
-        _assert_outward(bpy.data.objects[name], "radial_y")
-    for name in ("turret_barrel", "turret_barrel_short"):
-        _assert_outward(bpy.data.objects[name], "radial_z")
     for obj in parts:
         bm = bmesh.new()
         bm.from_mesh(obj.data)
         bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
         bm.to_mesh(obj.data)
         bm.free()
+        # ⚠️ APRES le soudage et AVANT la triangulation : c'est le maillage
+        # soude qui part a l'export, et c'est la fusion de deux sommets qui
+        # ferait apparaitre une arete a trois faces. Le controle doit voir la
+        # meme topologie que Godot.
+        _assert_solid(obj)
+        _assert_shell_count(obj)
         ak.triangulate(obj)
         ak.shade_smooth_by_angle(obj, angle_deg=26.0)
         ak.box_project_uv(obj, TEXELS_PER_METER)
@@ -1058,35 +1281,33 @@ def _texel_density(points: list[tuple], uvs: list[tuple],
 def turret_seat_y(s: float, x: float) -> tuple[float, float]:
     """(Y d'ASSISE du socle, Y du point le plus bas de son emprise).
 
-    ⚠️ L'assise est le point le PLUS HAUT de l'emprise du socle, pas la peau au
-    marqueur. Meme raison que pour `cortege.bay_mouth_y()` : le socle de 3,40 m
-    enjambe la chine, et le pourtour accuse jusqu'a 0,658 m de denivele. Prendre
-    la peau au centre enfoncerait le socle dans la coque d'un cote et le ferait
-    flotter de l'autre. Le marqueur `Turret_NN` porte donc ce maximum : c'est le
-    plan sur lequel tout le kit est modelise.
-
-    L'emprise echantillonnee est celle de la JUPE (2,08 m), pas du socle seul :
-    c'est elle qui doit mordre la peau quand le moteur la pose.
+    ⚠️ CE N'EST PAS UNE COPIE : la fonction VIT DANS `build_long_cortege`, qui
+    est le seul endroit ou la peau existe, et c'est elle qui pose le Y du
+    marqueur `Turret_NN`. Une assise recalculee ici divergerait en silence de
+    celle qui a servi a placer le marqueur, et le socle flotterait — la faute
+    exacte que `bay_mouth_y()` a evitee au hangar.
     """
-    ys = [cortege._surface_y(s, x)]
-    for radius, steps in ((PAD_R * 0.5, 8), (PAD_R, 16), (SKIRT_R, 16)):
-        for k in range(steps):
-            a = 2.0 * math.pi * k / steps
-            ys.append(cortege._surface_y(s + radius * math.sin(a),
-                                         x + radius * math.cos(a)))
-    return max(ys), min(ys)
+    return cortege.turret_seat_y(s, x)
 
 
 #: ⚠️ LE PLAFOND DU DECOR EST DEPASSE, C'EST MESURE, ET LA FORGE NE PEUT PAS LE
 #: RESOUDRE SEULE. `cortege.CEILING_Y` vaut -3,00 : « rien ne monte au-dessus ».
-#: Or la coque n'offre que 1,283 m entre l'assise et ce plafond sous les tourelles
-#: posees pres de la crete (|x| < 7), alors que le brief FIXE la hauteur totale a
-#: 1,70 m (planche : 1,5 a 2,0 m ; references d'echelle : 55-75 px, soit 1,8 a
-#: 2,4 m). Les deux exigences sont incompatibles a l'emplacement actuel de huit
-#: marqueurs sur dix-sept.
+#: Or la coque n'offre que 1,270 a 1,47 m entre l'assise et ce plafond partout ou
+#: |x| <= 9,0, alors que le brief FIXE la hauteur totale a 1,70 m (planche : 1,5 a
+#: 2,0 m ; references d'echelle : 55-75 px, soit 1,8 a 2,4 m). Les deux exigences
+#: sont incompatibles a l'emplacement actuel de DIX marqueurs sur dix-sept.
+#:
+#: LE DEGAGEMENT MESURE, pire cas sur toute la longueur du vaisseau :
+#:
+#:      |x|    5,0   6,0   7,0   8,0   8,8   9,0   9,2   9,4   9,8   10,2
+#:      m     1,27  1,28  1,30  1,32  1,34  1,47  1,69  1,91  1,95  1,95
+#:
+#: La marche est BRUTALE entre 8,8 et 9,4 : c'est la chine. Au-dela, la peau
+#: redescend et le degagement suffit ; en deça, la crete est trop haute.
 #:
 #: Trois arbitrages possibles, tous de CONCEPTION et aucun de forge :
-#:   1. ecarter les huit marqueurs vers |x| >= 8,4, ou la coque offre 1,95 m ;
+#:   1. ecarter les dix marqueurs vers |x| >= 9,4, ou la coque offre 1,91 m au
+#:      pire — ce que sept des dix-sept font deja, et ils passent ;
 #:   2. relever `CEILING_Y` pour les pieces DESTRUCTIBLES (une tourelle se tire
 #:      dessus, ce que la regle du plafond ne prevoit pas : elle protege du decor
 #:      inerte qui masque le combat) ;
@@ -1094,13 +1315,13 @@ def turret_seat_y(s: float, x: float) -> tuple[float, float]:
 #:      redeviendrait le jeton que ce brief remplace.
 #:
 #: En attendant, ce chiffre est un CLIQUET : il fige le depassement mesure
-#: aujourd'hui et fait echouer le build s'il empire. Un depassement connu n'est
-#: pas une porte ouverte aux suivants.
-CEILING_OVERSHOOT_MAX = 0.42
+#: aujourd'hui (0,422 m au pire) et fait echouer le build s'il empire. Un
+#: depassement connu n'est pas une porte ouverte aux suivants.
+CEILING_OVERSHOOT_MAX = 0.43
 
 
 def _assert_on_axis(name: str, points: list[tuple],
-                    problems: list[str]) -> None:
+                    problems: list[str], revolution: bool) -> None:
     """LA PIECE TOURNE-T-ELLE SUR PLACE ?
 
     ⚠️ LE HARNAIS LE PLUS IMPORTANT DE CE FICHIER, ET CELUI QU'AUCUNE PLANCHE NE
@@ -1117,18 +1338,31 @@ def _assert_on_axis(name: str, points: list[tuple],
     if not points:
         problems.append(f"{name} : aucun sommet, l'axe ne peut pas etre verifie")
         return
-    cx = sum(p[0] for p in points) / len(points)
-    cz = sum(p[2] for p in points) / len(points)
-    lo_x, hi_x = min(p[0] for p in points), max(p[0] for p in points)
-    lo_z, hi_z = min(p[2] for p in points), max(p[2] for p in points)
-    for label, value in (("centroide x", cx), ("centroide z", cz),
-                         ("bbox x", (lo_x + hi_x) * 0.5)):
+    # ⚠️ SUR LES POSITIONS UNIQUES, ET C'EST INDISPENSABLE. Le tableau de sommets
+    # d'un `.glb` est DEDOUBLE — l'exportateur y recopie un sommet autant de fois
+    # qu'il porte de normales, d'UV ou de materiaux differents. Un centroide
+    # calcule dessus pese donc les coutures et non la matiere : mesure ici,
+    # -1,04e-4 sur un maillage rigoureusement symetrique. La boite englobante,
+    # elle, ne s'y trompe jamais — d'ou les deux mesures.
+    points = sorted({(round(p[0], 6), round(p[1], 6), round(p[2], 6))
+                     for p in points})
+    measures = [("centroide x", sum(p[0] for p in points) / len(points)),
+                ("bbox x", (min(p[0] for p in points)
+                            + max(p[0] for p in points)) * 0.5)]
+    if revolution:
+        # ⚠️ SEULE LA COURONNE EST UN SOLIDE DE REVOLUTION. Le bloc, lui, DOIT
+        # etre dissymetrique en Z : il a un masque a l'avant et un bloc de recul
+        # a l'arriere, c'est ce qui fait qu'on lit ou il regarde. Lui demander
+        # d'etre centre en Z reviendrait a lui interdire d'avoir un avant.
+        measures += [("centroide z", sum(p[2] for p in points) / len(points)),
+                     ("bbox z", (min(p[2] for p in points)
+                                 + max(p[2] for p in points)) * 0.5)]
+    for label, value in measures:
         if abs(value) > 1e-4:
             problems.append(
                 f"{name} : {label} = {value:+.6f} au lieu de 0 — l'origine n'est "
                 "pas sur l'axe de rotation, la tourelle balaierait en decrivant "
                 "un cercle au lieu de pivoter sur place")
-    del lo_z, hi_z
 
 
 def _audit(path: str) -> dict:
@@ -1164,6 +1398,7 @@ def _audit(path: str) -> dict:
     total_area = 0.0
     total_seen = 0.0
     density: dict[str, dict] = {}
+    part_points: dict[str, list[tuple]] = {}
 
     for index in roots:
         node = nodes[index]
@@ -1223,17 +1458,29 @@ def _audit(path: str) -> dict:
                 copies = ASSEMBLY_COPIES[name]
                 built_area[material] = built_area.get(material, 0.0) \
                     + area * copies
-                if cy + oy > -0.02 and copies:
+                # ⚠️ DEUX CONDITIONS ET NON UNE. « Au-dessus de l'assise » ne
+                # suffit pas : le fond de la couronne et le dessous du bloc sont
+                # au-dessus de l'assise et ne rendent pas un pixel. La camera du
+                # jeu plonge a 70 deg — une face qui regarde le pont ne lui est
+                # JAMAIS presentee. Sans ce second filtre, 14 m2 de dessous
+                # entraient dans une repartition censee decrire l'ecran.
+                normal = (Vector(points[ib]) - pa).cross(
+                    Vector(points[ic]) - pa)
+                downward = normal.length > 1e-12 and \
+                    normal.normalized().y < -0.5
+                if cy + oy > -0.02 and copies and not downward:
                     seen_area[material] = \
                         seen_area.get(material, 0.0) + area * copies
                     total_seen += area * copies
+        part_points[name] = pts
         if uvs:
             density[name] = _texel_density(pts, uvs, tris)
         # ⚠️ Le `.glb` est DANS LE REPERE DU KIT : la chaine `_AUTHOR_FIX` puis
         # `export_yup` rend l'identite, et `_assert_axis_chain()` le reverifie sur
         # trois temoins asymetriques.
         if name in ("turret_ring", "turret_body"):
-            _assert_on_axis(name, pts, problems)
+            _assert_on_axis(name, pts, problems,
+                            revolution=name == "turret_ring")
         triangles_total += triangles
         stats[name] = {"triangles": triangles,
                        "min": tuple(lo), "max": tuple(hi),
@@ -1268,10 +1515,33 @@ def _audit(path: str) -> dict:
     gun_span = BARREL_GAUGE + 2.0 * BARREL_R
     if abs(gun_span - 1.20) > 1e-6:
         problems.append(f"largeur des deux canons {gun_span:.3f} m au lieu de 1,20")
-    if BARREL_GAUGE_MAX * 0.5 + BARREL_R > BODY_HX:
+    # ⚠️ La borne n'est plus la largeur du BLOC mais l'ouverture du MASQUE, et
+    # elle porte sur le MANCHON de recul, pas sur le tube : c'est le manchon qui
+    # loge dans le creux. Mesuree sur la largeur du bloc, la borne laissait
+    # passer un ecartement ou le manchon traversait la paroi du masque.
+    reach = BARREL_GAUGE_MAX * 0.5 + BARREL_SLEEVE
+    if reach > MANTLET_HX - 0.02:
         problems.append(
-            f"a l'ecartement maximal ({BARREL_GAUGE_MAX:.2f} m) les tubes sortent "
-            "du bloc : la variete ne doit pas casser la piece")
+            f"a l'ecartement maximal ({BARREL_GAUGE_MAX:.2f} m) le manchon atteint "
+            f"{reach:.3f} m alors que le masque n'ouvre qu'a {MANTLET_HX:.2f} m : "
+            "la variete percerait la paroi du creux")
+    for label, gauge in ((name, g) for name, _s, _b, g, *_r in FAMILIES):
+        if gauge > BARREL_GAUGE_MAX + 1e-9:
+            problems.append(
+                f"la famille « {label} » demande un ecartement de {gauge:.2f} m, "
+                f"au-dela du maximum {BARREL_GAUGE_MAX:.2f} m")
+    # L'emprise du kit et celle avec laquelle la coque a pose ses marqueurs.
+    if abs(FOOTPRINT_R - cortege.TURRET_FOOTPRINT_R) > 1e-9:
+        problems.append(
+            f"emprise du kit {FOOTPRINT_R:.3f} m contre "
+            f"{cortege.TURRET_FOOTPRINT_R:.3f} m echantillonnee par la coque : "
+            "les deux valeurs ont derive, l'assise du marqueur est fausse")
+    # L'œil est-il coince entre les deux manchons de recul ?
+    eye_gap = BARREL_GAUGE * 0.5 - BARREL_SLEEVE - EYE_R
+    if eye_gap < 0.01:
+        problems.append(
+            f"l'œil ({EYE_R:.2f} m de rayon) touche le manchon du canon : il ne "
+            f"reste que {eye_gap:+.3f} m entre les deux au fond du masque")
     # L'œil : la regle DURE des 25 pct.
     eye_ratio = 2.0 * EYE_R / TURRET_H
     if eye_ratio > 0.25:
@@ -1284,6 +1554,53 @@ def _audit(path: str) -> dict:
             f"emprise du kit {FOOTPRINT_R:.2f} m > reservation minimale "
             f"{min(cortege.PAD_RADIUS):.2f} m de la coque — le garde mutuel "
             "tourelle/pont de BRIEF-0092 arbitrerait sur une emprise fausse")
+
+    # --- LA ROTATION PASSE-T-ELLE AU-DESSUS DE L'APPAREILLAGE ? -----------
+    # ⚠️ MESURE NEUVE, ET ELLE N'A PAS D'EQUIVALENT AILLEURS DANS LE DEPOT. Le
+    # brief prevoit un appareillage POSE SUR LE SOCLE et un bloc QUI TOURNE
+    # au-dessus, a 42 deg/s : les deux se recouvrent forcement en plan, et rien
+    # d'autre que leur denivele ne les separe. Un coffret trop haut de 5 cm ne se
+    # voit sur aucune planche — il se voit en jeu, une fois par tour, quand le
+    # bloc le traverse. La mesure se fait par TRANCHES DE 2 cm en hauteur : c'est
+    # la seule façon de ne pas comparer un rayon a une hauteur qu'il n'atteint
+    # jamais. Le rayon tournant est pris a l'ecartement MAXIMAL des canons.
+    clearance, clearance_at = math.inf, ""
+    slabs: dict[int, list[float]] = {}
+    static: dict[int, list[float]] = {}
+    for name, points in part_points.items():
+        if name == "turret_barrel_short":
+            continue
+        rotates = name in ("turret_ring", "turret_body", "turret_barrel")
+        offsets = [ASSEMBLY_OFFSET[name]]
+        if name == "turret_barrel":
+            offsets = [(side * BARREL_GAUGE_MAX * 0.5, BARREL_Y, BARREL_Z)
+                       for side in (-1.0, 1.0)]
+        for ox, oy, oz in offsets:
+            for px, py, pz in points:
+                y = py + oy
+                if rotates:
+                    radius = math.hypot(px + ox, pz + oz)
+                else:
+                    # Pose a `FITTING_R` : le Z local est radial, le X tangentiel.
+                    radius = math.hypot(FITTING_R + pz, px) \
+                        if name in ("turret_service_box", "turret_pipe") \
+                        else math.hypot(px, pz)
+                bucket = int(math.floor(y / 0.02))
+                target = slabs if rotates else static
+                target.setdefault(bucket, []).append(radius)
+    for bucket, radii in sorted(slabs.items()):
+        near = static.get(bucket)
+        if not near:
+            continue
+        gap = min(near) - max(radii)
+        if gap < clearance:
+            clearance = gap
+            clearance_at = f"Y = {bucket * 0.02:+.2f} m"
+    if clearance < 0.05:
+        problems.append(
+            f"degagement de rotation {clearance:+.3f} m a {clearance_at} : le "
+            "bloc ou un canon passe sur une piece posee sur le socle. Le defaut "
+            "ne se voit qu'en jeu, une fois par tour")
 
     # --- LES DIX-SEPT EMPLACEMENTS, MESURES SUR LA COQUE -------------------
     seats: list[tuple[str, float, float, float, float]] = []
@@ -1309,7 +1626,7 @@ def _audit(path: str) -> dict:
     # ⚠️ Cette mesure N'EXISTAIT PAS avant ce lot, parce qu'avant ce lot les
     # tourelles n'avaient pas de canon. Le garde de BRIEF-0092 arbitre sur des
     # SOCLES ; un tube de 2,90 m qui tourne balaie trois fois plus loin.
-    sweep = BODY_Z1 + BARREL_LEN
+    sweep = BARREL_Z + BARREL_LEN
     bay_sweep: list[tuple[str, str, float]] = []
     for number, (ts, tx) in enumerate(cortege.TURRETS, start=1):
         for index, (bs, bx) in enumerate(cortege.BAYS, start=1):
@@ -1393,6 +1710,7 @@ def _audit(path: str) -> dict:
         "total_seen": total_seen,
         "density": density,
         "seats": seats,
+        "clearance": (clearance, clearance_at),
         "overshoot": overshoot,
         "bay_sweep": bay_sweep,
         "bytes": os.path.getsize(path),
@@ -1440,7 +1758,7 @@ def _print_report(report: dict) -> None:
         ("turret_ring", "ROTATEUR", f"(0, {RING_BASE:+.2f}, 0)", "1"),
         ("turret_body", "ROTATEUR", f"(0, {BODY_BASE:+.2f}, 0)", "1"),
         ("turret_barrel*", "ROTATEUR",
-         f"(+/-e/2, {BARREL_Y:+.2f}, {BODY_Z1:+.2f})", "2"),
+         f"(+/-e/2, {BARREL_Y:+.2f}, {BARREL_Z:+.2f})", "2"),
     )
     for name, parent, where, copies in plan:
         print(f"    {name:<22} {parent:<10} {where:<28} {copies}")
@@ -1468,9 +1786,14 @@ def _print_report(report: dict) -> None:
     print(f"  la couronne emerge de {RING_TOP - PAD_RIM_H:.2f} m au-dessus du "
           f"bourrelet du socle : elle y est ENFONCEE de "
           f"{RING_H - (RING_TOP - PAD_RIM_H):.2f} m")
-    print(f"  les tubes debordent de {BODY_Z1 + BARREL_LEN - PAD_R:.2f} m au-dela "
+    print(f"  les tubes debordent de {BARREL_Z + BARREL_LEN - PAD_R:.2f} m au-dela "
           f"du socle (rayon {PAD_R:.2f} m) ; portee hors-tout "
-          f"{BODY_Z1 + BARREL_LEN:.2f} m depuis l'axe")
+          f"{BARREL_Z + BARREL_LEN:.2f} m depuis l'axe ; culasse au FOND du "
+          f"masque ({BARREL_Z:+.2f}), pas sur la face avant ({BODY_Z1:+.2f})")
+    gap, where = report["clearance"]
+    print(f"  degagement de rotation mesure : {gap:+.3f} m au plus serre "
+          f"({where}) — bloc et canons a l'ecartement maximal contre coffrets, "
+          f"conduites et socle, par tranches de 2 cm")
     print(f"  œil : {2 * EYE_R:.2f} m pour une tourelle de {TURRET_H:.2f} m, soit "
           f"{100 * 2 * EYE_R / TURRET_H:.1f} pct (regle dure : 25 pct)")
     print(f"  emprise hors-tout posee sur la peau : {FOOTPRINT_R:.2f} m de rayon, "
@@ -1649,13 +1972,45 @@ def _assemble_turret(centre: Vector, family: int, aim: float = 0.0) -> list:
         placed += _place(part, centre + spin(local), aim)
     for side in (-1.0, 1.0):
         placed += _place(
-            barrel, centre + spin(Vector((side * gauge * 0.5, BARREL_Y, BODY_Z1))),
+            barrel,
+            centre + spin(Vector((side * gauge * 0.5, BARREL_Y, BARREL_Z))),
             aim)
     return placed
 
 
 def _game_shift(aim_s: float) -> float:
     return baykit._game_shift(aim_s)
+
+
+def _look_at(eye: Vector, target: Vector) -> tuple[Vector, Vector]:
+    """(avant, haut) d'une camera qui vise `target` depuis `eye`, SANS ROULIS.
+
+    ⚠️ LA FORMULE EMPLOYEE JUSQU'ICI RENDAIT UN « HAUT » HORIZONTAL. Elle
+    s'ecrivait `(avant x X) x avant`, ce qui developpe en `X - avant (avant . X)`
+    : des que la visee n'a pas de composante en X — le cas exact de la vue de
+    famille, alignee sur l'axe — elle rend X, c'est-a-dire une camera COUCHEE A
+    90 deg. Le rendu montrait le socle DEBOUT COMME UN MUR et deux tourelles sur
+    trois hors cadre, et il fallait le regarder pour s'en apercevoir : aucune
+    mesure de ce fichier ne cadre une image (ADR-0006, dans les deux sens).
+
+    Le haut se PROJETTE : on retire de la verticale du monde sa part le long de
+    l'axe de visee. Et on verifie qu'il pointe encore vers le haut, sans quoi la
+    faute se reinstalle en silence a la prochaine vue.
+
+    ⚠️ La meme expression vit encore dans `build_bay_kit._tile_close()` (hors
+    perimetre de ce brief) : elle y est moins visible parce que la visee y porte
+    du X, mais elle y roule la camera d'autant. A signaler au concepteur.
+    """
+    forward = (target - eye).normalized()
+    world_up = Vector((0.0, 1.0, 0.0))
+    up = world_up - forward * forward.dot(world_up)
+    if up.length < 1e-6:
+        raise ak.ContractError(
+            "camera a la verticale : le haut de l'image est indefini")
+    up.normalize()
+    if up.y <= 0.0:
+        raise ak.ContractError("le haut de la camera pointe vers le bas")
+    return forward, up
 
 
 def _tile_acceptance(path: str, report: dict, greyscale: bool) -> None:
@@ -1687,15 +2042,18 @@ def _tile_acceptance(path: str, report: dict, greyscale: bool) -> None:
                        "tourelle (Turret_14) et hangar (Bay_07) dans le meme cadre",
                -0.97, 0.88, 0.040, TILE_W, SCENE_H, (1.0, 0.88, 0.55))
         _label(camera, "la silhouette seule doit trancher : le hangar CREUSE "
-                       "(cadre vide de 7,60 x 10,10 m), la tourelle DEPASSE "
-                       "(deux tubes a 4,62 m de l'axe)",
+                       "(un cadre vide), la tourelle DEPASSE — deux tubes a "
+                       f"{BARREL_Z + BARREL_LEN:.2f} m de l'axe, soit "
+                       f"{BARREL_Z + BARREL_LEN - PAD_R:.2f} m au-dela du socle",
                -0.97, 0.79, 0.031, TILE_W, SCENE_H)
     else:
         _label(camera, "LE MEME CADRE, EN COULEUR — ce que l'emissif AJOUTE a une "
                        "fonction deja lisible en geometrie",
                -0.97, 0.88, 0.040, TILE_W, SCENE_H, (1.0, 0.88, 0.55))
-        _label(camera, "un seul emissif sur toute la tourelle : l'œil, 0,40 m "
-                       "pour 1,70 m de haut. Ni socle lumineux, ni couronne.",
+        _label(camera, "un seul emissif sur toute la tourelle : l'œil, "
+                       f"{2 * EYE_R:.2f} m pour {TURRET_H:.2f} m de haut, au fond "
+                       f"du masque ({100 * 2 * EYE_R / TURRET_H:.0f} pct, regle "
+                       "dure 25). Ni socle lumineux, ni couronne.",
                -0.97, 0.79, 0.031, TILE_W, SCENE_H)
     _label(camera, "camera de graybox.tscn sans retouche (0, 14, 5), FOV 62, "
                    "70 deg sous l'horizontale ; Specter-9 reel a sa place de jeu",
@@ -1718,18 +2076,18 @@ def _tile_three_quarter(path: str, report: dict) -> None:
     centre = Vector((tx, seat, -ts + shift))
     _assemble_turret(centre, 1, aim=math.radians(-34.0))
     _plate_lights()
-    eye = centre + Vector((3.9, 2.5, 4.4))
-    target = centre + Vector((0.15, 0.75, 0.6))
-    forward = (target - eye).normalized()
-    up = forward.cross(Vector((1.0, 0.0, 0.0))).cross(forward).normalized()
+    eye = centre + Vector((4.6, 3.2, 5.4))
+    target = centre + Vector((0.0, 0.78, 0.45))
+    forward, up = _look_at(eye, target)
     camera = _plate_camera("tq", _to_blender(eye), _to_blender(forward),
-                           _to_blender(up), math.radians(40.0))
+                           _to_blender(up), math.radians(34.0))
     _label(camera, "TROIS QUARTS, TOURELLE SEULE (famille B) — un canon, pas un "
                    "jeton",
            -0.97, 0.89, 0.040, TILE_W, CLOSE_H, (1.0, 0.88, 0.55))
     _label(camera, f"socle {PAD_D:.2f} m ; couronne {RING_D:.2f} m ENFONCEE de "
                    f"{RING_H - (RING_TOP - PAD_RIM_H):.2f} m dans la cuvette ; "
-                   f"bloc trapu 1,62 x 1,66 x {BODY_H:.2f} ; tubes de "
+                   f"bloc trapu {2 * BODY_HX:.2f} x {BODY_Z1 - BODY_Z0:.2f} x "
+                   f"{BODY_H:.2f} ; tubes de "
                    f"{BARREL_LEN:.2f} m logés dans un masque creusé de "
                    f"{MANTLET_DEPTH:.2f} m",
            -0.97, 0.80, 0.029, TILE_W, CLOSE_H)
@@ -1754,10 +2112,9 @@ def _tile_families(path: str, report: dict) -> None:
                          aim=math.radians((-32.0, 14.0, -8.0)[k]))
     baykit._plane_slab(0.0, spacing * 1.6, 4.2, 0.12, (0.95, 0.72, 0.28), 0.9)
     _plate_lights()
-    eye = Vector((0.0, 6.4, 12.2))
-    target = Vector((0.0, 0.7, 0.2))
-    forward = (target - eye).normalized()
-    up = forward.cross(Vector((1.0, 0.0, 0.0))).cross(forward).normalized()
+    eye = Vector((0.0, 5.2, 13.6))
+    target = Vector((0.0, 0.85, 0.0))
+    forward, up = _look_at(eye, target)
     camera = _plate_camera("fam", _to_blender(eye), _to_blender(forward),
                            _to_blender(up), math.radians(38.0))
     _label(camera, "TROIS EXEMPLAIRES DIFFERENTS, MEMES HUIT PIECES — la variete "
@@ -1765,14 +2122,14 @@ def _tile_families(path: str, report: dict) -> None:
            -0.97, 0.89, 0.038, TILE_W, FAMILY_H, (1.0, 0.88, 0.55))
     for k, (name, skirt, barrel, gauge, boxes, angles, pipe, _a) in \
             enumerate(FAMILIES):
-        _label(camera, name, -0.62 + 0.62 * k, -0.62, 0.036, TILE_W, FAMILY_H,
+        _label(camera, name, -0.88 + 0.60 * k, -0.62, 0.034, TILE_W, FAMILY_H,
                (0.72, 0.84, 1.0))
         _label(camera,
                f"{'jupe' if skirt else 'sans jupe'} · "
                f"{'canon court' if 'short' in barrel else 'canon long'} · "
                f"ecart {gauge:.2f} · {boxes} coffret(s)"
                f"{' · conduites' if pipe else ''}",
-               -0.62 + 0.62 * k, -0.72, 0.024, TILE_W, FAMILY_H)
+               -0.88 + 0.60 * k, -0.72, 0.022, TILE_W, FAMILY_H)
         del angles
     _label(camera, "le moteur n'a besoin d'AUCUNE geometrie nouvelle : jupe "
                    "presente ou non, deux longueurs de tube, ecartement libre, "
@@ -1787,11 +2144,16 @@ def _tile_elevation(path: str, report: dict) -> None:
     Trois plans : l'assise (ambre), le plafond du decor (rouge), et le sommet
     atteint (vert). C'est la seule image qui montre le conflit mesure entre la
     hauteur demandee (1,70 m) et le degagement offert par la coque sous les
-    tourelles de crete (1,28 m).
+    tourelles de crete (1,27 m au pire). L'emplacement montre est celui que la
+    MESURE designe comme le plus serre, pas un numero ecrit a la main.
     """
     _plate_reset()
-    ts, tx = cortege.TURRETS[7]        # Turret_08 : le pire degagement (1,283 m)
-    seat, _ = turret_seat_y(ts, tx)
+    # ⚠️ L'EMPLACEMENT LE PLUS SERRE EST CHOISI PAR MESURE, pas par son numero :
+    # une ligne de `TURRETS` qui bouge deplacerait le pire cas, et la vignette
+    # illustrerait alors un conflit qui n'est plus le bon.
+    worst = max(report["seats"], key=lambda row: row[1])
+    tightest, seat = worst[0], worst[1]
+    over = sum(1 for row in report["seats"] if row[4] > cortege.CEILING_Y)
     _assemble_turret(Vector((0.0, 0.0, 0.0)), 1, aim=0.0)
     baykit._plane_slab(0.0, 0.02, 5.6, 0.10, (0.95, 0.72, 0.28), 2.0)
     baykit._plane_slab(cortege.CEILING_Y - seat, 0.02, 5.6, 0.10,
@@ -1805,10 +2167,11 @@ def _tile_elevation(path: str, report: dict) -> None:
         math.radians(30.0), ortho=6.4)
     _label(camera, "ELEVATION DE TRIBORD (proue a droite) — assise (ambre) 0,00 ; "
                    f"sommet (vert) +{TURRET_H:.2f} ; plafond du decor (rouge) "
-                   f"{cortege.CEILING_Y - seat:+.2f} sous Turret_08",
+                   f"{cortege.CEILING_Y - seat:+.2f} sous {tightest}",
            -0.985, 0.87, 0.048, TILE_W, ELEV_H, (1.0, 0.88, 0.55))
-    _label(camera, f"⚠️ LA HAUTEUR DU BRIEF NE TIENT PAS SOUS LE PLAFOND A HUIT "
-                   f"DES DIX-SEPT EMPLACEMENTS : {TURRET_H:.2f} m demandes pour "
+    _label(camera, f"⚠️ LA HAUTEUR DU BRIEF NE TIENT PAS SOUS LE PLAFOND A "
+                   f"{over} DES {len(report['seats'])} EMPLACEMENTS : "
+                   f"{TURRET_H:.2f} m demandes pour "
                    f"{cortege.CEILING_Y - seat:.2f} m offerts. Arbitrage de "
                    "conception — trois options au compte-rendu.",
            -0.985, -0.86, 0.038, TILE_W, ELEV_H)

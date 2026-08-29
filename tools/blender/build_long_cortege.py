@@ -39,8 +39,13 @@ variations seedees — et non un modelage unique :
     lisses            longerons de 60 a 90 m le long des chines
     greffes           blocs empiles, 3 a 5 boites, ce que le Cortege EMPORTE
     pastilles         les petits feux magenta des maquettes, 12 tri piece
-    plateformes       les socles de tourelle (revolution)
-    baies             les hexagones de pont d'envol (coaming + puits emissif)
+
+⚠️ DEUX FAMILLES ONT DISPARU DE CETTE LISTE, ET C'EST LE MEME MOUVEMENT DEUX FOIS :
+`baies` (BRIEF-0091) puis `plateformes` (BRIEF-0093). La coque cuisait un socle de
+tourelle par marqueur — un disque a cœur magenta que l'operateur a lu comme « un
+jeton circulaire ». Elle n'en cuit plus aucun : elle porte le MARQUEUR, et
+`turret_kit.glb` porte le socle, la couronne, le bloc et les canons. Un seul kit
+fait dix-sept tourelles differentes ; dix-sept copies cuites n'en faisaient qu'une.
 
 Le detail percu vient des **textures** (LOT C du plan de niveau 2), pas des triangles.
 C'est pour cela que le depliage compte davantage que le nombre de faces, et c'est
@@ -1375,32 +1380,58 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
     return count
 
 
-def build_turret_pad(bm: bmesh.types.BMesh, s: float, x: float,
-                     radius: float) -> tuple[float, float]:
-    """Le socle d'une tourelle : anneaux concentriques et cœur lumineux.
+# ⚠️ `build_turret_pad()` A DISPARU (BRIEF-0093), ET AVEC ELLE 17 x 260
+# TRIANGLES DE SOCLE CUIT — la coque passe de 40 446 a 36 026 triangles. C'est exactement le mouvement de BRIEF-0091 sur les hangars,
+# refait pour les tourelles, et pour la meme raison chiffree : elle posait des
+# anneaux concentriques a cœur magenta, que l'operateur a lus comme « des jetons
+# circulaires — pas de canon, pas de mecanisme, pas de connexion physique ».
+#
+# La tourelle est desormais faite de deux choses qui ne vivent plus dans le meme
+# fichier :
+#
+#   * le MARQUEUR, ici : `Turret_NN` ne bouge ni en X ni en Z, et son Y devient
+#     le PLAN D'ASSISE du socle (`turret_seat_y()`), comme le Y de `Bay_NN` est
+#     devenu celui de la bouche ;
+#   * l'AFFUT, dans `turret_kit.glb` : socle, jupe, couronne, bloc blinde, deux
+#     canons, coffrets et conduites. Le moteur monte les huit pieces sur le
+#     marqueur, et il en varie l'assemblage.
+#
+# Le partage n'est pas un gout : dix-sept tourelles cuites a l'identique se
+# lisaient comme dix-sept fois la meme, et un seul kit en fait trois familles.
 
-    Le maillage NE PORTE PAS de tourelle (hors perimetre du brief) : le jeu
-    instancie sa scene sur le point d'attache. Le socle existe pour que le point
-    d'attache soit LU comme un emplacement et non comme une coordonnee.
 
-    Retourne (y du plan de pose, y de la base enterree).
+#: ⚠️ RAYON DE L'EMPRISE QUE `turret_kit.glb` POSE SUR LA PEAU (jupe d'ancrage
+#: comprise). Il vit ICI parce que c'est ici qu'on echantillonne la peau pour
+#: calculer l'assise du marqueur, et `build_turret_kit.FOOTPRINT_R` doit valoir
+#: la meme chose : le kit — qui importe ce module — le reverifie a chaque build,
+#: exactement comme `BAY_COAMING_W`. Deux valeurs qui derivent en silence, c'est
+#: un socle qui flotte d'un cote et s'enterre de l'autre.
+TURRET_FOOTPRINT_R = 2.08
+
+
+def turret_seat_y(s: float, x: float) -> tuple[float, float]:
+    """(Y d'ASSISE du socle de tourelle, Y du point le plus bas de son emprise).
+
+    ⚠️ L'assise est le point le PLUS HAUT de l'emprise, pas la peau au marqueur.
+    Meme raison exactement que pour `bay_mouth_y()` : l'emprise de 4,16 m de
+    diametre enjambe la chine, et le pourtour accuse jusqu'a 0,683 m de denivele
+    (mesure sur les dix-sept emplacements ; le minimum est 0,121 m).
+    Prendre la peau au centre enfoncerait le socle dans la coque d'un cote et le
+    ferait flotter de l'autre — le defaut que BRIEF-0091 a corrige sur le coaming.
+
+    Le marqueur `Turret_NN` porte donc ce maximum : c'est le plan Y = 0 sur lequel
+    TOUTES les pieces de `turret_kit.glb` sont modelisees. Le second membre du
+    couple donne le creux a rattraper, que la jupe enterree du kit doit absorber.
     """
-    around = [(_surface_y(s + radius * math.sin(a), x + radius * math.cos(a)), 0)
-              for a in [2.0 * math.pi * k / 12 for k in range(12)]]
-    deep = min(y for y, _ in around) - 0.55
-    rim = _surface_y(s, x) + 0.55
-    contour = [
-        (deep, radius, "AA_Greeble"),          # mur exterieur, enterre
-        (rim - 0.16, radius, "AA_Hull"),       # chanfrein
-        (rim, radius * 0.95, "AA_Trim"),       # liseré ivoire, 5 pct du rayon
-        (rim, radius * 0.88, "AA_Hull"),       # couronne sombre
-        (rim - 0.36, radius * 0.66, "AA_Greeble"),   # cuvette
-        (rim - 0.36, radius * 0.36, "AA_Emissive_Engine"),  # cœur
-        (rim - 0.24, radius * 0.26, "AA_Emissive_Engine"),
-        (rim - 0.18, 0.0, "AA_Emissive_Engine"),
-    ]
-    _lathe(bm, x, s, contour, 20)
-    return rim, deep
+    ys = [_surface_y(s, x)]
+    for radius, steps in ((TURRET_FOOTPRINT_R * 0.5, 8),
+                          (TURRET_FOOTPRINT_R * 0.82, 16),
+                          (TURRET_FOOTPRINT_R, 16)):
+        for k in range(steps):
+            a = 2.0 * math.pi * k / steps
+            ys.append(_surface_y(s + radius * math.sin(a),
+                                 x + radius * math.cos(a)))
+    return max(ys), min(ys)
 
 
 # ⚠️ `build_bay()` A DISPARU (BRIEF-0091), ET AVEC ELLE 7 x ~230 TRIANGLES.
@@ -1749,8 +1780,13 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     for number, (s, x) in enumerate(TURRETS, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        rim, _ = build_turret_pad(bm, s, x, PAD_RADIUS[index])
-        anchors.append((f"Turret_{number:02d}", Vector((x, rim + 0.10, _z(s)))))
+        # ⚠️ Le marqueur ne bouge NI EN X NI EN Z (BRIEF-0093) : le moteur monte
+        # le kit dessus par son nom exact. Seul son Y change — il passe de la
+        # levre du socle cuit (peau + 0,65) au PLAN D'ASSISE, c'est-a-dire au
+        # point le plus haut de l'emprise du kit. C'est ce plan-la, et lui seul,
+        # sur lequel `turret_kit.glb` est modelise.
+        seat, _ = turret_seat_y(s, x)
+        anchors.append((f"Turret_{number:02d}", Vector((x, seat, _z(s)))))
         pads += 1
     bays = 0
     for number, (s, x) in enumerate(BAYS, start=1):
@@ -1770,7 +1806,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
             continue
         top = build_spine_bulb(bm, s)
         anchors.append((f"Spine_{number:02d}", Vector((0.0, top + 0.06, _z(s)))))
-    counts["plateformes"] = pads
+    counts["marqueurs_tourelle"] = pads
     counts["baies"] = bays
 
     hull = _new_object(name, bm)
@@ -2264,12 +2300,9 @@ def _audit(path: str) -> dict:
         section_bays.setdefault(f"Section_{section_index + 1:02d}", []).append(
             (-(bs - section_index * SECTION_LENGTH), bx, mouth))
     bay_intruders = 0
-    pad_over_bay = 0
 
     density: dict[str, dict] = {}
     for name, packs in density_source.items():
-        section_index = int(name.split("_")[1]) - 1
-        section_origin = section_index * SECTION_LENGTH
         pts: list[tuple] = []
         uvs: list[tuple] = []
         tris: list[tuple[int, int, int]] = []
@@ -2293,23 +2326,15 @@ def _audit(path: str) -> dict:
                             and abs(cz - bz) <= BAY_HALF_S - 0.05
                             and cy > mouth - 2.0):
                         continue
-                    # ⚠️ Les triangles de SOCLE au-dessus d'une ouverture sont
-                    # comptes a part — et depuis BRIEF-0092 leur compte doit
-                    # etre NUL. Tant que deux socles se tenaient legitimement
-                    # dans une emprise de baie, les melanger aux intrus aurait
-                    # rendu le harnais inutilisable (il aurait echoue toujours,
-                    # donc on l'aurait desactive). L'arbitrage rendu, la
-                    # distinction ne sert plus qu'a nommer la faute : un intrus
-                    # est une peau qui s'est refermee, un socle au-dessus du
-                    # vide est une ligne de TURRETS a corriger.
-                    if any(math.hypot(cx - tx, cz + (ts - section_origin))
-                           <= PAD_RADIUS[section_index] + 0.05
-                           for ts, tx in TURRETS
-                           if section_origin <= ts
-                           < section_origin + SECTION_LENGTH):
-                        pad_over_bay += 1
-                    else:
-                        bay_intruders += 1
+                    # ⚠️ LA DISTINCTION « SOCLE » / « INTRUS » A DISPARU AVEC LES
+                    # SOCLES (BRIEF-0093). Elle existait parce que deux socles
+                    # cuits se tenaient legitimement dans une emprise de baie et
+                    # que les melanger aux intrus aurait rendu le harnais
+                    # inutilisable. La coque ne cuit plus aucun socle : tout
+                    # triangle trouve ici est une PEAU QUI S'EST REFERMEE, et
+                    # `_marker_clashes()` garde a lui seul l'arbitrage des
+                    # positions de marqueurs.
+                    bay_intruders += 1
                     break
                 in_keepout = last and keep_x[0] <= cx <= keep_x[1] \
                     and keep_z[0] <= cz <= keep_z[1]
@@ -2341,11 +2366,6 @@ def _audit(path: str) -> dict:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
 
     problems += _marker_clashes()
-    if pad_over_bay:
-        problems.append(
-            f"{pad_over_bay} triangle(s) de socle de tourelle AU-DESSUS d'une "
-            "ouverture : la tourelle serait posee sur le vide (arbitrage rendu "
-            "par BRIEF-0092, plus aucun socle ne doit y etre)")
     if bay_intruders:
         problems.append(
             f"{bay_intruders} triangle(s) DANS l'emprise d'un pont d'envol — "
@@ -2417,7 +2437,6 @@ def _audit(path: str) -> dict:
         "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
         "pad_clearances": _pad_bay_clearances(),
-        "pad_over_bay": pad_over_bay,
         "top": top_of_decor,
         "width": 2 * widest,
         "emissive_ratio": emissive_area / total_area if total_area else 0.0,
@@ -2506,7 +2525,8 @@ def _print_report(report: dict) -> None:
           f"largeur {report['width']:.4f} m, sommet {report['top']:+.3f} "
           f"(plafond {CEILING_Y})")
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
-                  "plateformes", "baies", "cellules_percees", "collerettes"):
+                  "marqueurs_tourelle", "baies", "cellules_percees",
+                  "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<12} {line}   = {total}")
@@ -2565,8 +2585,6 @@ def _print_report(report: dict) -> None:
             note = "   <- PROXIMITE ACCEPTEE : " + declared[(turret, bay)]
         print(f"    {turret} / {bay} : {mouth_gap:+6.2f} m de l'ouverture, "
               f"{coam_gap:+6.2f} m du coaming{note}")
-    print(f"    {report['pad_over_bay']} triangle(s) de socle au-dessus du vide "
-          "(doit valoir 0 depuis BRIEF-0092)")
 
     print("\n  marqueurs (position LOCALE au troncon, repere Godot)")
     for name in _expected_markers():
@@ -2905,9 +2923,9 @@ def _tile_top(path: str, report: dict, index: int) -> None:
            -0.985, 0.80, 0.075, TILE_W, TOP_H, (1.0, 0.88, 0.55))
     _label(camera, f"{counts['plaques']} plaques · {counts['nervures']} nervures · "
                    f"{counts['greffes']} greffes · {counts['pastilles']} pastilles · "
-                   f"{counts['plateformes']} tourelles · {counts['baies']} pont(s) "
-                   f"d'envol — OUVERTURE(S) percee(s), le hangar est dans "
-                   f"bay_kit.glb (BRIEF-0091)",
+                   f"{counts['marqueurs_tourelle']} marqueur(s) de tourelle · "
+                   f"{counts['baies']} pont(s) d'envol — la coque ne cuit plus ni "
+                   f"socle ni hangar : bay_kit.glb et turret_kit.glb",
            -0.985, -0.86, 0.052, TILE_W, TOP_H)
     _label(camera, "proue", -0.985, 0.52, 0.06, TILE_W, TOP_H, (0.72, 0.84, 1.0))
     _label(camera, "poupe", 0.90, 0.52, 0.06, TILE_W, TOP_H, (0.72, 0.84, 1.0))
