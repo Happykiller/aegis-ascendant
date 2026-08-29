@@ -26,7 +26,7 @@ cohérent, spectaculaire.
 | Constructeur du Specter-9 | **Arsenal Orbital Talvern** | chantier Helios ; s'affiche dans le bestiaire (BRIEF-0037) |
 | Navigatrice du joueur | **Lyra Vantella** | Instance de navigation d'Helios Vanguard ; **le seul personnage INCARNÉ** — le seul à avoir un visage à l'écran (ADR-0035, amendé). Sept autres personnes sont nommées dans `docs/lore/PERSONNAGES.md` ; aucune n'a de portrait |
 | Monde d'origine | **Orvane** | La planète qu'on a quittée — évacuée, pas détruite. Le système d'arrivée est **Helios** ; ne pas confondre avec la coalition **Helios Vanguard** qui en tire son nom |
-| Pilote (le joueur) | **Wren Adaire**, indicatif **Halyard** | ⚠️ **pour la fiction seulement** — codex, journal de bord, écran de résultats. **Jamais dans la bouche de Lyra**, qui dit « Pilote » et rien d'autre (`docs/lore/BIBLE.md` §1). Aucun visage à l'écran |
+| Pilote (le joueur) | **Wren Adaire**, indicatif **Halyard** | ⚠️ **Lyra l'appelle par son indicatif, « Halyard »** (`ADR-0037`). Deux exceptions dans tout le jeu : « Wren » à l'appontage, « Adaire » à l'écran de défaite. Aucun visage à l'écran |
 
 ## 3. Palettes
 

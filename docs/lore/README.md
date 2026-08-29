@@ -37,7 +37,7 @@ Six pages. Une seule est à lire en entier ; les autres se consultent.
 
 ## Les deux règles qui ne se discutent pas
 
-1. **Lyra dit « Pilote »**, jamais « Adaire », jamais « Halyard ».
+1. **Lyra nomme le pilote selon le registre** (`ADR-0037`) : « **Halyard** » partout — c'est le terme non marqué — « **Wren** » une seule fois dans tout le jeu, à l'appontage, et « **Adaire** » à l'écran de défaite, parce que c'est le nom du dossier. Elle ne dit plus « Pilote ».
 2. **L'ennemi ne parle pas.** On peut afficher un relevé de signal ; on peut faire citer une
    traduction par un humain, à ses risques. Jamais une réplique attribuée à l'ennemi.
 

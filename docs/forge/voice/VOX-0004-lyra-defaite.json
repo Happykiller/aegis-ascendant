@@ -22,7 +22,7 @@
   "direction": {
     "role": "navigatrice, pas hôtesse : elle informe et elle engage",
     "register": "⚠️ FROID. Pas triste, pas grave, pas solennel — administratif. Elle rapporte, elle ne console pas et elle ne s'excuse pas. C'est le registre exact qui rend l'écran insoutenable ; une Lyra émue serait un contresens et volerait au joueur le seul moment où le jeu lui montre ce qu'est vraiment cette civilisation.",
-    "address": "elle dit « Pilote » — à quelqu'un qui ne l'entend plus. ⚠️ Ne rien changer à sa façon habituelle de le dire : c'est l'identité de l'adresse qui fait le vertige, pas une inflexion.",
+    "address": "elle dit « Adaire » — à quelqu'un qui ne l'entend plus. ⚠️ C'EST LE NOM DU DOSSIER, PAS CELUI DE LA PERSONNE, et le tiret qui le précède le sort du vocatif : elle ne l'appelle pas, elle le PORTE au Registre. Ailleurs dans le jeu elle dit « Halyard », et une seule fois « Wren » ; ici elle revient au patronyme administratif, ce qui est exactement ce que l'écran raconte. ⚠️ Ne rien jouer de ce basculement : c'est le mot qui change, pas la voix.",
     "pace": "posé, régulier, sans ralentissement final. Elle ne laisse pas la phrase retomber : elle la termine et elle passe à la suite.",
     "language": "français, accents et liaisons naturels"
   },
@@ -30,10 +30,10 @@
     {
       "cue": "lyra_mission_failed",
       "dialogue_key": "mission_failed",
-      "text": "Specter-9 perdu. C’était la dernière cellule.\nJe porte l’entrée au Registre, Pilote. C’est la procédure.",
+      "text": "Specter-9 perdu. C’était la dernière cellule.\nJe porte l’entrée au Registre — Adaire. C’est la procédure.",
       "text_lines": [
         "Specter-9 perdu. C’était la dernière cellule.",
-        "Je porte l’entrée au Registre, Pilote. C’est la procédure."
+        "Je porte l’entrée au Registre — Adaire. C’est la procédure."
       ],
       "mood": "CALME",
       "direction": "Deux constats et une procédure. « C'est la procédure » est la dernière chose que le joueur entend d'elle, et elle doit se dire comme on referme un dossier — sans appui, sans regret, sans pause avant. ⚠️ NE PAS jouer le deuil : la seule chose qui doit s'entendre, c'est que rien dans sa voix n'a changé."

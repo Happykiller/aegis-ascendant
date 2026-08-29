@@ -22,16 +22,16 @@
   "direction": {
     "role": "navigatrice, pas hôtesse : elle informe et elle engage, elle ne vend rien",
     "register": "calme par défaut, y compris sur un danger — c'est ce calme qui rendra l'alerte crédible le jour où elle le perd",
-    "address": "elle dit « Pilote », jamais un prénom",
+    "address": "elle l'appelle « Halyard », son indicatif — c'est le terme NON MARQUÉ, celui qu'on emploie en radio (`ADR-0037`). ⚠️ Deux exceptions, et deux seulement, dans tout le jeu : « Wren » à l'appontage, « Adaire » à l'écran de défaite. Elles ne valent que parce que « Halyard » est partout ailleurs — si l'adresse varie, la rupture ne s'entend plus.",
     "pace": "posé — le texte s'écrit à 45 caractères/seconde à l'écran, la voix ne court pas devant",
     "language": "français, accents et liaisons naturels"
   },
   "lines": [
     {
       "cue": "lyra_title_1",
-      "text": "Bienvenue, Pilote.\nJe suis Lyra Vantella, votre navigatrice.",
+      "text": "Bienvenue, Halyard.\nJe suis Lyra Vantella, votre navigatrice.",
       "text_lines": [
-        "Bienvenue, Pilote.",
+        "Bienvenue, Halyard.",
         "Je suis Lyra Vantella, votre navigatrice."
       ],
       "direction": "Premier contact. Chaleureuse mais professionnelle : elle se presente, elle ne seduit pas. Une legere montee sur son propre nom — c'est la seule fois du jeu ou elle le dit."
@@ -56,9 +56,9 @@
     },
     {
       "cue": "lyra_title_4",
-      "text": "Le couloir d’Ossane vous attend, Pilote.\nUne vérification, rien de plus. Prêt à décoller ?",
+      "text": "Le couloir d’Ossane vous attend, Halyard.\nUne vérification, rien de plus. Prêt à décoller ?",
       "text_lines": [
-        "Le couloir d’Ossane vous attend, Pilote.",
+        "Le couloir d’Ossane vous attend, Halyard.",
         "Une vérification, rien de plus. Prêt à décoller ?"
       ],
       "direction": "⚠️ RÉÉCRITE le 2026-08-28 — « Les étoiles nous appellent » était la seule envolée du jeu et sonnait faux devant une mission de calibrage. L'invitation reste : sourire audible, et une VRAIE question à la fin, pas une formule — c'est la dernière chose entendue avant que le joueur appuie sur Nouvelle Partie. « Une vérification, rien de plus » se dit sans appuyer : c'est une phrase que le jeu va démentir dans les quatre-vingt-dix secondes, et elle ne doit pas prévenir."

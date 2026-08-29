@@ -39,8 +39,10 @@ instrument qui a une figure. Le visage affiché est celui du dossier de service 
 
 **Ce qu'elle cache.** Elle a accès au Registre. Elle sait donc depuis la première minute que
 l'avant-poste d'Ambry, où le pilote a grandi, n'est pas « perdu » mais **radié** — et elle ne l'a
-pas dit `[niv. 2]`. C'est aussi une lecture disponible, jamais obligatoire, de la règle canon
-qui veut qu'elle dise « Pilote » et jamais un nom : le nom est dans un dossier qu'elle a lu.
+pas dit `[niv. 2]`. ⚠️ Le nom qu'elle emploie vient du même dossier : elle l'appelle « Halyard »
+parce que c'est ce que porte sa fiche de service — et elle a lu la page d'à côté, celle qui dit
+d'où il vient et ce qu'il en reste. La familiarité de l'indicatif et le silence sur Ambry ont
+donc exactement la même source (`ADR-0037`).
 
 **Ce qu'elle devient.** D'un instrument qui suit le Registre, elle passe à quelque chose qui
 choisit. L'acte est minuscule et il est énorme : au niveau 11, elle **inscrit une fausse entrée**
@@ -48,7 +50,7 @@ choisit. L'acte est minuscule et il est énorme : au niveau 11, elle **inscrit u
 instrument. Elle survit à la campagne ; ce qu'elle est à la fin n'est pas ce qu'elle était.
 
 **Une phrase qu'elle seule pourrait dire :**
-> « Je n'ai pas de souvenirs, Pilote. J'ai des relevés. Ce n'est pas la même chose, et je le sais
+> « Je n'ai pas de souvenirs, Halyard. J'ai des relevés. Ce n'est pas la même chose, et je le sais
 > parce que c'est écrit dans les miens. »
 
 > ⚠️ **Ne jamais lui faire dire ça au niveau 1.** Au niveau 1, elle donne un cap et elle reste sur
@@ -60,7 +62,8 @@ instrument. Elle survit à la campagne ; ce qu'elle est à la fin n'est pas ce q
 
 **Fonction.** Le joueur. Vingt-trois ans, formation accélérée, deux cent onze heures de vol.
 Aucune apparition à l'écran, aucune voix : on le connaît par ce qu'on lui dit et par ce qu'il
-fait. ⚠️ **Lyra ne prononce jamais ni « Adaire » ni « Halyard »** — elle dit « Pilote ».
+fait. ⚠️ **Lyra l'appelle « Halyard »** (`ADR-0037`) — « Wren » une seule fois, à l'appontage, et
+« Adaire » à l'écran de défaite.
 
 **D'où il vient.** D'**Ambry**, un avant-poste-relais du couloir de Ténare : quatre-vingts
 personnes, une antenne, une serre. Ambry s'est tu en 379. Wren avait seize ans et n'y était

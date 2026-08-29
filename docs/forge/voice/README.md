@@ -38,7 +38,7 @@ Elle se décrit dans le JSON, séparément du texte. Ce qui est **immuable pour 
 - **navigatrice, pas hôtesse.** Elle informe et elle engage ; elle ne vend rien et ne s'excuse pas ;
 - **calme par défaut**, y compris quand elle annonce un danger — c'est son calme qui rend l'alerte
   crédible quand elle le perd ;
-- elle s'adresse au joueur par **« Pilote »**, jamais par un prénom ;
+- elle s'adresse au joueur par son indicatif, **« Halyard »** — « Wren » une seule fois (appontage) et « Adaire » à la défaite, jamais ailleurs (`ADR-0037`) ;
 - **débit posé** : le texte s'écrit à 45 caractères/seconde à l'écran, la voix ne doit pas courir
   devant.
 

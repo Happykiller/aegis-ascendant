@@ -21,7 +21,7 @@ script = ExtResource("2_line")
 key = &"asteroid_field"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Champ d’astéroïdes détecté. Restez mobile, Pilote.
+text = "Champ d’astéroïdes détecté. Restez mobile, Halyard.
 Je vais vous ouvrir une route sûre."
 mood = 0
 voice_cue = &"lyra_asteroid_field"
@@ -87,7 +87,7 @@ script = ExtResource("2_line")
 key = &"waves_cleared"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Secteur dégagé, Pilote.
+text = "Secteur dégagé, Halyard.
 Quelque chose de plus gros arrive."
 mood = 0
 voice_cue = &"lyra_waves_cleared"
@@ -107,7 +107,7 @@ key = &"mission_start"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
 text = "Verrouillage télémétrique confirmé.
-Secteur ouvert, Pilote — je reste sur le canal."
+Secteur ouvert, Halyard — je reste sur le canal."
 mood = 0
 voice_cue = &"lyra_mission_start"
 hold = 7.5
@@ -118,7 +118,7 @@ key = &"docking"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
 text = "Autopilote engagé, retour à l’Aurora Spear.
-Relâchez les commandes, Pilote. Vous l’avez arrêté."
+Relâchez les commandes, Wren. Vous l’avez arrêté."
 mood = 0
 voice_cue = &"lyra_docking"
 hold = 8.0
@@ -128,7 +128,7 @@ script = ExtResource("2_line")
 key = &"mission_complete"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Avant-garde neutralisée, Pilote.
+text = "Avant-garde neutralisée, Halyard.
 La ligne tient — parce que vous avez tenu."
 mood = 0
 voice_cue = &"lyra_mission_complete"
@@ -154,10 +154,10 @@ key = &"mission_failed"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
 text = "Specter-9 perdu. C’était la dernière cellule.
-Je porte l’entrée au Registre, Pilote. C’est la procédure."
+Je porte l’entrée au Registre — Adaire. C’est la procédure."
 mood = 0
 voice_cue = &"lyra_mission_failed"
-hold = 7.5
+hold = 7.9
 
 [resource]
 script = ExtResource("1_script")

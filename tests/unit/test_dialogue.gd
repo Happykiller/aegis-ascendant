@@ -16,7 +16,7 @@ func test_a_line_without_text_is_refused() -> void:
 	assert_true(_line("").validate().size() > 0, "un texte vide est refuse")
 	assert_true(_line("   \n  ").validate().size() > 0,
 		"des espaces et des sauts de ligne non plus : `strip_edges` tranche")
-	assert_eq(_line("Bienvenue, Pilote.").validate().size(), 0, "une vraie replique passe")
+	assert_eq(_line("Bienvenue, Halyard.").validate().size(), 0, "une vraie replique passe")
 
 func test_a_line_refuses_a_negative_hold() -> void:
 	var line := _line("Ok")

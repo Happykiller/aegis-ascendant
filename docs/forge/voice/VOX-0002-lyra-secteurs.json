@@ -22,7 +22,7 @@
   "direction": {
     "role": "navigatrice, pas hôtesse : elle informe et elle engage",
     "register": "calme par défaut — c'est ce calme qui rend l'alerte crédible quand elle le perd. Deux répliques seulement sont en ALERTE, et elles doivent trancher.",
-    "address": "elle dit « Pilote », jamais un prénom",
+    "address": "elle l'appelle « Halyard », son indicatif — c'est le terme NON MARQUÉ, celui qu'on emploie en radio (`ADR-0037`). ⚠️ Deux exceptions, et deux seulement, dans tout le jeu : « Wren » à l'appontage, « Adaire » à l'écran de défaite. Elles ne valent que parce que « Halyard » est partout ailleurs — si l'adresse varie, la rupture ne s'entend plus.",
     "pace": "un cran plus vif qu'à l'accueil : le joueur est occupé. Mais jamais précipité — l'information doit passer du premier coup.",
     "language": "français, accents et liaisons naturels"
   },
@@ -30,9 +30,9 @@
     {
       "cue": "lyra_asteroid_field",
       "dialogue_key": "asteroid_field",
-      "text": "Champ d’astéroïdes détecté. Restez mobile, Pilote.\nJe vais vous ouvrir une route sûre.",
+      "text": "Champ d’astéroïdes détecté. Restez mobile, Halyard.\nJe vais vous ouvrir une route sûre.",
       "text_lines": [
-        "Champ d’astéroïdes détecté. Restez mobile, Pilote.",
+        "Champ d’astéroïdes détecté. Restez mobile, Halyard.",
         "Je vais vous ouvrir une route sûre."
       ],
       "mood": "CALME",
@@ -96,9 +96,9 @@
     {
       "cue": "lyra_waves_cleared",
       "dialogue_key": "waves_cleared",
-      "text": "Secteur dégagé, Pilote.\nQuelque chose de plus gros arrive.",
+      "text": "Secteur dégagé, Halyard.\nQuelque chose de plus gros arrive.",
       "text_lines": [
-        "Secteur dégagé, Pilote.",
+        "Secteur dégagé, Halyard.",
         "Quelque chose de plus gros arrive."
       ],
       "mood": "CALME",

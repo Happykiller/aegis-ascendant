@@ -31,11 +31,11 @@
 script = ExtResource("2_line")
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Bienvenue, Pilote.
+text = "Bienvenue, Halyard.
 Je suis Lyra Vantella, votre navigatrice."
 mood = 0
 voice_cue = &"lyra_title_1"
-hold = 3.4
+hold = 3.8
 
 [sub_resource type="Resource" id="line_2"]
 script = ExtResource("2_line")
@@ -61,11 +61,11 @@ hold = 4.5
 script = ExtResource("2_line")
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Le couloir d’Ossane vous attend, Pilote.
+text = "Le couloir d’Ossane vous attend, Halyard.
 Une vérification, rien de plus. Prêt à décoller ?"
 mood = 0
 voice_cue = &"lyra_title_4"
-hold = 4.7
+hold = 5.1
 
 [resource]
 script = ExtResource("1_script")
