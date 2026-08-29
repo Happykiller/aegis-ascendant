@@ -117,9 +117,39 @@ aux réacteurs.
 (`leviathan_combat`). ⚠️ Elles doivent défiler **avec** la coque : une tourelle qui reste à
 l'écran pendant que le décor avance casse l'illusion de survol en une seconde.
 
-**B. Ponts d'envol** — des baies d'où sortent les unités du bestiaire. Réemploi direct de
-`WaveSpawner`, avec le point d'apparition **ancré au pont** et non au bord de l'écran. Un pont
-détruit cesse de produire : c'est ce qui rend le joueur acteur de la densité qu'il subit.
+**B. Ponts d'envol** — des baies d'où sortent les unités **du bestiaire existant** (précision de
+l'opérateur, 2026-08-29 : aucun ennemi nouveau à produire pour ce niveau). Réemploi direct de
+`WaveSpawner`, avec le point d'apparition **ancré au pont** et non au bord de l'écran.
+
+Ils sont **destructibles, mais coûteux** : beaucoup de points de vie, pour que tarir la source
+soit une décision et non un réflexe. Un pont laissé debout produit **en continu, par vagues** ;
+un pont abattu se tait pour de bon. C'est ce qui rend le joueur acteur de la densité qu'il subit.
+
+> ⚠️ **L'INVARIANT QUI DÉCIDE SI CETTE MÉCANIQUE EXISTE : le pont doit être abattable dans la
+> fenêtre où il est à l'écran.** Un survol défile et ne revient jamais en arrière. La fenêtre de
+> tir sur un pont est donc **bornée par le défilement**, pas par la patience du joueur :
+>
+> ```
+> pv_pont  ≤  dps_de_référence × temps_de_survol_du_pont × part_du_temps_où_l'on_peut_le_viser
+> ```
+>
+> Au-dessus de cette borne, le pont est **indestructible en pratique** — et le joueur ne le saura
+> jamais : il croira mal jouer, et il continuera de tirer sur une cible qui ne peut pas tomber.
+> C'est exactement le défaut qu'`ADR-0024` a payé sur le flux du Leviathan, où l'on avait
+> dimensionné des points de vie contre une cadence de tir qui n'était pas la bonne, et qu'aucun
+> test ne voyait.
+>
+> Conséquence de conception : les points de vie d'un pont **ne se saisissent pas à la main**. Ils
+> vivent dans une Resource typée dont le `validate()` refuse la valeur intenable, sur le modèle de
+> `LeviathanTuning` et de ses six invariants. ⚠️ Et la cadence de référence doit être **celle qui
+> porte sur un pont** — pas celle mesurée sur une cible large : c'est précisément l'erreur
+> d'`ADR-0024`, où l'hypothèse était optimiste d'un facteur 2,4.
+
+> ⚠️ **Risque de rythme, à surveiller au lot 6.** Un tronçon offrirait alors TROIS cibles
+> concurrentes : les tourelles qui tirent, le pont qui produit, le nœud qui éteint les tourelles.
+> Trois décisions dans une fenêtre qui défile, c'est peut-être une de trop. Si le survol devient
+> illisible, la première chose à retirer est le nœud du tronçon, pas le pont : le pont se voit et
+> se comprend seul, le nœud demande qu'on ait compris le système.
 
 **C. L'épine dorsale** *(la mécanique choisie)* — une artère d'énergie court sur toute la longueur
 du vaisseau, ponctuée de **nœuds**. Abattre un nœud **éteint les tourelles du tronçon suivant**.
