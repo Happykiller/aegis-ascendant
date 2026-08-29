@@ -404,6 +404,10 @@ Les trois structures se distinguent maintenant par un **verbe** — le hangar **
 tourelle **dépasse**, le nœud **monte** — et le test d'acceptation est le noir et blanc,
 émissifs coupés.
 
+Une décision actée en chemin : **`ADR-0041` — le plafond du décor et celui du gameplay ne sont
+pas le même.** Le décor inerte reste sous −3,00 ; une pièce qu'on peut détruire monte à −2,40,
+parce que ce que la règle protège est ce qui *masque le combat sans jamais pouvoir être touché*.
+
 Trois leçons qui ne valent pas que pour ce niveau :
 
 - **Une pièce qui meurt seule veut un matériau qui lui appartienne.** Le nœud d'épine était cuit
