@@ -521,3 +521,95 @@ func test_no_turret_ever_reaches_the_flight_plane() -> void:
 	# degagement, soit une fois et demie la hauteur de la tourelle elle-meme.
 	assert_true(summit < -1.5,
 		"elle reste tres en dessous du plan de vol (%.2f) — sinon elle masquerait le combat" % summit)
+
+# --- Le kit d'epine ----------------------------------------------------------
+
+## ⚠️ CE TEST EXISTE PARCE QUE LE MEME DEFAUT A DEJA COUTE DEUX FOIS. Un kit se monte dans
+## `_ready()`, donc hors de tout test qui instancie la piece a la main : la tourelle a tire
+## pendant une session entiere SANS TETE — cible valide, balles a l'ecran, 750 assertions vertes
+## — parce qu'une variable etait typee `MeshInstance3D` la ou la piece est un `Node3D`. Rien
+## dans le jeu ne signale une silhouette absente. Le seul garde possible est de charger le
+## binaire et de verifier que ce que le moteur va chercher s'y trouve, sous les noms exacts.
+func test_the_spine_kit_carries_the_three_pieces_the_engine_mounts() -> void:
+	var kit: PackedScene = load(NodeScript.KIT_PATH)
+	assert_true(kit != null, "le kit d'epine se charge")
+	var assembled := track(kit.instantiate()) as Node3D
+	var found := {}
+	for child in assembled.get_children():
+		var piece := child as MeshInstance3D
+		if piece != null:
+			found[String(piece.name)] = piece
+	for part in ["spine_cradle", "spine_core", "spine_brace"]:
+		assert_true(found.has(part), "le kit porte la piece « %s »" % part)
+
+## ⚠️ LA MORT DU NOEUD EST PORTEE PAR LA GEOMETRIE, PAS PAR UN REGLAGE. Le moteur ne detruit que
+## `spine_core` : si une seule autre piece portait un emissif, la carcasse resterait allumee et
+## un noeud abattu serait indiscernable d'un noeud intact. C'est la regle dure du BRIEF-0094, et
+## elle ne se verifie que sur le binaire — une reforge peut la casser sans toucher au code.
+func test_only_the_core_of_a_spine_node_carries_light() -> void:
+	var kit: PackedScene = load(NodeScript.KIT_PATH)
+	var assembled := track(kit.instantiate()) as Node3D
+	for child in assembled.get_children():
+		var piece := child as MeshInstance3D
+		if piece == null or piece.mesh == null:
+			continue
+		for i in piece.mesh.get_surface_count():
+			var material := piece.mesh.surface_get_material(i) as StandardMaterial3D
+			if material == null or not material.emission_enabled:
+				continue
+			assert_eq(String(piece.name), "spine_core",
+				"seul le coeur est emissif — « %s » ne doit pas l'etre" % piece.name)
+
+## Le noeud est la seule des trois pieces qui n'a PAS besoin du plafond de gameplay releve : il
+## siege au fond de la tranchee, qui lui mange un demi-metre. Le verifier tient l'arbitrage par
+## les deux bouts — si une reforge remontait le canal, on le saurait ici et pas en jeu.
+func test_a_spine_node_stays_under_the_ceiling_of_inert_decor() -> void:
+	var kit: PackedScene = load(NodeScript.KIT_PATH)
+	var assembled := track(kit.instantiate()) as Node3D
+	var offsets := {
+		"spine_cradle": 0.0,
+		"spine_core": NodeScript.CORE_LIFT,
+		"spine_brace": NodeScript.BRACE_LIFT,
+	}
+	var tallest := -100.0
+	for child in assembled.get_children():
+		var piece := child as MeshInstance3D
+		if piece == null or not offsets.has(piece.name):
+			continue
+		tallest = maxf(tallest, float(offsets[piece.name]) + piece.get_aabb().end.y)
+	assert_true(absf(tallest - 1.50) < 0.05,
+		"le noeud fait bien 1,50 m de haut une fois assemble (%.2f m)" % tallest)
+
+	var hull := track((load(FlybyScript.DECOR_PATH) as PackedScene).instantiate()) as Node3D
+	var worst := -100.0
+	for section in hull.get_children():
+		var s := section as Node3D
+		if s == null or not s.name.begins_with("Section_"):
+			continue
+		for child in s.get_children():
+			var marker := child as Node3D
+			if marker != null and marker.name.begins_with("Spine_"):
+				worst = maxf(worst, s.position.y + marker.position.y)
+	assert_true(worst > -10.0, "des marqueurs d'epine ont bien ete trouves")
+	assert_true(worst + tallest <= FlybyScript.CEILING_Y,
+		"le noeud culmine a %.3f, au-dessus du plafond du decor %.2f"
+			% [worst + tallest, FlybyScript.CEILING_Y])
+
+## ⚠️ ON VISE CE QU'ON VOIT, ET C'EST CE QUI ETAIT FAUX. La zone de touche se projetait depuis
+## l'assise de la piece ; a 70 deg de plongee, une cible haute d'un metre se projette a une
+## vingtaine de centimetres de la. Sur le noeud, rayon 0,78 et cible la plus dure du niveau,
+## l'ecart valait un quart du rayon — offert au hasard, et invisible sur toute capture fixe.
+func test_the_aim_point_follows_the_mass_and_not_the_seat() -> void:
+	var eye := Vector3(0.0, 14.0, 5.0)
+	var seat := Vector3(0.0, -4.58, 0.0)
+	var from_seat := GameplayPlane.aim_point_of(seat, eye)
+	var from_mass := GameplayPlane.aim_point_of(
+		seat + Vector3(0.0, NodeScript.HIT_LIFT, 0.0), eye)
+	assert_true(from_seat.distance_to(from_mass) > 0.15,
+		"l'ecart corrige est reel (%.3f unite)" % from_seat.distance_to(from_mass))
+	# Et il va vers le bas de l'ecran : plus la piece est haute, plus elle se projette pres du
+	# point au sol de la camera. Un signe inverse voudrait dire qu'on l'a corrige a l'envers.
+	assert_true(from_mass.y > from_seat.y,
+		"la masse se projette en avant de l'assise (%.3f contre %.3f)" % [from_mass.y, from_seat.y])
+	# Le hangar CREUSE : lui n'a rien a corriger, et une valeur non nulle serait une regression.
+	assert_eq(BayScript.HIT_LIFT, 0.0, "le hangar ne monte pas, donc ne se decale pas")

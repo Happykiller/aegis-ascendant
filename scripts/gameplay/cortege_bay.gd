@@ -45,6 +45,12 @@ const KIT_PATH := "res://assets/imported/models/backgrounds/bay_kit.glb"
 
 ## Cotes mesurées sur le binaire livré (BRIEF-0091), pas recopiées d'un brief : l'ouverture fait
 ## 6,00 × 8,50, le puits descend à −1,80 sous la bouche, le coaming monte à +0,60.
+## ⚠️ ZÉRO, ET C'EST UNE DÉCISION, PAS UN OUBLI. Les deux autres pièces se dressent au-dessus de
+## leur assise et leur zone de touche doit monter avec elles ; le hangar, lui, CREUSE. Ce qu'on
+## vise est sa bouche, qui est exactement au niveau de la peau — donc du marqueur. Lui donner une
+## élévation décalerait la seule des trois cibles qui était déjà juste.
+const HIT_LIFT := 0.0
+
 const OPENING_HALF_X := 3.00
 const OPENING_HALF_Z := 4.25
 const WELL_FLOOR := -1.80

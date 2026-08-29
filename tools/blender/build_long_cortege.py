@@ -230,38 +230,69 @@ MATERIAL_ORDER: tuple[str, ...] = ak.MATERIAL_ORDER + (AMBRY_HULL,)
 AMBRY_HULL_HEX = ak.PALETTES[ak.FACTION_VANGUARD]["hull"]      # #EDEAE3
 
 # --------------------------------------------------------------------------
-# La section transversale — moitie tribord, de la crete a la quille
+# La section transversale — moitie tribord, du CANAL a la quille
 # --------------------------------------------------------------------------
 # (x, y, materiau du segment qui part de ce point). Le dernier materiau est ignore.
-# Lue sur les trois maquettes : crete centrale lumineuse, pont interieur, chine
-# franche, pont median (ou vivent les baies), facette exterieure, epaule, bord.
 #
-# ⚠️ La crete culmine a -3,62 et non a -3,40 : il faut laisser passer les bulbes de
-# l'arete dorsale (+0,40) SOUS le plafond de construction -3,20. Le decor a
-# 0,62 m de relief utile, tout le vocabulaire en decoule.
-
-# ⚠️ La repartition des materiaux a ete REFAITE apres le premier rendu, et c'est
-# la correction la plus lourde du chantier. Premiere version : crete ivoire sur
-# 1,64 m, arete lumineuse de 0,52 m, lisse d'epaule ivoire sur 500 m. A la
-# perspective du jeu, le Cortege lisait comme une piste d'aeroport — trois rubans
-# blancs et un neon magenta plein cadre — quand les trois maquettes montrent une
-# masse anthracite ou l'ivoire et le magenta sont RARES. La lecon vaut au-dela de
-# ce fichier : sur 500 m, un materiau clair applique a une arete CONTINUE occupe
-# plus de pixels qu'une piece entiere, et le compte de triangles ne le dit pas.
+# ⚠️ LA CRETE CENTRALE A DISPARU, ET C'EST LE LOT 3 DE BRIEF-0094 EN UNE LIGNE DE
+# TABLEAU. Elle culminait a -3,62 et portait sur son arete, EN CONTINU sur 500 m,
+# un segment `AA_Emissive_Engine` de 0,28 m double d'un lisere ivoire de 0,64 m.
+# Le verdict de l'operateur : « l'artere centrale est beaucoup trop proche d'un
+# laser geant ; elle attire davantage l'œil que certaines menaces ». Le defaut
+# n'etait pas dans la texture — `TEX-0013` demandait deja « au moins la moitie de
+# l'aire sombre » et l'image la respectait — il etait dans la GEOMETRIE, qui
+# offrait une bande pleine, posee sur le point le plus haut du vaisseau, a peindre.
+#
+# La reponse tient en trois cotes, et aucune n'est un gout :
+#
+#     |x| <= 0,88   FOND du canal a -4,58, plat : 1,76 m de fond utile
+#     |x| =  1,00   la paroi, 0,38 m de haut — c'est ce qui fait la TRANCHEE
+#     |x| =  1,12   arete interne du rebord, a -4,02
+#     |x| <= 1,70   le REBORD mecanique, sombre, 0,58 m de large de chaque bord
+#                   -> canal de 2,00 m de large entre les deux rebords
+#     |x| =  2,20   pied du bandeau dorsal, sur le pont a -4,26
+#
+# Le canal est donc ENFONCE de 0,56 m sous l'arete de son rebord et de 0,28 m sous
+# le pont : on ne le lit plus comme une bande posee mais comme un creux, et
+# l'emissif qu'il porte est au FOND, ou la geometrie l'ombre d'elle-meme.
+#
+# ⚠️ RIEN NE BOUGE AU-DELA DE x = 2,20, ET C'EST UNE CONTRAINTE DURE. Le brief
+# fige les trente marqueurs : « noms, X, Z inchanges ; seul le Y des Spine_NN
+# bouge ». Or le Y d'un marqueur de tourelle est ECHANTILLONNE sur la peau
+# (`turret_seat_y`, rayon 2,08 m) et celui d'un pont d'envol aussi
+# (`bay_mouth_y`). Le marqueur le plus interieur est `Turret_05`/`Turret_08` a
+# |x| = 5,60 : son emprise descend a |x| = 3,52. Tant que le profil est IDENTIQUE
+# au-dela de 2,20, les vingt-quatre Y de tourelle et de pont sont inchanges au
+# micron — verifie sur le binaire, et c'est ce qui permet de ne pas rejouer
+# l'arbitrage `ACCEPTED_PAD_BAY_PROXIMITY` ni le cliquet de plafond du kit.
+#
+# ⚠️ LA FACETTE EXTERIEURE N'EST PLUS VIOLETTE (lot 4). Les deux segments 11 et 12
+# faisaient 3,00 m de developpe par bord, EN CONTINU sur 500 m : a eux seuls
+# 3 000 m2 d'`AA_Panel`, soit les « gros rectangles violets poses partout » qui
+# sabotent la hierarchie. Le violet ne survit plus que sur des VOLUMES — les
+# greffes — ou il dit quelque chose. Meme lecon que pour l'ivoire au BRIEF-0089 :
+# sur 500 m, un materiau qui suit une arete CONTINUE occupe plus de pixels que
+# n'importe quelle piece, et le compte de triangles ne le dit pas.
 PROFILE_BASE: tuple[tuple[float, float, str], ...] = (
-    (0.00, -3.62, "AA_Emissive_Engine"),   # 0  la ligne lumineuse : 0,28 m au TOTAL
-    (0.14, -3.63, "AA_Trim"),              # 1  son liseré ivoire, 0,64 m
-    (0.46, -3.68, "AA_Greeble"),           # 2  dessus de crete, sombre
-    (0.95, -3.78, "AA_Hull"),              # 3  epaule de crete
-    (1.28, -4.06, "AA_Greeble"),           # 4  flanc de crete, dans l'ombre
-    (1.62, -4.21, "AA_Hull"),              # 5  pied de crete
-    (2.20, -4.26, "AA_Hull"),              # 6  pont interieur
+    (0.00, -4.58, "AA_Greeble"),           # 0  FOND du canal, sur l'axe
+    (0.88, -4.58, "AA_Greeble"),           # 1  fond, pied de paroi
+    (1.00, -4.20, "AA_Greeble"),           # 2  paroi du canal
+    (1.12, -4.02, "AA_Greeble"),           # 3  arete interne du rebord
+    (1.70, -4.05, "AA_Greeble"),           # 4  dessus du REBORD, sombre
+    (2.05, -4.16, "AA_Hull"),              # 5  talus du bandeau dorsal
+    (2.20, -4.26, "AA_Hull"),              # 6  pied, sur le pont — INCHANGE
     (5.10, -4.30, "AA_Hull"),              # 7  pont interieur
-    (6.80, -4.34, "AA_Greeble"),           # 8  levre de chine
+    # ⚠️ La contremarche de chine repasse en `AA_Hull` (elle etait `AA_Greeble`).
+    # `AA_Greeble` est le noir de CREUX (#141419) : en laisser une bande de 0,81 m
+    # de developpe filer sur 500 m le long de la chine mettait deux rubans
+    # presque noirs dans le meme cadre — celui de la chine et celui de la
+    # tranchee — et la tranchee cessait d'etre LE creux du vaisseau. Un
+    # changement de PLAN se lit a la lumiere ; un creux, a sa matiere.
+    (6.80, -4.34, "AA_Hull"),              # 8  levre de chine
     (7.35, -4.94, "AA_Hull"),              # 9  pont median (les baies)
     (10.30, -4.99, "AA_Hull"),             # 10 pont median
-    (12.35, -5.10, "AA_Panel"),            # 11 facette exterieure
-    (13.35, -6.35, "AA_Panel"),            # 12 facette exterieure
+    (12.35, -5.10, "AA_Hull"),             # 11 facette exterieure (etait AA_Panel)
+    (13.35, -6.35, "AA_Hull"),             # 12 facette basse   (etait AA_Panel)
     (13.88, -7.65, "AA_Hull"),             # 13 lisse d'epaule
     (14.00, -8.95, "AA_Greeble"),          # 14 BORD — 14,00 exactement
     (13.30, -10.60, "AA_Greeble"),         # 15 sous-chine
@@ -278,8 +309,59 @@ Y_PIVOT = -6.9
 
 #: Bandes plates ou l'on a le droit de poser une plateforme de tourelle ou une
 #: plaque : (x_min, x_max) en valeur absolue.
-BAND_INNER = (2.30, 6.60)
+#: ⚠️ 2,55 et non 2,30 : le talus du bandeau dorsal descend jusqu'a 2,20, et une
+#: pastille de 0,30 m posee dessus se serait couchee sur la pente.
+BAND_INNER = (2.55, 6.60)
 BAND_MID = (7.50, 12.10)
+
+# --------------------------------------------------------------------------
+# L'ARTERE — le canal, son rebord, ses conduits (BRIEF-0094, priorite 1)
+# --------------------------------------------------------------------------
+# Les cotes ci-dessous DECRIVENT le profil ci-dessus ; elles ne le pilotent pas.
+# `_assert_canal()` verifie a chaque build que les deux disent la meme chose : une
+# constante qui derive de la table qu'elle est censee resumer est un piege connu
+# de ce fichier (voir `BAY_COAMING_W` et le kit de hangar).
+
+#: Demi-largeur du canal, mesuree entre les aretes internes des deux rebords.
+CANAL_HALF = 1.00
+#: Demi-largeur du FOND PLAT : c'est la seule zone ou un conduit peut se poser
+#: sans se coucher sur la paroi.
+CANAL_FLOOR_HALF = 0.88
+#: Arete externe du rebord. Au-dela, on est sur le bandeau dorsal.
+CANAL_RIM_X = 1.70
+CANAL_FLOOR_Y = -4.58
+CANAL_RIM_Y = -4.02
+
+#: LES BANDES LUMINEUSES DU FOND, en |x| : quatre voies (deux par bord), de 18 et
+#: 12 cm. Le brief demande « 3 ou 4 bandes de 10 a 25 cm, jamais sur toute la
+#: largeur ». Total eclaire : 4 x 0,15 m moyen = 0,60 m sur 2,00 m de canal, soit
+#: 30 pct de sa largeur — et 0 pct de la peau du pont, ou il n'y a plus rien.
+CONDUIT_LANES: tuple[tuple[float, float], ...] = ((0.14, 0.32), (0.48, 0.60))
+#: Le conduit affleure : 6 cm au-dessus du fond. Il ne DEPASSE pas, il est SERTI.
+CONDUIT_RISE = 0.06
+#: ⚠️ LES INTERRUPTIONS SONT LE LIVRABLE, PAS LA BANDE. « Une bande continue sur
+#: 500 m est une frontiere de terrain, pas une conduite. » Longueur allumee, puis
+#: longueur eteinte, tirees dans ces plages : la cadence est reguliere sans etre
+#: un metronome, et les quatre voies ne sont jamais en phase (leur depart est
+#: decale par voie et par bord).
+CONDUIT_RUN = (5.5, 14.0)
+CONDUIT_GAP = (1.6, 4.6)
+#: Pas de decoupe des conduits DANS LE FUSEAU DE PROUE, et uniquement la.
+#: Le fond du canal y monte de 2,2 cm par metre (le fuseau contracte la section
+#: autour de `Y_PIVOT`) : une bande de 14 m posee d'un trait sur le point le plus
+#: BAS de ses quatre coins — ce que fait `_surface_box` — s'enterrerait de 26 cm a
+#: son extremite haute et disparaitrait sans un mot. Ailleurs le fond est
+#: rigoureusement plat et la bande sort d'une seule piece.
+CONDUIT_TAPER_STEP = 1.6
+
+#: LES TRAVEES SOMBRES — des poutres qui enjambent le canal et le BARRENT.
+#: Elles sont la seconde moitie de « coupe-les par des travees sombres » : la
+#: premiere est le trou dans la lumiere, celle-ci est la matiere qui le fait.
+#: Une poutre enterree de 0,62 m remplit la tranchee au lieu de la survoler.
+BRACE_WIDTH = 0.55
+BRACE_RISE = 0.06
+BRACE_SINK = 0.62
+BRACE_SPACING = (16.0, 30.0)
 
 # --------------------------------------------------------------------------
 # Le fuseau de proue — troncon 1 seulement
@@ -435,8 +517,57 @@ PROFILE: tuple[tuple[float, float, str], ...] = _subdivide_profile(
 DECK_LAST = next(i for i, p in enumerate(PROFILE)
                  if abs(p[0] - HALF_WIDTH) < 1e-9)
 
-#: 5 bulbes d'arete dorsale, exactement un par troncon, sur l'axe.
+#: 5 nœuds d'arete dorsale, exactement un par troncon, sur l'axe.
+#: ⚠️ LA COQUE N'EN CUIT PLUS AUCUN (BRIEF-0094). `build_spine_bulb()` a disparu,
+#: comme `build_bay()` (BRIEF-0091) et `build_turret_pad()` (BRIEF-0093) avant
+#: elle, et pour une raison qui n'est pas esthetique : le nœud est DESTRUCTIBLE.
+#: Une piece cuite dans le troncon ne s'eteint pas sans eteindre les quatre
+#: autres, puisque les cinq partagent un seul maillage et un seul jeu de
+#: materiaux. La coque porte le MARQUEUR ; `spine_kit.glb` porte le berceau, le
+#: cœur et les entretoises, et le moteur ne detruit que le cœur.
 SPINES: tuple[float, ...] = (50.0, 150.0, 250.0, 350.0, 450.0)
+
+#: ⚠️ EMPRISE QUE `spine_kit.glb` POSE DANS LE FOND DU CANAL, berceau compris.
+#: Elle vit ICI parce que c'est ici qu'on echantillonne la peau pour calculer
+#: l'assise du marqueur, et `build_spine_kit.FOOTPRINT_HX/HS` doivent valoir la
+#: meme chose : le kit — qui importe ce module — le reverifie a chaque build,
+#: exactement comme `BAY_COAMING_W` et `TURRET_FOOTPRINT_R`.
+SPINE_FOOTPRINT_HX = 0.66
+SPINE_FOOTPRINT_HS = 1.28
+
+# --------------------------------------------------------------------------
+# LES EMPRISES D'INSTALLATION — le rythme calme/installation/calme (priorite 3)
+# --------------------------------------------------------------------------
+# ⚠️ « LES ZONES CALMES SONT UN LIVRABLE, PAS UN MANQUE. » Le vocabulaire modulaire
+# semait ses plaques, ses nervures, ses greffes et ses pastilles sur TOUTE la
+# longueur : 1 071 plaques, 384 pastilles, 182 nervures, uniformement. Le resultat
+# est celui que l'operateur decrit — « du detail presque partout » — et c'est un
+# defaut de GAMEPLAY avant d'etre un defaut d'image : quand un gros equipement
+# entre dans le cadre, le joueur doit le remarquer, et sur un fond charge en
+# permanence il ne remarque rien.
+#
+# La regle est donc devenue : UN MODULE DE RELIEF NE SE POSE QUE DANS L'EMPRISE
+# D'UNE INSTALLATION. Ailleurs, la tole est nue — et elle n'est pas vide pour
+# autant : `TEX-0010` (bordé/plaques) est livree et integree, elle porte les
+# joints, les rivets et l'usure que la geometrie faisait a sa place. C'est
+# exactement le partage que l'en-tete de ce fichier annonce depuis BRIEF-0089
+# (« le detail perçu vient des textures, pas des triangles ») et qui n'avait
+# jamais ete applique.
+#
+# Les demi-emprises ci-dessous sont des cotes de RYTHME, pas de geometrie : elles
+# donnent des zones actives de 9 a 14 m autour de chaque installation, separees
+# par les 15-20 m calmes que le brief demande. La mesure — part calme, plus longue
+# plage nue — est rendue a chaque build.
+APRON_TURRET = 4.2
+APRON_BAY = 5.4
+APRON_SPINE = 3.8
+#: Ambry n'est pas un marqueur mais une piece entiere : son emprise est la sienne.
+APRON_AMBRY = 2.0
+#: Longueur minimale d'une plage nue. Le brief pose « 15-20 m calmes » : une
+#: greffe posee dans une plage libre doit donc laisser AU MOINS cette longueur de
+#: tole nue de chaque cote, sans quoi elle mange la respiration qu'elle est censee
+#: ponctuer.
+CALM_MIN = 12.0
 
 #: Ambry : l'avant-poste humain greffe sur le borde tribord du troncon 5.
 AMBRY_S = (446.0, 474.0)      # de la proue vers la poupe
@@ -568,6 +699,93 @@ def _ring_deck_flags() -> list[bool]:
 
 RING_X = _ring_x()
 RING_ON_DECK = _ring_deck_flags()
+
+
+# --------------------------------------------------------------------------
+# L'artere : ce que le profil dit, relu par des constantes nommees
+# --------------------------------------------------------------------------
+
+
+def _assert_canal() -> None:
+    """Le canal decrit par `CANAL_*` est-il celui que `PROFILE_BASE` dessine ?
+
+    ⚠️ Deux ecritures d'une meme cote finissent toujours par diverger, et ce
+    fichier en a deja paye deux (le coaming du hangar, l'emprise du socle de
+    tourelle) : la parade est de ne jamais laisser la copie muette. Ici, les
+    constantes servent aux conduits, aux travees, au kit d'epine et au
+    compte-rendu ; le profil, lui, fait la peau. S'ils cessent de coincider, le
+    conduit se pose sur la paroi et personne ne le voit avant le rendu.
+    """
+    points = {round(x, 6): y for x, y, _ in PROFILE_BASE[:6]}
+    for label, x, y in (("fond du canal", 0.0, CANAL_FLOOR_Y),
+                        ("pied de paroi", CANAL_FLOOR_HALF, CANAL_FLOOR_Y),
+                        ("arete interne du rebord", CANAL_HALF + 0.12,
+                         CANAL_RIM_Y)):
+        got = points.get(round(x, 6))
+        if got is None or abs(got - y) > 1e-9:
+            raise ak.ContractError(
+                f"canal : le profil ne porte pas {label} a (x={x}, y={y}) — "
+                f"trouve {got}. Les constantes CANAL_* et PROFILE_BASE ont "
+                "diverge")
+    if abs(PROFILE_BASE[4][0] - CANAL_RIM_X) > 1e-9:
+        raise ak.ContractError(
+            f"canal : arete externe du rebord a {PROFILE_BASE[4][0]} au lieu de "
+            f"{CANAL_RIM_X}")
+    for start, stop in CONDUIT_LANES:
+        if stop > CANAL_FLOOR_HALF - 0.10:
+            raise ak.ContractError(
+                f"conduit |x| in [{start}, {stop}] : il mord la paroi du canal "
+                f"(fond plat jusqu'a {CANAL_FLOOR_HALF})")
+    lit = 2.0 * sum(b - a for a, b in CONDUIT_LANES)
+    if lit > 0.5 * 2.0 * CANAL_HALF:
+        raise ak.ContractError(
+            f"les conduits eclairent {lit:.2f} m sur {2 * CANAL_HALF:.2f} m de "
+            "canal : le brief interdit d'occuper toute sa largeur")
+
+
+def _canal_lane(s: float, x0: float, x1: float) -> tuple[float, float] | None:
+    """La voie [x0, x1] tient-elle dans le FOND PLAT du canal a la station `s` ?
+
+    Le fuseau de proue contracte la section : a s = 30 le fond ne fait plus que
+    0,9 m de large, a s = 5 il n'existe pas. L'artere s'allume donc la ou le
+    vaisseau devient assez large pour la porter, et pas avant — ce qui se lit,
+    et ce qui evite d'ecraser quatre conduits sur 20 cm de proue.
+    """
+    limit = CANAL_FLOOR_HALF * _scales(s)[0] - 0.05
+    if min(x0, x1) < -limit or max(x0, x1) > limit:
+        return None
+    return x0, x1
+
+
+def spine_seat_y(s: float) -> tuple[float, float]:
+    """(Y d'ASSISE du berceau d'epine, Y du point le plus bas de son emprise).
+
+    ⚠️ Meme methode exactement que `bay_mouth_y()` et `turret_seat_y()`, et pour
+    la meme raison : l'assise est le point le PLUS HAUT de l'emprise, jamais la
+    peau au marqueur. Le fond du canal est plat en travers mais il MONTE dans le
+    fuseau de proue (2,2 cm par metre a `Spine_01`) : prendre la peau au centre
+    enterrerait le berceau d'un cote et le ferait flotter de l'autre.
+
+    Le marqueur `Spine_NN` porte donc ce maximum : c'est le plan Y = 0 sur lequel
+    TOUTES les pieces de `spine_kit.glb` sont modelisees. Le second membre donne
+    le creux que la jupe enterree du berceau doit absorber.
+    """
+    ys: list[float] = []
+    for ps in (s - SPINE_FOOTPRINT_HS, s, s + SPINE_FOOTPRINT_HS):
+        for px in (-SPINE_FOOTPRINT_HX, -0.31, 0.0, 0.31, SPINE_FOOTPRINT_HX):
+            ys.append(_surface_y(ps, px))
+    return max(ys), min(ys)
+
+
+def _merge(spans: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Fusionne des intervalles qui se recouvrent. Deterministe."""
+    merged: list[tuple[float, float]] = []
+    for a, b in sorted(spans):
+        if merged and a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+    return merged
 
 
 def _bay_cell(i: int, s0: float, s1: float) -> tuple[float, float] | None:
@@ -766,6 +984,102 @@ def bay_mouth_y(s: float, x: float) -> tuple[float, float]:
     return max(ys), min(ys)
 
 
+# --------------------------------------------------------------------------
+# LE RYTHME — ou l'on a le droit de poser du relief (BRIEF-0094, priorite 3)
+# --------------------------------------------------------------------------
+
+
+def _installation_spans() -> tuple[tuple[float, float, str, float], ...]:
+    """Les emprises d'installation, en `s` global : (s0, s1, nom, x).
+
+    C'est la SEULE table qui decide ou le vocabulaire modulaire a le droit de
+    poser quelque chose. Elle est derivee des marqueurs, jamais ecrite a la main :
+    deplacer une tourelle deplace son ancrage, et une zone calme ne peut pas se
+    retrouver a couvrir un hangar par oubli de mise a jour.
+
+    Le `x` en sert autant que le `s` : une nervure d'ancrage se pose du BORD de
+    son installation, pas en travers de tout le vaisseau.
+    """
+    spans: list[tuple[float, float, str, float]] = []
+    for number, (s, x) in enumerate(TURRETS, start=1):
+        spans.append((s - APRON_TURRET, s + APRON_TURRET,
+                      f"Turret_{number:02d}", x))
+    for number, (s, x) in enumerate(BAYS, start=1):
+        spans.append((s - APRON_BAY, s + APRON_BAY, f"Bay_{number:02d}", x))
+    for number, s in enumerate(SPINES, start=1):
+        spans.append((s - APRON_SPINE, s + APRON_SPINE,
+                      f"Spine_{number:02d}", 0.0))
+    spans.append((AMBRY_S[0] - APRON_AMBRY, AMBRY_S[1] + APRON_AMBRY,
+                  "Ambry", 0.5 * (AMBRY_X[0] + AMBRY_X[1])))
+    return tuple(sorted(spans))
+
+
+INSTALLATION_SPANS = _installation_spans()
+#: Les memes, fusionnees : c'est la carte des zones OCCUPEES par les marqueurs.
+MARKER_APRONS = _merge([(a, b) for a, b, _n, _x in INSTALLATION_SPANS])
+
+
+def _free_gaps() -> tuple[tuple[float, float], ...]:
+    """Les PLAGES NUES entre deux emprises de marqueur, proue -> poupe.
+
+    ⚠️ Cette table est le livrable « zones calmes » avant meme d'etre un outil :
+    elle dit, avant le premier sommet, ou le vaisseau respire. Mesuree sur les
+    marqueurs livres, elle rend 21 plages dont plusieurs de 15 a 22 m — la
+    sequence exacte que le brief demande (« 15-20 m calmes → une installation →
+    zone calme → un hangar »). Le maillage n'a plus qu'a ne pas la detruire.
+    """
+    gaps: list[tuple[float, float]] = []
+    cursor = 0.0
+    for a, b in MARKER_APRONS:
+        if a > cursor:
+            gaps.append((cursor, a))
+        cursor = max(cursor, b)
+    if cursor < SHIP_LENGTH:
+        gaps.append((cursor, SHIP_LENGTH))
+    return tuple(gaps)
+
+
+FREE_GAPS = _free_gaps()
+
+
+def _inside_zone(s0: float, s1: float) -> bool:
+    """Le module (s0..s1) tient-il ENTIEREMENT dans une emprise de marqueur ?
+
+    ⚠️ CONTENANCE, ET SURTOUT PAS INTERSECTION. La premiere version testait
+    l'intersection : une greffe de 11 m qui effleurait le bord d'une emprise de
+    8,4 m debordait de 10 m sur la plage nue voisine, une plaque acceptee au
+    contact debordait de 3, et de proche en proche la part calme mesuree tombait
+    a 13 pct pour un plafond theorique de 50. Un module qui deborde ne « depasse »
+    pas un peu : il DEPLACE la frontiere, et la frontiere est le livrable.
+    """
+    for a, b in MARKER_APRONS:
+        if a <= s0 and s1 <= b:
+            return True
+    return False
+
+
+def _in_apron(s0: float, s1: float, spans: list[tuple[float, float]]) -> bool:
+    """Le module (s0..s1) touche-t-il l'emprise d'une installation ?
+
+    ⚠️ `spans` contient les emprises des MARQUEURS *et* celles des GREFFES, qui
+    ne sont connues qu'apres tirage. C'est pourquoi les greffes sont maillees en
+    premier dans `build_section()` : le brief pose la sequence « 15-20 m calmes →
+    une installation → zone calme → un hangar → calme → un groupe de tourelles »,
+    et « une installation » y designe justement une masse greffee, distincte du
+    hangar et des tourelles. Une greffe est donc un point d'ancrage, pas un
+    module a ancrer.
+    """
+    for a, b in spans:
+        if s0 <= b and s1 >= a:
+            return True
+    return False
+
+
+#: Marge d'ancrage autour d'une greffe : c'est la que les plaques et les
+#: pastilles ont le droit de se poser pour la relier au borde.
+APRON_GRAFT = 2.4
+
+
 # ==========================================================================
 # Primitives locales — bobinage pose a la main (voir l'en-tete)
 # ==========================================================================
@@ -946,41 +1260,76 @@ def _surface_box(bm: bmesh.types.BMesh, x0: float, x1: float,
     return top_y
 
 
-def _lathe(bm: bmesh.types.BMesh, cx: float, cs: float,
-           contour: list[tuple[float, float, str]], segments: int) -> None:
-    """Solide de revolution autour de l'axe vertical passant par (cx, -cs).
+def _surface_poly(bm: bmesh.types.BMesh, plan: list[tuple[float, float]],
+                  rise: float, sink: float,
+                  side_material: str, top_material: str,
+                  draft: float = 0.0) -> float:
+    """`_surface_box` pour une empreinte QUELCONQUE — c'est ce qui donne aux
+    greffes une ORIENTATION.
 
-    `contour` : (y, rayon, materiau du segment montant). Un rayon nul est un pole.
-    Meme convention que `ak.add_lathe(axis="Y")`, refaite ici pour poser les
-    materiaux segment par segment et garantir le bobinage sortant.
+    ⚠️ ELLE EXISTE POUR UNE PHRASE DU BRIEF, ET LA PHRASE EST UNE REGLE DE
+    LISIBILITE : « une greffe doit se distinguer par sa HAUTEUR, son ORIENTATION
+    et sa SILHOUETTE, pas par sa couleur ». Toutes les primitives de ce fichier
+    etaient alignees sur les axes du vaisseau, si bien que la seule chose qui
+    distinguait une greffe du borde etait son `AA_Panel` violet — d'ou les
+    « decals arbitraires » de l'operateur. Une empreinte tournee de 12 a 22 deg
+    se lit comme une piece RAPPORTEE des la premiere image, sans une once de
+    couleur.
+
+    `plan` : les sommets (x, s) dans l'ordre qui rend la face du dessus normale
+    +Y — c'est-a-dire l'ordre de `_surface_box` (x croissant, puis s croissant),
+    conserve par toute rotation appliquee uniformement dans le plan (x, s), une
+    rotation preservant l'orientation. Rend le Y du dessus.
     """
-    cz = _z(cs)
-    rings: list = []
-    for y, r, _ in contour:
-        if r <= 1e-6:
-            rings.append(bm.verts.new(Vector((cx, y, cz))))
-            continue
-        pts = []
-        for k in range(segments):
-            a = 2.0 * math.pi * k / segments
-            pts.append(bm.verts.new(
-                Vector((cx + r * math.cos(a), y, cz + r * math.sin(a)))))
-        rings.append(pts)
-    for i in range(len(contour) - 1):
-        material = contour[i][2]
-        low, high = rings[i], rings[i + 1]
-        if isinstance(low, list) and isinstance(high, list):
-            for k in range(segments):
-                m = (k + 1) % segments
-                _quad(bm, low[k], high[k], high[m], low[m], material)
-        elif isinstance(high, bmesh.types.BMVert) and isinstance(low, list):
-            for k in range(segments):
-                m = (k + 1) % segments
-                _face(bm, [low[k], high, low[m]], material)
-        elif isinstance(low, bmesh.types.BMVert) and isinstance(high, list):
-            for k in range(segments):
-                m = (k + 1) % segments
-                _face(bm, [high[m], low, high[k]], material)
+    ys = [_surface_y(s, x) for x, s in plan]
+    top_y = min(ys) + rise
+    bottom_y = min(ys) - sink
+    cx = sum(x for x, _ in plan) / len(plan)
+    cs = sum(s for _, s in plan) / len(plan)
+    inner: list[tuple[float, float]] = []
+    for x, s in plan:
+        dx, ds = cx - x, cs - s
+        length = math.hypot(dx, ds)
+        # Le retrait est une DISTANCE, borne a la moitie du rayon : sur une
+        # empreinte etroite, un retrait fixe retournerait le polygone.
+        step = min(draft, length * 0.45) / length if length > 1e-9 else 0.0
+        inner.append((x + dx * step, s + ds * step))
+    bv = [bm.verts.new(Vector((x, bottom_y, _z(s)))) for x, s in plan]
+    tv = [bm.verts.new(Vector((x, top_y, _z(s)))) for x, s in inner]
+    _face(bm, tv, top_material)
+    _face(bm, list(reversed(bv)), side_material)
+    for i in range(len(plan)):
+        j = (i + 1) % len(plan)
+        _quad(bm, bv[i], bv[j], tv[j], tv[i], side_material)
+    return top_y
+
+
+def _yawed_plan(cx: float, cs: float, half_x: float, half_s: float,
+                yaw: float) -> list[tuple[float, float]]:
+    """Empreinte rectangulaire tournee de `yaw` (rad) autour de (cx, cs)."""
+    ca, sa = math.cos(yaw), math.sin(yaw)
+    corners = ((-half_x, -half_s), (half_x, -half_s),
+               (half_x, half_s), (-half_x, half_s))
+    return [(cx + dx * ca - ds * sa, cs + dx * sa + ds * ca)
+            for dx, ds in corners]
+
+
+def _plan_bounds(plan: list[tuple[float, float]]) -> tuple[float, float,
+                                                           float, float]:
+    """(x0, x1, s0, s1) englobants — les gardes travaillent sur des boites."""
+    xs = [x for x, _ in plan]
+    ss = [s for _, s in plan]
+    return min(xs), max(xs), min(ss), max(ss)
+
+
+# ⚠️ `_lathe()` A DISPARU AVEC `build_spine_bulb()` (BRIEF-0094). C'etait son seul
+# appelant : le bulbe d'arete dorsale etait la seule revolution de ce decor. Les
+# solides de revolution du niveau vivent maintenant dans les kits — `turret_pad`,
+# `turret_ring`, `spine_core` —, ou ils sont modelises par lofts d'anneaux avec un
+# bobinage CALCULE piece par piece. Garder ici une primitive que rien n'appelle,
+# c'est garder une reponse a une question qu'on ne pose plus.
+
+
 
 
 # ==========================================================================
@@ -1157,13 +1506,23 @@ PLATE_LANES = ((2.35, 3.95), (4.05, 5.35), (5.45, 6.55),
                (7.55, 8.95), (9.05, 10.35), (10.45, 11.60))
 
 
-def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
-    """Le champ de plaques : une GRILLE de voies x cellules, semee de variations.
+def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random,
+                 aprons: list[tuple[float, float]],
+                 busy: list[tuple[float, float]]) -> int:
+    """Les plaques — desormais l'APPAREILLAGE des installations, plus un champ.
 
-    C'est la piece la plus rentable du fichier — 12 triangles pour une arete vive,
-    une depouille eclairee et une ombre portee par la seule orientation des faces.
-    Elle porte a elle seule le « borde fait de modules qui se repetent » des trois
-    maquettes ; les joints, les rivets et l'usure viendront de la texture.
+    ⚠️ CETTE FAMILLE A CHANGE DE METIER AU BRIEF-0094. Elle semait 1 071 plaques
+    sur toute la longueur pour porter « le borde fait de modules qui se
+    repetent » ; c'etait le travail de la texture, et `TEX-0010` le fait
+    maintenant. Ce qui reste ici, c'est ce qu'une image plate ne peut pas faire :
+    du RELIEF, et il n'a de sens qu'autour de quelque chose. Les plaques ne se
+    posent donc plus que dans l'emprise d'une installation, ou elles l'ancrent.
+
+    Deux hauteurs et non plus deux : 0,16 m pour les tôles, 0,34 m pour les
+    massifs de machinerie qui entourent un socle ou un coaming — c'est la strate
+    « Z + 0,5 autour des installations » que le brief demande. Aucune n'est
+    violette : le violet est monte d'un cran, sur les greffes, ou il est porte
+    par un VOLUME.
     """
     origin = index * SECTION_LENGTH
     cell = 3.2
@@ -1189,57 +1548,104 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
                     s += cell
                     continue
                 inset = rng.uniform(0.06, 0.20)
-                rise = 0.14 if roll < 0.62 else 0.22
                 # ⚠️ LE TEST DE BAIE VIENT APRES LE TIRAGE, ET C'EST DELIBERE.
                 # `rng` est un flux : sauter un tirage decale TOUT ce qui suit,
                 # et le decor entier se re-seede — 1084 plaques, 380 pastilles et
                 # 117 greffes deplacees pour sept ouvertures. La regle vaut pour
-                # les trois familles qui tirent APRES un rejet (plaques,
-                # greffes, pastilles) : on tire, puis on decide d'emettre.
+                # les quatre familles qui tirent APRES un rejet (plaques,
+                # nervures, greffes, pastilles) : on tire, puis on decide
+                # d'emettre. Le filtre d'emprise obeit a la meme regle.
                 if _bay_clash(s, s + length, min(x0, x1), max(x0, x1)):
                     s += cell
                     continue
-                # 12 pct de violet et non 20 : au premier rendu, une plaque sur
-                # cinq en `AA_Panel` faisait un confetti visible d'un bout a
-                # l'autre du troncon.
-                material = "AA_Hull" if roll < 0.88 else "AA_Panel"
+                if not _in_apron(s, s + length, aprons):
+                    s += cell
+                    continue
+                if not _inside_zone(s, s + length):
+                    s += cell
+                    continue
+                # Un tiers de massifs : c'est ce qui donne du volume au pied
+                # d'une tourelle ou d'un hangar sans rien ajouter en couleur.
+                heavy = roll > 0.74
+                rise = 0.34 if heavy else 0.16
                 _surface_box(bm, x0 + inset, x1 - inset, s, s + length,
-                             rise, 0.55, "AA_Greeble", material, draft=0.055)
+                             rise, 0.55, "AA_Greeble",
+                             "AA_Greeble" if heavy else "AA_Hull",
+                             draft=0.055 if not heavy else 0.10)
+                busy.append((s, s + length))
                 count += 1
                 s += cell
     return count
 
 
-def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
-    """Nervures transversales : ce qui donne au Cortege sa segmentation.
+def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
+               busy: list[tuple[float, float]]) -> int:
+    """Nervures transversales — desormais L'ANCRAGE d'une installation.
 
-    Six boites par nervure (crete, pont interieur, pont median, facette — en
-    miroir). Chacune epouse sa bande par `_surface_box`, y compris la facette
-    exterieure inclinee a 51 deg.
+    Elles etaient reparties tous les 12 m sur toute la longueur : c'est ce qui
+    faisait lire le Cortege « segmente » et, au brief suivant, « charge partout ».
+    Le brief tranche : « quelques nervures et masses en Z + 0,5 AUTOUR des
+    installations, pour les ancrer. Rien ailleurs. » Elles se posent donc a la
+    station d'une installation, pas sur une grille — et leur nombre suit celui
+    des installations du troncon, pas un compte ecrit a la main.
+
+    ⚠️ 1,95 et non 1,75 comme bord interieur : la nervure s'arretait autrefois au
+    pied de la crete ; le pied du REBORD du canal est a 1,70, et une nervure qui
+    l'enjamberait ferait un pont par-dessus la tranchee — exactement ce que les
+    travees du canal font deja, et mieux.
     """
     origin = index * SECTION_LENGTH
-    spans = ((1.75, 6.60), (7.50, 12.10), (12.45, 13.85))
+    bands = ((1.95, 6.60), (7.50, 12.10), (12.45, 13.85))
     count = 0
-    # Le nombre varie d'un troncon a l'autre : sinon les cinq vues de dessus sont
-    # des copies, la peau etant identique de la section 2 a la 5.
-    ribs = (6, 7, 8, 7, 9)[index]
-    for k in range(ribs):
-        s = origin + JOINT_CLEARANCE + 3.0 + (SECTION_LENGTH - 12.0) * k / (ribs - 1)
-        s += rng.uniform(-1.4, 1.4)
-        width = rng.uniform(0.85, 1.45)
-        rise = 0.45 if k % 2 == 0 else 0.32
-        # ⚠️ Une nervure sur trois seulement recoit l'ivoire. Toutes en `AA_Trim`,
-        # elles lisaient comme des passages pietons en travers de la coque.
-        top = "AA_Trim" if k % 3 == 1 else "AA_Hull"
-        for side in (1.0, -1.0):
-            for a, b in spans:
-                lane = _clip_lane(s, min(side * a, side * b), max(side * a, side * b))
-                if lane is None or _ambry_clash(s, s + width, lane[0], lane[1]) \
-                        or _bay_clash(s, s + width, lane[0], lane[1]):
-                    continue
-                _surface_box(bm, lane[0], lane[1], s, s + width,
-                             rise, 0.60, "AA_Greeble", top, draft=0.10)
-                count += 1
+    stations = [(0.5 * (a + b), x) for a, b, _n, x in INSTALLATION_SPANS
+                if origin + JOINT_CLEARANCE < 0.5 * (a + b)
+                < origin + SECTION_LENGTH - JOINT_CLEARANCE]
+    for k, (centre, cx) in enumerate(stations):
+        # ⚠️ ELLES SONT LOCALES A LEUR INSTALLATION, EN X COMME EN S. Une nervure
+        # qui traverserait les 28 m de large pour ancrer une tourelle de bord
+        # serait exactement le « detail presque partout » que le brief corrige :
+        # elle ancrerait aussi bien la peau nue d'en face. On ne retient donc que
+        # les bandes que l'installation TOUCHE, et son seul bord — sauf le nœud
+        # d'epine, sur l'axe, qui prend les deux.
+        sides = (1.0, -1.0) if abs(cx) < 1.0 else (1.0 if cx > 0 else -1.0,)
+        near = [(a, b) for a, b in bands if a - 3.2 <= abs(cx) <= b + 3.2] \
+            or [bands[0]]
+        # Deux nervures par installation, de part et d'autre : c'est ce qui la
+        # fait lire POSEE SUR une structure et non collee dessus.
+        for lead in (-1.0, 1.0):
+            offset = rng.uniform(2.0, 3.2)
+            s = centre + lead * offset
+            width = rng.uniform(0.85, 1.45)
+            rise = 0.45 if k % 2 == 0 else 0.32
+            if not (origin + JOINT_CLEARANCE < s
+                    < origin + SECTION_LENGTH - JOINT_CLEARANCE - width) \
+                    or not _inside_zone(s, s + width):
+                continue
+            # ⚠️ L'IVOIRE A QUITTE LES NERVURES (BRIEF-0094). BRIEF-0089 l'avait
+            # deja rationne — « une nervure sur trois seulement », les autres
+            # lisaient comme des passages pietons — et c'etait encore trop : une
+            # nervure fait 4,65 m de long sur la bande interieure, et quatre
+            # barres ivoire de cette taille tombaient dans un seul cadre du
+            # rendu d'acceptation. Elles alternent maintenant deux valeurs
+            # SOMBRES : la variation se lit a la lumiere rasante, pas a la
+            # valeur. L'ivoire ne subsiste plus que sur des pieces de moins de
+            # 2 m2 (echines de greffe, sole du berceau d'epine).
+            top = "AA_Greeble" if k % 3 == 1 else "AA_Hull"
+            posed = False
+            for a, b in near:
+                for side in sides:
+                    lane = _clip_lane(s, min(side * a, side * b),
+                                      max(side * a, side * b))
+                    if lane is None \
+                            or _ambry_clash(s, s + width, lane[0], lane[1]) \
+                            or _bay_clash(s, s + width, lane[0], lane[1]):
+                        continue
+                    _surface_box(bm, lane[0], lane[1], s, s + width,
+                                 rise, 0.60, "AA_Greeble", top, draft=0.10)
+                    count += 1
+                    posed = True
+            if posed:
+                busy.append((s, s + width))
     return count
 
 
@@ -1257,9 +1663,23 @@ def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
         # ⚠️ UNE SEULE des trois lisses est claire. Une lisse fait 97 m de long :
         # trois lignes ivoire par flanc, c'etait six rubans blancs d'un bout a
         # l'autre du vaisseau.
-        for a, b, rise, material in ((6.62, 6.98, 0.16, "AA_Trim"),
+        # ⚠️ La lisse interieure passe de |x| 1,66-2,02 a 2,42-2,78 : a l'ancienne
+        # place elle chevauchait le talus du bandeau dorsal et le rebord du canal,
+        # qu'elle aurait redessines en double. Elle longe maintenant le pied du
+        # bandeau, ou elle en souligne l'arete.
+        # ⚠️ LA LISSE DE CHINE PERD SON IVOIRE (BRIEF-0094), ET C'EST LA MEME
+        # LEÇON QUE BRIEF-0089 A DEJA PAYEE UNE FOIS. Elle etait la DERNIERE
+        # arete continue en `AA_Trim` : 0,36 m de large sur 97 m, deux fois. Au
+        # rendu d'acceptation, en noir et blanc comme en couleur, elle donnait
+        # deux traits blancs pleins du haut au bas du cadre — les « rubans
+        # blancs » que le premier rendu du Cortege avait deja values, revenus
+        # par la seule piece qu'on avait laissee claire. Le brief demande une
+        # masse anthracite ou l'ivoire est RARE : il ne reste plus sur aucune
+        # arete continue, seulement sur des pieces (chapeaux de nervure,
+        # echines de greffe, sole de berceau).
+        for a, b, rise, material in ((6.62, 6.98, 0.16, "AA_Greeble"),
                                      (12.15, 12.45, 0.14, "AA_Hull"),
-                                     (1.66, 2.02, 0.12, "AA_Greeble")):
+                                     (2.42, 2.78, 0.12, "AA_Greeble")):
             lane = _clip_lane(s1, min(side * a, side * b), max(side * a, side * b),
                               minimum=0.25)
             if lane is None:
@@ -1284,72 +1704,168 @@ def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
     return count
 
 
-def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
+def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random,
+                 busy: list[tuple[float, float]],
+                 spans: list[tuple[float, float]]) -> int:
     """Les greffes : ce que le Cortege EMPORTE, empile sur son borde.
 
-    Trois a quatre boites decroissantes, plus une echine verticale. Leur enveloppe
-    grandit du troncon 1 au 5 — c'est ainsi que la silhouette s'epaissit vers la
-    poupe sans jamais depasser les 28 m de large ni le plafond.
+    ⚠️ TROIS CHOSES CHANGENT AU BRIEF-0094, ET C'EST LA MEME CORRECTION TROIS
+    FOIS. « Les gros rectangles violets se lisent comme des decals arbitraires :
+    ce sont des aplats, pas des volumes. Reduire le violet ET relever ces masses
+    est la meme correction, pas deux. »
+
+      1. LA HAUTEUR. Les couches montaient de 0,28 a 0,42 m et s'arretaient sous
+         la crete, qui ne laissait que 0,4 m de degagement au centre. La crete a
+         disparu : le pont offre 1,04 a 1,10 m sous le plafond de construction,
+         et les couches montent maintenant de 0,34 a 0,54 m. Une greffe fait donc
+         0,7 a 1,05 m de haut au lieu de 0,3 a 0,8.
+      2. L'ORIENTATION. Toutes les empreintes etaient alignees sur les axes du
+         vaisseau — donc indiscernables du borde autrement que par leur couleur.
+         Elles sont maintenant tournees de 7 a 23 deg (`_surface_poly`), et le
+         sens de rotation change d'une greffe a l'autre.
+      3. LA COULEUR, EN DERNIER. `AA_Panel` ne couvre plus la premiere couche de
+         chaque greffe mais une greffe sur quatre environ, sur sa couche haute —
+         la ou elle designe un volume au lieu de tapisser une surface.
+
+    Leur enveloppe grandit du troncon 1 au 5 : c'est ainsi que la silhouette
+    s'epaissit vers la poupe sans jamais depasser les 28 m ni le plafond.
     """
     origin = index * SECTION_LENGTH
     count = 0
-    grafts = 8 + index
     growth = 0.80 + 0.10 * index
-    for k in range(grafts):
-        s = origin + 7.0 + (SECTION_LENGTH - 20.0) * k / (grafts - 1)
-        s += rng.uniform(-1.6, 1.6)
-        side = 1.0 if (k + index) % 2 == 0 else -1.0
-        base_x = rng.uniform(3.2, 11.4)
-        width = rng.uniform(2.4, 4.6) * growth
-        length = rng.uniform(4.0, 9.5) * growth
-        x0, x1 = base_x - width * 0.5, base_x + width * 0.5
-        lane = _clip_lane(s, min(side * x0, side * x1), max(side * x0, side * x1))
-        if lane is None or s + length > origin + SECTION_LENGTH - JOINT_CLEARANCE:
-            continue
-        if _ambry_clash(s, s + length, lane[0], lane[1]):
-            continue
-        # Voir `build_plates` : on tire, puis on decide d'emettre.
-        blocked = _bay_clash(s, s + length, lane[0], lane[1])
-        x0, x1 = lane
-        wanted = rng.randint(2, 3)
-        rise = 0.0
-        layers = 0
-        for layer in range(wanted):
-            shrink = 0.22 * layer
-            step = rng.uniform(0.28, 0.42)
-            # ⚠️ On verifie AVANT de poser, jamais apres : une version precedente
-            # posait la couche puis sortait de la boucle, et deux troncons
-            # culminaient a -3,14 pour un plafond de construction de -3,20.
-            headroom = BUILD_CEILING_Y - _surface_y(s + length * 0.5, (x0 + x1) * 0.5)
-            if rise + step > headroom:
-                break
-            if not blocked:
-                _surface_box(
-                    bm,
-                    x0 + width * shrink, x1 - width * shrink,
-                    s + length * shrink * 0.55,
-                    s + length * (1.0 - shrink * 0.55),
-                    rise + step, 0.70 + rise,
-                    "AA_Greeble", "AA_Panel" if layer == 0 else "AA_Hull",
-                    draft=0.09)
-            rise += step
-            layers += 1
-        if layers == 0:
-            continue
-        if not blocked:
-            count += layers
-        # L'echine : une lame etroite sur le dessus, qui casse le profil plat.
-        if rng.random() < 0.55 and not blocked:
-            cx = (x0 + x1) * 0.5
-            _surface_box(bm, cx - 0.30, cx + 0.30,
-                         s + length * 0.22, s + length * 0.78,
-                         min(rise + 0.34, BUILD_CEILING_Y - _surface_y(s, cx)),
-                         0.90 + rise, "AA_Greeble", "AA_Trim", draft=0.04)
-            count += 1
+    # ⚠️ LES GREFFES SE SEMENT SUR LES EMPRISES, PLUS SUR UNE GRILLE. La version
+    # d'avant les repartissait tous les 10 m sur toute la longueur : sous la
+    # regle de contenance, quatre sur cinq tombaient dans une plage nue et
+    # etaient rejetees — 27 greffes livrees au lieu de 100, un borde plat.
+    # On parcourt donc les emprises, et chacune heberge deux ou trois masses.
+    # C'est ce qui fait le groupe : « une tourelle, et la machinerie autour ».
+    zones = [(max(a, origin + JOINT_CLEARANCE),
+              min(b, origin + SECTION_LENGTH - JOINT_CLEARANCE))
+             for a, b in MARKER_APRONS]
+    zones = [(a, b) for a, b in zones if b - a > 4.0]
+    for k, (za, zb) in enumerate(zones):
+        for slot in range(2 + (k + index) % 2):
+            side = 1.0 if (k + slot + index) % 2 == 0 else -1.0
+            base_x = rng.uniform(3.2, 11.4)
+            width = rng.uniform(2.4, 4.6) * growth
+            length = min(rng.uniform(4.0, 9.5) * growth, zb - za - 0.4)
+            s = za + rng.uniform(0.0, max(zb - za - length, 0.0))
+            yaw = rng.uniform(0.12, 0.40) * (1.0 if rng.random() < 0.5 else -1.0)
+            # ⚠️ UNE GREFFE SUR DEUX SEULEMENT EST VIOLETTE, ET LE CHOIX N'EST
+            # PAS TIRE AU SORT : il alterne. Une couleur portee par TOUTES les
+            # greffes redevient ce que le brief refuse — « une greffe doit se
+            # distinguer par sa hauteur, son orientation et sa silhouette, PAS
+            # par sa couleur ». Si le violet les designe toutes, c'est lui qui
+            # les designe. Une sur deux, il ne designe plus rien : il accentue.
+            count += _one_graft(bm, index, rng, busy, spans, s, length, side,
+                                base_x, width, yaw, (k + slot) % 2 == 0)
     return count
 
 
-def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
+def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
+               busy: list[tuple[float, float]], spans: list[tuple[float, float]],
+               s: float, length: float, side: float, base_x: float,
+               width: float, yaw: float, violet: bool) -> int:
+    """Une greffe et sa pile de terrasses. Rend le nombre de boites emises."""
+    origin = index * SECTION_LENGTH
+    count = 0
+    x0, x1 = base_x - width * 0.5, base_x + width * 0.5
+    lane = _clip_lane(s, min(side * x0, side * x1), max(side * x0, side * x1))
+    if lane is None or s + length > origin + SECTION_LENGTH - JOINT_CLEARANCE:
+        return count
+    if _ambry_clash(s, s + length, lane[0], lane[1]):
+        return count
+    # Voir `build_plates` : on tire, puis on decide d'emettre.
+    blocked = _bay_clash(s, s + length, lane[0], lane[1])
+    # ⚠️ LA REGLE DE RYTHME, ET C'EST ELLE QUI FAIT LE LIVRABLE « ZONES
+    # CALMES ». Une greffe est HEBERGEE par une emprise de marqueur : elle
+    # doit y tenir tout entiere. Elle n'a donc pas le droit de s'installer
+    # dans une plage nue, et c'est une decision MESUREE, pas un gout — voir
+    # `FREE_GAPS` et le compte-rendu : la plus large des vingt et une plages
+    # laissees par les trente marqueurs fait 24 m, et une greffe de 8 m qui
+    # s'y poserait ne laisserait que 8 m de tole de chaque cote, quand le
+    # brief en demande 15 a 20. Deplacer des marqueurs pour ouvrir la place
+    # est un arbitrage de conception, pas de forge.
+    if not _inside_zone(s, s + length):
+        return count
+    x0, x1 = lane
+    # ⚠️ La largeur EFFECTIVE, apres rabattement sur le fuseau. L'ancienne
+    # version retranchait `width * shrink` d'une voie deja rabattue : sur le
+    # troncon 1 les couches hautes debordaient de la couche basse.
+    width = x1 - x0
+    centre_x = (x0 + x1) * 0.5
+    centre_s = s + length * 0.5
+    wanted = rng.randint(2, 3)
+    rise = 0.0
+    layers = 0
+    for layer in range(wanted):
+        shrink = 0.20 * layer
+        step = rng.uniform(0.34, 0.54)
+        # ⚠️ On verifie AVANT de poser, jamais apres : une version precedente
+        # posait la couche puis sortait de la boucle, et deux troncons
+        # culminaient a -3,14 pour un plafond de construction de -3,20.
+        headroom = BUILD_CEILING_Y - _surface_y(centre_s, centre_x)
+        if rise + step > headroom:
+            break
+        plan = _yawed_plan(centre_x, centre_s,
+                           width * (0.5 - shrink), length * (0.5 - shrink),
+                           yaw)
+        px0, px1, ps0, ps1 = _plan_bounds(plan)
+        # ⚠️ L'empreinte TOURNEE deborde de la voie que `_clip_lane` a
+        # validee — jusqu'a 0,8 m sur une greffe de 9 m tournee de 23 deg. On
+        # la reverifie donc sur sa boite englobante, qui majore, contre la
+        # meme demi-largeur utile que `_clip_lane`. Sans cela, une greffe de
+        # bord passerait par-dessus l'arete du borde a la premiere rotation.
+        if px0 < -(_half_width(centre_s) - 0.45) \
+                or px1 > _half_width(centre_s) - 0.45:
+            break
+        if _ambry_clash(ps0, ps1, px0, px1):
+            break
+        if not blocked:
+            _surface_poly(
+                bm, plan, rise + step, 0.70 + rise, "AA_Greeble",
+                # ⚠️ LE VIOLET NE SURVIT QUE LA, ET SEULEMENT SUR LA
+                # TERRASSE LA PLUS HAUTE — donc la plus PETITE. C'est la regle
+                # de tout le niveau apres BRIEF-0094 : `AA_Panel` designe le
+                # sommet d'une greffe et rien d'autre — plus une facette de
+                # borde, plus une plaque, plus un socle.
+                #
+                # ⚠️ ET LE CHOIX DE LA COUCHE A ETE FAIT AU RENDU, PAS AU
+                # RAISONNEMENT. Poser le violet sur toutes les couches sauf la
+                # premiere donnait, vu de la camera du jeu (70 deg de plongee),
+                # un parallelogramme violet plein sur chaque greffe : le
+                # « gros rectangle violet pose » que le brief demande de
+                # supprimer, simplement tourne. Sur la seule terrasse haute, il
+                # ne couvre plus que ~10 pct de l'empreinte, et il se lit comme
+                # ce qu'il est : un couronnement. Le brief : « la couleur ne
+                # fait que confirmer » ce que la hauteur, l'orientation et la
+                # silhouette ont deja dit.
+                "AA_Panel" if (violet and layer == wanted - 1)
+                    else "AA_Hull",
+                draft=0.09)
+        rise += step
+        layers += 1
+    if layers == 0:
+        return count
+    if not blocked:
+        count += layers
+        busy.append((s, s + length))
+        spans.append((s - APRON_GRAFT, s + length + APRON_GRAFT))
+
+    # L'echine : une lame etroite sur le dessus, qui casse le profil plat.
+    if rng.random() < 0.55 and not blocked:
+        spine = _yawed_plan(centre_x, centre_s, 0.30, length * 0.28, yaw)
+        _surface_poly(bm, spine,
+                      min(rise + 0.34,
+                          BUILD_CEILING_Y - _surface_y(centre_s, centre_x)),
+                      0.90 + rise, "AA_Greeble", "AA_Trim", draft=0.04)
+        count += 1
+    return count
+
+
+def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
+               aprons: list[tuple[float, float]],
+               busy: list[tuple[float, float]]) -> int:
     """Les petits feux magenta des maquettes : 12 triangles piece.
 
     Ils sont ce qui, sur les trois planches, dit le plus vite « c'est vivant ».
@@ -1357,10 +1873,15 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
     emissive totale est mesuree et rapportee, parce que le magenta est aussi une
     couleur de tir ennemi (charte SS3) et qu'un decor ne doit jamais lui disputer
     la lisibilite.
+
+    ⚠️ ILS NE SE SEMENT PLUS SUR TOUTE LA LONGUEUR (BRIEF-0094). 384 feux
+    repartis uniformement, c'etait 384 raisons de regarder ailleurs que
+    l'installation qui entre dans le cadre. Un feu allume DIT quelque chose : il
+    dit qu'une machine tourne. Il se pose donc la ou il y en a une.
     """
     origin = index * SECTION_LENGTH
     count = 0
-    for _ in range(78 + index * 6):
+    for _ in range(44 + index * 4):
         s = origin + rng.uniform(JOINT_CLEARANCE + 1.0,
                                  SECTION_LENGTH - JOINT_CLEARANCE - 1.0)
         band = BAND_INNER if rng.random() < 0.5 else BAND_MID
@@ -1374,9 +1895,113 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
         # Voir `build_plates` : on tire, puis on decide d'emettre.
         if _bay_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
             continue
+        if not _in_apron(s - half_s, s + half_s, aprons) \
+                or not _inside_zone(s - half_s, s + half_s):
+            continue
         _surface_box(bm, x - half_x, x + half_x, s - half_s, s + half_s,
                      0.05, 0.35, "AA_Greeble", "AA_Emissive_Engine")
+        busy.append((s - half_s, s + half_s))
         count += 1
+    return count
+
+
+# ==========================================================================
+# L'ARTERE — conduits et travees (BRIEF-0094, priorite 1)
+# ==========================================================================
+
+
+def _spine_gap(s0: float, s1: float, margin: float) -> bool:
+    """L'intervalle (s0, s1) tombe-t-il sur un nœud d'epine ?
+
+    Le kit d'epine occupe le fond du canal a `SPINES` : un conduit qui passerait
+    dessous serait cache, une travee le traverserait. Les conduits s'arretent
+    donc AVANT le nœud et reprennent apres — ce qui donne, gratuitement, la
+    lecture « le nœud est sur la conduite » plutot que « posee a cote ».
+    """
+    for centre in SPINES:
+        if s0 < centre + margin and s1 > centre - margin:
+            return True
+    return False
+
+
+def build_conduits(bm: bmesh.types.BMesh, index: int,
+                   rng: random.Random) -> tuple[int, float]:
+    """Les bandes lumineuses SERTIES DANS LE FOND du canal, avec leurs coupures.
+
+    ⚠️ C'EST LA PRIORITE 1 DU BRIEF, ET ELLE TIENT DANS LA DIFFERENCE ENTRE UNE
+    BANDE ET UNE CONDUITE. « Une bande continue sur 500 m est une frontiere de
+    terrain, pas une conduite. » Quatre voies etroites, chacune avec sa propre
+    cadence d'allumage et sa propre phase, dans un creux de 0,56 m : la lumiere
+    ne peut plus faire une ligne pleine d'un bout a l'autre du cadre, et ce n'est
+    pas un reglage d'emission — c'est de la geometrie.
+
+    Rend (nombre de segments, longueur cumulee eclairee).
+    """
+    origin = index * SECTION_LENGTH
+    end = origin + SECTION_LENGTH - JOINT_CLEARANCE
+    count = 0
+    lit = 0.0
+    for side in (1.0, -1.0):
+        for lane_index, (a, b) in enumerate(CONDUIT_LANES):
+            x0, x1 = sorted((side * a, side * b))
+            # La phase de depart differe par voie ET par bord : sans cela les
+            # quatre coupures tombent au meme `s` et la conduite se lit comme
+            # une seule barre pointillee.
+            s = origin + JOINT_CLEARANCE + rng.uniform(0.0, 9.0) \
+                + lane_index * 3.7 + (0.0 if side > 0 else 5.3)
+            while s < end - 2.0:
+                stop = min(s + rng.uniform(*CONDUIT_RUN), end)
+                gap = rng.uniform(*CONDUIT_GAP)
+                if stop - s >= 2.0 and not _spine_gap(s, stop, 2.0):
+                    # ⚠️ Decoupe UNIQUEMENT dans le fuseau : voir
+                    # `CONDUIT_TAPER_STEP`. Ailleurs le fond est plat et la
+                    # bande sort d'une seule piece, a 12 triangles.
+                    step = CONDUIT_TAPER_STEP if index == 0 else stop - s
+                    piece = s
+                    while piece < stop - 1e-6:
+                        tail = min(piece + step, stop)
+                        if _canal_lane(piece, x0, x1) is not None \
+                                and _canal_lane(tail, x0, x1) is not None:
+                            _surface_box(bm, x0, x1, piece, tail,
+                                         CONDUIT_RISE, 0.30, "AA_Greeble",
+                                         "AA_Emissive_Engine")
+                            count += 1
+                            lit += tail - piece
+                        piece = tail
+                s = stop + gap
+    return count, lit
+
+
+def build_canal_braces(bm: bmesh.types.BMesh, index: int,
+                       rng: random.Random) -> int:
+    """Les TRAVEES SOMBRES qui barrent le canal — la matiere des interruptions.
+
+    Le brief demande de couper les bandes « par des travees sombres,
+    regulierement mais sans metronome ». Un trou dans la lumiere y suffirait a
+    moitie : il laisserait un canal vide, et un canal vide sur 4 m se lit comme
+    une panne. Une poutre qui l'enjambe et l'obture donne la meme coupure ET une
+    raison mecanique — c'est une conduite qui passe sous une structure.
+
+    Elle est enterree de 0,62 m : elle REMPLIT la tranchee au lieu de la
+    survoler, et l'on ne voit pas la lumiere passer dessous.
+    """
+    origin = index * SECTION_LENGTH
+    end = origin + SECTION_LENGTH - JOINT_CLEARANCE
+    count = 0
+    s = origin + JOINT_CLEARANCE + rng.uniform(3.0, 12.0)
+    while s < end - BRACE_WIDTH:
+        # ⚠️ La travee va de REBORD A REBORD, pas de fond a fond : elle est donc
+        # bornee par `CANAL_RIM_X` mis a l'echelle du fuseau, et non par
+        # `_canal_lane()`, qui ne connait que le fond plat. Le seuil de 0,80
+        # ecarte la proue, ou la tranchee n'existe pas encore.
+        scale = _scales(s)[0]
+        if scale >= 0.80 and not _spine_gap(s, s + BRACE_WIDTH, 2.6):
+            half = CANAL_RIM_X * scale
+            _surface_box(bm, -half, half, s, s + BRACE_WIDTH,
+                         BRACE_RISE, BRACE_SINK, "AA_Greeble", "AA_Hull",
+                         draft=0.06)
+            count += 1
+        s += rng.uniform(*BRACE_SPACING)
     return count
 
 
@@ -1450,32 +2075,33 @@ def turret_seat_y(s: float, x: float) -> tuple[float, float]:
 # porter sept copies de la meme geometrie.
 
 
-def build_spine_bulb(bm: bmesh.types.BMesh, s: float) -> float:
-    """Un bulbe de l'arete dorsale : le nœud que le joueur devra abattre.
-
-    Il est ce que la coque a de plus haut apres Ambry, et c'est voulu : la
-    mecanique doit se VOIR de loin. Son sommet est cale sur le plafond de
-    construction, pas choisi a l'œil.
-    """
-    crest = _surface_y(s, 0.0)
-    top = min(crest + 0.40, BUILD_CEILING_Y)
-    contour = [
-        (crest - 0.95, 1.34, "AA_Greeble"),
-        (crest - 0.30, 1.28, "AA_Trim"),
-        (crest + 0.02, 1.06, "AA_Trim"),
-        (crest + 0.14, 0.86, "AA_Greeble"),
-        (top - 0.20, 0.70, "AA_Emissive_Engine"),
-        (top - 0.05, 0.40, "AA_Emissive_Engine"),
-        (top, 0.0, "AA_Emissive_Engine"),
-    ]
-    _lathe(bm, 0.0, s, contour, 22)
-    # Deux colliers lateraux : ils ancrent le bulbe dans l'arete au lieu de le
-    # poser dessus, et ils cassent la revolution parfaite.
-    for side in (1.0, -1.0):
-        _surface_box(bm, min(side * 1.05, side * 2.05), max(side * 1.05, side * 2.05),
-                     s - 1.05, s + 1.05, 0.24, 0.60, "AA_Greeble", "AA_Trim",
-                     draft=0.08)
-    return top
+# ⚠️ `build_spine_bulb()` A DISPARU (BRIEF-0094), ET C'EST LE TROISIEME MOUVEMENT
+# IDENTIQUE DE CE FICHIER — apres les hangars (BRIEF-0091) et les socles de
+# tourelle (BRIEF-0093). Elle posait un bulbe de revolution a cœur emissif, cale
+# sur le plafond de construction, sur la crete dorsale ; elle coutait ~250
+# triangles par nœud et, surtout, elle etait CUITE DANS LE TRONCON.
+#
+# Or le nœud est DESTRUCTIBLE, et c'est ce qui tranche : cinq bulbes cuits dans
+# cinq maillages qui partagent un jeu de materiaux ne s'eteignent pas un par un.
+# `CortegeSpineNode` devait donc superposer son propre volume au bulbe livre pour
+# porter l'etat de la piece — deux geometries pour un seul objet.
+#
+# Le nœud est maintenant fait de deux choses qui ne vivent plus dans le meme
+# fichier :
+#
+#   * le MARQUEUR, ici : `Spine_NN` ne bouge ni en X ni en Z, et son Y devient le
+#     PLAN D'ASSISE DANS LE FOND DU CANAL (`spine_seat_y()`), comme le Y de
+#     `Bay_NN` est devenu la bouche et celui de `Turret_NN` l'assise du socle ;
+#   * le NŒUD, dans `spine_kit.glb` : `spine_cradle` (le berceau), `spine_core`
+#     (le cœur — la seule piece qui meurt, donc la seule qui porte un emissif) et
+#     `spine_brace` (l'entretoise, posee deux ou quatre fois en miroir). Le moteur
+#     detruit `spine_core` SEUL : le berceau et les entretoises restent, et un
+#     nœud abattu laisse une carcasse.
+#
+# ⚠️ ET LE NŒUD A CHANGE DE PLACE EN MEME TEMPS QUE DE NATURE. Il siegeait au
+# SOMMET de la crete dorsale ; la crete n'existe plus, le canal l'a remplacee. Il
+# siege maintenant AU FOND de la tranchee, sur la conduite qu'il alimente — ce qui
+# le rend, comme le brief le voulait, plus dur a atteindre qu'a tuer.
 
 
 # ==========================================================================
@@ -1765,15 +2391,69 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     # Apres, les faces de collerette regardent vers l'axe du vaisseau et le
     # harnais les lirait — a raison — comme retournees.
     _assert_skin_outward(bm, name)
+
+    # ⚠️ L'ORDRE DE CES SEPT APPELS EST UNE DECISION, PAS UNE HABITUDE. Les
+    # GREFFES sont maillees en premier parce qu'elles sont elles-memes des
+    # installations au sens du rythme du brief (« calme → une installation →
+    # calme → un hangar ») : ce sont donc elles, avec les marqueurs, qui
+    # definissent ou les plaques et les pastilles ont le droit de se poser.
+    # Aucune n'est deduite d'une autre a l'execution : chaque famille lit la
+    # table `aprons` deja constituee, et le flux `rng` reste un flux unique —
+    # deterministe et reproductible au sha256.
+    busy: list[tuple[float, float]] = []
+    graft_spans: list[tuple[float, float]] = []
+    grafts = build_grafts(bm, index, rng, busy, graft_spans)
+    aprons = list(MARKER_APRONS) + graft_spans
     counts = {
         "cellules_percees": skipped,
         "collerettes": build_bay_flanges(bm, index),
-        "plaques": build_plates(bm, index, rng),
-        "nervures": build_ribs(bm, index, rng),
+        "greffes": grafts,
+        "plaques": build_plates(bm, index, rng, aprons, busy),
+        "nervures": build_ribs(bm, index, rng, busy),
         "lisses": build_strakes(bm, index),
-        "greffes": build_grafts(bm, index, rng),
-        "pastilles": build_pips(bm, index, rng),
+        "pastilles": build_pips(bm, index, rng, aprons, busy),
     }
+    conduits, lit = build_conduits(bm, index, rng)
+    counts["conduits"] = conduits
+    counts["travees"] = build_canal_braces(bm, index, rng)
+
+    # --- LES ZONES CALMES, MESUREES ICI ET RENDUES AU RAPPORT --------------
+    # ⚠️ « Les zones calmes sont un livrable, pas un manque — a mesurer et a
+    # rendre. » La definition est donc ECRITE, sans quoi le chiffre ne veut rien
+    # dire : est CALME un metre de longueur du troncon dont le BORDE ne porte
+    # aucun module en relief. Sont exclus du compte, et pour la meme raison —
+    # ils sont continus PAR CONSTRUCTION et n'ont donc pas de rythme a rompre :
+    #
+    #   * l'ARTERE et tout ce qui vit entre ses rebords (|x| <= 1,70) : conduits,
+    #     travees, nœuds. Elle est un organe qui file d'un bout a l'autre du
+    #     vaisseau, pas un accident de bordé ;
+    #   * les LISSES longitudinales, qui courent sur 97 m et donnent au joueur sa
+    #     seule lecture continue de la vitesse (BRIEF-0089).
+    #
+    # Ce qui est compte, c'est ce que le brief nomme : plaques, nervures,
+    # greffes, pastilles — et l'emprise des installations elles-memes.
+    occupied = list(busy)
+    for a, b, _n, _x in INSTALLATION_SPANS:
+        lo = max(a, origin)
+        hi = min(b, origin + SECTION_LENGTH)
+        if hi > lo:
+            occupied.append((lo, hi))
+    merged = _merge([(max(a, origin), min(b, origin + SECTION_LENGTH))
+                     for a, b in occupied
+                     if min(b, origin + SECTION_LENGTH)
+                     > max(a, origin)])
+    calm: list[tuple[float, float]] = []
+    cursor = origin
+    for a, b in merged:
+        if a > cursor:
+            calm.append((cursor, a))
+        cursor = max(cursor, b)
+    if cursor < origin + SECTION_LENGTH:
+        calm.append((cursor, origin + SECTION_LENGTH))
+    counts["calme_total"] = sum(b - a for a, b in calm)
+    counts["calme_max"] = max((b - a for a, b in calm), default=0.0)
+    counts["calme_plages"] = len([1 for a, b in calm if b - a >= 8.0])
+    counts["artere_allumee"] = lit
 
     anchors: list[tuple[str, Vector]] = []
     pads = 0
@@ -1801,13 +2481,20 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         mouth, _ = bay_mouth_y(s, x)
         anchors.append((f"Bay_{number:02d}", Vector((x, mouth, _z(s)))))
         bays += 1
+    spines = 0
     for number, s in enumerate(SPINES, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        top = build_spine_bulb(bm, s)
-        anchors.append((f"Spine_{number:02d}", Vector((0.0, top + 0.06, _z(s)))))
+        # ⚠️ Le marqueur ne bouge NI EN X NI EN Z (le brief le fige) : seul son Y
+        # change, et il change beaucoup — il passe du SOMMET du bulbe cuit
+        # (-3,160) au PLAN D'ASSISE DANS LE FOND DU CANAL. C'est ce plan-la, et
+        # lui seul, sur lequel `spine_kit.glb` est modelise.
+        seat, _ = spine_seat_y(s)
+        anchors.append((f"Spine_{number:02d}", Vector((0.0, seat, _z(s)))))
+        spines += 1
     counts["marqueurs_tourelle"] = pads
     counts["baies"] = bays
+    counts["nœuds"] = spines
 
     hull = _new_object(name, bm)
     _weld(hull)
@@ -2125,7 +2812,9 @@ def _audit(path: str) -> dict:
     density_source: dict[str, list] = {}
     emissive_area = 0.0
     total_area = 0.0
+    total_seen = 0.0
     area_by_material: dict[str, float] = {}
+    seen_area: dict[str, float] = {}
     ambry_slot_strays = 0
     ambry_slot_tris = 0
 
@@ -2317,6 +3006,9 @@ def _audit(path: str) -> dict:
             ambry_pts += points
             ambry_uvs += uv
             last = name == f"Section_{SECTION_COUNT:02d}"
+            # `s` global de ce troncon : les sommets sont en coordonnees LOCALES
+            # et `_surface_y` raisonne en `s` global (le fuseau de proue).
+            section_origin = (int(name.split("_")[1]) - 1) * SECTION_LENGTH
             for ia, ib, ic in triangles:
                 cx = (points[ia][0] + points[ib][0] + points[ic][0]) / 3.0
                 cy = (points[ia][1] + points[ib][1] + points[ic][1]) / 3.0
@@ -2344,12 +3036,43 @@ def _audit(path: str) -> dict:
                 else:
                     tris.append((base + ia, base + ib, base + ic))
                 pa = Vector(points[ia])
-                area = (Vector(points[ib]) - pa).cross(Vector(points[ic]) - pa).length
+                normal = (Vector(points[ib]) - pa).cross(Vector(points[ic]) - pa)
+                area = normal.length
                 total_area += area * 0.5
                 area_by_material[material] = \
                     area_by_material.get(material, 0.0) + area * 0.5
                 if material == "AA_Emissive_Engine":
                     emissive_area += area * 0.5
+                # ⚠️ L'AIRE VUE, ET ELLE EST LA SEULE QUI PARLE DE L'ECRAN.
+                # La repartition 80/15/5 du brief decrit des PIXELS ; l'aire
+                # totale d'une coque de 500 m est aux deux tiers son VENTRE, que
+                # la camera du jeu — qui plonge a 70 deg — ne voit jamais.
+                # Mesure : `AA_Greeble` pese 64,8 pct de l'aire totale et
+                # l'essentiel n'en est que le fond de la coque. Comparer ce
+                # chiffre a la cible du brief n'aurait aucun sens.
+                #
+                # Est VUE une face qui satisfait DEUX conditions, et il en
+                # fallait bien deux :
+                #
+                #   * elle regarde la camera (produit scalaire avec -CAM_FORWARD
+                #     au-dessus de 0,05) ;
+                #   * elle est AU-DESSUS DE LA PEAU a son propre (x, s). Sans ce
+                #     second filtre, les jupes ENTERREES du vocabulaire
+                #     modulaire — 0,55 a 0,70 m sous la surface, sur mille
+                #     plaques — entraient dans le compte : 6 000 m2 de faces
+                #     qui ne rendent pas un pixel, toutes en `AA_Greeble`, et la
+                #     repartition annoncait 44 pct de machinerie pour un decor
+                #     qui n'en montre pas la moitie.
+                #
+                # C'est une APPROXIMATION — elle ignore les occultations entre
+                # pieces — et elle est declaree comme telle au compte-rendu.
+                skin = _surface_y(section_origin - cz, cx)
+                if area > 1e-12 and \
+                        (normal / area).dot(_VIEW_DIR) > 0.05 and \
+                        cy > skin - 0.03:
+                    seen_area[material] = \
+                        seen_area.get(material, 0.0) + area * 0.5
+                    total_seen += area * 0.5
                 # ⚠️ LE HUITIEME SLOT NE SORT PAS D'AMBRY (BRIEF-0090). Un
                 # gris-ivoire qui deborderait sur le borde de l'Unisson volerait
                 # la lecture a tout le niveau — c'est la lecon mesuree du rendu
@@ -2386,10 +3109,70 @@ def _audit(path: str) -> dict:
                 f"{marker} : le pourtour de l'ouverture accuse {mouth - low:.2f} m "
                 f"de denivele, plus que la profondeur du puits ({BAY_WELL_DEPTH} m)")
 
+    # --- LES NŒUDS D'EPINE : sur l'axe, DANS le canal ------------------------
+    # ⚠️ Harnais neuf (BRIEF-0094). Le marqueur a change de plan — du sommet du
+    # bulbe cuit au fond de la tranchee — et `spine_kit.glb` est modelise sur ce
+    # plan-la. S'ils divergeaient, le nœud flotterait au-dessus du canal ou s'y
+    # enterrerait, et rien d'autre ne le verrait : c'est exactement la faute que
+    # `bay_mouth_y()` a evitee au hangar et `turret_seat_y()` au socle.
+    spine_seats: list[tuple[str, float, float, float]] = []
+    for number, s in enumerate(SPINES, start=1):
+        seat, low = spine_seat_y(s)
+        scale = _scales(s)[0]
+        rim = _surface_y(s, CANAL_RIM_X * scale)
+        spine_seats.append((f"Spine_{number:02d}", seat, low, rim))
+        marker = f"Spine_{number:02d}"
+        if marker not in found:
+            continue
+        translation = found[marker][1]
+        if abs(translation[0]) > 1e-6 or abs(translation[1] - seat) > 1e-4:
+            problems.append(
+                f"{marker} : ({translation[0]:.4f}, {translation[1]:.4f}) au lieu "
+                f"de (0, {seat:.4f}) — le marqueur reste sur l'axe et passe au "
+                "plan d'assise du fond de canal")
+        if rim - seat < 0.35:
+            problems.append(
+                f"{marker} : le rebord n'est qu'a {rim - seat:.3f} m au-dessus de "
+                "l'assise — le nœud ne siegerait plus dans une tranchee")
+        if SPINE_FOOTPRINT_HX > CANAL_FLOOR_HALF * scale - 0.04:
+            problems.append(
+                f"{marker} : le berceau ({2 * SPINE_FOOTPRINT_HX:.2f} m) ne tient "
+                f"pas dans le fond plat du canal "
+                f"({2 * CANAL_FLOOR_HALF * scale:.2f} m) a cette station")
+
     if ambry_slot_strays:
         problems.append(
             f"{ambry_slot_strays} triangle(s) en '{AMBRY_HULL}' hors de l'emprise "
             "d'Ambry — ce slot lui est reserve (BRIEF-0090)")
+
+    # --- LA PALETTE ET LES ZONES CALMES : deux cliquets, pas deux opinions ---
+    # ⚠️ Ce sont des LIVRABLES du brief (« aire par materiau en pourcentage »,
+    # « part de longueur calme »), et un livrable qui n'est pas tenu par un
+    # harnais redevient une intention au premier module qu'on rajoutera. Les
+    # bornes sont larges : elles n'imposent pas la valeur retenue, elles
+    # interdisent le retour a l'etat d'avant. Le chiffre exact est imprime.
+    # ⚠️ ET LA CARTE DES PLAGES NUES EST TENUE, ELLE AUSSI. Les vingt et une
+    # plages que les trente marqueurs laissent sont le PLAFOND de ce que la forge
+    # peut rendre calme : le maillage ne peut que les manger. Ce controle fige
+    # leur nombre utile — deplacer un marqueur de gameplay peut legitimement le
+    # changer, mais alors on le voit, au lieu de perdre la respiration du niveau
+    # module par module.
+    wide = [(a, b) for a, b in FREE_GAPS if b - a >= CALM_MIN]
+    if len(wide) < 8:
+        problems.append(
+            f"seulement {len(wide)} plages nues de {CALM_MIN:.0f} m ou plus entre "
+            "les emprises de marqueur : le rythme « 15-20 m calmes → une "
+            "installation » n'a plus de place ou exister (arbitrage de "
+            "conception : ce sont les marqueurs qu'il faut ecarter)")
+
+    violet = (seen_area.get("AA_Panel", 0.0)
+              + seen_area.get("AA_Emissive_Engine", 0.0))
+    seen_ratio = violet / total_seen if total_seen else 0.0
+    if seen_ratio > 0.09:
+        problems.append(
+            f"violet + magenta = {100 * seen_ratio:.2f} pct de l'aire VUE : le "
+            "brief pose 5 pct, le cliquet 9. C'est la hierarchie du niveau qui "
+            "se joue la (joueur > ennemi > decor)")
     if ambry_slot_tris == 0:
         problems.append(f"aucun triangle en '{AMBRY_HULL}' : le slot propre a "
                         "Ambry a disparu")
@@ -2432,11 +3215,14 @@ def _audit(path: str) -> dict:
         "triangles": triangles_total,
         "materials": sorted(used_materials),
         "area_by_material": area_by_material,
+        "seen_by_material": seen_area,
         "total_area": total_area,
+        "total_seen": total_seen,
         "ambry_slot_triangles": ambry_slot_tris,
         "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
         "pad_clearances": _pad_bay_clearances(),
+        "spine_seats": spine_seats,
         "top": top_of_decor,
         "width": 2 * widest,
         "emissive_ratio": emissive_area / total_area if total_area else 0.0,
@@ -2451,6 +3237,10 @@ def _audit(path: str) -> dict:
 CAM_POS = Vector((0.0, 14.0, 5.0))
 CAM_FORWARD = Vector((0.0, -0.940, -0.342)).normalized()
 CAM_UP = Vector((0.0, 0.342, -0.940)).normalized()
+#: La direction OPPOSEE au regard : une face la regarde si son produit
+#: scalaire avec elle est positif. Sert a la seule mesure d'aire VUE
+#: (voir `_audit`), et elle est derivee de la camera du jeu, jamais recopiee.
+_VIEW_DIR = -CAM_FORWARD
 CAM_FOV_V = math.radians(62.0)
 CAM_ASPECT = 16.0 / 9.0
 
@@ -2495,6 +3285,7 @@ def build() -> dict:
         raise ak.ContractError(
             "TABLES DE MARQUEURS ROMPUES — long_cortege\n"
             + "\n".join(f"  - {p}" for p in clashes))
+    _assert_canal()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []
@@ -2525,11 +3316,60 @@ def _print_report(report: dict) -> None:
           f"largeur {report['width']:.4f} m, sommet {report['top']:+.3f} "
           f"(plafond {CEILING_Y})")
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
-                  "marqueurs_tourelle", "baies", "cellules_percees",
-                  "collerettes"):
+                  "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
+                  "cellules_percees", "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
-        print(f"  modules {label:<12} {line}   = {total}")
+        print(f"  modules {label:<18} {line}   = {total}")
+
+    # ⚠️ PRIORITE 3 : « quelle est la plus longue plage nue, et quelle part de la
+    # longueur est calme ? » — c'est une question du brief, elle a donc une
+    # reponse chiffree a chaque build. Definition dans `build_section()`.
+    print("\n  ZONES CALMES (bordé nu : ni plaque, ni nervure, ni greffe, ni "
+          "pastille,\n  ni emprise d'installation ; l'artere et les lisses sont "
+          "continues par construction)")
+    calm_total = sum(c["calme_total"] for c in report["counts"])
+    print(f"    {'troncon':<12} {'calme':>8} {'part':>7} {'plage max':>11} "
+          f"{'plages >= 8 m':>14}")
+    for number in range(1, SECTION_COUNT + 1):
+        c = report["counts"][number - 1]
+        print(f"    Section_{number:02d}   {c['calme_total']:>7.1f} m "
+              f"{100.0 * c['calme_total'] / SECTION_LENGTH:>6.1f}% "
+              f"{c['calme_max']:>10.1f} m {c['calme_plages']:>14}")
+    print(f"    {'TOTAL':<12} {calm_total:>7.1f} m "
+          f"{100.0 * calm_total / SHIP_LENGTH:>6.1f}% "
+          f"{max(c['calme_max'] for c in report['counts']):>10.1f} m "
+          f"{sum(c['calme_plages'] for c in report['counts']):>14}")
+
+    wide = [(a, b) for a, b in FREE_GAPS if b - a >= CALM_MIN]
+    print(f"    ⚠️ PLAFOND THEORIQUE : les 30 marqueurs occupent "
+          f"{SHIP_LENGTH - sum(b - a for a, b in FREE_GAPS):.1f} m d'emprises "
+          f"fusionnees, ils laissent {sum(b - a for a, b in FREE_GAPS):.1f} m en "
+          f"{len(FREE_GAPS)} plages dont {len(wide)} de {CALM_MIN:.0f} m ou plus.")
+    print(f"    La forge ne peut pas faire mieux sans deplacer un marqueur : "
+          "elle atteint ce plafond exactement.")
+    print("    les cinq plus larges : " + ", ".join(
+        f"s {a:.0f}-{b:.0f} ({b - a:.0f} m)"
+        for a, b in sorted(FREE_GAPS, key=lambda g: g[0] - g[1])[:5]))
+
+    lit = sum(c["artere_allumee"] for c in report["counts"])
+    print(f"\n  ARTERE — canal de {2 * CANAL_HALF:.2f} m enfonce de "
+          f"{CANAL_RIM_Y - CANAL_FLOOR_Y:.2f} m sous son rebord et de "
+          f"{-4.26 - CANAL_FLOOR_Y:.2f} m sous le pont")
+    print(f"    {len(CONDUIT_LANES) * 2} bandes de "
+          f"{100 * (CONDUIT_LANES[0][1] - CONDUIT_LANES[0][0]):.0f} et "
+          f"{100 * (CONDUIT_LANES[1][1] - CONDUIT_LANES[1][0]):.0f} cm, soit "
+          f"{2 * sum(b - a for a, b in CONDUIT_LANES):.2f} m eclaires sur "
+          f"{2 * CANAL_HALF:.2f} m de canal "
+          f"({100 * sum(b - a for a, b in CONDUIT_LANES) / CANAL_HALF:.0f} pct "
+          "de sa largeur)")
+    print(f"    longueur cumulee allumee {lit:.0f} m pour "
+          f"{len(CONDUIT_LANES) * 2 * SHIP_LENGTH:.0f} m de voies possibles "
+          f"({100 * lit / (len(CONDUIT_LANES) * 2 * SHIP_LENGTH):.0f} pct) — "
+          "le reste est coupe")
+    print(f"    {sum(c['travees'] for c in report['counts'])} travees sombres "
+          f"({BRACE_WIDTH:.2f} m, enterrees de {BRACE_SINK:.2f} m) barrent la "
+          "tranchee")
 
     print("\n  densite de texels (valeurs singulieres, triangle par triangle)")
     for name in sorted(report["density"]):
@@ -2551,15 +3391,41 @@ def _print_report(report: dict) -> None:
     # `AA_Trim` faisait moins de 6 pct de l'aire dans la version qui lisait comme
     # une piste d'aeroport. Un chiffre imprime a chaque build est ce qui permet de
     # comparer deux forges au lieu de les regarder l'une apres l'autre.
-    print(f"\n  repartition en aire des {len(report['materials'])} materiaux "
+    print(f"\n  repartition en AIRE des {len(report['materials'])} materiaux "
           "assignes (relevee sur le .glb)")
+    print("  ⚠️ deux colonnes, et c'est la seconde qui parle de l'ECRAN : l'aire "
+          "TOTALE\n     d'une coque de 500 m est aux deux tiers son ventre, que "
+          "la camera du jeu\n     (70 deg de plongee) ne voit jamais. La cible "
+          "80/15/5 du brief decrit des pixels.")
     total = report["total_area"] or 1.0
+    seen_total = report["total_seen"] or 1.0
+    print(f"    {'materiau':<20} {'aire totale':>12} {'':>7}   "
+          f"{'aire VUE':>10} {'':>7}")
     for name, area in sorted(report["area_by_material"].items(),
                              key=lambda kv: -kv[1]):
+        seen = report["seen_by_material"].get(name, 0.0)
         flag = "   <- propre a Ambry" if name == AMBRY_HULL else ""
-        print(f"    {name:<20} {area:10.1f} m2   {100.0 * area / total:6.2f} %{flag}")
-    print(f"    {'TOTAL':<20} {total:10.1f} m2")
-    print(f"  emissif    : {100.0 * report['emissive_ratio']:.2f} % de l'aire totale")
+        print(f"    {name:<20} {area:9.1f} m2 {100.0 * area / total:6.2f} %   "
+              f"{seen:7.1f} m2 {100.0 * seen / seen_total:6.2f} %{flag}")
+    print(f"    {'TOTAL':<20} {total:9.1f} m2            "
+          f"{seen_total:7.1f} m2")
+    structure = sum(report["seen_by_material"].get(n, 0.0)
+                    for n in ("AA_Hull", "AA_Hull_Ambry"))
+    gear = sum(report["seen_by_material"].get(n, 0.0)
+               for n in ("AA_Greeble", "AA_Trim", "AA_Glass", "AA_Marking_Red"))
+    accent = sum(report["seen_by_material"].get(n, 0.0)
+                 for n in ("AA_Panel", "AA_Emissive_Engine"))
+    print(f"\n  contre la cible 80 / 15 / 5 du brief, sur l'aire VUE :")
+    print(f"    structure  (AA_Hull + Ambry)              "
+          f"{100.0 * structure / seen_total:6.2f} %   cible 80")
+    print(f"    appareillage (AA_Greeble/Trim/Glass/Rouge) "
+          f"{100.0 * gear / seen_total:6.2f} %   cible 15")
+    print(f"    violet + magenta (AA_Panel + emissif)     "
+          f"{100.0 * accent / seen_total:6.2f} %   cible  5  (cliquet 9)")
+    print(f"  emissif seul : {100.0 * report['emissive_ratio']:.2f} % de l'aire "
+          "totale, "
+          f"{100.0 * report['seen_by_material'].get('AA_Emissive_Engine', 0.0) / seen_total:.2f} "
+          "% de l'aire vue")
     print(f"  octets     : {report['bytes']}")
 
     print("\n  ouvertures de pont d'envol (BRIEF-0091) — "
@@ -2570,6 +3436,14 @@ def _print_report(report: dict) -> None:
               f"pourtour bas {low:+7.4f} (denivele {mouth - low:4.2f} m)  "
               f"fond {mouth - BAY_WELL_DEPTH:+7.3f}  "
               f"coaming {mouth + 0.60:+7.3f} (plafond {CEILING_Y:+.2f})")
+
+    print("\n  nœuds d'epine (BRIEF-0094) — le marqueur porte le plan d'assise "
+          "DANS le canal ;\n  spine_kit.glb y est modelise, la coque n'en cuit "
+          "plus aucun")
+    for name, seat, low, rim in report["spine_seats"]:
+        print(f"    {name}  assise Y {seat:+7.4f}  bas d'emprise {low:+7.4f} "
+              f"(denivele {seat - low:4.3f} m)  rebord {rim:+7.4f} "
+              f"(tranchee {rim - seat:4.2f} m)")
 
     # ⚠️ Les cinq paires les plus SERREES, imprimees a chaque build meme quand
     # tout va bien. Un garde-fou qui ne parle que le jour ou il echoue ne dit

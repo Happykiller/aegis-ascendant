@@ -1290,34 +1290,51 @@ def turret_seat_y(s: float, x: float) -> tuple[float, float]:
     return cortege.turret_seat_y(s, x)
 
 
-#: ⚠️ LE PLAFOND DU DECOR EST DEPASSE, C'EST MESURE, ET LA FORGE NE PEUT PAS LE
-#: RESOUDRE SEULE. `cortege.CEILING_Y` vaut -3,00 : « rien ne monte au-dessus ».
-#: Or la coque n'offre que 1,270 a 1,47 m entre l'assise et ce plafond partout ou
-#: |x| <= 9,0, alors que le brief FIXE la hauteur totale a 1,70 m (planche : 1,5 a
-#: 2,0 m ; references d'echelle : 55-75 px, soit 1,8 a 2,4 m). Les deux exigences
-#: sont incompatibles a l'emplacement actuel de DIX marqueurs sur dix-sept.
+#: ⚠️ LE PLAFOND DES PIECES DE GAMEPLAY, ET CE N'EST PLUS UN CLIQUET (BRIEF-0094).
 #:
-#: LE DEGAGEMENT MESURE, pire cas sur toute la longueur du vaisseau :
+#: Ce qui suivait ici etait une valeur d'attente : `CEILING_OVERSHOOT_MAX = 0,43`
+#: figeait le depassement MESURE (0,422 m au pire) du plafond du decor -3,00, en
+#: disant que l'arbitrage appartenait au concepteur. Il a ete rendu.
 #:
-#:      |x|    5,0   6,0   7,0   8,0   8,8   9,0   9,2   9,4   9,8   10,2
-#:      m     1,27  1,28  1,30  1,32  1,34  1,47  1,69  1,91  1,95  1,95
+#: La regle a ete relue, pas assouplie. Ce que le plafond protege tient en une
+#: phrase : « un volume qui masquerait le combat SANS JAMAIS POUVOIR ETRE
+#: TOUCHE ». Une tourelle se tire dessus — la seconde moitie ne la concerne pas,
+#: et la premiere non plus : a -2,40 elle reste 2,40 unites SOUS le plan de vol,
+#: elle ne peut ni masquer le chasseur ni le heurter. Le decor INERTE, lui, reste
+#: sous -3,00 (`cortege.CEILING_Y`, harnais de la coque, inchange).
 #:
-#: La marche est BRUTALE entre 8,8 et 9,4 : c'est la chine. Au-dela, la peau
-#: redescend et le degagement suffit ; en deça, la crete est trop haute.
+#: La borne est donc la vraie : celle du moteur. Elle est lue dans
+#: `scripts/vfx/cortege_flyby.gd` (`GAMEPLAY_CEILING_Y`) et un test moteur la
+#: tient de son cote (`test_no_turret_ever_reaches_the_flight_plane`, qui charge
+#: le kit, assemble la piece la plus haute et la pose sur le pire marqueur).
 #:
-#: Trois arbitrages possibles, tous de CONCEPTION et aucun de forge :
-#:   1. ecarter les dix marqueurs vers |x| >= 9,4, ou la coque offre 1,91 m au
-#:      pire — ce que sept des dix-sept font deja, et ils passent ;
-#:   2. relever `CEILING_Y` pour les pieces DESTRUCTIBLES (une tourelle se tire
-#:      dessus, ce que la regle du plafond ne prevoit pas : elle protege du decor
-#:      inerte qui masque le combat) ;
-#:   3. rabaisser la tourelle a 1,25 m, c'est-a-dire sous la planche — elle
-#:      redeviendrait le jeton que ce brief remplace.
-#:
-#: En attendant, ce chiffre est un CLIQUET : il fige le depassement mesure
-#: aujourd'hui (0,422 m au pire) et fait echouer le build s'il empire. Un
-#: depassement connu n'est pas une porte ouverte aux suivants.
-CEILING_OVERSHOOT_MAX = 0.43
+#: ⚠️ Elle est RECOPIEE, et c'est le seul endroit du kit ou une valeur du moteur
+#: l'est. Blender ne lit pas le GDScript ; le harnais ci-dessous verifie donc que
+#: le fichier moteur porte toujours ce nombre, et echoue si les deux ont derive.
+GAMEPLAY_CEILING_Y = -2.40
+#: Le fichier qui fait foi. Relu a chaque build : deux ecritures d'une meme cote
+#: finissent toujours par diverger si rien ne les confronte.
+FLYBY_SOURCE = os.path.join(
+    _REPO, "scripts/vfx/cortege_flyby.gd")
+
+
+def _assert_gameplay_ceiling() -> None:
+    """Le plafond recopie ici est-il celui que le moteur applique ?"""
+    try:
+        with open(FLYBY_SOURCE, encoding="utf-8") as handle:
+            source = handle.read()
+    except OSError:
+        return          # hors du depot : on ne peut rien affirmer, on se tait
+    marker = "const GAMEPLAY_CEILING_Y := "
+    if marker not in source:
+        raise ak.ContractError(
+            f"{FLYBY_SOURCE} ne declare plus GAMEPLAY_CEILING_Y : le kit ne peut "
+            "plus verifier contre quoi il mesure")
+    value = source.split(marker, 1)[1].split("\n", 1)[0].strip()
+    if abs(float(value) - GAMEPLAY_CEILING_Y) > 1e-9:
+        raise ak.ContractError(
+            f"plafond de gameplay : {GAMEPLAY_CEILING_Y} ici, {value} dans "
+            f"{os.path.basename(FLYBY_SOURCE)} — les deux ont derive")
 
 
 def _assert_on_axis(name: str, points: list[tuple],
@@ -1615,12 +1632,13 @@ def _audit(path: str) -> dict:
                 f"Turret_{number:02d} : denivele {seat - low:.3f} m sous "
                 f"l'emprise, la jupe de {PAD_BURIED:.2f} m ne mord plus la peau "
                 "du cote bas")
-    if overshoot > CEILING_OVERSHOOT_MAX:
+    _assert_gameplay_ceiling()
+    summit = max(row[4] for row in seats)
+    if summit > GAMEPLAY_CEILING_Y:
         problems.append(
-            f"le sommet de la tourelle la plus haute depasse le plafond du decor "
-            f"de {overshoot:.3f} m, au-dela du cliquet {CEILING_OVERSHOOT_MAX:.2f} "
-            "— voir le commentaire de CEILING_OVERSHOOT_MAX : c'est un arbitrage "
-            "de conception, pas un reglage de forge")
+            f"la tourelle la plus haute culmine a {summit:.3f}, au-dessus du "
+            f"plafond des PIECES DE GAMEPLAY ({GAMEPLAY_CEILING_Y:.2f}) — c'est "
+            "la vraie borne depuis BRIEF-0094, et un test moteur la tient aussi")
 
     # --- LE BALAYAGE DES CANONS CROISE-T-IL UN HANGAR ? --------------------
     # ⚠️ Cette mesure N'EXISTAIT PAS avant ce lot, parce qu'avant ce lot les
@@ -1807,12 +1825,17 @@ def _print_report(report: dict) -> None:
         print(f"    {name:<12} {seat:>8.3f} {low:>8.3f} {deniv:>9.3f} "
               f"{crest:>8.3f} {cortege.CEILING_Y - crest:>9.3f}{flag}")
     over = [n for n, _, _, _, c in report["seats"] if c > cortege.CEILING_Y]
+    summit = max(c for _, _, _, _, c in report["seats"])
     print(f"    denivele max {max(d for _, _, _, d, _ in report['seats']):.3f} m, "
           f"absorbe par une jupe de {PAD_BURIED:.2f} m")
-    print(f"    ⚠️ {len(over)} tourelles sur {len(report['seats'])} depassent le "
-          f"plafond du decor ({cortege.CEILING_Y:+.2f}) de "
-          f"{report['overshoot']:.3f} m au pire — arbitrage de CONCEPTION, voir "
-          "CEILING_OVERSHOOT_MAX")
+    print(f"    {len(over)} tourelles sur {len(report['seats'])} montent au-dessus "
+          f"du plafond du DECOR INERTE ({cortege.CEILING_Y:+.2f}), de "
+          f"{report['overshoot']:.3f} m au pire — et c'est ACTE : une tourelle se "
+          "tire dessus.")
+    print(f"    la plus haute culmine a {summit:+.3f}, soit "
+          f"{GAMEPLAY_CEILING_Y - summit:.3f} m sous le plafond des PIECES DE "
+          f"GAMEPLAY ({GAMEPLAY_CEILING_Y:+.2f}) et {-summit:.2f} unites sous le "
+          "plan de vol")
     if report["bay_sweep"]:
         print("\n  ⚠️ BALAYAGE DES CANONS AU-DESSUS D'UN PONT D'ENVOL (mesure "
               "neuve : avant ce lot les tourelles n'avaient pas de canon)")
@@ -2169,12 +2192,13 @@ def _tile_elevation(path: str, report: dict) -> None:
                    f"sommet (vert) +{TURRET_H:.2f} ; plafond du decor (rouge) "
                    f"{cortege.CEILING_Y - seat:+.2f} sous {tightest}",
            -0.985, 0.87, 0.048, TILE_W, ELEV_H, (1.0, 0.88, 0.55))
-    _label(camera, f"⚠️ LA HAUTEUR DU BRIEF NE TIENT PAS SOUS LE PLAFOND A "
-                   f"{over} DES {len(report['seats'])} EMPLACEMENTS : "
+    _label(camera, f"{over} des {len(report['seats'])} emplacements montent "
+                   f"au-dessus du plafond du DECOR ({cortege.CEILING_Y:+.2f}) : "
                    f"{TURRET_H:.2f} m demandes pour "
-                   f"{cortege.CEILING_Y - seat:.2f} m offerts. Arbitrage de "
-                   "conception — trois options au compte-rendu.",
-           -0.985, -0.86, 0.038, TILE_W, ELEV_H)
+                   f"{cortege.CEILING_Y - seat:.2f} m offerts. ACTE au "
+                   f"BRIEF-0094 — la borne des pieces de GAMEPLAY est "
+                   f"{GAMEPLAY_CEILING_Y:+.2f}, et un test moteur la tient.",
+           -0.985, -0.86, 0.035, TILE_W, ELEV_H)
     _render(path, TILE_W, ELEV_H)
 
 

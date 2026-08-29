@@ -31,6 +31,28 @@ const SKINS: Dictionary = {
 	&"AA_Hull_Ambry": "ambry_hull",
 }
 
+## Les greffes. ⚠️ ELLES SONT ASSOMBRIES ICI, ET PAS REPEINTES À LA FORGE. Deux raisons : le
+## violet de `AA_Panel` est la teinte de faction de l'Unisson, partagée par tous les assets du
+## jeu — la changer dans la palette toucherait des coques qui vont bien ; et ce qui ne va pas
+## n'est pas la teinte, c'est ce que le NIVEAU en fait à l'écran.
+##
+## ⚠️ CE QU'ON CORRIGE EST UNE INVERSION DE HIÉRARCHIE, PAS UNE COULEUR. Vu en capture au
+## tronçon 2 : la dalle qui porte une tourelle est plus claire que la tourelle. Le socle crie
+## plus fort que le canon, et la règle de production du `BRIEF-0094` dit l'inverse — la couleur
+## ne sert qu'à renforcer une fonction déjà lisible en géométrie. Le coupable est le `lift` de
+## 1,25 du post-traitement rétro, qui relève les noirs : un violet sombre en linéaire (0,06 /
+## 0,02 / 0,13) en ressort en aplat vif, exactement comme les grandes surfaces teintées du
+## howto de vérification.
+##
+## Multiplication et non mélange vers le gris : le rapport des canaux est conservé, donc la
+## teinte et la saturation aussi. La greffe reste violette et reste plus claire que le bordé —
+## elle cesse seulement de passer devant ce qu'elle porte.
+const PANEL_MATERIAL := &"AA_Panel"
+const PANEL_DAMP := 0.45
+
+static func _damped(colour: Color) -> Color:
+	return Color(colour.r * PANEL_DAMP, colour.g * PANEL_DAMP, colour.b * PANEL_DAMP, colour.a)
+
 ## L'émissif est à part : c'est une COULEUR, pas une hauteur. Aucune normale n'en est dérivée
 ## (règle 2 du contrat de texture), et la même image sert d'albédo et d'émission.
 const EMISSIVE_MATERIAL := &"AA_Emissive_Engine"
@@ -78,6 +100,8 @@ static func apply(hull: Node) -> int:
 			elif SKINS.has(name):
 				var scale := AMBRY_UV_SCALE if name == &"AA_Hull_Ambry" else HULL_UV_SCALE
 				tuned = _skin_surface(base, String(SKINS[name]), scale)
+				if tuned != null and name == PANEL_MATERIAL:
+					tuned.albedo_color = _damped(tuned.albedo_color)
 			if tuned == null:
 				continue
 			mesh.set_surface_override_material(i, tuned)
@@ -130,7 +154,17 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 ## ⚠️ Et l'enjeu n'est pas que l'ambiance : les signaux que le moteur pose PAR-DESSUS — le bulbe
 ## d'un nœud d'épine, le couvercle d'un puits — doivent rester distinguables de la matière. Une
 ## artère saturée les noie, et le joueur ne voit plus ce qu'il a détruit.
-const EMISSIVE_ENERGY := 1.0
+## ⚠️ ET ELLE BAISSE UNE SECONDE FOIS AVEC LA REFONTE DE LA GÉOMÉTRIE (`BRIEF-0094`), POUR LA
+## MÊME RAISON LUE À L'ENVERS. 1,0 a été jugé sur une artère qui était une BANDE LARGE : la
+## texture y étalait ses canaux clairs et ses fonds sombres, et c'est ce mélange qui tenait
+## l'intensité. La bande est devenue quatre conduits de 12 à 18 cm au fond d'une tranchée : sur
+## douze centimètres, la carte ne livre plus qu'une tranche quasi constante — son cœur clair —
+## et l'écran reçoit quatre traits pleins. Le bloom les soude, et l'on retrouve exactement le
+## « laser géant » que la refonte devait supprimer. Vu en capture, tronçon 2, le 2026-08-29.
+##
+## La géométrie porte désormais le rythme (les coupures sont des travées de MATIÈRE) : la carte
+## n'a plus à le porter, et l'énergie n'a plus à compenser un fond sombre qui n'existe plus.
+const EMISSIVE_ENERGY := 0.45
 
 static func _skin_emissive(base: StandardMaterial3D) -> StandardMaterial3D:
 	var map := _map(EMISSIVE_MAP, "")

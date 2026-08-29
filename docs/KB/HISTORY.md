@@ -395,3 +395,27 @@ Retours de l'opérateur en jouant le niveau 2, et ce qui en est sorti
 Et une demande d'outillage : **plus de son sur les lancements sans auditeur** (`--demo`,
 `--capture`). ⚠️ Pas « en build de développement » — l'opérateur y joue, et le son fait partie de
 ce qu'il teste.
+
+## 2026-08-29 — la géométrie du niveau 2 porte enfin ses fonctions (lots 1 à 5)
+
+Trois briefs de forge (`0091` hangars, `0093` tourelles, `0094` artère/palette/relief) pour un
+seul constat de l'opérateur : *« la géométrie actuelle ne porte pas les fonctions de gameplay »*.
+Les trois structures se distinguent maintenant par un **verbe** — le hangar **creuse**, la
+tourelle **dépasse**, le nœud **monte** — et le test d'acceptation est le noir et blanc,
+émissifs coupés.
+
+Trois leçons qui ne valent pas que pour ce niveau :
+
+- **Une pièce qui meurt seule veut un matériau qui lui appartienne.** Le nœud d'épine était cuit
+  dans le tronçon : l'éteindre éteignait les cinq. Trois fois le même piège (puits, tourelles,
+  nœuds), trois fois le même remède — un kit, et `duplicate()` sur le matériau émissif.
+- **On vise ce qu'on VOIT, pas où la pièce est posée.** À 70° de plongée, une cible haute d'un
+  mètre se projette à ~20 cm de son assise sur le plan de jeu. Invisible sur toute capture fixe,
+  invisible aux tests, et sur le nœud — rayon 0,78 — ça valait un quart du rayon offert au
+  hasard. Chaque famille déclare son `HIT_LIFT` ; le hangar déclare **zéro**, parce qu'il creuse.
+- **Une aire mesurée sur le binaire ne dit pas ce que l'écran montre.** La cible « 5 % de
+  violet » était tenue (1,45 %) alors que l'artère lisait encore comme un laser et qu'une dalle
+  de greffe passait devant la tourelle qu'elle portait. Le `lift` de 1,25 du post-traitement
+  rétro relève les noirs : un violet sombre en linéaire en ressort en aplat vif. **Ce qui se
+  mesure au binaire se juge à l'écran** — les deux réglages qui ont corrigé le rendu sont côté
+  moteur (`EMISSIVE_ENERGY` 1,0 → 0,45, `PANEL_DAMP` 0,45), pas côté géométrie.

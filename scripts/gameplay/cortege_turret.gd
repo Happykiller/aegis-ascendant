@@ -96,6 +96,12 @@ const FAMILIES: Array = [
 ## D'où sort la balle : le bout des tubes, mesuré — culasse à +0,60 plus 2,90 m de tube.
 ## ⚠️ Une balle née au centre de la coupole se verrait sortir du décor, ce qui est exactement ce
 ## qu'on reproche à un tir qu'on ne comprend pas.
+## ⚠️ CE QUE LE JOUEUR VISE N'EST PAS OÙ LA PIÈCE EST POSÉE. La caméra plonge à 70° : la masse
+## qu'on voit — le tambour à +0,37..+1,70 et les tubes à +0,90 — se projette sur le plan de jeu
+## à une vingtaine de centimètres de son assise. La zone de touche se cale donc sur les tubes,
+## pas sur le socle. Voir le même constant sur `CortegeSpineNode`, où l'écart coûtait plus cher.
+const HIT_LIFT := 0.90
+
 const MUZZLE_REACH := 3.50
 
 signal destroyed(turret: CortegeTurret)

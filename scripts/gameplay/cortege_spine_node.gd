@@ -20,11 +20,41 @@ extends Node3D
 
 enum Pass { AHEAD, LIVE, PASSED }
 
-## Le bulbe. Même raison d'être que l'œil d'une tourelle : la géométrie livrée est cuite dans le
-## tronçon et partage ses matériaux, donc l'état de la pièce est porté par un volume à nous.
-const BULB_RADIUS := 0.52
-const BULB_LIFT := 0.45
-const BULB_TINT := Color("7a4de8")
+## Le kit. ⚠️ LE NŒUD N'EST PLUS CUIT DANS LE TRONÇON, ET C'EST CE QUI LE REND MORTEL. Un bulbe
+## cuit dans la coque partage les matériaux de ses quatre voisins : l'éteindre les éteignait
+## tous. Le `BRIEF-0094` en a fait un kit pour la même raison que le hangar et la tourelle avant
+## lui — une pièce qui meurt seule veut un matériau qui lui appartienne.
+const KIT_PATH := "res://assets/imported/models/backgrounds/spine_kit.glb"
+
+## Les cotes d'assemblage, RELEVÉES DANS LE BINAIRE et non recopiées du rapport de forge.
+const CORE_LIFT := 0.21
+const BRACE_LIFT := 0.30
+const BRACE_GAUGE := 0.50
+## L'écartement en Z de la famille à quatre entretoises.
+const BRACE_SPREAD := 0.78
+
+## Le centre de la lanterne : `spine_core` monte à +0,21, sa bande émissive court de 0,68 à 1,00
+## dans son propre repère. C'est la seule hauteur qui compte pour le jeu — voir `HIT_LIFT`.
+const LANTERN_Y := CORE_LIFT + 0.84
+const LANTERN_RADIUS := 0.34
+
+## ⚠️ CE QUE LE JOUEUR VISE N'EST PAS OÙ LA PIÈCE EST POSÉE, ET L'ÉCART SE VOIT.
+##
+## La caméra plonge à 70° : une cible haute d'un mètre se projette sur le plan de jeu à vingt
+## bons centimètres de son assise. La zone de touche était calée sur l'assise, donc décalée vers
+## l'arrière de tout ce que la pièce fait de haut. Sur un hangar, large de six mètres, personne
+## ne le sentait ; sur le nœud, qui tient dans un rayon de 0,78 et qui est déjà la cible la plus
+## dure du niveau, c'était un quart du rayon offert au hasard. On projette donc la LANTERNE.
+const HIT_LIFT := LANTERN_Y
+
+## La teinte de la lanterne, celle du kit (`AA_Emissive_Engine`). Les arcs et l'explosion la
+## reprennent : ce qui jaillit du nœud et ce qui reste quand il meurt parlent de la même lumière.
+const NODE_TINT := Color(1.0, 0.067, 0.479)
+
+## Deux familles, par assemblage seul, comme les trois de la tourelle. ⚠️ TIRÉE DU TRONÇON, PAS
+## DU HASARD : un tirage aléatoire donnerait une répartition différente à chaque lancement, donc
+## deux captures qu'on ne peut plus comparer — et un survol se juge en comparant deux passages.
+const BRACE_COUNT: Array[int] = [2, 4]
 
 # --- Les arcs ------------------------------------------------------------------
 #
@@ -46,6 +76,11 @@ const ARC_JITTER := 0.34
 ## plus bas, on voit des traits fixes et l'illusion tombe.
 const ARC_REDRAW_HZ := 11.0
 
+## De combien la lanterne bat, en part de l'énergie que la forge lui a calibrée. ⚠️ RELATIF ET
+## NON ABSOLU : écrire une énergie en dur ici écraserait `emissiveStrength` du binaire, et la
+## prochaine reforge qui la retoucherait n'aurait aucun effet — en silence.
+const PULSE_DEPTH := 0.45
+
 signal destroyed(node: CortegeSpineNode)
 ## Il entre dans sa fenêtre de tir, pour la première et unique fois.
 signal engaged(node: CortegeSpineNode)
@@ -56,8 +91,12 @@ var section: int = 0
 var _bullet_manager: BulletManager
 var _vfx: VFXManager
 var _target: BulletTarget
-var _bulb: MeshInstance3D
-var _bulb_material: StandardMaterial3D
+## Le cœur, et lui seul. Berceau et entretoises lui survivent : un nœud abattu laisse une
+## carcasse, et c'est ce qui rend sa mort lisible depuis le plan de vol.
+var _core: Node3D
+var _glow: Array[StandardMaterial3D] = []
+## L'énergie que la forge a calibrée, lue au montage. Le battement l'entoure, il ne la remplace pas.
+var _glow_base: float = 1.0
 var _arcs: MeshInstance3D
 var _arc_mesh: ImmediateMesh
 var _arc_timer: float = 0.0
@@ -87,25 +126,62 @@ func setup(bullet_manager: BulletManager, vfx: VFXManager) -> void:
 	_vfx = vfx
 
 func _ready() -> void:
-	_bulb_material = StandardMaterial3D.new()
-	_bulb_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_bulb_material.albedo_color = BULB_TINT
-	_bulb_material.emission_enabled = true
-	_bulb_material.emission = BULB_TINT
-	_bulb_material.emission_energy_multiplier = 1.8
-	var mesh := SphereMesh.new()
-	mesh.radius = BULB_RADIUS
-	mesh.height = BULB_RADIUS * 2.0
-	mesh.radial_segments = 10
-	mesh.rings = 5
-	_bulb = MeshInstance3D.new()
-	_bulb.name = "Bulb"
-	_bulb.mesh = mesh
-	_bulb.material_override = _bulb_material
-	_bulb.position.y = BULB_LIFT
-	_bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_bulb)
+	_build_node()
 	_build_arcs()
+
+## Assemble les trois pièces du kit. Le berceau et les entretoises portent le nœud ; le cœur
+## porte la lumière, et c'est le seul que la mort emporte.
+func _build_node() -> void:
+	var packed: PackedScene = load(KIT_PATH) as PackedScene
+	if packed == null:
+		push_error("[Cortege] kit d'épine introuvable : %s" % KIT_PATH)
+		return
+	var kit := packed.instantiate()
+	_place(kit, "spine_cradle", Vector3.ZERO, 0.0)
+	_core = _place(kit, "spine_core", Vector3(0.0, CORE_LIFT, 0.0), 0.0)
+	var braces := BRACE_COUNT[section % BRACE_COUNT.size()]
+	# ⚠️ LE YAW VAUT π À BÂBORD, ET L'INCLINAISON EST DANS LA GÉOMÉTRIE. La pièce penche toujours
+	# vers son −X local : la retourner suffit à la faire pencher vers l'axe des deux côtés. Écrire
+	# un tangage ici le ferait diverger du binaire à la première reforge.
+	for side in [-1.0, 1.0]:
+		var dz := 0.0 if braces == 2 else BRACE_SPREAD
+		for offset in ([0.0] if braces == 2 else [-dz, dz]):
+			_place(kit, "spine_brace",
+				Vector3(side * BRACE_GAUGE, BRACE_LIFT, offset), 0.0 if side > 0.0 else PI)
+	kit.queue_free()
+
+func _place(kit: Node, part: String, offset: Vector3, yaw: float) -> MeshInstance3D:
+	var source := kit.get_node_or_null(part) as MeshInstance3D
+	if source == null:
+		push_error("[Cortege] pièce de kit manquante : %s" % part)
+		return null
+	var piece := MeshInstance3D.new()
+	piece.name = part
+	piece.mesh = source.mesh
+	piece.position = offset
+	piece.rotation.y = yaw
+	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_claim_glow(piece, source)
+	add_child(piece)
+	return piece
+
+## Donne à CE nœud sa propre copie du matériau de la lanterne.
+##
+## ⚠️ SANS CETTE COPIE, ABATTRE UN NŒUD ÉTEINDRAIT LES CINQ. C'est exactement le piège que le
+## bulbe cuit dans la coque rendait inévitable, et il a déjà été payé sur les puits et sur les
+## tourelles : un état par pièce demande un matériau par pièce.
+func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
+	for i in source.mesh.get_surface_count():
+		var base := source.mesh.surface_get_material(i) as StandardMaterial3D
+		if base == null:
+			continue
+		if not base.emission_enabled:
+			piece.set_surface_override_material(i, base)
+			continue
+		var mine: StandardMaterial3D = base.duplicate()
+		piece.set_surface_override_material(i, mine)
+		_glow_base = mine.emission_energy_multiplier
+		_glow.append(mine)
 
 ## Les arcs qui jaillissent du nœud. Un seul maillage pour les cinq : c'est un instrument de
 ## lecture, il ne doit pas coûter cinq objets par nœud et vingt-cinq par niveau.
@@ -115,7 +191,7 @@ func _build_arcs() -> void:
 	_arcs = MeshInstance3D.new()
 	_arcs.name = "Arcs"
 	_arcs.mesh = _arc_mesh
-	_arcs.position.y = BULB_LIFT
+	_arcs.position.y = LANTERN_Y
 	_arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# ⚠️ Sans marge, l'arc disparaît dès que le centre du nœud sort du cadre : la boîte
 	# englobante d'un `ImmediateMesh` vide est nulle au montage.
@@ -142,16 +218,16 @@ func _redraw_arcs(energy: float) -> void:
 	if energy <= 0.01:
 		return
 	_arc_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var tint := Color(BULB_TINT.r, BULB_TINT.g, BULB_TINT.b, 1.0) * energy
+	var tint := Color(NODE_TINT.r, NODE_TINT.g, NODE_TINT.b, 1.0) * energy
 	var white := Color(1.0, 0.92, 1.0, 1.0) * energy
 	for i in ARC_COUNT:
 		var angle := TAU * (float(i) + _rng.randf() * 0.6) / float(ARC_COUNT)
 		var direction := Vector3(cos(angle), 0.0, sin(angle))
 		var up := Vector3.UP
-		var previous := direction * BULB_RADIUS * 0.7
+		var previous := direction * LANTERN_RADIUS
 		for step in range(1, ARC_SEGMENTS + 1):
 			var t := float(step) / float(ARC_SEGMENTS)
-			var point := direction * (BULB_RADIUS * 0.7 + ARC_REACH * t)
+			var point := direction * (LANTERN_RADIUS + ARC_REACH * t)
 			point += up * (_rng.randf_range(-ARC_JITTER, ARC_JITTER) + t * 0.35)
 			point += Vector3(_rng.randf_range(-ARC_JITTER, ARC_JITTER), 0.0,
 				_rng.randf_range(-ARC_JITTER, ARC_JITTER))
@@ -212,13 +288,13 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	# entrant dans sa fenêtre qu'il doit se mettre à battre — pas avant, sinon il attire vers
 	# une cible encore hors de portée.
 	_pulse = fmod(_pulse + delta * 3.0, TAU)
-	var energy := 1.8 + 1.1 * sin(_pulse)
-	if _bulb_material != null:
-		_bulb_material.emission_energy_multiplier = energy
+	var swell := 1.0 + PULSE_DEPTH * sin(_pulse)
+	for material in _glow:
+		material.emission_energy_multiplier = _glow_base * swell
 	_arc_timer -= delta
 	if _arc_timer <= 0.0:
 		_arc_timer = 1.0 / ARC_REDRAW_HZ
-		_redraw_arcs(clampf(energy / 2.9, 0.35, 1.0))
+		_redraw_arcs(clampf(swell / (1.0 + PULSE_DEPTH), 0.35, 1.0))
 
 func _take_damage(damage: float) -> void:
 	if not _alive:
@@ -227,16 +303,22 @@ func _take_damage(damage: float) -> void:
 	if _health > 0.0:
 		return
 	_alive = false
-	if _bulb_material != null:
-		_bulb_material.emission_energy_multiplier = 0.0
-		_bulb_material.albedo_color = Color(0.05, 0.04, 0.08)
+	# ⚠️ LE CŒUR DISPARAÎT, LE BERCEAU RESTE. C'est toute la raison d'être du kit : ce qui reste
+	# après le tir est une carcasse sombre, donc une preuve visible depuis le plan de vol qu'on
+	# est passé par là. Éteindre la lanterne sans retirer le cœur laisserait un nœud intact et
+	# muet, indiscernable d'un nœud jamais touché.
+	for material in _glow:
+		material.emission_energy_multiplier = 0.0
+	_glow.clear()
+	if _core != null:
+		_core.queue_free()
+		_core = null
 	# ⚠️ LES ARCS S'ÉTEIGNENT AVEC LUI, et c'est la moitié de l'information : un nœud abattu qui
 	# continuerait de crépiter dirait au joueur qu'il n'a rien fait.
 	if _arc_mesh != null:
 		_arc_mesh.clear_surfaces()
 	if _vfx != null:
-		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM,
-			Color(0.62, 0.42, 1.0))
+		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM, NODE_TINT)
 	_retire()
 	destroyed.emit(self)
 

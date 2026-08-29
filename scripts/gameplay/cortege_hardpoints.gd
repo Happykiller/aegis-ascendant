@@ -110,14 +110,17 @@ func _add_node(marker: Node3D, section: int, bullet_manager: BulletManager,
 ## devient visible.
 func _process(delta: float) -> void:
 	var eye := _camera.global_position if is_instance_valid(_camera) else Vector3.ZERO
+	# ⚠️ LA PIÈCE EST VISÉE PAR SA MASSE, PAS PAR SON ASSISE. `aim_point_of` corrige la parallaxe
+	# du marqueur ; il restait celle de la pièce elle-même, qui vaut sa hauteur. Chaque famille
+	# déclare la sienne — et le hangar déclare zéro, parce qu'il creuse au lieu de monter.
 	for node in _nodes:
-		var w := node.global_position
+		var w := node.global_position + Vector3(0.0, CortegeSpineNode.HIT_LIFT, 0.0)
 		node.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 	for turret in _turrets:
-		var w := turret.global_position
+		var w := turret.global_position + Vector3(0.0, CortegeTurret.HIT_LIFT, 0.0)
 		turret.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 	for bay in _bays:
-		var w := bay.global_position
+		var w := bay.global_position + Vector3(0.0, CortegeBay.HIT_LIFT, 0.0)
 		bay.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 
 ## Les pièces, pour les faire avancer depuis un banc. Le jeu, lui, passe par `_process`.
