@@ -106,6 +106,29 @@ if [[ -n "$DEAD_SYMBOLS" ]]; then
   printf '%s\n' "$DEAD_SYMBOLS" | sed 's/^/  /' >&2
 fi
 
+# ⚠️ UN BRIEF DE FORGE PORTE SA SECTION `## Texture` (ADR-0028).
+#
+# Cette regle existe parce que le GABARIT LA PORTAIT DEJA, et que ça n'a rien empeche : trois
+# briefs de suite (0090, 0091, 0092 avant correction) ont ete ecrits sans elle, et c'est la
+# FORGE qui l'a signale a chaque fois — poliment, en livrant quand meme. Une regle qu'on doit se
+# rappeler d'appliquer n'est pas une regle, c'est une intention. `/capitalize` le dit autrement :
+# une procedure deterministe s'encode, elle ne se raconte pas.
+#
+# ADR-0028 exige deux issues et jamais de silence : soit une demande TEX-NNNN nommee, soit un
+# refus explicite avec sa raison. « Rien » laisse la forge deviner, et deviner sur la texture
+# est exactement ce que l'ADR existe pour empecher.
+# ⚠️ A PARTIR DE BRIEF-0086, ET PAS AVANT. ADR-0028 a institue la section en meme temps que
+# BRIEF-0085 ; reprocher son absence a un brief de juillet serait reecrire l'histoire, et un lint
+# qui rouspete sur du passe qu'on ne corrigera pas finit par etre ignore en bloc.
+BRIEFS_SANS_TEXTURE=$(for f in docs/forge/briefs/BRIEF-*.md; do
+    n=$(basename "$f" | sed -E 's/^BRIEF-0*([0-9]+).*/\1/')
+    if [[ "$n" -ge 86 ]] && ! grep -q "^## Texture" "$f"; then echo "$f"; fi
+  done)
+if [[ -n "$BRIEFS_SANS_TEXTURE" ]]; then
+  bad "brief(s) de forge sans section \`## Texture\` (ADR-0028 : une demande nommee, ou un refus motive — jamais le silence) :"
+  printf '  %s\n' $BRIEFS_SANS_TEXTURE >&2
+fi
+
 # ⚠️ TOUT SCRIPT RACINE DE NIVEAU CONVOQUE LES LOIS DU COMBAT.
 #
 # Cette regle existe parce que le defaut qu'elle empeche NE RESSEMBLE PAS A UN DEFAUT. Un

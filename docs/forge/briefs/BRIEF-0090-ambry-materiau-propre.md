@@ -5,6 +5,17 @@
 > le rapport `BRIEF-0089-report.md` signale, en point n° 2 à trancher, qu'Ambry partage les sept
 > matériaux du bordé et propose de reforger si on le demande. **On le demande.**
 
+## Texture
+
+⛔ **Aucune demande de texture, et voici pourquoi.** Ce brief ne crée aucune surface neuve : il
+ajoute un SLOT de matériau à une géométrie inchangée, pour qu'Ambry puisse un jour recevoir une
+carte qui lui soit propre — c'est `TEX-0014`, déjà écrite. Géométrie, UV et slots seulement
+(`ADR-0028`).
+
+⚠️ *Section ajoutée après coup : elle manquait à la rédaction, et c'est la forge qui l'a
+signalé. Le gabarit la portait déjà ; `scripts/lint-regles.sh` refuse désormais un brief sans
+elle, parce qu'une règle qu'on doit se rappeler d'appliquer n'est pas une règle.*
+
 ## Pourquoi — ce que ça change pour le jeu
 
 Ambry est la **révélation du niveau 2**. Un avant-poste humain de quatre-vingts personnes, soudé

@@ -581,27 +581,16 @@ def build_service_block() -> bpy.types.Object:
 # ==========================================================================
 
 
-def _triangulate(obj: bpy.types.Object) -> None:
-    """Triangule TOUT, et pas seulement les n-gons — ici c'est une necessite d'UV.
-
-    Les extremites des montants sont chanfreinees : leur face exterieure rentre a
-    35 pct sur les 70 derniers centimetres. Les quads qui font ce chanfrein sont
-    donc GAUCHES (calcule : leur determinant vaut 1,5 dz (b-a) ds, jamais nul), et
-    `box_project_uv` projette un quad selon UNE normale moyenne qui n'est celle
-    d'aucun de ses deux triangles. Mesure avant correction : densite minimale
-    0,078 tuile/m pour une borne theorique de 0,116 — un etirement de 2,6 que la
-    borne de la projection en boite ne peut PAS produire, donc un defaut de
-    methode et non de forme. Triangule d'abord, chaque face porte sa vraie
-    normale, et la mesure retombe dans la borne.
-
-    Accessoirement : sans triangulation, l'exporteur renonce aux TANGENTES sur
-    les n-gons et ADR-0011 devient inoperant.
-    """
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    bmesh.ops.triangulate(bm, faces=bm.faces[:])
-    bm.to_mesh(obj.data)
-    bm.free()
+# ⚠️ `_triangulate()` A DISPARU, ET C'EST UNE PROMOTION (BRIEF-0092).
+# Ce fichier a decouvert le defaut — les montants chanfreines font des quads
+# GAUCHES (leur determinant vaut 1,5 dz (b-a) ds, jamais nul), et `box_project_uv`
+# les projetait selon une normale moyenne qui n'est celle d'aucun de leurs deux
+# triangles : densite minimale mesuree 0,078 tuile/m pour une borne theorique de
+# 0,116. Mais RIEN dans ce raisonnement n'est propre a ce kit : n'importe quel
+# asset du depot peut porter un quad gauche, et le defaut est silencieux partout
+# pareil. La correction vit donc dans `aegis_kit.triangulate()`, appelee par
+# `box_project_uv()` elle-meme. Le kit triangule ici pour tout le monde ; ce
+# fichier n'a plus a s'en souvenir.
 
 
 def _assert_outward(obj: bpy.types.Object, axis: Vector) -> None:
@@ -662,7 +651,7 @@ def build_parts() -> list[bpy.types.Object]:
         bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-5)
         bm.to_mesh(obj.data)
         bm.free()
-        _triangulate(obj)
+        ak.triangulate(obj)
         ak.shade_smooth_by_angle(obj, angle_deg=26.0)
         ak.box_project_uv(obj, TEXELS_PER_METER)
     return parts

@@ -302,9 +302,18 @@ TAPER_END = TAPER[-1][0]
 
 #: 17 tourelles, densite croissante : 2, 3, 3, 4, 5 du troncon 1 au 5.
 #: Jamais sur l'axe (|x| >= 5,4), toujours sur une bande plate.
+#:
+#: ⚠️ DEUX `s` ONT BOUGE LE 2026-08-29 (BRIEF-0092), ET RIEN D'AUTRE. `Turret_02`
+#: passe de 84 a 76, `Turret_05` de 176 a 173 : leurs socles se tenaient dans
+#: l'emprise d'un pont d'envol devenu une VRAIE ouverture (BRIEF-0091), le
+#: premier avec son centre au-dessus du vide. Le nombre, les noms et l'ordre des
+#: 30 marqueurs sont inchanges — le moteur les resout PAR NOM a chaque image, un
+#: deplacement est sur, une disparition ou un renommage casserait le niveau en
+#: silence. Le `x` ne bouge pas non plus : c'est lui qui met le socle sur une
+#: bande plate.
 TURRETS: tuple[tuple[float, float], ...] = (
-    (68.0, -6.00), (84.0, 9.40),                                    # troncon 1
-    (118.0, 9.60), (140.0, -9.20), (176.0, 5.60),                   # troncon 2
+    (68.0, -6.00), (76.0, 9.40),                                    # troncon 1
+    (118.0, 9.60), (140.0, -9.20), (173.0, 5.60),                   # troncon 2
     (214.0, -8.40), (246.0, 9.80), (278.0, -5.60),                  # troncon 3
     (312.0, 8.20), (336.0, -9.80), (360.0, 10.10), (386.0, -6.20),  # troncon 4
     (410.0, 8.80), (428.0, -9.40), (452.0, -6.00),                  # troncon 5
@@ -614,43 +623,123 @@ def _bay_free_spans(x0: float, x1: float,
     return [(a, b) for a, b in spans if b - a >= 3.0]
 
 
-#: ⚠️ CONFLITS DE MARQUEURS CONNUS, MESURES, ET QUE LA FORGE NE PEUT PAS RESOUDRE.
-#: Deux socles de tourelle de BRIEF-0089 se tiennent dans l'emprise d'un pont
-#: d'envol. Le defaut EXISTAIT DEJA — le coaming hexagonal pose recouvrait le
-#: socle, deux masses sombres a 20 deg de la verticale ne faisaient qu'un lump —
-#: et l'ouverture le revele. Il n'est pas resoluble ici : deplacer un marqueur en
-#: X ou en Z casse le niveau en silence (le moteur monte ses pieces par leur nom
-#: et le jeu chronometre sur leur z), et retirer un socle laisserait sa tourelle
-#: en l'air. C'est un arbitrage de CONCEPTEUR, et il tient en une ligne des
-#: tables `TURRETS` / `BAYS`.
+#: Largeur du coaming de `bay_kit.glb` autour de l'ouverture. Il n'est pas dans
+#: ce maillage-ci, mais il existe VRAIMENT en jeu : un socle qui entre dedans
+#: touche une piece posee. ⚠️ `build_bay_kit.COAM_W` doit valoir la meme chose, et
+#: le kit — qui importe ce module — le reverifie a chaque build : les deux
+#: valeurs ne peuvent plus deriver l'une de l'autre en silence.
+BAY_COAMING_W = 0.80
+
+#: ⚠️ PROXIMITES ACCEPTEES — DECIDEES, MESUREES, ET ECRITES ICI POUR QU'ON NE LES
+#: « CORRIGE » PAS. Une paire qui figure ci-dessous n'est pas un oubli : c'est un
+#: arbitrage. Sans cette table, le prochain lecteur verrait un defaut la ou il y a
+#: une intention, et deplacerait un marqueur qui va bien.
 #:
-#: La liste est ici pour une seule raison : le harnais ECHOUE si une paire
-#: nouvelle apparait. Un conflit connu ne doit pas servir de porte a un conflit
-#: futur.
-KNOWN_PAD_BAY_CONFLICTS: tuple[tuple[str, str], ...] = (
-    ("Turret_02", "Bay_01"),        # centre du socle DANS l'ouverture (2,04 m)
-    ("Turret_05", "Bay_03"),        # la levre du socle mord 0,70 m dans la bouche
+#: (tourelle, baie, raison — la raison est obligatoire, c'est tout l'interet)
+ACCEPTED_PAD_BAY_PROXIMITY: tuple[tuple[str, str, str], ...] = (
+    ("Turret_14", "Bay_07",
+     "la levre du socle effleure le coaming sur 0,25 m et n'entre PAS dans "
+     "l'ouverture : deux installations qui se touchent est une lecture "
+     "credible, pas un defaut (arbitrage BRIEF-0092)"),
 )
 
 
-def _pad_bay_conflicts() -> list[tuple[str, str, float, bool]]:
-    """(tourelle, baie, penetration en m, centre du socle dans l'ouverture).
+def _pad_bay_clearances() -> list[tuple[str, str, float, float, bool]]:
+    """(tourelle, baie, marge a l'OUVERTURE, marge au COAMING, centre sur le vide).
 
     Distance du centre du socle au RECTANGLE de l'ouverture : c'est la seule
-    mesure qui vaille, un socle est un disque et une ouverture un rectangle.
+    mesure qui vaille, un socle est un disque et une ouverture un rectangle. Une
+    marge NEGATIVE est une penetration.
+
+    Deux seuils et non un, parce que les deux fautes n'ont pas la meme gravite :
+    entrer dans l'OUVERTURE, c'est poser une tourelle au-dessus du vide ; toucher
+    le COAMING, c'est effleurer une piece voisine — credible tant que c'est
+    declare.
     """
-    found: list[tuple[str, str, float, bool]] = []
+    out: list[tuple[str, str, float, float, bool]] = []
     for number, (ts, tx) in enumerate(TURRETS, start=1):
         radius = PAD_RADIUS[int(ts // SECTION_LENGTH)]
         for index, (bs, bx) in enumerate(BAYS, start=1):
             dx = max(abs(tx - bx) - BAY_HALF_X, 0.0)
             ds = max(abs(ts - bs) - BAY_HALF_S, 0.0)
             distance = math.hypot(dx, ds)
-            if distance < radius:
-                found.append((f"Turret_{number:02d}", f"Bay_{index:02d}",
-                              radius - distance,
-                              dx == 0.0 and ds == 0.0))
-    return found
+            out.append((f"Turret_{number:02d}", f"Bay_{index:02d}",
+                        distance - radius,
+                        distance - radius - BAY_COAMING_W,
+                        dx == 0.0 and ds == 0.0))
+    return out
+
+
+def _marker_clashes() -> list[str]:
+    """LE GARDE MUTUEL `TURRETS` / `BAYS`, sur le modele de `JOINT_CLEARANCE`.
+
+    ⚠️ DEUX MARQUEURS POSES A LA MAIN A 2 m L'UN DE L'AUTRE N'AURAIENT JAMAIS DU
+    PASSER. Ils sont passes : `Turret_02` avait son centre dans l'ouverture de
+    `Bay_01` et `Turret_05` mordait `Bay_03` de 0,70 m, depuis BRIEF-0089 — six
+    semaines sans un mot, parce que le coaming POSE de l'epoque recouvrait le
+    socle et que deux masses sombres vues a 20 deg de la verticale ne faisaient
+    qu'un seul bouton. C'est l'ouverture reelle qui l'a revele, pas un test.
+
+    Ces tables se remplissent a la main, exprès (une position de gameplay se
+    decide) ; elles doivent donc etre RELUES par une machine, exactement comme les
+    modules le sont par `JOINT_CLEARANCE`. Trois regles :
+
+      * aucun socle dans une OUVERTURE — jamais, sans exception possible ;
+      * un socle qui touche un COAMING doit etre declare dans
+        `ACCEPTED_PAD_BAY_PROXIMITY`, avec sa raison ;
+      * deux socles ne se recouvrent pas, deux ouvertures (coaming compris) non
+        plus.
+
+    Et la reciproque : une proximite declaree qui n'existe plus doit disparaitre
+    de la table, sans quoi celle-ci se met a mentir.
+    """
+    problems: list[str] = []
+    declared = {(t, b): why for t, b, why in ACCEPTED_PAD_BAY_PROXIMITY}
+    seen: set[tuple[str, str]] = set()
+    for turret, bay, mouth_gap, coam_gap, centred in _pad_bay_clearances():
+        if mouth_gap < 0.0:
+            problems.append(
+                f"{turret} entre de {-mouth_gap:.2f} m dans l'OUVERTURE de {bay}"
+                f"{' — son centre est au-dessus du vide' if centred else ''} : "
+                "une tourelle ne se pose pas sur un trou. Corriger le `s` de la "
+                "ligne dans TURRETS ou dans BAYS (arbitrage de conception)")
+            continue
+        if coam_gap < 0.0:
+            seen.add((turret, bay))
+            if (turret, bay) not in declared:
+                problems.append(
+                    f"{turret} touche le coaming de {bay} sur {-coam_gap:.2f} m "
+                    "sans etre declare : soit on l'ecarte, soit on l'ASSUME dans "
+                    "ACCEPTED_PAD_BAY_PROXIMITY avec sa raison")
+    for turret, bay in declared:
+        if (turret, bay) not in seen:
+            problems.append(
+                f"la proximite declaree {turret}/{bay} n'existe plus : retirer sa "
+                "ligne d'ACCEPTED_PAD_BAY_PROXIMITY plutot que de la laisser "
+                "mentir")
+
+    for a in range(len(TURRETS)):
+        sa, xa = TURRETS[a]
+        ra = PAD_RADIUS[int(sa // SECTION_LENGTH)]
+        for b in range(a + 1, len(TURRETS)):
+            sb, xb = TURRETS[b]
+            rb = PAD_RADIUS[int(sb // SECTION_LENGTH)]
+            gap = math.hypot(sa - sb, xa - xb) - (ra + rb)
+            if gap < 0.0:
+                problems.append(
+                    f"les socles Turret_{a + 1:02d} et Turret_{b + 1:02d} se "
+                    f"recouvrent de {-gap:.2f} m")
+    for a in range(len(BAYS)):
+        sa, xa = BAYS[a]
+        for b in range(a + 1, len(BAYS)):
+            sb, xb = BAYS[b]
+            ds = abs(sa - sb) - 2.0 * (BAY_HALF_S + BAY_COAMING_W)
+            dx = abs(xa - xb) - 2.0 * (BAY_HALF_X + BAY_COAMING_W)
+            if ds < 0.0 and dx < 0.0:
+                problems.append(
+                    f"les ouvertures Bay_{a + 1:02d} et Bay_{b + 1:02d} se "
+                    f"chevauchent (coaming compris) de {-max(ds, dx):.2f} m")
+    return problems
 
 
 def bay_mouth_y(s: float, x: float) -> tuple[float, float]:
@@ -2205,11 +2294,15 @@ def _audit(path: str) -> dict:
                             and abs(cz - bz) <= BAY_HALF_S - 0.05
                             and cy > mouth - 2.0):
                         continue
-                    # ⚠️ Les socles de tourelle sont comptes A PART : deux
-                    # d'entre eux se tiennent legitimement (au sens du brief :
-                    # « ne touche pas aux socles ») dans une emprise de baie.
-                    # Les melanger aux intrus rendrait le harnais inutilisable
-                    # — il echouerait toujours, donc on le desactiverait.
+                    # ⚠️ Les triangles de SOCLE au-dessus d'une ouverture sont
+                    # comptes a part — et depuis BRIEF-0092 leur compte doit
+                    # etre NUL. Tant que deux socles se tenaient legitimement
+                    # dans une emprise de baie, les melanger aux intrus aurait
+                    # rendu le harnais inutilisable (il aurait echoue toujours,
+                    # donc on l'aurait desactive). L'arbitrage rendu, la
+                    # distinction ne sert plus qu'a nommer la faute : un intrus
+                    # est une peau qui s'est refermee, un socle au-dessus du
+                    # vide est une ligne de TURRETS a corriger.
                     if any(math.hypot(cx - tx, cz + (ts - section_origin))
                            <= PAD_RADIUS[section_index] + 0.05
                            for ts, tx in TURRETS
@@ -2248,20 +2341,12 @@ def _audit(path: str) -> dict:
         if ambry_tris:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
 
-    conflicts = _pad_bay_conflicts()
-    for turret, bay, depth, centred in conflicts:
-        if (turret, bay) not in KNOWN_PAD_BAY_CONFLICTS:
-            problems.append(
-                f"CONFLIT NEUF : le socle {turret} entre de {depth:.2f} m dans "
-                f"l'ouverture de {bay}"
-                f"{' — son centre y est' if centred else ''}. Un conflit connu "
-                "n'est pas une porte ouverte aux suivants (voir "
-                "KNOWN_PAD_BAY_CONFLICTS)")
-    for turret, bay in KNOWN_PAD_BAY_CONFLICTS:
-        if not any(t == turret and b == bay for t, b, _, _ in conflicts):
-            problems.append(
-                f"le conflit {turret}/{bay} a disparu : retirer sa ligne de "
-                "KNOWN_PAD_BAY_CONFLICTS plutot que de la laisser mentir")
+    problems += _marker_clashes()
+    if pad_over_bay:
+        problems.append(
+            f"{pad_over_bay} triangle(s) de socle de tourelle AU-DESSUS d'une "
+            "ouverture : la tourelle serait posee sur le vide (arbitrage rendu "
+            "par BRIEF-0092, plus aucun socle ne doit y etre)")
     if bay_intruders:
         problems.append(
             f"{bay_intruders} triangle(s) DANS l'emprise d'un pont d'envol — "

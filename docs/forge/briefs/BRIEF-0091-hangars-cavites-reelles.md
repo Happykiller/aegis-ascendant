@@ -10,6 +10,17 @@
 - **Modifie** : `assets/imported/models/backgrounds/long_cortege.glb` (livré par `BRIEF-0089`)
 - **Crée** : `assets/imported/models/backgrounds/bay_kit.glb`
 
+## Texture
+
+⛔ **Aucune demande de texture, et voici pourquoi.** Le kit réemploie les slots existants de la
+coque, aux mêmes matériaux et à la même densité de dépliage (0,200 tuile/m) — deux échelles sur
+un même slot est exactement la faute qu'`BRIEF-0090` a corrigée sur Ambry. Les cartes `TEX-0010`
+à `TEX-0014` sont livrées et intégrées ; aucune n'est à refaire. Géométrie, UV et slots
+seulement (`ADR-0028`).
+
+⚠️ *Section ajoutée après coup : elle manquait à la rédaction, et c'est la forge qui l'a signalé
+— pour la deuxième fois de suite. `scripts/lint-regles.sh` refuse désormais un brief sans elle.*
+
 ## Pourquoi — et ce n'est pas une question de qualité
 
 > « Les ponts d'envol ressemblent à de gros boutons hexagonaux magenta. On ne comprend pas qu'un

@@ -770,6 +770,43 @@ def shade_smooth_by_angle(obj: bpy.types.Object, angle_deg: float = 32.0) -> Non
     bm.free()
 
 
+def triangulate(obj: bpy.types.Object) -> int:
+    """Triangule TOUTES les faces, et rend le nombre de faces decoupees.
+
+    ⚠️ A APPELER AVANT TOUT DEPLIAGE — `box_project_uv()` le fait desormais
+    lui-meme, cette fonction est publique pour les scripts qui veulent trianguler
+    plus tot (avant une mesure, avant un harnais d'orientation).
+
+    POURQUOI CE N'EST PAS UNE OPTIMISATION MAIS UNE CORRECTION. Une projection en
+    boite choisit son plan PAR FACE, d'apres la normale de la face. Un quad
+    GAUCHE (ses quatre sommets ne sont pas coplanaires) n'a pas de normale :
+    Blender lui en donne une moyenne, qui n'est celle d'aucun des deux triangles
+    que l'exporteur en tirera. Les deux triangles heritent donc d'une projection
+    calculee pour un plan qui n'est pas le leur, et l'un des deux peut se
+    retrouver projete selon un axe qui n'est PAS son axe dominant. Son etirement
+    depasse alors la borne sqrt(3) de la methode — mesure sur `bay_kit` avant
+    correction : densite minimale 0,078 tuile/m pour une borne theorique de
+    0,116, soit 2,6 fois trop.
+
+    ⚠️ ET LE DEFAUT EST TOTALEMENT SILENCIEUX : le `.glb` est valide, les UV sont
+    presentes et comptees, aucun test ne rougit. Il ne se voit qu'a la texture
+    generee, c'est-a-dire trop tard.
+
+    Accessoirement, l'exporteur renonce aux TANGENTES sur les faces de plus de
+    quatre sommets (« tangent space can only be computed for tris/quads ») : sans
+    triangulation, ADR-0011 est inoperant sur ces faces-la.
+    """
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    targets = [f for f in bm.faces if len(f.verts) > 3]
+    if targets:
+        bmesh.ops.triangulate(bm, faces=targets)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    return len(targets)
+
+
 def cleanup(obj: bpy.types.Object, merge_dist: float = 1e-5) -> None:
     """Soude les sommets doubles et recalcule les normales."""
     bm = bmesh.new()
@@ -977,7 +1014,14 @@ def box_project_uv(obj: bpy.types.Object, texels_per_meter: float = 1.0) -> None
     `texels_per_meter` : combien de fois la feuille se repete par metre. Une
     valeur trop haute transforme le detail mecanique en bruit ; trop basse, les
     plaques deviennent enormes. A juger au rendu, pas au chiffre.
+
+    ⚠️ TRIANGULE D'ABORD, ET CE N'EST PAS UNE COMMODITE (BRIEF-0092). Sur un quad
+    gauche, la projection est calculee pour une normale moyenne qui n'est celle
+    d'aucun des deux triangles exportes : l'un des deux peut sortir projete selon
+    un axe qui n'est pas le sien, avec un etirement SOUS la borne sqrt(3) de la
+    methode. Le detail, la mesure et la raison sont dans `triangulate()`.
     """
+    triangulate(obj)
     mesh = obj.data
     bm = bmesh.new()
     bm.from_mesh(mesh)

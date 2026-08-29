@@ -303,6 +303,20 @@ laissent, en revanche, n'appartient à aucun d'eux :
   1,26, lot 4). On voit le sol jusqu'au bord de l'écran au lieu du mur du fond. Choix assumé —
   l'alternative rendait l'entrée de plongée impossible — mais **non jugé par l'opérateur**.
 
+## ⚠️ Une décision qui appartient à l'opérateur, et qui débloquerait beaucoup
+
+- [ ] **Le Quadro T1000 est-il encore une cible ?** `ADR-0011` a calé TOUS les budgets de
+      triangles dessus — « sur le poste courant (Quadro T1000, budget 16,7 ms) » — et son §115
+      dit que ces budgets sont le premier levier si la cible change. L'opérateur joue sur une
+      **RTX 4080** et a demandé de ne pas être avare sur la qualité des modèles (2026-08-29).
+      ⚠️ **Ce n'est pas bloquant aujourd'hui** : la classe « structure » accorde 120 000 tri, la
+      coque du niveau 2 en consomme 40 446, il reste 79 554. Mais si la T1000 sort du périmètre,
+      les budgets peuvent tripler, et c'est une décision de produit, pas de session.
+      ⚠️ **Et ce n'est PAS ce qui limite la qualité visible.** Le post-traitement rétro rend à
+      960×540, soit 23 px/m sur la coque : toute géométrie plus fine que ~9 cm est moyennée
+      puis disparaît — mesuré, la coque a perdu 33 % de luminance pour un relief invisible.
+      Relever le budget permet plus de SILHOUETTE et plus de VARIÉTÉ, pas plus de finesse.
+
 ## ⚠️ Ce qui reste après la session du 2026-08-29
 
 ## ⚠️ Niveau 2 — la seule vérification qui manque (2026-08-29)
