@@ -642,6 +642,36 @@ fichier produit n'est pas une voix validée). Elles sont sur le Bureau, dans
 `lyra-mission-et-fin-essais-voix/`. Si le timbre ne convient pas, `--voix` / `--cadence` puis
 `--deposer` à nouveau : rien d'autre ne bouge.
 
+## À REJOUER — le réacteur a pris 50 % de vie (2026-08-29)
+
+Demande de l'opérateur. La hausse seule cassait deux invariants (combat à 52 s hors cible, et
+**939 PV atteignables sur les 1000 demandés par plongée** — donc un quatrième cycle, ce
+qu'`ADR-0026` empêche par construction). Trois valeurs bougent donc **ensemble**, et elles ne
+valent qu'ensemble :
+
+| | Avant | Après |
+|---|---|---|
+| `flux_health` (le réacteur) | 2000 | **3000** |
+| `dive_time` (durée d'une plongée) | 9,0 s | **10,0 s** |
+| `plate_health` (une plaque d'armure) | 460 | **320** |
+| *durée du combat* | 44,3 s | 48,4 s |
+| *part passée sur l'armure* | 34 % | **25 %** |
+
+⚠️ **Ce n'est pas un réglage, c'est un déplacement d'équilibre** : le boss ne devient pas plus
+long, il devient plus **centré sur le réacteur**. Un tiers de temps d'armure en moins, un tiers de
+temps de noyau en plus.
+
+**Ça ne se valide qu'en jouant** (`ADR-0019`) — les invariants disent que le combat est *possible*,
+jamais qu'il est *bon*. Deux choses à sentir, et une seule partie suffit :
+
+- la phase d'armure à 320 PV la plaque **ne doit pas devenir expédiée** : c'est elle qui fait
+  monter la tension avant la plongée, et le grief « lancinant » d'`ADR-0021` venait de l'excès
+  inverse ;
+- la plongée à 10 s **ne doit pas se mettre à traîner**. Le joueur de référence y passe désormais
+  9,59 s sur 10 possibles : il n'a plus de marge, et un joueur moins précis touchera le plafond de
+  temps au lieu du quota de dégâts — ce qui rouvrirait un quatrième cycle en pratique, sans que
+  l'invariant ne le voie.
+
 ## Ouvert par la partie de vérification du 2026-08-28 (sans rapport avec les voix)
 
 Trois défauts relevés en jouant l'arc en démo pour vérifier les répliques. **Aucun n'appartient au

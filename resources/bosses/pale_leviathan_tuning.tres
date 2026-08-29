@@ -98,7 +98,20 @@ target_duration = 40.0
 cycle_count = 3
 plate_count = 4
 plate_count_min = 2
-plate_health = 460.0
+; ⚠️ CES TROIS VALEURS NE SE TIENNENT QU'ENSEMBLE (2026-08-29). L'opérateur a demandé
+; +50 % de points de vie au réacteur. Prise seule, la hausse casse DEUX invariants,
+; mesurés avant de toucher au fichier :
+;   - le combat passe à 52 s, hors de la cible 40 ± 10 ;
+;   - surtout, le joueur de référence ne peut placer que 939 des 1000 PV demandés par
+;     plongée : il faudrait un QUATRIÈME cycle, ce qu'`ADR-0026` a construit le combat
+;     pour empêcher.
+; La plongée s'allonge donc (9 -> 10 s) pour rendre le quota atteignable, et l'armure
+; s'allège (460 -> 320) pour rendre le temps. Le combat retombe à 48 s, en trois cycles.
+;
+; ⚠️ CE N'EST PAS UN RÉGLAGE, C'EST UN DÉPLACEMENT D'ÉQUILIBRE : moins de temps à briser
+; des plaques, plus de temps dans le noyau. Le boss ne devient pas plus long, il devient
+; plus CENTRÉ sur le réacteur. Ça ne se valide qu'en jouant (`ADR-0019`).
+plate_health = 320.0
 shell_orbit_period = 9.0
 plate_arc_deg = 100.0
 spine_windup_time = 1.0
@@ -131,7 +144,7 @@ ring_occupancy = 0.59
 ;   2000 -> 71 %, plongee de reference 6,4 s, combat 44 s   <- ici
 ;   2400 -> 85 %, plongee de reference 7,7 s, combat 48 s   (2 s de marge, trop pres du mur)
 ;   2600 -> refuse : le combat dure 50 s
-flux_health = 2000.0
+flux_health = 3000.0
 flux_hitbox_radius = 1.8
 dive_enter_time = 1.4
 ; ⚠️ 5,0 -> 11,0 AVEC LE BLINDAGE (plan du 2026-08-27, lot 1). Le quota d'une plongee est
@@ -145,7 +158,7 @@ dive_enter_time = 1.4
 ; ⚠️ INCHANGEE, et c'est le resultat le plus important du lot 3 : le blindage et les verrous
 ; tiennent DANS la plongee de cinq secondes. Le premier reglage essaye la portait a 14 s et
 ; faisait durer le combat 67 s au lieu de 40 — deux gardes l'ont refuse.
-dive_time = 9.0
+dive_time = 10.0
 dive_eject_time = 1.0
 pull_speed_max = 7.0
 pull_radius = 16.0
