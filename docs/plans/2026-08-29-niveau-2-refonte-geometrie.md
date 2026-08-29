@@ -126,7 +126,11 @@ remarquer. Sur un fond chargé en permanence, il ne remarque rien.
 
 # Les lots, dans l'ordre
 
-## LOT 1 — Le pont d'envol devient une cavité
+> **État au 2026-08-29** : lots 1 et 2 livrés, acceptés et câblés. Les lots **3 à 5 sont partis
+> ensemble** dans `BRIEF-0094` — ils remodèlent tous la peau du bordé, et trois reforges
+> séparées du même fichier auraient divergé. Le lot 6 attend leur validation.
+
+## LOT 1 — Le pont d'envol devient une cavité — ✅ LIVRÉ
 
 **Le plus radical, et le premier**, parce que c'est celui où l'écart est le plus grand.
 
@@ -147,7 +151,7 @@ Cela demande une addition au moteur : `EnemyController.park(world_position)` —
 posé. Elle est générique : tout niveau qui met un ennemi en scène avant de l'engager en aura
 besoin.
 
-## LOT 2 — La tourelle devient un affût
+## LOT 2 — La tourelle devient un affût — ✅ LIVRÉ
 
 - `BRIEF-0093` : kit de 6 pièces — `turret_pad`, `turret_ring`, `turret_body`, `turret_barrel`,
   `turret_service_box`, `turret_pipe`.
@@ -158,7 +162,7 @@ besoin.
 - Moteur : la **couronne** tourne (pas la tourelle entière), les canons partent d'elle, l'œil
   reste ≤ 25 % et vit entre les canons.
 
-## LOT 3 — L'artère devient une tranchée
+## LOT 3 — L'artère devient une tranchée — `BRIEF-0094`
 
 - Canal **enfoncé** dans la coque, ~2 m de large, rebord mécanique sombre.
 - 3 ou 4 bandes de 10–25 cm, **avec des interruptions**, et des nœuds ponctuels plus lumineux.
@@ -168,11 +172,11 @@ besoin.
 est le travail du moteur, pas de l'image ». La texture la respecte ; c'est la **géométrie** qui
 ne la portait pas, et l'émission moteur qui la noyait.
 
-## LOT 4 — La palette
+## LOT 4 — La palette — `BRIEF-0094`
 
 Retirer 60–70 % des surfaces violettes. Mesure d'aire par matériau **rendue au rapport**.
 
-## LOT 5 — Le relief
+## LOT 5 — Le relief — `BRIEF-0094`
 
 Quelques nervures et masses en Z + 0,5 **autour des installations**, pour les ancrer. Rien
 ailleurs : les zones calmes sont un livrable, pas un manque.
@@ -191,7 +195,13 @@ ailleurs : les zones calmes sont un livrable, pas un manque.
 3. **Silhouette ≤ 8 primitives principales** par structure, comptées au rapport.
 4. **Budget** : la coque est à 39 434 tri sur 90 000. Le kit dispose donc de **50 000
    triangles** — largement de quoi faire 17 tourelles et 7 hangars soignés.
-5. **Plafond −3,200** tenu, **30 marqueurs** intacts, `build-hull.sh --check` déterministe.
+5. **Le plafond**, et il s'est dédoublé en cours de route : le **décor inerte** reste sous
+   **−3,00**, les **pièces de gameplay** montent jusqu'à **−2,40**. La règle protège de ce qui
+   masquerait le combat *sans jamais pouvoir être touché* ; une tourelle se tire dessus. Un test
+   moteur (`test_no_turret_ever_reaches_the_flight_plane`) charge le kit, assemble la pièce la
+   plus haute et la pose sur le pire marqueur pour tenir la borne.
+   **30 marqueurs** intacts — sauf le `s` de `Turret_02` et `Turret_05`, arbitré au `BRIEF-0092` —
+   et `build-hull.sh --check` déterministe.
 6. Et la règle qui prime : **une capture regardée** (`ADR-0006`).
 
 # Ce que ce plan ne fait pas
