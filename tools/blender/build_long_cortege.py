@@ -1648,19 +1648,14 @@ def _object_density(obj: bpy.types.Object) -> dict:
     return _texel_density(points, uvs, tris)
 
 
-def _triangulate_ngons(obj: bpy.types.Object) -> None:
-    """Decoupe les seules faces de plus de 4 sommets.
-
-    Sans cela l'exporteur renonce aux TANGENTES (« tangent space can only be
-    computed for tris/quads ») et ADR-0011 devient inoperant.
-    """
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    ngons = [f for f in bm.faces if len(f.verts) > 4]
-    if ngons:
-        bmesh.ops.triangulate(bm, faces=ngons)
-    bm.to_mesh(obj.data)
-    bm.free()
+# ⚠️ `_triangulate_ngons()` A DISPARU (BRIEF-0092) : `ak.triangulate()` triangule
+# TOUT, et c'est `ak.box_project_uv()` qui l'appelle desormais. Ne decouper que
+# les n-gons suffisait aux TANGENTES, pas aux UV : sur un quad GAUCHE, la
+# projection en boite est calculee pour une normale moyenne qui n'est celle
+# d'aucun des deux triangles exportes, et l'un des deux peut sortir projete selon
+# un axe qui n'est pas le sien. Mesure sur CE fichier, avant/apres : 20 triangles
+# de la Section_01 sortaient hors de leur axe dominant — 0 apres. Le detail est
+# dans `aegis_kit.triangulate()`.
 
 
 def _assert_skin_outward(bm: bmesh.types.BMesh, name: str) -> None:
@@ -1780,7 +1775,11 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
 
     hull = _new_object(name, bm)
     _weld(hull)
-    _triangulate_ngons(hull)
+    # ⚠️ TRIANGULER AVANT DE LISSER ET AVANT DE DEPLIER (BRIEF-0092). Le kit le
+    # referait au depliage, mais l'ordre compte : un quad gauche lisse avant
+    # d'etre coupe ne porte pas la meme arete que coupe puis lisse, et la mesure
+    # d'UV doit se faire sur les faces REELLEMENT exportees.
+    ak.triangulate(hull)
     ak.shade_smooth_by_angle(hull, angle_deg=26.0)
     ak.box_project_uv(hull, HULL_TEXELS_PER_METER)
 
@@ -1789,7 +1788,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         anchor, ambry_stats = build_ambry(abm)
         ambry = _new_object(name + "_Ambry", abm)
         _weld(ambry)
-        _triangulate_ngons(ambry)
+        ak.triangulate(ambry)
         ak.shade_smooth_by_angle(ambry, angle_deg=26.0)
         # ⚠️ Depliage PROPRE a Ambry, applique AVANT la fusion : `box_project_uv`
         # travaille sur tout l'objet, il n'y a donc pas d'autre moment ou les deux
@@ -2417,7 +2416,7 @@ def _audit(path: str) -> dict:
         "ambry_slot_triangles": ambry_slot_tris,
         "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
-        "pad_bay_conflicts": conflicts,
+        "pad_clearances": _pad_bay_clearances(),
         "pad_over_bay": pad_over_bay,
         "top": top_of_decor,
         "width": 2 * widest,
@@ -2468,6 +2467,15 @@ def _frame_coverage(deck_y: float) -> dict:
 
 
 def build() -> dict:
+    # ⚠️ LE GARDE MUTUEL PASSE AVANT LE PREMIER SOMMET. Une faute de table est une
+    # faute de DONNEE : la laisser traverser huit minutes de maillage pour sortir
+    # a l'audit, c'est huit minutes payees pour apprendre qu'on a mal tape un
+    # nombre.
+    clashes = _marker_clashes()
+    if clashes:
+        raise ak.ContractError(
+            "TABLES DE MARQUEURS ROMPUES — long_cortege\n"
+            + "\n".join(f"  - {p}" for p in clashes))
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []
@@ -2543,18 +2551,22 @@ def _print_report(report: dict) -> None:
               f"fond {mouth - BAY_WELL_DEPTH:+7.3f}  "
               f"coaming {mouth + 0.60:+7.3f} (plafond {CEILING_Y:+.2f})")
 
-    if report["pad_bay_conflicts"]:
-        print("\n  ⚠️ CONFLITS DE MARQUEURS — un socle de tourelle se tient dans "
-              "l'emprise d'un pont d'envol")
-        for turret, bay, depth, centred in report["pad_bay_conflicts"]:
-            print(f"    {turret} / {bay} : penetration {depth:.2f} m"
-                  + ("   *** LE CENTRE DU SOCLE EST DANS L'OUVERTURE ***"
-                     if centred else ""))
-        print(f"    {report['pad_over_bay']} triangle(s) de socle au-dessus du "
-              "vide. NON RESOLUBLE PAR LA FORGE : deplacer un marqueur en X/Z "
-              "casse le niveau en silence,")
-        print("    retirer un socle laisse sa tourelle en l'air. Arbitrage du "
-              "concepteur, une ligne de TURRETS ou de BAYS.")
+    # ⚠️ Les cinq paires les plus SERREES, imprimees a chaque build meme quand
+    # tout va bien. Un garde-fou qui ne parle que le jour ou il echoue ne dit
+    # jamais de combien on est passe pres — et c'est cette marge-la qui a manque
+    # pendant six semaines.
+    print("\n  marges socle / pont d'envol (les 5 paires les plus serrees ; "
+          f"coaming du kit {BAY_COAMING_W:.2f} m)")
+    declared = {(t, b): why for t, b, why in ACCEPTED_PAD_BAY_PROXIMITY}
+    for turret, bay, mouth_gap, coam_gap, _ in sorted(
+            report["pad_clearances"], key=lambda row: row[3])[:5]:
+        note = ""
+        if (turret, bay) in declared:
+            note = "   <- PROXIMITE ACCEPTEE : " + declared[(turret, bay)]
+        print(f"    {turret} / {bay} : {mouth_gap:+6.2f} m de l'ouverture, "
+              f"{coam_gap:+6.2f} m du coaming{note}")
+    print(f"    {report['pad_over_bay']} triangle(s) de socle au-dessus du vide "
+          "(doit valoir 0 depuis BRIEF-0092)")
 
     print("\n  marqueurs (position LOCALE au troncon, repere Godot)")
     for name in _expected_markers():

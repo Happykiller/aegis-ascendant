@@ -137,7 +137,17 @@ WELL_DEPTH = cortege.BAY_WELL_DEPTH         # 1,80 m
 #: facette exterieure qui plonge de -5,10 a -6,35 — la jupe n'y touchait plus la
 #: coque et le coaming flottait. Mesure : a 0,80 le bord exterieur est a 13,10,
 #: ou la peau est a -6,04, et la jupe de 1,80 m descend a -6,13. Elle mord.
+#:
+#: ⚠️ La COQUE tient ce chiffre elle aussi (`cortege.BAY_COAMING_W`) : c'est avec
+#: lui qu'elle verifie qu'aucun socle de tourelle ne vient toucher un coaming. Les
+#: deux ne peuvent plus deriver — cette egalite est controlee ici, a l'import, et
+#: pas laissee a la memoire de qui modifiera l'un des deux.
 COAM_W = 0.80
+if abs(COAM_W - cortege.BAY_COAMING_W) > 1e-9:
+    raise ak.ContractError(
+        f"coaming : le kit dit {COAM_W} m, la coque {cortege.BAY_COAMING_W} m — "
+        "les marges socle/pont d'envol seraient calculees sur une piece qui "
+        "n'existe pas")
 #: Hauteur au-dessus de la peau. La planche donne 0,4 a 0,8 ; le brief fixe 0,60.
 COAM_H = 0.60
 #: Profondeur de la jupe ENTERREE. Elle n'est pas decorative : l'ouverture de

@@ -303,6 +303,22 @@ laissent, en revanche, n'appartient à aucun d'eux :
   1,26, lot 4). On voit le sol jusqu'au bord de l'écran au lieu du mur du fond. Choix assumé —
   l'alternative rendait l'entrée de plongée impossible — mais **non jugé par l'opérateur**.
 
+## ⚠️ Un défaut silencieux du kit de forge, corrigé — mais son passif reste à mesurer
+
+- [ ] **Quels assets ont souffert du dépliage sur quads gauches ?** `ak.box_project_uv()`
+      projetait selon une normale MOYENNE : sur un quad gauche, cette normale n'est celle
+      d'aucun des deux triangles exportés, et l'un des deux pouvait sortir projeté selon un axe
+      qui n'est pas le sien — **en silence**. Mesuré par la forge : densité minimale 0,078 pour
+      une borne théorique de 0,116, soit un étirement que la projection en boîte ne *peut pas*
+      produire. Corrigé le 2026-08-29 (`ak.triangulate()` triangule tout AVANT le dépliage, et
+      c'est `box_project_uv` qui l'appelle).
+      ⚠️ **Quinze scripts de coque dépendent de cette fonction** : `specter_9`, `pale_leviathan`,
+      `aegis_citadel`, `choir_mine`, `leech_drone`, `null_maw`, `shield_carrier`,
+      `core_interior`, `moon_flyby`, `citadel_turret`, `citadel_beacon`, `impact_debris`,
+      `bay_kit`, `long_cortege`, `turret_kit`. Le seul verdict qui vaille est un **rebuild
+      comparé** : reconstruire chacun et voir si son sha256 bouge. Un sha inchangé prouve qu'il
+      n'avait aucun quad gauche ; un sha qui bouge demande de regarder la planche.
+
 ## ⚠️ Une décision qui appartient à l'opérateur, et qui débloquerait beaucoup
 
 - [ ] **Le Quadro T1000 est-il encore une cible ?** `ADR-0011` a calé TOUS les budgets de
