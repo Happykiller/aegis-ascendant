@@ -32,22 +32,29 @@ const RELEASE_SCENES: Array[String] = [
 	"res://scenes/enemies/crescent_interceptor.tscn",
 ]
 
-## Le fond du puits : le volume émissif qui dit si le pont produit encore.
+# --- Le hangar, assemblé depuis le kit de la forge -----------------------------
+#
+## ⚠️ IL EST ASSEMBLÉ ICI, PIÈCE PAR PIÈCE, ET C'EST TOUT L'INTÉRÊT DU KIT. La forge livre sept
+## volumes modélisés chacun dans son repère, origine au point d'assemblage ; c'est le moteur qui
+## en fait sept hangars — et qui pourra en faire de différents, par rotation, écartement ou
+## présence des blocs, sans qu'aucun modèle ne soit refait.
 ##
-## ⚠️ IL RECOUVRE LE FOND DE LA FORGE, IL NE S'AJOUTE PAS À CÔTÉ. La coque livrée porte déjà un
-## cœur émissif magenta au fond de chaque puits — mais il est CUIT dans le maillage du tronçon et
-## partage son matériau avec les six autres baies : éteindre un pont abattu en touchant à la
-## coque éteindrait les sept. Le fond de la forge est donc masqué par celui-ci, qui lui appartient
-## en propre. Une première version posait un carré rose PAR-DESSUS l'hexagone sans le couvrir :
-## on voyait les deux, et ça ne ressemblait à rien. Vu en capture, pas déduit.
-##
-## Cotes prises sur `build_long_cortege.py` : le cœur émissif est un hexagone allongé de ±1,95 en
-## X et ±2,11 en Z, posé à −4,20. Un hexagone régulier de rayon 2,4 tourné d'un quart de tour
-## couvre les deux (2,08 de plat en X, 2,40 de pointe en Z) avec quatre centimètres de marge
-## au-dessus du fond — assez pour qu'aucun conflit de profondeur ne scintille au défilement.
-const WELL_RADIUS := 2.4
-const WELL_THICKNESS := 0.06
-const WELL_DEPTH := -0.71
+## ⚠️ ET C'EST OBLIGATOIRE, PAS UN CONFORT : les portes s'ouvrent, un appareil se pose au fond,
+## un pont abattu doit rester fermé. Une cavité cuite dans la coque ne ferait aucune des trois.
+const KIT_PATH := "res://assets/imported/models/backgrounds/bay_kit.glb"
+
+## Cotes mesurées sur le binaire livré (BRIEF-0091), pas recopiées d'un brief : l'ouverture fait
+## 6,00 × 8,50, le puits descend à −1,80 sous la bouche, le coaming monte à +0,60.
+const OPENING_HALF_X := 3.00
+const OPENING_HALF_Z := 4.25
+const WELL_FLOOR := -1.80
+const RAIL_GAP := 1.15
+const RAIL_HALF_LEN := 3.30
+
+## La teinte d'état. ⚠️ Le kit porte son émissif sur trois bandes — liseré de coaming, pied de
+## paroi, filets de rail — et ces bandes partagent leur matériau avec les six autres hangars.
+## Éteindre un pont abattu en touchant au matériau du kit éteindrait les sept. Chaque hangar
+## reçoit donc sa PROPRE copie du matériau émissif à l'assemblage.
 const HATCH_TINT := Color("d93d9c")
 
 # --- Le décollage -------------------------------------------------------------
@@ -86,12 +93,11 @@ const COOLDOWN_TIME := 0.5
 ## La silhouette part du fond du puits et sort par la bouche, en avançant vers le joueur.
 ## Le repos : au fond du puits, sur les rails. Le décollage : sorti de la bouche, en avant.
 ##
-## ⚠️ CETTE HAUTEUR SUIT LA COQUE, ET ELLE EST PROVISOIRE. Le puits actuel ne fait que 0,78 m
-## (`build_bay` pose un coaming, pas une cavité) : y descendre l'appareil de 1,55 m
-## l'enterrerait dans le bordé. `BRIEF-0091` livre une cavité de 1,80 m ; **à sa réception, cette
-## valeur passe à −1,55** et l'appareil se posera vraiment au fond. La laisser fausse dans
-## l'intervalle donnerait un vaisseau à moitié dans la tôle — un défaut visible, pas une nuance.
-const LAUNCH_FROM := Vector3(0.0, -0.70, -0.3)
+## ⚠️ IL SE POSE AU FOND, ET C'EST MAINTENANT VRAI. Cette valeur était provisoire à −0,70 tant
+## que le puits n'était qu'un coaming de 0,78 m posé sur le bordé : y descendre l'appareil de
+## 1,55 m l'aurait enterré dans la tôle. `BRIEF-0091` a livré la cavité de 1,80 m, et le
+## commentaire d'alors prescrivait exactement ce passage.
+const LAUNCH_FROM := Vector3(0.0, -1.55, -0.3)
 const LAUNCH_TO := Vector3(0.0, 0.45, 2.1)
 # --- Les portes ----------------------------------------------------------------
 #
@@ -106,7 +112,7 @@ const LAUNCH_TO := Vector3(0.0, 0.45, 2.1)
 ## battants se referment. Le puits ne brille donc que quand il produit — et un pont abattu reste
 ## FERMÉ, ce qui se lit sans un mot.
 const DOOR_TIME := 0.4
-const DOOR_SLIDE := 2.05
+const DOOR_SLIDE := 3.00
 const DOOR_TINT := Color(0.15, 0.13, 0.17)
 
 signal destroyed(bay: CortegeBay)
@@ -120,8 +126,9 @@ var _vfx: VFXManager
 var _target: BulletTarget
 var _pool: Array[EnemyController] = []
 var _next: int = 0
-var _hatch: MeshInstance3D
-var _hatch_material: StandardMaterial3D
+## Les matériaux émissifs PROPRES à ce hangar. ⚠️ Un par surface du kit qui en porte : c'est
+## eux, et eux seuls, qui disent si le pont vit, encaisse ou est mort.
+var _glow: Array[StandardMaterial3D] = []
 
 var _pass: Pass = Pass.AHEAD
 var _timer: float = 0.0
@@ -191,32 +198,64 @@ func is_engaged() -> bool:
 	return _pass == Pass.LIVE
 
 func _ready() -> void:
-	_hatch_material = StandardMaterial3D.new()
-	_hatch_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_hatch_material.albedo_color = HATCH_TINT
-	_hatch_material.emission_enabled = true
-	_hatch_material.emission = HATCH_TINT
-	_hatch_material.emission_energy_multiplier = 1.4
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = WELL_RADIUS
-	mesh.bottom_radius = WELL_RADIUS
-	mesh.height = WELL_THICKNESS
-	# Six pans, comme le puits. Le défaut par défaut en compterait soixante-quatre, sept fois
-	# dans le niveau, pour un fond qu'on regarde toujours de face.
-	mesh.radial_segments = 6
-	mesh.rings = 0
-	_hatch = MeshInstance3D.new()
-	_hatch.name = "Well"
-	_hatch.mesh = mesh
-	_hatch.material_override = _hatch_material
-	_hatch.position.y = WELL_DEPTH
-	# ⚠️ Le quart de tour n'est pas un détail : sans lui l'hexagone pose ses pointes en X et ses
-	# plats en Z, exactement l'inverse du puits, et deux coins du fond de la forge dépassent.
-	_hatch.rotation.y = PI * 0.5
-	_hatch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_hatch)
+	_build_hangar()
 	_build_doors()
 	_build_risers()
+
+## Assemble le hangar depuis le kit. Sept volumes, posés d'après leurs emprises mesurées : le
+## montant gauche a son origine sur sa face INTERNE, le fond sur sa face SUPÉRIEURE, le rail à
+## son extrémité arrière. C'est la convention de la forge — « origine au point d'assemblage » —
+## et elle se vérifie sur le binaire plutôt que de se supposer.
+func _build_hangar() -> void:
+	var packed: PackedScene = load(KIT_PATH) as PackedScene
+	if packed == null:
+		push_error("[Cortege] kit de hangar introuvable : %s" % KIT_PATH)
+		return
+	var kit := packed.instantiate()
+	# ⚠️ LE MONTANT AVANT EST POSÉ DEUX FOIS, la seconde d'un demi-tour. La forge ne livre qu'une
+	# traverse : la symétrie appartient à l'assemblage, pas au modèle — c'est ce qui permet de
+	# faire varier la longueur d'un hangar sans reforger quoi que ce soit.
+	var poses: Array = [
+		["bay_frame_left", Vector3(-OPENING_HALF_X, 0.0, 0.0), 0.0],
+		["bay_frame_right", Vector3(OPENING_HALF_X, 0.0, 0.0), 0.0],
+		["bay_frame_top", Vector3(0.0, 0.0, OPENING_HALF_Z), 0.0],
+		["bay_frame_top", Vector3(0.0, 0.0, -OPENING_HALF_Z), PI],
+		["bay_inner_wall", Vector3.ZERO, 0.0],
+		["bay_floor", Vector3(0.0, WELL_FLOOR, 0.0), 0.0],
+		["bay_launch_rail", Vector3(-RAIL_GAP, WELL_FLOOR, -RAIL_HALF_LEN), 0.0],
+		["bay_launch_rail", Vector3(RAIL_GAP, WELL_FLOOR, -RAIL_HALF_LEN), 0.0],
+	]
+	for pose in poses:
+		var source := kit.get_node_or_null(String(pose[0])) as MeshInstance3D
+		if source == null:
+			push_error("[Cortege] pièce de kit manquante : %s" % pose[0])
+			continue
+		var piece := MeshInstance3D.new()
+		piece.name = String(pose[0])
+		piece.mesh = source.mesh
+		piece.position = pose[1]
+		piece.rotation.y = pose[2]
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_claim_glow(piece, source)
+		add_child(piece)
+	kit.queue_free()
+
+## Donne à CE hangar sa propre copie des matériaux émissifs, et laisse les autres partagés.
+##
+## ⚠️ SANS CETTE COPIE, ÉTEINDRE UN PONT ABATTU LES ÉTEINDRAIT TOUS LES SEPT. C'est exactement le
+## piège qu'on a déjà payé sur la coque : les cœurs émissifs des puits y étaient cuits dans le
+## tronçon et partageaient leur matériau. Un état par pièce demande un matériau par pièce.
+func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
+	for i in source.mesh.get_surface_count():
+		var base := source.mesh.surface_get_material(i) as StandardMaterial3D
+		if base == null:
+			continue
+		if not base.emission_enabled:
+			piece.set_surface_override_material(i, base)
+			continue
+		var mine: StandardMaterial3D = base.duplicate()
+		piece.set_surface_override_material(i, mine)
+		_glow.append(mine)
 
 ## Les deux battants qui ferment le puits. ⚠️ ILS SONT AU NIVEAU DE LA BOUCHE, pas au fond :
 ## fermés, ils cachent la lueur ; ouverts, ils la découvrent. C'est ce contraste — noir puis
@@ -230,10 +269,11 @@ func _build_doors() -> void:
 		var door := MeshInstance3D.new()
 		door.name = "Door%s" % ("L" if side < 0.0 else "R")
 		var slab := BoxMesh.new()
-		slab.size = Vector3(WELL_RADIUS * 1.02, 0.12, WELL_RADIUS * 2.05)
+		slab.size = Vector3(OPENING_HALF_X, 0.14, OPENING_HALF_Z * 2.0)
 		door.mesh = slab
 		door.material_override = plate
-		door.position = Vector3(side * WELL_RADIUS * 0.51, WELL_DEPTH + 0.5, 0.0)
+		# Juste au-dessus de la peau, sous la lèvre du coaming : fermés, ils masquent la lueur.
+		door.position = Vector3(side * OPENING_HALF_X * 0.5, 0.1, 0.0)
 		door.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(door)
 		_doors.append(door)
@@ -375,28 +415,30 @@ func _advance_doors(delta: float) -> void:
 	_door_open = move_toward(_door_open, wanted, delta / DOOR_TIME)
 	for i in _doors.size():
 		var side := -1.0 if i == 0 else 1.0
-		_doors[i].position.x = side * (WELL_RADIUS * 0.51 + DOOR_SLIDE * _door_open)
-	if _hatch != null:
-		_hatch.visible = _door_open > 0.02
+		_doors[i].position.x = side * (OPENING_HALF_X * 0.5 + DOOR_SLIDE * _door_open)
 
+## L'éclat d'un lâcher : les bandes montent d'un coup, puis retombent au premier dégât reçu.
 func _pulse_hatch() -> void:
-	if _hatch_material != null:
-		_hatch_material.emission_energy_multiplier = 3.4
+	_set_glow(3.0)
+
+## Règle l'énergie de toutes les bandes de CE hangar.
+func _set_glow(energy: float) -> void:
+	for material in _glow:
+		material.emission_energy_multiplier = energy
 
 func _take_damage(damage: float) -> void:
 	if not _alive:
 		return
 	_health -= damage
-	if _hatch_material != null:
-		# L'écoutille pâlit avec ce qui lui reste : le joueur doit voir qu'il PROGRESSE, sinon
-		# mille cinq cents points de vie se lisent comme une cible indestructible.
-		_hatch_material.emission_energy_multiplier = 0.4 + 1.6 * clampf(_health / tuning.bay_health, 0.0, 1.0)
+	# Les bandes pâlissent avec ce qui lui reste : le joueur doit voir qu'il PROGRESSE, sinon
+	# mille cinq cents points de vie se lisent comme une cible indestructible.
+	_set_glow(0.3 + 1.5 * clampf(_health / tuning.bay_health, 0.0, 1.0))
 	if _health > 0.0:
 		return
 	_alive = false
-	if _hatch_material != null:
-		_hatch_material.emission_energy_multiplier = 0.0
-		_hatch_material.albedo_color = Color(0.07, 0.03, 0.06)
+	# ⚠️ TOUT S'ÉTEINT, ET SEULEMENT ICI. Un pont abattu dont les bandes brilleraient encore
+	# dirait au joueur qu'il produit toujours.
+	_set_glow(0.0)
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.HEAVY)
 	# ⚠️ CE QUI DÉCOLLAIT MEURT AVEC LE PONT. Une silhouette figée à mi-hauteur dans un puits

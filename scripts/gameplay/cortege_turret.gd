@@ -94,7 +94,13 @@ var _eye: MeshInstance3D
 var _eye_material: StandardMaterial3D
 
 var _pass: Pass = Pass.AHEAD
-var _barrel: MeshInstance3D
+## ⚠️ `Node3D` ET NON `MeshInstance3D` : la tête est un ASSEMBLAGE — un dôme, deux canons, une
+## bouche — et non un maillage. Le typer en `MeshInstance3D` a coûté une soirée : l'affectation
+## échoue À L'EXÉCUTION, dans `_ready()`, donc la tête n'était jamais construite. La tourelle
+## tirait quand même — la logique ne dépend pas du canon — et la porte de qualité restait VERTE,
+## parce qu'un contrôle de type d'affectation ne se voit pas à l'analyse syntaxique. Une pièce
+## invisible dont le comportement fonctionne est le pire des deux mondes.
+var _barrel: Node3D
 ## Le temps qui reste avant la prochaine morsure du faisceau.
 var _burn_timer: float = 0.0
 var _health: float = 0.0

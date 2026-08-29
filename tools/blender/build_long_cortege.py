@@ -243,7 +243,7 @@ AMBRY_HULL_HEX = ak.PALETTES[ak.FACTION_VANGUARD]["hull"]      # #EDEAE3
 # masse anthracite ou l'ivoire et le magenta sont RARES. La lecon vaut au-dela de
 # ce fichier : sur 500 m, un materiau clair applique a une arete CONTINUE occupe
 # plus de pixels qu'une piece entiere, et le compte de triangles ne le dit pas.
-PROFILE: tuple[tuple[float, float, str], ...] = (
+PROFILE_BASE: tuple[tuple[float, float, str], ...] = (
     (0.00, -3.62, "AA_Emissive_Engine"),   # 0  la ligne lumineuse : 0,28 m au TOTAL
     (0.14, -3.63, "AA_Trim"),              # 1  son liseré ivoire, 0,64 m
     (0.46, -3.68, "AA_Greeble"),           # 2  dessus de crete, sombre
@@ -264,8 +264,10 @@ PROFILE: tuple[tuple[float, float, str], ...] = (
     (5.00, -12.40, "AA_Greeble"),          # 17 fond
     (0.00, -12.60, "AA_Greeble"),          # 18 quille
 )
-#: Indice du dernier point de la moitie SUPERIEURE (le bord, x = 14).
-DECK_LAST = 14
+#: Indice du bord de pont (x = 14) DANS `PROFILE_BASE`. `PROFILE` et son
+#: `DECK_LAST` sont construits plus bas : les ouvertures de baie imposent des
+#: points de subdivision supplementaires, et il faut connaitre `BAYS` pour eux.
+DECK_LAST_BASE = 14
 #: Pivot vertical du fuseau de proue : la section se contracte autour de lui.
 Y_PIVOT = -6.9
 
@@ -312,7 +314,8 @@ TURRETS: tuple[tuple[float, float], ...] = (
 #: (maquette 3). 2,30 m a la proue, 3,20 m au troncon 5.
 PAD_RADIUS = (2.30, 2.55, 2.75, 3.00, 3.20)
 
-#: 7 baies hexagonales, vers l'exterieur (pont median + facette).
+#: 7 ponts d'envol, vers l'exterieur (pont median + facette). Ce sont des
+#: OUVERTURES depuis BRIEF-0091 : la peau n'existe pas a leur emprise.
 BAYS: tuple[tuple[float, float], ...] = (
     (86.0, 9.00),                                                   # troncon 1
     (126.0, -9.20), (182.0, 9.20),                                  # troncon 2
@@ -320,6 +323,103 @@ BAYS: tuple[tuple[float, float], ...] = (
     (348.0, -9.30),                                                 # troncon 4
     (436.0, -9.30),                                                 # troncon 5
 )
+
+# --------------------------------------------------------------------------
+# LES OUVERTURES DE PONT D'ENVOL — la peau est GENEREE trouee (BRIEF-0091)
+# --------------------------------------------------------------------------
+# ⚠️ RETOUR SUR UNE DECISION PRISE DANS CE FICHIER, ET LA RAISON EST CHIFFREE.
+# BRIEF-0089 livrait un coaming POSE sur le borde, et l'argumentaire tenait :
+# « une VRAIE cavite demanderait de trouer la peau (booleen, donc non
+# deterministe, et une peau non manifold) ». Il tenait POUR 0,78 m. La planche
+# de consignes demande 1,5 a 2,5 m de profondeur, et il n'y a que 1,1 m entre la
+# peau (-4,30) et le plafond du plan de jeu (-3,20) :
+#
+#     -3,20  plafond du plan de jeu — RIEN ne monte au-dessus
+#     -4,30  la peau, a l'emprise des baies
+#                    1,80 m de cavite — n'existe qu'ICI, SOUS la peau
+#     -6,10  fond du puits
+#    -12,60  le bas de la coque : il y a la place
+#
+# LA REPONSE N'EST PAS UN BOOLEEN. Le determinisme reste une exigence dure
+# (`build-hull.sh --check`, 0 octet divergent). On N'EMET PAS les faces de
+# l'emprise, et l'on raccorde le bord par une collerette.
+#
+# Pour que « ne pas emettre » soit exact au millimetre, il faut que la GRILLE de
+# la peau passe par les bords de l'ouverture. D'ou deux ajouts :
+#
+#   * des points de PROFIL a x = |x_baie| +/- 3,00 (voir `PROFILE` plus bas) ;
+#   * des STATIONS a s = s_baie +/- 4,25 (voir `_stations`).
+#
+# ⚠️ Un point insere sur un SEGMENT DROIT du profil ne change pas la coque d'un
+# micron : c'est une subdivision, pas une deformation. `_surface_y` interpole sur
+# la meme polyligne, les deux anneaux d'une jonction restent egaux point par
+# point, et la densite de texels ne bouge pas (une projection en boite est
+# calculee par face). Ce que cela coute, c'est des triangles — et c'est mesure au
+# compte-rendu. Ce que cela achete, c'est une ouverture aux cotes EXACTES sans
+# une seule operation booleenne.
+BAY_HALF_X = 3.00        # ouverture de 6,00 m de large
+BAY_HALF_S = 4.25        # ouverture de 8,50 m de long, axe long dans le survol
+#: Profondeur peau -> fond. La coque ne la modelise pas : elle est TENUE par
+#: `bay_kit.glb`, qui ferme le puits. Elle est ici pour que les harnais et le
+#: compte-rendu parlent du meme chiffre que le kit.
+BAY_WELL_DEPTH = 1.80
+#: La collerette : le bord de la peau se replie vers le BAS et vers L'EXTERIEUR.
+#: Vers l'exterieur, parce que la face interne du coaming du kit est exactement
+#: au plan de l'ouverture — un repli vers l'interieur la traverserait et se
+#: verrait en eclat de peau au milieu du puits.
+BAY_FLANGE_DROP = 0.25
+BAY_FLANGE_OUT = 0.12
+#: Zone ou aucun module seede ne se pose : l'ouverture, l'emprise du coaming du
+#: kit (0,80 m) et une garde. « Grandes zones calmes entre les installations »
+#: est une regle de lisibilite de la planche, pas une politesse.
+BAY_KEEPOUT_X = BAY_HALF_X + 1.30
+BAY_KEEPOUT_S = BAY_HALF_S + 1.60
+
+
+def _bay_profile_x() -> tuple[float, ...]:
+    """Les x (en valeur absolue) ou le profil DOIT porter un point.
+
+    Toutes les baies les recoivent, pas seulement celles de leur troncon : les
+    cinq troncons doivent partager le MEME profil, sans quoi les deux anneaux
+    d'une jonction n'auraient plus le meme nombre de points et
+    `_assert_joints()` — a raison — refuserait le build.
+    """
+    xs: set[float] = set()
+    for _, x in BAYS:
+        xs.add(round(abs(x) - BAY_HALF_X, 6))
+        xs.add(round(abs(x) + BAY_HALF_X, 6))
+    return tuple(sorted(xs))
+
+
+def _subdivide_profile(base: tuple, extra: tuple[float, ...]) -> tuple:
+    """Insere `extra` dans `base`, sur le segment qui les contient.
+
+    Le point herite du materiau du segment qu'il coupe et de son y interpole :
+    la polyligne est inchangee, donc la coque aussi.
+    """
+    points = list(base)
+    for x in extra:
+        if any(abs(p[0] - x) < 1e-9 for p in points):
+            continue                       # deja un point du profil (p. ex. 6,80)
+        for i in range(len(points) - 1):
+            x0, y0, m0 = points[i]
+            x1, y1, _ = points[i + 1]
+            if x0 < x < x1:
+                points.insert(i + 1, (x, y0 + (y1 - y0) * (x - x0) / (x1 - x0), m0))
+                break
+        else:
+            raise ak.ContractError(
+                f"bord d'ouverture x = {x} hors du pont : le profil ne monte "
+                "jamais jusque-la, une baie sortirait de la coque")
+    return tuple(points)
+
+
+#: Le profil REELLEMENT employe : celui du brief, subdivise aux bords des baies.
+PROFILE: tuple[tuple[float, float, str], ...] = _subdivide_profile(
+    PROFILE_BASE, _bay_profile_x())
+#: Indice du dernier point de la moitie SUPERIEURE (le bord, x = 14).
+DECK_LAST = next(i for i, p in enumerate(PROFILE)
+                 if abs(p[0] - HALF_WIDTH) < 1e-9)
 
 #: 5 bulbes d'arete dorsale, exactement un par troncon, sur l'axe.
 SPINES: tuple[float, ...] = (50.0, 150.0, 250.0, 350.0, 450.0)
@@ -425,6 +525,151 @@ def _ring_materials() -> list[str]:
 
 RING_MATERIALS = _ring_materials()
 RING_SIZE = 2 * len(PROFILE) - 2
+
+
+def _ring_x() -> list[float]:
+    """Le x (NON mis a l'echelle) de chaque point de l'anneau ferme."""
+    n = len(PROFILE)
+    xs = [PROFILE[i][0] for i in range(n)]
+    xs += [-PROFILE[2 * n - 2 - j][0] for j in range(n, 2 * n - 2)]
+    return xs
+
+
+def _ring_deck_flags() -> list[bool]:
+    """Le segment `i -> i+1` appartient-il au PONT (la moitie superieure) ?
+
+    ⚠️ Sans ce garde-fou, une ouverture de baie percerait aussi le FOND de la
+    coque : le profil repasse par x = 10,40 et x = 5,00 sous la quille, et un
+    test qui ne regarderait que le x y trouverait des segments « dans l'emprise ».
+    Le defaut serait invisible du dessus et beant vu de dessous.
+    """
+    n = len(PROFILE)
+    flags = [False] * RING_SIZE
+    for i in range(DECK_LAST):
+        flags[i] = True
+    for i in range(2 * n - 2 - DECK_LAST, 2 * n - 2):
+        flags[i] = True
+    return flags
+
+
+RING_X = _ring_x()
+RING_ON_DECK = _ring_deck_flags()
+
+
+def _bay_cell(i: int, s0: float, s1: float) -> tuple[float, float] | None:
+    """La cellule (segment `i`, station `s0 -> s1`) est-elle DANS une ouverture ?
+
+    Rend la baie (s, x) concernee, ou `None`. Le test est inclusif aux bords :
+    les points de profil et les stations tombent EXACTEMENT dessus (voir le bloc
+    des ouvertures), donc les cellules pavent l'emprise sans reste.
+    """
+    if not RING_ON_DECK[i]:
+        return None
+    lo = min(RING_X[i], RING_X[(i + 1) % RING_SIZE])
+    hi = max(RING_X[i], RING_X[(i + 1) % RING_SIZE])
+    for sc, xc in BAYS:
+        if (lo >= xc - BAY_HALF_X - 1e-6 and hi <= xc + BAY_HALF_X + 1e-6
+                and s0 >= sc - BAY_HALF_S - 1e-6
+                and s1 <= sc + BAY_HALF_S + 1e-6):
+            return sc, xc
+    return None
+
+
+def _bay_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
+    """Le module (s0..s1, x0..x1) mord-il l'emprise d'un pont d'envol ?
+
+    Avant BRIEF-0091 la question ne se posait pas : le coaming etait POSE, une
+    plaque qui passait dessous restait cachee. Une plaque qui traverse une
+    OUVERTURE, elle, flotte au-dessus du vide.
+    """
+    for sc, xc in BAYS:
+        if not (s1 < sc - BAY_KEEPOUT_S or s0 > sc + BAY_KEEPOUT_S
+                or x1 < xc - BAY_KEEPOUT_X or x0 > xc + BAY_KEEPOUT_X):
+            return True
+    return False
+
+
+def _bay_free_spans(x0: float, x1: float,
+                    s0: float, s1: float) -> list[tuple[float, float]]:
+    """Decoupe [s0, s1] en morceaux qui n'entrent dans aucune emprise de baie.
+
+    Les lisses sont le seul module CONTINU du decor (jusqu'a 97 m) : les rejeter
+    en bloc des qu'ils croisent une baie supprimerait la seule lecture continue
+    de la vitesse. On les coupe, on ne les retire pas.
+    """
+    spans = [(s0, s1)]
+    cuts = sorted((sc - BAY_KEEPOUT_S, sc + BAY_KEEPOUT_S) for sc, xc in BAYS
+                  if not (x1 < xc - BAY_KEEPOUT_X or x0 > xc + BAY_KEEPOUT_X))
+    for a, b in cuts:
+        kept: list[tuple[float, float]] = []
+        for c, d in spans:
+            if b <= c or a >= d:
+                kept.append((c, d))
+                continue
+            if c < a:
+                kept.append((c, a))
+            if b < d:
+                kept.append((b, d))
+        spans = kept
+    return [(a, b) for a, b in spans if b - a >= 3.0]
+
+
+#: ⚠️ CONFLITS DE MARQUEURS CONNUS, MESURES, ET QUE LA FORGE NE PEUT PAS RESOUDRE.
+#: Deux socles de tourelle de BRIEF-0089 se tiennent dans l'emprise d'un pont
+#: d'envol. Le defaut EXISTAIT DEJA — le coaming hexagonal pose recouvrait le
+#: socle, deux masses sombres a 20 deg de la verticale ne faisaient qu'un lump —
+#: et l'ouverture le revele. Il n'est pas resoluble ici : deplacer un marqueur en
+#: X ou en Z casse le niveau en silence (le moteur monte ses pieces par leur nom
+#: et le jeu chronometre sur leur z), et retirer un socle laisserait sa tourelle
+#: en l'air. C'est un arbitrage de CONCEPTEUR, et il tient en une ligne des
+#: tables `TURRETS` / `BAYS`.
+#:
+#: La liste est ici pour une seule raison : le harnais ECHOUE si une paire
+#: nouvelle apparait. Un conflit connu ne doit pas servir de porte a un conflit
+#: futur.
+KNOWN_PAD_BAY_CONFLICTS: tuple[tuple[str, str], ...] = (
+    ("Turret_02", "Bay_01"),        # centre du socle DANS l'ouverture (2,04 m)
+    ("Turret_05", "Bay_03"),        # la levre du socle mord 0,70 m dans la bouche
+)
+
+
+def _pad_bay_conflicts() -> list[tuple[str, str, float, bool]]:
+    """(tourelle, baie, penetration en m, centre du socle dans l'ouverture).
+
+    Distance du centre du socle au RECTANGLE de l'ouverture : c'est la seule
+    mesure qui vaille, un socle est un disque et une ouverture un rectangle.
+    """
+    found: list[tuple[str, str, float, bool]] = []
+    for number, (ts, tx) in enumerate(TURRETS, start=1):
+        radius = PAD_RADIUS[int(ts // SECTION_LENGTH)]
+        for index, (bs, bx) in enumerate(BAYS, start=1):
+            dx = max(abs(tx - bx) - BAY_HALF_X, 0.0)
+            ds = max(abs(ts - bs) - BAY_HALF_S, 0.0)
+            distance = math.hypot(dx, ds)
+            if distance < radius:
+                found.append((f"Turret_{number:02d}", f"Bay_{index:02d}",
+                              radius - distance,
+                              dx == 0.0 and ds == 0.0))
+    return found
+
+
+def bay_mouth_y(s: float, x: float) -> tuple[float, float]:
+    """(Y de la BOUCHE, Y du point le plus bas du pourtour) d'une ouverture.
+
+    ⚠️ La bouche est le point le PLUS HAUT du pourtour, pas la peau au marqueur,
+    et ce n'est pas un detail : l'ouverture de 6,00 m enjambe la chine, qui vaut
+    0,60 m de denivele. Prendre la peau au centre poserait le coaming du kit
+    SOUS le pont interieur d'un cote — le hangar disparaitrait a moitie dans la
+    coque. Le marqueur `Bay_NN` porte donc ce maximum : c'est le plan sur lequel
+    tout le kit est modelise.
+    """
+    xs = [x - BAY_HALF_X, x + BAY_HALF_X]
+    xs += [xr for xr in RING_X
+           if x - BAY_HALF_X < xr < x + BAY_HALF_X]
+    ys = [_surface_y(ps, px)
+          for px in xs
+          for ps in (s - BAY_HALF_S, s, s + BAY_HALF_S)]
+    return max(ys), min(ys)
 
 
 # ==========================================================================
@@ -547,6 +792,21 @@ def _quad(bm: bmesh.types.BMesh, a, b, c, d, material: str):
     return _face(bm, [a, b, c, d], material)
 
 
+def _quad_facing(bm: bmesh.types.BMesh, a, b, c, d, material: str, want: Vector):
+    """Un quad dont la normale part du cote `want`. DETERMINISTE.
+
+    Le bobinage est ici CALCULE et non ecrit a la main : la collerette d'une baie
+    fait le tour de l'ouverture et son sens change a chaque coin. Une regle
+    ecrite a la main y serait fausse une fois sur deux, et une face retournee ne
+    se voit sur aucune mesure — elle disparait, simplement.
+    """
+    verts = [a, b, c, d]
+    normal = (b.co - a.co).cross(c.co - a.co)
+    if normal.dot(want) < 0.0:
+        verts.reverse()
+    return _face(bm, verts, material)
+
+
 def _box_from_corners(bm: bmesh.types.BMesh,
                       bottom: list[Vector], top: list[Vector],
                       side_material: str, top_material: str) -> None:
@@ -635,35 +895,60 @@ def _lathe(bm: bmesh.types.BMesh, cx: float, cs: float,
 
 
 def _stations(index: int) -> list[float]:
-    """Stations (en `s` global) du troncon `index` (0-base), proue -> poupe."""
+    """Stations (en `s` global) du troncon `index` (0-base), proue -> poupe.
+
+    ⚠️ Les bords des ouvertures de baie EN SONT (BRIEF-0091). Sans station a
+    `s_baie +/- 4,25`, l'emprise ne serait pas pavee par des cellules entieres
+    et « ne pas emettre les faces » rendrait un trou aux cotes approchees.
+    """
     s0 = index * SECTION_LENGTH
     s1 = s0 + SECTION_LENGTH
     if index > 0:
         steps = 20                       # 5,00 m : le profil y est constant
-        return [s0 + (s1 - s0) * k / steps for k in range(steps + 1)]
-    # Troncon 1 : le fuseau demande de la finesse la ou il tourne.
-    values = [0.0, 0.8, 1.8, 3.0, 4.2]
-    v = 6.0
-    while v < 58.0 - 1e-6:
-        values.append(v)
-        v += 3.0
-    v = 58.0
-    while v < TAPER_END - 1e-6:
-        values.append(v)
-        v += 3.75
-    values.append(TAPER_END)
-    values += [91.0, 94.0, 97.0, 100.0]
-    return values
+        values = [s0 + (s1 - s0) * k / steps for k in range(steps + 1)]
+    else:
+        # Troncon 1 : le fuseau demande de la finesse la ou il tourne.
+        values = [0.0, 0.8, 1.8, 3.0, 4.2]
+        v = 6.0
+        while v < 58.0 - 1e-6:
+            values.append(v)
+            v += 3.0
+        v = 58.0
+        while v < TAPER_END - 1e-6:
+            values.append(v)
+            v += 3.75
+        values.append(TAPER_END)
+        values += [91.0, 94.0, 97.0, 100.0]
+    for sc, _ in BAYS:
+        if s0 <= sc < s1:
+            values += [sc - BAY_HALF_S, sc + BAY_HALF_S]
+    return sorted({round(v, 6) for v in values})
 
 
-def build_skin(bm: bmesh.types.BMesh, index: int) -> None:
-    """Le prisme du troncon, en coordonnees LOCALES (z de 0 a -100)."""
+def build_skin(bm: bmesh.types.BMesh, index: int) -> int:
+    """Le prisme du troncon, en coordonnees LOCALES (z de 0 a -100).
+
+    ⚠️ IL EST GENERE AVEC SES OUVERTURES (BRIEF-0091). Aucun booleen : la
+    cellule qui tombe dans l'emprise d'un pont d'envol n'est simplement PAS
+    emise. Rend le nombre de cellules sautees — imprime a chaque build, parce
+    qu'une famille de faces qui disparait en silence est deja arrivee ici
+    (`_clip_lane`, BRIEF-0089).
+    """
+    stations = _stations(index)
     rings: list[list] = []
-    for s in _stations(index):
+    for s in stations:
         ring = [bm.verts.new(Vector((x, y, _z(s)))) for x, y in _ring(s)]
         rings.append(ring)
-    for front, back in zip(rings, rings[1:]):
-        _bridge(bm, front, back, RING_MATERIALS)
+    skipped = 0
+    for k in range(len(stations) - 1):
+        front, back = rings[k], rings[k + 1]
+        s0, s1 = stations[k], stations[k + 1]
+        for i in range(RING_SIZE):
+            if _bay_cell(i, s0, s1) is not None:
+                skipped += 1
+                continue
+            j = (i + 1) % RING_SIZE
+            _face(bm, [front[i], front[j], back[j], back[i]], RING_MATERIALS[i])
     if index == 0:
         # La pointe : 22 cm de large, fermee pour que la proue ne soit pas un tube.
         _cap(bm, rings[0], "AA_Trim", facing_front=True)
@@ -671,6 +956,70 @@ def build_skin(bm: bmesh.types.BMesh, index: int) -> None:
         # La coupe de poupe : les troncons 6 et 7 appartiennent au niveau 3, mais
         # ce bord-la EST vu a la fin du niveau. On le ferme.
         _cap(bm, rings[-1], "AA_Greeble", facing_front=False)
+    return skipped
+
+
+def build_bay_flanges(bm: bmesh.types.BMesh, index: int) -> int:
+    """La collerette : le bord de l'ouverture se replie, il ne reste pas cru.
+
+    ⚠️ POSEE APRES `_assert_skin_outward()`, ET C'EST OBLIGATOIRE. Ses faces
+    regardent VERS le puits ; sur le flanc exterieur d'une baie, cela veut dire
+    une normale dirigee vers l'axe du vaisseau. Le harnais d'orientation de la
+    peau — qui a raison — la lirait comme une face retournee.
+
+    Elle descend de 25 cm et s'ecarte de 12 cm : vers l'EXTERIEUR, parce que la
+    face interne du coaming de `bay_kit.glb` est exactement au plan de
+    l'ouverture. Un repli vers l'interieur la traverserait.
+
+    Rend le nombre de quads poses.
+    """
+    origin = index * SECTION_LENGTH
+    stations = _stations(index)
+    quads = 0
+    for sc, xc in BAYS:
+        if not (origin <= sc < origin + SECTION_LENGTH):
+            continue
+        cells = [(i, k) for k in range(len(stations) - 1)
+                 for i in range(RING_SIZE)
+                 if _bay_cell(i, stations[k], stations[k + 1]) == (sc, xc)]
+        if not cells:
+            raise ak.ContractError(
+                f"baie (s={sc}, x={xc}) : aucune cellule de peau dans son "
+                "emprise — l'ouverture n'existe pas")
+        i_lo = min(i for i, _ in cells)
+        i_hi = max(i for i, _ in cells) + 1
+        k_lo = min(k for _, k in cells)
+        k_hi = max(k for _, k in cells) + 1
+        # Le tour de l'ouverture, en (point d'anneau, station), sens unique.
+        loop = [(i, k_lo) for i in range(i_lo, i_hi + 1)]
+        loop += [(i_hi, k) for k in range(k_lo + 1, k_hi + 1)]
+        loop += [(i, k_hi) for i in range(i_hi - 1, i_lo - 1, -1)]
+        loop += [(i_lo, k) for k in range(k_hi - 1, k_lo, -1)]
+        top: list = []
+        bottom: list = []
+        for i, k in loop:
+            s = stations[k]
+            px, py = _ring(s)[i]
+            top.append(bm.verts.new(Vector((px, py, _z(s)))))
+            ox = BAY_FLANGE_OUT if i == i_hi else (-BAY_FLANGE_OUT if i == i_lo
+                                                   else 0.0)
+            if RING_X[i_hi] < RING_X[i_lo]:          # anneau parcouru a l'envers
+                ox = -ox
+            os_ = BAY_FLANGE_OUT if k == k_hi else (-BAY_FLANGE_OUT if k == k_lo
+                                                    else 0.0)
+            bottom.append(bm.verts.new(Vector(
+                (px + ox, py - BAY_FLANGE_DROP, _z(s + os_)))))
+        centre = Vector((xc, 0.0, _z(sc)))
+        for m in range(len(loop)):
+            n = (m + 1) % len(loop)
+            a, b = top[m], top[n]
+            if (a.co - b.co).length < 1e-6:
+                continue
+            mid = (a.co + b.co) * 0.5
+            want = Vector((centre.x - mid.x, 0.0, centre.z - mid.z))
+            _quad_facing(bm, a, b, bottom[n], bottom[m], "AA_Greeble", want)
+            quads += 1
+    return quads
 
 
 # ==========================================================================
@@ -747,6 +1096,15 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
                     continue
                 inset = rng.uniform(0.06, 0.20)
                 rise = 0.14 if roll < 0.62 else 0.22
+                # ⚠️ LE TEST DE BAIE VIENT APRES LE TIRAGE, ET C'EST DELIBERE.
+                # `rng` est un flux : sauter un tirage decale TOUT ce qui suit,
+                # et le decor entier se re-seede — 1084 plaques, 380 pastilles et
+                # 117 greffes deplacees pour sept ouvertures. La regle vaut pour
+                # les trois familles qui tirent APRES un rejet (plaques,
+                # greffes, pastilles) : on tire, puis on decide d'emettre.
+                if _bay_clash(s, s + length, min(x0, x1), max(x0, x1)):
+                    s += cell
+                    continue
                 # 12 pct de violet et non 20 : au premier rendu, une plaque sur
                 # cinq en `AA_Panel` faisait un confetti visible d'un bout a
                 # l'autre du troncon.
@@ -782,7 +1140,8 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
         for side in (1.0, -1.0):
             for a, b in spans:
                 lane = _clip_lane(s, min(side * a, side * b), max(side * a, side * b))
-                if lane is None or _ambry_clash(s, s + width, lane[0], lane[1]):
+                if lane is None or _ambry_clash(s, s + width, lane[0], lane[1]) \
+                        or _bay_clash(s, s + width, lane[0], lane[1]):
                     continue
                 _surface_box(bm, lane[0], lane[1], s, s + width,
                              rise, 0.60, "AA_Greeble", top, draft=0.10)
@@ -820,9 +1179,14 @@ def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
                     start += 2.0
             if s1 - start < 8.0:
                 continue
-            _surface_box(bm, lane[0], lane[1], start, s1, rise, 0.50,
-                         "AA_Greeble", material, draft=0.03)
-            count += 1
+            # ⚠️ COUPEES, JAMAIS SUPPRIMEES (BRIEF-0091). La lisse de chine
+            # (|x| 6,62-6,98) traverse les sept ouvertures : la rejeter en bloc
+            # oterait au joueur la seule lecture CONTINUE de sa vitesse. Elle
+            # est donc decoupee autour des baies, et reprend apres.
+            for a0, a1 in _bay_free_spans(lane[0], lane[1], start, s1):
+                _surface_box(bm, lane[0], lane[1], a0, a1, rise, 0.50,
+                             "AA_Greeble", material, draft=0.03)
+                count += 1
     return count
 
 
@@ -850,6 +1214,8 @@ def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
             continue
         if _ambry_clash(s, s + length, lane[0], lane[1]):
             continue
+        # Voir `build_plates` : on tire, puis on decide d'emettre.
+        blocked = _bay_clash(s, s + length, lane[0], lane[1])
         x0, x1 = lane
         wanted = rng.randint(2, 3)
         rise = 0.0
@@ -863,19 +1229,23 @@ def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
             headroom = BUILD_CEILING_Y - _surface_y(s + length * 0.5, (x0 + x1) * 0.5)
             if rise + step > headroom:
                 break
-            _surface_box(
-                bm,
-                x0 + width * shrink, x1 - width * shrink,
-                s + length * shrink * 0.55, s + length * (1.0 - shrink * 0.55),
-                rise + step, 0.70 + rise,
-                "AA_Greeble", "AA_Panel" if layer == 0 else "AA_Hull", draft=0.09)
+            if not blocked:
+                _surface_box(
+                    bm,
+                    x0 + width * shrink, x1 - width * shrink,
+                    s + length * shrink * 0.55,
+                    s + length * (1.0 - shrink * 0.55),
+                    rise + step, 0.70 + rise,
+                    "AA_Greeble", "AA_Panel" if layer == 0 else "AA_Hull",
+                    draft=0.09)
             rise += step
             layers += 1
         if layers == 0:
             continue
-        count += layers
+        if not blocked:
+            count += layers
         # L'echine : une lame etroite sur le dessus, qui casse le profil plat.
-        if rng.random() < 0.55:
+        if rng.random() < 0.55 and not blocked:
             cx = (x0 + x1) * 0.5
             _surface_box(bm, cx - 0.30, cx + 0.30,
                          s + length * 0.22, s + length * 0.78,
@@ -907,6 +1277,9 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random) -> int:
         long_pip = rng.random() < 0.45
         half_x = 0.15 if long_pip else 0.26
         half_s = 0.44 if long_pip else 0.24
+        # Voir `build_plates` : on tire, puis on decide d'emettre.
+        if _bay_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
+            continue
         _surface_box(bm, x - half_x, x + half_x, s - half_s, s + half_s,
                      0.05, 0.35, "AA_Greeble", "AA_Emissive_Engine")
         count += 1
@@ -941,88 +1314,20 @@ def build_turret_pad(bm: bmesh.types.BMesh, s: float, x: float,
     return rim, deep
 
 
-#: Hexagone allonge dans l'axe du survol, comme sur les maquettes 1 a 3.
-_HEX = ((0.00, 1.00), (0.87, 0.50), (0.87, -0.50),
-        (0.00, -1.00), (-0.87, -0.50), (-0.87, 0.50))
-
-
-def build_bay(bm: bmesh.types.BMesh, s: float, x: float) -> float:
-    """Une baie hexagonale de pont d'envol : coaming, puits, sol emissif.
-
-    ⚠️ Choix de methode. Une VRAIE cavite demanderait de trouer la peau (booleen,
-    donc non deterministe, et une peau non manifold). Ici la baie est un coaming
-    POSE sur le borde : depuis la camera du jeu — 20 deg de la verticale — un puits
-    de 1,75 m borde de parois sombres et fonde de magenta se lit exactement comme
-    une baie creusee, pour un dixieme des triangles et sans booleen.
-
-    Retourne le Y de la bouche (ou le jeu fera sortir ses chasseurs).
-    """
-    hx, hz = 3.40, 3.20
-    # ⚠️ LE DEFAUT QUE LA PLANCHE A ATTRAPE, ET QU'AUCUN HARNAIS N'AURAIT VU.
-    # Premiere version : levre a -3,90 et sol a -5,65, « un puits de 1,75 m ».
-    # Sauf que la peau n'est PAS trouee (voir plus haut : pas de booleen) et
-    # qu'elle court a -4,30 sous la bouche. Le pont occultait donc entierement le
-    # sol emissif : les sept baies rendaient en hexagones VIDES, contrat vert,
-    # UV vertes, budget vert. C'est exactement le genre de faute que l'ADR-0006
-    # existe pour attraper — elle ne se voit qu'en regardant.
-    # Le sol passe donc AU-DESSUS du pont le plus haut de l'emprise (-4,30) et la
-    # levre monte d'autant : puits de 0,78 m, entierement visible du dessus.
-    rim = -3.42
-    floor = -4.20
-    outer = [(x + dx * hx * 1.30, s + dz * hz * 1.30) for dx, dz in _HEX]
-    lip = [(x + dx * hx * 1.12, s + dz * hz * 1.12) for dx, dz in _HEX]
-    mouth = [(x + dx * hx, s + dz * hz) for dx, dz in _HEX]
-    # ⚠️ Le sol n'est PAS emissif de bord a bord. Premiere version : hexagone plein
-    # de 6,8 x 6,4 m en `AA_Emissive_Engine`, sept fois dans le niveau. Le magenta
-    # est aussi une couleur de TIR ennemi (charte SS3) : une nappe de 35 m2 par
-    # baie disputerait la lisibilite aux balles. Le cœur emissif est rentre a 66 pct
-    # et cercle d'un `AA_Panel` sombre — 44 pct de l'aire, et un puits qui se lit
-    # mieux parce qu'il a maintenant un bord.
-    core = [(x + dx * hx * 0.66, s + dz * hz * 0.66) for dx, dz in _HEX]
-
-    base_v = [bm.verts.new(Vector((px, _surface_y(ps, px) - 0.60, _z(ps))))
-              for px, ps in outer]
-    rim_out = [bm.verts.new(Vector((px, rim, _z(ps)))) for px, ps in outer]
-    rim_in = [bm.verts.new(Vector((px, rim, _z(ps)))) for px, ps in lip]
-    mouth_v = [bm.verts.new(Vector((px, rim - 0.20, _z(ps)))) for px, ps in mouth]
-    floor_v = [bm.verts.new(Vector((px, floor, _z(ps)))) for px, ps in mouth]
-    core_v = [bm.verts.new(Vector((px, floor, _z(ps)))) for px, ps in core]
-
-    n = len(_HEX)
-    for i in range(n):
-        j = (i + 1) % n
-        # ⚠️ Le sens : l'hexagone `_HEX` tourne dans le sens ou (dx, dz) croit en
-        # angle, donc (x, -z) tourne dans l'autre sens. Les murs exterieurs se
-        # bobinent donc bas -> haut avec i puis j inverses.
-        _quad(bm, base_v[j], base_v[i], rim_out[i], rim_out[j], "AA_Hull")
-        _quad(bm, rim_out[j], rim_out[i], rim_in[i], rim_in[j], "AA_Trim")
-        _quad(bm, rim_in[j], rim_in[i], mouth_v[i], mouth_v[j], "AA_Greeble")
-        _quad(bm, mouth_v[j], mouth_v[i], floor_v[i], floor_v[j], "AA_Panel")
-        _quad(bm, core_v[i], core_v[j], floor_v[j], floor_v[i], "AA_Panel")
-    _face(bm, list(reversed(core_v)), "AA_Emissive_Engine")
-
-    # Deux rails de lancement au fond : ils donnent l'echelle du puits.
-    for offset in (-1.15, 1.15):
-        _box_from_corners(
-            bm,
-            [Vector((x + offset - 0.24, floor, _z(s - hz * 0.52))),
-             Vector((x + offset + 0.24, floor, _z(s - hz * 0.52))),
-             Vector((x + offset + 0.24, floor, _z(s + hz * 0.52))),
-             Vector((x + offset - 0.24, floor, _z(s + hz * 0.52)))],
-            [Vector((x + offset - 0.18, floor + 0.22, _z(s - hz * 0.48))),
-             Vector((x + offset + 0.18, floor + 0.22, _z(s - hz * 0.48))),
-             Vector((x + offset + 0.18, floor + 0.22, _z(s + hz * 0.48))),
-             Vector((x + offset - 0.18, floor + 0.22, _z(s + hz * 0.48)))],
-            "AA_Greeble", "AA_Trim")
-    # Six taquets sur la levre : la baie doit lire comme un ouvrage, pas un trou.
-    for i in range(n):
-        px, ps = outer[i]
-        cx = x + (px - x) * 1.02
-        cs = s + (ps - s) * 1.02
-        _surface_box(bm, cx - 0.34, cx + 0.34, cs - 0.34, cs + 0.34,
-                     max(0.10, rim - _surface_y(cs, cx) + 0.12), 0.30,
-                     "AA_Greeble", "AA_Trim", draft=0.06)
-    return rim - 0.04
+# ⚠️ `build_bay()` A DISPARU (BRIEF-0091), ET AVEC ELLE 7 x ~230 TRIANGLES.
+# Elle posait un coaming hexagonal SUR le borde — la « baie » etait un bouton,
+# pas un trou. Le pont d'envol est maintenant fait de deux choses qui ne vivent
+# plus dans le meme fichier :
+#
+#   * l'OUVERTURE, ici : `build_skin()` n'emet pas les faces de l'emprise et
+#     `build_bay_flanges()` replie le bord (voir le bloc des ouvertures) ;
+#   * le HANGAR, dans `bay_kit.glb` : coaming, parois, fond, rails. Le moteur
+#     l'instancie sur le marqueur `Bay_NN`, qui porte desormais le Y de la
+#     BOUCHE et non celui d'une levre posee.
+#
+# Ce partage n'est pas un gout : sept hangars differents se composent a partir
+# d'un seul kit (rotation, largeur, presence des blocs), et la coque n'a pas a
+# porter sept copies de la meme geometrie.
 
 
 def build_spine_bulb(bm: bmesh.types.BMesh, s: float) -> float:
@@ -1340,9 +1645,14 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     rng = random.Random(0xC0F1 + index * 977)
 
     bm = bmesh.new()
-    build_skin(bm, index)
+    skipped = build_skin(bm, index)
+    # ⚠️ L'ORIENTATION DE LA PEAU SE VERIFIE ICI, entre la peau et la collerette.
+    # Apres, les faces de collerette regardent vers l'axe du vaisseau et le
+    # harnais les lirait — a raison — comme retournees.
     _assert_skin_outward(bm, name)
     counts = {
+        "cellules_percees": skipped,
+        "collerettes": build_bay_flanges(bm, index),
         "plaques": build_plates(bm, index, rng),
         "nervures": build_ribs(bm, index, rng),
         "lisses": build_strakes(bm, index),
@@ -1362,7 +1672,13 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     for number, (s, x) in enumerate(BAYS, start=1):
         if not (origin <= s < origin + SECTION_LENGTH):
             continue
-        mouth = build_bay(bm, s, x)
+        # ⚠️ Le marqueur ne bouge NI EN X NI EN Z — le moteur monte ses ponts
+        # dessus par leur nom exact, et un deplacement casserait le niveau en
+        # silence. Seul son Y change : il passe de la levre du coaming pose
+        # (-3,460) au plan de la BOUCHE, c'est-a-dire au point le plus haut du
+        # pourtour de l'ouverture. C'est ce plan-la, et lui seul, sur lequel
+        # `bay_kit.glb` est modelise.
+        mouth, _ = bay_mouth_y(s, x)
         anchors.append((f"Bay_{number:02d}", Vector((x, mouth, _z(s)))))
         bays += 1
     for number, s in enumerate(SPINES, start=1):
@@ -1846,8 +2162,26 @@ def _audit(path: str) -> dict:
     # ambryenne et tirait la densite minimale d'Ambry a 0,147.
     ambry_x = (AMBRY_X[0] - 0.20, HALF_WIDTH + 0.05)
 
+    # --- LES SEPT OUVERTURES SONT REELLEMENT PERCEES (BRIEF-0091) -------------
+    # ⚠️ Le controle porte sur le BINAIRE, triangle par triangle, et il est
+    # bloquant. Une ouverture qui se refermerait — un point de profil perdu, une
+    # station arrondie autrement, un module seede qui repasse dessus — ne se
+    # verrait sur AUCUN autre chiffre : ni le compte de triangles, ni la bbox,
+    # ni les UV, ni le budget. C'est exactement le defaut que BRIEF-0089 a livre
+    # et que seul le regard a attrape ; cette fois il a un harnais.
+    section_bays: dict[str, list[tuple[float, float, float]]] = {}
+    for number, (bs, bx) in enumerate(BAYS, start=1):
+        section_index = int(bs // SECTION_LENGTH)
+        mouth, _ = bay_mouth_y(bs, bx)
+        section_bays.setdefault(f"Section_{section_index + 1:02d}", []).append(
+            (-(bs - section_index * SECTION_LENGTH), bx, mouth))
+    bay_intruders = 0
+    pad_over_bay = 0
+
     density: dict[str, dict] = {}
     for name, packs in density_source.items():
+        section_index = int(name.split("_")[1]) - 1
+        section_origin = section_index * SECTION_LENGTH
         pts: list[tuple] = []
         uvs: list[tuple] = []
         tris: list[tuple[int, int, int]] = []
@@ -1866,6 +2200,25 @@ def _audit(path: str) -> dict:
                 cx = (points[ia][0] + points[ib][0] + points[ic][0]) / 3.0
                 cy = (points[ia][1] + points[ib][1] + points[ic][1]) / 3.0
                 cz = (points[ia][2] + points[ib][2] + points[ic][2]) / 3.0
+                for bz, bx, mouth in section_bays.get(name, ()):
+                    if not (abs(cx - bx) <= BAY_HALF_X - 0.05
+                            and abs(cz - bz) <= BAY_HALF_S - 0.05
+                            and cy > mouth - 2.0):
+                        continue
+                    # ⚠️ Les socles de tourelle sont comptes A PART : deux
+                    # d'entre eux se tiennent legitimement (au sens du brief :
+                    # « ne touche pas aux socles ») dans une emprise de baie.
+                    # Les melanger aux intrus rendrait le harnais inutilisable
+                    # — il echouerait toujours, donc on le desactiverait.
+                    if any(math.hypot(cx - tx, cz + (ts - section_origin))
+                           <= PAD_RADIUS[section_index] + 0.05
+                           for ts, tx in TURRETS
+                           if section_origin <= ts
+                           < section_origin + SECTION_LENGTH):
+                        pad_over_bay += 1
+                    else:
+                        bay_intruders += 1
+                    break
                 in_keepout = last and keep_x[0] <= cx <= keep_x[1] \
                     and keep_z[0] <= cz <= keep_z[1]
                 if in_keepout:
@@ -1894,6 +2247,40 @@ def _audit(path: str) -> dict:
         density[name] = _texel_density(pts, uvs, tris)
         if ambry_tris:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
+
+    conflicts = _pad_bay_conflicts()
+    for turret, bay, depth, centred in conflicts:
+        if (turret, bay) not in KNOWN_PAD_BAY_CONFLICTS:
+            problems.append(
+                f"CONFLIT NEUF : le socle {turret} entre de {depth:.2f} m dans "
+                f"l'ouverture de {bay}"
+                f"{' — son centre y est' if centred else ''}. Un conflit connu "
+                "n'est pas une porte ouverte aux suivants (voir "
+                "KNOWN_PAD_BAY_CONFLICTS)")
+    for turret, bay in KNOWN_PAD_BAY_CONFLICTS:
+        if not any(t == turret and b == bay for t, b, _, _ in conflicts):
+            problems.append(
+                f"le conflit {turret}/{bay} a disparu : retirer sa ligne de "
+                "KNOWN_PAD_BAY_CONFLICTS plutot que de la laisser mentir")
+    if bay_intruders:
+        problems.append(
+            f"{bay_intruders} triangle(s) DANS l'emprise d'un pont d'envol — "
+            "l'ouverture s'est refermee, le hangar redeviendrait un bouton")
+    for number, (bs, bx) in enumerate(BAYS, start=1):
+        mouth, low = bay_mouth_y(bs, bx)
+        marker = f"Bay_{number:02d}"
+        if marker not in found:
+            continue
+        translation = found[marker][1]
+        if abs(translation[0] - bx) > 1e-4 or abs(translation[1] - mouth) > 1e-4:
+            problems.append(
+                f"{marker} : ({translation[0]:.4f}, {translation[1]:.4f}) au lieu "
+                f"de ({bx:.4f}, {mouth:.4f}) — le marqueur doit rester en X et "
+                "passer au plan de la bouche")
+        if mouth - low > BAY_WELL_DEPTH:
+            problems.append(
+                f"{marker} : le pourtour de l'ouverture accuse {mouth - low:.2f} m "
+                f"de denivele, plus que la profondeur du puits ({BAY_WELL_DEPTH} m)")
 
     if ambry_slot_strays:
         problems.append(
@@ -1943,6 +2330,10 @@ def _audit(path: str) -> dict:
         "area_by_material": area_by_material,
         "total_area": total_area,
         "ambry_slot_triangles": ambry_slot_tris,
+        "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
+                 for n, (bs, bx) in enumerate(BAYS, start=1)],
+        "pad_bay_conflicts": conflicts,
+        "pad_over_bay": pad_over_bay,
         "top": top_of_decor,
         "width": 2 * widest,
         "emissive_ratio": emissive_area / total_area if total_area else 0.0,
@@ -2022,7 +2413,7 @@ def _print_report(report: dict) -> None:
           f"largeur {report['width']:.4f} m, sommet {report['top']:+.3f} "
           f"(plafond {CEILING_Y})")
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
-                  "plateformes", "baies"):
+                  "plateformes", "baies", "cellules_percees", "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<12} {line}   = {total}")
@@ -2057,6 +2448,28 @@ def _print_report(report: dict) -> None:
     print(f"    {'TOTAL':<20} {total:10.1f} m2")
     print(f"  emissif    : {100.0 * report['emissive_ratio']:.2f} % de l'aire totale")
     print(f"  octets     : {report['bytes']}")
+
+    print("\n  ouvertures de pont d'envol (BRIEF-0091) — "
+          f"{2 * BAY_HALF_X:.2f} x {2 * BAY_HALF_S:.2f} m, puits de "
+          f"{BAY_WELL_DEPTH:.2f} m tenu par bay_kit.glb")
+    for name, bs, bx, mouth, low in report["bays"]:
+        print(f"    {name}  s {bs:6.1f}  x {bx:+6.2f}  bouche Y {mouth:+7.4f}  "
+              f"pourtour bas {low:+7.4f} (denivele {mouth - low:4.2f} m)  "
+              f"fond {mouth - BAY_WELL_DEPTH:+7.3f}  "
+              f"coaming {mouth + 0.60:+7.3f} (plafond {CEILING_Y:+.2f})")
+
+    if report["pad_bay_conflicts"]:
+        print("\n  ⚠️ CONFLITS DE MARQUEURS — un socle de tourelle se tient dans "
+              "l'emprise d'un pont d'envol")
+        for turret, bay, depth, centred in report["pad_bay_conflicts"]:
+            print(f"    {turret} / {bay} : penetration {depth:.2f} m"
+                  + ("   *** LE CENTRE DU SOCLE EST DANS L'OUVERTURE ***"
+                     if centred else ""))
+        print(f"    {report['pad_over_bay']} triangle(s) de socle au-dessus du "
+              "vide. NON RESOLUBLE PAR LA FORGE : deplacer un marqueur en X/Z "
+              "casse le niveau en silence,")
+        print("    retirer un socle laisse sa tourelle en l'air. Arbitrage du "
+              "concepteur, une ligne de TURRETS ou de BAYS.")
 
     print("\n  marqueurs (position LOCALE au troncon, repere Godot)")
     for name in _expected_markers():
@@ -2369,8 +2782,10 @@ def _tile_scene(path: str, report: dict, checker: bool) -> None:
                        f"{100.0 * frame['coverage']:.0f} % de la largeur du cadre",
                -0.96, 0.76, 0.034, TILE_W, height)
         _label(camera, f"{report['triangles']} triangles pour 500 x 28 m "
-                       f"= {report['triangles'] / (SHIP_LENGTH * 28.0):.1f} tri/m2",
-               -0.96, -0.90, 0.032, TILE_W, height, (0.72, 0.84, 1.0))
+                       f"= {report['triangles'] / (SHIP_LENGTH * 28.0):.1f} tri/m2 "
+                       f"— les 7 ponts d'envol sont des TROUS dans la peau ; le "
+                       f"hangar qui les borde vit dans bay_kit.glb",
+               -0.96, -0.90, 0.030, TILE_W, height, (0.72, 0.84, 1.0))
     _render(path, TILE_W, height)
 
 
@@ -2393,8 +2808,10 @@ def _tile_top(path: str, report: dict, index: int) -> None:
            -0.985, 0.80, 0.075, TILE_W, TOP_H, (1.0, 0.88, 0.55))
     _label(camera, f"{counts['plaques']} plaques · {counts['nervures']} nervures · "
                    f"{counts['greffes']} greffes · {counts['pastilles']} pastilles · "
-                   f"{counts['plateformes']} tourelles · {counts['baies']} baie(s)",
-           -0.985, -0.86, 0.058, TILE_W, TOP_H)
+                   f"{counts['plateformes']} tourelles · {counts['baies']} pont(s) "
+                   f"d'envol — OUVERTURE(S) percee(s), le hangar est dans "
+                   f"bay_kit.glb (BRIEF-0091)",
+           -0.985, -0.86, 0.052, TILE_W, TOP_H)
     _label(camera, "proue", -0.985, 0.52, 0.06, TILE_W, TOP_H, (0.72, 0.84, 1.0))
     _label(camera, "poupe", 0.90, 0.52, 0.06, TILE_W, TOP_H, (0.72, 0.84, 1.0))
     _render(path, TILE_W, TOP_H)
