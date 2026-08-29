@@ -1,0 +1,94 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=8 format=3]
+
+; ============================================================================
+; L'approche de proue — la reception du Long Cortege (niveau 2, troncon 01).
+;
+; ⚠️ ELLE EXISTE PARCE QU'UNE MESURE A TROUVE UN TEMPS MORT DE 27 SECONDES. La
+; proue du vaisseau livre est NUE sur 65 unites : la premiere piece de coque
+; (`Spine_01`) n'entre dans sa fenetre qu'a 30 s de jeu, et la premiere tourelle
+; a 38 s. Le niveau s'ouvrait donc sur un quart de minute sans rien a faire,
+; devant un decor qui defile. Aucune vitesse ne referme ce trou — il a ete
+; cherche : entre 2,4 et 2,9 u/s et entre 8 et 22 unites d'entree en scene,
+; l'ouverture ne descend jamais sous 17,6 s. C'est un probleme de CONTENU.
+;
+; ⚠️ ET LE LORE DONNAIT DEJA LA REPONSE : « il se defend comme on ecarte
+; quelqu'un d'un chantier, pas comme on livre bataille » (docs/lore/NULL_CHOIR.md).
+; Ce qui vient a la rencontre du chasseur n'est pas une escorte de combat, c'est
+; une RECEPTION — des appareils de releve qui viennent voir ce qui approche. Ils
+; arrivent par le haut de l'ecran, comme au niveau 1, parce qu'a la proue il n'y
+; a encore aucune baie a laquelle s'ancrer.
+;
+; ⚠️ CE QU'ELLE N'EST PAS : une vague de niveau 1. Pas de porteur, pas de mine,
+; pas de rideau. Trois passes courtes, largement ouvertes, qui se terminent
+; AVANT que la coque ne commence a mordre — sinon le joueur affronterait la
+; reception et la premiere tourelle en meme temps, et le niveau ouvrirait sur
+; son pic de densite au lieu d'y monter.
+;
+; DUREE VISEE : les spawns s'etalent de 3 a 24 s, et les dernieres coques
+; quittent le plan vers 30 s — exactement quand `Spine_01` entre dans sa fenetre.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout.tscn" id="3_scout"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_arc.tscn" id="4_arc"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/crescent_interceptor.tscn" id="5_cres"]
+
+; --- Premiere passe : deux eclaireurs, de face. Ils viennent VOIR. -----------
+[sub_resource type="Resource" id="a1"]
+script = ExtResource("2_entry")
+time_offset = 3.0
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(-4, 9.5)
+count = 2
+spacing = 1.2
+
+[sub_resource type="Resource" id="a2"]
+script = ExtResource("2_entry")
+time_offset = 4.2
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(4, 9.5)
+count = 2
+spacing = 1.2
+
+; --- Deuxieme passe : les arcs, qui coupent en travers ----------------------
+; Ils obligent a bouger lateralement, ce que la troisieme passe punira.
+[sub_resource type="Resource" id="a3"]
+script = ExtResource("2_entry")
+time_offset = 10.0
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(-9, 9.5)
+count = 3
+spacing = 1.0
+
+[sub_resource type="Resource" id="a4"]
+script = ExtResource("2_entry")
+time_offset = 12.5
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(9, 9.5)
+count = 3
+spacing = 1.0
+
+; --- Troisieme passe : les intercepteurs, la seule qui presse ---------------
+; ⚠️ Elle se termine a 24 s. Les dernieres coques quittent le plan vers 30 s,
+; c'est-a-dire a l'instant ou `Spine_01` devient tirable : la reception passe
+; le relais a la coque au lieu de s'y ajouter.
+[sub_resource type="Resource" id="a5"]
+script = ExtResource("2_entry")
+time_offset = 18.0
+enemy_scene = ExtResource("5_cres")
+spawn_plane_position = Vector2(-6, 9.5)
+count = 2
+spacing = 1.6
+
+[sub_resource type="Resource" id="a6"]
+script = ExtResource("2_entry")
+time_offset = 21.0
+enemy_scene = ExtResource("5_cres")
+spawn_plane_position = Vector2(6, 9.5)
+count = 2
+spacing = 1.6
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("a1"), SubResource("a2"), SubResource("a3"), SubResource("a4"), SubResource("a5"), SubResource("a6")]

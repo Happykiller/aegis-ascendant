@@ -76,8 +76,17 @@ func _ready() -> void:
 	_hardpoints.turret_destroyed.connect(_on_turret_destroyed)
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
-	_hardpoints.enemy_destroyed.connect(_on_enemy_destroyed)
 	_hardpoints.section_silenced.connect(_on_section_silenced)
+	# ⚠️ TOUS LES ENNEMIS, D'OÙ QU'ILS VIENNENT, ET APRÈS `build()`. Ce niveau en met en scène
+	# de deux façons — la réception de proue par un `WaveSpawner`, les coques de pont par le
+	# pool de leur baie — et un ennemi ne vaut des points qu'à UN seul endroit. Les brancher par
+	# le groupe, comme le niveau 1, plutôt que source par source : deux chemins de score
+	# finissent par diverger, et la première divergence est un double comptage que personne ne
+	# remarque. Après `build()`, parce que c'est lui qui monte les pools des ponts.
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var enemy := node as EnemyController
+		if enemy != null:
+			enemy.destroyed.connect(_on_enemy_destroyed)
 	if _player != null and _player.has_signal("game_over"):
 		_player.game_over.connect(_on_game_over)
 	# ⚠️ OUTIL DE VÉRIFICATION, PAS UN RACCOURCI DE JEU. `--cortege-from=<n>` démarre le survol
@@ -90,6 +99,10 @@ func _ready() -> void:
 			var section := maxi(arg.substr(15).to_int() - 1, 0)
 			_flyby.skip_to_section(section)
 			print("[Cortege] saut au tronçon %d" % (section + 1))
+	# ⚠️ L'INDICATEUR EST DEMANDÉ PAR LE NIVEAU, PAS POSÉ PAR LE HUD. Le niveau 1 traverse six
+	# lieux et n'a rien à jauger : une barre qui ne bouge pas y serait pire qu'aucune barre.
+	if _hud != null and _hud.has_method("show_survey"):
+		_hud.show_survey(TUNING.section_count)
 	if _flyby.is_stand_in():
 		print("[Cortege] coque DOUBLÉE — %s absent" % CortegeFlyby.DECOR_PATH.get_file())
 	print("[Cortege] survol — %d sections, %.1f u/s, %.0f s attendues"
@@ -137,6 +150,14 @@ func _on_section_silenced(section: int, turrets: int) -> void:
 
 func _on_enemy_destroyed(enemy: EnemyController) -> void:
 	_game_state.add_score(enemy.data.score_value)
+
+## ⚠️ LA JAUGE SE MET À JOUR ICI ET NON DANS LE HUD. Le HUD ne connaît aucun niveau en
+## particulier — c'est ce qui lui permet de servir les deux —, et le survol est la seule chose
+## qui sache où l'on en est. Même partage que `show_boss` / `set_boss_health`.
+func _process(_delta: float) -> void:
+	if _finished or _defeated or _hud == null:
+		return
+	_hud.set_survey(_flyby.progress(), _flyby.current_section())
 
 func _on_section_entered(index: int) -> void:
 	print("[Cortege] SECTION %02d / %02d" % [index + 1, TUNING.section_count])

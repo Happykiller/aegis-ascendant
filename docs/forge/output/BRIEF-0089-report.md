@@ -1,21 +1,38 @@
 # BRIEF-0089 — compte-rendu de forge : la coque du Long Cortège
 
 - **Agent** : `asset-forge`
-- **Date** : 2026-08-29
+- **Date** : 2026-08-29 — **révisé le 2026-08-29 par l'avenant [`BRIEF-0090`](../briefs/BRIEF-0090-ambry-materiau-propre.md)**
 - **Brief** : [`docs/forge/briefs/BRIEF-0089-long-cortege-coque.md`](../briefs/BRIEF-0089-long-cortege-coque.md)
 - **Script source** : `tools/blender/build_long_cortege.py` (Blender 4.5.11, kit `aegis_kit` **inchangé**)
+
+> ## ⚙ Avenant BRIEF-0090 — Ambry a son matériau (2026-08-29)
+>
+> Le point n° 2 laissé à trancher au §6 **a été tranché** : Ambry ne sort plus de la matière de
+> l'Unisson. Un **huitième slot `AA_Hull_Ambry`** (gris-ivoire `#EDEAE3` des coques Helios
+> Vanguard, fini de coque Vanguard : metallic 0,05 / roughness 0,45) porte désormais tout le
+> bordé de l'avant-poste. **La géométrie n'a pas bougé d'un sommet** — mêmes 39 434 triangles,
+> mêmes 63 414 sommets, mêmes 30 marqueurs aux mêmes positions, même plafond à −3,200, mêmes
+> jonctions à 0,00000 m, mêmes densités de texels. Les seuls chiffres qui bougent, et ils bougent
+> tous pour la même raison (une primitive de plus sur le tronçon 5) : **27 → 28 primitives**,
+> 3 308 404 → **3 309 500 octets**, `AA_Trim` 2,29 % → **1,72 %** de l'aire, et un nouveau
+> **`AA_Hull_Ambry` à 0,57 %**. Détail au §6 bis ; répartition complète au §7 ; douzième harnais
+> au §11.
 
 ## 0. Livrables
 
 | Fichier | sha256 | Taille |
 |---|---|---|
-| `assets/imported/models/backgrounds/long_cortege.glb` | `4a4400d8924951202532eb7f844eb7ff62496b310867eafddd5365dd919d1599` | 3 308 404 o |
-| `docs/forge/output/BRIEF-0089-planche-sections.png` | `d5d5237aa46cc33008cff7f336a82ba80f628b5e94c96f83f8b013130c7db57b` | 1440 × 3364 |
+| `assets/imported/models/backgrounds/long_cortege.glb` | `c11b3962f5522bfb531a3e77f22a47d4c91fc54c66ded9565e9372c2e247a0c8` | 3 309 500 o |
+| `docs/forge/output/BRIEF-0089-planche-sections.png` | `9001baf12c869e21dd0f5599e4546bcf316d3fc4ff8202144c37c7965edf6483` | 1440 × 3964, **9 vignettes** |
 | `tools/blender/build_long_cortege.py` | — | le script **est** la source (ADR-0008) |
 
+> Les sha256 et la taille de planche ci-dessus sont **ceux de l'avenant**. Version BRIEF-0089
+> d'origine, pour mémoire : `.glb` `4a4400d8…` / 3 308 404 o, planche `d5d5237a…` / 1440 × 3364.
+
 **Déterminisme** : `./scripts/build-hull.sh --check long_cortege` → *déterminisme OK*, **0 octet divergent**
-sur deux exécutions successives (`blender45 -t 1`). Vérifié trois fois au cours du chantier.
-`./scripts/check.sh` → **ALL GREEN** avec le fichier en place.
+sur deux exécutions successives (`blender45 -t 1`). Vérifié trois fois au cours du chantier,
+**et une quatrième après l'avenant**. `./scripts/check.sh` → **ALL GREEN** avec le fichier en place
+(747 méthodes de test, 5 565 assertions, 0 échec), avant comme après.
 
 ## 1. La correction de dimensions, et ce qu'elle a changé de méthode
 
@@ -69,7 +86,8 @@ ponts et les nœuds qu'il instanciera sur les 30 points d'attache, qui eux seron
 | `Section_05` | 8 744 | 48,6 % | `[-500 , -400]` | 28,00 × 9,40 × 100,00 | **−3,200** |
 | **TOTAL** | **39 434** | **43,8 %** | `[-500 , 0]` | **28,0000** × 9,40 × 500,00 | **−3,200** |
 
-- 63 414 sommets, 27 primitives, 5 maillages, 3 308 404 octets.
+- 63 414 sommets, **28 primitives** (27 avant l'avenant BRIEF-0090 : le tronçon 5 en porte
+  une huitième, celle d'`AA_Hull_Ambry`), 5 maillages, 3 309 500 octets.
 - **Le sommet le plus haut des 500 m est le mât d'antenne d'Ambry, à Y = −3,200**, soit
   **20 cm sous le plafond `Y = −3`**. Viennent ensuite les bulbes d'arête (−3,220 / −3,240) puis
   les greffes les plus hautes (−3,204 à −3,207).
@@ -241,23 +259,110 @@ insoutenable. Il jure par trois moyens qui ne dépendent d'aucune texture — l'
 (`AA_Trim` ivoire `#DDDCD2` contre `AA_Hull` anthracite `#24252B`, rapport de 1 à 12 en luminance),
 et l'**absence totale de magenta**.
 
-> ⚠️ **ÉCART ASSUMÉ — le brief demande « matériaux `AA_Hull` / `AA_Trim` **clairs** contre
-> l'anthracite ». Sous la palette Null Choir, `AA_Hull` **EST** l'anthracite** (`#24252B`) : c'est
-> le même matériau que le bordé. Le contraste ne peut donc venir que d'`AA_Trim`, et le kit refuse
-> de mélanger deux factions dans une coque (`set_faction()` lève `ContractError`). Ambry est donc
-> **dominée par `AA_Trim`**, `AA_Hull` n'y servant qu'aux colliers de greffe — ce qui est cohérent :
-> ce sont eux qui appartiennent au vaisseau, pas l'avant-poste.
-
-> ⚠️ **CONSÉQUENCE À TRANCHER AVANT `TEX-`** : Ambry **partage les 7 matériaux du bordé**. La
-> demande « bordé humain » du LOT C ne pourra donc **pas** lui être propre : elle recevra la carte
-> du bordé, à une échelle 3,5 × plus fine (ce qui, en soi, la fait déjà lire comme une construction
-> à l'échelle de la main). **Si tu veux une carte dédiée, il faut un huitième slot** (p. ex.
-> `AA_Ambry_Hull`) : dis-le et je reforge — c'est une modification locale, la géométrie ne bouge
-> pas. Je ne l'ai pas prise seule parce que le brief nomme explicitement `AA_Hull`/`AA_Trim`.
+> ⚠️ **ÉCART ASSUMÉ, PUIS TRANCHÉ.** Le brief BRIEF-0089 demandait « matériaux `AA_Hull` /
+> `AA_Trim` **clairs** contre l'anthracite » ; sous la palette de l'Unisson, `AA_Hull` **EST**
+> l'anthracite (`#24252B`). Le contraste n'a donc pu venir, dans la première livraison, que
+> d'`AA_Trim`. **BRIEF-0090 a tranché : Ambry a désormais son propre matériau** — voir le §6 bis
+> ci-dessous, qui remplace cette réserve.
 
 Le **vert maladif** `#7C9E52` (`AA_Marking_Red` sous cette palette) n'existe **qu'ici**, sur la
 serre : 85,7 m² sur 60 373, soit **0,14 %** de l'aire du modèle. C'est le seul emploi des 500 m,
 conforme au « usage très limité » de la charte.
+
+## 6 bis. `AA_Hull_Ambry` — le huitième slot (avenant BRIEF-0090)
+
+### Ce qui a changé, et rien d'autre
+
+**344,9 m² de faces** — le radeau, les quatre modules d'habitation, la passerelle, le socle et les
+traverses du mât — passent d'`AA_Trim` à `AA_Hull_Ambry`. Aucun sommet ne bouge, aucune face n'est
+créée ni détruite : c'est un changement d'**index de matériau**, rien de plus. Les compteurs le
+prouvent (§0, §2) : 39 434 triangles, 63 414 sommets, 30 marqueurs aux positions du §4, sommet à
+−3,200, jonctions à 0,00000 m, densités du §3 inchangées.
+
+| | Couleur | metallic / roughness | Ce que c'est |
+|---|---|---|---|
+| avant — `AA_Trim` | `#DDDCD2` ivoire froid | 0,85 / 0,28 | la **carapace** de l'Unisson, polie |
+| après — `AA_Hull_Ambry` | `#EDEAE3` blanc cassé | **0,05 / 0,45** | la **coque Helios Vanguard**, tôle peinte |
+
+⚠️ **Le fini compte plus que la teinte, et c'est mesuré.** La couleur de base ne monte que de 16 %
+en luminance (0,712 → 0,824 linéaire). Mais `AA_Trim` est *metallic 0,85* : une surface métallique
+rend très peu en diffus. `AA_Hull_Ambry` hérite du 0,05 des coques Vanguard. Sur la vignette
+d'élévation, même éclairage, même cadrage, avant/après : **luminance écran 0,547 → 0,720**. Le
+contraste contre l'anthracite passe de **11,1:1 à 12,7:1** (WCAG ; rapport de luminance brute 44:1).
+
+### La vraie raison n'est pas la couleur : c'est l'échelle
+
+Ambry est dépliée à **0,700 tuile/m** quand le bordé est à **0,200**. Toute face d'Ambry restée sur
+un slot du bordé recevra donc sa carte **3,5 fois trop fine** — un défaut latent, invisible tant
+qu'aucune texture n'existe, et impossible à corriger sans reforge une fois les images générées.
+C'est ce que le slot séparé achète, bien plus que la teinte.
+
+### Ce qui reste volontairement partagé — et pourquoi
+
+| Sur Ambry | Slot | Pourquoi |
+|---|---|---|
+| dessous, béquilles, flancs de caisse, montants | `AA_Greeble` | jamais vus de la caméra du jeu ; une carte plus fine n'y ment sur rien |
+| capots techniques des 4 modules | `AA_Panel` | 6 petites boîtes ; ils cassent la masse blanche, et c'est leur seul rôle |
+| **colliers de greffe** (× 2) | `AA_Hull` | **ils appartiennent au vaisseau**, pas à l'avant-poste : c'est l'Unisson qui a soudé |
+| **pas d'appontage** | `AA_Hull` | un pont clair de plus effacerait le pas ; c'est sa valeur **sombre** qui le fait lire (mesuré sur la planche : 0,271 contre 0,798 pour le radeau) |
+| serre | `AA_Marking_Red` | le vert maladif, seul emploi des 500 m |
+| voûte | `AA_Glass` | transmission, insensible à l'échelle |
+| émissif | — | **aucune face** : Ambry n'a pas de magenta, et c'est un des trois signaux |
+
+`AA_Trim` **ne touche plus Ambry du tout** : il redevient un matériau purement Unisson (liseré de
+crête, une nervure sur trois, lisses, couronnes de socle, lèvres de baie).
+
+> ⚠️ **Les deux exceptions `AA_Hull` ci-dessus recevront la carte du bordé à 1,43 m/tuile au lieu
+> de 5,00.** C'est assumé et c'est chiffré : 21,8 m² pour le pas, 12,4 m² pour les colliers, soit
+> **0,06 % de l'aire du modèle**. Sur des surfaces qui doivent lire *sombre* et *rapportée*, un
+> grain 3,5 × plus fin ne dit rien de faux. Si `TEX-0010` finit par y trahir un motif reconnaissable,
+> une ligne du script les bascule sur `AA_Hull_Ambry`.
+
+### L'aire du nouveau slot — le chiffre que le brief exige
+
+| | Aire | Part du modèle |
+|---|---|---|
+| `AA_Hull_Ambry` | **344,9 m²** | **0,57 %** |
+| pour mémoire, `AA_Trim` avant l'avenant | 1 381,3 m² | 2,29 % |
+| `AA_Trim` après | 1 036,4 m² | 1,72 % |
+
+**0,57 %, et le débordement est interdit par un harnais, pas par une intention** : le douzième
+contrôle (§11) relit le binaire triangle par triangle et **échoue le build** si une seule face
+`AA_Hull_Ambry` sort de l'emprise d'Ambry. Contre-épreuve faite : en basculant une bande du bulbe
+d'épine sur ce slot, le build tombe avec *« 220 triangle(s) en 'AA_Hull_Ambry' hors de l'emprise
+d'Ambry »* et le `.glb` n'est pas remplacé.
+
+### L'écart au kit, écrit plutôt que contourné
+
+`aegis_kit` fige **sept** slots (`MATERIAL_ORDER`) et **une faction par coque** : `ak.material()`
+refuse tout nom hors de sa table, `ak.mat_index()` aussi, et `set_faction()` lève `ContractError`
+si l'on mélange deux palettes. Le huitième slot est donc **déclaré localement dans
+`build_long_cortege.py`**, comme le brief l'autorise et sur le précédent de `build_moon_flyby.py` :
+
+- `MATERIAL_ORDER = ak.MATERIAL_ORDER + ("AA_Hull_Ambry",)` — **aucun index du kit ne bouge** ;
+- `_mat_index()` remplace `ak.mat_index()` ; `_new_object()` appelle `ak.apply_material_slots()`
+  (les 7) **puis** ajoute le huitième — dans cet ordre, parce qu'un `materials.clear()` remettrait
+  à zéro le `material_index` de tous les polygones, en silence ;
+- le matériau est une **copie** d'`AA_Hull` recolorisée avec `ak.PALETTES[FACTION_VANGUARD]["hull"]` :
+  la teinte n'est pas recopiée à la main, et le fini de coque Vanguard vient avec ;
+- les **cinq** tronçons portent les 8 slots (quatre n'en assignent que 5) : ainsi la fusion d'Ambry
+  dans le tronçon 5 n'a aucun index à remapper. L'exporteur n'écrit que les matériaux réellement
+  utilisés — le `.glb` porte 8 matériaux, mais `Section_01..04` n'en référencent que 5 chacun.
+
+**Le kit n'est pas modifié.** Je ne propose pas d'y remonter ce slot : « une coque = une faction »
+est une bonne règle, et Ambry est le seul endroit du jeu où une greffe humaine vit sur une coque
+ennemie. Une exception ne fait pas une règle de kit.
+
+### Vérifié dans le binaire, et jusque dans le moteur
+
+- `AA_Hull_Ambry` : `baseColorFactor` `[0,8469 · 0,8228 · 0,7682]` (= `#EDEAE3` linéaire),
+  `metallicFactor` 0,05, `roughnessFactor` 0,45, **aucune texture**, `"images": null`.
+- Présent sur `Section_05` **seulement** : `Section_01..04` référencent 5 matériaux chacun.
+- **Godot le voit** : import headless du `.glb`, puis relecture des surfaces —
+  `Section_05` expose bien une surface dont le `resource_name` est `AA_Hull_Ambry`. C'est
+  exactement la clé que `scripts/fx/cortege_skin.gd` attend déjà (`SKINS[&"AA_Hull_Ambry"] =
+  "ambry_hull"`), et l'échelle de `TEX-0014` (1,43 m/tuile, `measured`) est celle du dépliage
+  effectivement livré.
 
 ## 7. Palette, émissif, et la réserve de lisibilité
 

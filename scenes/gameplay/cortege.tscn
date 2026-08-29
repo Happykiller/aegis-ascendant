@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/cortege_root.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/vfx/cortege_flyby.gd" id="98_flyby"]
@@ -10,6 +10,8 @@
 [ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
 [ext_resource type="Script" path="res://scripts/fx/vfx_manager.gd" id="9_vfx"]
 [ext_resource type="Script" path="res://scripts/gameplay/cortege_hardpoints.gd" id="16_hardpoints"]
+[ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="17_spawner"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_approach.tres" id="18_approach"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
 [ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
@@ -107,6 +109,23 @@ bullet_manager_path = NodePath("../BulletManager")
 ; lachee serait decalee de tout ce que le decor a parcouru.
 [node name="Hardpoints" type="Node3D" parent="."]
 script = ExtResource("16_hardpoints")
+
+; La reception de proue.
+;
+; ⚠️ ELLE EXISTE PARCE QU'UNE MESURE A TROUVE UN TEMPS MORT DE 27 SECONDES a
+; l'ouverture : la proue de la coque livree est NUE sur 65 unites, et la premiere
+; piece de coque n'entre dans sa fenetre qu'a 30 s de jeu. Aucune vitesse ne
+; referme ce trou — il a ete cherche.
+;
+; ⚠️ ET C'EST BIEN `WaveSpawner`, PAS UN PONT D'ENVOL. Un pont s'ancre a un objet
+; qui defile ; ici il n'y a encore aucune baie a la proue, et les appareils
+; arrivent par le haut de l'ecran comme au niveau 1. C'est exactement ce que
+; `WaveSpawner` sait faire, et il n'est pas modifie d'une ligne.
+[node name="ApproachSpawner" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("18_approach")
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
 
 ; Champ d'asteroides (ADR-0027) : un SECOND spawner, monte et peuple au meme
 ; instant que le premier, mais endormi jusqu'a `begin()`. C'est ce qui permet

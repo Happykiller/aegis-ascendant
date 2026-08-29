@@ -49,10 +49,10 @@ func _panels(hud: CanvasLayer) -> Array[Panel]:
 			found.append(panel)
 	return found
 
-func test_the_hud_builds_its_five_panels() -> void:
+func test_the_hud_builds_its_six_panels() -> void:
 	var hud := _hud()
-	assert_eq(_panels(hud).size(), 5,
-		"bouclier, score, vies, banniere de boss — et Lyra depuis ADR-0035")
+	assert_eq(_panels(hud).size(), 6,
+		"bouclier, score, vies, banniere de boss, Lyra (ADR-0035) — et la traversee du niveau 2")
 	hud.free()
 
 ## ⚠️ LE BAS-DROITE ETAIT LE SEUL COIN LIBRE, et c'est pour ca que Lyra y est plutot qu'a
@@ -71,6 +71,56 @@ func test_lyra_takes_the_bottom_right_corner_and_disturbs_nobody() -> void:
 		assert_false(lyra.intersects(_rect_of(panel)),
 			"le panneau de Lyra (%s) ne recouvre pas celui en %s" % [lyra, _rect_of(panel)])
 	hud.free()
+
+## ⚠️ LA MEME LOI, GENERALISEE — parce qu'elle vient de servir. La jauge de traversee du
+## niveau 2 visait le bas-droite, comme sur les trois planches de l'operateur ; le test
+## ci-dessus l'a refusee, et l'arbitrage a ete rendu en faveur de Lyra. Le tenir pour ELLE
+## SEULE laisserait le prochain panneau se poser sur le score ou sur les vies. Un HUD ou deux
+## panneaux se chevauchent ne se voit qu'au moment precis ou les deux sont a l'ecran, et c'est
+## rarement pendant le developpement.
+func test_no_two_panels_of_the_hud_ever_overlap() -> void:
+	var hud := _hud()
+	hud.say(_line("Champ d'asteroides detecte."))
+	hud.show_survey(5)
+	hud.set_survey(0.5, 2)
+	var panels := _panels(hud)
+	for a in panels.size():
+		for b in range(a + 1, panels.size()):
+			var first := _rect_of(panels[a])
+			var second := _rect_of(panels[b])
+			assert_false(first.intersects(second),
+				"deux panneaux se recouvrent : %s et %s" % [first, second])
+	hud.free()
+
+## La jauge dit COMBIEN IL RESTE, et c'est la seule information qu'un survol ne peut pas
+## montrer : le niveau 2 longe un objet unique pendant trois minutes et demie sans que rien
+## ne change a l'ecran.
+func test_the_survey_gauge_grows_with_the_crossing() -> void:
+	var hud := _hud()
+	hud.show_survey(5)
+	hud.set_survey(0.0, 0)
+	var depart := _fill_length(hud)
+	hud.set_survey(0.5, 2)
+	var moitie := _fill_length(hud)
+	hud.set_survey(1.0, 4)
+	var fin := _fill_length(hud)
+	assert_true(moitie > depart, "la silhouette se remplit")
+	assert_true(fin > moitie, "et elle continue jusqu'au bout")
+	assert_eq(hud._survey_label.text, "05 / 05", "le troncon courant est nomme")
+	# ⚠️ LE NOMBRE DE POINTS NE BOUGE PAS. Une silhouette tronquee en ajoutant des points
+	# reconstruirait un tableau de taille variable a chaque image — l'allocation par trame que
+	# la spec §26 interdit. Le remplissage DEPLACE des points, il n'en cree pas.
+	assert_eq(hud._survey_fill.polygon.size(), hud._survey_track.polygon.size(),
+		"les deux silhouettes ont le meme nombre de points, a tout moment")
+	hud.free()
+
+func _fill_length(hud: CanvasLayer) -> float:
+	var minimum := INF
+	var maximum := -INF
+	for point in hud._survey_fill.polygon:
+		minimum = minf(minimum, point.x)
+		maximum = maxf(maximum, point.x)
+	return maximum - minimum
 
 ## ⚠️ ELLE SE RETIRE TOUTE SEULE. Un panneau qui resterait a l'ecran apres sa replique
 ## volerait le coin au reste de la partie — et le joueur relirait une consigne perimee.

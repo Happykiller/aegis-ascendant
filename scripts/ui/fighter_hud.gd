@@ -45,6 +45,38 @@ const LIMB_GAUGE_HEIGHT := 7.0
 const LIMB_LABEL_WIDTH := 58.0
 const LIMB_GAUGE_GAP := 44.0
 
+# --- La traversee du Long Cortege (niveau 2) ----------------------------------
+#
+## ⚠️ IL PORTE LA SEULE INFORMATION QU'UN SURVOL NE PEUT PAS MONTRER : COMBIEN IL EN RESTE.
+## Le niveau 2 longe un objet unique pendant trois minutes et demie, et rien à l'écran ne
+## change d'un bout à l'autre — même bordé, même artère, mêmes tourelles. Sans cet
+## indicateur, un joueur qui n'a pas lu le briefing de pause ne peut pas savoir s'il en est
+## au dixième ou aux neuf dixièmes, et un survol sans horizon devient une attente.
+##
+## L'idée vient des trois planches validées par l'opérateur, qui la posaient déjà en bas à
+## droite : la silhouette du vaisseau, remplie au fur et à mesure. C'est la meilleure de
+## leurs propositions et la moins chère.
+##
+## ⚠️ ET IL NE S'AFFICHE QUE LÀ. Le niveau 1 traverse six lieux et n'a rien à jauger : un
+## indicateur de traversée y afficherait une barre qui ne bouge pas.
+##
+## ⚠️ EN HAUT À DROITE, SOUS LE SCORE, ET NON EN BAS À DROITE COMME SUR LES PLANCHES. Le coin
+## bas-droite est celui de Lyra depuis `ADR-0035`, et `test_hud_layout.gd` le tient
+## explicitement : « si un futur panneau vient le disputer, il faudra TRANCHER plutôt que les
+## empiler ». C'est ce panneau-là, et l'arbitrage est rendu : une réplique de Lyra couvre trois
+## lignes et se lit une fois ; la jauge se consulte d'un coup d'œil et n'a pas besoin de place.
+## Elle se cale donc sous le score, avec lequel elle partage la marge droite.
+const SURVEY_SIZE := Vector2(300.0, 104.0)
+## Sous le panneau de score : 28 de marge + 98 de hauteur + 12 d'écart.
+const SURVEY_TOP := 138.0
+## Le profil de la coque vue de dessus, en fractions (x le long du vaisseau, y la demi-largeur).
+## Proue effilée à gauche, arrière plein à droite — c'est le sens du survol.
+const SURVEY_PROFILE: Array[float] = [
+	0.04, 0.18, 0.34, 0.46, 0.54, 0.60, 0.66, 0.72, 0.80, 0.86, 0.92, 0.96,
+]
+const SURVEY_TRACK := Color(0.08, 0.10, 0.16, 1.0)
+const SURVEY_FILL := Color("d93d9c")
+
 const MARGIN := 28.0
 const SHIELD_BLOCKS := 10
 const ALERT_AT := 30.0                 # shield value at/under which the alert blinks
@@ -61,6 +93,14 @@ var _shield_style: StyleBoxFlat
 var _blocks: Array[ColorRect] = []
 var _shield_value: Label
 var _power_value: Label
+var _survey_panel: Panel
+var _survey_track: Polygon2D
+var _survey_fill: Polygon2D
+var _survey_label: Label
+var _survey_origin: Vector2 = Vector2.ZERO
+var _survey_span: Vector2 = Vector2.ZERO
+var _survey_total: int = 1
+
 var _score_value: Label
 var _life_icons: Array[Polygon2D] = []
 var _lives_count: Label
@@ -111,6 +151,7 @@ func _ready() -> void:
 	_build_lives_panel()
 	_build_boss_panel()
 	_build_banner()
+	_build_survey()
 	_build_lyra()
 	set_process(true)
 
@@ -455,6 +496,65 @@ func _build_limb_pips() -> void:
 		regen.visible = false
 		_boss_panel.add_child(regen)
 		_limb_regens.append(regen)
+
+## La silhouette et sa jauge. Construite une fois, cachée tant qu'un niveau ne la demande pas.
+func _build_survey() -> void:
+	_survey_panel = _panel(Vector2(1, 0), Vector2(-MARGIN, SURVEY_TOP), SURVEY_SIZE, BOSS_MAGENTA)
+	_survey_panel.visible = false
+	_label(_survey_panel, "TRAVERSÉE", _LABEL_FONT, 13, TEXT_LIGHT, Vector2(14, 16))
+	_survey_label = _label(_survey_panel, "", _VALUE_FONT, 24, BOSS_MAGENTA,
+		Vector2(14, 12), SURVEY_SIZE.x - 28.0, HORIZONTAL_ALIGNMENT_RIGHT)
+	var origin := Vector2(16.0, 52.0)
+	var span := Vector2(SURVEY_SIZE.x - 32.0, 34.0)
+	# ⚠️ DEUX POLYGONES DE MÊME TAILLE, l'un au-dessus de l'autre, et le remplissage se fait
+	# en DÉPLAÇANT des points — jamais en en ajoutant. Une silhouette tronquée à la longueur
+	# parcourue demanderait de reconstruire un tableau de taille variable à chaque image :
+	# c'est exactement l'allocation par trame que la spec §26 interdit. Ici les deux tableaux
+	# sont alloués une fois pour toutes et seuls leurs `x` changent.
+	_survey_track = Polygon2D.new()
+	_survey_track.polygon = _survey_shape(origin, span, 1.0)
+	_survey_track.color = SURVEY_TRACK
+	_survey_panel.add_child(_survey_track)
+	_survey_fill = Polygon2D.new()
+	_survey_fill.polygon = _survey_shape(origin, span, 0.0)
+	_survey_fill.color = SURVEY_FILL
+	_survey_panel.add_child(_survey_fill)
+	_survey_origin = origin
+	_survey_span = span
+
+## La silhouette, tronquée à `ratio` de sa longueur. Nombre de points CONSTANT : au-delà de
+## la troncature les points sont empilés sur la coupe, ce qui rend un polygone dégénéré mais
+## juste — et surtout de taille fixe.
+func _survey_shape(origin: Vector2, span: Vector2, ratio: float) -> PackedVector2Array:
+	var count := SURVEY_PROFILE.size()
+	var points := PackedVector2Array()
+	points.resize(count * 2)
+	var cut := clampf(ratio, 0.0, 1.0)
+	for i in count:
+		var t := float(i) / float(count - 1)
+		var x := origin.x + span.x * minf(t, cut)
+		var half := span.y * 0.5 * SURVEY_PROFILE[i]
+		points[i] = Vector2(x, origin.y - half)
+		points[count * 2 - 1 - i] = Vector2(x, origin.y + half)
+	return points
+
+## Ouvre l'indicateur de traversée. `count` tronçons au total.
+func show_survey(count: int) -> void:
+	_survey_total = maxi(count, 1)
+	_survey_panel.visible = true
+	set_survey(0.0, 0)
+
+## `ratio` de la traversée accomplie, et le tronçon courant (à partir de 0).
+func set_survey(ratio: float, section: int) -> void:
+	if not _survey_panel.visible:
+		return
+	_survey_fill.polygon = _survey_shape(_survey_origin, _survey_span, ratio)
+	var texte := "%02d / %02d" % [section + 1, _survey_total]
+	if _survey_label.text != texte:
+		_survey_label.text = texte
+
+func hide_survey() -> void:
+	_survey_panel.visible = false
 
 func _build_banner() -> void:
 	_banner = Label.new()

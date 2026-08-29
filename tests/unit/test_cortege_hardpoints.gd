@@ -264,3 +264,71 @@ func test_the_skin_leaves_materials_it_does_not_know_alone() -> void:
 	mesh.set_surface_override_material(0, material)
 	assert_eq(SkinScript.apply(mesh), 0,
 		"un materiau hors contrat n'est pas touche — le contrat de nommage vient de la forge")
+
+# --- L'ouverture du survol n'est pas un temps mort ----------------------------
+
+const FlybyScript := preload("res://scripts/vfx/cortege_flyby.gd")
+const APPROACH := preload("res://resources/encounters/wave_cortege_approach.tres")
+
+## Le premier instant ou une piece de coque devient tirable, en secondes de jeu.
+##
+## ⚠️ CALCULE SUR LA COQUE LIVREE, pas sur une constante recopiee. C'est la geometrie qui
+## decide, et elle peut changer a la prochaine forge : un test qui reciterait 30 s ne
+## verifierait que lui-meme.
+func _first_hardpoint_second() -> float:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	assert_true(packed != null, "la coque livree se charge")
+	var hull := track(packed.instantiate()) as Node3D
+	var spans := {
+		"Turret_": TUNING.turret_visible_span,
+		"Bay_": TUNING.bay_visible_span,
+		"Spine_": TUNING.node_visible_span,
+	}
+	var earliest := INF
+	for section in hull.get_children():
+		var s := section as Node3D
+		if s == null or not s.name.begins_with("Section_"):
+			continue
+		for child in s.get_children():
+			var marker := child as Node3D
+			if marker == null:
+				continue
+			for prefix in spans:
+				if not marker.name.begins_with(prefix):
+					continue
+				var z: float = s.position.z + marker.position.z
+				# La piece entre dans sa fenetre quand son plane_y descend a span/2.
+				var travelled: float = -z + FlybyScript.LEAD_IN - float(spans[prefix]) * 0.5
+				earliest = minf(earliest, maxf(travelled, 0.0) / TUNING.scroll_speed)
+	return earliest
+
+func test_the_survey_does_not_open_on_dead_air() -> void:
+	var first := _first_hardpoint_second()
+	assert_true(first < 1000.0, "une premiere piece a bien ete trouvee")
+	# ⚠️ CE CHIFFRE EST MESURE, PAS SUPPOSE. La proue de la coque livree est NUE sur 65 unites :
+	# rien n'y est tirable avant 30 s de jeu. Aucune vitesse ne referme ce trou — cherche entre
+	# 2,4 et 2,9 u/s et entre 8 et 22 unites d'entree en scene, l'ouverture ne descend jamais
+	# sous 17,6 s. C'est un probleme de CONTENU, et la reception de proue est sa reponse.
+	var dernier_spawn := 0.0
+	for entry in APPROACH.entries:
+		dernier_spawn = maxf(dernier_spawn,
+			entry.time_offset + float(maxi(entry.count - 1, 0)) * entry.spacing)
+	assert_true(dernier_spawn > 0.0, "la reception de proue porte des apparitions")
+	# ⚠️ LA RECEPTION DOIT PASSER LE RELAIS A LA COQUE, PAS S'Y AJOUTER. Si elle se terminait
+	# bien avant la premiere piece, le trou reviendrait ; si elle debordait dessus, le niveau
+	# ouvrirait sur son pic de densite au lieu d'y monter. On lui accorde la duree de vie d'une
+	# coque lachee — le temps qu'elle traverse le plan de jeu.
+	const TRAVERSEE := 8.0
+	assert_true(dernier_spawn + TRAVERSEE >= first,
+		"la reception (dernier depart %.1f s) tient jusqu'a la premiere piece de coque (%.1f s)"
+			% [dernier_spawn, first])
+	assert_true(dernier_spawn <= first,
+		"et elle ne deborde pas dessus : le niveau monte en densite, il n'ouvre pas dessus")
+
+func test_the_survey_starts_shooting_within_seconds() -> void:
+	# La toute premiere chose a faire. Un survol qui commence par regarder n'engage personne.
+	var premier := INF
+	for entry in APPROACH.entries:
+		premier = minf(premier, entry.time_offset)
+	assert_true(premier <= 5.0,
+		"la premiere cible du niveau apparait a %.1f s — au-dela, le joueur regarde defiler" % premier)

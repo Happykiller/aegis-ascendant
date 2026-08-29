@@ -22,7 +22,6 @@ extends Node3D
 signal turret_destroyed(turret: CortegeTurret)
 signal bay_destroyed(bay: CortegeBay)
 signal node_destroyed(node: CortegeSpineNode)
-signal enemy_destroyed(enemy: EnemyController)
 signal section_silenced(section: int, turrets: int)
 
 var tuning: CortegeTuning
@@ -84,8 +83,6 @@ func _add_bay(marker: Node3D, section: int, bullet_manager: BulletManager,
 	# n'a jamais été endormie s'active toute seule au premier `_physics_process`.
 	bay.build(bullet_manager, player, vfx, _released)
 	bay.destroyed.connect(_on_bay_destroyed)
-	for enemy in bay.pool():
-		enemy.destroyed.connect(_on_enemy_destroyed)
 	_bays.append(bay)
 
 func _add_node(marker: Node3D, section: int, bullet_manager: BulletManager,
@@ -138,9 +135,6 @@ func _on_turret_destroyed(turret: CortegeTurret) -> void:
 
 func _on_bay_destroyed(bay: CortegeBay) -> void:
 	bay_destroyed.emit(bay)
-
-func _on_enemy_destroyed(enemy: EnemyController) -> void:
-	enemy_destroyed.emit(enemy)
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	node_destroyed.emit(node)

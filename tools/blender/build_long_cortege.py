@@ -1072,10 +1072,17 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     2. **La valeur, et depuis BRIEF-0090 elle a son propre slot.** Ambry est
        dominee par `AA_Hull_Ambry`, huitieme materiau declare en tete de ce
        fichier : le gris-ivoire `#EDEAE3` des coques Helios Vanguard, contre
-       l'anthracite `#24252B` de l'Unisson partout ailleurs — 1 a 15 en
-       luminance. AVANT, ces memes faces etaient en `AA_Trim` (l'ivoire froid
-       `#DDDCD2` de l'Unisson) : la valeur y etait deja, mais la MATIERE etait
-       celle de l'ennemi, et une carte propre a Ambry etait impossible.
+       l'anthracite `#24252B` de l'Unisson partout ailleurs — contraste 12,7:1
+       (WCAG), contre 11,1:1 auparavant. AVANT, ces memes faces etaient en
+       `AA_Trim` (l'ivoire froid `#DDDCD2` de l'Unisson) : la valeur y etait
+       deja, mais la MATIERE etait celle de l'ennemi, et une carte propre a
+       Ambry etait impossible.
+       ⚠️ Le gain n'est qu'a un quart une affaire de COULEUR (+16 pct de
+       luminance de base) : le reste vient du FINI. `AA_Trim` est metallic 0,85
+       — une carapace polie, qui rend peu en diffus ; `AA_Hull_Ambry` herite du
+       0,05 des coques Vanguard, une tole PEINTE. Mesure sur la vignette
+       d'elevation, meme eclairage, avant/apres : 0,547 -> 0,720 de luminance
+       a l'ecran.
        ⚠️ Deux endroits gardent volontairement `AA_Hull` anthracite : les deux
        colliers de greffe (ils appartiennent au vaisseau, pas a l'avant-poste)
        et le pas d'appontage (un pont clair de plus effacerait le pas ; c'est sa
