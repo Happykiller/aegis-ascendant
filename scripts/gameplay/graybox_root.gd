@@ -1,16 +1,13 @@
-extends Node3D
+extends LevelRoot
 ## Level director: sequences the level's phases (spec §5, §6, §37) and wires the
 ## player, HUD, VFX, camera, pickups and encounters together.
 ##   FIGHTER_WAVES -> MINI_BOSS -> ASTEROID_FIELD -> FINAL_BOSS -> DOCKING -> VICTORY
 ## Le joueur reste le chasseur de bout en bout (ADR-0010) : plus de transformation en
 ## forteresse ; le docking clot le niveau apres la defaite du boss final.
 
-const GameStateScript := preload("res://scripts/core/game_state.gd")
-const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const MiniBossScene := preload("res://scenes/bosses/choir_harvester.tscn")
 const FinalBossScene := preload("res://scenes/bosses/pale_leviathan.tscn")
 const CitadelScene := preload("res://scenes/fortress/aegis_citadel.tscn")
-const MissionReportScene := preload("res://scenes/ui/mission_report.tscn")
 
 const _FINAL_BOSS_SCALE := 0.75
 
@@ -63,9 +60,7 @@ const LYRA_LINES := preload("res://resources/dialogue/lyra_ingame.tres")
 const BRIEFINGS := preload("res://resources/dialogue/sector_briefings.tres")
 
 ## L'écran de pause, gardé pour lui pousser le briefing de la phase courante.
-var _pause: PauseScreen = null
 
-@onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _wave_spawner: WaveSpawner = get_node_or_null("WaveSpawner")
 ## La vague du champ d'astéroïdes (ADR-0027) : montée et peuplée au même instant que
 ## la première, mais endormie. C'est `_start_asteroid_field()` qui la réveille.
@@ -74,8 +69,7 @@ var _pause: PauseScreen = null
 ## image physique (obstacles, puis écrasements) : le littéral qui servait avant allouait un
 ## `Array` à chaque passage, pour deux références figées au montage.
 @onready var _spawners: Array[WaveSpawner] = [_wave_spawner, _field_spawner]
-@onready var _vfx: VFXManager = get_node_or_null("VFXManager") as VFXManager
-@onready var _camera_director: CameraDirector = get_node_or_null("CameraDirector") as CameraDirector
+var _camera_director: CameraDirector = null
 var _hit_stop: HitStop
 ## Âge du battement du repère de cible. Repart de zéro à chaque plongée : le battement doit
 ## commencer plein, pas au milieu d'un cycle hérité de la plongée précédente.
@@ -89,12 +83,11 @@ var _regen_plates: int = 0
 ## ⚠️ `var` et non `const` : un `PackedStringArray(...)` n'est pas une expression constante
 ## en GDScript, et le script entier refuse alors de se charger.
 static var _LEVIATHAN_LOCK_LABELS := PackedStringArray(["V1", "V2", "V3", "V4", "V5", "V6"])
-@onready var _player: PlayerFighterController = get_node_or_null("PlayerFighter") as PlayerFighterController
-@onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
-@onready var _pickups: PickupManager = get_node_or_null("PickupManager") as PickupManager
-@onready var _bullets: BulletManager = get_node_or_null("BulletManager") as BulletManager
-@onready var _bullet_manager: BulletManager = get_node_or_null("BulletManager") as BulletManager
-@onready var _audio: AudioManagerScript = get_node_or_null("/root/AudioManager") as AudioManagerScript
+## ⚠️ DEUX NOMS POUR LA MÊME CHOSE, ET C'EST ASSUMÉ LE TEMPS DE LA REFONTE. Le socle expose
+## `_bullets` ; ce fichier écrivait `_bullet_manager` à dix-sept endroits. Renommer aurait
+## mélangé un déplacement de responsabilité avec dix-sept réécritures, et la recette de ce
+## chantier est « le niveau 1 se joue à l'identique ».
+var _bullet_manager: BulletManager = null
 
 var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
@@ -114,19 +107,12 @@ var _backdrop_was_visible: bool = true
 ## être réalloué (spec §26.1). Le niveau ne sait pas ce qu'il contient — ni plaques, ni bras,
 ## ni anneaux : chaque boss DÉCLARE ses formes par `fill_solids()`. C'est ce qui rend la loi
 ## « les corps ne se chevauchent pas » applicable au boss suivant sans toucher à ce fichier.
-var _solids := PlaneShapes.new()
 
 ## Les deux instruments du combat final (`--dive-probe`, `--dive-trace`), ou `null` si aucun
 ## drapeau ne les appelle — auquel cas le niveau ne paie même pas un appel. Ils vivaient ici,
 ## en cent dix lignes de formatage de CSV : voir `DiveInstruments`.
 var _dive_instruments: DiveInstruments = null
 ## Superposition des couches invisibles (corps, cibles, écrans de tir). Voir `SettingsData`.
-var _runtime: CombatRuntime = null
-var _solids_overlay: SolidsOverlay = null
-## +1 : tout forcé (`--show-solids`) ; -1 : tout coupé (`--hide-solids`) ; 0 : le réglage.
-var _overlay_force: int = 0
-const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
-@onready var _settings: SettingsManagerScript = get_node_or_null("/root/SettingsManager")
 ## Le module de combat du mini-boss, gardé pour ses formes solides. ⚠️ Testé par
 ## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
 ## le niveau, et une référence morte lue une fois de trop planterait la partie sur la
@@ -158,17 +144,18 @@ var _music: MusicContext = MusicContext.new()
 var _engine_running: bool = false
 
 func _ready() -> void:
+	# ⚠️ LE SOCLE D'ABORD. Il trouve les services, monte le runtime de combat, adopte les unités,
+	# branche le HUD, ouvre la pause et pose les calques de debug — tout ce que ce fichier
+	# faisait à la main, et que le niveau 2 a oublié de refaire.
+	setup_level()
+	_bullet_manager = _bullets
+	_camera_director = _camera as CameraDirector
 	_game_state.reset_session()
 	# ⚠️ LES LOIS DU COMBAT NE SONT PLUS ÉCRITES ICI. Mourir, toucher, percuter, parler valent
 	# dans tout le jeu : elles vivent dans `CombatRuntime`, et ce niveau ne fait que les
 	# convoquer. Elles étaient dans ce fichier, et un second niveau n'avait donc aucun moyen
 	# d'en hériter — c'est ce que l'opérateur a constaté en jouant le niveau 2 muet, sans
 	# explosions et sans écrasement.
-	_runtime = CombatRuntime.new()
-	_runtime.name = "CombatRuntime"
-	add_child(_runtime)
-	_runtime.bind(_game_state, _bullets, _vfx, _audio, _camera_director, _hud, _pickups, _player)
-	_runtime.adopt(get_tree())
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 		_wave_spawner.progress_changed.connect(_on_wave_progress)
@@ -184,16 +171,10 @@ func _ready() -> void:
 		_player.game_over.connect(_on_game_over)
 		_player.fired.connect(_on_player_fired)
 		_player.shield_changed.connect(_on_player_shield_changed)
-	if _hud != null and _player != null:
-		_hud.bind_player(_player)
-		_hud.bind_score(_game_state)
 	# L'écran de pause reprend l'interface entière (bloc d'identité en haut à gauche,
 	# COMMS en bas à gauche, comme l'accueil) : ces places sont celles du HUD, et deux
 	# blocs de texte superposés ne se lisent ni l'un ni l'autre. Le HUD s'efface donc
 	# le temps de la pause. Il n'en sait rien — c'est le niveau qui les raccorde.
-	_pause = get_node_or_null("PauseScreen") as PauseScreen
-	if _pause != null and _hud != null:
-		_pause.pause_toggled.connect(_on_pause_toggled)
 	if _pickups != null:
 		_pickups.picked_up.connect(_on_pickup)
 	var args := OS.get_cmdline_user_args()
@@ -279,13 +260,6 @@ func _ready() -> void:
 	# c'est cet outil, et lui seul, qui a montré que le décor et la collision tournaient en
 	# sens inverse, après quatre correctifs à l'aveugle. `--show-solids` force tout,
 	# `--hide-solids` coupe tout (capture propre) ; sinon le réglage du joueur fait foi.
-	_solids_overlay = SolidsOverlay.new()
-	_solids_overlay.name = "SolidsOverlay"
-	add_child(_solids_overlay)
-	if "--show-solids" in args:
-		_overlay_force = 1
-	elif "--hide-solids" in args:
-		_overlay_force = -1
 	if ReactorRings.disabled:
 		print("[Level] ISOLATION : aucun mur dans la chambre (--no-rings)")
 	if "--density-probe" in args and _bullets != null:
@@ -311,7 +285,7 @@ func _ready() -> void:
 	# pire que le silence. Le test est sur `_phase`, pas sur les arguments — un futur drapeau
 	# de saut serait couvert sans qu'on y pense.
 	if _phase == Phase.FIGHTER_WAVES:
-		_lyra(&"mission_start")
+		say(&"mission_start")
 	# ⚠️ LA PHASE, PAS UNE CONSTANTE. Cette ligne annonçait `FIGHTER_WAVES` quoi qu'il arrive,
 	# donc un `--skip-to-dock` la faisait paraître APRÈS `[Level] DOCKING` : un journal qui
 	# ment sur la phase envoie la lecture suivante dans le mur, et c'est le journal qui sert
@@ -389,7 +363,7 @@ func _on_wave_cleared() -> void:
 	if _phase != Phase.FIGHTER_WAVES:
 		return
 	print("[Level] waves cleared — mini-boss incoming")
-	_lyra(&"waves_cleared")
+	say(&"waves_cleared")
 	_start_mini_boss()
 
 ## One cue per kind: a bonus has to be identifiable without looking straight at it
@@ -488,7 +462,7 @@ func _start_asteroid_field() -> void:
 func _reveal_asteroid_field() -> void:
 	_show_moon_flyby(true)
 	_banner("CHAMP D'ASTEROIDES", _COLOR_GOLD, 1.6)
-	_lyra(&"asteroid_field")
+	say(&"asteroid_field")
 
 ## La vague ne part qu'une fois le voile rouvert. Peupler l'écran derrière un voile
 ## fermé offrirait au joueur des mines déjà à mi-course quand il retrouve la vue.
@@ -601,7 +575,7 @@ func _leave_asteroid_field() -> void:
 
 func _start_docking() -> void:
 	_set_phase(Phase.DOCKING)
-	_lyra(&"docking")
+	say(&"docking")
 	print("[Level] DOCKING")
 	_citadel = CitadelScene.instantiate() as AegisCitadel
 	_citadel.plane_position = Vector2(0.0, 22.0) # off-screen above
@@ -666,6 +640,12 @@ func _exit_tree() -> void:
 func phase_label() -> String:
 	return str(Phase.keys()[_phase]) if _phase >= 0 and _phase < Phase.size() else "?"
 
+func dialogue() -> DialogueScript:
+	return LYRA_LINES
+
+func briefings() -> BriefingBook:
+	return BRIEFINGS
+
 func _physics_process(delta: float) -> void:
 	_rebuild_solids()
 	if _dive_instruments != null:
@@ -679,20 +659,9 @@ func _physics_process(delta: float) -> void:
 	# balles ne paient alors aucun test.
 	if _bullets != null:
 		_bullets.screens = _final_stage.fire_screens() if _final_stage != null else null
-	if _solids_overlay != null and _player != null and _player.stats != null:
-		var bodies := _overlay_force > 0
-		var targets := _overlay_force > 0
-		var screens := _overlay_force > 0
-		if _overlay_force == 0 and _settings != null:
-			var debug: SettingsData = _settings.get_debug()
-			bodies = debug.debug_bodies
-			targets = debug.debug_targets
-			screens = debug.debug_screens
-		_solids_overlay.draw(_solids, _player.plane_lift, _player.plane_position,
-			_player.plane_forward(), _player.stats.body_half_length, _player.stats.body_radius,
-			_bullets.targets() if _bullets != null else [],
-			_final_stage.fire_screens() if _final_stage != null else null,
-			bodies, targets, screens)
+	# Les calques de debug : le socle sait les dessiner, ce niveau lui donne ses écrans — les
+	# murs du boss final, que lui seul connaît.
+	draw_debug_zones(_final_stage.fire_screens() if _final_stage != null else null)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
@@ -771,24 +740,18 @@ func _fire_helios_lance(target: Vector3) -> void:
 
 func _start_victory() -> void:
 	_set_phase(Phase.VICTORY)
-	# ⚠️ CELLE-CI S'ENTEND SANS SE LIRE, et l'ordre des lignes n'y change rien : `_show_report()`
+	# ⚠️ CELLE-CI S'ENTEND SANS SE LIRE, et l'ordre des lignes n'y change rien : `show_report()`
 	# cache le HUD, donc le panneau de Lyra avec lui. La voix, elle, passe par l'`AudioManager`
 	# et survit. Assumé pour l'instant — si le texte doit être lu sur le rapport, c'est au
 	# rapport de le porter, pas au HUD de rester ouvert sous lui.
-	_lyra(&"mission_complete")
+	say(&"mission_complete")
 	print("[Level] VICTORY — score %d" % _game_state.score)
-	_show_report(MissionReport.Outcome.VICTORY)
+	show_report(MissionReport.Outcome.VICTORY)
 
 ## Le rapport de mission, dans l'une ou l'autre de ses issues.
 ##
 ## Même raison qu'à la pause de cacher le HUD : le rapport reprend les coins de l'écran,
 ## et le score qu'il affiche ferait doublon avec celui du HUD, à deux tailles différentes.
-func _show_report(outcome: MissionReport.Outcome) -> void:
-	var screen := MissionReportScene.instantiate()
-	screen.setup(_game_state.score, outcome)
-	add_child(screen)
-	if _hud != null:
-		_hud.visible = false
 
 ## The victory theme waits for the last enemy shot to leave the screen, so the resolution
 ## does not land over incoming fire (adaptive_music_structure.md §mix). Until then the
@@ -836,13 +799,13 @@ func _on_game_over() -> void:
 	# maintenant — froidement, parce que c'est sa fonction et qu'il n'y a plus personne pour
 	# l'entendre (`docs/lore/EXPLOITATION.md` §4). Comme `mission_complete`, elle s'entend sans
 	# se lire : le rapport cache le HUD.
-	_lyra(&"mission_failed")
+	say(&"mission_failed")
 	print("[Level] all fighters lost — DEFEAT, score %d" % _game_state.score)
 	_game_state.transition_to(GameStateScript.State.GAME_OVER)
 	# Le rapport se lève APRÈS l'explosion du dernier chasseur : le poser dans la même
 	# image escamoterait la mort, qui est précisément ce que le joueur doit voir.
 	get_tree().create_timer(DEFEAT_HOLD).timeout.connect(
-		_show_report.bind(MissionReport.Outcome.DEFEAT))
+		show_report.bind(MissionReport.Outcome.DEFEAT))
 
 # --- Helpers -----------------------------------------------------------------
 
@@ -871,10 +834,6 @@ func _banner(text: String, color: Color, duration: float) -> void:
 ##
 ## Muette si la clé n'existe pas — un moment sans réplique est un moment sans réplique, pas
 ## une erreur : le combat ne doit pas s'arrêter parce qu'on n'a rien écrit pour lui.
-func _lyra(key: StringName) -> void:
-	if _runtime != null:
-		_runtime.say(LYRA_LINES, key)
-
 
 ## Délègue à la loi commune. ⚠️ Le raccourci reste parce qu'il est appelé quatorze fois dans
 ## ce fichier : le remplacer partout aurait mélangé un déplacement de responsabilité avec une

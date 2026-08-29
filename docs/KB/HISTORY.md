@@ -340,3 +340,38 @@ Ce qui en sort :
   comme appliquée partout, ne l'avait été qu'à partir de TEX-0007. ⚠️ Et sa première version
   s'est fait piéger elle-même : elle cherchait « fond » et validait « le fond des cratères ». Un
   contrôle qu'un homonyme trompe est pire que pas de contrôle.
+
+### 2026-08-29 (suite) — Le chantier structurel : le jeu a quatre couches
+
+L'opérateur, après avoir joué le niveau 2 : *« je ne devrais pas avoir à signaler des bugs de
+gameplay qu'on a déjà couverts dans le niveau 1 »*. Il avait raison, et le diagnostic « une série
+d'oublis » était faux : c'était une **frontière manquante**.
+
+Ce qui en sort ([`ADR-0039`](../decisions/ADR-0039-le-jeu-a-quatre-couches.md)) :
+
+- **deux couches sur quatre existaient déjà et étaient bonnes** — 21 Resources typées (dont
+  `EnemyData` et ses 38 caractéristiques) et ~30 modules de moteur. Le défaut n'était pas
+  l'absence de moteur ;
+- **la troisième manquait** : le runtime commun vivait dans `graybox_root.gd`, 1 469 lignes qui
+  tenaient à la fois le runtime, le level design du niveau 1 et deux boss en dur. Écrire un
+  second niveau sans le copier — ce qui était juste — revenait à perdre le runtime avec le reste ;
+- `CombatRuntime` (les lois), `LevelRoot` (le socle), `BossStage` + les deux mises en scène.
+  **`graybox_root.gd` : 1 469 → 846 lignes.**
+
+⚠️ **Trois défauts trouvés PAR la refonte, qu'aucun test n'avait vus :**
+
+- en sortant la mise en scène du Harvester, **le boss est devenu traversable** — 753 assertions
+  vertes. `is_instance_valid(null)` rend faux, et la boucle des obstacles ne versait plus rien ;
+- **l'ordre du bandeau n'est pas le même pour les deux boss** : `show_boss()` éteint les
+  pastilles, `begin()` les rallume. Un ordre unique aurait affiché quatre pastilles éteintes sur
+  un boss intact ;
+- **`Node.name` est un `StringName`, et `<` dessus compare des POINTEURS**, pas des lettres. Le
+  tri des tronçons du niveau 2 rendait `[05, 04, 03, 01, 02]`, et l'ordre changeait d'un
+  lancement à l'autre. Trouvé **en jouant**, par l'opérateur.
+
+⚠️ **Et une erreur de méthode, à moi.** J'ai comparé une partie en pilote automatique à une
+partie jouée par l'opérateur, conclu à une régression du mini-boss, et lancé trois parties de
+sept minutes pour la poursuivre. Le pilote esquive et tire droit devant : il n'a jamais tué ce
+boss, ni avant ni après. **Un témoin de démo ne se compare pas à une partie humaine.** La
+vérification qui marche ici est la capture par phase (`--skip-to-boss`, `--skip-to-final`,
+`--leviathan-phase=2`), en quelques secondes chacune.

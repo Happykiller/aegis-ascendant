@@ -12,6 +12,7 @@ dépôt** (fichiers de dépendances, scripts de bootstrap, `project.godot`), pas
 
 | Page | Ce qu'elle couvre | Statut | MAJ |
 |---|---|---|---|
+| [couches.md](couches.md) | ⚠️ **À lire avant d'écrire un niveau ou un boss.** Les quatre couches du jeu — données, moteur, runtime, level design — et la question unique qui range n'importe quoi | actif | 2026-08-29 |
 | [stack.md](stack.md) | Moteur, langage, outils de la chaîne d'assets, versions épinglées et **où elles sont épinglées** | actif | 2026-08-23 |
 | [arborescence.md](arborescence.md) | Les dossiers de premier niveau et le rôle de chacun | actif | 2026-08-23 |
 | [environnements.md](environnements.md) | Où l'on développe, où l'on teste, et par quelles commandes | actif | 2026-08-23 |
