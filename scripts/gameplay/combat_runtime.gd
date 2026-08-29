@@ -54,6 +54,32 @@ var _player: PlayerFighterController = null
 ## boucle la plus chaude du jeu.
 var _units: Array[EnemyController] = []
 
+## L'ARRÊT SUR IMAGE et l'ÉTAT MUSICAL. Deux composants déjà réutilisables, qui vivaient
+## pourtant dans le script du niveau 1 — comme le reste des lois, et pour la même raison :
+## personne n'avait eu besoin d'un second niveau.
+##
+## ⚠️ Ils sont ici et pas ailleurs parce qu'ils sont demandés par des ÉVÉNEMENTS DE COMBAT
+## — une plaque qui cède, un boss qui tombe, une phase qui monte — et qu'un boss n'a pas à
+## connaître le script du niveau qui l'héberge pour figer une image.
+var hit_stop: HitStop = null
+var music: MusicContext = MusicContext.new()
+
+func _ready() -> void:
+	hit_stop = HitStop.new()
+	hit_stop.name = "HitStop"
+	add_child(hit_stop)
+
+## Fige l'image, si le composant est là. Le raccourci existe pour que l'appelant n'ait pas à
+## garder la garde de nullité — il y en avait une à chaque appel dans le niveau 1.
+func freeze(duration: float) -> void:
+	if hit_stop != null:
+		hit_stop.freeze(duration)
+
+## Pousse l'état musical courant vers le mélangeur.
+func push_music() -> void:
+	if _audio != null and _audio.has_method("set_music_state"):
+		_audio.set_music_state(MusicDirector.resolve(music))
+
 ## Câble les services partagés. Tous facultatifs : une loi qui n'a pas son service se tait
 ## plutôt que de faire tomber le niveau — un banc de test n'a ni caméra ni audio.
 func bind(game_state: Object, bullets: BulletManager, vfx: VFXManager, audio: Object,

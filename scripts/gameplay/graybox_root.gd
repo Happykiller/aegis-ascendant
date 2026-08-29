@@ -98,6 +98,7 @@ static var _LEVIATHAN_LOCK_LABELS := PackedStringArray(["V1", "V2", "V3", "V4", 
 
 var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
+var _mini_stage: HarvesterStage = null
 var _citadel: AegisCitadel
 var _final_boss: BossController
 ## Le module du boss final, gardé pour lire sa progression de combat (la musique la suit).
@@ -127,7 +128,6 @@ const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
 ## `is_instance_valid()` à chaque image et non vidé à sa mort : le Harvester est libéré par
 ## le niveau, et une référence morte lue une fois de trop planterait la partie sur la
 ## transition la plus chargée de l'arc.
-var _harvester: HarvesterCombat
 var _alarm_armed: bool = true
 ## `--no-wave` : aucune vague ne se joue, ni celle des chasseurs ni celle du champ.
 var _waves_disabled: bool = false
@@ -245,9 +245,13 @@ func _ready() -> void:
 	_build_transition()
 	# Le gel d'impact. Monté en code : il n'a ni transform ni enfant, et l'ajouter aux
 	# trois scènes qui portent un CameraDirector n'apporterait rien de plus.
-	_hit_stop = HitStop.new()
-	_hit_stop.name = "HitStop"
-	add_child(_hit_stop)
+	# ⚠️ ON EMPRUNTE CEUX DU RUNTIME, on n'en crée pas. L'arrêt sur image et l'état musical
+	# sont demandés par des ÉVÉNEMENTS DE COMBAT — une plaque qui cède, un boss qui tombe — et
+	# un boss n'a pas à connaître le script du niveau qui l'héberge pour figer une image. Les
+	# références locales restent : elles sont lues à quarante endroits, et les remplacer aurait
+	# mélangé un déplacement de responsabilité avec une réécriture.
+	_hit_stop = _runtime.hit_stop
+	_music = _runtime.music
 	# ⚠️ SONDE DE PLONGÉE (`--dive-probe`). Elle existe parce qu'une simulation headless a
 	# affirmé que le convoyeur de la chambre avait disparu, pendant que l'opérateur le vivait
 	# encore : « toujours le même syndrome, j'ai comme un mur qui me pousse ». Quand le banc
@@ -343,8 +347,8 @@ func _on_wave_progress(ratio: float) -> void:
 	_update_music()
 
 func _update_music() -> void:
-	if _audio != null:
-		_audio.set_music_state(MusicDirector.resolve(_music))
+	if _runtime != null:
+		_runtime.push_music()
 
 ## La caméra prend le recul qu'exige la chambre.
 ##
@@ -418,43 +422,20 @@ func _on_player_shield_changed(ratio: float, _current: float, _maximum: float) -
 
 func _start_mini_boss() -> void:
 	_set_phase(Phase.MINI_BOSS)
-	_boss = MiniBossScene.instantiate() as BossController
-	add_child(_boss)
-	_boss.health_changed.connect(_on_boss_health)
-	_boss.defeated.connect(_on_mini_boss_defeated)
-	# Le corps du Harvester est blindé tant que son iris est fermé : sans ce retour,
-	# tirer dessus ne produit RIEN à l'écran et se lit comme un défaut, pas comme une
-	# armure. Le signal existe sur tout boss ; seul le Harvester le déclenche.
-	_boss.deflected.connect(_on_boss_deflected)
-	_bind_harvester(_boss)
-	_boss.begin(_bullet_manager, _player)
-	_sfx(&"danger_alarm")
-	if _hud != null:
-		_hud.show_boss(_boss.display_name)
-		# APRÈS `begin()` : c'est lui qui monte le module, donc qui crée les appendices.
-		# Interroger avant rendrait zéro et afficherait trois pastilles éteintes sur un
-		# boss intact.
-		var combat := _boss.get_node_or_null("Combat") as HarvesterCombat
-		if combat != null:
-			combat.publish_gauges()
+	# ⚠️ LE NIVEAU NE MET PLUS EN SCÈNE LE BOSS, IL LE CONVOQUE. Monter la coque, câbler ses
+	# signaux, relayer ses jauges, figer l'image à sa mort : rien de tout cela n'appartient au
+	# couloir d'Ossane. `HarvesterStage` le fait, et un autre niveau pourra le refaire sans
+	# recopier trente fonctions.
+	_mini_stage = HarvesterStage.new()
+	_mini_stage.name = "HarvesterStage"
+	add_child(_mini_stage)
+	_mini_stage.bind(_runtime, _hud, _game_state, _bullet_manager, _player, LYRA_LINES)
+	_mini_stage.score_value = 5000
+	_mini_stage.defeated.connect(_on_mini_boss_defeated)
+	_boss = _mini_stage.mount(MiniBossScene, self)
 
-## Raccorde le retour propre au Harvester, s'il porte son module de combat. Câblé
-## AVANT `begin()` : c'est lui qui déclenche le montage du module.
-func _bind_harvester(boss: BossController) -> void:
-	var combat := boss.get_node_or_null("Combat") as HarvesterCombat
-	_harvester = combat
-	if combat == null:
-		return
-	combat.limb_destroyed.connect(_on_harvester_limb_destroyed.bind(boss))
-	combat.limb_gauge_changed.connect(_on_harvester_limb_gauge)
-	combat.limb_rebuild_changed.connect(_on_harvester_limb_rebuild)
-	combat.iris_opened.connect(_on_harvester_iris_opened.bind(boss))
-	combat.iris_closed.connect(_on_harvester_iris_closed)
 
-func _on_boss_deflected(world_position: Vector3) -> void:
-	# Étincelle blanche et son de bouclier : la carapace RENVOIE le tir.
-	_boom(world_position, VfxExplosion.Category.IMPACT, 0.0)
-	_sfx(&"shield_impact")
+
 
 ## Un missile a fini sa course. Deux issues, deux lectures, et il faut que le joueur les
 ## distingue à l'oreille comme à l'œil :
@@ -478,40 +459,8 @@ func _on_leviathan_missile_ended(world_position: Vector3, on_player: bool) -> vo
 ## Un tir est mort sur un mur. Même gerbe que sur une carapace : ce que le joueur doit lire,
 ## c'est « ça a été arrêté », et la source ne change rien à cette lecture.
 ##
-## ⚠️ SANS LUI, LE BLINDAGE MENT. Le mode d'échec est nommé depuis le Harvester — « tirer
-## dessus sans rien produire à l'écran se lit comme un défaut, pas comme une armure » — et
-## il revient intact dès qu'un écran consomme une balle en silence.
-func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController) -> void:
-	# `_boom` porte déjà la secousse : la redemander ici la doublerait.
-	_boom(boss.global_position, VfxExplosion.Category.MEDIUM, 0.5)
-	_sfx(&"medium_explosion")
 
-## Une jauge d'appendice a bougé. Le niveau ne fait que relayer : le HUD ne connaît pas
-## le Harvester, le module ne connaît pas le HUD.
-## Un appendice REPOUSSE : le HUD le montre, au lieu d'une barre immobile pendant les
-## quatorze secondes de `limb_rebuild_time`.
-func _on_harvester_limb_rebuild(index: int, ratio: float) -> void:
-	if _hud != null:
-		_hud.set_boss_limb_regen(index, ratio)
 
-func _on_harvester_limb_gauge(index: int, ratio: float, alive: bool) -> void:
-	if _hud != null:
-		_hud.set_boss_limb(index, ratio, alive)
-
-## Le moment du combat : la carapace s'ouvre. Il doit s'entendre, se sentir et se
-## lire — c'est la seule fenêtre où le joueur peut faire des dégâts.
-func _on_harvester_iris_opened(boss: BossController) -> void:
-	_boom(boss.global_position, VfxExplosion.Category.MEDIUM, 0.9)
-	_sfx(&"boss_phase_shift")
-	if _hud != null:
-		_hud.show_banner("NOYAU EXPOSE", Color("d93d9c"), 1.4)
-		_lyra(&"core_exposed")
-
-func _on_harvester_iris_closed() -> void:
-	_sfx(&"docking_lock")
-	if _hud != null:
-		_hud.show_banner("CARAPACE REFERMEE", Color("e4b54a"), 1.0)
-		_lyra(&"core_shielded")
 
 func _on_boss_health(ratio: float) -> void:
 	if _hud != null:
@@ -521,19 +470,14 @@ func _on_boss_health(ratio: float) -> void:
 		_music.boss_health_ratio = ratio
 		_update_music()
 
-func _on_mini_boss_defeated(world_position: Vector3) -> void:
-	_game_state.add_score(5000)
-	_boom(world_position, VfxExplosion.Category.HEAVY, 1.0)
-	_sfx(&"heavy_explosion")
-	if _hit_stop != null:
-		_hit_stop.freeze(HitStop.BOSS)
-	if _hud != null:
-		_hud.hide_boss()
-	if _boss != null:
-		_boss.queue_free()
-		_boss = null
+## ⚠️ IL NE RESTE QUE CE QUI APPARTIENT AU NIVEAU : ce que la mort du boss OUVRE. Le score,
+## l'explosion, l'arrêt sur image et le nettoyage du HUD sont des lois de combat, et elles sont
+## dans `BossStage`.
+func _on_mini_boss_defeated(_world_position: Vector3) -> void:
 	print("[Level] mini-boss defeated — score %d" % _game_state.score)
+	_boss = null
 	_start_asteroid_field()
+
 
 # --- Champ d'astéroïdes (ADR-0027) -------------------------------------------
 #
@@ -1201,9 +1145,8 @@ func _rebuild_solids() -> void:
 	if is_instance_valid(_leviathan):
 		_solids.reserve(_leviathan.solid_capacity())
 		_leviathan.fill_solids(_solids)
-	if is_instance_valid(_harvester):
-		_solids.reserve(_harvester.solid_capacity())
-		_harvester.fill_solids(_solids)
+	if _mini_stage != null:
+		_mini_stage.fill_solids(_solids)
 	# ⚠️ LE CARTER DU RÉACTEUR, et c'est le NIVEAU qui le verse parce qu'il est le seul à
 	# connaître à la fois la chambre et le boss. Le module de combat ne sait rien du décor ;
 	# le décor ne sait rien du combat. Le carter est plus large que le flux (2,27 contre
