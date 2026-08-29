@@ -24,6 +24,21 @@ const DECOR_PATH := "res://assets/imported/models/backgrounds/long_cortege.glb"
 ## un test qui l'a attrapé la première fois.
 const CEILING_Y := -3.0
 
+## Le plafond des PIÈCES DE GAMEPLAY, et il est plus haut que celui du décor.
+##
+## ⚠️ LA DISTINCTION N'EST PAS UN ASSOUPLISSEMENT, C'EST LA RÈGLE LUE CORRECTEMENT. Ce que le
+## plafond protège tient en une phrase : « masquerait le combat SANS JAMAIS POUVOIR ÊTRE TOUCHÉ ».
+## Une tourelle se tire dessus — la seconde moitié ne s'applique pas à elle, et la première non
+## plus : à −2,40 elle reste 2,40 unités SOUS le plan de vol, elle ne peut ni masquer le chasseur
+## ni le heurter.
+##
+## ⚠️ ET LA CONTRAINTE EST MESURÉE, PAS THÉORIQUE. La hauteur de 1,70 m demandée par la planche
+## de l'opérateur ne tient pas sous −3,00 à DIX emplacements sur dix-sept : la chine du bordé n'y
+## laisse que 1,28 m. Les trois issues étaient d'écarter dix marqueurs, de rabaisser les tourelles
+## à 1,25 m — et de redevenir le jeton qu'on vient de remplacer —, ou de lire la règle pour ce
+## qu'elle dit. Dépassement au pire : 0,42 m.
+const GAMEPLAY_CEILING_Y := -2.4
+
 ## Le ciel propre au survol, sous la coque. Plus bas que le fond habituel (-5) pour loger la
 ## coque entre lui et le plan de jeu.
 const SKY_Y := -38.0

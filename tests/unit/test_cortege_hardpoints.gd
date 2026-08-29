@@ -467,3 +467,57 @@ func test_the_barrel_points_where_the_turret_aims() -> void:
 		var voulu := Vector3(aim.x, 0.0, -aim.y).normalized()
 		assert_true(pointe.distance_to(voulu) < 0.0001,
 			"vise %s -> le tube pointe %s, il devrait pointer %s" % [aim, pointe, voulu])
+
+# --- Le plafond des pieces de gameplay ---------------------------------------
+
+## ⚠️ CE TEST TIENT UN ARBITRAGE, PAS UNE COTE. La hauteur de 1,70 m demandee par la planche ne
+## tient pas sous le plafond du DECOR (-3,00) a dix emplacements sur dix-sept : la chine du borde
+## n'y laisse que 1,28 m. Trois issues existaient — ecarter dix marqueurs, rabaisser les tourelles
+## a 1,25 m et redevenir le jeton qu'on vient de remplacer, ou lire la regle pour ce qu'elle dit.
+##
+## Ce que le plafond protege tient en une phrase : « masquerait le combat SANS JAMAIS POUVOIR
+## ETRE TOUCHE ». Une tourelle se tire dessus. A -2,40 elle reste 2,40 unites SOUS le plan de
+## vol : elle ne peut ni masquer le chasseur ni le heurter. C'est cette lecture qui est actee, et
+## c'est ce test qui l'empeche de deriver en « on verra bien ».
+func test_no_turret_ever_reaches_the_flight_plane() -> void:
+	var kit: PackedScene = load(TurretScript.KIT_PATH)
+	assert_true(kit != null, "le kit de tourelle se charge")
+	var assembled := track(kit.instantiate()) as Node3D
+	# La piece la plus haute de l'affut, offset d'assemblage compris.
+	var offsets := {
+		"turret_pad": 0.0, "turret_anchor_skirt": 0.0,
+		"turret_ring": TurretScript.RING_LIFT, "turret_body": TurretScript.BODY_LIFT,
+		"turret_barrel": TurretScript.BARREL_LIFT,
+		"turret_barrel_short": TurretScript.BARREL_LIFT,
+		"turret_service_box": TurretScript.SERVICE_LIFT,
+		"turret_pipe": TurretScript.SERVICE_LIFT,
+	}
+	var tallest := -100.0
+	for child in assembled.get_children():
+		var piece := child as MeshInstance3D
+		if piece == null or not offsets.has(piece.name):
+			continue
+		var top: float = float(offsets[piece.name]) + piece.get_aabb().end.y
+		tallest = maxf(tallest, top)
+	assert_true(tallest > 1.0, "l'affut a bien une hauteur mesurable (%.2f m)" % tallest)
+
+	# Et le pire marqueur de la coque livree : c'est lui qui decide.
+	var hull := track((load(FlybyScript.DECOR_PATH) as PackedScene).instantiate()) as Node3D
+	var worst := -100.0
+	for section in hull.get_children():
+		var s := section as Node3D
+		if s == null or not s.name.begins_with("Section_"):
+			continue
+		for child in s.get_children():
+			var marker := child as Node3D
+			if marker != null and marker.name.begins_with("Turret_"):
+				worst = maxf(worst, s.position.y + marker.position.y)
+	assert_true(worst > -10.0, "des marqueurs de tourelle ont bien ete trouves")
+	var summit := worst + tallest
+	assert_true(summit <= FlybyScript.GAMEPLAY_CEILING_Y,
+		"la tourelle la plus haute culmine a %.3f, au-dessus du plafond de gameplay %.2f"
+			% [summit, FlybyScript.GAMEPLAY_CEILING_Y])
+	# ⚠️ ET ELLE RESTE LOIN DU PLAN DE VOL. C'est la moitie de l'arbitrage : 2,40 unites de
+	# degagement, soit une fois et demie la hauteur de la tourelle elle-meme.
+	assert_true(summit < -1.5,
+		"elle reste tres en dessous du plan de vol (%.2f) — sinon elle masquerait le combat" % summit)
