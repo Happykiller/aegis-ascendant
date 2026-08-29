@@ -18,6 +18,9 @@ SceneRouter="*res://scripts/core/scene_router.gd"
 ; SettingsManager applies the saved bus volumes, so it must be up before AudioManager
 ; starts feeding those buses.
 SettingsManager="*res://scripts/core/settings_manager.gd"
+; Campaign tient le niveau courant. Après SettingsManager (il y lira la progression),
+; avant toute scène de jeu.
+Campaign="*res://scripts/core/campaign.gd"
 AudioManager="*res://scripts/core/audio_manager.gd"
 
 [audio]

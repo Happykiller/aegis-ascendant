@@ -64,6 +64,11 @@ const _REPLAY_LABEL: Dictionary = {
 	Outcome.VICTORY: "REJOUER",
 	Outcome.DEFEAT: "REESSAYER",
 }
+## ⚠️ « CONTINUER » N'EXISTAIT PAS, ET C'EST CE QUI RENDAIT UNE CAMPAGNE IMPOSSIBLE. Le bouton
+## rechargeait la scène courante : on recommençait le même niveau, indéfiniment. Il n'apparaît
+## que si un niveau JOUABLE suit celui-ci — un livre de campagne qui listerait un niveau écrit
+## mais non produit enverrait le joueur sur une scène qui n'existe pas.
+const _CONTINUE_LABEL := "CONTINUER"
 const _CHANNEL: Dictionary = {
 	Outcome.VICTORY: "CANAL DEGAGE",
 	Outcome.DEFEAT: "SIGNAL PERDU",
@@ -85,6 +90,7 @@ const _CONTROLS: Dictionary = {
 @onready var _fade: ColorRect = %Fade
 
 var _leaving: bool = false
+var _outcome: Outcome = Outcome.VICTORY
 var _muting_focus: bool = false
 
 ## Appelé par le niveau entre instantiate() et add_child() : _ready() n'a pas encore
@@ -104,6 +110,11 @@ func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
 	var relay := %RelayValue as Label
 	relay.text = _RELAY[outcome]
 	relay.add_theme_color_override("font_color", CHANNEL_CLEAR if won else CHANNEL_LOST)
+	# ⚠️ PAS D'AUTOLOAD ICI. `setup()` tourne entre `instantiate()` et `add_child()` : le nœud
+	# n'est pas dans l'arbre, et `get_node("/root/…")` y lève « Can't use get_node() with
+	# absolute paths from outside the active scene tree ». L'en-tête de ce fichier le disait ;
+	# je l'ai appris en le lisant au journal. Le libellé du bouton se pose donc en `_ready()`.
+	_outcome = outcome
 	(%ReplayButton as Button).text = _REPLAY_LABEL[outcome]
 	# Le canal : dégagé quand la mission est remplie, perdu quand le chasseur l'est.
 	var comms := %CommsText as Label
@@ -113,6 +124,12 @@ func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
 	(%Controls as Label).text = _CONTROLS[outcome]
 
 func _ready() -> void:
+	# Dans l'arbre : l'autoload est enfin adressable. Le bouton passe à CONTINUER s'il reste
+	# un niveau JOUABLE — et le rappel de touches nomme la même action que lui, faute de quoi
+	# on retomberait dans le défaut que ce fichier a déjà corrigé une fois.
+	if _outcome == Outcome.VICTORY and _has_next_level():
+		(%ReplayButton as Button).text = _CONTINUE_LABEL
+		(%Controls as Label).text = _CONTROLS[_outcome].replace("REJOUER", _CONTINUE_LABEL)
 	var target_alpha := _scrim.color.a
 	_scrim.color.a = 0.0
 	_overlay.modulate.a = 0.0
@@ -160,11 +177,31 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- Actions ------------------------------------------------------------------
 
+## ⚠️ ELLE FAIT DEUX CHOSES SELON CE QUI SUIT, et le bouton le dit. Enchaîner remet le score
+## à zéro comme un rechargement : la campagne n'a pas encore de score cumulé, et en inventer un
+## ici le ferait diverger de celui du HUD.
 func _on_replay_pressed() -> void:
 	_audio.play(&"ui_confirm")
+	var suivant: LevelData = _next_level()
 	_leave(func() -> void:
 		_game_state.reset_session()
-		get_tree().reload_current_scene())
+		if suivant != null:
+			var campaign := get_node_or_null("/root/Campaign")
+			if campaign != null:
+				campaign.advance()
+			_scene_router.goto_scene(suivant.scene.resource_path)
+		else:
+			get_tree().reload_current_scene())
+
+## Le niveau suivant s'il est jouable. ⚠️ `get_node_or_null` et non un autoload typé : les
+## tests montent cet écran hors de l'arbre complet, et un rapport qui plante faute d'autoload
+## serait pire que l'absence de bouton.
+func _next_level() -> LevelData:
+	var campaign := get_node_or_null("/root/Campaign")
+	return campaign.next() if campaign != null else null
+
+func _has_next_level() -> bool:
+	return _next_level() != null
 
 func _on_title_pressed() -> void:
 	_audio.play(&"ui_confirm")
@@ -174,6 +211,9 @@ func _on_title_pressed() -> void:
 		# combat alors qu'on affiche le titre, et le lancement suivant est refusé
 		# sans que rien ne le montre à l'écran.
 		_game_state.transition_to(GameStateScript.State.BOOT)
+		var campaign := get_node_or_null("/root/Campaign")
+		if campaign != null:
+			campaign.restart()
 		_scene_router.goto_scene(BOOT_SCENE))
 
 ## Fondu au noir avant de changer de scène. SceneRouter comme reload_current_scene

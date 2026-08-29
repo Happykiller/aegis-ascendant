@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CampaignBook" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://resources/data/campaign_book.gd" id="1_book"]
+[ext_resource type="Script" path="res://resources/data/level_data.gd" id="2_level"]
+[ext_resource type="PackedScene" path="res://scenes/gameplay/graybox.tscn" id="3_lvl1"]
+[ext_resource type="Resource" path="res://resources/dialogue/sector_briefings.tres" id="4_brief1"]
+
+; L'ordre des niveaux de la campagne. Une seule liste, et c'est elle qui fait foi.
+;
+; ⚠️ LE NIVEAU 1 Y ENTRE SANS CHANGER D'UN OCTET. C'est la recette de ce lot : rendre la
+; campagne possible ne doit rien changer a ce qui se joue deja. Sa scene, ses briefings et
+; ses dialogues sont exactement ceux qu'il portait avant.
+;
+; La campagne complete est ecrite dans `docs/lore/CAMPAGNE.md` (douze niveaux) ; ce fichier
+; ne liste que ce qui est JOUABLE. Un niveau ecrit mais non produit n'y figure pas — sinon
+; le rapport de mission proposerait « CONTINUER » vers une scene qui n'existe pas.
+
+[sub_resource type="Resource" id="level_1"]
+script = ExtResource("2_level")
+id = &"ossane_corridor"
+display_name = "LE COULOIR D'OSSANE"
+scene = ExtResource("3_lvl1")
+briefings = ExtResource("4_brief1")
+
+[resource]
+script = ExtResource("1_book")
+levels = [SubResource("level_1")]

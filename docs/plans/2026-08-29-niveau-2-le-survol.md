@@ -3,7 +3,7 @@ titre: Niveau 2 — le survol du vaisseau-monde
 type: plan
 auteur: concepteur principal
 date: 2026-08-29
-état: lots 0 et 1 LIVRÉS (planche déposée, lore écrit) ; lots 2-6 à faire
+état: SUPERSÉDÉ par `2026-08-29-niveau-2-execution.md` — lots 0 et 1 livrés, la suite y est détaillée
 périmètre: architecture de campagne, nouveau niveau jouable, coque de forge
 supersède: rien — premier plan multi-niveaux du projet
 ---

@@ -11,7 +11,20 @@ const GameStateScript := preload("res://scripts/core/game_state.gd")
 const SceneRouterScript := preload("res://scripts/core/scene_router.gd")
 const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const OptionsMenuScene := preload("res://scenes/ui/options_menu.tscn")
+## ⚠️ REPLI, PAS SOURCE DE VÉRITÉ. La scène à monter vient désormais du livre de campagne
+## (`/root/Campaign`) ; cette constante ne sert que si l'autoload manque — un écran-titre qui
+## ne lance rien serait pire qu'un écran-titre qui lance le premier niveau.
 const GRAYBOX_SCENE := "res://scenes/gameplay/graybox.tscn"
+
+## La scène du niveau courant, ou le repli ci-dessus.
+func _level_scene_path() -> String:
+	var campaign := get_node_or_null("/root/Campaign")
+	if campaign == null:
+		return GRAYBOX_SCENE
+	var level: LevelData = campaign.current()
+	if level == null or level.scene == null:
+		return GRAYBOX_SCENE
+	return level.scene.resource_path
 const CODEX_SCENE := "res://scenes/ui/codex.tscn"
 ## Banc d'essai du bestiaire : une famille d'ennemis seule, en boucle. Jamais
 ## atteignable au menu — c'est un outil de réglage, pas un mode de jeu.
@@ -247,8 +260,9 @@ func _on_quit_pressed() -> void:
 func _start_game() -> void:
 	if _leaving:
 		return
-	if not ResourceLoader.exists(GRAYBOX_SCENE, "PackedScene"):
-		push_error("[TitleMenu] scène de jeu introuvable : %s" % GRAYBOX_SCENE)
+	var chemin := _level_scene_path()
+	if not ResourceLoader.exists(chemin, "PackedScene"):
+		push_error("[TitleMenu] scène de jeu introuvable : %s" % chemin)
 		return
 	if not _game_state.transition_to(GameStateScript.State.FIGHTER_COMBAT):
 		return
@@ -259,7 +273,7 @@ func _start_game() -> void:
 	# deux — couper au silence ici ne ferait qu'un trou dans le relais.
 	var tween := create_tween()
 	tween.tween_property(_fade, "color:a", 1.0, 0.45)
-	tween.tween_callback(func() -> void: _scene_router.goto_scene(GRAYBOX_SCENE))
+	tween.tween_callback(func() -> void: _scene_router.goto_scene(chemin))
 
 ## Le bestiaire est une SCÈNE, pas un overlay : il monte son propre présentoir 3D,
 ## sa caméra et ses lumières. Le poser au-dessus du diorama de l'accueil obligerait
