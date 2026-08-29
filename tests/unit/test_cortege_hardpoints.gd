@@ -174,3 +174,65 @@ func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
 		dealt += 20.0
 	assert_eq(down[0], 0,
 		"le noeud tombe dans les %.0f degats que les seuls canons de nez placent — se dimensionner contre la cadence d'une cible large reviendrait a se donner raison" % reachable)
+
+# --- La chaine complete : un noeud abattu eteint le troncon suivant -----------
+#
+# ⚠️ AUCUNE PARTIE NE PROUVE CETTE CHAINE. Sa recompense arrive quarante secondes apres sa
+# cause, sur un troncon que le joueur n'a pas encore vu ; et le pilote de demonstration, qui
+# esquive et tire droit devant, n'abat pratiquement aucune cible de coque — une partie complete
+# de 208 s en a detruit UNE. La seule verification possible est ici.
+
+const HardpointsScript := preload("res://scripts/gameplay/cortege_hardpoints.gd")
+
+## Deux troncons montes a la main, avec les noms de marqueurs du contrat de forge.
+func _two_sections() -> Array[Node3D]:
+	var sections: Array[Node3D] = []
+	for i in 2:
+		var section := track(Node3D.new()) as Node3D
+		section.name = "Section_%02d" % (i + 1)
+		var spine := Node3D.new()
+		spine.name = "Spine_%02d" % (i + 1)
+		section.add_child(spine)
+		for t in 2:
+			var turret := Node3D.new()
+			turret.name = "Turret_%02d" % (i * 2 + t + 1)
+			section.add_child(turret)
+		sections.append(section)
+	return sections
+
+func test_killing_a_node_silences_the_next_sections_turrets() -> void:
+	var manager := track(HardpointsScript.new()) as CortegeHardpoints
+	manager.build(_two_sections(), TUNING, null, null, null)
+	assert_eq(manager.turret_count(), 4, "quatre tourelles montees")
+	assert_eq(manager.node_count(), 2, "deux noeuds montes")
+	var announced := [-1, -1]
+	manager.section_silenced.connect(func(section: int, count: int) -> void:
+		announced[0] = section
+		announced[1] = count)
+	# Le noeud du PREMIER troncon tombe.
+	var node := manager.nodes()[0]
+	node.tick(0.02, Vector3.ZERO)
+	node.target().hit_callback.call(TUNING.node_health)
+	assert_false(node.is_alive(), "le noeud est tombe")
+	assert_eq(manager.turrets_alive_in(1), 0,
+		"les deux tourelles du troncon SUIVANT sont eteintes")
+	assert_eq(manager.turrets_alive_in(0), 2,
+		"celles de son propre troncon ne le sont pas — la recompense serait arrivee apres le danger")
+	# ⚠️ ET ELLE EST ANNONCEE. Rien a l'ecran ne relie une cause a un effet separes de quarante
+	# secondes : sans le signal, la troisieme mecanique n'existe pas pour le joueur.
+	assert_eq(announced[0], 1, "le troncon eteint est annonce")
+	assert_eq(announced[1], 2, "avec le nombre de tourelles qu'il vient de perdre")
+
+func test_the_last_node_silences_nothing_and_says_nothing() -> void:
+	var manager := track(HardpointsScript.new()) as CortegeHardpoints
+	manager.build(_two_sections(), TUNING, null, null, null)
+	var heard := [0]
+	manager.section_silenced.connect(func(_s: int, _c: int) -> void: heard[0] += 1)
+	# ⚠️ Le reglage livre declare CINQ troncons ; le banc n'en monte que deux. Le dernier noeud
+	# du BANC (rang 1) designe donc le troncon 2, qui n'existe pas ici — et le gestionnaire ne
+	# doit ni planter ni annoncer une extinction vide.
+	var node := manager.nodes()[1]
+	node.tick(0.02, Vector3.ZERO)
+	node.target().hit_callback.call(TUNING.node_health)
+	assert_false(node.is_alive(), "le second noeud est tombe")
+	assert_eq(heard[0], 0, "aucune extinction annoncee — il n'y a rien a eteindre")

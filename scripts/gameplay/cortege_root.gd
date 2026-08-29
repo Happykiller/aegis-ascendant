@@ -14,6 +14,24 @@ const GameStateScript := preload("res://scripts/core/game_state.gd")
 const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const MissionReportScene := preload("res://scenes/ui/mission_report.tscn")
 const TUNING := preload("res://resources/levels/long_cortege_tuning.tres")
+const LYRA_LINES := preload("res://resources/dialogue/lyra_cortege.tres")
+const BRIEFINGS := preload("res://resources/dialogue/cortege_briefings.tres")
+
+## Ce que Lyra dit en entrant dans un troncon. ⚠️ PAR TRONÇON ET NON PAR ÉVÉNEMENT, parce que ce
+## niveau n'a pas d'événements : rien ne change pendant trois minutes et demie, sauf ce que le
+## joueur comprend. La progression du RÉCIT est donc la seule progression qu'il ait, et elle est
+## portée par la seule chose qui avance — la coque sous lui.
+const SECTION_LINES: Array[StringName] = [
+	&"survey_start", &"hull_guns", &"bay_first", &"spine_seen", &"ambry",
+]
+
+## Combien de temps le rapport attend après la dernière réplique.
+##
+## ⚠️ IL ATTEND PARCE QUE LA DERNIÈRE RÉPLIQUE EST LA SEULE QUI COMPTE. C'est là que Lyra avoue
+## avoir lu le dossier avant le décollage — la fracture de tout l'acte I. Enchaîner le rapport
+## par-dessus la couperait au milieu, et le joueur ne saurait jamais ce qu'il vient de manquer.
+## Mesuré, pas estimé : la voix dure 5,45 s et la réplique tient 6,5 s à l'écran.
+const REPORT_DELAY := 7.5
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
 @onready var _audio: AudioManagerScript = get_node("/root/AudioManager")
@@ -25,8 +43,14 @@ const TUNING := preload("res://resources/levels/long_cortege_tuning.tres")
 @onready var _vfx: VFXManager = get_node("VFXManager")
 @onready var _hardpoints: CortegeHardpoints = $Hardpoints
 
+var _pause: PauseScreen = null
 var _finished: bool = false
 var _defeated: bool = false
+## ⚠️ « PREMIÈRE FOIS » ET NON « À CHAQUE FOIS ». Sept ponts et cinq nœuds tombent dans une
+## partie : répéter la même réplique à chacun la userait jusqu'au bruit de fond, et couvrirait
+## la réplique de tronçon qui, elle, porte le récit.
+var _said_bay_down: bool = false
+var _said_node_down: bool = false
 
 func _ready() -> void:
 	for error in TUNING.validate():
@@ -41,11 +65,14 @@ func _ready() -> void:
 	# ⚠️ LE FOND CÈDE LA PLACE, il ne se superpose pas (`ADR-0027`).
 	if _backdrop != null:
 		_backdrop.visible = false
+	_pause = get_node_or_null("PauseScreen") as PauseScreen
+	if _pause != null:
+		_pause.pause_toggled.connect(_on_pause_toggled)
 	_flyby.reveal(true)
 	# ⚠️ APRÈS `reveal`, parce que `reveal` repose le décor : les points d'ancrage lisent leur
 	# position dans le monde, et les monter avant reviendrait à les créer sur une coque qui n'est
 	# pas encore là où elle sera.
-	_hardpoints.build(_flyby, TUNING, _bullets, _player as PlayerFighterController, _vfx)
+	_hardpoints.build(_flyby.sections(), TUNING, _bullets, _player as PlayerFighterController, _vfx)
 	_hardpoints.turret_destroyed.connect(_on_turret_destroyed)
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
@@ -85,10 +112,16 @@ func _on_bay_destroyed(bay: CortegeBay) -> void:
 	print("[Cortege] pont d'envol détruit — tronçon %02d" % (bay.section + 1))
 	if _hud != null and _hud.has_method("show_banner"):
 		_hud.show_banner("PONT D'ENVOL DÉTRUIT", Color("d93d9c"), 1.8)
+	if not _said_bay_down:
+		_said_bay_down = true
+		_lyra(&"bay_down")
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	_game_state.add_score(TUNING.node_score)
 	print("[Cortege] nœud d'épine %02d abattu" % (node.section + 1))
+	if not _said_node_down:
+		_said_node_down = true
+		_lyra(&"node_down")
 
 ## ⚠️ C'EST ICI QUE LA TROISIÈME MÉCANIQUE DEVIENT COMPRÉHENSIBLE, ou nulle part. La récompense
 ## d'un nœud arrive quarante secondes plus tard, sur un tronçon que le joueur n'a pas encore vu :
@@ -109,6 +142,35 @@ func _on_section_entered(index: int) -> void:
 	print("[Cortege] SECTION %02d / %02d" % [index + 1, TUNING.section_count])
 	if _hud != null and _hud.has_method("show_banner"):
 		_hud.show_banner("SECTION %02d" % (index + 1), Color("d93d9c"), 1.4)
+	if index >= 0 and index < SECTION_LINES.size():
+		_lyra(SECTION_LINES[index])
+
+## Le nom de la « phase » courante, pour l'écran de pause. ⚠️ CE NIVEAU N'A PAS DE PHASES : ses
+## briefings sont indexés par TRONÇON, et le nom se fabrique. Le contrat de `BriefingBook` reste
+## le même — on cherche par NOM, jamais par rang (`ADR-0034`).
+func phase_label() -> String:
+	return "SECTION_%02d" % (_flyby.current_section() + 1)
+
+## ⚠️ C'EST LE SEUL ÉCRAN OÙ LE JOUEUR A LE TEMPS DE LIRE, et ce niveau en a plus besoin que
+## l'autre : il traverse UN SEUL objet pendant trois minutes et demie, et rien d'autre ne lui dit
+## où il en est de la coque.
+func _on_pause_toggled(is_paused: bool) -> void:
+	if _hud != null:
+		_hud.visible = not is_paused
+	if is_paused and _pause != null:
+		_pause.show_briefing(BRIEFINGS.find(StringName(phase_label())))
+
+func _lyra(key: StringName) -> void:
+	if _hud == null:
+		return
+	var line := LYRA_LINES.find(key)
+	# Même garde qu'au niveau 1 : une réplique qui ne part pas ne se voit nulle part, et sept
+	# d'entre elles y sont restées muettes une soirée entière, fichiers en place.
+	if line == null:
+		print("[Lyra] clé inconnue : %s" % key)
+	else:
+		print("[Lyra] %s" % key)
+	_hud.say(line)
 
 ## ⚠️ LE CORTÈGE N'EST PAS ABATTU, IL CONTINUE SA ROUTE. C'est le premier adversaire du jeu que
 ## le joueur ne peut pas détruire, et c'est ce qui doit rester de lui (`docs/lore/NULL_CHOIR.md`).
@@ -118,8 +180,10 @@ func _on_survey_finished() -> void:
 		return
 	_finished = true
 	print("[Cortege] VICTORY — score %d" % _game_state.score)
+	_lyra(&"survey_end")
 	_game_state.transition_to(GameStateScript.State.VICTORY)
-	_show_report(MissionReport.Outcome.VICTORY)
+	get_tree().create_timer(REPORT_DELAY).timeout.connect(
+		_show_report.bind(MissionReport.Outcome.VICTORY))
 
 func _on_game_over() -> void:
 	if _finished or _defeated:

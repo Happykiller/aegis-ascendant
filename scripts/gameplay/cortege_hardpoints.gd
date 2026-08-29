@@ -31,14 +31,26 @@ var _turrets: Array[CortegeTurret] = []
 var _bays: Array[CortegeBay] = []
 var _nodes: Array[CortegeSpineNode] = []
 var _released: Node3D
+## Combien de tronçons ont RÉELLEMENT été montés. ⚠️ ET NON `tuning.section_count` : le réglage
+## dit ce que le niveau vise, la coque livrée dit ce qu'il y a. Les confondre fait désigner par
+## un nœud un tronçon qui n'existe pas — inoffensif ici, mais c'est la même confusion qui, sur
+## un survol raccourci pour une mesure, éteindrait un tronçon fantôme.
+var _sections_built: int = 0
 
-func build(flyby: CortegeFlyby, p_tuning: CortegeTuning, bullet_manager: BulletManager,
+## Monte les pièces sur les tronçons livrés.
+##
+## ⚠️ IL PREND DES TRONÇONS, PAS LE SURVOL. Il n'a besoin de rien d'autre que d'une liste de
+## nœuds portant des marqueurs — lui passer `CortegeFlyby` le rendrait dépendant du défilement,
+## donc impossible à monter dans un test, donc la chaîne « un nœud éteint le tronçon suivant »
+## resterait vérifiable nulle part. C'est la seule mécanique du jeu dont la récompense arrive
+## quarante secondes après la cause : c'est précisément celle qu'aucune partie ne prouve.
+func build(sections: Array[Node3D], p_tuning: CortegeTuning, bullet_manager: BulletManager,
 		player: PlayerFighterController, vfx: VFXManager) -> void:
 	tuning = p_tuning
 	_released = Node3D.new()
 	_released.name = "Released"
 	add_child(_released)
-	var sections := flyby.sections()
+	_sections_built = sections.size()
 	for index in sections.size():
 		for child in sections[index].get_children():
 			var marker := child as Node3D
@@ -97,6 +109,13 @@ func _process(delta: float) -> void:
 	for bay in _bays:
 		bay.tick(delta, bay.global_position)
 
+## Les pièces, pour les faire avancer depuis un banc. Le jeu, lui, passe par `_process`.
+func turrets() -> Array[CortegeTurret]:
+	return _turrets
+
+func nodes() -> Array[CortegeSpineNode]:
+	return _nodes
+
 func turret_count() -> int:
 	return _turrets.size()
 
@@ -127,7 +146,7 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	node_destroyed.emit(node)
 	if not tuning.node_silences_next_section:
 		return
-	var target := CortegeSpineNode.silenced_section(node.section, tuning.section_count)
+	var target := CortegeSpineNode.silenced_section(node.section, _sections_built)
 	if target < 0:
 		# Le dernier nœud du survol ne soulage rien : il n'y a pas de tronçon d'après DANS CE
 		# NIVEAU. Ce n'est pas une erreur — le vaisseau, lui, continue.
@@ -137,4 +156,8 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 		if turret.section == target and turret.is_alive() and not turret.is_silenced():
 			turret.silence()
 			silenced += 1
-	section_silenced.emit(target, silenced)
+	# ⚠️ RIEN À DIRE QUAND IL N'Y A RIEN À ÉTEINDRE. Annoncer « tronçon 02 éteint · 0 tourelles »
+	# apprendrait au joueur que la mécanique ne sert à rien, au moment exact où elle vient de
+	# lui coûter un effort.
+	if silenced > 0:
+		section_silenced.emit(target, silenced)

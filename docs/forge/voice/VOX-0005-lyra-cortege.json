@@ -1,0 +1,135 @@
+{
+  "id": "VOX-0005",
+  "slug": "lyra-cortege",
+  "schema_version": "1.0",
+  "date": "2026-08-29",
+  "character": "Lyra Vantella",
+  "context": "Le niveau 2 : le survol du Long Cortège, un vaisseau de six kilomètres huit longé de la proue vers l'arrière pendant trois minutes et demie. ⚠️ CE NIVEAU N'A PAS DE PHASES, IL A UNE TRAVERSÉE : rien ne change à l'écran d'un bout à l'autre, sauf ce que le joueur comprend. Ces huit répliques SONT la progression du niveau — sans elles, il ne reste qu'un décor qui défile.",
+  "purpose": {
+    "description": "Les huit répliques du survol, en français : cinq à l'entrée de chaque tronçon, trois sur des événements de jeu.",
+    "priority": "⚠️ LA DERNIÈRE COMMANDE TOUTES LES AUTRES. `survey_end` est l'instant où Lyra avoue avoir lu le dossier du pilote avant le décollage — la première fracture entre eux, et elle ne se referme pas de la campagne. Les sept qui précèdent existent pour que celle-là ait quelqu'un à blesser : si Lyra n'a pas été une alliée utile et posée pendant trois minutes, l'aveu ne coûte rien."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "⚠️ PLUS SOBRE QU'AU NIVEAU 1, ET C'EST LE POINT. Là-bas elle guidait une recrue à travers six situations différentes ; ici elle accompagne un survol où il ne se passe rien, et où ce qu'elle voit la dépasse progressivement. Le registre descend au fil des huit répliques — de la routine de navigation à quelque chose qu'elle n'arrive plus à formuler — sans jamais passer par l'émotion jouée.",
+    "address": "elle dit « Halyard » — l'indicatif, partout. ⚠️ « WREN » EST DÉJÀ DÉPENSÉ : une seule fois dans tout le jeu, à l'appontage du niveau 1 (`ADR-0037`), et la règle est opposable. Le reprendre ici détruirait rétroactivement le seul instant où il a valu quelque chose. La fracture de ce niveau ne passe pas par un nom, elle passe par un aveu.",
+    "pace": "posé, régulier. ⚠️ Aucune des huit ne se termine sur un ralentissement : Lyra finit ses phrases et passe à la suite, même la dernière — surtout la dernière.",
+    "language": "français, accents et liaisons naturels"
+  },
+  "lines": [
+    {
+      "cue": "lyra_survey_start",
+      "dialogue_key": "survey_start",
+      "text": "Il ne dévie pas, Halyard. Six heures, pas d’un degré.\nLongez-le. Nous n’avons que la durée de son passage.",
+      "text_lines": [
+        "Il ne dévie pas, Halyard. Six heures, pas d’un degré.",
+        "Longez-le. Nous n’avons que la durée de son passage."
+      ],
+      "mood": "CALME",
+      "direction": "Un constat de navigation, rien de plus. « Six heures, pas d'un degré » se dit comme on lit un relevé — c'est l'absence d'émotion qui doit inquiéter, pas l'inverse. ⚠️ NE PAS jouer l'appréhension : à cet instant elle ne sait pas encore ce qu'ils survolent."
+    },
+    {
+      "cue": "lyra_hull_guns",
+      "dialogue_key": "hull_guns",
+      "text": "Ces canons ne vous poursuivent pas. Ils vous écartent.\nSortez de leur axe et ils vous oublieront.",
+      "text_lines": [
+        "Ces canons ne vous poursuivent pas. Ils vous écartent.",
+        "Sortez de leur axe et ils vous oublieront."
+      ],
+      "mood": "ALERTE",
+      "direction": "⚠️ LA PHRASE LA PLUS IMPORTANTE DU NIVEAU EST « ils vous écartent », et elle doit se dire SANS insistance. Lyra constate une intention, elle ne la commente pas. Une comédienne qui souligne le mot en fait une menace ; ce qu'il faut entendre, c'est qu'on n'est même pas un adversaire."
+    },
+    {
+      "cue": "lyra_bay_first",
+      "dialogue_key": "bay_first",
+      "text": "Les appareils qui sortent de là, je les ai comptés à Ossane.\nLes mêmes. À la vis près.",
+      "text_lines": [
+        "Les appareils qui sortent de là, je les ai comptés à Ossane.",
+        "Les mêmes. À la vis près."
+      ],
+      "mood": "ALERTE",
+      "direction": "Reconnaissance, pas révélation. « Les mêmes. À la vis près. » — deux fragments secs, aucun crescendo. Elle vient de comprendre quelque chose et elle refuse de le formuler."
+    },
+    {
+      "cue": "lyra_bay_down",
+      "dialogue_key": "bay_down",
+      "text": "Baie tarie. Celle-là ne produira plus rien.\nChoisissez bien les suivantes : elles coûtent cher.",
+      "text_lines": [
+        "Baie tarie. Celle-là ne produira plus rien.",
+        "Choisissez bien les suivantes : elles coûtent cher."
+      ],
+      "mood": "CALME",
+      "direction": "Utilitaire et un peu satisfaite. « Elles coûtent cher » est un conseil de gestion, pas un avertissement."
+    },
+    {
+      "cue": "lyra_spine_seen",
+      "dialogue_key": "spine_seen",
+      "text": "L’axe est nu, Halyard. Pas une plaque sur six kilomètres.\nÇa n’a jamais imaginé qu’on entre par le dessus.",
+      "text_lines": [
+        "L’axe est nu, Halyard. Pas une plaque sur six kilomètres.",
+        "Ça n’a jamais imaginé qu’on entre par le dessus."
+      ],
+      "mood": "CALME",
+      "direction": "⚠️ Curiosité professionnelle, jamais triomphe. Elle décrit un défaut de conception, et la dernière phrase — « ça n'a jamais imaginé qu'on entre par le dessus » — est une observation d'ingénieur. Le pronom « ça » est délibéré : ne pas le corriger en « ils »."
+    },
+    {
+      "cue": "lyra_node_down",
+      "dialogue_key": "node_down",
+      "text": "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.\nIls ne savent pas encore qu’on leur fait la guerre.",
+      "text_lines": [
+        "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.",
+        "Ils ne savent pas encore qu’on leur fait la guerre."
+      ],
+      "mood": "CALME",
+      "direction": "Sec. « Ils ne savent pas encore qu'on leur fait la guerre » doit sonner comme une bravade au premier passage — c'est ce qui la rend terrible à la relecture. ⚠️ NE RIEN jouer de ce double fond."
+    },
+    {
+      "cue": "lyra_ambry",
+      "dialogue_key": "ambry",
+      "text": "Halyard, cessez le feu. Regardez à tribord.\nC’est Ambry. Debout. Soudé sur leur bordé.",
+      "text_lines": [
+        "Halyard, cessez le feu. Regardez à tribord.",
+        "C’est Ambry. Debout. Soudé sur leur bordé."
+      ],
+      "mood": "ALERTE",
+      "direction": "⚠️ LA SEULE RÉPLIQUE DU JEU OÙ ELLE COUPE LE PILOTE. « Cessez le feu » est un ordre, court, sans montée de voix. Les trois derniers fragments — « C'est Ambry. Debout. Soudé sur leur bordé. » — se disent de plus en plus bas, comme quelqu'un qui vérifie ce qu'il voit."
+    },
+    {
+      "cue": "lyra_survey_end",
+      "dialogue_key": "survey_end",
+      "text": "Le Registre ne l’a pas déclaré perdu. Il l’a radié.\nJe l’ai lu à votre dossier avant le décollage.",
+      "text_lines": [
+        "Le Registre ne l’a pas déclaré perdu. Il l’a radié.",
+        "Je l’ai lu à votre dossier avant le décollage."
+      ],
+      "mood": "ALERTE",
+      "direction": "⚠️ LA FRACTURE DE TOUT L'ACTE I, ET ELLE NE SE JOUE PAS. Les deux phrases sont administratives ; la seconde est un aveu, et il doit passer au même débit que le reste. Aucune excuse, aucune hésitation, aucun silence avant. C'est précisément l'absence de préparation qui blesse — elle rend un fait, et le pilote encaisse tout seul."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "⚠️ PLUS BLOQUANTE QUE LES PRÉCÉDENTES. Ailleurs la voix double un texte affiché ; ici elle porte la SEULE progression du niveau — trois minutes et demie de coque identique. Un survol muet est un décor qui défile.",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique de même `key` dans `resources/dialogue/lyra_cortege.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu : c'est le seul rendu qui compte",
+      "⚠️ MESURER LA DURÉE, PUIS RÉGLER LE `hold` — jamais l'inverse. Le panneau du HUD ne sait rien de la durée de la voix : un `hold` trop court coupe la réplique au milieu d'un mot, et rien ne le signale (le cas s'est présenté sur VOX-0003, deux répliques sur trois)",
+      "⚠️ `survey_end` ne s'entend qu'au terme d'une traversée complète — 208 s, et aucun `--cortege-from=<n>` ne la déclenche plus tôt",
+      "les huit doivent descendre en registre de la première à la dernière, sans qu'aucune ne joue l'émotion",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0005-lyra-cortege.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0005-lyra-cortege.json,tools/voice/forge_voice.py,\"Replique <cue> de Lyra Vantella, survol du Long Cortege (VOX-0005). ⚠️ BRUTE : la chaine comms est dans le jeu, sur le bus Voice\""
+  }
+}

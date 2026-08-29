@@ -1,0 +1,88 @@
+[gd_resource type="Resource" script_class="BriefingBook" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://resources/data/briefing_book.gd" id="1_book"]
+[ext_resource type="Script" path="res://resources/data/sector_briefing.gd" id="2_brief"]
+
+; Les cinq briefings du niveau 2 — un par troncon du Long Cortege.
+;
+; ⚠️ ILS PORTENT UNE CHARGE QUE CEUX DU NIVEAU 1 N'ONT PAS. Le niveau 1 traverse six lieux
+; differents ; celui-ci traverse UN SEUL OBJET pendant trois minutes et demie, et le seul
+; changement visible d'un troncon a l'autre est la densite du bordé. Sans ces pages, le joueur
+; ne peut pas savoir qu'il AVANCE — il verrait un decor qui se repete. Chaque page dit donc ou
+; l'on en est de la coque, et c'est l'unique endroit du jeu qui le dise en toutes lettres.
+;
+; ⚠️ REGLE D'EMPLOI (inchangee) : la `description` dit POURQUOI on est la, les `objectives`
+; disent ce qu'on y fait. Matiere : `docs/lore/NULL_CHOIR.md` §« The Long Cortege » et
+; `docs/lore/CAMPAGNE.md` acte I.
+;
+; ⚠️ ET LE PLAFOND DE REVELATION DE CE NIVEAU TIENT EN UNE LIGNE : le joueur apprend qu'ils
+; EMPORTENT DES STRUCTURES ENTIERES, et rien de plus. Ni Voix, ni Grille, ni commanditaires, ni
+; le mot « Unisson » explique. La revelation d'Ambry — greffe, debout, RADIE — n'arrive qu'au
+; cinquieme troncon, parce qu'un mot pareil ne pese qu'au terme d'une traversee.
+
+; ⛔ PLAFOND — ne pas nommer ce qu'il transporte. Ici on ne sait meme pas encore qu'il
+; transporte quelque chose : on sait qu'il est immense et qu'il ne s'arrete pas.
+[sub_resource type="Resource" id="brief_0"]
+script = ExtResource("2_brief")
+phase = &"SECTION_01"
+kicker = "LE LONG CORTÈGE"
+title = "APPROCHE DE PROUE"
+description = "Six kilomètres huit, et aucun catalogue ne le contenait avant-hier.
+Il ne dévie pas, il ne hèle pas, il ne ralentit pas.
+Nous n'avons que la durée de son passage pour le lire."
+objectives = PackedStringArray("Longer la coque de la proue vers l'arrière", "Relever ce qui est fixé dessus", "Rester en vie jusqu'à la poupe")
+
+; ⛔ PLAFOND — « il vous ecarte » et pas « il vous attaque ». C'est la seule chose que les
+; tourelles doivent apprendre au joueur, et elle est plus inquietante que l'autre.
+[sub_resource type="Resource" id="brief_1"]
+script = ExtResource("2_brief")
+phase = &"SECTION_02"
+kicker = "LE LONG CORTÈGE"
+title = "BORDÉ AVANT"
+description = "Des tourelles fixées à même le bordé, sans coupole ni servant.
+Elles ne vous suivent pas hors de leur portée : elles vous écartent,
+comme on écarte quelqu'un d'un chantier. Personne ici ne vous en veut."
+objectives = PackedStringArray("Passer les tourelles ou les faire taire", "Ne pas rester dans l'axe d'un canon qui se charge", "Garder le bouclier au-dessus de la moitié")
+
+; ⛔ PLAFOND — on RECONNAIT les appareils du niveau 1, on n'explique pas d'ou ils viennent
+; vraiment. « C'est d'ici qu'ils sortaient » est la phrase entiere : elle relie deux niveaux
+; sans rien ouvrir de plus.
+[sub_resource type="Resource" id="brief_2"]
+script = ExtResource("2_brief")
+phase = &"SECTION_03"
+kicker = "LE LONG CORTÈGE"
+title = "BORDÉ MÉDIAN"
+description = "Les baies s'ouvrent sur le vide et relâchent des appareils de relevé.
+Ce sont les mêmes qu'à Ossane, à la vis près.
+C'est d'ici qu'ils sortaient pendant que nous cherchions une avarie."
+objectives = PackedStringArray("Abattre un pont d'envol pour tarir sa baie", "Un pont coûte cher : choisir lequel", "Ne pas laisser deux baies produire à la fois")
+
+; ⛔ PLAFOND — dire que l'artere est NUE, pas pourquoi. La raison (« un ouvrage n'a jamais eu a
+; se defendre d'un interieur ») appartient a un niveau ou le joueur aura compris qu'ils ne font
+; pas la guerre. La dire ici la gacherait.
+[sub_resource type="Resource" id="brief_3"]
+script = ExtResource("2_brief")
+phase = &"SECTION_04"
+kicker = "LE LONG CORTÈGE"
+title = "L'ARTÈRE"
+description = "L'axe lumineux qui court d'un bout à l'autre alimente les tourelles,
+et il n'est pas blindé. Pas une seule plaque sur six kilomètres.
+Quoi que ce soit, ça n'a jamais imaginé qu'on entre par le dessus."
+objectives = PackedStringArray("Abattre un nœud de l'artère", "Un nœud éteint les tourelles du tronçon suivant", "Traverser l'axe demande de passer sous les canons")
+
+; ⛔ CE BRIEFING EST LA REVELATION DU NIVEAU. « Radie » est le mot, et il ne s'explique pas :
+; radie n'est pas perdu, et c'est au joueur de sentir la difference. Ne rien ajouter sur QUI a
+; porte la radiation ni POURQUOI — c'est l'acte II.
+[sub_resource type="Resource" id="brief_4"]
+script = ExtResource("2_brief")
+phase = &"SECTION_05"
+kicker = "LE LONG CORTÈGE"
+title = "LA GREFFE"
+description = "Il y a un avant-poste soudé sur ce bordé. Debout, intact, re-plombé.
+C'est Ambry. Quatre-vingts personnes, et le Registre ne l'a pas
+déclaré perdu : il l'a radié. Ce n'est pas le même mot."
+objectives = PackedStringArray("Longer la greffe jusqu'au bout", "Relever tout ce qui peut l'être", "Rentrer — ce vaisseau ne se détruit pas")
+
+[resource]
+script = ExtResource("1_book")
+briefings = [SubResource("brief_0"), SubResource("brief_1"), SubResource("brief_2"), SubResource("brief_3"), SubResource("brief_4")]

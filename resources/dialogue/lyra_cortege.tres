@@ -1,0 +1,114 @@
+[gd_resource type="Resource" script_class="DialogueScript" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://resources/data/dialogue_script.gd" id="1_script"]
+[ext_resource type="Script" path="res://resources/data/dialogue_line.gd" id="2_line"]
+
+; Ce que Lyra dit pendant le survol du Long Cortege (niveau 2).
+;
+; ⚠️ CE NIVEAU N'A PAS DE PHASES, IL A UNE TRAVERSEE — et c'est ce qui rend ses repliques
+; differentes de celles du niveau 1. La-bas, chaque replique annonce un CHANGEMENT de situation :
+; un champ d'asteroides, une plongee. Ici rien ne change pendant trois minutes et demie, sauf ce
+; que le joueur COMPREND. Les repliques ne commentent donc pas le danger, elles portent le seul
+; recit du niveau : ce vaisseau ne fait pas la guerre, il demenage.
+;
+; ⚠️ « HALYARD » PARTOUT (`ADR-0037`). « Wren » est DEJA DEPENSE — une seule fois dans tout le
+; jeu, a l'appontage du niveau 1 — et la regle est opposable : la reprendre ici detruirait
+; retroactivement le seul instant ou elle a valu quelque chose. La fracture de ce niveau ne passe
+; pas par un nom, elle passe par un aveu.
+;
+; ⚠️ PLAFOND DE REVELATION. Le joueur apprend qu'ils EMPORTENT DES STRUCTURES ENTIERES, et rien
+; de plus : ni Voix, ni Grille, ni commanditaires. `node_down` frole la limite avec « ils ne
+; savent pas encore qu'on leur fait la guerre » — c'est volontaire, et c'est le maximum : la
+; phrase se lit comme une bravade au premier passage, et ne devient exacte qu'a l'acte II.
+
+[sub_resource type="Resource" id="line_0"]
+script = ExtResource("2_line")
+key = &"survey_start"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Il ne dévie pas, Halyard. Six heures, pas d’un degré.
+Longez-le. Nous n’avons que la durée de son passage."
+mood = 0
+voice_cue = &"lyra_survey_start"
+hold = 7.0
+
+[sub_resource type="Resource" id="line_1"]
+script = ExtResource("2_line")
+key = &"hull_guns"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Ces canons ne vous poursuivent pas. Ils vous écartent.
+Sortez de leur axe et ils vous oublieront."
+mood = 1
+voice_cue = &"lyra_hull_guns"
+hold = 6.0
+
+[sub_resource type="Resource" id="line_2"]
+script = ExtResource("2_line")
+key = &"bay_first"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Les appareils qui sortent de là, je les ai comptés à Ossane.
+Les mêmes. À la vis près."
+mood = 1
+voice_cue = &"lyra_bay_first"
+hold = 5.5
+
+[sub_resource type="Resource" id="line_3"]
+script = ExtResource("2_line")
+key = &"bay_down"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Baie tarie. Celle-là ne produira plus rien.
+Choisissez bien les suivantes : elles coûtent cher."
+mood = 0
+voice_cue = &"lyra_bay_down"
+hold = 5.5
+
+[sub_resource type="Resource" id="line_4"]
+script = ExtResource("2_line")
+key = &"spine_seen"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "L’axe est nu, Halyard. Pas une plaque sur six kilomètres.
+Ça n’a jamais imaginé qu’on entre par le dessus."
+mood = 0
+voice_cue = &"lyra_spine_seen"
+hold = 7.0
+
+[sub_resource type="Resource" id="line_5"]
+script = ExtResource("2_line")
+key = &"node_down"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.
+Ils ne savent pas encore qu’on leur fait la guerre."
+mood = 0
+voice_cue = &"lyra_node_down"
+hold = 6.5
+
+[sub_resource type="Resource" id="line_6"]
+script = ExtResource("2_line")
+key = &"ambry"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Halyard, cessez le feu. Regardez à tribord.
+C’est Ambry. Debout. Soudé sur leur bordé."
+mood = 1
+voice_cue = &"lyra_ambry"
+hold = 6.5
+
+[sub_resource type="Resource" id="line_7"]
+script = ExtResource("2_line")
+key = &"survey_end"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Le Registre ne l’a pas déclaré perdu. Il l’a radié.
+Je l’ai lu à votre dossier avant le décollage."
+mood = 1
+voice_cue = &"lyra_survey_end"
+hold = 6.5
+
+[resource]
+script = ExtResource("1_script")
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7")]

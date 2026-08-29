@@ -173,12 +173,24 @@ func _ingame_requests() -> Dictionary:
 	return par_cle
 ## ⚠️ TROIS SOURCES SUR LE MEME TEXTE, ici aussi : le `.tres`, la demande, et le `voice_cue`
 ## qui les relie. Si elles divergent, on fait enregistrer une phrase que le jeu n'affiche pas.
+## ⚠️ TOUS LES SCRIPTS DE JEU, PAS SEULEMENT CELUI DU NIVEAU 1. La garde balayait deja tout le
+## dossier des demandes, mais ne confrontait qu'un seul `.tres` : ajouter un niveau avec ses
+## propres repliques faisait donc echouer le SENS INVERSE (« commandee mais absente du jeu »)
+## sans que rien ne dise pourquoi. Un niveau de plus s'ajoute ici, en une ligne.
+const INGAME_SCRIPTS: Array[String] = [
+	"res://resources/dialogue/lyra_ingame.tres",
+	"res://resources/dialogue/lyra_cortege.tres",
+]
+
 func test_the_ingame_voice_request_matches_the_game() -> void:
 	var demandees := _ingame_requests()
-	var script: DialogueScript = load("res://resources/dialogue/lyra_ingame.tres")
-	assert_true(script.size() > 0, "le script de jeu porte des repliques")
-	for i in script.size():
-		var ligne := script.line_at(i)
+	var repliques: Array[DialogueLine] = []
+	for chemin in INGAME_SCRIPTS:
+		var script: DialogueScript = load(chemin)
+		assert_true(script.size() > 0, "%s porte des repliques" % chemin.get_file())
+		for i in script.size():
+			repliques.append(script.line_at(i))
+	for ligne in repliques:
 		var cle := String(ligne.key)
 		assert_true(demandees.has(cle),
 			"la replique `%s` est affichee par le jeu mais commandee nulle part" % cle)
@@ -209,24 +221,31 @@ func test_a_line_never_leaves_the_screen_while_it_is_still_speaking() -> void:
 	const FADE := 0.45 # FighterHUD.LYRA_FADE — le panneau vit encore pendant son fondu
 	var bank: AudioCueBank = load("res://resources/audio/sfx_bank.tres")
 	var par_cue := bank.build_index()
-	var script: DialogueScript = load("res://resources/dialogue/lyra_ingame.tres")
+	# ⚠️ TOUS LES NIVEAUX. Le piege ne se voit sur aucune capture et ne laisse rien au journal :
+	# le fichier existe, la cue resout, le son part — et la replique disparait au milieu d'un
+	# mot. Un niveau qui echapperait a cette garde le rejouerait sans prevenir.
 	var mesurees := 0
-	for i in script.size():
-		var ligne := script.line_at(i)
+	for chemin in INGAME_SCRIPTS:
+		var script: DialogueScript = load(chemin)
+		for i in script.size():
+			mesurees += _hold_covers_the_voice(script.line_at(i), par_cue, FADE)
+	assert_true(mesurees > 0, "des repliques ont bien ete mesurees (%d)" % mesurees)
+
+## Renvoie 1 si la replique portait une voix mesurable, 0 sinon.
+func _hold_covers_the_voice(ligne: DialogueLine, par_cue: Dictionary, fade: float) -> int:
 		if ligne.voice_cue == &"":
-			continue
+			return 0
 		var cue: AudioCueData = par_cue.get(ligne.voice_cue)
 		assert_true(cue != null,
 			"la cue `%s` de la replique `%s` est declaree dans la banque"
 				% [ligne.voice_cue, ligne.key])
 		if cue == null or cue.stream == null:
-			continue
-		mesurees += 1
+			return 0
 		var duree := cue.stream.get_length()
-		assert_true(ligne.hold + FADE >= duree,
+		assert_true(ligne.hold + fade >= duree,
 			"replique `%s` : elle dure %.2f s et le panneau la tient %.2f s"
-				% [ligne.key, duree, ligne.hold + FADE])
-	assert_true(mesurees > 0, "des repliques ont bien ete mesurees (%d)" % mesurees)
+				% [ligne.key, duree, ligne.hold + fade])
+		return 1
 ## Le meme garde sur l'ACCUEIL, dont l'arithmetique est differente — et c'est bien pour ca
 ## qu'il lui faut son propre test. La bulle (`dialogue_box.gd`) ECRIT le texte avant de le
 ## tenir : le temps a l'ecran vaut `longueur / TYPE_SPEED + hold`, la frappe s'ajoutant au
