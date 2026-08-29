@@ -22,11 +22,33 @@ enum Pass { AHEAD, LIVE, PASSED }
 
 ## Le bulbe. Même raison d'être que l'œil d'une tourelle : la géométrie livrée est cuite dans le
 ## tronçon et partage ses matériaux, donc l'état de la pièce est porté par un volume à nous.
-const BULB_RADIUS := 0.62
+const BULB_RADIUS := 0.52
 const BULB_LIFT := 0.45
 const BULB_TINT := Color("7a4de8")
 
+# --- Les arcs ------------------------------------------------------------------
+#
+## ⚠️ LE NŒUD ÉTAIT « MOCHE », ET C'ÉTAIT UN PROBLÈME DE JEU AVANT D'ÊTRE UN PROBLÈME D'IMAGE.
+## Une boule violette posée sur un socle ne dit pas « tire ici » : c'est la seule cible du
+## niveau dont la récompense arrive quarante secondes plus tard, donc la seule qui doive
+## s'annoncer d'elle-même. Des arcs qui en jaillissent le disent en une image — « on pourrait
+## rajouter comme des éclairs qui en émanent, pour indiquer que c'est un point vital à tirer ? »
+## (opérateur, 2026-08-29).
+##
+## ⚠️ ET ILS SONT REDESSINÉS, PAS ANIMÉS. Un arc électrique n'a pas de trajectoire : il
+## RECOMMENCE. Une interpolation lisse se lirait comme un tentacule ; ce qu'il faut, c'est que
+## la figure change d'un coup, quelques fois par seconde.
+const ARC_COUNT := 5
+const ARC_SEGMENTS := 4
+const ARC_REACH := 1.35
+const ARC_JITTER := 0.34
+## Combien de fois par seconde la figure se refait. Plus haut, ça grésille et ça fatigue ;
+## plus bas, on voit des traits fixes et l'illusion tombe.
+const ARC_REDRAW_HZ := 11.0
+
 signal destroyed(node: CortegeSpineNode)
+## Il entre dans sa fenêtre de tir, pour la première et unique fois.
+signal engaged(node: CortegeSpineNode)
 
 var tuning: CortegeTuning
 var section: int = 0
@@ -36,6 +58,13 @@ var _vfx: VFXManager
 var _target: BulletTarget
 var _bulb: MeshInstance3D
 var _bulb_material: StandardMaterial3D
+var _arcs: MeshInstance3D
+var _arc_mesh: ImmediateMesh
+var _arc_timer: float = 0.0
+## ⚠️ SEMÉE UNE FOIS, PAS À CHAQUE IMAGE. Cinq nœuds qui tireraient chacun vingt nombres au
+## hasard par image, c'est un grésillement différent d'un lancement à l'autre — et surtout une
+## figure qui ne se stabilise jamais assez longtemps pour être vue.
+var _rng := RandomNumberGenerator.new()
 
 var _pass: Pass = Pass.AHEAD
 var _health: float = 0.0
@@ -76,6 +105,65 @@ func _ready() -> void:
 	_bulb.position.y = BULB_LIFT
 	_bulb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_bulb)
+	_build_arcs()
+
+## Les arcs qui jaillissent du nœud. Un seul maillage pour les cinq : c'est un instrument de
+## lecture, il ne doit pas coûter cinq objets par nœud et vingt-cinq par niveau.
+func _build_arcs() -> void:
+	_rng.seed = hash(name) + section * 7919
+	_arc_mesh = ImmediateMesh.new()
+	_arcs = MeshInstance3D.new()
+	_arcs.name = "Arcs"
+	_arcs.mesh = _arc_mesh
+	_arcs.position.y = BULB_LIFT
+	_arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# ⚠️ Sans marge, l'arc disparaît dès que le centre du nœud sort du cadre : la boîte
+	# englobante d'un `ImmediateMesh` vide est nulle au montage.
+	_arcs.extra_cull_margin = 4.0
+	var spark := StandardMaterial3D.new()
+	spark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark.vertex_color_use_as_albedo = true
+	# ⚠️ ADDITIF ET SANS ÉCRITURE DE PROFONDEUR : un éclair passe DEVANT la coque sans la
+	# masquer, et deux arcs qui se croisent s'additionnent au lieu de se découper.
+	spark.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	spark.no_depth_test = true
+	spark.render_priority = 6
+	_arcs.material_override = spark
+	add_child(_arcs)
+
+## Refait la figure. ⚠️ Appelée quelques fois par seconde, jamais à chaque image.
+func _redraw_arcs(energy: float) -> void:
+	# ⚠️ Un banc monte la pièce SANS arbre : `_ready()` n'y tourne pas, donc le maillage n'existe
+	# pas. C'est l'état normal d'un test, pas une panne — et c'est ce qui rend la logique du nœud
+	# vérifiable sans scène.
+	if _arc_mesh == null:
+		return
+	_arc_mesh.clear_surfaces()
+	if energy <= 0.01:
+		return
+	_arc_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	var tint := Color(BULB_TINT.r, BULB_TINT.g, BULB_TINT.b, 1.0) * energy
+	var white := Color(1.0, 0.92, 1.0, 1.0) * energy
+	for i in ARC_COUNT:
+		var angle := TAU * (float(i) + _rng.randf() * 0.6) / float(ARC_COUNT)
+		var direction := Vector3(cos(angle), 0.0, sin(angle))
+		var up := Vector3.UP
+		var previous := direction * BULB_RADIUS * 0.7
+		for step in range(1, ARC_SEGMENTS + 1):
+			var t := float(step) / float(ARC_SEGMENTS)
+			var point := direction * (BULB_RADIUS * 0.7 + ARC_REACH * t)
+			point += up * (_rng.randf_range(-ARC_JITTER, ARC_JITTER) + t * 0.35)
+			point += Vector3(_rng.randf_range(-ARC_JITTER, ARC_JITTER), 0.0,
+				_rng.randf_range(-ARC_JITTER, ARC_JITTER))
+			# Le cœur est blanc, la pointe prend la couleur du nœud : c'est ce qui fait lire
+			# une décharge plutôt qu'un fil.
+			_arc_mesh.surface_set_color(white.lerp(tint, t - 1.0 / ARC_SEGMENTS))
+			_arc_mesh.surface_add_vertex(previous)
+			_arc_mesh.surface_set_color(white.lerp(tint, t))
+			_arc_mesh.surface_add_vertex(point)
+			previous = point
+	_arc_mesh.surface_end()
+
 
 func is_alive() -> bool:
 	return _alive
@@ -98,11 +186,10 @@ func is_engaged() -> bool:
 ## DANS un arbre monté. La passer en paramètre rend la pièce pilotable sans scène, donc
 ## vérifiable : c'est exactement ce qui a rendu `LeviathanCombat` testable là où trois cycles
 ## demandent quarante secondes de jeu. Le gestionnaire, lui, sait lire l'arbre.
-func tick(delta: float, world: Vector3) -> void:
+func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var here := GameplayPlane.to_plane(world)
 	var half := tuning.node_visible_span * 0.5
 	match _pass:
 		Pass.AHEAD:
@@ -111,6 +198,7 @@ func tick(delta: float, world: Vector3) -> void:
 				if _alive and _bullet_manager != null:
 					_bullet_manager.register_target(_target)
 					_target.enabled = true
+				engaged.emit(self)
 		Pass.LIVE:
 			if here.y < -half:
 				_retire()
@@ -124,8 +212,13 @@ func tick(delta: float, world: Vector3) -> void:
 	# entrant dans sa fenêtre qu'il doit se mettre à battre — pas avant, sinon il attire vers
 	# une cible encore hors de portée.
 	_pulse = fmod(_pulse + delta * 3.0, TAU)
+	var energy := 1.8 + 1.1 * sin(_pulse)
 	if _bulb_material != null:
-		_bulb_material.emission_energy_multiplier = 1.8 + 1.1 * sin(_pulse)
+		_bulb_material.emission_energy_multiplier = energy
+	_arc_timer -= delta
+	if _arc_timer <= 0.0:
+		_arc_timer = 1.0 / ARC_REDRAW_HZ
+		_redraw_arcs(clampf(energy / 2.9, 0.35, 1.0))
 
 func _take_damage(damage: float) -> void:
 	if not _alive:
@@ -137,6 +230,10 @@ func _take_damage(damage: float) -> void:
 	if _bulb_material != null:
 		_bulb_material.emission_energy_multiplier = 0.0
 		_bulb_material.albedo_color = Color(0.05, 0.04, 0.08)
+	# ⚠️ LES ARCS S'ÉTEIGNENT AVEC LUI, et c'est la moitié de l'information : un nœud abattu qui
+	# continuerait de crépiter dirait au joueur qu'il n'a rien fait.
+	if _arc_mesh != null:
+		_arc_mesh.clear_surfaces()
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM,
 			Color(0.62, 0.42, 1.0))

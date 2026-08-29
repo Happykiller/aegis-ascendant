@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ProjectileData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/projectile_data.gd" id="1_data"]
+
+; Le tir des tourelles de coque du Long Cortege.
+;
+; ⚠️ PLUS LENT QU'UN TIR DE BOSS, ET C'EST DELIBERE. Dix-sept tourelles peuvent tirer sur le
+; meme survol : a 7 u/s comme le boss, l'ecran se remplirait de traits qu'on ne peut plus lire.
+; A 5,5 u/s le joueur voit venir, et c'est ce qui rend une tourelle EVITABLE — la loi de la
+; spec 11.2 tenue autrement que par un preavis (ADR-0040).
+;
+; ⚠️ ET IL FAIT MOINS MAL QU'UN TIR DE BOSS. Une tourelle tire en continu ; le meme degat par
+; balle en ferait une taxe a la seconde.
+
+[resource]
+script = ExtResource("1_data")
+speed = 5.5
+radius = 0.16
+damage = 6.0
+ttl = 4.0

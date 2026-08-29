@@ -92,7 +92,6 @@ var _bullet_manager: BulletManager = null
 
 var _phase: int = Phase.FIGHTER_WAVES
 var _boss: BossController
-var _mini_stage: HarvesterStage = null
 var _citadel: AegisCitadel
 var _final_boss: BossController
 ## Le module du boss final, gardé pour lire sa progression de combat (la musique la suit).
@@ -630,10 +629,10 @@ func _physics_process(delta: float) -> void:
 	# le niveau qui tient les deux. Hors plongée, `fire_screens()` rend un jeu vide : les
 	# balles ne paient alors aucun test.
 	if _bullets != null:
-		_bullets.screens = _final_stage.fire_screens() if _final_stage != null else null
+		_bullets.screens = _director.fire_screens() if _director != null else null
 	# Les calques de debug : le socle sait les dessiner, ce niveau lui donne ses écrans — les
 	# murs du boss final, que lui seul connaît.
-	draw_debug_zones(_final_stage.fire_screens() if _final_stage != null else null)
+	draw_debug_zones(_director.fire_screens() if _director != null else null)
 	_crush_light_bodies()
 	_update_engine_hum()
 	if _approach_active:
@@ -649,8 +648,11 @@ func _rebuild_solids() -> void:
 	_solids.clear()
 	if _final_stage != null:
 		_final_stage.fill_solids(_solids)
-	if _mini_stage != null:
-		_mini_stage.fill_solids(_solids)
+	# ⚠️ LE DIRECTEUR VERSE LES BOSS, PAS LE NIVEAU. Deux fois de suite, une référence tenue par
+	# le niveau a été perdue lors d'un déplacement de responsabilité, et le boss est devenu
+	# TRAVERSABLE sans qu'aucun test ne rougisse. Le niveau n'a plus rien à retenir.
+	if _director != null:
+		_director.fill_solids(_solids)
 	# ⚠️ LE CARTER DU RÉACTEUR, et c'est le NIVEAU qui le verse parce qu'il est le seul à
 	# connaître à la fois la chambre et le boss. Le module de combat ne sait rien du décor ;
 	# le décor ne sait rien du combat. Le carter est plus large que le flux (2,27 contre

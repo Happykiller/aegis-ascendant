@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioCueBank" load_steps=90 format=3]
+[gd_resource type="Resource" script_class="AudioCueBank" load_steps=92 format=3]
 
 [ext_resource type="Script" path="res://resources/data/audio_cue_bank.gd" id="1_bank"]
 [ext_resource type="Script" path="res://resources/data/audio_cue_data.gd" id="2_cue"]
@@ -45,6 +45,7 @@
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_node_down.ogg" id="94_v_node_down"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_ambry.ogg" id="94_v_ambry"]
 [ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_survey_end.ogg" id="94_v_survey_end"]
+[ext_resource type="AudioStream" path="res://assets/imported/audio/voice/lyra/lyra_node_seen.ogg" id="94_v_node_seen"]
 
 [sub_resource type="Resource" id="cue_player_pulse"]
 script = ExtResource("2_cue")
@@ -523,7 +524,17 @@ pitch_min = 1.0
 pitch_max = 1.0
 min_interval = 0.0
 looping = false
+[sub_resource type="Resource" id="cue_lyra_node_seen"]
+script = ExtResource("2_cue")
+id = &"lyra_node_seen"
+stream = ExtResource("94_v_node_seen")
+bus = "Voice"
+volume_db = 0.0
+pitch_min = 1.0
+pitch_max = 1.0
+min_interval = 0.0
+looping = false
 
 [resource]
 script = ExtResource("1_bank")
-cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop"), SubResource("cue_lyra_title_1"), SubResource("cue_lyra_title_2"), SubResource("cue_lyra_title_3"), SubResource("cue_lyra_title_4"), SubResource("cue_lyra_asteroid_field"), SubResource("cue_lyra_boss_approach"), SubResource("cue_lyra_dive_entered"), SubResource("cue_lyra_core_exposed"), SubResource("cue_lyra_core_shielded"), SubResource("cue_lyra_armour_reformed"), SubResource("cue_lyra_waves_cleared"), SubResource("cue_lyra_mission_start"), SubResource("cue_lyra_docking"), SubResource("cue_lyra_mission_complete"), SubResource("cue_lyra_mission_failed"), SubResource("cue_lyra_survey_start"), SubResource("cue_lyra_hull_guns"), SubResource("cue_lyra_bay_first"), SubResource("cue_lyra_bay_down"), SubResource("cue_lyra_spine_seen"), SubResource("cue_lyra_node_down"), SubResource("cue_lyra_ambry"), SubResource("cue_lyra_survey_end")])
+cues = Array[ExtResource("2_cue")]([SubResource("cue_player_pulse"), SubResource("cue_enemy_pulse"), SubResource("cue_hull_impact"), SubResource("cue_shield_impact"), SubResource("cue_small_explosion"), SubResource("cue_medium_explosion"), SubResource("cue_heavy_explosion"), SubResource("cue_pickup_power"), SubResource("cue_pickup_shield"), SubResource("cue_pickup_score"), SubResource("cue_danger_alarm"), SubResource("cue_docking_lock"), SubResource("cue_rail_battery"), SubResource("cue_helios_lance"), SubResource("cue_player_death"), SubResource("cue_boss_phase_shift"), SubResource("cue_ui_banner"), SubResource("cue_ui_select"), SubResource("cue_ui_confirm"), SubResource("cue_engine_loop"), SubResource("cue_lyra_title_1"), SubResource("cue_lyra_title_2"), SubResource("cue_lyra_title_3"), SubResource("cue_lyra_title_4"), SubResource("cue_lyra_asteroid_field"), SubResource("cue_lyra_boss_approach"), SubResource("cue_lyra_dive_entered"), SubResource("cue_lyra_core_exposed"), SubResource("cue_lyra_core_shielded"), SubResource("cue_lyra_armour_reformed"), SubResource("cue_lyra_waves_cleared"), SubResource("cue_lyra_mission_start"), SubResource("cue_lyra_docking"), SubResource("cue_lyra_mission_complete"), SubResource("cue_lyra_mission_failed"), SubResource("cue_lyra_survey_start"), SubResource("cue_lyra_hull_guns"), SubResource("cue_lyra_bay_first"), SubResource("cue_lyra_bay_down"), SubResource("cue_lyra_spine_seen"), SubResource("cue_lyra_node_down"), SubResource("cue_lyra_ambry"), SubResource("cue_lyra_survey_end"), SubResource("cue_lyra_node_seen")])

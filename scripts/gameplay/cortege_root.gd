@@ -43,6 +43,9 @@ var _defeated: bool = false
 ## la réplique de tronçon qui, elle, porte le récit.
 var _said_bay_down: bool = false
 var _said_node_down: bool = false
+## ⚠️ AU PREMIER NŒUD VU, PAS AU PREMIER ABATTU. C'est la seule cible du jeu dont la récompense
+## arrive quarante secondes plus tard : l'expliquer après coup ne sert plus à rien.
+var _said_node_seen: bool = false
 
 ## Les fenêtres de tir, dessinées par-dessus les calques du socle. ⚠️ ELLES SONT PROPRES À CE
 ## NIVEAU : le socle sait montrer une hitbox, il ne peut pas savoir qu'une pièce n'est tirable
@@ -71,11 +74,13 @@ func _ready() -> void:
 	# ⚠️ APRÈS `reveal`, parce que `reveal` repose le décor : les points d'ancrage lisent leur
 	# position dans le monde, et les monter avant reviendrait à les créer sur une coque qui n'est
 	# pas encore là où elle sera.
-	_hardpoints.build(_flyby.sections(), TUNING, _bullets, _player as PlayerFighterController, _vfx)
+	_hardpoints.build(_flyby.sections(), TUNING, _bullets, _player as PlayerFighterController,
+		_vfx, get_node_or_null("CameraDirector/Camera3D") as Node3D)
 	_hardpoints.turret_destroyed.connect(_on_turret_destroyed)
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
 	_hardpoints.section_silenced.connect(_on_section_silenced)
+	_hardpoints.node_engaged.connect(_on_node_engaged)
 	# ⚠️ UNE SECONDE ADOPTION, ET ELLE EST NÉCESSAIRE. Le socle a adopté les unités déjà dans
 	# l'arbre — la réception de proue — mais `build()` vient de monter sept pools de ponts
 	# d'envol, soixante-dix coques de plus. Le runtime adopte par le GROUPE : ce qui n'était pas
@@ -126,6 +131,14 @@ func _on_bay_destroyed(bay: CortegeBay) -> void:
 	if not _said_bay_down:
 		_said_bay_down = true
 		say(&"bay_down")
+
+## Le premier nœud entre dans sa fenêtre. ⚠️ Les éclairs disent « tire ici » ; elle seule peut
+## dire POURQUOI — et sans le pourquoi, la troisième mécanique du niveau n'existe pas.
+func _on_node_engaged(_node: CortegeSpineNode) -> void:
+	if _said_node_seen:
+		return
+	_said_node_seen = true
+	say(&"node_seen")
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	_game_state.add_score(TUNING.node_score)

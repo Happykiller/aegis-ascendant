@@ -33,6 +33,19 @@ var _index: int = -1
 ## boss tombe — ça arrive — appellerait `advance()` deux fois et sauterait un temps entier.
 var _advancing: bool = false
 
+## Les mises en scène montées et encore vivantes.
+##
+## ⚠️ ELLES SONT ICI PARCE QUE LE NIVEAU LES OUBLIAIT. Deux fois de suite, la même faute : en
+## sortant la mise en scène du script du niveau, la référence au module de combat a disparu avec
+## elle, et **le boss est devenu traversable** — sans erreur, sans test rouge. La deuxième fois,
+## c'est ce refactor-ci qui l'a rejouée : le directeur montait le mini-boss, mais `_mini_stage`
+## restait nul côté niveau. Un boss qu'on traverse ne se découvre qu'en jouant, et l'opérateur
+## l'a signalé les deux fois.
+##
+## Le directeur monte les boss : c'est donc lui qui les connaît, et lui qui les verse. Un niveau
+## ne peut plus rien oublier parce qu'il n'a plus rien à retenir.
+var _stages: Array[BossStage] = []
+
 func bind(level: LevelRoot, arc: LevelArc) -> void:
 	_level = level
 	_arc = arc
@@ -141,6 +154,7 @@ func _start_boss(beat: LevelBeat) -> void:
 	stage.score_value = beat.boss_score
 	stage.show_boss_before_begin = beat.boss_banner_first
 	stage.defeated.connect(_on_boss_defeated.bind(stage))
+	_stages.append(stage)
 	stage.mount(beat.boss_scene, _level)
 
 ## ⚠️ PAR NOM ET NON PAR `PackedScene` : une mise en scène est du CODE, pas du contenu. La
@@ -155,7 +169,25 @@ func _make_stage(kind: StringName) -> BossStage:
 		_:
 			return BossStage.new()
 
+## Verse le corps de TOUS les boss vivants parmi les obstacles du plan.
+func fill_solids(shapes: PlaneShapes) -> void:
+	for stage in _stages:
+		if is_instance_valid(stage):
+			stage.fill_solids(shapes)
+
+## Les écrans de tir du boss courant, s'il en pose. ⚠️ Le PREMIER qui en a : deux boss vivants
+## en même temps n'existent pas dans ce jeu, et si cela devenait vrai, il faudrait décider ce
+## que « les écrans » veut dire — pas les empiler en silence.
+func fire_screens() -> PlaneShapes:
+	for stage in _stages:
+		if is_instance_valid(stage):
+			var screens := stage.fire_screens()
+			if screens != null:
+				return screens
+	return null
+
 func _on_boss_defeated(world_position: Vector3, stage: BossStage) -> void:
+	_stages.erase(stage)
 	# ⚠️ LE NIVEAU PEUT PRENDRE LA MAIN. La finale Helios dure 1,8 s ; enchaîner l'appontage
 	# par-dessus l'escamoterait, et c'est le seul moment spectaculaire du niveau.
 	if _level != null and _level.on_boss_defeated(current(), stage, world_position):

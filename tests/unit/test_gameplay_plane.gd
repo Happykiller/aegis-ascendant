@@ -98,3 +98,38 @@ func test_bounds_fill_widescreen_gameplay_frame() -> void:
 		"playable area tracks the camera's widescreen footprint")
 	assert_eq(GameplayPlane.BOUNDS.get_center(), Vector2.ZERO,
 		"playable area remains centered for symmetric clamp and culling")
+
+# --- Ou toucher une piece posee HORS du plan ---------------------------------
+
+## ⚠️ CE TEST GARDE UN DEFAUT QUE SEULES LES CALQUES DE DEBUG ONT MONTRE. Tout le jeu se joue a
+## Y = 0, et `to_plane()` laisse tomber la hauteur — juste pour un chasseur, faux pour une
+## tourelle vissee sur une coque a Y = -3,5. La camera plonge a 70 deg : deux points de meme X
+## et Z mais de hauteurs differentes ne se projettent PAS au meme pixel. La tourelle apparaissait
+## donc a plusieurs metres de sa hitbox, et le joueur tirait a cote en visant juste.
+func test_a_piece_below_the_plane_is_aimed_where_it_is_SEEN() -> void:
+	# La camera du jeu : posee en hauteur, legerement en arriere.
+	var camera := Vector3(0.0, 14.0, 5.0)
+	var piece := Vector3(10.0, -3.5, -40.0)
+	var naif := GameplayPlane.to_plane(piece)
+	var vise := GameplayPlane.aim_point_of(piece, camera)
+	assert_true(vise.distance_to(naif) > 1.0,
+		"le decalage est REEL, pas un pixel : %.1f unites entre la piece et sa hitbox naive"
+			% vise.distance_to(naif))
+	# ⚠️ ET IL VA VERS LA CAMERA : une piece SOUS le plan se voit plus pres du centre que sa
+	# projection verticale. Le sens compte — se tromper de signe doublerait l'erreur.
+	assert_true(absf(vise.x) < absf(naif.x),
+		"la piece se voit plus pres de l'axe (%.2f) que sa projection verticale (%.2f)"
+			% [vise.x, naif.x])
+
+func test_a_piece_in_the_plane_is_aimed_where_it_is() -> void:
+	var camera := Vector3(0.0, 14.0, 5.0)
+	var dans_le_plan := Vector3(6.0, 0.0, -3.0)
+	assert_true(GameplayPlane.aim_point_of(dans_le_plan, camera).distance_to(
+		GameplayPlane.to_plane(dans_le_plan)) < 0.0001,
+		"une chose DANS le plan ne bouge pas : la correction doit etre neutre la ou elle ne sert pas")
+
+func test_a_camera_inside_the_plane_does_not_divide_by_zero() -> void:
+	# Cas degenere : aucun rayon ne traverse le plan. On rend la projection ordinaire plutot
+	# qu'un infini qui enverrait la hitbox a l'autre bout du monde.
+	var vise := GameplayPlane.aim_point_of(Vector3(4.0, -3.5, -2.0), Vector3(0.0, 0.0, 5.0))
+	assert_almost_eq(vise.x, 4.0, 0.001, "aucune division par zero")

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueScript" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="DialogueScript" load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://resources/data/dialogue_script.gd" id="1_script"]
 [ext_resource type="Script" path="res://resources/data/dialogue_line.gd" id="2_line"]
@@ -76,6 +76,24 @@ mood = 0
 voice_cue = &"lyra_spine_seen"
 hold = 7.0
 
+; ⚠️ ELLE EXPLIQUE UNE MECANIQUE, ET C'EST LA SEULE DU JEU QUI EN AIT BESOIN. Un nœud d'epine
+; est la seule cible dont la recompense arrive quarante secondes plus tard, sur un troncon que
+; le joueur n'a pas encore vu : rien a l'ecran ne peut relier la cause a l'effet. Les eclairs
+; disent « tire ici » ; elle seule peut dire POURQUOI.
+;
+; ⛔ PLAFOND — « ce qui les alimente » et rien de plus. Ni ce que l'Unisson est, ni comment il
+; se repare : le joueur apprend qu'ils EMPORTENT DES STRUCTURES, un point.
+[sub_resource type="Resource" id="line_8"]
+script = ExtResource("2_line")
+key = &"node_seen"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Ce bulbe sur l’axe, Halyard — c’est un nœud.
+Abattez-le : il alimente les tourelles du tronçon suivant."
+mood = 1
+voice_cue = &"lyra_node_seen"
+hold = 7.0
+
 [sub_resource type="Resource" id="line_5"]
 script = ExtResource("2_line")
 key = &"node_down"
@@ -111,4 +129,4 @@ hold = 6.5
 
 [resource]
 script = ExtResource("1_script")
-lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7")]
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8")]

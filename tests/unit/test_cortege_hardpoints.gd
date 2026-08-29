@@ -68,19 +68,19 @@ func test_a_turret_turns_at_a_constant_rate_never_faster() -> void:
 func test_a_turret_never_burns_outside_its_window() -> void:
 	var turret := _turret()
 	for i in 400:
-		turret.tick(0.02, _world_at(TUNING.turret_visible_span))
+		turret.tick(0.02, _world_at(TUNING.turret_visible_span), GameplayPlane.to_plane(_world_at(TUNING.turret_visible_span)))
 	assert_false(turret.is_engaged(),
 		"loin devant, elle n'est pas armee — son faisceau ne peut donc mordre personne")
 
 func test_a_turret_that_has_passed_is_gone_for_good() -> void:
 	var turret := _turret()
-	turret.tick(0.02, _world_at(0.0))
+	turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_false(turret.has_passed(), "elle est vivante dans sa fenetre")
-	turret.tick(0.02, _world_at(-TUNING.turret_visible_span))
+	turret.tick(0.02, _world_at(-TUNING.turret_visible_span), GameplayPlane.to_plane(_world_at(-TUNING.turret_visible_span)))
 	assert_true(turret.has_passed(), "passee, elle se retire")
 	# ⚠️ Et elle ne revient pas : c'est la loi du survol. Une piece qui se reveillerait en
 	# arriere du joueur tirerait hors du cadre, sans que rien ne le montre.
-	turret.tick(0.02, _world_at(0.0))
+	turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_true(turret.has_passed(), "elle ne se rallume pas quand la position repasse dans la fenetre")
 
 func test_a_silenced_turret_stays_shootable() -> void:
@@ -93,8 +93,8 @@ func test_a_silenced_turret_stays_shootable() -> void:
 	assert_true(turret.is_alive(), "eteinte n'est pas detruite")
 	var avant := turret.aim()
 	for i in 400:
-		turret.tick(0.02, _world_at(0.0))
-	assert_eq(turret.aim(), avant, "elle ne pivote meme plus : son canon est mort")
+		turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
+	assert_eq(turret.aim(), avant, "elle ne pivote meme plus : sa tete est morte")
 
 # --- 2. Le pont tombe dans sa fenetre -----------------------------------------
 
@@ -104,7 +104,7 @@ func test_a_bay_falls_within_the_window_a_reference_player_gets() -> void:
 	var bay := track(BayScript.make(TUNING, 0)) as CortegeBay
 	var down := [false]
 	bay.destroyed.connect(func(_b: CortegeBay) -> void: down[0] = true)
-	bay.tick(0.02, _world_at(0.0))
+	bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	# On lui verse exactement ce que la fenetre permet, par salves de la taille d'un tir.
 	var dealt := 0.0
 	var reachable: float = TUNING.bay_reachable()
@@ -121,19 +121,19 @@ func test_a_bay_only_releases_over_the_playfield() -> void:
 	# Dans sa fenetre de TIR, mais au-dessus de la borne haute du plan de vol.
 	var above := GameplayPlane.BOUNDS.end.y + 1.5
 	for i in 600:
-		bay.tick(0.02, _world_at(above))
+		bay.tick(0.02, _world_at(above), GameplayPlane.to_plane(_world_at(above)))
 	assert_eq(launched[0], 0,
 		"un pont ne lache pas au-dessus du terrain — la coque naitrait hors des bornes et serait detruite a sa premiere trame")
 
 func test_a_dead_bay_stops_producing() -> void:
 	var bay := track(BayScript.make(TUNING, 0)) as CortegeBay
-	bay.tick(0.02, _world_at(0.0))
+	bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	bay.target().hit_callback.call(TUNING.bay_health)
 	assert_false(bay.is_alive(), "il est tombe")
 	var launched := [0]
 	bay.released.connect(func(_e: EnemyController) -> void: launched[0] += 1)
 	for i in 600:
-		bay.tick(0.02, _world_at(0.0))
+		bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_eq(launched[0], 0, "abattu, il ne produit plus — c'est toute la valeur de la decision")
 
 func test_a_bay_releases_enough_times_to_be_worth_killing() -> void:
@@ -164,11 +164,11 @@ func test_the_last_node_of_the_survey_relieves_nothing() -> void:
 func test_a_node_only_becomes_a_target_inside_its_window() -> void:
 	var node := track(NodeScript.make(TUNING, 0)) as CortegeSpineNode
 	node.setup(null, null)
-	node.tick(0.02, _world_at(TUNING.node_visible_span))
+	node.tick(0.02, _world_at(TUNING.node_visible_span), GameplayPlane.to_plane(_world_at(TUNING.node_visible_span)))
 	assert_false(node.is_engaged(), "loin devant, il n'est pas encore une cible")
-	node.tick(0.02, _world_at(0.0))
+	node.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_true(node.is_engaged(), "dans sa fenetre, il l'est")
-	node.tick(0.02, _world_at(-TUNING.node_visible_span))
+	node.tick(0.02, _world_at(-TUNING.node_visible_span), GameplayPlane.to_plane(_world_at(-TUNING.node_visible_span)))
 	assert_true(node.has_passed(), "derriere, il ne l'est plus jamais")
 
 func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
@@ -176,7 +176,7 @@ func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
 	node.setup(null, null)
 	var down := [-1]
 	node.destroyed.connect(func(n: CortegeSpineNode) -> void: down[0] = n.section)
-	node.tick(0.02, _world_at(0.0))
+	node.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	var dealt := 0.0
 	var reachable: float = TUNING.node_reachable()
 	while dealt < reachable and down[0] < 0:
@@ -221,7 +221,7 @@ func test_killing_a_node_silences_the_next_sections_turrets() -> void:
 		announced[1] = count)
 	# Le noeud du PREMIER troncon tombe.
 	var node := manager.nodes()[0]
-	node.tick(0.02, Vector3.ZERO)
+	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)
 	assert_false(node.is_alive(), "le noeud est tombe")
 	assert_eq(manager.turrets_alive_in(1), 0,
@@ -242,7 +242,7 @@ func test_the_last_node_silences_nothing_and_says_nothing() -> void:
 	# du BANC (rang 1) designe donc le troncon 2, qui n'existe pas ici — et le gestionnaire ne
 	# doit ni planter ni annoncer une extinction vide.
 	var node := manager.nodes()[1]
-	node.tick(0.02, Vector3.ZERO)
+	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)
 	assert_false(node.is_alive(), "le second noeud est tombe")
 	assert_eq(heard[0], 0, "aucune extinction annoncee — il n'y a rien a eteindre")
@@ -430,14 +430,14 @@ func test_a_bay_shows_the_launch_before_the_hull_is_in_play() -> void:
 	var pas := 0.02
 	var ecoule := 0.0
 	while ecoule < TUNING.bay_release_interval + 0.01:
-		bay.tick(pas, _world_at(0.0))
+		bay.tick(pas, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 		ecoule += pas
 	assert_eq(lancees[0], 0,
 		"a l'instant du lacher, RIEN n'est encore en jeu — la porte vient de s'ouvrir")
 	# Puis la duree de la montee.
 	ecoule = 0.0
 	while ecoule < BayScript.LAUNCH_TIME + 0.05:
-		bay.tick(pas, _world_at(0.0))
+		bay.tick(pas, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 		ecoule += pas
 	# ⚠️ Sans pool cable (`build()` n'a pas ete appele), aucune coque n'est reservee : ce que ce
 	# test garde est le DELAI, pas le nombre. Le nombre est garde par l'invariant du reglage.

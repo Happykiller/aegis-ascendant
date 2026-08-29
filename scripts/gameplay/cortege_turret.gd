@@ -17,11 +17,23 @@ extends Node3D
 ## pièces réparties sur deux flancs, un préavis de 0,8 s passe inaperçu — le joueur regarde
 ## ailleurs, il esquive.
 ##
-## Un faisceau PERMANENT résout le problème par construction : la menace est visible tout le
-## temps, sa direction se lit d'un coup d'œil, et l'on sait toujours quelle pièce est vivante.
-## Ce qui remplace le télégraphe, c'est la LENTEUR — la tourelle pivote à 42 °/s, le joueur en
-## contourne une à 100 °/s. L'invariant 3 de `CortegeTuning` tient cet écart : un faisceau qu'on
-## ne peut pas semer serait une taxe, exactement ce que la spec §11.2 interdit.
+## Un tir CONTINU résout le problème par construction : la menace est visible tout le temps, sa
+## direction se lit d'un coup d'œil, et l'on sait toujours quelle pièce est vivante. Ce qui
+## remplace le télégraphe, c'est la LENTEUR — la tourelle pivote à 42 °/s, le joueur en contourne
+## une à 100 °/s. L'invariant 3 de `CortegeTuning` tient cet écart : une menace qu'on ne peut pas
+## semer serait une taxe, exactement ce que la spec §11.2 interdit.
+##
+## ⚠️ ET ELLE TIRE DES BALLES, PLUS UN FAISCEAU. Un rayon permanent était lisible mais laid, et
+## surtout il ne se joue pas : on ne peut ni le voir venir, ni passer entre deux tirs. Des
+## projectiles lents donnent au joueur les deux — « je préfère qu'elles tirent en continu des
+## bullets » (opérateur, 2026-08-29). Ils traversent aussi le gestionnaire de balles commun,
+## donc ils sont freinés par les mêmes écrans et comptés par la même densité que tout le reste.
+##
+## ⚠️ ELLE PIVOTE DÈS QU'ELLE VOUS VOIT, PAS SEULEMENT QUAND ELLE PEUT TIRER. Sa fenêtre de tir
+## fait 20 unités ; elle commence à chercher son axe sur le DOUBLE. Le joueur voit donc le canon
+## se tourner vers lui avant que ça ne compte — c'est ce qui remplace le télégraphe, et c'est
+## demandé : « dès qu'on rentre dans leur champ de vision elles devraient tourner pour chercher
+## à nous mettre dans leur axe de tir ».
 ##
 ## ⚠️ CE QUI CHANGE ICI : LE SURVOL NE REVIENT JAMAIS EN ARRIÈRE. Une tourelle a donc un AVANT,
 ## un PENDANT et un APRÈS. Passée, elle se tait pour de bon et REND SA CIBLE au gestionnaire de
@@ -37,22 +49,36 @@ enum Pass { AHEAD, LIVE, PASSED }
 const BEAM_CORE := Color(1.0, 0.90, 0.86)
 const BEAM_EDGE := Color("c93a31")
 
+## Le projectile. ⚠️ Une Resource partagée : tous les tirs de tourelle du niveau sont le même
+## objet, comme partout ailleurs dans le jeu (spec §31).
+const SHOT := preload("res://resources/weapons/cortege_turret_shot.tres")
+
+## ⚠️ ELLE CHERCHE SON AXE SUR LE DOUBLE DE SA PORTÉE DE TIR. Voir le canon se tourner vers soi
+## AVANT d'être à portée est ce qui remplace le télégraphe : la menace s'annonce par un geste,
+## pas par un clignotement.
+const SEEK_SPAN_FACTOR := 2.0
+
 ## Le CANON. ⚠️ IL EXISTE PARCE QU'UNE TOURELLE DOIT SE VOIR AVANT DE TIRER. La coupole est
 ## cuite dans le tronçon et ne bouge pas ; sans une pièce mobile, rien à l'écran ne dit où
 ## regarde la tourelle — et un faisceau qui sort d'un décor immobile se lit comme un piège, pas
 ## comme une machine. Le canon tourne, donc on lit son intention une seconde avant qu'elle ne
 ## compte.
-const BARREL_LENGTH := 1.35
-const BARREL_WIDTH := 0.26
-const BARREL_LIFT := 0.42
+const BARREL_LENGTH := 1.15
+const BARREL_WIDTH := 0.19
+const BARREL_GAP := 0.22
+const HEAD_LIFT := 0.34
+const HEAD_RADIUS := 0.58
+const HEAD_HEIGHT := 0.34
 
 ## L'œil de la tourelle. ⚠️ IL EXISTE PARCE QUE LA GÉOMÉTRIE LIVRÉE EST CUITE DANS LE TRONÇON :
 ## les coupoles font partie du maillage de la section et partagent leurs matériaux avec elle. On
 ## ne peut donc PAS éteindre une tourelle en touchant à la coque — il faudrait éteindre les dix-
 ## sept. L'état de la pièce est porté par un volume à nous, ajouté au marqueur : il s'allume au
 ## télégraphe, il s'éteint à la mort. C'est la seule chose que le joueur ait à lire.
-const EYE_RADIUS := 0.42
-const EYE_LIFT := 0.55
+const EYE_RADIUS := 0.24
+## D'où sort la balle : le bout des canons. ⚠️ Une balle née au centre de la coupole se verrait
+## sortir du décor, ce qui est exactement ce qu'on reproche à un tir qu'on ne comprend pas.
+const MUZZLE_REACH := 1.45
 
 signal destroyed(turret: CortegeTurret)
 
@@ -64,7 +90,6 @@ var _bullet_manager: BulletManager
 var _player: PlayerFighterController
 var _vfx: VFXManager
 var _target: BulletTarget
-var _beam: Beam
 var _eye: MeshInstance3D
 var _eye_material: StandardMaterial3D
 
@@ -103,56 +128,75 @@ func setup(bullet_manager: BulletManager, player: PlayerFighterController,
 	_vfx = vfx
 
 func _ready() -> void:
+	_build_head()
+
+## La tourelle : une TÊTE qui pivote, deux canons, et une bouche qui s'allume au tir.
+##
+## ⚠️ ELLE ÉTAIT « HIDEUSE », ET LE MOT EST DE L'OPÉRATEUR. La première version posait une barre
+## noire et une boule rose sur la coupole cuite dans la coque : deux primitives sans rapport,
+## qui ne se lisaient ni comme une machine ni comme une menace. Ce qui manquait n'est pas du
+## détail — à 23 px/m il n'en survivrait aucun — c'est une SILHOUETTE : un volume qui tourne,
+## des canons qu'on voit pointer, une bouche qui dit quand ça part.
+##
+## ⚠️ ET ELLE EST BÂTIE SUR LE SOCLE DE LA FORGE, PAS À CÔTÉ. La coupole est cuite dans le
+## tronçon et ne bouge pas ; la tête se pose dessus et tourne. C'est ce qui distingue la partie
+## fixe de la partie mobile, et donc ce qui rend l'orientation lisible.
+func _build_head() -> void:
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.13, 0.12, 0.16)
+	steel.metallic = 0.72
+	steel.roughness = 0.34
+	_barrel = Node3D.new()
+	_barrel.name = "Head"
+	_barrel.position.y = HEAD_LIFT
+	add_child(_barrel)
+	# La tête : un cylindre bas. Douze pans — on la voit toujours de dessus, et dix-sept
+	# tourelles à soixante-quatre pans coûteraient mille triangles pour un contour identique.
+	var dome := MeshInstance3D.new()
+	var dome_mesh := CylinderMesh.new()
+	dome_mesh.top_radius = HEAD_RADIUS * 0.82
+	dome_mesh.bottom_radius = HEAD_RADIUS
+	dome_mesh.height = HEAD_HEIGHT
+	dome_mesh.radial_segments = 12
+	dome_mesh.rings = 0
+	dome.mesh = dome_mesh
+	dome.material_override = steel
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_barrel.add_child(dome)
+	# Les deux canons, cote à cote. ⚠️ LEUR PIVOT EST À LA TÊTE, pas en leur milieu : une
+	# `BoxMesh` est centrée sur son origine, donc on les décale de la moitié de leur longueur.
+	# Sans ça ils tournent autour de leur centre et sortent par l'arrière à chaque quart de tour.
+	for side in [-1.0, 1.0]:
+		var tube := MeshInstance3D.new()
+		var bar := BoxMesh.new()
+		bar.size = Vector3(BARREL_WIDTH, BARREL_WIDTH, BARREL_LENGTH)
+		tube.mesh = bar
+		tube.position = Vector3(side * BARREL_GAP, 0.0, -BARREL_LENGTH * 0.5 - HEAD_RADIUS * 0.4)
+		tube.material_override = steel
+		tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_barrel.add_child(tube)
+	# La bouche : le seul volume émissif, et il porte TOUT l'état de la pièce — vivante, en
+	# train de tirer, éteinte, morte. Un joueur doit pouvoir compter les tourelles encore
+	# dangereuses d'un coup d'œil.
 	_eye_material = StandardMaterial3D.new()
 	_eye_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_eye_material.albedo_color = BEAM_EDGE
 	_eye_material.emission_enabled = true
 	_eye_material.emission = BEAM_EDGE
-	_eye_material.emission_energy_multiplier = 0.6
-	var mesh := SphereMesh.new()
-	mesh.radius = EYE_RADIUS
-	mesh.height = EYE_RADIUS * 2.0
-	# Une coque de dix-sept œils : la sphère par défaut en coûterait 1 472 à elle seule, pour
-	# un volume de quarante centimètres qu'on ne voit jamais de près.
-	mesh.radial_segments = 8
-	mesh.rings = 4
+	_eye_material.emission_energy_multiplier = 1.4
 	_eye = MeshInstance3D.new()
-	_eye.name = "Eye"
-	_eye.mesh = mesh
+	_eye.name = "Muzzle"
+	var glow := SphereMesh.new()
+	glow.radius = EYE_RADIUS
+	glow.height = EYE_RADIUS * 2.0
+	glow.radial_segments = 8
+	glow.rings = 4
+	_eye.mesh = glow
 	_eye.material_override = _eye_material
-	_eye.position.y = EYE_LIFT
+	_eye.position.z = -MUZZLE_REACH
 	_eye.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_eye)
-	# Le canon : une barre posée à plat qui pointe où le faisceau part. ⚠️ SON PIVOT EST À SA
-	# BASE, pas en son milieu — une `BoxMesh` est centrée sur son origine, donc on la décale de
-	# la moitié de sa longueur dans un nœud intermédiaire. Sans ça elle tourne autour de son
-	# centre et sort de la coupole par l'arrière à chaque quart de tour.
-	_barrel = MeshInstance3D.new()
-	_barrel.name = "Barrel"
-	_barrel.position.y = BARREL_LIFT
-	_barrel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tube := MeshInstance3D.new()
-	var bar := BoxMesh.new()
-	bar.size = Vector3(BARREL_WIDTH, BARREL_WIDTH, BARREL_LENGTH)
-	tube.mesh = bar
-	tube.position.z = -BARREL_LENGTH * 0.5
-	var steel := StandardMaterial3D.new()
-	steel.albedo_color = Color(0.16, 0.14, 0.18)
-	steel.metallic = 0.7
-	steel.roughness = 0.35
-	tube.material_override = steel
-	tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_barrel.add_child(tube)
-	add_child(_barrel)
-	_beam = Beam.make()
-	# ⚠️ `top_level` OBLIGATOIRE, exactement pour la raison qui a coûté un après-midi sur le
-	# Léviathan : `Beam.aim()` pose le faisceau en coordonnées MONDE, et cette tourelle est
-	# enfant d'un marqueur qui est lui-même à trois cents unités de l'origine. Sans lui, le
-	# faisceau subit la position du décor DEUX fois et part hors du cadre — sans une ligne au
-	# journal.
-	_beam.top_level = true
-	_beam.tint(BEAM_CORE, BEAM_EDGE)
-	add_child(_beam)
+	_barrel.add_child(_eye)
+
 
 func is_alive() -> bool:
 	return _alive
@@ -183,8 +227,6 @@ func silence() -> void:
 	if _silenced:
 		return
 	_silenced = true
-	if _beam != null:
-		_beam.extinguish()
 	_set_eye(0.25)
 
 func is_silenced() -> bool:
@@ -195,16 +237,22 @@ func is_silenced() -> bool:
 ## pour un travail que rien n'oblige à disperser — et un ordre de passage dont on ne sait plus
 ## rien le jour où un nœud doit éteindre une tourelle avant qu'elle ait tiré.
 ##
+## ⚠️ ET SON POINT DE VISÉE LUI EST DONNÉ, IL NE SE DÉDUIT PAS DE SA POSITION. La pièce est
+## vissée sur une coque à Y = −3,5, hors du plan de jeu ; la caméra plonge à 70°, donc elle
+## n'apparaît PAS où sa projection verticale la met. Le gestionnaire calcule le point du plan
+## qui se projette au même pixel (`GameplayPlane.aim_point_of`), et c'est LUI la hitbox. Sans
+## cette correction, la tourelle se voyait à deux mètres de sa propre cible — le joueur visait
+## juste et tirait à côté, signalé par l'opérateur, capture à l'appui.
+##
 ## ⚠️ SA POSITION LUI EST DONNÉE, ELLE NE LA LIT PAS DANS L'ARBRE. Elle est
 ## pourtant enfant d'un marqueur qui défile, et `global_position` répondrait — mais seulement
 ## DANS un arbre monté. La passer en paramètre rend la pièce pilotable sans scène, donc
 ## vérifiable : c'est exactement ce qui a rendu `LeviathanCombat` testable là où trois cycles
 ## demandent quarante secondes de jeu. Le gestionnaire, lui, sait lire l'arbre.
-func tick(delta: float, world: Vector3) -> void:
+func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var here := GameplayPlane.to_plane(world)
 	var half := tuning.turret_visible_span * 0.5
 	match _pass:
 		Pass.AHEAD:
@@ -219,29 +267,37 @@ func tick(delta: float, world: Vector3) -> void:
 				return
 	if _target != null:
 		_target.position = here
-	if not _alive or _silenced or _pass != Pass.LIVE:
+	if not _alive or _silenced:
+		return
+	# ⚠️ ELLE CHERCHE SON AXE AVANT DE POUVOIR TIRER, et c'est ce qui remplace le télégraphe. Sa
+	# fenêtre de tir fait 20 unités ; elle commence à se tourner vers le joueur sur le DOUBLE.
+	# On voit donc le canon venir bien avant que ça ne compte — une menace qui s'annonce par un
+	# geste, pas par un clignotement. Demandé en jouant : « dès qu'on rentre dans leur champ de
+	# vision elles devraient tourner pour chercher à nous mettre dans leur axe de tir ».
+	if absf(here.y) > half * SEEK_SPAN_FACTOR:
 		return
 	_run_fire(delta, here)
 
-## Le tir continu. Trois gestes seulement : tourner vers le joueur, tendre le faisceau, mordre
-## à cadence fixe ce qu'il touche.
+## Le tir continu : tourner vers le joueur, puis lâcher une balle à cadence fixe.
 ##
-## ⚠️ LA MORSURE EST CADENCÉE, PAS PROPORTIONNELLE AU TEMPS. Verser `dps × delta` au bouclier à
-## chaque image ferait perdre presque tout dans les images gelées par un arrêt sur image, et
-## rendrait les dégâts dépendants de la cadence d'affichage. Une morsure toutes les 0,4 s se
-## règle, se teste, et se sent.
+## ⚠️ LA CADENCE EST FIXE ET NON PROPORTIONNELLE AU TEMPS. Une tourelle qui tirerait « n balles
+## par seconde » à coups de `delta` en perdrait presque toutes dans les images gelées par un
+## arrêt sur image, et sa dangerosité dépendrait de la cadence d'affichage.
 func _run_fire(delta: float, here: Vector2) -> void:
 	_turn_toward(delta, here)
-	_project(here)
-	_burn_timer -= delta
-	if _burn_timer > 0.0 or _player == null:
+	_aim_barrel()
+	if not _in_window(here):
 		return
-	var reach := here + _aim * tuning.turret_range
-	# ⚠️ `Beam.hits` s'applique au SEGMENT, pas au bout : la tourelle brûle ce qui traverse, et
-	# c'est ce qui rend le faisceau lisible — on voit exactement où il ne faut pas passer.
-	if Beam.hits(here, reach, tuning.turret_beam_half_width, _player.plane_position, 0.25):
-		_burn_timer = tuning.turret_burn_interval
-		_player.take_contact_damage(tuning.turret_burn_damage)
+	_burn_timer -= delta
+	if _burn_timer > 0.0 or _bullet_manager == null:
+		return
+	_burn_timer = tuning.turret_burn_interval
+	# ⚠️ LA BALLE PART DE LA BOUCHE, pas du centre de la coupole : sinon elle naît dans le socle
+	# et le joueur voit un tir sortir du décor.
+	_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
+		here + _aim * MUZZLE_REACH, _aim, SHOT)
+	_set_eye(3.0)
+
 
 ## Fait pivoter le canon vers le joueur, sans jamais dépasser sa vitesse de rotation.
 ##
@@ -253,20 +309,18 @@ func _turn_toward(delta: float, here: Vector2) -> void:
 	var wanted := _direction_to_player(here).angle()
 	_aim = Vector2.from_angle(turn_step(_aim.angle(), wanted,
 		tuning.turret_turn_rate_deg, delta))
+
+
+## Oriente le canon sur l'axe visé. ⚠️ Le canon est enfant du marqueur, qui défile : on lui
+## donne un angle LOCAL. Le plan de jeu a +y vers le haut de l'écran, le monde −z : d'où le
+## signe et le quart de tour.
+func _aim_barrel() -> void:
 	if _barrel != null:
-		# ⚠️ Le canon est un enfant du marqueur, qui défile : on lui donne un angle LOCAL. Le
-		# plan de jeu a +y vers l'écran, le monde -z : d'où le signe.
 		_barrel.rotation.y = -_aim.angle() + PI * 0.5
 
-
-## Tend le faisceau. ⚠️ IL EST TOUJOURS ARMÉ TANT QUE LA TOURELLE VIT : c'est lui, et lui seul,
-## qui dit au joueur quelles pièces sont encore dangereuses.
-func _project(here: Vector2) -> void:
-	var reach := here + _aim * tuning.turret_range
-	if _beam != null:
-		_beam.aim(here, reach, tuning.turret_beam_half_width)
-		_beam.set_regime(2.2, 0.0)
-	_set_eye(2.2)
+## Dans sa fenêtre de TIR — plus étroite que sa fenêtre de recherche.
+func _in_window(here: Vector2) -> bool:
+	return absf(here.y) <= tuning.turret_visible_span * 0.5
 
 
 func _direction_to_player(here: Vector2) -> Vector2:
@@ -286,8 +340,6 @@ func _take_damage(damage: float) -> void:
 	if _health > 0.0:
 		return
 	_alive = false
-	if _beam != null:
-		_beam.extinguish()
 	_set_eye(0.0)
 	if _eye_material != null:
 		_eye_material.albedo_color = Color(0.06, 0.05, 0.07)
@@ -304,8 +356,6 @@ func _retire() -> void:
 		_target.enabled = false
 		if _bullet_manager != null:
 			_bullet_manager.unregister_target(_target)
-	if _beam != null:
-		_beam.extinguish()
 
 # --- Fonction pure, testable sans arbre de scène ------------------------------
 

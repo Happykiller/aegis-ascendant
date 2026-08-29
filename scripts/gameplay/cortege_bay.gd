@@ -78,6 +78,22 @@ const LAUNCH_TO := Vector3(0.0, 0.35, 1.9)
 const RISER_LENGTH := 1.55
 const RISER_WIDTH := 0.86
 
+# --- Les portes ----------------------------------------------------------------
+#
+## ⚠️ IL MANQUAIT LA PORTE, ET C'EST CE QUI FAISAIT « DES FORMES CARRÉES ». La première version
+## montrait une nappe magenta permanente et deux silhouettes qui en sortaient : un pont d'envol
+## toujours ouvert n'est pas un pont d'envol, c'est un trou. « Les ponts d'envol ne sont pas
+## animés, c'est moche, on dirait des jeux faits avec des formes carrées » (opérateur,
+## 2026-08-29) — et le mot juste est *animés* : ce qui manque n'est pas de la géométrie, c'est
+## un ÉTAT qui change.
+##
+## Deux battants se retirent sur les côtés, la lueur du puits apparaît, les coques montent, les
+## battants se referment. Le puits ne brille donc que quand il produit — et un pont abattu reste
+## FERMÉ, ce qui se lit sans un mot.
+const DOOR_TIME := 0.4
+const DOOR_SLIDE := 2.05
+const DOOR_TINT := Color(0.15, 0.13, 0.17)
+
 signal destroyed(bay: CortegeBay)
 signal released(enemy: EnemyController)
 
@@ -104,6 +120,12 @@ var _world: Vector3 = Vector3.ZERO
 var _risers: Array[MeshInstance3D] = []
 var _riser_age: PackedFloat32Array = PackedFloat32Array()
 var _riser_enemy: Array[EnemyController] = []
+
+## Les deux battants, et leur ouverture — 0 fermé, 1 ouvert.
+var _doors: Array[MeshInstance3D] = []
+var _door_open: float = 0.0
+## La porte reste ouverte tant qu'un décollage est en cours, plus un souffle.
+var _door_hold: float = 0.0
 
 static func make(p_tuning: CortegeTuning, p_section: int) -> CortegeBay:
 	var bay := CortegeBay.new()
@@ -166,7 +188,7 @@ func _ready() -> void:
 	mesh.bottom_radius = WELL_RADIUS
 	mesh.height = WELL_THICKNESS
 	# Six pans, comme le puits. Le défaut par défaut en compterait soixante-quatre, sept fois
-	# dans le niveau, pour un couvercle qu'on regarde toujours de face.
+	# dans le niveau, pour un fond qu'on regarde toujours de face.
 	mesh.radial_segments = 6
 	mesh.rings = 0
 	_hatch = MeshInstance3D.new()
@@ -179,46 +201,90 @@ func _ready() -> void:
 	_hatch.rotation.y = PI * 0.5
 	_hatch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_hatch)
+	_build_doors()
 	_build_risers()
+
+## Les deux battants qui ferment le puits. ⚠️ ILS SONT AU NIVEAU DE LA BOUCHE, pas au fond :
+## fermés, ils cachent la lueur ; ouverts, ils la découvrent. C'est ce contraste — noir puis
+## magenta — qui fait lire l'ouverture, bien plus que le mouvement lui-même.
+func _build_doors() -> void:
+	var plate := StandardMaterial3D.new()
+	plate.albedo_color = DOOR_TINT
+	plate.metallic = 0.65
+	plate.roughness = 0.4
+	for side in [-1.0, 1.0]:
+		var door := MeshInstance3D.new()
+		door.name = "Door%s" % ("L" if side < 0.0 else "R")
+		var slab := BoxMesh.new()
+		slab.size = Vector3(WELL_RADIUS * 1.02, 0.12, WELL_RADIUS * 2.05)
+		door.mesh = slab
+		door.material_override = plate
+		door.position = Vector3(side * WELL_RADIUS * 0.51, WELL_DEPTH + 0.5, 0.0)
+		door.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(door)
+		_doors.append(door)
 
 ## Les silhouettes qui montent du puits. Une par coque d'un lâcher, montées au démarrage et
 ## réutilisées — comme tout le reste.
 func _build_risers() -> void:
-	var mesh := PrismMesh.new()
-	mesh.size = Vector3(RISER_WIDTH, 0.22, RISER_LENGTH)
 	var skin := StandardMaterial3D.new()
 	skin.albedo_color = Color(0.09, 0.08, 0.11)
 	skin.metallic = 0.6
 	skin.roughness = 0.38
-	# Une seule lueur, à l'arrière : c'est elle qui dit que la chose est SOUS PROPULSION et non
-	# posée sur un monte-charge.
-	skin.emission_enabled = true
-	skin.emission = Color(1.0, 0.55, 0.30)
-	skin.emission_energy_multiplier = 0.55
+	var burn := StandardMaterial3D.new()
+	burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	burn.albedo_color = Color(1.0, 0.55, 0.30)
+	burn.emission_enabled = true
+	burn.emission = Color(1.0, 0.55, 0.30)
+	burn.emission_energy_multiplier = 2.2
 	for i in maxi(tuning.bay_release_count, 1):
 		var riser := MeshInstance3D.new()
 		riser.name = "Riser%d" % i
-		riser.mesh = mesh
+		# ⚠️ UNE COQUE, PAS UN PRISME. Un prisme se lit comme une flèche de menu ; ce qui doit
+		# sortir d'un pont d'envol, c'est un vaisseau. Trois boîtes suffisent à cette taille —
+		# un fuselage et deux ailes en flèche — et c'est la SILHOUETTE qui porte la lecture,
+		# pas le détail, dont rien ne survit à 23 px/m.
+		var body := BoxMesh.new()
+		body.size = Vector3(RISER_WIDTH * 0.34, 0.16, RISER_LENGTH)
+		riser.mesh = body
 		riser.material_override = skin
-		# ⚠️ La pointe vers l'AVANT du survol : le prisme de Godot pointe vers +Y, on le couche.
-		riser.rotation.x = -PI * 0.5
 		riser.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for side in [-1.0, 1.0]:
+			var wing := MeshInstance3D.new()
+			var pane := BoxMesh.new()
+			pane.size = Vector3(RISER_WIDTH * 0.46, 0.09, RISER_LENGTH * 0.42)
+			wing.mesh = pane
+			wing.material_override = skin
+			wing.position = Vector3(side * RISER_WIDTH * 0.38, -0.02, RISER_LENGTH * 0.18)
+			wing.rotation.y = side * 0.22
+			wing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			riser.add_child(wing)
+		# La lueur de propulsion, à l'ARRIÈRE : c'est elle qui dit que la chose décolle au lieu
+		# d'être posée sur un monte-charge.
+		var flame := MeshInstance3D.new()
+		var jet := BoxMesh.new()
+		jet.size = Vector3(RISER_WIDTH * 0.22, 0.1, 0.26)
+		flame.mesh = jet
+		flame.material_override = burn
+		flame.position.z = RISER_LENGTH * 0.5
+		flame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		riser.add_child(flame)
 		riser.visible = false
 		add_child(riser)
 		_risers.append(riser)
 		_riser_age.append(-1.0)
 		_riser_enemy.append(null)
 
+
 ## Un pas de la pièce. ⚠️ SA POSITION LUI EST DONNÉE, ELLE NE LA LIT PAS DANS L'ARBRE. Elle est
 ## pourtant enfant d'un marqueur qui défile, et `global_position` répondrait — mais seulement
 ## DANS un arbre monté. La passer en paramètre rend la pièce pilotable sans scène, donc
 ## vérifiable : c'est exactement ce qui a rendu `LeviathanCombat` testable là où trois cycles
 ## demandent quarante secondes de jeu. Le gestionnaire, lui, sait lire l'arbre.
-func tick(delta: float, world: Vector3) -> void:
+func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var here := GameplayPlane.to_plane(world)
 	var half := tuning.bay_visible_span * 0.5
 	match _pass:
 		Pass.AHEAD:
@@ -241,6 +307,7 @@ func tick(delta: float, world: Vector3) -> void:
 	# lâcher dans le vide.
 	if here.y > GameplayPlane.bounds.end.y:
 		return
+	_advance_doors(delta)
 	_advance_risers(delta, here)
 	_timer -= delta
 	if _timer > 0.0:
@@ -266,6 +333,9 @@ func _release(_here: Vector2) -> void:
 		_risers[slot].visible = true
 		launched += 1
 	if launched > 0:
+		# ⚠️ LA PORTE S'OUVRE AVANT QUE LA COQUE NE MONTE : c'est l'ordre qui rend la séquence
+		# lisible. Ouvrir pendant la montée donnerait un vaisseau qui traverse un battant.
+		_door_hold = DOOR_TIME + LAUNCH_TIME + DOOR_TIME
 		_pulse_hatch()
 
 func _take_from_pool() -> EnemyController:
@@ -278,6 +348,11 @@ func _take_from_pool() -> EnemyController:
 
 ## Fait monter les silhouettes, et met la vraie coque en jeu à l'arrivée.
 func _advance_risers(delta: float, here: Vector2) -> void:
+	# ⚠️ RIEN NE MONTE TANT QUE LA PORTE N'EST PAS OUVERTE. Sans ce verrou, la coque traverse le
+	# battant pendant qu'il coulisse — et une séquence qui se chevauche ne se lit pas comme une
+	# séquence, elle se lit comme un défaut.
+	if _door_open < 0.85:
+		return
 	for slot in _risers.size():
 		if _riser_age[slot] < 0.0:
 			continue
@@ -301,6 +376,19 @@ func _advance_risers(delta: float, here: Vector2) -> void:
 		var mouth := here + Vector2(spread, -LAUNCH_TO.z)
 		enemy.activate(mouth, randf() * TAU)
 		released.emit(enemy)
+
+## Fait coulisser les battants. ⚠️ LE FOND N'EST VISIBLE QUE QUAND ILS SONT OUVERTS : la lueur
+## du puits est masquée à la fermeture, ce qui fait qu'un pont au repos — ou abattu — est un
+## rectangle sombre sur la coque, et non une nappe magenta permanente.
+func _advance_doors(delta: float) -> void:
+	_door_hold = maxf(_door_hold - delta, 0.0)
+	var wanted := 1.0 if _door_hold > 0.0 else 0.0
+	_door_open = move_toward(_door_open, wanted, delta / DOOR_TIME)
+	for i in _doors.size():
+		var side := -1.0 if i == 0 else 1.0
+		_doors[i].position.x = side * (WELL_RADIUS * 0.51 + DOOR_SLIDE * _door_open)
+	if _hatch != null:
+		_hatch.visible = _door_open > 0.02
 
 func _pulse_hatch() -> void:
 	if _hatch_material != null:
@@ -329,6 +417,9 @@ func _take_damage(damage: float) -> void:
 		_risers[slot].visible = false
 		_riser_age[slot] = -1.0
 		_riser_enemy[slot] = null
+	# ⚠️ ET LES PORTES SE REFERMENT POUR DE BON. Un pont abattu qui resterait ouvert sur sa lueur
+	# dirait au joueur qu'il produit encore.
+	_door_hold = 0.0
 	_retire()
 	destroyed.emit(self)
 

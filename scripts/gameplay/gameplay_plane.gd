@@ -75,6 +75,34 @@ static func to_world(plane_position: Vector2) -> Vector3:
 static func to_plane(world_position: Vector3) -> Vector2:
 	return Vector2(world_position.x, -world_position.z)
 
+## Où une chose posée HORS du plan de jeu doit être touchée, vue de cette caméra.
+##
+## ⚠️ ELLE EXISTE PARCE QUE LA HITBOX N'ÉTAIT PAS SOUS LA PIÈCE, ET QUE PERSONNE NE POUVAIT LE
+## DEVINER SANS LES CALQUES DE DEBUG. Tout le jeu se joue à Y = 0 : `to_plane()` laisse tomber
+## la hauteur, ce qui est juste pour un chasseur ou un éclaireur, qui y sont. Les pièces du
+## niveau 2 n'y sont PAS — elles sont vissées sur une coque à Y = −3,5. Or la caméra plonge à
+## 70° : deux points de même X et Z mais de hauteurs différentes ne se projettent pas au même
+## endroit à l'écran. La tourelle apparaissait donc à plusieurs mètres de sa propre hitbox, et
+## le joueur tirait à côté en visant juste — signalé par l'opérateur, capture à l'appui.
+##
+## ⚠️ ET LE DÉCALAGE EST GROS : avec la caméra du jeu, une pièce à X = 10 doit être tirée vers
+## X = 8. Ce n'est pas un défaut d'un pixel qu'on tolère, c'est deux mètres.
+##
+## Ce que la fonction rend est le point du plan qui se projette AU MÊME PIXEL que la pièce : le
+## rayon caméra → pièce, prolongé jusqu'à Y = 0. Toucher là, c'est toucher ce qu'on voit.
+static func aim_point_of(world_position: Vector3, camera_origin: Vector3) -> Vector2:
+	var rise := world_position.y - camera_origin.y
+	# ⚠️ DEUX CAS DÉGÉNÉRÉS, ET LE SECOND N'EST PAS CELUI QU'ON CROIT. Si la pièce est à la
+	# hauteur de la caméra, aucun rayon ne traverse le plan — division par zéro. Mais si la
+	# CAMÉRA est dans le plan, le calcul « marche » et rend la position de la caméra : une
+	# hitbox téléportée au centre de l'écran, sans erreur. Un banc de test qui poserait sa
+	# caméra à Y = 0 verrait donc toutes les cibles au même endroit et n'y comprendrait rien.
+	if absf(rise) < 0.0001 or absf(camera_origin.y) < 0.0001:
+		return to_plane(world_position)
+	var t := -camera_origin.y / rise
+	var crossing := camera_origin + (world_position - camera_origin) * t
+	return Vector2(crossing.x, -crossing.z)
+
 static func clamp_to_bounds(plane_position: Vector2) -> Vector2:
 	return plane_position.clamp(bounds.position, bounds.end)
 

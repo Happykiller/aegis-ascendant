@@ -22,6 +22,8 @@ extends Node3D
 signal turret_destroyed(turret: CortegeTurret)
 signal bay_destroyed(bay: CortegeBay)
 signal node_destroyed(node: CortegeSpineNode)
+## Un nœud entre dans sa fenêtre — le niveau s'en sert pour l'expliquer, une seule fois.
+signal node_engaged(node: CortegeSpineNode)
 signal section_silenced(section: int, turrets: int)
 
 var tuning: CortegeTuning
@@ -36,6 +38,12 @@ var _released: Node3D
 ## un survol raccourci pour une mesure, éteindrait un tronçon fantôme.
 var _sections_built: int = 0
 
+## ⚠️ LA CAMÉRA EST UN PARAMÈTRE DE COLLISION SUR CE NIVEAU, et c'est contre-intuitif. Les
+## pièces sont hors du plan de jeu ; où il faut tirer pour les toucher dépend donc d'où on les
+## regarde. Elle bouge (secousses, recadrages) : on la relit à chaque image plutôt que de figer
+## un décalage qui deviendrait faux au premier tremblement.
+var _camera: Node3D = null
+
 ## Monte les pièces sur les tronçons livrés.
 ##
 ## ⚠️ IL PREND DES TRONÇONS, PAS LE SURVOL. Il n'a besoin de rien d'autre que d'une liste de
@@ -44,8 +52,9 @@ var _sections_built: int = 0
 ## resterait vérifiable nulle part. C'est la seule mécanique du jeu dont la récompense arrive
 ## quarante secondes après la cause : c'est précisément celle qu'aucune partie ne prouve.
 func build(sections: Array[Node3D], p_tuning: CortegeTuning, bullet_manager: BulletManager,
-		player: PlayerFighterController, vfx: VFXManager) -> void:
+		player: PlayerFighterController, vfx: VFXManager, camera: Node3D = null) -> void:
 	tuning = p_tuning
+	_camera = camera
 	_released = Node3D.new()
 	_released.name = "Released"
 	add_child(_released)
@@ -99,12 +108,16 @@ func _add_node(marker: Node3D, section: int, bullet_manager: BulletManager,
 ## image trop tard, ce qui est invisible mais faux, et le jour où le tronçon se raccourcit ça
 ## devient visible.
 func _process(delta: float) -> void:
+	var eye := _camera.global_position if is_instance_valid(_camera) else Vector3.ZERO
 	for node in _nodes:
-		node.tick(delta, node.global_position)
+		var w := node.global_position
+		node.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 	for turret in _turrets:
-		turret.tick(delta, turret.global_position)
+		var w := turret.global_position
+		turret.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 	for bay in _bays:
-		bay.tick(delta, bay.global_position)
+		var w := bay.global_position
+		bay.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 
 ## Les pièces, pour les faire avancer depuis un banc. Le jeu, lui, passe par `_process`.
 func turrets() -> Array[CortegeTurret]:
@@ -138,6 +151,9 @@ func _on_turret_destroyed(turret: CortegeTurret) -> void:
 
 func _on_bay_destroyed(bay: CortegeBay) -> void:
 	bay_destroyed.emit(bay)
+
+func _on_node_engaged(node: CortegeSpineNode) -> void:
+	node_engaged.emit(node)
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	node_destroyed.emit(node)

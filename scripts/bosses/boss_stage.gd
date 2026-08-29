@@ -150,6 +150,13 @@ func fill_solids(shapes: PlaneShapes) -> void:
 		shapes.reserve(shapes.size() + module.solid_capacity())
 	module.fill_solids(shapes)
 
+## Les écrans qui ARRÊTENT une balle sans la prendre. Aucun par défaut : tous les boss n'en
+## posent pas. ⚠️ Générique ici pour que le directeur puisse les demander sans savoir quel boss
+## il a monté — c'est ce qui évite au niveau de tenir une référence par boss, et donc de
+## l'oublier.
+func fire_screens() -> PlaneShapes:
+	return null
+
 ## Point d'accroche des sous-types : défaire ce qu'ils ont monté. Rien par défaut.
 func _teardown() -> void:
 	pass

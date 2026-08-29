@@ -114,6 +114,17 @@
       ],
       "mood": "ALERTE",
       "direction": "⚠️ LA FRACTURE DE TOUT L'ACTE I, ET ELLE NE SE JOUE PAS. Les deux phrases sont administratives ; la seconde est un aveu, et il doit passer au même débit que le reste. Aucune excuse, aucune hésitation, aucun silence avant. C'est précisément l'absence de préparation qui blesse — elle rend un fait, et le pilote encaisse tout seul."
+    },
+    {
+      "cue": "lyra_node_seen",
+      "dialogue_key": "node_seen",
+      "text": "Ce bulbe sur l’axe, Halyard — c’est un nœud.\nAbattez-le : il alimente les tourelles du tronçon suivant.",
+      "text_lines": [
+        "Ce bulbe sur l’axe, Halyard — c’est un nœud.",
+        "Abattez-le : il alimente les tourelles du tronçon suivant."
+      ],
+      "mood": "ALERTE",
+      "direction": "⚠️ ELLE EXPLIQUE, ELLE N'AVERTIT PAS. C'est la seule réplique du jeu qui enseigne une mécanique, et le piège est de la jouer comme une alerte : le joueur entendrait un danger et chercherait à fuir, alors qu'on lui demande de VISER. Ton d'ingénieur qui désigne une pièce — « c'est un nœud » se dit comme on nomme un organe, pas comme on signale une menace. Le régime reste ALERTE pour le cadre rouge, qui dit « regarde maintenant » ; c'est le seul endroit où l'image et la voix disent délibérément deux choses différentes."
     }
   ],
   "x_delivery": {
