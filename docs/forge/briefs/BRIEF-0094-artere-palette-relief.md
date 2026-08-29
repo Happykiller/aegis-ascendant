@@ -61,9 +61,20 @@ tronçon ne s'éteint pas sans éteindre les quatre autres. Même raison que pou
 les hangars.
 
 - **Retirer** `build_spine_bulb()` de la coque.
-- Livrer `spine_kit.glb` avec **deux ou trois pièces** : un cœur, une cage ou un berceau qui
-  l'ancre au canal, et de quoi le varier. Origine au point d'assemblage, comme les deux kits
-  précédents.
+- Livrer `spine_kit.glb`. **Une pièce = un nœud racine nommé**, modélisée dans son repère,
+  **origine au point d'assemblage**, exactement comme `bay_kit.glb` et `turret_kit.glb` — c'est
+  cette table qui a permis d'assembler les deux précédents **sans une seule itération**, et c'est
+  pourquoi les noms sont figés ici et non laissés au choix :
+
+| Nœud | Ce que c'est | Repère |
+|---|---|---|
+| `spine_cradle` | le berceau qui l'ancre au fond du canal, plus large que le cœur | origine au centre, sur le fond du canal |
+| `spine_core` | le cœur — la partie qui meurt, et donc la seule qui porte l'émissif | origine à sa base, posée sur le berceau |
+| `spine_brace` | une entretoise ; le moteur en pose deux ou quatre, en miroir | origine au pied, côté berceau |
+
+⚠️ **Le moteur éteint et détruit `spine_core` seul** — berceau et entretoises restent en place, un
+nœud abattu laissant une carcasse. Aucun émissif hors du cœur, sans quoi la mort du nœud ne se
+verra pas.
 - **Taille** : 0,7 à 1,0 × la largeur du joueur (1,76 m) → viser **1,50 m**.
 - ⚠️ **Il ne doit ressembler ni à une tourelle ni à un hangar en noir et blanc.** C'est la
   troisième silhouette du niveau, et la seule dont la récompense arrive quarante secondes plus
