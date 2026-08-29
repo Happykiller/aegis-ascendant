@@ -69,6 +69,14 @@ extends Resource
 @export var turret_recover_time: float = 1.1
 @export var turret_interval: float = 2.6
 @export var turret_damage: float = 18.0
+## Portée du faisceau, et sa demi-largeur. ⚠️ La portée doit couvrir la DIAGONALE du plan de
+## jeu (16,1 unités) : une tourelle postée dans un coin doit pouvoir atteindre le coin opposé,
+## sinon son télégraphe promet un tir qui n'arrive pas — et un télégraphe qui ment est pire
+## que pas de télégraphe.
+@export var turret_range: float = 34.0
+@export var turret_beam_half_width: float = 0.30
+## Ce que rapporte une tourelle abattue.
+@export var turret_score: int = 900
 
 @export_group("Ponts d'envol")
 ## ⚠️ ILS COÛTENT CHER À FAIRE TOMBER, C'EST LEUR RAISON D'ÊTRE. Un pont laissé debout produit
@@ -77,9 +85,14 @@ extends Resource
 @export var bay_visible_span: float = 24.0
 @export var bay_health: float = 900.0
 ## Intervalle entre deux lâchers, tant que le pont vit.
-@export var bay_release_interval: float = 3.5
+@export var bay_release_interval: float = 2.2
 ## Combien d'unités par lâcher.
 @export var bay_release_count: int = 2
+## Le pool propre à CHAQUE pont. ⚠️ Il est alloué au montage du niveau et jamais pendant la
+## partie (spec §26.1) : il doit couvrir le pire cas, soit tous les lâchers d'un pont qui vit
+## jusqu'au bout de sa fenêtre. `validate()` le vérifie plutôt que de le supposer.
+@export var bay_pool_size: int = 10
+@export var bay_score: int = 4200
 
 @export_group("Épine dorsale")
 ## Un nœud par tronçon.
@@ -87,10 +100,24 @@ extends Resource
 @export var node_health: float = 260.0
 ## Ce qu'un nœud abattu éteint : les tourelles du tronçon SUIVANT.
 @export var node_silences_next_section: bool = true
+@export var node_score: int = 2600
 
 # ==========================================================================
 # Fonctions dérivées — à lire, jamais à recopier dans un test
 # ==========================================================================
+
+## Combien de temps un pont passe AU-DESSUS DU TERRAIN, et non dans sa fenêtre de tir.
+##
+## ⚠️ LES DEUX NE SONT PAS LA MÊME CHOSE, et les confondre a produit un pont qui ne lâchait
+## qu'UNE FOIS là où l'invariant en promettait deux. La fenêtre de tir déborde le plan de vol —
+## la caméra plonge et voit loin devant, donc on tire sur un pont bien avant qu'il n'arrive.
+## Mais il ne peut LÂCHER que quand il est au-dessus du terrain : une coque née plus haut que la
+## borne du plan est détruite à sa première trame par le despawn de `EnemyController`. C'est
+## donc la hauteur du plan de vol, et elle seule, qui dit la pression qu'un pont exerce.
+func release_window() -> float:
+	if scroll_speed <= 0.001:
+		return 0.0
+	return GameplayPlane.BOUNDS.size.y / scroll_speed
 
 ## Combien de temps une cible reste tirable, à la vitesse de défilement courante.
 func window_for(visible_span: float) -> float:
@@ -208,15 +235,35 @@ func validate() -> PackedStringArray:
 	elif bay_release_count <= 0:
 		errors.append("bay_release_count doit être >= 1")
 	else:
-		var lachers := int(window_for(bay_visible_span) / bay_release_interval)
+		var lachers := int(release_window() / bay_release_interval)
 		if lachers < 2:
-			errors.append("un pont ne lâche que %d fois pendant qu'il est à l'écran — trop peu pour peser sur la décision de l'abattre"
-				% lachers)
+			errors.append("un pont ne lâche que %d fois pendant qu'il survole le terrain (%.1f s) — trop peu pour peser sur la décision de l'abattre"
+				% [lachers, release_window()])
+
+	# --- INVARIANT 4 bis : LE POOL D'UN PONT COUVRE SON PIRE CAS ---------
+	# ⚠️ Un pont à court de coques cesse de produire sans que rien ne le dise, et sa menace
+	# s'éteint toute seule — le joueur croirait l'avoir fait taire. Le pire cas se CALCULE :
+	# c'est le nombre de lâchers que sa fenêtre autorise, fois la taille d'un lâcher.
+	if bay_release_interval > 0.0 and bay_release_count > 0:
+		var pire := (int(release_window() / bay_release_interval) + 1) * bay_release_count
+		if bay_pool_size < pire:
+			errors.append("le pool d'un pont tient %d coques pour %d lâchées au pire — il s'épuiserait en pleine fenêtre, et le pont semblerait s'être tu tout seul"
+				% [bay_pool_size, pire])
 
 	# --- INVARIANT 5 : les cadences ne sont pas nulles --------------------
 	for pair in [["turret_interval", turret_interval], ["turret_recover_time", turret_recover_time],
-			["turret_damage", turret_damage]]:
+			["turret_damage", turret_damage], ["turret_range", turret_range],
+			["turret_beam_half_width", turret_beam_half_width]]:
 		if float(pair[1]) <= 0.0:
 			errors.append("%s doit être > 0" % pair[0])
+
+	# --- INVARIANT 6 : un télégraphe ne promet pas un tir hors de portée --
+	# La diagonale du plan de vol ordinaire : une tourelle dans un coin, le joueur dans
+	# l'autre. En dessous, le faisceau s'arrête avant sa cible alors que la ligne de visée
+	# l'a désignée.
+	var diagonale := GameplayPlane.BOUNDS.size.length()
+	if turret_range > 0.0 and turret_range < diagonale:
+		errors.append("portée de tourelle %.1f pour une diagonale de plan de %.1f — le télégraphe désignerait une cible que le faisceau n'atteint pas"
+			% [turret_range, diagonale])
 
 	return errors

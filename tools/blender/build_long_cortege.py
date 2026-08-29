@@ -888,7 +888,7 @@ def build_bay(bm: bmesh.types.BMesh, s: float, x: float) -> float:
     # UV vertes, budget vert. C'est exactement le genre de faute que l'ADR-0006
     # existe pour attraper — elle ne se voit qu'en regardant.
     # Le sol passe donc AU-DESSUS du pont le plus haut de l'emprise (-4,30) et la
-    # levre monte d'autant : puits de 1,22 m, entierement visible du dessus.
+    # levre monte d'autant : puits de 0,78 m, entierement visible du dessus.
     rim = -3.42
     floor = -4.20
     outer = [(x + dx * hx * 1.30, s + dz * hz * 1.30) for dx, dz in _HEX]
@@ -1142,14 +1142,24 @@ def _object_density(obj: bpy.types.Object) -> dict:
     isolee du `.glb` que par une boite, qui laisse ses bequilles dehors. Cette
     mesure-ci est complete, et elle sert de recoupement a celle du binaire.
     """
+    # ⚠️ Une UV appartient a une BOUCLE, jamais a un sommet. Une premiere version
+    # indexait les UV par `loop.vertex_index` : sur une projection en boite, ou
+    # chaque changement d'axe dominant coupe la carte, presque tous les sommets
+    # portent deux ou trois UV differentes, et le dernier ecrit gagnait. La mesure
+    # sortait « 0,007 a 381 tuiles/m, anisotropie 44 150 » — un chiffre assez
+    # absurde pour se voir, ce qui n'est pas toujours le cas.
     mesh = obj.data
     uv_layer = mesh.uv_layers.active
-    points = [tuple(v.co) for v in mesh.vertices]
-    uvs = [(0.0, 0.0)] * len(points)
-    for loop in mesh.loops:
-        uvs[loop.vertex_index] = tuple(uv_layer.data[loop.index].uv)
     mesh.calc_loop_triangles()
-    tris = [tuple(t.vertices) for t in mesh.loop_triangles]
+    points: list[tuple] = []
+    uvs: list[tuple] = []
+    tris: list[tuple[int, int, int]] = []
+    for triangle in mesh.loop_triangles:
+        base = len(points)
+        for loop_index in triangle.loops:
+            points.append(tuple(mesh.vertices[mesh.loops[loop_index].vertex_index].co))
+            uvs.append(tuple(uv_layer.data[loop_index].uv))
+        tris.append((base, base + 1, base + 2))
     return _texel_density(points, uvs, tris)
 
 
@@ -1920,6 +1930,16 @@ def _print_report(report: dict) -> None:
         print(f"    {name:<11} {owner}  "
               f"({translation[0]:+7.2f}, {translation[1]:+7.3f}, {translation[2]:+8.2f})")
 
+    ambry = report["counts"][-1]
+    marks = ambry["ambry_stats"]
+    d = ambry["ambry_density"]
+    print(f"\n  Ambry : {ambry['ambry']} faces avant fusion, emprise "
+          f"x {marks['footprint'][0]}, s {marks['footprint'][1]}")
+    print(f"    sommets : modules {marks['module_top']:+.3f}, serre "
+          f"{marks['greenhouse_top']:+.3f}, mat {marks['mast_top']:+.3f}")
+    print(f"    densite COMPLETE (mesure Blender, bequilles comprises) : "
+          f"{d['tiles_per_m_min']:.3f} a {d['tiles_per_m_max']:.3f}, moyenne "
+          f"{d['tiles_per_m_mean']:.3f} tuile/m, anisotropie {d['anisotropy_max']:.2f}")
     frame = _frame_coverage(-4.30)
     print(f"\n  cadrage a la camera du jeu (0, 14, 5) / FOV 62 :")
     print(f"    pont a Y = -4.30, profondeur {frame['depth']:.2f} m, "
@@ -1947,7 +1967,7 @@ def main() -> None:
 TILE_W = 1440
 SCENE_H = 600
 TOP_H = 404          # 1440 / 404 = 3,564 -> 100 m sur 28,05 m
-ELEV_H = 250
+ELEV_H = 340
 UV_H = 404
 SAMPLES = 28
 
@@ -2260,19 +2280,21 @@ def _tile_elevation(path: str, report: dict) -> None:
     # 100 m de large pour 9 m de haut, l'elevation rendait un trait, et la seule
     # chose qu'elle devait prouver — que RIEN ne touche la dalle — y etait
     # illisible.
-    ortho = 7.6
+    # 8,0 m de haut et non 7,6, cadres a -6,10 : la dalle doit tomber DANS le
+    # cadre et non sous la legende, sinon la planche ne prouve plus rien.
+    ortho = 8.0
     centre = -(AMBRY_S[0] + AMBRY_S[1]) * 0.5
     camera = _plate_camera(
-        "elev", _to_blender(Vector((90.0, -5.9, centre))),
+        "elev", _to_blender(Vector((90.0, -6.10, centre))),
         _to_blender(Vector((-1.0, 0.0, 0.0))), _to_blender(Vector((0.0, 1.0, 0.0))),
         math.radians(30.0), ortho=ortho)
-    _label(camera, f"ELEVATION TRIBORD SUR AMBRY (43 m) — la dalle ambre EST le "
+    _label(camera, f"ELEVATION TRIBORD SUR AMBRY (34 m) — la dalle ambre EST le "
                    f"plafond du jeu Y = {CEILING_Y:.0f}",
-           -0.985, 0.84, 0.085, TILE_W, ELEV_H, (1.0, 0.88, 0.55))
+           -0.985, 0.88, 0.062, TILE_W, ELEV_H, (1.0, 0.88, 0.55))
     _label(camera, f"sommet de la coque entiere Y = {report['top']:+.3f} "
                    f"(marge {CEILING_Y - report['top']:.3f} m) — le mat d'antenne "
                    f"est le point le plus haut des 500 m",
-           -0.985, -0.84, 0.075, TILE_W, ELEV_H)
+           -0.985, -0.90, 0.055, TILE_W, ELEV_H)
     _render(path, TILE_W, ELEV_H)
 
 

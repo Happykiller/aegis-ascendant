@@ -99,6 +99,13 @@ func skip_to_section(index: int) -> void:
 	_finished = false
 	_place_sections()
 
+## Les tronçons, dans l'ordre de la proue vers l'arrière. ⚠️ C'EST LE SEUL ACCÈS À LA COQUE
+## DEPUIS L'EXTÉRIEUR, et il est délibérément étroit : les mécaniques ont besoin des marqueurs
+## que porte chaque tronçon, elles n'ont besoin de rien d'autre. Ouvrir le décor entier
+## laisserait le gameplay dépendre d'une hiérarchie que la forge peut légitimement changer.
+func sections() -> Array[Node3D]:
+	return _sections
+
 func is_stand_in() -> bool:
 	return _is_stand_in
 

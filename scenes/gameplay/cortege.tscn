@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/cortege_root.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/vfx/cortege_flyby.gd" id="98_flyby"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/vfx/space_backdrop.tscn" id="7_backdrop"]
 [ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
 [ext_resource type="Script" path="res://scripts/fx/vfx_manager.gd" id="9_vfx"]
+[ext_resource type="Script" path="res://scripts/gameplay/cortege_hardpoints.gd" id="16_hardpoints"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
 [ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
@@ -96,6 +97,16 @@ script = ExtResource("10_capture")
 
 [node name="PlayerFighter" parent="." instance=ExtResource("2_player")]
 bullet_manager_path = NodePath("../BulletManager")
+
+; Les tourelles, les ponts et les noeuds d'epine du Long Cortege.
+;
+; ⚠️ IL EST IMMOBILE, A L'ORIGINE, ET C'EST CE QUI COMPTE. Les pieces elles-memes
+; sont ajoutees comme ENFANTS des marqueurs de la coque, donc elles defilent avec
+; elle ; mais les coques que les ponts lachent doivent naitre dans un repere qui ne
+; bouge pas — `EnemyController` pose sa position en LOCAL. Sous un pont, une coque
+; lachee serait decalee de tout ce que le decor a parcouru.
+[node name="Hardpoints" type="Node3D" parent="."]
+script = ExtResource("16_hardpoints")
 
 ; Champ d'asteroides (ADR-0027) : un SECOND spawner, monte et peuple au meme
 ; instant que le premier, mais endormi jusqu'a `begin()`. C'est ce qui permet
