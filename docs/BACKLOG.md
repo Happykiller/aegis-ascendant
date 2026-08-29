@@ -333,9 +333,7 @@ laissent, en revanche, n'appartient à aucun d'eux :
       puis disparaît — mesuré, la coque a perdu 33 % de luminance pour un relief invisible.
       Relever le budget permet plus de SILHOUETTE et plus de VARIÉTÉ, pas plus de finesse.
 
-## ⚠️ Ce qui reste après la session du 2026-08-29
-
-## ⚠️ Niveau 2 — la seule vérification qui manque (2026-08-29)
+## ⚠️ Niveau 2 — ce qui reste après la refonte de géométrie (2026-08-29)
 
 - [ ] **Mesurer le coût GPU du survol sur la Quadro T1000.** Toutes les mesures de la session
       portent la ligne Vulkan **RTX 4080** : 0,93 à 1,71 ms par image. La machine qui CONTRAINT
@@ -363,6 +361,29 @@ laissent, en revanche, n'appartient à aucun d'eux :
       rendu de planche — mais il rendra une vignette fausse au prochain usage.
 - [ ] **Un playtest humain du niveau 2.** Le pilote automatique n'a détruit qu'UNE cible de coque
       en 208 s : il ne vise pas un bordé. Les PV sont **dimensionnés**, pas **mesurés** (ADR-0019).
+- [ ] **Les deux réglages d'habillage n'ont jamais été jugés EN JOUANT.**
+      `CortegeSkin.EMISSIVE_ENERGY` (1,0 → **0,45**) et `CortegeSkin.PANEL_DAMP` (**0,45**) ont
+      été arrêtés sur trois captures fixes, **au seul tronçon 2**, et sur **RTX 4080**. Une
+      capture fixe ne dit rien de deux choses qui décident ici : ce que donne l'artère quand elle
+      **défile** sous les yeux pendant 208 s, et si l'émissif reste distinguable des **balles**
+      quand l'écran se charge. ⚠️ Le sens de l'erreur n'est pas symétrique : trop bas, l'artère
+      cesse de dire que le vaisseau est vivant ; trop haut, on retrouve le « laser » que toute la
+      refonte visait à supprimer.
+- [ ] **Le rythme calme / installation / calme est PLAFONNÉ par les marqueurs figés.** La forge
+      a mesuré 251,4 m calmes sur 500 (50,3 %) et démontré que c'est le **maximum atteignable**
+      sans déplacer de marqueur : la plus large plage nue hors proue fait 22 m, où le brief en
+      demande 15 à 20 **de chaque côté** d'une installation. J'ai refusé de les déplacer — ils
+      portent l'équilibrage mesuré (fenêtres de relâche et d'engagement, arbitrages du
+      `BRIEF-0092`). ⚠️ C'est un arbitrage, pas une limite technique : le jour où l'on voudra le
+      rythme complet, il faudra rejouer ces mesures, et c'est un chantier, pas un réglage.
+- [ ] **La proximité acceptée `Turret_14` / `Bay_07` déclare un chiffre PÉRIMÉ.**
+      `ACCEPTED_PAD_BAY_PROXIMITY` (dans `build_long_cortege.py`) dit « la lèvre du socle
+      effleure le coaming sur 0,25 m », arbitrage du `BRIEF-0092` — donc **avant** que la
+      tourelle ait des canons. Depuis le kit, ce qui dépasse n'est plus une lèvre statique mais
+      un **canon qui balaie**, mesuré à ~0,55 m au-dessus du coaming pendant la rotation. La
+      décision reste probablement la bonne (deux installations qui se touchent est une lecture
+      crédible), mais **la table ne décrit plus ce qui se passe** : à re-mesurer et à re-déclarer
+      avec sa vraie nature, sinon le prochain lecteur arbitrera sur un fait faux.
 
 ## P0 — Rendre la démo irréprochable
 

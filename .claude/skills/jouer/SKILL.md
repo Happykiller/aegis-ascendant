@@ -95,6 +95,8 @@ script.
 
 | Drapeau | Effet |
 |---|---|
+| `--goto-level=<id>` | ouvre un niveau de la campagne **par son nom** : `ossane_corridor` (niveau 1), `long_cortege` (niveau 2). ⚠️ Par son NOM, jamais par son rang — un rang change quand la campagne s'allonge |
+| `--cortege-from=<n>` | ⚠️ **niveau 2 seulement**, avec `--goto-level=long_cortege` : démarre le survol au tronçon `n` (1 à 5). Sans lui, juger le tronçon 3 demande **deux minutes** de défilement, et une capture automatisée n'y arrive pas du tout. Repère : un tronçon dure ~41 s, et son nœud d'épine est en son **milieu** (~21 s après son entrée) |
 | `--goto-graybox` | saute l'accueil, droit au combat |
 | `--skip-to-field` | droit au **champ d'astéroïdes**, la phase entre les deux boss (ADR-0027) |
 | `--skip-to-boss` / `--skip-to-final` / `--skip-to-dock` | droit au mini-boss, au boss final, à l'appontage |
