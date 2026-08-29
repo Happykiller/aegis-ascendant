@@ -351,3 +351,22 @@ func test_the_survey_starts_shooting_within_seconds() -> void:
 		premier = minf(premier, entry.time_offset)
 	assert_true(premier <= 5.0,
 		"la premiere cible du niveau apparait a %.1f s — au-dela, le joueur regarde defiler" % premier)
+
+# --- L'instrument de debug ----------------------------------------------------
+
+const ZonesScript := preload("res://scripts/debug/survey_zones.gd")
+
+func test_the_debug_bands_never_loop_forever() -> void:
+	# ⚠️ CE TEST GARDE UN FIGEAGE, PAS UN DESSIN. Les bandes sont tracees en tirets par une
+	# boucle `while` qui avance de `DASH + GAP` : une valeur nulle ou negative la ferait tourner
+	# sans fin. L'instrument est ALLUME PAR DEFAUT en build de developpement (`settings_data.gd`
+	# pose `OS.is_debug_build()`), donc le jeu se figerait au montage du niveau — et ca se lirait
+	# comme un plantage du niveau, pas comme un defaut de l'outil de debug.
+	assert_true(ZonesScript.DASH > 0.0 and ZonesScript.GAP > 0.0,
+		"un tiret et son vide sont strictement positifs")
+	var largeur := GameplayPlane.BOUNDS.size.x
+	var tirets := ZonesScript.dash_count(largeur)
+	assert_true(tirets > 0, "une bande en travers du plan porte des tirets (%d)" % tirets)
+	assert_true(tirets < 200,
+		"et pas des milliers : %d tirets par bande, sept bandes, a chaque image" % tirets)
+	assert_eq(ZonesScript.dash_count(0.0), 0, "une bande de longueur nulle n'en porte aucun")

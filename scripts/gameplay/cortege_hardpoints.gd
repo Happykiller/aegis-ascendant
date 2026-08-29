@@ -113,6 +113,9 @@ func turrets() -> Array[CortegeTurret]:
 func nodes() -> Array[CortegeSpineNode]:
 	return _nodes
 
+func bays() -> Array[CortegeBay]:
+	return _bays
+
 func turret_count() -> int:
 	return _turrets.size()
 

@@ -11,6 +11,7 @@ extends Node3D
 ## `--script`, où les globales d'autoload n'existent pas.
 
 const GameStateScript := preload("res://scripts/core/game_state.gd")
+const SettingsManagerScript := preload("res://scripts/core/settings_manager.gd")
 const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
 const MissionReportScene := preload("res://scenes/ui/mission_report.tscn")
 const TUNING := preload("res://resources/levels/long_cortege_tuning.tres")
@@ -34,6 +35,7 @@ const SECTION_LINES: Array[StringName] = [
 const REPORT_DELAY := 7.5
 
 @onready var _game_state: GameStateScript = get_node("/root/GameState")
+@onready var _settings: SettingsManagerScript = get_node_or_null("/root/SettingsManager")
 @onready var _audio: AudioManagerScript = get_node("/root/AudioManager")
 @onready var _flyby: CortegeFlyby = $CortegeFlyby
 @onready var _hud: CanvasLayer = get_node_or_null("FighterHUD") as CanvasLayer
@@ -51,6 +53,23 @@ var _defeated: bool = false
 ## la réplique de tronçon qui, elle, porte le récit.
 var _said_bay_down: bool = false
 var _said_node_down: bool = false
+
+# --- Les zones de debug -------------------------------------------------------
+#
+# ⚠️ ELLES MANQUAIENT ICI, ET NULLE PART AILLEURS. `SolidsOverlay` existe depuis le
+# 2026-08-28 et le niveau 1 le monte ; le niveau 2 ne le montait pas, donc ses dix-sept
+# tourelles, ses sept ponts et ses cinq nœuds n'avaient AUCUNE représentation visible de leur
+# volume de collision. Or c'est le seul niveau du jeu où l'on tire sur des pièces posées sur
+# un décor qui défile : quand un tir ne fait rien, la question « ai-je visé à côté, ou la
+# cible n'est-elle pas encore armée ? » ne se tranche pas à l'œil.
+#
+# Les réglages valent déjà `OS.is_debug_build()` par défaut (`settings_data.gd`) : en build de
+# développement, tout est allumé sans rien demander.
+var _solids: PlaneShapes = PlaneShapes.new()
+var _solids_overlay: SolidsOverlay = null
+var _survey_zones: SurveyZones = null
+## +1 : tout forcé (`--show-solids`) ; -1 : tout coupé (`--hide-solids`) ; 0 : le réglage.
+var _overlay_force: int = 0
 
 func _ready() -> void:
 	for error in TUNING.validate():
@@ -94,6 +113,16 @@ func _ready() -> void:
 	# et une capture automatisée n'y arrive pas du tout. Même esprit que `--skip-to-*` du
 	# niveau 1 et que `--leviathan-phase=2`, dont l'absence avait coûté trois lancements.
 	var args := OS.get_cmdline_user_args()
+	_solids_overlay = SolidsOverlay.new()
+	_solids_overlay.name = "SolidsOverlay"
+	add_child(_solids_overlay)
+	_survey_zones = SurveyZones.new()
+	_survey_zones.name = "SurveyZones"
+	add_child(_survey_zones)
+	if "--show-solids" in args:
+		_overlay_force = 1
+	elif "--hide-solids" in args:
+		_overlay_force = -1
 	for arg in args:
 		if arg.begins_with("--cortege-from="):
 			var section := maxi(arg.substr(15).to_int() - 1, 0)
@@ -155,9 +184,35 @@ func _on_enemy_destroyed(enemy: EnemyController) -> void:
 ## particulier — c'est ce qui lui permet de servir les deux —, et le survol est la seule chose
 ## qui sache où l'on en est. Même partage que `show_boss` / `set_boss_health`.
 func _process(_delta: float) -> void:
-	if _finished or _defeated or _hud == null:
+	if _hud != null and not (_finished or _defeated):
+		_hud.set_survey(_flyby.progress(), _flyby.current_section())
+	_draw_debug_zones()
+
+## ⚠️ TOUT CE QUI EXISTE DANS LE PLAN, ET DANS UNE SEULE PASSE. Les cibles viennent du
+## gestionnaire de balles — donc tourelles, ponts, nœuds, coques lâchées et chasseur, sans que
+## ce niveau ait à les énumérer —, et les fenêtres de tir viennent du réglage. Les deux couches
+## sont distinctes parce qu'elles répondent à deux questions différentes : « où est la
+## hitbox ? » et « à partir de quand puis-je la toucher ? ».
+func _draw_debug_zones() -> void:
+	if _solids_overlay == null:
 		return
-	_hud.set_survey(_flyby.progress(), _flyby.current_section())
+	var bodies := _overlay_force > 0
+	var targets := _overlay_force > 0
+	var screens := _overlay_force > 0
+	if _overlay_force == 0 and _settings != null:
+		var debug: SettingsData = _settings.get_debug()
+		bodies = debug.debug_bodies
+		targets = debug.debug_targets
+		screens = debug.debug_screens
+	var fighter := _player as PlayerFighterController
+	if fighter != null and fighter.stats != null:
+		_solids_overlay.draw(_solids, fighter.plane_lift, fighter.plane_position,
+			fighter.plane_forward(), fighter.stats.body_half_length, fighter.stats.body_radius,
+			_bullets.targets() if _bullets != null else [], null, bodies, targets, screens)
+	# Les fenêtres suivent la couche des CIBLES : elles décrivent quand une cible devient une
+	# cible, pas où se trouve un corps.
+	if _survey_zones != null:
+		_survey_zones.draw(TUNING, targets, _hardpoints)
 
 func _on_section_entered(index: int) -> void:
 	print("[Cortege] SECTION %02d / %02d" % [index + 1, TUNING.section_count])
