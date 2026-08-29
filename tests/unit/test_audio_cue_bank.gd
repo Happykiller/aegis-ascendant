@@ -79,3 +79,28 @@ func test_every_voice_line_declares_the_voice_bus() -> void:
 			"la replique `%s` passe par le bus `%s` — elle serait coupee par le pool"
 				% [cue.id, cue.bus])
 	assert_true(voix >= 11, "les repliques livrees sont bien dans la banque (%d)" % voix)
+
+# --- Les lancements muets -----------------------------------------------------
+
+const AudioManagerScript := preload("res://scripts/core/audio_manager.gd")
+
+## ⚠️ CE TEST GARDE UNE DISTINCTION, PAS UNE COUPURE. Couper le son « en build de
+## developpement » serait plus simple et FAUX : l'operateur joue en build de developpement, et
+## le son fait partie de ce qu'il teste. Ce qui distingue un lancement muet n'est pas le build,
+## c'est l'absence d'auditeur — pilote automatique ou capture.
+func test_only_unattended_runs_are_muted() -> void:
+	assert_true(AudioManagerScript.is_silent_run(PackedStringArray(["--demo"])),
+		"le pilote automatique n'ecoute pas")
+	assert_true(AudioManagerScript.is_silent_run(PackedStringArray(["--mute"])),
+		"et la coupure explicite marche")
+	# ⚠️ PAR PREFIXE. Le drapeau reel n'est jamais `--capture` tout court : c'est
+	# `--capture-at=25` ou `--capture-after=240`. Une egalite stricte aurait laisse passer les
+	# deux seuls qui existent, et la garde n'aurait rien coupe — en silence.
+	assert_true(AudioManagerScript.is_silent_run(PackedStringArray(["--capture-at=25"])),
+		"la capture par secondes est muette")
+	assert_true(AudioManagerScript.is_silent_run(PackedStringArray(["--capture-after=240"])),
+		"la capture par images aussi")
+	assert_false(AudioManagerScript.is_silent_run(PackedStringArray([])),
+		"un lancement nu garde son son — c'est l'operateur qui joue")
+	assert_false(AudioManagerScript.is_silent_run(PackedStringArray(["--goto-level=long_cortege"])),
+		"aller droit a un niveau n'est pas un lancement automatise")

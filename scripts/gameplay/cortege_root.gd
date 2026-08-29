@@ -65,6 +65,13 @@ var _said_node_down: bool = false
 #
 # Les réglages valent déjà `OS.is_debug_build()` par défaut (`settings_data.gd`) : en build de
 # développement, tout est allumé sans rien demander.
+## ⚠️ LES LOIS DU COMBAT VIENNENT D'ICI, ET ELLES NE SONT PAS RÉÉCRITES. Mourir en explosant,
+## en faisant du bruit et en lâchant un bonus ; être écrasé par une coque plus lourde ; parler
+## avec une voix — tout cela vaut dans TOUT le jeu, et ce niveau n'a rien à en redire. Il les a
+## pourtant toutes perdues à sa première version, parce qu'elles étaient écrites dans le script
+## du niveau 1 : c'est l'opérateur qui l'a constaté en jouant, en signalant un à un des défauts
+## déjà réglés ailleurs.
+var _runtime: CombatRuntime = null
 var _solids: PlaneShapes = PlaneShapes.new()
 var _solids_overlay: SolidsOverlay = null
 var _survey_zones: SurveyZones = null
@@ -96,16 +103,14 @@ func _ready() -> void:
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
 	_hardpoints.section_silenced.connect(_on_section_silenced)
-	# ⚠️ TOUS LES ENNEMIS, D'OÙ QU'ILS VIENNENT, ET APRÈS `build()`. Ce niveau en met en scène
-	# de deux façons — la réception de proue par un `WaveSpawner`, les coques de pont par le
-	# pool de leur baie — et un ennemi ne vaut des points qu'à UN seul endroit. Les brancher par
-	# le groupe, comme le niveau 1, plutôt que source par source : deux chemins de score
-	# finissent par diverger, et la première divergence est un double comptage que personne ne
-	# remarque. Après `build()`, parce que c'est lui qui monte les pools des ponts.
-	for node in get_tree().get_nodes_in_group("enemies"):
-		var enemy := node as EnemyController
-		if enemy != null:
-			enemy.destroyed.connect(_on_enemy_destroyed)
+	# ⚠️ APRÈS `build()`, parce que c'est lui qui monte les sept pools des ponts d'envol : le
+	# runtime adopte les unités par le GROUPE, donc elles doivent toutes être dans l'arbre.
+	_runtime = CombatRuntime.new()
+	_runtime.name = "CombatRuntime"
+	add_child(_runtime)
+	_runtime.bind(_game_state, _bullets, _vfx, _audio, get_node_or_null("CameraDirector"),
+		_hud, get_node_or_null("PickupManager"), _player as PlayerFighterController)
+	_runtime.adopt(get_tree())
 	if _player != null and _player.has_signal("game_over"):
 		_player.game_over.connect(_on_game_over)
 	# ⚠️ OUTIL DE VÉRIFICATION, PAS UN RACCOURCI DE JEU. `--cortege-from=<n>` démarre le survol
@@ -177,13 +182,15 @@ func _on_section_silenced(section: int, turrets: int) -> void:
 		_hud.show_banner("TRONÇON %02d ÉTEINT · %d TOURELLES" % [section + 1, turrets],
 			Color("7a4de8"), 2.0)
 
-func _on_enemy_destroyed(enemy: EnemyController) -> void:
-	_game_state.add_score(enemy.data.score_value)
-
 ## ⚠️ LA JAUGE SE MET À JOUR ICI ET NON DANS LE HUD. Le HUD ne connaît aucun niveau en
 ## particulier — c'est ce qui lui permet de servir les deux —, et le survol est la seule chose
 ## qui sache où l'on en est. Même partage que `show_boss` / `set_boss_health`.
 func _process(_delta: float) -> void:
+	# ⚠️ PERCUTER EST UNE LOI, ET ELLE MANQUAIT ICI. Le chasseur traverse les coques lâchées par
+	# les ponts d'envol sans les écraser tant que personne ne l'appelle — et l'absence ne se
+	# voit pas comme un défaut : elle se voit comme des ennemis qui « passent à travers ».
+	if _runtime != null and not (_finished or _defeated):
+		_runtime.crush()
 	if _hud != null and not (_finished or _defeated):
 		_hud.set_survey(_flyby.progress(), _flyby.current_section())
 	_draw_debug_zones()
@@ -237,16 +244,8 @@ func _on_pause_toggled(is_paused: bool) -> void:
 		_pause.show_briefing(BRIEFINGS.find(StringName(phase_label())))
 
 func _lyra(key: StringName) -> void:
-	if _hud == null:
-		return
-	var line := LYRA_LINES.find(key)
-	# Même garde qu'au niveau 1 : une réplique qui ne part pas ne se voit nulle part, et sept
-	# d'entre elles y sont restées muettes une soirée entière, fichiers en place.
-	if line == null:
-		print("[Lyra] clé inconnue : %s" % key)
-	else:
-		print("[Lyra] %s" % key)
-	_hud.say(line)
+	if _runtime != null:
+		_runtime.say(LYRA_LINES, key)
 
 ## ⚠️ LE CORTÈGE N'EST PAS ABATTU, IL CONTINUE SA ROUTE. C'est le premier adversaire du jeu que
 ## le joueur ne peut pas détruire, et c'est ce qui doit rester de lui (`docs/lore/NULL_CHOIR.md`).

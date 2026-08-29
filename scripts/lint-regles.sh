@@ -106,6 +106,21 @@ if [[ -n "$DEAD_SYMBOLS" ]]; then
   printf '%s\n' "$DEAD_SYMBOLS" | sed 's/^/  /' >&2
 fi
 
+# ⚠️ TOUT SCRIPT RACINE DE NIVEAU CONVOQUE LES LOIS DU COMBAT.
+#
+# Cette regle existe parce que le defaut qu'elle empeche NE RESSEMBLE PAS A UN DEFAUT. Un
+# niveau qui n'appelle pas `CombatRuntime` a des ennemis qui disparaissent sans exploser ni
+# faire de bruit, qu'on traverse sans les ecraser, et une navigatrice qui parle sans voix. Rien
+# n'echoue, rien n'apparait au journal : ca se joue, ca a juste l'air pauvre. C'est
+# exactement ce que le niveau 2 a fait pendant une partie entiere, et c'est l'operateur qui l'a
+# vu — pas un test.
+LEVEL_ROOTS=$(grep -rl "MissionReport.Outcome" --include="*_root.gd" scripts/gameplay 2>/dev/null || true)
+for root in $LEVEL_ROOTS; do
+  if ! grep -q "CombatRuntime" "$root"; then
+    bad "$root ne convoque pas CombatRuntime — ses ennemis n'exploseront pas, ne feront pas de bruit, ne laisseront pas de bonus, et sa navigatrice sera muette"
+  fi
+done
+
 # Les six regles du contrat d'expression de besoin des textures.
 #
 # ⚠️ ELLES N'ETAIENT VERIFIEES PAR RIEN. Le contrat ecrit « un fichier qui viole

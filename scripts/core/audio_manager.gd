@@ -45,7 +45,38 @@ var _active_deck: int = 0
 var _music_state: int = MusicDirector.State.SILENT
 var _music_tween: Tween
 
+## Les lancements où PERSONNE N'ÉCOUTE.
+##
+## ⚠️ CE N'EST PAS « LE BUILD DE DÉVELOPPEMENT », ET LA NUANCE EST TOUT. L'opérateur travaille
+## à côté pendant que la session enchaîne les captures, et le jeu lui hurle dessus quinze fois
+## de suite. Mais il joue aussi en build de développement, et là il VEUT le son — c'est un
+## élément du jeu qu'il teste. Ce qui distingue les deux n'est donc pas le build : c'est de
+## savoir si un humain est aux commandes. `--demo` (pilote automatique) et `--capture` (capture
+## puis fermeture) sont exactement les lancements où il n'y en a pas — et le skill `/jouer`
+## interdit explicitement de les passer pour un test à la main.
+const SILENT_FLAGS: Array[String] = ["--demo", "--capture", "--mute"]
+
+## Vrai si ce lancement n'a pas d'auditeur. ⚠️ `--capture` est testé par PRÉFIXE : le drapeau
+## réel est `--capture-at=` ou `--capture-after=`, et chercher l'égalité stricte l'aurait
+## laissé passer — le genre d'erreur qui rend une garde silencieusement inopérante.
+static func is_silent_run(args: PackedStringArray) -> bool:
+	for arg in args:
+		for flag in SILENT_FLAGS:
+			if arg == flag or arg.begins_with(flag):
+				return true
+	return false
+
 func _ready() -> void:
+	# ⚠️ AVANT TOUT LE RESTE, et par le BUS plutôt que par les volumes : `SettingsManager`
+	# applique les volumes sauvés au démarrage et à chaque changement de réglage, donc un
+	# volume mis à zéro ici serait remonté sans prévenir. Une coupure de bus, elle, est
+	# orthogonale au volume et survit à tout.
+	if is_silent_run(OS.get_cmdline_user_args()):
+		for name in ["Master", "Music", "SFX", "Voice"]:
+			var bus := AudioServer.get_bus_index(name)
+			if bus >= 0:
+				AudioServer.set_bus_mute(bus, true)
+		print("[Audio] MUET — lancement automatise, personne n'ecoute")
 	for error in SFX_BANK.validate():
 		push_error("[Audio] invalid sfx bank: %s" % error)
 	for error in MUSIC_BANK.validate():

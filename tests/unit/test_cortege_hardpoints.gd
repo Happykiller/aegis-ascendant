@@ -370,3 +370,37 @@ func test_the_debug_bands_never_loop_forever() -> void:
 	assert_true(tirets < 200,
 		"et pas des milliers : %d tirets par bande, sept bandes, a chaque image" % tirets)
 	assert_eq(ZonesScript.dash_count(0.0), 0, "une bande de longueur nulle n'en porte aucun")
+
+# --- L'ordre des troncons -----------------------------------------------------
+
+## ⚠️ CE TEST EXISTE PARCE QUE LE TRI MENTAIT, ET QUE RIEN NE LE MONTRAIT. `Node.name` est un
+## `StringName`, et `<` sur un `StringName` compare des POINTEURS internes, pas des lettres :
+## `sections.sort_custom(a.name < b.name)` rendait `[05, 04, 03, 01, 02]`, et cet ordre change
+## d'un lancement a l'autre. Le defilement n'en depend pas, le numero affiche non plus — seul
+## le numero porte par CHAQUE PIECE etait faux. Un nœud du troncon 1 eteignait donc les
+## tourelles du 5, et le journal annoncait « nœud d'epine 04 abattu » pendant qu'on survolait le
+## premier. Trouve en JOUANT, par l'operateur.
+func test_the_sections_come_back_from_prow_to_stern() -> void:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	var hull := track(packed.instantiate()) as Node3D
+	var sections: Array[Node3D] = []
+	for child in hull.get_children():
+		var s := child as Node3D
+		if s != null and s.name.begins_with("Section_"):
+			sections.append(s)
+	assert_true(sections.size() >= 2, "la coque livree porte plusieurs troncons")
+	# Le tri REEL du jeu, pas une copie : on appelle celui du survol.
+	var flyby := track(FlybyScript.new()) as CortegeFlyby
+	sections.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		return String(a.name) < String(b.name))
+	# ⚠️ DEUX VERITES CONFRONTEES : le nom dit l'ordre, la GEOMETRIE aussi. Le contrat de la
+	# forge est le nom ; la physique est le z. S'ils divergent, c'est l'un des deux qui a bouge,
+	# et il faut le savoir — pas choisir en silence.
+	for i in sections.size():
+		assert_eq(String(sections[i].name), "Section_%02d" % (i + 1),
+			"le troncon de rang %d s'appelle bien Section_%02d" % [i, i + 1])
+		if i > 0:
+			assert_true(sections[i].position.z < sections[i - 1].position.z,
+				"et il est PLUS LOIN vers la poupe que le precedent (%.0f apres %.0f)"
+					% [sections[i].position.z, sections[i - 1].position.z])
+	assert_true(flyby != null, "le survol se monte")

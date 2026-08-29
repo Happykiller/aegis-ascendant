@@ -117,6 +117,7 @@ var _solids := PlaneShapes.new()
 ## en cent dix lignes de formatage de CSV : voir `DiveInstruments`.
 var _dive_instruments: DiveInstruments = null
 ## Superposition des couches invisibles (corps, cibles, écrans de tir). Voir `SettingsData`.
+var _runtime: CombatRuntime = null
 var _solids_overlay: SolidsOverlay = null
 ## +1 : tout forcé (`--show-solids`) ; -1 : tout coupé (`--hide-solids`) ; 0 : le réglage.
 var _overlay_force: int = 0
@@ -155,14 +156,16 @@ var _engine_running: bool = false
 
 func _ready() -> void:
 	_game_state.reset_session()
-	for node in get_tree().get_nodes_in_group("enemies"):
-		var enemy := node as EnemyController
-		enemy.destroyed.connect(_on_enemy_destroyed)
-		enemy.fired.connect(_on_enemy_fired)
-		enemy.hit.connect(_on_enemy_hit)
-	if _bullets != null:
-		_bullets.target_hit.connect(_on_bullet_hit)
-		_bullets.bullet_screened.connect(_on_bullet_screened)
+	# ⚠️ LES LOIS DU COMBAT NE SONT PLUS ÉCRITES ICI. Mourir, toucher, percuter, parler valent
+	# dans tout le jeu : elles vivent dans `CombatRuntime`, et ce niveau ne fait que les
+	# convoquer. Elles étaient dans ce fichier, et un second niveau n'avait donc aucun moyen
+	# d'en hériter — c'est ce que l'opérateur a constaté en jouant le niveau 2 muet, sans
+	# explosions et sans écrasement.
+	_runtime = CombatRuntime.new()
+	_runtime.name = "CombatRuntime"
+	add_child(_runtime)
+	_runtime.bind(_game_state, _bullets, _vfx, _audio, _camera_director, _hud, _pickups, _player)
+	_runtime.adopt(get_tree())
 	if _wave_spawner != null:
 		_wave_spawner.wave_cleared.connect(_on_wave_cleared)
 		_wave_spawner.progress_changed.connect(_on_wave_progress)
@@ -382,13 +385,6 @@ func _on_wave_cleared() -> void:
 	_lyra(&"waves_cleared")
 	_start_mini_boss()
 
-func _on_enemy_destroyed(enemy: EnemyController) -> void:
-	_game_state.add_score(enemy.data.score_value)
-	_boom(enemy.global_position, VfxExplosion.Category.MEDIUM, 0.35)
-	_sfx(&"medium_explosion")
-	if _pickups != null:
-		_pickups.roll_drop(enemy.global_position)
-
 ## One cue per kind: a bonus has to be identifiable without looking straight at it
 ## (docs/forge/CHARTE_CREATIVE.md — never colour alone).
 func _on_pickup(kind: int, _world_position: Vector3) -> void:
@@ -407,23 +403,9 @@ func _on_pickup(kind: int, _world_position: Vector3) -> void:
 func _on_player_fired() -> void:
 	_sfx(&"player_pulse")
 
-func _on_enemy_fired() -> void:
-	_sfx(&"enemy_pulse")
-
-func _on_enemy_hit() -> void:
-	_sfx(&"hull_impact")
-
 ## Every connecting bullet, from either side. Coloured by who was hit, so a glance
 ## tells you whether you landed a shot or took one: cold white on an enemy hull,
 ## shield cyan on ours (docs/forge/output/graybox_palette.md).
-func _on_bullet_hit(plane_position: Vector2, victim_team: int) -> void:
-	if _vfx == null:
-		return
-	var tint := _SHIELD_IMPACT_TINT if victim_team == BulletManager.Team.PLAYER \
-		else _HULL_IMPACT_TINT
-	_vfx.spawn_explosion(GameplayPlane.to_world(plane_position),
-		VfxExplosion.Category.IMPACT, tint)
-
 ## Audible warning when the shield drops under 25% (spec §8.3).
 func _on_player_shield_changed(ratio: float, _current: float, _maximum: float) -> void:
 	if _alarm_armed and ratio <= _ALARM_TRIGGER_RATIO:
@@ -499,10 +481,6 @@ func _on_leviathan_missile_ended(world_position: Vector3, on_player: bool) -> vo
 ## ⚠️ SANS LUI, LE BLINDAGE MENT. Le mode d'échec est nommé depuis le Harvester — « tirer
 ## dessus sans rien produire à l'écran se lit comme un défaut, pas comme une armure » — et
 ## il revient intact dès qu'un écran consomme une balle en silence.
-func _on_bullet_screened(plane_position: Vector2, _team: int) -> void:
-	_boom(GameplayPlane.to_world(plane_position), VfxExplosion.Category.IMPACT, 0.0)
-	_sfx(&"shield_impact")
-
 func _on_harvester_limb_destroyed(_kind: StringName, boss: BossController) -> void:
 	# `_boom` porte déjà la secousse : la redemander ici la doublerait.
 	_boom(boss.global_position, VfxExplosion.Category.MEDIUM, 0.5)
@@ -1237,19 +1215,12 @@ func _rebuild_solids() -> void:
 		_solids.reserve(_solids.size() + 1)
 		_solids.add_disc(_core_interior.reactor_plane_position(),
 			_core_interior.housing_radius())
-	# ⚠️ LES DEUX SEMEURS, et ils ne tournent jamais ensemble (ADR-0027 : la vague, puis le
-	# champ d'astéroïdes). Les interroger tous les deux coûte deux tests et évite d'avoir à
-	# savoir lequel est actif — ce que ce fichier n'a pas à connaître.
-	#
-	# ⚠️ Le tableau est un MEMBRE, pas un littéral. `[_wave_spawner, _field_spawner]` alloue
-	# un `Array` à chaque appel, et cette fonction tourne à chaque image physique — comme
-	# `_crush_light_bodies()` juste en dessous, qui faisait la même chose. Deux allocations
-	# par image pour deux références qui ne changent jamais après le montage (spec §31 :
-	# zéro allocation dans les boucles critiques).
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			_solids.reserve(spawner.solid_capacity())
-			spawner.fill_solids(_solids, _crusher_mass(), _crush_ratio())
+	# ⚠️ LES UNITÉS SONT VERSÉES PAR LA LOI COMMUNE, plus par les semeurs. Interroger les
+	# sources — deux ici, huit au niveau 2 — c'est se garantir qu'un jour l'une sera oubliée,
+	# et une unité absente de cette liste devient TRAVERSABLE sans que rien ne le dise. Le
+	# runtime tient la liste des unités une fois pour toutes, quelle que soit leur provenance.
+	if _runtime != null:
+		_runtime.fill_solids(_solids)
 	if _player != null and _player.solids != _solids:
 		_player.solids = _solids
 
@@ -1268,24 +1239,9 @@ func _crush_ratio() -> float:
 ## test, à la même image. Les séparer les ferait diverger d'une image — assez pour qu'une
 ## unité soit à la fois traversable et vivante, ce que le joueur lirait comme un fantôme.
 func _crush_light_bodies() -> void:
-	if _player == null or _player.stats == null:
-		return
-	var mass := _crusher_mass()
-	var ratio := _crush_ratio()
-	var crushed := 0.0
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			crushed += spawner.crush_contacts(_player.plane_position,
-				_player.plane_forward(), _player.stats.body_half_length,
-				_player.stats.body_radius, mass, ratio)
-	if crushed > 0.0:
-		var cost := MassRules.crush_damage(crushed, _player.stats.crush_damage_per_mass)
-		_player.take_contact_damage(cost)
-		# ⚠️ UNE TRACE D'ÉVÉNEMENT, PAS UNE TRACE DE BOUCLE : elle ne s'écrit que sur une
-		# collision réelle, quelques fois par partie. C'est le seul endroit d'où l'on peut
-		# voir la mécanique tourner — un écrasement ne laisse aucune marque à l'écran une
-		# fois l'explosion passée, et l'équilibrage se fait sur le journal (balance-prober).
-		print("[Level] ecrase %.1f t — %.0f de bouclier" % [crushed, cost])
+	if _runtime != null:
+		_runtime.crush()
+
 
 ## Le repère de cible SUIT le flux, à l'image, et il BAT.
 ##
@@ -1439,31 +1395,18 @@ func _banner(text: String, color: Color, duration: float) -> void:
 ## Muette si la clé n'existe pas — un moment sans réplique est un moment sans réplique, pas
 ## une erreur : le combat ne doit pas s'arrêter parce qu'on n'a rien écrit pour lui.
 func _lyra(key: StringName) -> void:
-	if _hud == null:
-		return
-	var line := LYRA_LINES.find(key)
-	# ⚠️ UNE RÉPLIQUE QUI NE PART PAS NE SE VOIT NULLE PART. Les sept premières sont restées
-	# muettes une soirée entière avec leurs fichiers en place ; le journal ne portait rien à
-	# lire. Une ligne par réplique, et la clé introuvable DITE : elle reste inoffensive pour
-	# le combat, mais elle cesse d'être invisible.
-	if line == null:
-		print("[Lyra] clé inconnue : %s" % key)
-	else:
-		print("[Lyra] %s" % key)
-	_hud.say(line)
-	# ⚠️ LE PANNEAU AFFICHE, IL NE PARLE PAS. Contrairement à la bulle de l'accueil, le HUD
-	# n'émet aucun signal de voix — c'est le niveau qui déclenche, parce que c'est lui qui
-	# tient l'`AudioManager`. Sans cette ligne, les sept répliques étaient muettes alors que
-	# leurs fichiers existaient et que leurs cues résolvaient : tout était prêt SAUF l'appel.
-	if line != null and line.voice_cue != &"":
-		_sfx(line.voice_cue)
+	if _runtime != null:
+		_runtime.say(LYRA_LINES, key)
 
+
+## Délègue à la loi commune. ⚠️ Le raccourci reste parce qu'il est appelé quatorze fois dans
+## ce fichier : le remplacer partout aurait mélangé un déplacement de responsabilité avec une
+## réécriture de quatorze lignes, et la recette de ce lot est « le niveau 1 se joue à
+## l'identique ».
 func _boom(world_position: Vector3, category: VfxExplosion.Category, trauma: float) -> void:
-	if _vfx != null:
-		_vfx.spawn_explosion(world_position, category)
-	if _camera_director != null:
-		_camera_director.add_trauma(trauma)
+	if _runtime != null:
+		_runtime.boom(world_position, category, trauma)
 
 func _sfx(cue: StringName, volume_db: float = 0.0) -> void:
-	if _audio != null:
-		_audio.play(cue, volume_db)
+	if _runtime != null:
+		_runtime.sfx(cue, volume_db)

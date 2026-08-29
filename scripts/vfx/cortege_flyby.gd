@@ -152,7 +152,19 @@ func _collect_sections(decor: Node3D) -> void:
 		var node := child as Node3D
 		if node != null and node.name.begins_with("Section_"):
 			_sections.append(node)
-	_sections.sort_custom(func(a: Node3D, b: Node3D) -> bool: return a.name < b.name)
+	# ⚠️ `String(...)` ET PAS `a.name < b.name`. `Node.name` est un `StringName`, et l'opérateur
+	# `<` sur un `StringName` NE COMPARE PAS DANS L'ORDRE ALPHABÉTIQUE : il compare des pointeurs
+	# internes, pour la vitesse. Le tri rendait donc un ordre ARBITRAIRE — mesuré :
+	# `[05, 04, 03, 01, 02]` — et, pire, dépendant de l'allocation, donc différent d'un
+	# lancement à l'autre.
+	#
+	# ⚠️ ET RIEN NE LE MONTRAIT. Le défilement, lui, est juste : il déplace le décor entier et
+	# ne consulte jamais cet ordre. Le numéro de tronçon affiché est juste aussi : il se déduit
+	# de la distance parcourue. Seul le NUMÉRO PORTÉ PAR CHAQUE PIÈCE était faux — donc un nœud
+	# du tronçon 1 éteignait les tourelles du 5, et le journal annonçait « nœud d'épine 04
+	# abattu » pendant qu'on survolait le premier. C'est l'opérateur qui l'a vu en jouant.
+	_sections.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		return String(a.name) < String(b.name))
 
 ## La doublure : un tronçon = une dalle nervurée. Elle ne cherche pas à être belle, elle cherche
 ## à rendre le niveau JOUABLE et MESURABLE avant la livraison de la forge.
