@@ -50,6 +50,34 @@ const WELL_THICKNESS := 0.06
 const WELL_DEPTH := -0.71
 const HATCH_TINT := Color("d93d9c")
 
+# --- Le décollage -------------------------------------------------------------
+#
+## ⚠️ LES COQUES APPARAISSAIENT PAR MAGIE, ET C'EST TOUT CE QUE LE JOUEUR EN VOYAIT :
+## « aucune animation de pont d'envol, les ennemis apparaissent par magie » (opérateur, en
+## jouant le 2026-08-29). Un pont qu'on abat pour tarir sa production doit d'abord se lire
+## COMME une production — sinon abattre le pont ne se relie à rien.
+##
+## Ce qui manquait n'est pas un effet, c'est une CAUSE VISIBLE : quelque chose qui monte du
+## puits, franchit la bouche, et part. Le joueur voit alors d'où ça vient, une seconde avant
+## que ça ne le concerne.
+##
+## ⚠️ ET C'EST UN VOLUME À NOUS, PAS LA COQUE POOLÉE. `EnemyController` pose sa position en
+## coordonnées du PLAN de jeu, à hauteur nulle : il ne sait pas monter d'un puits creusé trois
+## mètres et demi plus bas. Le faire descendre pour l'occasion aurait demandé un état de plus
+## dans la classe la plus chaude du jeu, pour une animation qui ne dure pas une seconde. La
+## silhouette qui monte est donc décorative ; la vraie coque s'active à l'instant où elle
+## atteint la bouche, exactement là où elle était.
+const LAUNCH_TIME := 0.85
+## La silhouette part du fond du puits et sort par la bouche, en avançant vers le joueur.
+const LAUNCH_FROM := Vector3(0.0, -0.66, 0.0)
+const LAUNCH_TO := Vector3(0.0, 0.35, 1.9)
+## ⚠️ SOMBRE SUR FOND CLAIR, ET C'EST L'INVERSE DE MON PREMIER ESSAI. Une silhouette pâle et
+## légèrement émissive se noyait dans le magenta du puits — vu en capture : on devinait deux
+## formes, on ne lisait pas un décollage. Le fond de la baie est ce qu'il y a de plus lumineux
+## sur toute la coque ; ce qui s'en détache est ce qui est SOMBRE.
+const RISER_LENGTH := 1.55
+const RISER_WIDTH := 0.86
+
 signal destroyed(bay: CortegeBay)
 signal released(enemy: EnemyController)
 
@@ -69,6 +97,13 @@ var _timer: float = 0.0
 var _health: float = 0.0
 var _alive: bool = true
 var _world: Vector3 = Vector3.ZERO
+
+## Les décollages en cours. ⚠️ UN TABLEAU PRÉALLOUÉ ET NON UNE FILE QUI GRANDIT : deux coques
+## par lâcher, et le lâcher suivant ne peut pas commencer avant la fin de celui-ci (l'intervalle
+## est plus long que l'animation). Rien ne s'alloue pendant la partie (spec §26.1).
+var _risers: Array[MeshInstance3D] = []
+var _riser_age: PackedFloat32Array = PackedFloat32Array()
+var _riser_enemy: Array[EnemyController] = []
 
 static func make(p_tuning: CortegeTuning, p_section: int) -> CortegeBay:
 	var bay := CortegeBay.new()
@@ -144,6 +179,35 @@ func _ready() -> void:
 	_hatch.rotation.y = PI * 0.5
 	_hatch.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_hatch)
+	_build_risers()
+
+## Les silhouettes qui montent du puits. Une par coque d'un lâcher, montées au démarrage et
+## réutilisées — comme tout le reste.
+func _build_risers() -> void:
+	var mesh := PrismMesh.new()
+	mesh.size = Vector3(RISER_WIDTH, 0.22, RISER_LENGTH)
+	var skin := StandardMaterial3D.new()
+	skin.albedo_color = Color(0.09, 0.08, 0.11)
+	skin.metallic = 0.6
+	skin.roughness = 0.38
+	# Une seule lueur, à l'arrière : c'est elle qui dit que la chose est SOUS PROPULSION et non
+	# posée sur un monte-charge.
+	skin.emission_enabled = true
+	skin.emission = Color(1.0, 0.55, 0.30)
+	skin.emission_energy_multiplier = 0.55
+	for i in maxi(tuning.bay_release_count, 1):
+		var riser := MeshInstance3D.new()
+		riser.name = "Riser%d" % i
+		riser.mesh = mesh
+		riser.material_override = skin
+		# ⚠️ La pointe vers l'AVANT du survol : le prisme de Godot pointe vers +Y, on le couche.
+		riser.rotation.x = -PI * 0.5
+		riser.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		riser.visible = false
+		add_child(riser)
+		_risers.append(riser)
+		_riser_age.append(-1.0)
+		_riser_enemy.append(null)
 
 ## Un pas de la pièce. ⚠️ SA POSITION LUI EST DONNÉE, ELLE NE LA LIT PAS DANS L'ARBRE. Elle est
 ## pourtant enfant d'un marqueur qui défile, et `global_position` répondrait — mais seulement
@@ -177,30 +241,66 @@ func tick(delta: float, world: Vector3) -> void:
 	# lâcher dans le vide.
 	if here.y > GameplayPlane.bounds.end.y:
 		return
+	_advance_risers(delta, here)
 	_timer -= delta
 	if _timer > 0.0:
 		return
 	_timer = tuning.bay_release_interval
 	_release(here)
 
-func _release(here: Vector2) -> void:
+## Ouvre la porte : les silhouettes commencent à monter. ⚠️ LA COQUE N'EST PAS ENCORE EN JEU —
+## elle est réservée maintenant et activée à la fin de la montée, pour que le joueur ait vu d'où
+## elle vient avant qu'elle ne le concerne.
+func _release(_here: Vector2) -> void:
 	var launched := 0
-	for i in _pool.size():
+	for slot in _risers.size():
 		if launched >= tuning.bay_release_count:
 			break
-		var enemy := _pool[_next]
-		_next = (_next + 1) % _pool.size()
-		if enemy.active:
-			continue
-		# Les coques sortent l'une à côté de l'autre, pas l'une DANS l'autre : la loi de
-		# séparation des vagues n'existe pas ici, et deux unités au même point resteraient
-		# empilées tout le temps de leur trajectoire.
-		var spread := Vector2(1.1 * (float(launched) - float(tuning.bay_release_count - 1) * 0.5), 0.0)
-		enemy.activate(here + spread, randf() * TAU)
+		if _riser_age[slot] >= 0.0:
+			continue          # cette place décolle déjà
+		var enemy := _take_from_pool()
+		if enemy == null:
+			break
+		_riser_enemy[slot] = enemy
+		_riser_age[slot] = 0.0
+		_risers[slot].visible = true
 		launched += 1
-		released.emit(enemy)
 	if launched > 0:
 		_pulse_hatch()
+
+func _take_from_pool() -> EnemyController:
+	for i in _pool.size():
+		var enemy := _pool[_next]
+		_next = (_next + 1) % _pool.size()
+		if not enemy.active and not _riser_enemy.has(enemy):
+			return enemy
+	return null
+
+## Fait monter les silhouettes, et met la vraie coque en jeu à l'arrivée.
+func _advance_risers(delta: float, here: Vector2) -> void:
+	for slot in _risers.size():
+		if _riser_age[slot] < 0.0:
+			continue
+		_riser_age[slot] += delta
+		var t := clampf(_riser_age[slot] / LAUNCH_TIME, 0.0, 1.0)
+		# ⚠️ ELLE ACCÉLÈRE. Une montée linéaire se lit comme un ascenseur ; un décollage
+		# commence lentement et part — c'est la seule chose qui distingue les deux.
+		var eased := t * t
+		var spread := 1.1 * (float(slot) - float(_risers.size() - 1) * 0.5)
+		_risers[slot].position = LAUNCH_FROM.lerp(LAUNCH_TO, eased) + Vector3(spread, 0.0, 0.0)
+		if t < 1.0:
+			continue
+		_risers[slot].visible = false
+		_riser_age[slot] = -1.0
+		var enemy: EnemyController = _riser_enemy[slot]
+		_riser_enemy[slot] = null
+		if enemy == null:
+			continue
+		# ⚠️ LA COQUE NAÎT LÀ OÙ LA SILHOUETTE EST ARRIVÉE, pas au centre du puits : sinon elle
+		# ferait un saut en arrière au moment précis où le joueur la regarde.
+		var mouth := here + Vector2(spread, -LAUNCH_TO.z)
+		enemy.activate(mouth, randf() * TAU)
+		released.emit(enemy)
 
 func _pulse_hatch() -> void:
 	if _hatch_material != null:
@@ -222,6 +322,13 @@ func _take_damage(damage: float) -> void:
 		_hatch_material.albedo_color = Color(0.07, 0.03, 0.06)
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.HEAVY)
+	# ⚠️ CE QUI DÉCOLLAIT MEURT AVEC LE PONT. Une silhouette figée à mi-hauteur dans un puits
+	# éteint se lirait comme un bug — et surtout, la coque qu'elle réservait ne serait jamais
+	# rendue au pool : le pont resterait « plein » alors qu'il est mort.
+	for slot in _risers.size():
+		_risers[slot].visible = false
+		_riser_age[slot] = -1.0
+		_riser_enemy[slot] = null
 	_retire()
 	destroyed.emit(self)
 

@@ -9,10 +9,19 @@ extends Node3D
 ## coque qu'on voit. C'est ce qui a coûté le plus cher sur les épines du Léviathan, où la pose
 ## se recalculait à partir d'un angle et finissait par désigner autre chose que la pièce.
 ##
-## ⚠️ LE MODÈLE EST LA TOURELLE-ÉPINE DU LÉVIATHAN, PAS `CitadelTurret`. Cette dernière est
-## décorative : elle ne tire ni n'encaisse. Les trois temps repris ici — `READY → WINDUP →
-## FIRING → RECOVER` — sont ceux de `leviathan_combat.gd`, et l'invariant 3 de `CortegeTuning`
-## les tient : un tir qui part sans préavis n'est pas une difficulté, c'est une taxe (spec §11.2).
+## ⚠️ ELLE TIRE EN CONTINU ET ELLE PIVOTE LENTEMENT — ET C'EST UNE CORRECTION, PAS UN CHOIX DE
+## DÉPART. Sa première version reprenait les trois temps de la tourelle-épine du Léviathan
+## (`READY → WINDUP → FIRING → RECOVER`), avec un préavis qui annonçait le coup. Ce modèle marche
+## sur un boss, qu'on regarde. Il ne marche pas ici : « je ne vois pas les tourelles qui me
+## tirent dessus » (opérateur, en jouant le 2026-08-29). Sur un décor qui défile, avec dix-sept
+## pièces réparties sur deux flancs, un préavis de 0,8 s passe inaperçu — le joueur regarde
+## ailleurs, il esquive.
+##
+## Un faisceau PERMANENT résout le problème par construction : la menace est visible tout le
+## temps, sa direction se lit d'un coup d'œil, et l'on sait toujours quelle pièce est vivante.
+## Ce qui remplace le télégraphe, c'est la LENTEUR — la tourelle pivote à 42 °/s, le joueur en
+## contourne une à 100 °/s. L'invariant 3 de `CortegeTuning` tient cet écart : un faisceau qu'on
+## ne peut pas semer serait une taxe, exactement ce que la spec §11.2 interdit.
 ##
 ## ⚠️ CE QUI CHANGE ICI : LE SURVOL NE REVIENT JAMAIS EN ARRIÈRE. Une tourelle a donc un AVANT,
 ## un PENDANT et un APRÈS. Passée, elle se tait pour de bon et REND SA CIBLE au gestionnaire de
@@ -22,14 +31,20 @@ extends Node3D
 ## Le cycle de vie sur la coque. Une seule fois, dans un seul sens.
 enum Pass { AHEAD, LIVE, PASSED }
 
-## Les trois temps du tir, plus le repos.
-enum Fire { READY, WINDUP, FIRING, RECOVER }
-
 ## Teinte du faisceau : celle des lasers ennemis du jeu (`leviathan_combat.gd:563`), pas une
 ## nouvelle. Un second rouge apprendrait au joueur qu'il existe deux dangers là où il n'y en a
 ## qu'un.
 const BEAM_CORE := Color(1.0, 0.90, 0.86)
 const BEAM_EDGE := Color("c93a31")
+
+## Le CANON. ⚠️ IL EXISTE PARCE QU'UNE TOURELLE DOIT SE VOIR AVANT DE TIRER. La coupole est
+## cuite dans le tronçon et ne bouge pas ; sans une pièce mobile, rien à l'écran ne dit où
+## regarde la tourelle — et un faisceau qui sort d'un décor immobile se lit comme un piège, pas
+## comme une machine. Le canon tourne, donc on lit son intention une seconde avant qu'elle ne
+## compte.
+const BARREL_LENGTH := 1.35
+const BARREL_WIDTH := 0.26
+const BARREL_LIFT := 0.42
 
 ## L'œil de la tourelle. ⚠️ IL EXISTE PARCE QUE LA GÉOMÉTRIE LIVRÉE EST CUITE DANS LE TRONÇON :
 ## les coupoles font partie du maillage de la section et partagent leurs matériaux avec elle. On
@@ -54,17 +69,16 @@ var _eye: MeshInstance3D
 var _eye_material: StandardMaterial3D
 
 var _pass: Pass = Pass.AHEAD
-var _fire: Fire = Fire.READY
-var _timer: float = 0.0
+var _barrel: MeshInstance3D
+## Le temps qui reste avant la prochaine morsure du faisceau.
+var _burn_timer: float = 0.0
 var _health: float = 0.0
 var _alive: bool = true
 var _silenced: bool = false
-## La direction VERROUILLÉE au début du télégraphe.
-##
-## ⚠️ ELLE EST VERROUILLÉE, ET C'EST TOUT L'INTÉRÊT DU TÉLÉGRAPHE. Une ligne de visée qui suit
-## le joueur pendant le préavis ne lui annonce rien : elle le désigne. Ce qui rend l'esquive
-## possible, c'est que la tourelle s'engage sur un point AVANT de tirer, et qu'elle y tire même
-## si le joueur n'y est plus.
+## Où le canon pointe À CET INSTANT. ⚠️ IL SUIT LE JOUEUR, MAIS IL A DU RETARD, et ce retard EST
+## la difficulté : la tourelle ne rate pas parce qu'elle vise mal, elle rate parce qu'elle
+## n'arrive pas à suivre. C'est une règle qu'on comprend en une seconde de jeu, sans qu'aucun
+## texte n'ait à l'expliquer.
 var _aim: Vector2 = Vector2.DOWN
 ## La dernière position connue, en monde — pour poser l'explosion sur la COQUE et non sur le
 ## plan de vol, qui est trois unités et demie plus haut.
@@ -75,7 +89,6 @@ static func make(p_tuning: CortegeTuning, p_section: int) -> CortegeTurret:
 	turret.tuning = p_tuning
 	turret.section = p_section
 	turret._health = p_tuning.turret_health
-	turret._timer = p_tuning.turret_interval
 	# ⚠️ LA CIBLE NAIT AVEC LA PIECE, pas avec son cablage. Une tourelle sans BulletManager reste
 	# une tourelle : elle a des points de vie et une facon de les perdre. Les creer dans `setup`
 	# rendait la piece intestable sans gestionnaire de balles — et donc intestee.
@@ -110,6 +123,27 @@ func _ready() -> void:
 	_eye.position.y = EYE_LIFT
 	_eye.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_eye)
+	# Le canon : une barre posée à plat qui pointe où le faisceau part. ⚠️ SON PIVOT EST À SA
+	# BASE, pas en son milieu — une `BoxMesh` est centrée sur son origine, donc on la décale de
+	# la moitié de sa longueur dans un nœud intermédiaire. Sans ça elle tourne autour de son
+	# centre et sort de la coupole par l'arrière à chaque quart de tour.
+	_barrel = MeshInstance3D.new()
+	_barrel.name = "Barrel"
+	_barrel.position.y = BARREL_LIFT
+	_barrel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tube := MeshInstance3D.new()
+	var bar := BoxMesh.new()
+	bar.size = Vector3(BARREL_WIDTH, BARREL_WIDTH, BARREL_LENGTH)
+	tube.mesh = bar
+	tube.position.z = -BARREL_LENGTH * 0.5
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.16, 0.14, 0.18)
+	steel.metallic = 0.7
+	steel.roughness = 0.35
+	tube.material_override = steel
+	tube.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_barrel.add_child(tube)
+	add_child(_barrel)
 	_beam = Beam.make()
 	# ⚠️ `top_level` OBLIGATOIRE, exactement pour la raison qui a coûté un après-midi sur le
 	# Léviathan : `Beam.aim()` pose le faisceau en coordonnées MONDE, et cette tourelle est
@@ -126,9 +160,10 @@ func is_alive() -> bool:
 func has_passed() -> bool:
 	return _pass == Pass.PASSED
 
-## Le temps du tir ou elle en est. Lu par les tests : le telegraphe ne se voit sur aucune capture.
-func fire_state() -> Fire:
-	return _fire
+## Où pointe le canon. Lu par les tests : une rotation trop rapide ne se voit sur aucune capture,
+## et c'est précisément ce que l'invariant 3 borne.
+func aim() -> Vector2:
+	return _aim
 
 ## La cible que le gestionnaire de balles connait. ⚠️ EXPOSEE PARCE QUE C'EST LE VRAI CHEMIN DES
 ## DEGATS : un test qui appellerait une methode ecrite pour lui ne verifierait pas le chemin que
@@ -148,10 +183,9 @@ func silence() -> void:
 	if _silenced:
 		return
 	_silenced = true
-	_fire = Fire.READY
-	_timer = tuning.turret_interval
 	if _beam != null:
 		_beam.extinguish()
+	_set_eye(0.25)
 
 func is_silenced() -> bool:
 	return _silenced
@@ -189,48 +223,51 @@ func tick(delta: float, world: Vector3) -> void:
 		return
 	_run_fire(delta, here)
 
-## Les trois temps. Le télégraphe fin qui annonce, le faisceau qui frappe, la récupération.
+## Le tir continu. Trois gestes seulement : tourner vers le joueur, tendre le faisceau, mordre
+## à cadence fixe ce qu'il touche.
+##
+## ⚠️ LA MORSURE EST CADENCÉE, PAS PROPORTIONNELLE AU TEMPS. Verser `dps × delta` au bouclier à
+## chaque image ferait perdre presque tout dans les images gelées par un arrêt sur image, et
+## rendrait les dégâts dépendants de la cadence d'affichage. Une morsure toutes les 0,4 s se
+## règle, se teste, et se sent.
 func _run_fire(delta: float, here: Vector2) -> void:
-	_timer -= delta
-	if _timer > 0.0:
-		if _fire == Fire.WINDUP or _fire == Fire.FIRING:
-			_project(here)
+	_turn_toward(delta, here)
+	_project(here)
+	_burn_timer -= delta
+	if _burn_timer > 0.0 or _player == null:
 		return
-	match _fire:
-		Fire.READY:
-			_fire = Fire.WINDUP
-			_timer = tuning.turret_windup_time
-			# Le verrouillage. Le joueur a `turret_windup_time` pour ne plus être là.
-			_aim = _direction_to_player(here)
-			_project(here)
-		Fire.WINDUP:
-			_fire = Fire.FIRING
-			_timer = tuning.turret_beam_time
-		Fire.FIRING:
-			_fire = Fire.RECOVER
-			_timer = tuning.turret_recover_time
-			if _beam != null:
-				_beam.extinguish()
-			_set_eye(0.6)
-		Fire.RECOVER:
-			_fire = Fire.READY
-			_timer = tuning.turret_interval
+	var reach := here + _aim * tuning.turret_range
+	# ⚠️ `Beam.hits` s'applique au SEGMENT, pas au bout : la tourelle brûle ce qui traverse, et
+	# c'est ce qui rend le faisceau lisible — on voit exactement où il ne faut pas passer.
+	if Beam.hits(here, reach, tuning.turret_beam_half_width, _player.plane_position, 0.25):
+		_burn_timer = tuning.turret_burn_interval
+		_player.take_contact_damage(tuning.turret_burn_damage)
 
-## Tend le faisceau et, s'il est armé, brûle ce qu'il touche.
+## Fait pivoter le canon vers le joueur, sans jamais dépasser sa vitesse de rotation.
+##
+## ⚠️ `rotate_toward` ET PAS UNE INTERPOLATION : une interpolation de type `lerp_angle` va vite
+## quand l'écart est grand et ralentit en approchant, donc elle colle au joueur dès qu'il est
+## presque en face — précisément le cas où il essaie de s'échapper. Une vitesse ANGULAIRE
+## CONSTANTE est ce que l'invariant 3 sait borner, et ce que le joueur peut apprendre.
+func _turn_toward(delta: float, here: Vector2) -> void:
+	var wanted := _direction_to_player(here).angle()
+	_aim = Vector2.from_angle(turn_step(_aim.angle(), wanted,
+		tuning.turret_turn_rate_deg, delta))
+	if _barrel != null:
+		# ⚠️ Le canon est un enfant du marqueur, qui défile : on lui donne un angle LOCAL. Le
+		# plan de jeu a +y vers l'écran, le monde -z : d'où le signe.
+		_barrel.rotation.y = -_aim.angle() + PI * 0.5
+
+
+## Tend le faisceau. ⚠️ IL EST TOUJOURS ARMÉ TANT QUE LA TOURELLE VIT : c'est lui, et lui seul,
+## qui dit au joueur quelles pièces sont encore dangereuses.
 func _project(here: Vector2) -> void:
 	var reach := here + _aim * tuning.turret_range
-	var firing := _fire == Fire.FIRING
-	var half_width := tuning.turret_beam_half_width if firing else tuning.turret_beam_half_width * 0.35
 	if _beam != null:
-		_beam.aim(here, reach, half_width)
-		_beam.set_regime(2.4 if firing else 0.35, 0.0 if firing else 1.0)
-	_set_eye(2.6 if firing else 1.6)
-	if not firing or _player == null:
-		return
-	# ⚠️ `Beam.hits` s'applique au SEGMENT, pas au bout : la tourelle brûle ce qui traverse, et
-	# c'est ce qui rend le verrouillage lisible — on voit où il ne faut pas passer.
-	if Beam.hits(here, reach, tuning.turret_beam_half_width, _player.plane_position, 0.25):
-		_player.take_contact_damage(tuning.turret_damage)
+		_beam.aim(here, reach, tuning.turret_beam_half_width)
+		_beam.set_regime(2.2, 0.0)
+	_set_eye(2.2)
+
 
 func _direction_to_player(here: Vector2) -> Vector2:
 	if _player == null:
@@ -271,6 +308,13 @@ func _retire() -> void:
 		_beam.extinguish()
 
 # --- Fonction pure, testable sans arbre de scène ------------------------------
+
+## Le pas de rotation d'une image. ⚠️ STATIQUE ET PURE, parce que c'est la SEULE chose de cette
+## pièce qui doit être vérifiée au chiffre près : une tourelle qui pivote trop vite colle au
+## joueur quoi qu'il fasse, et ça ne se voit sur aucune capture. La monter sur un banc
+## demanderait un vrai `PlayerFighterController` ; ici il n'y a que trois nombres.
+static func turn_step(current: float, wanted: float, rate_deg: float, delta: float) -> float:
+	return rotate_toward(current, wanted, deg_to_rad(rate_deg) * delta)
 
 ## La tourelle est-elle dans sa fenêtre de tir, à cette position du plan ? ⚠️ STATIQUE ET PURE :
 ## c'est ce qui permet de tester la fenêtre sans monter le niveau, et donc de la tester du tout.

@@ -64,11 +64,33 @@ extends Resource
 ## Distance sur laquelle une tourelle reste tirable — sa taille plus la hauteur de l'écran.
 @export var turret_visible_span: float = 20.0
 @export var turret_health: float = 180.0
-@export var turret_windup_time: float = 0.8
-@export var turret_beam_time: float = 0.7
-@export var turret_recover_time: float = 1.1
-@export var turret_interval: float = 2.6
-@export var turret_damage: float = 18.0
+## ⚠️ LA TOURELLE NE TÉLÉGRAPHIE PLUS, ELLE TIRE EN CONTINU — ET C'EST UN GAIN DE LISIBILITÉ,
+## pas une perte. Le modèle précédent était celui du Léviathan : `READY → WINDUP → FIRING →
+## RECOVER`, avec un préavis qui annonçait le coup. Il marche sur un boss, qu'on regarde. Il ne
+## marche pas ici : « je ne vois pas les tourelles qui me tirent dessus » (opérateur, en jouant
+## le 2026-08-29). Sur un décor qui défile, avec dix-sept pièces réparties sur deux flancs, un
+## préavis de 0,8 s passe inaperçu — le joueur regarde ailleurs, il esquive.
+##
+## Un faisceau PERMANENT résout le problème par construction : la menace est visible tout le
+## temps, et sa direction se lit d'un coup d'œil. Ce qui remplace le télégraphe, c'est la
+## LENTEUR : la tourelle pivote, le joueur va plus vite qu'elle.
+
+## Vitesse de rotation de la tourelle, en degrés par seconde.
+##
+## ⚠️ C'EST LE SEUL RÉGLAGE DE DIFFICULTÉ DE LA PIÈCE, et il remplace le télégraphe : l'invariant
+## 3 vérifie qu'elle reste DISTANÇABLE. Un joueur à 14 u/s qui passe à 8 unités d'une tourelle
+## tourne autour d'elle à 100 °/s ; au-delà de cette vitesse, la tourelle le suit quoi qu'il
+## fasse et le faisceau devient un impôt.
+@export var turret_turn_rate_deg: float = 42.0
+
+## Ce que le faisceau coûte à chaque morsure, et l'intervalle entre deux morsures.
+##
+## ⚠️ EN MORSURES ET NON PAR SECONDE. Le bouclier du chasseur a sa propre fenêtre : lui verser
+## `dps × delta` à chaque image ferait perdre presque tout dans les images gelées, et rendrait
+## les dégâts dépendants de la cadence d'affichage. Une morsure toutes les 0,4 s se règle, se
+## teste, et se sent.
+@export var turret_burn_damage: float = 7.0
+@export var turret_burn_interval: float = 0.4
 ## Portée du faisceau, et sa demi-largeur. ⚠️ La portée doit couvrir la DIAGONALE du plan de
 ## jeu (16,1 unités) : une tourelle postée dans un coin doit pouvoir atteindre le coin opposé,
 ## sinon son télégraphe promet un tir qui n'arrive pas — et un télégraphe qui ment est pire
@@ -218,14 +240,29 @@ func validate() -> PackedStringArray:
 		errors.append("une tourelle demande %.0f dégâts, soit %.0f%% de la fenêtre — au-delà de 35%%, s'en occuper empêche de faire autre chose et le survol devient une file d'attente"
 			% [turret_health, turret_health / turret_reachable() * 100.0])
 
-	# --- INVARIANT 3 : toute attaque lourde est télégraphiée --------------
-	# Reprise mot pour mot de l'invariant 6 de `LeviathanTuning` : un tir qui part sans
-	# préavis n'est pas une difficulté, c'est une taxe (spec §11.2).
-	if turret_windup_time <= 0.0 or turret_beam_time <= 0.0:
-		errors.append("une tourelle télégraphie avant de tirer : windup et beam > 0")
-	elif turret_windup_time < turret_beam_time * 0.5:
-		errors.append("télégraphe trop court : %.2f s de préavis pour %.2f s de tir (il en faut au moins la moitié)"
-			% [turret_windup_time, turret_beam_time])
+	# --- INVARIANT 3 : UNE TOURELLE SE DISTANCE -------------------------
+	#
+	# ⚠️ IL REMPLACE « TOUTE ATTAQUE LOURDE EST TÉLÉGRAPHIÉE », et il le remplace parce que le
+	# télégraphe ne marchait pas ici. La règle de la spec §11.2 dit qu'un tir sans préavis est
+	# une taxe et non une difficulté ; elle reste vraie. Ce qui change, c'est la façon de la
+	# tenir : sur un boss qu'on regarde, on annonce le coup ; sur dix-sept pièces réparties le
+	# long d'un décor qui défile, on rend la menace PERMANENTE et VISIBLE, et on la fait
+	# perdre. Le faisceau est son propre préavis, à condition qu'on puisse le semer.
+	#
+	# Le seuil se calcule et ne se choisit pas : un joueur à `max_speed` qui contourne une
+	# tourelle à distance `d` tourne autour d'elle à `max_speed / d` radians par seconde. La
+	# tourelle doit rester sous cette vitesse, avec de la marge — sinon elle colle au joueur
+	# quoi qu'il fasse, et le faisceau redevient une taxe.
+	const PLAYER_SPEED := 14.0     # `player_stats.gd` : max_speed
+	const CLOSE_RANGE := 8.0       # la distance à laquelle on passe VRAIMENT près d'une pièce
+	var escapable_deg := rad_to_deg(PLAYER_SPEED / CLOSE_RANGE)
+	if turret_turn_rate_deg <= 0.0:
+		errors.append("turret_turn_rate_deg doit être > 0 — une tourelle qui ne pivote pas ne vise jamais personne")
+	elif turret_turn_rate_deg > escapable_deg * 0.6:
+		errors.append("une tourelle pivote à %.0f °/s alors qu'un joueur en contourne une à %.0f °/s : elle le suivrait quoi qu'il fasse, et un faisceau qu'on ne peut pas semer est une taxe, pas une difficulté"
+			% [turret_turn_rate_deg, escapable_deg])
+	if turret_burn_interval <= 0.0:
+		errors.append("turret_burn_interval doit être > 0 — sinon la morsure dépend de la cadence d'affichage")
 
 	# --- INVARIANT 4 : un pont laissé debout PRODUIT ---------------------
 	# Sans quoi l'abattre ne serait pas une décision : c'est la pression qu'il exerce qui
@@ -251,8 +288,7 @@ func validate() -> PackedStringArray:
 				% [bay_pool_size, pire])
 
 	# --- INVARIANT 5 : les cadences ne sont pas nulles --------------------
-	for pair in [["turret_interval", turret_interval], ["turret_recover_time", turret_recover_time],
-			["turret_damage", turret_damage], ["turret_range", turret_range],
+	for pair in [["turret_burn_damage", turret_burn_damage], ["turret_range", turret_range],
 			["turret_beam_half_width", turret_beam_half_width]]:
 		if float(pair[1]) <= 0.0:
 			errors.append("%s doit être > 0" % pair[0])

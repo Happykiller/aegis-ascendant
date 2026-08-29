@@ -92,13 +92,25 @@ func test_a_survey_that_drags_beyond_the_promise_is_refused() -> void:
 	assert_true(errors.size() > 0, "un survol interminable est refuse")
 
 ## Reprise de l'invariant 6 du Leviathan : un tir sans preavis est une taxe, pas une difficulte.
-func test_a_turret_always_telegraphs_before_it_fires() -> void:
-	var tuning := _sound()
-	tuning.turret_windup_time = tuning.turret_beam_time * 0.2
-	var errors := tuning.validate()
-	assert_true(errors.size() > 0, "un telegraphe trop court est refuse")
-	assert_true(str(errors[0]).contains("telegraphe") or str(errors[0]).contains("préavis"),
-		"et l'erreur le nomme : %s" % errors[0])
+## ⚠️ CE TEST A CHANGE DE LOI SANS CHANGER DE BUT. Il gardait « toute attaque lourde est
+## telegraphiee » (spec 11.2). Le telegraphe ne marchait pas sur ce niveau — dix-sept pieces sur
+## un decor qui defile, un preavis de 0,8 s passe inapercu. Le faisceau est desormais PERMANENT,
+## donc toujours visible, et ce qui le rend jouable est qu'on puisse le SEMER. La loi est la
+## meme : un tir qu'on ne peut pas eviter est une taxe, pas une difficulte.
+func test_a_turret_can_be_outrun() -> void:
+	var reglage := _sound()
+	# Un joueur a 14 u/s contourne une tourelle a 8 unites a ~100 deg/s.
+	reglage.turret_turn_rate_deg = 200.0
+	var refuse := false
+	for e in reglage.validate():
+		if "pivote" in e:
+			refuse = true
+	assert_true(refuse,
+		"une tourelle qui pivote a 200 deg/s suit le joueur quoi qu'il fasse — le reglage doit le refuser")
+	reglage.turret_turn_rate_deg = 42.0
+	for e in reglage.validate():
+		assert_false("pivote" in e, "a 42 deg/s elle se distance : %s" % e)
+
 
 ## Un pont qui ne produit pas assez pendant sa fenetre ne pese pas sur la decision de l'abattre.
 func test_a_bay_that_barely_releases_anything_is_refused() -> void:

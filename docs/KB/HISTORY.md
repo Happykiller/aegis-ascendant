@@ -375,3 +375,23 @@ sept minutes pour la poursuivre. Le pilote esquive et tire droit devant : il n'a
 boss, ni avant ni après. **Un témoin de démo ne se compare pas à une partie humaine.** La
 vérification qui marche ici est la capture par phase (`--skip-to-boss`, `--skip-to-final`,
 `--leviathan-phase=2`), en quelques secondes chacune.
+
+### 2026-08-29 (fin) — Les deux retours de jeu, et ce qu'ils ont changé
+
+Retours de l'opérateur en jouant le niveau 2, et ce qui en est sorti
+([`ADR-0040`](../decisions/ADR-0040-la-tourelle-ne-telegraphie-plus.md)) :
+
+- **« je ne vois pas les tourelles qui me tirent dessus »** → le faisceau devient PERMANENT et la
+  tourelle pivote lentement (42 °/s contre ~100 °/s pour un joueur qui la contourne), avec un
+  canon visible. ⚠️ Le télégraphe du Léviathan ne transposait pas : bon sur 4 épines qu'on
+  regarde, inopérant sur 17 pièces d'un décor qui défile. **La loi de la spec §11.2 ne change
+  pas** — un tir qu'on ne peut pas éviter reste une taxe —, seule la façon de la tenir change ;
+- **« les ennemis apparaissent par magie »** → une silhouette monte du fond du puits, franchit
+  la bouche, et la coque n'entre en jeu qu'à ce moment (0,85 s). ⚠️ Elle est décorative :
+  `EnemyController` pose sa position à hauteur nulle et ne sait pas monter d'un puits. ⚠️ Et
+  elle est SOMBRE sur fond clair — pâle, elle se noyait dans le magenta ; le fond d'une baie est
+  ce qu'il y a de plus lumineux sur toute la coque.
+
+Et une demande d'outillage : **plus de son sur les lancements sans auditeur** (`--demo`,
+`--capture`). ⚠️ Pas « en build de développement » — l'opérateur y joue, et le son fait partie de
+ce qu'il teste.

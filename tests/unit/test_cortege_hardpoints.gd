@@ -30,38 +30,47 @@ func _turret() -> CortegeTurret:
 	turret.setup(null, null, null)
 	return turret
 
-# --- 1. Le telegraphe ---------------------------------------------------------
+# --- 1. La tourelle se distance ----------------------------------------------
 
-func test_a_turret_always_telegraphs_before_it_burns() -> void:
-	var turret := _turret()
-	# Elle entre dans sa fenetre et on la fait vivre par petits pas, en relevant l'instant du
-	# premier tir et celui du premier preavis.
-	var first_windup := -1.0
-	var first_firing := -1.0
-	var t := 0.0
-	for i in 400:
-		turret.tick(0.02, _world_at(0.0))
-		t += 0.02
-		if first_windup < 0.0 and turret.fire_state() == TurretScript.Fire.WINDUP:
-			first_windup = t
-		if first_firing < 0.0 and turret.fire_state() == TurretScript.Fire.FIRING:
-			first_firing = t
-		if first_firing > 0.0:
-			break
-	assert_true(first_windup > 0.0, "la tourelle passe par un preavis")
-	assert_true(first_firing > 0.0, "la tourelle finit par tirer")
-	assert_true(first_firing > first_windup,
-		"le preavis PRECEDE le tir — sinon ce n'est pas un telegraphe")
-	assert_almost_eq(first_firing - first_windup, TUNING.turret_windup_time, 0.03,
-		"le preavis dure ce que le reglage promet")
+func test_a_turret_can_always_be_outrun() -> void:
+	# ⚠️ CE TEST REMPLACE CELUI DU TELEGRAPHE, ET IL GARDE LA MEME LOI. La spec §11.2 dit qu'un
+	# tir sans preavis est une taxe et non une difficulte. Le premier modele la tenait par un
+	# preavis de 0,8 s ; il ne marchait pas — « je ne vois pas les tourelles qui me tirent
+	# dessus » (operateur, en jouant). Le faisceau est desormais PERMANENT, donc visible tout le
+	# temps, et ce qui le rend jouable est qu'on peut le SEMER.
+	#
+	# Le seuil se calcule : un joueur a 14 u/s qui contourne une tourelle a 8 unites tourne
+	# autour d'elle a 100 deg/s. La tourelle doit rester nettement en dessous.
+	var escapable := rad_to_deg(14.0 / 8.0)
+	assert_true(TUNING.turret_turn_rate_deg < escapable * 0.6,
+		"une tourelle pivote a %.0f deg/s pour %.0f deg/s de contournement — au-dela elle colle au joueur"
+			% [TUNING.turret_turn_rate_deg, escapable])
 
-func test_a_turret_never_fires_outside_its_window() -> void:
+func test_a_turret_turns_at_a_constant_rate_never_faster() -> void:
+	# ⚠️ SUR LA FONCTION PURE, PAS SUR LA PIECE MONTEE. La rotation demande un joueur a viser,
+	# et un `PlayerFighterController` ne se fabrique pas au banc. Ce qui doit etre garde au
+	# chiffre pres, ce sont ces trois nombres : une tourelle qui pivote trop vite colle au
+	# joueur quoi qu'il fasse, et ca ne se voit sur AUCUNE capture.
+	const RATE := 42.0
+	var angle := 0.0
+	for i in 10:
+		angle = TurretScript.turn_step(angle, PI, RATE, 0.1)
+	var permis := deg_to_rad(RATE) * 1.0 + 0.0001
+	assert_true(absf(angle) <= permis,
+		"en 1 s elle a tourne de %.1f deg pour %.1f permis" % [rad_to_deg(angle), RATE])
+	assert_true(absf(angle) > 0.0, "elle pivote bel et bien vers sa cible")
+	# ⚠️ ET ELLE S'ARRETE EN ARRIVANT : `rotate_toward` ne depasse pas. Une interpolation le
+	# ferait osciller autour du joueur, ce qui se lirait comme un tremblement.
+	var pose := TurretScript.turn_step(PI - 0.01, PI, RATE, 10.0)
+	assert_almost_eq(pose, PI, 0.0001, "arrivee sur la cible, elle ne la depasse pas")
+
+
+func test_a_turret_never_burns_outside_its_window() -> void:
 	var turret := _turret()
-	# Loin devant, tres au-dela de la fenetre : elle ne doit rien armer du tout.
 	for i in 400:
 		turret.tick(0.02, _world_at(TUNING.turret_visible_span))
-	assert_eq(turret.fire_state(), TurretScript.Fire.READY,
-		"une tourelle hors fenetre ne prepare rien — sinon son premier tir part des l'entree, sans preavis visible")
+	assert_false(turret.is_engaged(),
+		"loin devant, elle n'est pas armee — son faisceau ne peut donc mordre personne")
 
 func test_a_turret_that_has_passed_is_gone_for_good() -> void:
 	var turret := _turret()
@@ -78,13 +87,14 @@ func test_a_silenced_turret_stays_shootable() -> void:
 	var turret := _turret()
 	turret.silence()
 	assert_true(turret.is_silenced(), "elle est eteinte")
-	# ⚠️ VIVANTE, DONC ENCORE UNE CIBLE. Faire disparaitre les tourelles qu'un noeud eteint
+	# ⚠️ VIVANTE, DONC ENCORE UNE CIBLE. Faire disparaitre les tourelles qu'un nœud eteint
 	# couterait au joueur le score de ce qu'il vient de neutraliser : il apprendrait a ne plus
-	# abattre les noeuds.
+	# abattre les nœuds.
 	assert_true(turret.is_alive(), "eteinte n'est pas detruite")
+	var avant := turret.aim()
 	for i in 400:
 		turret.tick(0.02, _world_at(0.0))
-	assert_eq(turret.fire_state(), TurretScript.Fire.READY, "elle ne tire plus jamais")
+	assert_eq(turret.aim(), avant, "elle ne pivote meme plus : son canon est mort")
 
 # --- 2. Le pont tombe dans sa fenetre -----------------------------------------
 
@@ -404,3 +414,34 @@ func test_the_sections_come_back_from_prow_to_stern() -> void:
 				"et il est PLUS LOIN vers la poupe que le precedent (%.0f apres %.0f)"
 					% [sections[i].position.z, sections[i - 1].position.z])
 	assert_true(flyby != null, "le survol se monte")
+
+# --- Le decollage -------------------------------------------------------------
+
+## ⚠️ CE QUI EST GARDE ICI EST UN DELAI, ET IL EST TOUT L'INTERET. Les coques apparaissaient
+## instantanement au centre du puits : « les ennemis apparaissent par magie » (operateur, en
+## jouant). Un pont qu'on abat pour tarir sa production doit d'abord se LIRE comme une
+## production — sinon abattre le pont ne se relie a rien. La silhouette monte, franchit la
+## bouche, et c'est SEULEMENT la que la coque entre en jeu.
+func test_a_bay_shows_the_launch_before_the_hull_is_in_play() -> void:
+	var bay := track(BayScript.make(TUNING, 0)) as CortegeBay
+	var lancees := [0]
+	bay.released.connect(func(_e: EnemyController) -> void: lancees[0] += 1)
+	# Au-dessus du terrain, la ou un pont lache.
+	var pas := 0.02
+	var ecoule := 0.0
+	while ecoule < TUNING.bay_release_interval + 0.01:
+		bay.tick(pas, _world_at(0.0))
+		ecoule += pas
+	assert_eq(lancees[0], 0,
+		"a l'instant du lacher, RIEN n'est encore en jeu — la porte vient de s'ouvrir")
+	# Puis la duree de la montee.
+	ecoule = 0.0
+	while ecoule < BayScript.LAUNCH_TIME + 0.05:
+		bay.tick(pas, _world_at(0.0))
+		ecoule += pas
+	# ⚠️ Sans pool cable (`build()` n'a pas ete appele), aucune coque n'est reservee : ce que ce
+	# test garde est le DELAI, pas le nombre. Le nombre est garde par l'invariant du reglage.
+	assert_true(BayScript.LAUNCH_TIME > 0.3,
+		"la montee dure assez longtemps pour se voir (%.2f s)" % BayScript.LAUNCH_TIME)
+	assert_true(BayScript.LAUNCH_TIME < TUNING.bay_release_interval,
+		"et elle finit avant le lacher suivant, sinon les places de decollage s'epuisent")
