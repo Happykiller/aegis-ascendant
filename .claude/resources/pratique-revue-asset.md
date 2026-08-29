@@ -258,3 +258,63 @@ ni le rendu — le puits n'est jamais vu de près dans le jeu.
 **La règle qui en découle, et elle est bon marché** : toute planche de recette d'un décor ou
 d'une coque porte **une vue avec le chasseur posé à l'échelle**, depuis son `.glb` réel et non
 une maquette. C'est la vue qui aurait attrapé les anneaux de 30 cm, et elle coûte un rendu.
+
+## ⚠️ Une planche de forge ACCEPTÉE ne dit rien de ce que le moteur en fera (29/08/2026)
+
+La planche du `BRIEF-0094` montrait exactement ce qui avait été demandé : quatre conduits de 12 à
+18 cm au fond d'une tranchée, coupés par 21 travées sombres. Elle passait le test d'acceptation,
+elle était juste, et **elle a été validée à raison**.
+
+Première capture en jeu, tronçon 2 : **un laser magenta continu au milieu de l'écran** — le
+défaut exact que la refonte devait supprimer, et qui avait motivé tout le brief.
+
+### La géométrie était bonne. C'est le moteur qui la noyait.
+
+Trois étages séparent une planche Blender d'une image de jeu, et **aucun n'existe dans la
+planche** :
+
+| Étage | Ce qu'il fait à un émissif fin |
+|---|---|
+| `emission_energy_multiplier` du matériau | réglé à **1,0**, jugé sur l'ANCIENNE géométrie |
+| le bloom du `WorldEnvironment` | soude quatre traits voisins en un seul |
+| le `lift` de 1,25 du post-traitement rétro | remonte les noirs, donc les travées sombres |
+
+### Et la vraie cause, qui n'est pas un réglage mais un CHANGEMENT DE NATURE
+
+`1,0` avait été mesuré, en capture, sur une artère qui était une **bande large** : la carte y
+étalait ses canaux clairs et ses fonds sombres, et c'est ce mélange qui tenait l'intensité.
+
+La bande est devenue quatre conduits de **douze centimètres**. À cette largeur, la carte ne
+livre plus une structure : elle livre **une tranche quasi constante d'elle-même** — son cœur
+clair. L'écran reçoit quatre aplats pleins.
+
+> **Quand la géométrie qui porte une texture change de LARGEUR, la texture change de rôle, et
+> tout réglage calibré dessus est périmé.** Ce n'est pas une dérive de valeur qu'on rattrape à
+> 10 % près : c'est une grandeur qui ne mesure plus la même chose. Ici, 1,0 → **0,45**.
+
+### Le second défaut, invisible sur toute planche : l'inversion de hiérarchie
+
+Même session, même capture : la **dalle** violette qui porte une tourelle était **plus claire que
+la tourelle**. Le socle criait plus fort que le canon.
+
+Et le rapport de forge, lui, était **vert sur ce point** : violet + magenta = 1,45 % de l'aire
+vue, pour une cible de 5 %. La cible était tenue **par le bas**.
+
+> **Une aire mesurée sur le binaire ne dit pas ce que l'écran montre.** Un violet sombre en
+> linéaire (0,06 / 0,02 / 0,13) occupe une aire minuscule et ressort en aplat vif une fois relevé
+> par le `lift`. La mesure d'aire répond à « combien de surface », jamais à « qu'est-ce qui tire
+> l'œil en premier » — et c'est la seconde question qui décide.
+
+### La règle qui en sort
+
+**Une planche de forge prouve la géométrie ; seule une capture en jeu prouve le rendu.** Les deux
+sont nécessaires et aucune ne remplace l'autre :
+
+- la planche prouve la **silhouette** (noir et blanc, émissifs coupés) — la forge peut la rendre,
+  elle n'a pas besoin du moteur ;
+- la capture prouve la **hiérarchie** — et elle demande le moteur, son bloom, son post-traitement
+  et sa résolution réelle.
+
+Coût de l'avoir appris : deux cycles export + capture (~6 min), sur un livrable par ailleurs
+irréprochable. Coût de ne pas l'apprendre : rendre à l'opérateur un niveau qui reproduit le
+défaut qu'il avait signalé, avec un rapport chiffré disant que c'était corrigé.

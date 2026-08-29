@@ -63,3 +63,22 @@ Ligne(s) à ajouter dans `assets/licenses/ASSET_PROVENANCE.csv` pour chaque asse
 ## Hors périmètre
 
 Ce que la mission ne doit PAS faire (éviter la dérive).
+
+---
+
+## ⚠️ Si le brief demande un KIT : figer les noms dans le brief
+
+Un kit est assemblé par le **moteur**, qui va chercher chaque pièce **par son nom exact**. Le
+brief doit donc porter une table, et pas une intention :
+
+| Nœud | Ce que c'est | Repère |
+|---|---|---|
+| `<nom_exact>` | … | origine au point d'assemblage |
+
+Trois kits ont été livrés ainsi (`bay_kit`, `turret_kit`, `spine_kit`) et **les trois se sont
+assemblés sans une seule itération** — la forge rendant en plus la table des emprises mesurées,
+qui dit au moteur où poser chaque pièce.
+
+Laisser le choix des noms à la forge ne fait pas gagner de temps : ça déplace la même décision
+d'un cran, et elle revient sous forme de code d'assemblage à réécrire. Un renommage ultérieur
+casse le niveau **en silence** — le moteur ne trouve rien et ne dit rien.
