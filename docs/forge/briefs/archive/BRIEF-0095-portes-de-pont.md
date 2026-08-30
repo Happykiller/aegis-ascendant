@@ -1,6 +1,6 @@
 # BRIEF-0095 — Les portes du pont d'envol
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-08-30
