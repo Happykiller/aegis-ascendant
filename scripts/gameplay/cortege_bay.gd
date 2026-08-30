@@ -121,6 +121,23 @@ const DOOR_TIME := 0.4
 const DOOR_SLIDE := 3.00
 const DOOR_TINT := Color(0.15, 0.13, 0.17)
 
+## L'épave. ⚠️ ELLE EXISTE PARCE QU'UN PONT ABATTU SE REFERMAIT PROPREMENT. Il perdait sa lueur,
+## ses battants revenaient à leur place, et il devenait un rectangle sombre — c'est-à-dire
+## exactement ce qu'est un pont AU REPOS. Détruit et inactif se ressemblaient, sur la pièce qui
+## coûte le plus cher à abattre du niveau : « pas d'animation de destruction […] et sûrement des
+## ponts de décollage » (opérateur, 2026-08-30, en jouant).
+##
+## Un pont mort reste donc OUVERT, de travers : les battants se coincent à mi-course, gauchis,
+## et le puits derrière eux est noir. C'est la seule lecture qui distingue les trois états d'un
+## coup d'œil — fermé et sombre = au repos, ouvert et magenta = il produit, coincé et noir = tu
+## l'as eu.
+const WRECK_TIME := 0.9
+const WRECK_DOOR_OPEN := 0.42
+const WRECK_DOOR_TILT_DEG := 13.0
+const WRECK_DOOR_SINK := 0.10
+## Ce qu'il reste de la tôle quand elle a brûlé.
+const WRECK_TINT := Color(0.055, 0.048, 0.062)
+
 signal destroyed(bay: CortegeBay)
 signal released(enemy: EnemyController)
 
@@ -151,6 +168,15 @@ var _riser_enemy: Array[EnemyController] = []
 ## Les deux battants, et leur ouverture — 0 fermé, 1 ouvert.
 var _doors: Array[MeshInstance3D] = []
 var _door_open: float = 0.0
+## L'avancement du gauchissement, de 0 à 1. Négatif tant que le pont est debout.
+var _wreck: float = -1.0
+## La position des battants à l'instant de la mort — le gauchissement part de LÀ. Un pont abattu
+## en plein lâcher a ses portes grandes ouvertes ; les ramener à zéro pour les rouvrir ensuite
+## ferait battre la porte à l'instant précis où le joueur regarde l'explosion.
+var _wreck_from: float = 0.0
+## Le matériau des deux battants — PROPRE à ce pont (`_build_doors` le crée), donc on peut le
+## noircir sans toucher aux six autres.
+var _door_plate: StandardMaterial3D
 ## La porte reste ouverte tant qu'un décollage est en cours, plus un souffle.
 var _door_hold: float = 0.0
 
@@ -186,6 +212,11 @@ func build(bullet_manager: BulletManager, player: PlayerFighterController, vfx: 
 
 func is_alive() -> bool:
 	return _alive
+
+## L'avancement du gauchissement, de 0 à 1 ; négatif tant que le pont est debout. Exposé pour la
+## même raison que sur la tourelle : une épave ne se voit sur aucune capture automatisée.
+func wreck_progress() -> float:
+	return _wreck
 
 func has_passed() -> bool:
 	return _pass == Pass.PASSED
@@ -271,6 +302,7 @@ func _build_doors() -> void:
 	plate.albedo_color = DOOR_TINT
 	plate.metallic = 0.65
 	plate.roughness = 0.4
+	_door_plate = plate
 	for side in [-1.0, 1.0]:
 		var door := MeshInstance3D.new()
 		door.name = "Door%s" % ("L" if side < 0.0 else "R")
@@ -302,6 +334,10 @@ func _build_risers() -> void:
 ## vérifiable : c'est exactement ce qui a rendu `LeviathanCombat` testable là où trois cycles
 ## demandent quarante secondes de jeu. Le gestionnaire, lui, sait lire l'arbre.
 func tick(delta: float, world: Vector3, here: Vector2) -> void:
+	# ⚠️ AVANT LA SORTIE SUR `PASSED`. Un pont abattu se retire dans la même trame ; si le
+	# gauchissement attendait la logique de fenêtre, il ne commencerait jamais.
+	if _wreck >= 0.0 and _wreck < 1.0:
+		_advance_wreck(delta)
 	if _pass == Pass.PASSED:
 		return
 	_world = world
@@ -458,11 +494,35 @@ func _take_damage(damage: float) -> void:
 			waiting.unpark()
 		_riser_age[slot] = -1.0
 		_riser_enemy[slot] = null
-	# ⚠️ ET LES PORTES SE REFERMENT POUR DE BON. Un pont abattu qui resterait ouvert sur sa lueur
-	# dirait au joueur qu'il produit encore.
+	# ⚠️ ET LES PORTES SE COINCENT — ELLES NE SE REFERMENT PAS. Un pont abattu qui se refermerait
+	# proprement redeviendrait un rectangle sombre, indiscernable d'un pont au repos ; ce qui
+	# dirait au joueur qu'il produit encore, c'est la LUEUR, et elle vient de s'éteindre.
 	_door_hold = 0.0
+	_begin_wreck()
 	_retire()
 	destroyed.emit(self)
+
+## Ouvre le gauchissement, à partir de la position réelle des battants.
+func _begin_wreck() -> void:
+	_wreck = 0.0
+	_wreck_from = _door_open
+
+## Un pas du gauchissement. ⚠️ APPELÉ MÊME QUAND LE PONT EST `PASSED` : il meurt souvent au bord
+## de sa fenêtre, et des battants figés à mi-gauchissement se liraient comme un bug.
+func _advance_wreck(delta: float) -> void:
+	_wreck = minf(_wreck + delta / WRECK_TIME, 1.0)
+	var k := 1.0 - (1.0 - _wreck) * (1.0 - _wreck)
+	_door_open = lerpf(_wreck_from, WRECK_DOOR_OPEN, k)
+	for i in _doors.size():
+		var side := -1.0 if i == 0 else 1.0
+		_doors[i].position.x = side * (OPENING_HALF_X * 0.5 + DOOR_SLIDE * _door_open)
+		# Un battant se voile sur son rail : il pique du nez ET s'affaisse. Les deux dans des
+		# sens opposés, sinon la bouche reste symétrique et on lit une ouverture, pas une ruine.
+		_doors[i].rotation.z = deg_to_rad(WRECK_DOOR_TILT_DEG) * k * side
+		_doors[i].rotation.x = deg_to_rad(WRECK_DOOR_TILT_DEG * 0.5) * k * -side
+		_doors[i].position.y = 0.1 - WRECK_DOOR_SINK * k
+	if _door_plate != null:
+		_door_plate.albedo_color = DOOR_TINT.lerp(WRECK_TINT, k)
 
 func _retire() -> void:
 	_pass = Pass.PASSED

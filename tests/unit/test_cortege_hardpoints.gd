@@ -634,3 +634,44 @@ func test_the_aim_point_follows_the_mass_and_not_the_seat() -> void:
 		"la masse se projette en avant de l'assise (%.3f contre %.3f)" % [from_mass.y, from_seat.y])
 	# Le hangar CREUSE : lui n'a rien a corriger, et une valeur non nulle serait une regression.
 	assert_eq(BayScript.HIT_LIFT, 0.0, "le hangar ne monte pas, donc ne se decale pas")
+
+# --- 4. La mort se voit -------------------------------------------------------
+#
+## ⚠️ CES DEUX TESTS GARDENT UNE MISE EN SCENE, ET C'EST INHABITUEL ICI. On ne teste normalement
+## pas ce qui se voit — une capture le fait mieux. Sauf que celle-ci ne se capture PAS : elle
+## dure moins d'une seconde, quelque part sur dix-sept tourelles et sept ponts, et un survol ne
+## repasse jamais. Elle a manque pendant tout le developpement du niveau sans qu'aucun test,
+## aucune planche et aucune porte de qualite ne le signale — il a fallu que l'operateur joue :
+## « pas d'animation de destruction des canons et surement des ponts de decollage »
+## (2026-08-30). Ce qui a ete invisible une fois le redeviendra.
+
+func test_a_destroyed_turret_collapses_and_finishes_collapsing_after_it_passes() -> void:
+	var turret := _turret()
+	assert_true(turret.wreck_progress() < 0.0, "debout, elle ne s'effondre pas")
+	turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
+	turret.target().hit_callback.call(TUNING.turret_health)
+	assert_false(turret.is_alive(), "elle est abattue")
+	assert_eq(turret.wreck_progress(), 0.0, "l'effondrement s'ouvre a l'instant de la mort")
+	# ⚠️ ET IL SE TERMINE ALORS QU'ELLE EST DEJA RETIREE. Une tourelle meurt souvent au bord de
+	# sa fenetre ; si l'effondrement s'arretait avec la logique de fenetre, le joueur verrait le
+	# canon se figer en l'air — pire que pas d'epave du tout.
+	assert_true(turret.has_passed(), "abattue, elle s'est retiree dans la meme trame")
+	for i in 60:
+		turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
+	assert_eq(turret.wreck_progress(), 1.0, "l'effondrement va jusqu'au bout malgre le retrait")
+
+func test_a_destroyed_bay_jams_open_instead_of_closing_cleanly() -> void:
+	var bay := track(BayScript.make(TUNING, 0)) as CortegeBay
+	bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
+	assert_true(bay.wreck_progress() < 0.0, "debout, il ne gauchit pas")
+	var reachable: float = TUNING.bay_reachable()
+	var dealt := 0.0
+	while dealt < reachable and bay.is_alive():
+		bay.target().hit_callback.call(20.0)
+		dealt += 20.0
+	assert_false(bay.is_alive(), "il est abattu")
+	assert_eq(bay.wreck_progress(), 0.0, "le gauchissement s'ouvre a l'instant de la mort")
+	for i in 70:
+		bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
+	assert_eq(bay.wreck_progress(), 1.0, "et il va jusqu'au bout, retire ou non")
+

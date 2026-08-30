@@ -107,6 +107,27 @@ const MUZZLE_REACH := 3.50
 ## L'énergie de l'œil selon l'état. ⚠️ AFFAIBLIE N'EST PAS MORTE, ET ÇA DOIT SE VOIR : une pièce
 ## abîmée garde une braise, une pièce abattue est noire. Sans cet écart, le joueur n'a aucun
 ## moyen de savoir laquelle des deux il regarde — et donc aucune raison de tirer sur l'une.
+## L'épave. ⚠️ ELLE EXISTE PARCE QUE RIEN NE MOURAIT À L'ÉCRAN. Une tourelle abattue perdait son
+## œil et c'est tout : le socle, la couronne, le tambour et les deux tubes restaient debout,
+## intacts, pour toujours. Vivante, abîmée et morte se ressemblaient — « pas d'animation de
+## destruction des canons » (opérateur, 2026-08-30, en jouant).
+##
+## ⚠️ ET C'EST LA SILHOUETTE QUI PORTE L'INFORMATION, PAS LA COULEUR. La caméra plonge à 70° et
+## le rendu sort à 23 px/m : un noircissement de 1,5 m se perd, deux tubes qui PIQUENT DU NEZ et
+## partent de travers se voient d'un coup d'œil, et se voient encore mieux à côté d'une tourelle
+## intacte. C'est aussi la seule mise en scène qui ne coûte aucune géométrie neuve et aucun
+## matériau dupliqué — dix-sept tourelles qui s'offriraient chacune sa copie du bordé casseraient
+## le regroupement des dessins pour un effet qu'on ne verrait pas.
+const WRECK_TIME := 0.8
+const WRECK_PITCH_DEG := -34.0
+const WRECK_ROLL_DEG := 17.0
+const WRECK_SINK := 0.14
+## De combien la tête part de travers en mourant. ⚠️ TIRÉE DU RANG DE MONTAGE, PAS DU HASARD :
+## un tirage aléatoire donnerait un champ de ruines différent à chaque lancement, donc deux
+## captures qu'on ne peut pas comparer — et l'équilibrage d'un survol se lit en comparant deux
+## passages.
+const WRECK_YAW_DEG := 63.0
+
 const EYE_SHOT := 3.0
 const EYE_WEAK := 0.55
 const EYE_DEAD := 0.0
@@ -147,6 +168,11 @@ var _aim: Vector2 = Vector2.DOWN
 ## La dernière position connue, en monde — pour poser l'explosion sur la COQUE et non sur le
 ## plan de vol, qui est trois unités et demie plus haut.
 var _world: Vector3 = Vector3.ZERO
+## L'avancement de l'effondrement, de 0 à 1. Négatif tant que la pièce est debout.
+var _wreck: float = -1.0
+## La pose de la tête au moment où elle meurt — l'effondrement part de LÀ, et non d'un zéro qui
+## ferait sauter le canon avant de le faire tomber.
+var _wreck_from: Vector3 = Vector3.ZERO
 
 static func make(p_tuning: CortegeTuning, p_section: int) -> CortegeTurret:
 	var turret := CortegeTurret.new()
@@ -287,6 +313,13 @@ func weaken() -> void:
 func is_weakened() -> bool:
 	return _weakened
 
+## L'avancement de l'effondrement, de 0 à 1 ; négatif tant que la pièce est debout. ⚠️ EXPOSÉ
+## PARCE QUE C'EST LA SEULE FAÇON DE GARDER UNE MISE EN SCÈNE. Une épave ne se voit sur aucune
+## capture automatisée — elle dure huit dixièmes de seconde, quelque part sur dix-sept pièces —
+## et c'est précisément le genre d'effet qui disparaît sans bruit à la première refonte.
+func wreck_progress() -> float:
+	return _wreck
+
 ## Un pas de la tourelle. ⚠️ APPELÉE PAR LE GESTIONNAIRE, pas par `_process`. Vingt-neuf points
 ## d'ancrage qui traitent chacun leur propre image, c'est vingt-neuf appels de script par trame
 ## pour un travail que rien n'oblige à disperser — et un ordre de passage dont on ne sait plus
@@ -305,6 +338,10 @@ func is_weakened() -> bool:
 ## vérifiable : c'est exactement ce qui a rendu `LeviathanCombat` testable là où trois cycles
 ## demandent quarante secondes de jeu. Le gestionnaire, lui, sait lire l'arbre.
 func tick(delta: float, world: Vector3, here: Vector2) -> void:
+	# ⚠️ AVANT LA SORTIE SUR `PASSED`. Une tourelle abattue se retire dans la même trame ; si
+	# l'effondrement attendait la logique de fenêtre, il ne commencerait jamais.
+	if _wreck >= 0.0 and _wreck < 1.0:
+		_advance_wreck(delta)
 	if _pass == Pass.PASSED:
 		return
 	_world = world
@@ -414,8 +451,34 @@ func _take_damage(damage: float) -> void:
 	_set_eye(EYE_DEAD)
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM)
+	_begin_wreck()
 	_retire()
 	destroyed.emit(self)
+
+## Ouvre l'effondrement. ⚠️ IL PART DE LA POSE COURANTE. La tête est là où le dernier tir l'a
+## laissée ; repartir d'une pose neutre ferait sauter le canon d'un quart de tour à l'instant
+## exact où le joueur regarde l'explosion — le seul moment où il ne peut pas le manquer.
+func _begin_wreck() -> void:
+	_wreck = 0.0
+	if _barrel != null:
+		_wreck_from = _barrel.rotation
+
+## Un pas de l'effondrement. ⚠️ APPELÉ MÊME QUAND LA PIÈCE EST `PASSED` : elle meurt souvent au
+## bord de sa fenêtre, et une épave qui se figerait à mi-chute serait pire que pas d'épave du
+## tout — le joueur verrait le canon s'arrêter en l'air.
+func _advance_wreck(delta: float) -> void:
+	_wreck = minf(_wreck + delta / WRECK_TIME, 1.0)
+	if _barrel == null:
+		return
+	# Une chute qui décélère : la tête part vite, puis s'affaisse. `ease_out` par un carré, sans
+	# courbe à charger ni Tween à allouer.
+	var k := 1.0 - (1.0 - _wreck) * (1.0 - _wreck)
+	var yaw := deg_to_rad(WRECK_YAW_DEG) * (1.0 if serial % 2 == 0 else -1.0)
+	_barrel.rotation = Vector3(
+		_wreck_from.x + deg_to_rad(WRECK_PITCH_DEG) * k,
+		_wreck_from.y + yaw * k,
+		_wreck_from.z + deg_to_rad(WRECK_ROLL_DEG) * k * (1.0 if serial % 2 == 0 else -1.0))
+	_barrel.position.y = -WRECK_SINK * k
 
 ## Rend la cible et cesse de compter. ⚠️ `unregister_target` est SÛRE depuis un rappel de
 ## dégâts — le gestionnaire diffère la suppression jusqu'à la fin de la passe.
