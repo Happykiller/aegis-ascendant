@@ -2,10 +2,12 @@
 
     blender45 -b -P tools/blender/build_bay_kit.py
     blender45 -b -P tools/blender/build_bay_kit.py -- --plate
+    blender45 -b -P tools/blender/build_bay_kit.py -- --doors-plate
     ./scripts/build-hull.sh --check bay_kit          # + controle de determinisme
 
-Produit `assets/imported/models/backgrounds/bay_kit.glb` et, avec `--plate`, la
-planche de recette `docs/forge/output/BRIEF-0091-planche-hangars.png`.
+Produit `assets/imported/models/backgrounds/bay_kit.glb`, avec `--plate` la
+planche de recette `docs/forge/output/BRIEF-0091-planche-hangars.png`, et avec
+`--doors-plate` celle des battants `docs/forge/output/BRIEF-0095-planche-portes.png`.
 
 Le script EST la source (ADR-0008) : aucun `.blend` versionne, aucun alea, deux
 executions successives rendent le meme sha256.
@@ -27,6 +29,8 @@ baie n'y est cuite.
     bay_floor          le fond                     origine : centre, -1,80 m
     bay_launch_rail    UN rail ; le moteur en pose deux
     bay_service_block  bloc de servitude, optionnel
+    bay_door_left      battant bâbord (BRIEF-0095)  origine : arete de jonction
+    bay_door_right     battant tribord — DEMI-TOUR  origine : arete de jonction
 
 
 LA REGLE QUI PRIME SUR TOUT LE RESTE
@@ -663,6 +667,242 @@ def build_service_block() -> bpy.types.Object:
 
 
 # ==========================================================================
+# LES BATTANTS — ce qui fermait le puits en BoxMesh (BRIEF-0095)
+# ==========================================================================
+#
+# Section transversale d'un battant, en (x, y), du bord de JONCTION vers
+# l'exterieur. Douze stations, pas une de plus, et le budget de 1 200 triangles
+# pour la paire est ce qui a fixe ce douze : chaque station coute 2 triangles par
+# span, et le battant en compte une vingtaine.
+#
+#   +0.175  S2___S3                      S0 S1  la face de jonction
+#          /      \S4___S5               S1 S2  LE TRAIT DE BORDURE (emissif)
+#   +0.150 |             \               S2 S3  la poutre de nez, 28 cm
+#          |S1            S6____S7       S3 S4  la marche vers le plan courant
+#   +0.075 |              (caisson)      S4 S5  le plan courant
+#          |                    /S8_S9   S5 S6  la levre du caisson — LE CHEVRON
+#          |                        \S10 S6 S7  le fond du caisson, 7,5 cm creux
+#    0.000 S0______________________ S11  S8 S9  le plan courant, cote exterieur
+#                                        S9 S10 le chanfrein exterieur
+#          x = e                x = -3,00 S10 S11 la face exterieure
+#                                        S11 S0 LE DESSOUS, PLAT, a y = 0
+#
+# ⚠️ LE DESSOUS EST PLAT ET SANS TROU, ET C'EST LUI QUI FAIT L'OBSCURITE. Le
+# brief ne demande pas une porte jolie, il demande que le puits ne fuie pas sa
+# lueur magenta quand il ne produit pas : c'est le contraste noir -> magenta qui
+# fait lire l'ouverture. Une seule fente et le contraste tombe.
+#
+# ⚠️ ET LE PROFIL EST STRICTEMENT DECROISSANT EN X. Ce n'est pas une elegance :
+# le bord de jonction se DEPLACE avec la denture (de +0,12 a -0,10), et si une
+# station de la poutre de nez passait derriere la levre du caisson, le profil se
+# croiserait — un solide retourne sur lui-meme, que ni la bbox ni le compte de
+# triangles ne verraient. `_door_section()` le verifie a chaque section.
+
+
+def _door_bands() -> list[tuple[float, float, str]]:
+    """Le decoupage en Z : sabot, caisson, refend, caisson, refend, caisson, sabot.
+
+    ⚠️ SYMETRIQUE EN Z, ET C'EST CE QUI PERMET AU BATTANT TRIBORD D'EXISTER. Le
+    battant droit est le gauche tourne d'un demi-tour (voir `build_door_right`) :
+    tout ce qui n'est pas symetrique en Z y apparaitrait retourne. Seule la
+    denture ne l'est pas — et c'est justement ce qu'on veut, puisque c'est ce qui
+    la rend complementaire.
+    """
+    inner = DOOR_HALF_Z - DOOR_SHOE
+    pocket = (2.0 * inner - 2.0 * DOOR_LAND) / 3.0
+    bands = [(-DOOR_HALF_Z, -inner, "shoe")]
+    z = -inner
+    for k in range(3):
+        bands.append((z, z + pocket, "pocket"))
+        z += pocket
+        if k < 2:
+            bands.append((z, z + DOOR_LAND, "land"))
+            z += DOOR_LAND
+    bands.append((inner, DOOR_HALF_Z, "shoe"))
+    return bands
+
+
+def _door_edge(z: float) -> float:
+    """L'abscisse du bord de jonction a la cote `z` — la denture.
+
+    Bandes paires : la dent avance a +0,12. Bandes impaires : le creux recule a
+    -0,10. Le battant tribord etant le miroir par demi-tour, la bande `k` du
+    gauche fait face a la bande `DOOR_TEETH - 1 - k` du droit, de parite
+    opposee : une dent tombe toujours en face d'un creux.
+    """
+    step = 2.0 * DOOR_HALF_Z / DOOR_TEETH
+    index = int(math.floor((z + DOOR_HALF_Z) / step + 1e-9))
+    index = max(0, min(DOOR_TEETH - 1, index))
+    return DOOR_TOOTH if index % 2 == 0 else -DOOR_NOTCH
+
+
+def _door_section(z: float, kind: str, edge: float) -> list[Vector]:
+    """Les douze stations du profil, posees a la cote `z`."""
+    top = DOOR_RIM_TOP
+    main = DOOR_RIM_TOP if kind == "shoe" else DOOR_TOP
+    if kind == "pocket":
+        floor = DOOR_POCKET_Y
+    elif kind == "shoe":
+        floor = DOOR_SHOE_GROOVE_Y
+    else:
+        floor = main
+    # Le chevron : la levre interieure s'ecarte vers -X au milieu du battant.
+    fraction = 1.0 - abs(z) / DOOR_HALF_Z
+    rim_in = DOOR_RIM_IN_END + (DOOR_RIM_IN_MID - DOOR_RIM_IN_END) * fraction
+    profile = [
+        (edge, 0.0),
+        (edge, top - 0.09),
+        (edge - 0.09, top),
+        (edge - 0.28, top),
+        (edge - 0.34, main),
+        (rim_in, main),
+        (rim_in - 0.06, floor),
+        (DOOR_RIM_OUT + 0.06, floor),
+        (DOOR_RIM_OUT, main),
+        (-DOOR_SPAN_X + 0.06, main),
+        (-DOOR_SPAN_X, main - 0.06),
+        (-DOOR_SPAN_X, 0.0),
+    ]
+    for (xa, _), (xb, _) in zip(profile, profile[1:]):
+        if xb > xa + 1e-9:
+            raise ak.ContractError(
+                f"bay_door : profil non decroissant en x a z = {z:+.3f} "
+                f"({xa:+.4f} puis {xb:+.4f}) — le solide se croiserait")
+    return [Vector((x, y, z)) for x, y in profile]
+
+
+#: Materiau de chaque arete du profil, index par index. Les caissons et le
+#: dessous sont sombres (regle 2 du kit : ce qui regarde le puits est plus sombre
+#: que ce qui regarde le ciel) ; la poutre de nez, le chanfrein exterieur et les
+#: sabots sont de l'APPAREILLAGE, comme les rails.
+DOOR_MATERIALS: tuple[str, ...] = (
+    "AA_Greeble",              # S0 S1 face de jonction — matee, jamais vue
+    "AA_Emissive_Engine",      # S1 S2 LE TRAIT DE BORDURE
+    "AA_Hull",                 # S2 S3 poutre de nez
+    "AA_Greeble",              # S3 S4 marche — une ligne d'ombre
+    "AA_Hull",                 # S4 S5 plan courant
+    "AA_Greeble",              # S5 S6 levre du caisson
+    "AA_Greeble",              # S6 S7 fond du caisson
+    "AA_Greeble",              # S7 S8 levre exterieure du caisson
+    "AA_Hull",                 # S8 S9 plan courant
+    "AA_Trim",                 # S9 S10 chanfrein exterieur — LE SEUL filet clair
+    "AA_Greeble",              # S10 S11 face exterieure
+    "AA_Greeble",              # S11 S0 le dessous
+)
+
+
+def _door_span_materials(kind: str, wall: bool) -> list[str]:
+    """Les materiaux d'une bande, selon ce qu'elle est.
+
+    Sur un refend il n'y a pas de caisson : les aretes S5..S8 y sont du plan
+    courant, et les peindre en `AA_Greeble` y tracerait trois bandes noires sur
+    une surface plate. Sur un sabot, la rainure reste en `AA_Greeble` : creux =
+    sombre, la meme regle que pour les caissons. `AA_Panel` (le violet du
+    ressaut) y a ete essaye puis retire — sur les battants RETIRES, deux barres
+    violettes couraient en travers du borde et tiraient l'œil plus que la lueur
+    du puits, qui est l'information.
+
+    ⚠️ AUCUNE GRANDE SURFACE EN `AA_Trim` SUR UN BATTANT, ET C'EST UNE CORRECTION
+    DE RENDU. Le premier jet donnait la poutre de nez et les sabots a `AA_Trim`
+    — l'ivoire froid #DDDCD2 de l'appareillage, celui des rails. Dans le puits
+    sombre il detache le rail ; sur la PEAU, a cote d'un coaming en #24252B, il
+    faisait deux cadres blancs autour de trous noirs, et les battants ne
+    lisaient plus comme la piece qui les entoure. Il ne reste de `AA_Trim` que
+    le filet du chanfrein exterieur, large de 6 cm, exactement comme sur le
+    chanfrein du coaming.
+    """
+    if wall:                                   # la joue d'une dent : tout sombre
+        return ["AA_Greeble"] * len(DOOR_MATERIALS)
+    materials = list(DOOR_MATERIALS)
+    if kind == "shoe":
+        for i in (5, 6, 7):
+            materials[i] = "AA_Greeble"
+    elif kind == "land":
+        for i in (5, 6, 7):
+            materials[i] = "AA_Hull"
+    return materials
+
+
+def _door_sweep(bm: bmesh.types.BMesh,
+                sections: list[tuple[list[Vector], str, bool]]) -> None:
+    """Balaye le profil ferme le long des sections, materiau par bande."""
+    verts = [[bm.verts.new(p) for p in points] for points, _, _ in sections]
+    count = len(sections[0][0])
+    for k in range(len(sections) - 1):
+        low, high = verts[k], verts[k + 1]
+        kind = sections[k + 1][1]
+        wall = abs(sections[k + 1][0][0].z - sections[k][0][0].z) < 1e-9
+        materials = _door_span_materials(kind, wall)
+        for i in range(count):
+            j = (i + 1) % count
+            _face(bm, [low[i], low[j], high[j], high[i]], materials[i])
+    _face(bm, list(reversed(verts[0])), "AA_Greeble")
+    _face(bm, list(verts[-1]), "AA_Greeble")
+
+
+def _build_door(name: str, turn: bool) -> bpy.types.Object:
+    """Un battant. `turn` : demi-tour autour de Y (le battant tribord).
+
+    ⚠️ UN DEMI-TOUR, PAS UN MIROIR, ET LA DIFFERENCE EST TOUT LE SUJET. Un miroir
+    en X seul ne peut PAS produire deux dentures complementaires : le bord du
+    battant droit y tomberait a l'oppose de celui du gauche pour chaque z, donc
+    soit les deux se chevauchent partout, soit ils laissent un jour partout —
+    demontre en une ligne, `-t(z) = t(z)` n'a que la solution `t = 0`. Il faut
+    retourner AUSSI en Z. Le demi-tour le fait, et il conserve la chiralite : les
+    normales restent bonnes, ce qu'un miroir aurait retourne en silence.
+    Visuellement, le battant reste bien le miroir de l'autre — tout le dessin est
+    symetrique en Z sauf la denture, qui est justement ce qu'on veut inverser.
+    """
+    stops: list[float] = []
+    for z0, z1, _ in _door_bands():
+        stops += [z0, z1]
+    step = 2.0 * DOOR_HALF_Z / DOOR_TEETH
+    stops += [-DOOR_HALF_Z + step * k for k in range(1, DOOR_TEETH)]
+    cuts: list[float] = []
+    for z in sorted(stops):
+        if not cuts or abs(z - cuts[-1]) > 1e-6:
+            cuts.append(z)
+
+    sections: list[tuple[list[Vector], str, bool]] = []
+    for z0, z1 in zip(cuts, cuts[1:]):
+        middle = 0.5 * (z0 + z1)
+        kind = next(k for a, b, k in _door_bands() if a - 1e-9 <= middle <= b + 1e-9)
+        edge = _door_edge(middle)
+        for z in (z0, z1):
+            points = _door_section(z, kind, edge)
+            if sections and all((p - q).length < 1e-9
+                                for p, q in zip(points, sections[-1][0])):
+                continue
+            sections.append((points, kind, False))
+    if turn:
+        sections = [([Vector((-p.x, p.y, -p.z)) for p in points], kind, wall)
+                    for points, kind, wall in reversed(sections)]
+
+    bm = bmesh.new()
+    _door_sweep(bm, sections)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
+    # ⚠️ RECALCUL AUTORISE ICI, ET SEULEMENT ICI. L'en-tete de `_new_object()`
+    # l'interdit parce que la moitie du kit est faite de surfaces OUVERTES, ou
+    # l'heuristique de bmesh peut retourner toute la piece. Un battant, lui, est
+    # un solide FERME : le recalcul y est exact, et `_audit()` le prouve sur le
+    # binaire en mesurant le volume signe, qui serait negatif si les normales
+    # rentraient.
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return _new_object(name, bm)
+
+
+def build_door_left() -> bpy.types.Object:
+    """Le battant bâbord. Origine : arete de jonction (x = 0), milieu (z = 0),
+    plan de la peau (y = 0). Il couvre x de -3,00 a 0 et se retire vers -X."""
+    return _build_door("bay_door_left", turn=False)
+
+
+def build_door_right() -> bpy.types.Object:
+    """Le battant tribord, demi-tour du bâbord. Il couvre 0 a +3,00, part vers +X."""
+    return _build_door("bay_door_right", turn=True)
+
+
+# ==========================================================================
 # Harnais de scene (avant export)
 # ==========================================================================
 
@@ -723,6 +963,7 @@ def build_parts() -> list[bpy.types.Object]:
         build_frame_left(), build_frame_right(), build_frame_top(),
         build_inner_wall(), build_floor(), build_launch_rail(),
         build_service_block(),
+        build_door_left(), build_door_right(),
     ]
     names = [obj.name for obj in parts]
     if names != list(PART_NAMES):
@@ -918,6 +1159,77 @@ def _texel_density(points: list[tuple], uvs: list[tuple],
             "anisotropy_max": aniso}
 
 
+def _signed_volume(points: list[tuple], tris: list[tuple[int, int, int]]) -> float:
+    """Volume signe d'une soupe de triangles fermee (theoreme de la divergence).
+
+    ⚠️ C'EST LA PREUVE QUE LES NORMALES SORTENT, ET ELLE SE FAIT SUR LE BINAIRE.
+    Une piece retournee ne rate aucune bbox, aucun compte de triangles, aucune
+    mesure d'UV : elle DISPARAIT en jeu par culling arriere, sans une ligne au
+    journal. Sur un solide ferme, le volume signe est positif si et seulement si
+    le bobinage est sortant. Aucune heuristique, aucun echantillonnage.
+    """
+    total = 0.0
+    for ia, ib, ic in tris:
+        a, b, c = (Vector(points[i]) for i in (ia, ib, ic))
+        total += a.dot(b.cross(c))
+    return total / 6.0
+
+
+def _footprint_gap(doors: dict[str, tuple[list, list]], step: float
+                   ) -> tuple[int, int, tuple[float, float] | None]:
+    """L'ouverture est-elle entierement couverte par les deux battants fermes ?
+
+    On RASTERISE l'emprise des deux solides projetee sur (x, z) et l'on compte
+    les cellules decouvertes. Un solide ferme se projette exactement sur son
+    emprise : inutile de trier les faces du dessous, tout triangle compte.
+
+    ⚠️ POURQUOI MESURER PLUTOT QUE RAISONNER. La denture est le seul endroit du
+    battant ou le jour peut naitre, et il y naitrait d'une erreur d'un
+    centimetre sur une seule bande — invisible sur une bbox, invisible sur un
+    compte de triangles, et visible en jeu comme un filet magenta qui court au
+    milieu d'un pont mort. Le brief en fait un critere d'echec du build.
+    """
+    nx = int(round(2.0 * OPEN_HALF_X / step))
+    nz = int(round(2.0 * OPEN_HALF_Z / step))
+    covered = [[False] * nx for _ in range(nz)]
+    for points, tris in doors.values():
+        for ia, ib, ic in tris:
+            ax, _, az = points[ia]
+            bx, _, bz = points[ib]
+            cx, _, cz = points[ic]
+            area = (bx - ax) * (cz - az) - (bz - az) * (cx - ax)
+            if abs(area) < 1e-12:
+                continue
+            i0 = max(0, int(math.floor((min(ax, bx, cx) + OPEN_HALF_X) / step)))
+            i1 = min(nx - 1, int(math.ceil((max(ax, bx, cx) + OPEN_HALF_X) / step)))
+            k0 = max(0, int(math.floor((min(az, bz, cz) + OPEN_HALF_Z) / step)))
+            k1 = min(nz - 1, int(math.ceil((max(az, bz, cz) + OPEN_HALF_Z) / step)))
+            for k in range(k0, k1 + 1):
+                pz = -OPEN_HALF_Z + (k + 0.5) * step
+                row = covered[k]
+                for i in range(i0, i1 + 1):
+                    if row[i]:
+                        continue
+                    px = -OPEN_HALF_X + (i + 0.5) * step
+                    w0 = (bx - ax) * (pz - az) - (bz - az) * (px - ax)
+                    w1 = (cx - bx) * (pz - bz) - (cz - bz) * (px - bx)
+                    w2 = (ax - cx) * (pz - cz) - (az - cz) * (px - cx)
+                    if area > 0.0:
+                        row[i] = w0 >= 0.0 and w1 >= 0.0 and w2 >= 0.0
+                    else:
+                        row[i] = w0 <= 0.0 and w1 <= 0.0 and w2 <= 0.0
+    holes = 0
+    first: tuple[float, float] | None = None
+    for k in range(nz):
+        for i in range(nx):
+            if not covered[k][i]:
+                holes += 1
+                if first is None:
+                    first = (-OPEN_HALF_X + (i + 0.5) * step,
+                             -OPEN_HALF_Z + (k + 0.5) * step)
+    return holes, nx * nz, first
+
+
 def _audit(path: str) -> dict:
     """Relit le `.glb` PRODUIT et verifie tout ce que le brief exige.
 
@@ -953,6 +1265,7 @@ def _audit(path: str) -> dict:
     wall_foot: list[tuple[float, float]] = []
     floor_top: list[tuple[float, float]] = []
     density: dict[str, dict] = {}
+    doors: dict[str, tuple[list, list]] = {}
 
     for index in roots:
         node = nodes[index]
@@ -1019,6 +1332,8 @@ def _audit(path: str) -> dict:
                     total_seen += area * copies
         if uvs:
             density[name] = _texel_density(pts, uvs, tris)
+        if name.startswith("bay_door_"):
+            doors[name] = (pts, tris)
         # ⚠️ Le `.glb` est DANS LE REPERE DU KIT : la chaine
         # `_AUTHOR_FIX` puis `export_yup` rend l'identite, et
         # `_assert_axis_chain()` le reverifie sur trois temoins asymetriques.
@@ -1094,6 +1409,72 @@ def _audit(path: str) -> dict:
             f"bay_frame_top : {top['size'][0]:.4f} m de large au lieu de "
             f"{2 * OPEN_HALF_X:.4f}")
 
+    # --- LES BATTANTS : emprise, plafond, sens, et AUCUN JOUR --------------
+    # Les quatre cotes du brief viennent du moteur. Elles sont donc verifiees
+    # ici sur le binaire, une par une, et chacune echoue le build.
+    door_report: dict[str, dict] = {}
+    for name, sign in (("bay_door_left", -1.0), ("bay_door_right", 1.0)):
+        piece = stats.get(name)
+        if piece is None:
+            continue
+        lo_x, lo_y, lo_z = piece["min"]
+        hi_x, hi_y, hi_z = piece["max"]
+        volume = _signed_volume(*doors[name])
+        door_report[name] = {
+            "triangles": piece["triangles"],
+            "min": piece["min"], "max": piece["max"], "size": piece["size"],
+            "volume": volume,
+        }
+        # 1. l'emprise fermee : le battant couvre SA demi-ouverture, en entier.
+        outer = lo_x if sign < 0.0 else hi_x
+        if abs(outer - sign * DOOR_SPAN_X) > 1e-4:
+            problems.append(
+                f"{name} : bord exterieur a {outer:+.4f} au lieu de "
+                f"{sign * DOOR_SPAN_X:+.4f} — soit il ne rejoint pas le montant, "
+                "soit il deborde du hangar une fois ouvert")
+        if abs(lo_z + DOOR_HALF_Z) > 1e-4 or abs(hi_z - DOOR_HALF_Z) > 1e-4:
+            problems.append(
+                f"{name} : z de {lo_z:+.4f} a {hi_z:+.4f} au lieu de "
+                f"{-DOOR_HALF_Z:+.4f} a {DOOR_HALF_Z:+.4f}")
+        # 2. la denture franchit la ligne de fermeture, mais d'elle SEULE.
+        inner = hi_x if sign < 0.0 else lo_x
+        if abs(abs(inner) - DOOR_TOOTH) > 1e-4:
+            problems.append(
+                f"{name} : la dent avance jusqu'a {inner:+.4f} au lieu de "
+                f"{sign * -DOOR_TOOTH:+.4f}")
+        # 3. le plafond : il glisse SOUS la levre du coaming.
+        if hi_y > 0.18 + 1e-6:
+            problems.append(
+                f"{name} : point le plus haut {hi_y:+.4f} > +0,18 — il chevauche "
+                "la levre du coaming au lieu de passer dessous")
+        if hi_y - lo_y > 0.22 + 1e-6:
+            problems.append(
+                f"{name} : epaisseur {hi_y - lo_y:.4f} > 0,22")
+        if abs(lo_y) > 1e-6:
+            problems.append(
+                f"{name} : son dessous est a {lo_y:+.4f} et non au plan de la "
+                "peau — l'origine EST le point d'assemblage")
+        # 4. les normales sortent.
+        if volume <= 0.0:
+            problems.append(
+                f"{name} : volume signe {volume:+.4f} — la piece est retournee, "
+                "elle disparaitrait en jeu sans un mot")
+    if len(doors) == 2:
+        holes, cells, first = _footprint_gap(doors, 0.02)
+        door_report["closure"] = {"holes": holes, "cells": cells}
+        if holes:
+            problems.append(
+                f"les deux battants fermes laissent {holes} cellule(s) de jour "
+                f"sur {cells} (premiere en {first}) — le puits fuirait sa lueur "
+                "magenta alors qu'il ne produit pas")
+        pair = sum(door_report[n]["triangles"] for n in
+                   ("bay_door_left", "bay_door_right") if n in door_report)
+        door_report["triangles"] = pair
+        if pair > TRI_BUDGET_DOORS:
+            problems.append(
+                f"{pair} triangles pour les deux battants > budget "
+                f"{TRI_BUDGET_DOORS}")
+
     # --- UV, materiaux, textures -----------------------------------------
     if prims_total == 0 or prims_uv != prims_total:
         problems.append(
@@ -1168,6 +1549,7 @@ def _audit(path: str) -> dict:
         "total_area": total_area,
         "total_seen": total_seen,
         "density": density,
+        "doors": door_report,
         "mouth_high": mouth_high,
         "top_of_bay": top_of_bay,
         "bytes": os.path.getsize(path),
@@ -1209,6 +1591,30 @@ def _print_report(report: dict) -> None:
           f"{report['top_of_bay']:+.3f} (plafond de construction "
           f"{cortege.BUILD_CEILING_Y:+.2f})")
 
+    doors = report.get("doors") or {}
+    if doors:
+        print("\n  --- les deux battants (BRIEF-0095) ---")
+        for name in ("bay_door_left", "bay_door_right"):
+            d = doors[name]
+            print(f"    {name:<16} {d['triangles']:>4} tri  "
+                  f"x [{d['min'][0]:+.3f} ; {d['max'][0]:+.3f}]  "
+                  f"y [{d['min'][1]:+.3f} ; {d['max'][1]:+.3f}]  "
+                  f"z [{d['min'][2]:+.3f} ; {d['max'][2]:+.3f}]  "
+                  f"volume {d['volume']:+.3f} m3")
+        print(f"    paire : {doors['triangles']} tri / {TRI_BUDGET_DOORS} ; "
+              f"epaisseur {doors['bay_door_left']['size'][1]:.3f} m (max 0,220) ; "
+              f"plafond {doors['bay_door_left']['max'][1]:+.3f} (max +0,180)")
+        c = doors["closure"]
+        print(f"    fermeture : {c['holes']} cellule(s) de jour sur {c['cells']} "
+              "rasterisees a 2 cm sur toute l'ouverture")
+        print(f"    ouverts a {DOOR_SLIDE:.2f} m : le battant occupe "
+              f"x [{-DOOR_SPAN_X - DOOR_SLIDE:+.2f} ; "
+              f"{DOOR_TOOTH - DOOR_SLIDE:+.2f}] ; la face exterieure du coaming "
+              f"est a {-OPEN_HALF_X - COAM_W:+.2f} -> "
+              f"{DOOR_SPAN_X + DOOR_SLIDE - OPEN_HALF_X - COAM_W:.2f} m de "
+              "battant reposent sur le borde (mesure pour le concepteur, "
+              "l'animation est du moteur)")
+
     print(f"\n  primitives : {report['primitives'][0]}/{report['primitives'][2]} "
           f"TEXCOORD_0, {report['primitives'][1]}/{report['primitives'][2]} TANGENT")
     print("  densite de texels (valeurs singulieres, triangle par triangle), "
@@ -1246,6 +1652,8 @@ def main() -> None:
     _print_report(report)
     if "--plate" in sys.argv:
         render_plate(report)
+    if "--doors-plate" in sys.argv:
+        render_doors_plate(report)
 
 
 # ==========================================================================
@@ -1366,7 +1774,8 @@ def _import(path: str, name: str, position: Vector, yaw: float = 0.0) -> list:
     return fresh
 
 
-def _assemble_bay(index: int, shift: float, blocks: bool = True) -> list:
+def _assemble_bay(index: int, shift: float, blocks: bool = True,
+                  doors: float | None = None) -> list:
     """Monte UN hangar sur la baie `index` (1-base), comme le fera le moteur.
 
     C'est la SEULE facon de juger le lot : la coque livre un trou, le kit livre
@@ -1399,6 +1808,13 @@ def _assemble_bay(index: int, shift: float, blocks: bool = True) -> list:
             ("bay_service_block",
              Vector((x + side * (OPEN_HALF_X + COAM_W * 0.5), mouth + COAM_H,
                      z - 2.6)), math.pi),
+        ]
+    if doors is not None:
+        # Les battants montent a leur point d'assemblage, et la course du moteur
+        # n'est qu'une TRANSLATION de ce point : c'est tout le contrat.
+        plan += [
+            ("bay_door_left", Vector((x - doors, mouth, z)), 0.0),
+            ("bay_door_right", Vector((x + doors, mouth, z)), 0.0),
         ]
     for name, position, yaw in plan:
         before = set(bpy.context.scene.objects)
@@ -1789,6 +2205,198 @@ def _compose(tiles: list[tuple[str, int]], out: str) -> None:
     result.save()
     bpy.data.images.remove(result)
     print(f"-> {out}  ({TILE_W} x {height})")
+
+
+# ==========================================================================
+# Planche des battants — `--doors-plate` (BRIEF-0095)
+# ==========================================================================
+# Quatre vues, et deux d'entre elles ne sont pas negociables : une FERMEE et une
+# OUVERTE A 3,00 m. La seconde est la seule qui reponde a la question que le
+# brief pose vraiment — ou finit un battant de 3,00 m qu'on retire de 3,00 m.
+
+DOORS_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0095-planche-portes.png")
+GAME_H = 640
+TOP_H = 900
+FRONT_H = 620
+
+
+def _tile_doors_game(path: str, opening: float, title: str, note: str) -> None:
+    """Le hangar a la CAMERA DU JEU, portes fermees ou ouvertes.
+
+    C'est le seul cadrage qui juge : le battant fait 3,00 x 8,50 m et sera vu a
+    23 px/m, de trois quarts, sept fois dans le niveau. Une belle vue de trois
+    quarts a 2 m ne prouverait rien du tout (ADR-0006).
+    """
+    _plate_reset()
+    s, x = cortege.BAYS[ACCEPTANCE_BAY - 1]
+    shift = _game_shift(s)
+    _import(HULL, "Decor", Vector((0.0, 0.0, shift)))
+    _assemble_bay(ACCEPTANCE_BAY, shift, doors=opening)
+    _import(FIGHTER, "Player", Vector((0.0, 0.0, 3.4)))
+    _plate_lights()
+    camera = _plate_camera("game", _to_blender(CAM_POS), _to_blender(CAM_FORWARD),
+                           _to_blender(CAM_UP), CAM_FOV_V)
+    _label(camera, title, -0.97, 0.89, 0.036, TILE_W, GAME_H, (1.0, 0.88, 0.55))
+    _label(camera, note, -0.97, 0.81, 0.026, TILE_W, GAME_H)
+    _label(camera, "camera de graybox.tscn sans retouche (0, 14, 5), FOV 62, "
+                   "70 deg sous l'horizontale ; Specter-9 reel a sa place",
+           -0.97, -0.92, 0.024, TILE_W, GAME_H, (0.72, 0.84, 1.0))
+    _render(path, TILE_W, GAME_H)
+
+
+def _pose_kit(plan: list[tuple[str, Vector, float]]) -> None:
+    """Pose des pieces du kit a l'origine (planches hors coque)."""
+    for name, position, yaw in plan:
+        before = set(bpy.context.scene.objects)
+        bpy.ops.import_scene.gltf(filepath=OUTPUT)
+        for obj in [o for o in bpy.context.scene.objects if o not in before]:
+            if obj.name.split(".")[0] != name:
+                bpy.data.objects.remove(obj, do_unlink=True)
+                continue
+            obj.location = _to_blender(position)
+            obj.rotation_euler = Euler((0.0, 0.0, yaw), "XYZ")
+            obj.visible_shadow = False
+
+
+def _tile_doors_top(path: str, report: dict) -> None:
+    """LE DESSUS, PORTES FERMEES — la denture, les caissons, le chevron.
+
+    Elle repond au reproche mot pour mot : « on dirait des jeux faits avec des
+    formes carrees ». Deux dalles y feraient un rectangle coupe en deux par un
+    trait droit ; ici la ligne de fermeture est dentee, chaque battant porte
+    trois caissons en creux dont la levre interieure dessine une pointe vers le
+    cote ou il se retire, et une poutre de nez le borde.
+    """
+    _plate_reset()
+    _pose_kit([
+        ("bay_frame_left", Vector((-OPEN_HALF_X, 0.0, 0.0)), 0.0),
+        ("bay_frame_right", Vector((OPEN_HALF_X, 0.0, 0.0)), 0.0),
+        ("bay_frame_top", Vector((0.0, 0.0, OPEN_HALF_Z)), 0.0),
+        ("bay_frame_top", Vector((0.0, 0.0, -OPEN_HALF_Z)), math.pi),
+        ("bay_inner_wall", Vector((0.0, 0.0, 0.0)), 0.0),
+        ("bay_floor", Vector((0.0, -WELL_DEPTH, 0.0)), 0.0),
+        ("bay_door_left", Vector((0.0, 0.0, 0.0)), 0.0),
+        ("bay_door_right", Vector((0.0, 0.0, 0.0)), 0.0),
+    ])
+    _plate_lights()
+    camera = _plate_camera(
+        "doors_top", _to_blender(Vector((0.0, 40.0, 0.0))),
+        _to_blender(Vector((0.0, -1.0, 0.0))), _to_blender(Vector((1.0, 0.0, 0.0))),
+        math.radians(30.0), ortho=8.6)
+    d = report["doors"]
+    _label(camera, "LE DESSUS, PORTES FERMEES — ligne de fermeture DENTEE, "
+                   "3 dents par battant",
+           -0.985, 0.92, 0.034, TILE_W, TOP_H, (1.0, 0.88, 0.55))
+    _label(camera, "trois caissons en creux par battant ; leur levre interieure "
+                   "s'ecarte au milieu : le chevron dit de quel cote il part",
+           -0.985, 0.86, 0.024, TILE_W, TOP_H)
+    _label(camera, f"{d['triangles']} tri pour la paire (budget "
+                   f"{TRI_BUDGET_DOORS}) ; {d['closure']['holes']} cellule de "
+                   f"jour sur {d['closure']['cells']} rasterisees a 2 cm",
+           -0.985, -0.92, 0.024, TILE_W, TOP_H, (0.72, 0.84, 1.0))
+    _label(camera, "proue ->", 0.72, 0.72, 0.028, TILE_W, TOP_H, (0.72, 0.84, 1.0))
+    _label(camera, "il part vers -X", -0.985, -0.62, 0.028, TILE_W, TOP_H,
+           (0.72, 0.84, 1.0))
+    _render(path, TILE_W, TOP_H)
+
+
+def _tile_doors_front(path: str, report: dict) -> None:
+    """VUE DE PROUE — bâbord FERME, tribord OUVERT a 3,00 m, dans le meme cadre.
+
+    Deux images separees ne prouveraient rien : c'est la comparaison qui montre
+    d'un coup que le battant ferme passe SOUS la levre du coaming (0,175 contre
+    0,60) et ou il finit une fois retire.
+
+    ⚠️ OBLIQUE ET NON ORTHOGRAPHIQUE, ET C'EST UNE CORRECTION DE PLANCHE. Une
+    elevation stricte a ete rendue d'abord : sur une vignette large de 1 440 px
+    il faut 13 m de champ pour tenir la course, ce qui donne 20 px a un battant
+    de 0,175 m — l'objet meme de la vignette devenait un cheveu, et le puits noir
+    occupait tout le reste. A 25 deg au-dessus de l'horizontale et en longue
+    focale, l'epaisseur, la levre et le debord se voient tous les trois. Plus
+    rasant que cela, le speculaire lave toutes les valeurs et la piece devient
+    blanche : mesure faite a 18 deg. Les traverses avant et arriere sont
+    volontairement absentes — elles masqueraient tout.
+    """
+    _plate_reset()
+    _pose_kit([
+        ("bay_frame_left", Vector((-OPEN_HALF_X, 0.0, 0.0)), 0.0),
+        ("bay_frame_right", Vector((OPEN_HALF_X, 0.0, 0.0)), 0.0),
+        ("bay_inner_wall", Vector((0.0, 0.0, 0.0)), 0.0),
+        ("bay_floor", Vector((0.0, -WELL_DEPTH, 0.0)), 0.0),
+        ("bay_launch_rail",
+         Vector((-RAIL_GAUGE * 0.5, -WELL_DEPTH, -RAIL_LEN * 0.5)), 0.0),
+        ("bay_launch_rail",
+         Vector((RAIL_GAUGE * 0.5, -WELL_DEPTH, -RAIL_LEN * 0.5)), 0.0),
+        ("bay_door_left", Vector((0.0, 0.0, 0.0)), 0.0),
+        ("bay_door_right", Vector((DOOR_SLIDE, 0.0, 0.0)), 0.0),
+    ])
+    # ⚠️ AUCUNE DALLE DE REFERENCE ICI. Elles ont ete essayees : a 18 deg, deux
+    # plans distants de 18 cm sont deux traits confondus, et ils masquent le
+    # dessus des battants qu'ils sont censes coter. Le rapport de hauteur se lit
+    # tout seul — le battant contre la levre du coaming, 0,175 contre 0,60.
+    _plate_lights()
+    # Longue focale et recul : le coaming court sur 10 m en Z, et de pres il
+    # remplit le cadre a lui seul.
+    eye = Vector((1.2, 16.0, 34.0))
+    target = Vector((1.2, 0.55, 0.0))
+    forward = (target - eye).normalized()
+    # ⚠️ LE « HAUT » SE CALCULE PAR PROJECTION, PAS PAR DEUX PRODUITS VECTORIELS
+    # SUR X. Le motif `forward.cross(X).cross(forward)` employe ailleurs dans ce
+    # fichier ne marche que pour une visee qui a une composante en X : ici, la
+    # visee est dans le plan (Y, Z) et il rend exactement l'axe X — la camera
+    # sort roulee d'un quart de tour, avec le champ vertical applique en travers.
+    # Rien dans le rendu ne dit « roule » : on n'y voit qu'un cadrage etrange.
+    world_up = Vector((0.0, 1.0, 0.0))
+    up = (world_up - forward * forward.dot(world_up)).normalized()
+    camera = _plate_camera("doors_front", _to_blender(eye), _to_blender(forward),
+                           _to_blender(up), math.radians(11.6))
+    door = report["doors"]["bay_door_left"]
+    _label(camera, "VUE DE PROUE (25 deg, longue focale) — bâbord FERME, "
+                   f"tribord OUVERT A {DOOR_SLIDE:.2f} m, meme cadre",
+           -0.985, 0.88, 0.044, TILE_W, FRONT_H, (1.0, 0.88, 0.55))
+    _label(camera, f"dessus mesure {door['max'][1]:+.3f} (plafond du brief "
+                   f"+0,180) ; epaisseur {door['size'][1]:.3f} (max 0,220) ; "
+                   "levre du coaming +0,60 — il passe DESSOUS",
+           -0.985, 0.79, 0.030, TILE_W, FRONT_H)
+    _label(camera, f"ouvert, il occupe |x| de {OPEN_HALF_X:.2f} a "
+                   f"{DOOR_SPAN_X + DOOR_SLIDE:.2f} : "
+                   f"{DOOR_SPAN_X + DOOR_SLIDE - OPEN_HALF_X - COAM_W:.2f} m "
+                   f"passent la face exterieure du coaming "
+                   f"({OPEN_HALF_X + COAM_W:.2f}) et reposent sur le borde",
+           -0.985, -0.88, 0.030, TILE_W, FRONT_H, (0.72, 0.84, 1.0))
+    _render(path, TILE_W, FRONT_H)
+
+
+def render_doors_plate(report: dict) -> None:
+    staging = tempfile.mkdtemp(prefix="aegis-baydoors-")
+    tiles: list[tuple[str, int]] = []
+    try:
+        path = os.path.join(staging, "shut.png")
+        _tile_doors_game(
+            path, 0.0,
+            "PONT FERME — le puits ne fuit AUCUNE lueur",
+            "c'est le contraste noir puis magenta qui fait lire l'ouverture ; "
+            "un pont abattu reste ferme, et cela se lit sans un mot")
+        tiles.append((path, GAME_H))
+        path = os.path.join(staging, "open.png")
+        _tile_doors_game(
+            path, DOOR_SLIDE,
+            f"PONT OUVERT A {DOOR_SLIDE:.2f} m — la course reelle du moteur",
+            "la lueur apparait ; le trait de bordure passe sous le coaming, et "
+            "2,20 m de battant retire reposent sur le borde")
+        tiles.append((path, GAME_H))
+        path = os.path.join(staging, "top.png")
+        _tile_doors_top(path, report)
+        tiles.append((path, TOP_H))
+        path = os.path.join(staging, "front.png")
+        _tile_doors_front(path, report)
+        tiles.append((path, FRONT_H))
+        os.makedirs(os.path.dirname(DOORS_PLATE), exist_ok=True)
+        _compose(tiles, DOORS_PLATE)
+    finally:
+        for leftover in os.listdir(staging):
+            os.remove(os.path.join(staging, leftover))
+        os.rmdir(staging)
 
 
 def render_plate(report: dict) -> None:

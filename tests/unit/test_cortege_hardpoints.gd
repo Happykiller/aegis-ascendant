@@ -675,3 +675,36 @@ func test_a_destroyed_bay_jams_open_instead_of_closing_cleanly() -> void:
 		bay.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_eq(bay.wreck_progress(), 1.0, "et il va jusqu'au bout, retire ou non")
 
+## ⚠️ LES BATTANTS SONT LA SEULE PIECE DU HANGAR DONT LA POSITION FERMEE EST L'ORIGINE, et c'est
+## une convention qui a CHANGE. La premiere version fabriquait deux `BoxMesh` centres, qu'il
+## fallait decaler d'une demi-largeur ; la forge (BRIEF-0095) les livre modeles arete de
+## jonction sur x = 0. Un decalage laisse en place ouvrirait les portes de trois metres et demi
+## au lieu de trois — et un jour de cinquante centimetres laisserait fuir la lueur du puits en
+## permanence, ce qui efface le contraste noir/magenta dont tout le hangar depend.
+func test_the_bay_kit_carries_two_doors_that_close_on_the_opening() -> void:
+	var kit: PackedScene = load(BayScript.KIT_PATH)
+	assert_true(kit != null, "le kit de hangar se charge")
+	var assembled := track(kit.instantiate()) as Node3D
+	var couvert := 0.0
+	for part in ["bay_door_left", "bay_door_right"]:
+		var piece := assembled.get_node_or_null(part) as MeshInstance3D
+		assert_true(piece != null, "le kit porte le battant « %s »" % part)
+		if piece == null:
+			continue
+		var box := piece.mesh.get_aabb()
+		couvert += box.size.x
+		# Il glisse SOUS la levre du coaming : au-dessus, il la chevaucherait et l'ouverture se
+		# lirait comme un empilement de toles.
+		assert_true(box.end.y <= 0.18,
+			"%s culmine a %.3f m pour 0,18 permis — au-dela il chevauche le coaming" % [part, box.end.y])
+		assert_true(box.size.z >= BayScript.OPENING_HALF_Z * 2.0 - 0.01,
+			"%s couvre %.2f m en Z pour une bouche de %.2f" % [part, box.size.z, BayScript.OPENING_HALF_Z * 2.0])
+	assert_true(couvert >= BayScript.OPENING_HALF_X * 2.0 - 0.01,
+		"les deux battants couvrent %.2f m pour une bouche de %.2f : le reste serait un jour par lequel le puits fuit sa lueur"
+			% [couvert, BayScript.OPENING_HALF_X * 2.0])
+	# ⚠️ ET LA COURSE DOIT LES SORTIR ENTIEREMENT. Un battant retire de moins que sa largeur
+	# masquerait une part de la bouche en permanence — donc de la lueur, donc de l'information.
+	assert_true(BayScript.DOOR_SLIDE >= BayScript.OPENING_HALF_X - 0.01,
+		"une course de %.2f m ne sort pas un battant de %.2f m de la bouche"
+			% [BayScript.DOOR_SLIDE, BayScript.OPENING_HALF_X])
+

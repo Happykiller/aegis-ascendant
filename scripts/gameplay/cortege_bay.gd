@@ -208,9 +208,9 @@ var _wreck: float = -1.0
 ## en plein lâcher a ses portes grandes ouvertes ; les ramener à zéro pour les rouvrir ensuite
 ## ferait battre la porte à l'instant précis où le joueur regarde l'explosion.
 var _wreck_from: float = 0.0
-## Le matériau des deux battants — PROPRE à ce pont (`_build_doors` le crée), donc on peut le
-## noircir sans toucher aux six autres.
-var _door_plate: StandardMaterial3D
+## La tôle des deux battants — des copies PROPRES à ce pont, donc on peut la noircir sans
+## toucher aux six autres.
+var _door_plate: Array[StandardMaterial3D] = []
 ## La porte reste ouverte tant qu'un décollage est en cours, plus un souffle.
 var _door_hold: float = 0.0
 
@@ -333,23 +333,49 @@ func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
 ## fermés, ils cachent la lueur ; ouverts, ils la découvrent. C'est ce contraste — noir puis
 ## magenta — qui fait lire l'ouverture, bien plus que le mouvement lui-même.
 func _build_doors() -> void:
-	var plate := StandardMaterial3D.new()
-	plate.albedo_color = DOOR_TINT
-	plate.metallic = 0.65
-	plate.roughness = 0.4
-	_door_plate = plate
-	for side in [-1.0, 1.0]:
+	var packed: PackedScene = load(KIT_PATH) as PackedScene
+	if packed == null:
+		return
+	var kit := packed.instantiate()
+	# ⚠️ FERMÉS, LES DEUX BATTANTS SONT À L'ORIGINE. La forge a modelé chacun dans le repère du
+	# hangar, arête de jonction sur x = 0 : la position fermée est donc `Vector3.ZERO`, et
+	# l'ouverture est une translation pure. La version précédente centrait un `BoxMesh` et
+	# devait le décaler d'une demi-largeur — un décalage qui n'a plus lieu d'être et qui, laissé
+	# en place, ferait s'ouvrir les portes de trois mètres et demi.
+	for part in ["bay_door_left", "bay_door_right"]:
+		var source := kit.get_node_or_null(part) as MeshInstance3D
+		if source == null:
+			push_error("[Cortege] pièce de kit manquante : %s" % part)
+			continue
 		var door := MeshInstance3D.new()
-		door.name = "Door%s" % ("L" if side < 0.0 else "R")
-		var slab := BoxMesh.new()
-		slab.size = Vector3(OPENING_HALF_X, 0.14, OPENING_HALF_Z * 2.0)
-		door.mesh = slab
-		door.material_override = plate
-		# Juste au-dessus de la peau, sous la lèvre du coaming : fermés, ils masquent la lueur.
-		door.position = Vector3(side * OPENING_HALF_X * 0.5, 0.1, 0.0)
+		door.name = part
+		door.mesh = source.mesh
+		door.position = Vector3.ZERO
 		door.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# ⚠️ LES MATÉRIAUX DU BATTANT SONT DUPLIQUÉS POUR CE PONT-CI, y compris les non-émissifs.
+		# Deux états les touchent : le liseré de fermeture doit s'éteindre avec le reste quand le
+		# pont meurt — sans quoi un pont abattu garderait un trait magenta et dirait qu'il vit —
+		# et la tôle doit noircir en gauchissant. Les partager reviendrait à éteindre les sept
+		# hangars du niveau d'un coup, le piège déjà payé deux fois sur les puits.
+		_claim_door_skin(door, source)
 		add_child(door)
 		_doors.append(door)
+	kit.queue_free()
+
+## Donne à CE pont sa propre copie des matériaux de ses battants, et retient les non-émissifs
+## pour pouvoir les noircir à la mort. Les émissifs rejoignent `_glow`, donc ils s'éteignent par
+## le même chemin que les bandes du puits.
+func _claim_door_skin(door: MeshInstance3D, source: MeshInstance3D) -> void:
+	for i in source.mesh.get_surface_count():
+		var base := source.mesh.surface_get_material(i) as StandardMaterial3D
+		if base == null:
+			continue
+		var mine: StandardMaterial3D = base.duplicate()
+		door.set_surface_override_material(i, mine)
+		if base.emission_enabled:
+			_glow.append(mine)
+		else:
+			_door_plate.append(mine)
 
 ## Les silhouettes qui montent du puits. Une par coque d'un lâcher, montées au démarrage et
 ## réutilisées — comme tout le reste.
@@ -492,7 +518,7 @@ func _advance_doors(delta: float) -> void:
 	_door_open = move_toward(_door_open, wanted, delta / DOOR_TIME)
 	for i in _doors.size():
 		var side := -1.0 if i == 0 else 1.0
-		_doors[i].position.x = side * (OPENING_HALF_X * 0.5 + DOOR_SLIDE * _door_open)
+		_doors[i].position.x = side * DOOR_SLIDE * _door_open
 
 ## L'éclat d'un lâcher : les bandes montent d'un coup, puis retombent au premier dégât reçu.
 func _pulse_hatch() -> void:
@@ -550,14 +576,14 @@ func _advance_wreck(delta: float) -> void:
 	_door_open = lerpf(_wreck_from, WRECK_DOOR_OPEN, k)
 	for i in _doors.size():
 		var side := -1.0 if i == 0 else 1.0
-		_doors[i].position.x = side * (OPENING_HALF_X * 0.5 + DOOR_SLIDE * _door_open)
+		_doors[i].position.x = side * DOOR_SLIDE * _door_open
 		# Un battant se voile sur son rail : il pique du nez ET s'affaisse. Les deux dans des
 		# sens opposés, sinon la bouche reste symétrique et on lit une ouverture, pas une ruine.
 		_doors[i].rotation.z = deg_to_rad(WRECK_DOOR_TILT_DEG) * k * side
 		_doors[i].rotation.x = deg_to_rad(WRECK_DOOR_TILT_DEG * 0.5) * k * -side
-		_doors[i].position.y = 0.1 - WRECK_DOOR_SINK * k
-	if _door_plate != null:
-		_door_plate.albedo_color = DOOR_TINT.lerp(WRECK_TINT, k)
+		_doors[i].position.y = -WRECK_DOOR_SINK * k
+	for plate in _door_plate:
+		plate.albedo_color = plate.albedo_color.lerp(WRECK_TINT, k * 0.35)
 
 func _retire() -> void:
 	_pass = Pass.PASSED
