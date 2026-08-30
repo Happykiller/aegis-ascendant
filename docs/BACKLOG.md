@@ -333,6 +333,43 @@ laissent, en revanche, n'appartient à aucun d'eux :
       puis disparaît — mesuré, la coque a perdu 33 % de luminance pour un relief invisible.
       Relever le budget permet plus de SILHOUETTE et plus de VARIÉTÉ, pas plus de finesse.
 
+## ⛔ BLOQUANT AVANT TOUTE PLATEFORME — `ADR-0009` repose sur une prémisse fausse (2026-08-30)
+
+`ADR-0009` a assoupli les interdits IP de la spec §0.2/§3 et de la charte §5 en s'appuyant
+explicitement sur trois mots : projet **« personnel, non commercial, non distribué »**. Il écrit
+lui-même que « si le projet devait un jour être distribué ou commercialisé, cet ADR serait à
+réviser », et que la purge devrait porter sur **l'arbre ET l'historique git/LFS**
+(`git filter-repo` + purge LFS), pas un `git rm`.
+
+**Deux des trois mots ne tiennent déjà plus, et ça précède la question des plateformes :**
+
+- `Happykiller/aegis-ascendant` est **PUBLIC** (`gh repo view` → `"visibility":"PUBLIC"`), et il
+  versionne les **dix planches** de `assets/reference/inspiration/`, dont celles portant des
+  marques tierces visibles ;
+- une release publique existe depuis le 2026-08-28 (`v0.3.0`), une seconde depuis le 2026-08-30
+  (`v0.4.0`), sur `Happykiller/aegis-ascendant-releases`.
+
+⚠️ **Le jeu lui-même n'est pas en cause** : les assets livrés sont originaux, et le binaire ne
+contient aucune planche. C'est le **dépôt** qui expose, et l'ADR qui ne décrit plus la réalité.
+
+**Ce qu'il faut décider (opérateur), pas ce qu'il faut faire :** passer le dépôt en privé, ou
+purger l'arbre et l'historique, ou réviser l'ADR pour acter la distribution et son risque. Les
+trois sont défendables ; aucune ne se prend sans lui. Une mise en ligne sur Steam ou itch.io
+n'ajouterait pas le risque — elle lui donnerait un **interlocuteur à qui adresser une
+réclamation**.
+
+## ⚠️ La densité ×3,5 du niveau 2 n'a été jouée par personne (2026-08-30)
+
+L'opérateur a validé le niveau à **59 coques** de patrouille (« c'est beaucoup mieux »), puis a
+demandé « au moins ×3 ou ×4 ». La patrouille livrée et **publiée en v0.4.0** en porte **209**, sur
+55 entrées, avec un pas descendu de 7,0 s à 2,8 s. Personne ne l'a jouée à la main — ni lui, ni
+moi.
+
+**Et son coût n'est connu que sur la RTX 4080** : 1,103 ms/image, relevé à un **instant** du
+tronçon 02, non comparable au 2,076 ms d'avant densification (autre moment, autre contenu à
+l'écran). C'est la **Quadro T1000** qui contraint le budget (×14 à build identique, `ADR-0011`),
+et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signale des saccades.
+
 ## ⚠️ Niveau 2 — ce qui reste après la refonte de géométrie (2026-08-29)
 
 - [ ] **Mesurer le coût GPU du survol sur la Quadro T1000.** Toutes les mesures de la session
