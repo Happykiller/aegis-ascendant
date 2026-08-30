@@ -142,6 +142,9 @@ var _yaw_angle: float = deg_to_rad(DEFAULT_YAW_DEG)
 var _pitch_angle: float = deg_to_rad(DEFAULT_PITCH_DEG)
 ## La distance de caméra pour laquelle `space_backdrop.tscn` a été composé (z = 6 dans la scène).
 const BACKDROP_REFERENCE := 6.0
+## De combien les repères du décor avancent DEVANT l'origine du fond, dans la scène (`Landmarks`
+## est à z = +4). C'est cette avancée qui, mise à l'échelle, vient se poser devant la coque.
+const LANDMARK_REACH := 4.0
 
 var _base_distance: float = 6.0
 var _zoom: float = 1.0
@@ -214,9 +217,19 @@ func _scale_backdrop(bounds: AABB) -> void:
 	# Le rayon de la coque : ce que le décor doit dépasser pour rester derrière, quelle que soit
 	# la rotation que le joueur lui imprime.
 	var radius := bounds.size.length() * 0.5
-	var push := maxf(radius * 1.2 - BACKDROP_REFERENCE * 0.5, 0.0)
-	backdrop.position.z = -push
-	backdrop.scale = Vector3.ONE * maxf((_base_distance + push) / BACKDROP_REFERENCE, 1.0)
+	var k := maxf(_base_distance / BACKDROP_REFERENCE, 1.0)
+	# ⚠️ LE DÉCOR N'EST PAS PLAT : ses repères sont DEVANT son plan de fond. Le nœud `Landmarks`
+	# porte un décalage local de (0, +5, +4) — vers la caméra — qui compense celui du quad, à
+	# (0, −5, −4). Tant que l'échelle vaut 1, les deux se neutralisent dans un volume de dix
+	# unités. À l'échelle ×100, ils s'écartent à ±1000 : le quad part loin derrière et les
+	# nébuleuses sont projetées DEVANT le vaisseau. On voit alors la coque à travers une
+	# nébuleuse posée sur elle, ce qui se lit comme une coque translucide — et c'est ce que
+	# l'opérateur a vu, deux fois, avant que je comprenne que je l'avais fabriqué.
+	#
+	# Le recul doit donc dépasser le point le plus AVANCÉ du décor mis à l'échelle, pas son plan.
+	var front := LANDMARK_REACH * k
+	backdrop.position.z = -(radius * 1.2 + front + BACKDROP_REFERENCE)
+	backdrop.scale = Vector3.ONE * k
 
 func _tune_backdrop() -> void:
 	var backdrop := get_node_or_null("SpaceBackdrop") as MeshInstance3D
