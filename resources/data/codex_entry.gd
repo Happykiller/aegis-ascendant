@@ -45,6 +45,16 @@ enum Family { FIGHTER, FORTRESS }
 ## ses 500 m. Le cadrage n'était pas faux — c'est l'angle qui rendait la mesure inutile.
 @export var view_yaw_deg: float = 0.0
 
+## L'inclinaison de présentation. 0 = celle du présentoir (16°).
+##
+## ⚠️ ELLE EXISTE POUR LA MÊME RAISON QUE LE LACET, ET ELLE EST PLUS IMPORTANTE. À 16°, la caméra
+## est presque dans le PLAN d'une coque plate de 500 m : sa moitié lointaine est vue en incidence
+## rasante, son pont se comprime jusqu'à disparaître, et il ne reste qu'un coin sombre. Ça se lit
+## comme une ombre qui coupe le vaisseau en deux — « il semble couper à la moitié par une ombre »
+## (opérateur) — alors que rien ne projette d'ombre : c'est la perspective d'une lame vue de
+## profil. Aucune correction d'éclairage ne peut rattraper ça ; il faut regarder de plus haut.
+@export var view_pitch_deg: float = 0.0
+
 @export var fortress_note_caption: String = ""
 @export var fortress_note_value: String = ""
 

@@ -355,7 +355,7 @@ func _reframe() -> void:
 func _reset_view() -> void:
 	var entry := ROSTER[_index]
 	_yaw_angle = deg_to_rad(entry.view_yaw_deg if entry.view_yaw_deg != 0.0 else DEFAULT_YAW_DEG)
-	_pitch_angle = deg_to_rad(DEFAULT_PITCH_DEG)
+	_pitch_angle = deg_to_rad(entry.view_pitch_deg if entry.view_pitch_deg != 0.0 else DEFAULT_PITCH_DEG)
 	_zoom = 1.0
 	_idle = 0.0
 

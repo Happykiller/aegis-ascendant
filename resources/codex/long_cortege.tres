@@ -34,4 +34,5 @@ mass_t = 9420000.0
 crew = 0
 hull_scene = ExtResource("2_hull")
 view_yaw_deg = 232.0
+view_pitch_deg = 42.0
 frame_distance = 0.0
