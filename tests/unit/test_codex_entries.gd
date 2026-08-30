@@ -182,3 +182,44 @@ func test_a_hull_can_carry_its_fittings_under_its_sections() -> void:
 				sous_troncon += 1
 	assert_eq(a_plat, 0, "aucune tourelle a la racine — c'est bien le piege")
 	assert_eq(sous_troncon, 17, "les dix-sept sont sous les troncons")
+
+## Le gabarit du presentoir — ce qui doit rester vrai apres la refonte de l'ecran.
+##
+## ⚠️ IL A FALLU QUATRE CORRECTIONS POUR ARRIVER LA, ET LES TROIS PREMIERES ETAIENT DU MEME
+## GENRE : adapter le DECOR a une coque de 500 m. L'agrandir le fait traverser la coque, le
+## reculer decouvre son bord, le reculer encore finit sur le plan de coupe lointain. Le decor,
+## l'eclairage et l'ombre du bestiaire sont composes pour une vingtaine de metres ; c'est donc la
+## COQUE qu'on ramene au gabarit, comme une vitrine presente une piece a l'echelle.
+##
+## Ce test garde les deux moities du contrat.
+const ScreenScript := preload("res://scripts/ui/codex_screen.gd")
+
+func _span_of(entry: CodexEntry) -> float:
+	var hull := track(entry.hull_scene.instantiate()) as Node3D
+	if hull == null:
+		return 0.0
+	return ScreenScript._hull_bounds(hull).size.length()
+
+## PREMIERE MOITIE : les fiches d'origine ne sont pas touchees. Sous le gabarit, la reduction
+## vaut exactement 1 — c'est la seule chose qui autorise a changer un ecran deja valide.
+func test_every_original_hull_stays_under_the_display_span() -> void:
+	for entry in _entries():
+		if entry.display_name == "Long Cortege":
+			continue
+		var span := _span_of(entry)
+		assert_true(span <= ScreenScript.DISPLAY_SPAN_MAX,
+			"%s occupe %.1f pour un gabarit de %.1f : elle serait reduite, donc sa fiche changerait"
+				% [entry.display_name, span, ScreenScript.DISPLAY_SPAN_MAX])
+
+## SECONDE MOITIE : le mecanisme est REELLEMENT exerce. Un gabarit qu'aucune coque ne depasse
+## serait du code mort qui passe au vert — et le jour ou une coque le depasserait, plus personne
+## ne saurait qu'il existe.
+func test_the_long_cortege_is_what_the_display_span_exists_for() -> void:
+	var cortege := _named("Long Cortege")
+	assert_true(cortege != null, "le Long Cortege est au bestiaire")
+	if cortege == null:
+		return
+	var span := _span_of(cortege)
+	assert_true(span > ScreenScript.DISPLAY_SPAN_MAX * 5.0,
+		"il occupe %.0f pour un gabarit de %.1f — c'est lui qui a impose la refonte"
+			% [span, ScreenScript.DISPLAY_SPAN_MAX])

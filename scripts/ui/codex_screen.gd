@@ -140,11 +140,10 @@ var _hull: Node3D
 var _flight: ShipFlight
 var _yaw_angle: float = deg_to_rad(DEFAULT_YAW_DEG)
 var _pitch_angle: float = deg_to_rad(DEFAULT_PITCH_DEG)
-## La distance de caméra pour laquelle `space_backdrop.tscn` a été composé (z = 6 dans la scène).
-const BACKDROP_REFERENCE := 6.0
-## De combien les repères du décor avancent DEVANT l'origine du fond, dans la scène (`Landmarks`
-## est à z = +4). C'est cette avancée qui, mise à l'échelle, vient se poser devant la coque.
-const LANDMARK_REACH := 4.0
+## Le plus grand encombrement qu'une coque puisse avoir SUR LE PRÉSENTOIR — la diagonale de
+## l'Aegis Citadel, la plus grande des onze coques pour lesquelles le décor a été composé.
+## Au-delà, la coque est réduite ; en deçà, elle n'est pas touchée.
+const DISPLAY_SPAN_MAX := 26.5
 
 var _base_distance: float = 6.0
 var _zoom: float = 1.0
@@ -189,48 +188,6 @@ func _requested_index() -> int:
 ## `center_calm` assombrit le tiers central pour que le combat s'y lise. Ici le sujet
 ## EST au centre, et garder le réglage de jeu creuserait un trou pile derrière la
 ## coque qu'on présente.
-## Met le fond spatial à l'échelle de la coque présentée, ET LE RECULE DERRIÈRE ELLE.
-##
-## ⚠️ LE FOND N'EST PAS UN CIEL, C'EST UN DÉCOR DE PROXIMITÉ. Un quad de 90 × 70 posé à z = −4,
-## plus quatre `Sprite3D` de repère entre z = −1 et z = −10 : tout cela a été composé pour une
-## caméra à z = 6 devant un chasseur de 2,46 m, et ça sert très bien les onze coques du catalogue,
-## qui tiennent toutes dans une vingtaine de mètres.
-##
-## Le Long Cortège fait 500 m. La caméra recule d'autant, et le décor entier se réduisait alors à
-## une tache au milieu d'un cadre noir.
-##
-## ⚠️ MAIS LE METTRE À L'ÉCHELLE NE SUFFIT PAS, ET LE FAIRE SEUL EST PIRE QUE LE DÉFAUT D'ORIGINE.
-## Le décor reste centré sur l'origine du plateau — là où vit la coque. À l'échelle ×100, ses
-## repères s'étalent de z = −100 à z = −1000 : ils traversent le vaisseau, et une galaxie se
-## retrouve plantée dans la proue. « On dirait qu'une texture du décor rentre en collision avec
-## les modèles » (opérateur) — ce n'était pas une texture, c'étaient deux volumes au même endroit.
-## Corrigé une fois, ce défaut avait donc été REMPLACÉ par un autre, et il a fallu que l'opérateur
-## le voie pour que je l'apprenne.
-##
-## Le décor est donc aussi RECULÉ, d'assez pour passer derrière le point le plus lointain de la
-## coque. Le recul est nul pour une petite coque : les onze fiches du catalogue ne bougent pas
-## d'un pixel, et c'est la condition pour que cette correction n'en casse pas onze autres.
-func _scale_backdrop(bounds: AABB) -> void:
-	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
-	if backdrop == null:
-		return
-	# Le rayon de la coque : ce que le décor doit dépasser pour rester derrière, quelle que soit
-	# la rotation que le joueur lui imprime.
-	var radius := bounds.size.length() * 0.5
-	var k := maxf(_base_distance / BACKDROP_REFERENCE, 1.0)
-	# ⚠️ LE DÉCOR N'EST PAS PLAT : ses repères sont DEVANT son plan de fond. Le nœud `Landmarks`
-	# porte un décalage local de (0, +5, +4) — vers la caméra — qui compense celui du quad, à
-	# (0, −5, −4). Tant que l'échelle vaut 1, les deux se neutralisent dans un volume de dix
-	# unités. À l'échelle ×100, ils s'écartent à ±1000 : le quad part loin derrière et les
-	# nébuleuses sont projetées DEVANT le vaisseau. On voit alors la coque à travers une
-	# nébuleuse posée sur elle, ce qui se lit comme une coque translucide — et c'est ce que
-	# l'opérateur a vu, deux fois, avant que je comprenne que je l'avais fabriqué.
-	#
-	# Le recul doit donc dépasser le point le plus AVANCÉ du décor mis à l'échelle, pas son plan.
-	var front := LANDMARK_REACH * k
-	backdrop.position.z = -(radius * 1.2 + front + BACKDROP_REFERENCE)
-	backdrop.scale = Vector3.ONE * k
-
 func _tune_backdrop() -> void:
 	var backdrop := get_node_or_null("SpaceBackdrop") as MeshInstance3D
 	if backdrop == null or backdrop.mesh == null:
@@ -274,7 +231,30 @@ func _mount(entry: CodexEntry) -> void:
 	var fittings := _count_fittings(_hull)
 	# Le plateau doit tourner autour du centre du volume, pas autour de l'origine du
 	# `.glb` — qui est le nez sur certaines coques, et le ferait balayer le cadre.
-	_hull.position = -bounds.get_center()
+	# ⚠️ LA COQUE EST RAMENÉE AU GABARIT DU PRÉSENTOIR, ET C'EST UNE REFONTE. Pendant tout le
+	# développement de cet écran, une coque plus grande était servie en RECULANT la caméra : le
+	# décor — un quad de 90 × 70 à z = −4 et quatre repères entre z = −1 et z = −10 — restait,
+	# lui, à sa taille de composition. Ça marche tant que les coques tiennent dans une vingtaine
+	# de mètres, ce qui était vrai des onze premières. Le Long Cortège fait 500 m, et il a fallu
+	# trois corrections successives du décor pour s'apercevoir qu'aucune ne pouvait tenir :
+	# l'agrandir le fait traverser la coque, le reculer découvre son bord, le reculer encore
+	# finira sur le plan de coupe lointain de la caméra. « Revois l'écran du bestiaire pour tenir
+	# compte de ses contraintes » (opérateur) — c'est la bonne demande.
+	#
+	# Une vitrine ne déplace pas ses murs pour accueillir une pièce : elle la présente à
+	# l'échelle. La coque est donc réduite jusqu'au gabarit de la plus grande coque composée
+	# (l'Aegis Citadel), la caméra reste dans la plage pour laquelle le décor a été fait, et
+	# TOUT le reste — fond, repères, éclairage, ombre — redevient valable sans un réglage
+	# conditionnel. Les onze fiches existantes ne bougent pas d'un pixel : sous le gabarit, la
+	# réduction vaut exactement 1.
+	#
+	# ⚠️ ET LA FICHE CONTINUE DE MESURER LA VRAIE COQUE. `bounds` est relevé AVANT la réduction
+	# et c'est lui qui part au tableau : le Cortège affiche ses 500 m, pas ses 26 de présentoir.
+	# Confondre les deux ferait mentir la seule ligne que personne ne peut vérifier à l'œil.
+	var span := bounds.size.length()
+	var shrink := 1.0 if span <= DISPLAY_SPAN_MAX else DISPLAY_SPAN_MAX / span
+	_hull.scale = Vector3.ONE * shrink
+	_hull.position = -bounds.get_center() * shrink
 
 	# ⚠️ Deux feuilles de détail, jamais les deux à la fois. La feuille commune est
 	# calée sur un chasseur de 2 m et lit comme du bruit rayé sur une pièce de 19,6 m
@@ -306,8 +286,8 @@ func _mount(entry: CodexEntry) -> void:
 		_flight = ShipFlight.apply(_hull)
 	_attach_plumes(bounds, entry.camp)
 
-	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
-	_scale_backdrop(bounds)
+	var shown := AABB(bounds.position * shrink, bounds.size * shrink)
+	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(shown)
 	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
 	_pop()
 
@@ -374,7 +354,6 @@ func _reframe() -> void:
 		return
 	var bounds := _hull_bounds(_hull)
 	_base_distance = _framing_distance(bounds)
-	_scale_backdrop(bounds)
 
 func _reset_view() -> void:
 	var entry := ROSTER[_index]

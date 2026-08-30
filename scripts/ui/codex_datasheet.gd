@@ -588,8 +588,12 @@ func _fill_fortress_rows(entry: CodexEntry, fittings: Dictionary[StringName, int
 		elif i == slots.size() - 1 and entry.fortress_note_caption != "":
 			# La ligne déclarée ne prend la place que si les comptes n'ont pas rempli les
 			# quatre : une coque qui porte quatre équipements dit ce qu'elle PORTE.
+			#
+			# ⚠️ PAS DE `_set_gauge` ICI. `_set_row_caption` pose le libellé ET la valeur ;
+			# appeler la jauge ensuite avec une chaîne vide EFFACE ce qu'elle vient d'écrire.
+			# La citadelle a affiché « APPONTAGE » sans son « 1 BAIE » jusqu'à ce qu'une capture
+			# le montre — une ligne vide ne ressemble pas assez à une erreur pour se signaler.
 			_set_row_caption(slots[i], entry.fortress_note_caption, entry.fortress_note_value)
-			_set_gauge(slots[i], "", -1.0)
 		else:
 			_set_row_caption(slots[i], "", "")
 			_set_gauge(slots[i], "", -1.0)
