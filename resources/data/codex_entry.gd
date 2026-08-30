@@ -29,6 +29,25 @@ enum Camp { HELIOS, NULL_CHOIR }
 ## affiche donc ses ÉQUIPEMENTS — tourelles, balises, batteries — comptés sur la coque.
 enum Family { FIGHTER, FORTRESS }
 
+## La quatrième ligne d'une forteresse QUAND ELLE N'EST PAS COMPTABLE. ⚠️ ELLE EXISTE PARCE QUE
+## L'APPONTAGE DE LA CITADELLE N'EST PAS UN NOMBRE DE MARQUEURS. Sa coque porte deux `Dock_` —
+## l'entrée et la sortie d'une SEULE baie — et les compter afficherait « 2 » sous un libellé qui
+## en promet une. Le reste des lignes se compte sur la coque et doit continuer de s'y compter ;
+## celle-ci se déclare, comme la masse ou l'équipage, parce qu'elle est de la fiction.
+##
+## ⚠️ ASCII SANS ACCENT, comme tous les champs affichés en capitales (ADR-0012).
+## L'angle de présentation, quand celui du présentoir ne convient pas. 0 = celui par défaut.
+##
+## ⚠️ IL EXISTE POUR LES COQUES TRÈS ALLONGÉES. Le présentoir ouvre à 205°, un trois-quarts avant
+## qui sert bien une coque à peu près aussi large que longue. Le Long Cortège fait 500 m pour 28 :
+## à 205°, sa longueur part dans la profondeur et il se présente comme un éclat de six cents
+## pixels au milieu d'un cadre vide, alors que le calcul de distance, lui, réserve la place de
+## ses 500 m. Le cadrage n'était pas faux — c'est l'angle qui rendait la mesure inutile.
+@export var view_yaw_deg: float = 0.0
+
+@export var fortress_note_caption: String = ""
+@export var fortress_note_value: String = ""
+
 @export var display_name: String = ""
 @export var camp: Camp = Camp.NULL_CHOIR
 @export var family: Family = Family.FIGHTER

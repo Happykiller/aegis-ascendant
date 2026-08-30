@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=3 format=3]
+
+; ============================================================================
+; Le Long Cortege — la premiere fiche du bestiaire qui ne soit pas une cible.
+;
+; ⚠️ TOUT CE QU'ELLE NE DIT PAS EST DELIBERE. Le plafond de revelation du
+; niveau 2 est net : le joueur ne doit rien apprendre de l'Unisson au-dela de
+; « ils emportent des structures entieres ». Ni Voix, ni Grille, ni
+; commanditaires. Une fiche pleine d'INCONNU n'est donc pas un trou a combler
+; plus tard — c'est ce que le vaisseau doit etre a ce moment de l'arc.
+;
+; ⚠️ ET ELLE NE SE TERMINE PAS. Le survol s'arrete au tiers arriere ; lui
+; continue sa route, et c'est ce qui doit rester de lui
+; (docs/lore/NULL_CHOIR.md). Le statut le dit : EN TRANSIT, pas MENACE ABATTUE.
+;
+; MASSE : une estimation sur le tiers survole, pas un releve. Le champ ne sait
+; pas dire « estime » ; la notice le dit.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://assets/imported/models/backgrounds/long_cortege.glb" id="2_hull"]
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Long Cortege"
+camp = 1
+family = 1
+designation = "NX-001"
+hull_class = "CONVOI DE COQUE - CLASSE NON ETABLIE"
+builder = "INCONNU - ASSEMBLAGE CONTINU"
+status = "EN TRANSIT - NON INTERROMPU"
+notice = "Convoi long de plusieurs kilomètres, relevé sur son tiers avant seulement: la masse portée ici n'est qu'une estimation. Sa surface n'est pas homogène — des sections entières y ont été rapportées, soudées à des angles que rien n'explique. Il ne manœuvre pas et ne rompt jamais son cap: ses batteries de coque écartent ce qui approche au lieu de l'abattre. Aucun contact n'a reçu de réponse. Il n'a pas été arrêté."
+mass_t = 9420000.0
+crew = 0
+hull_scene = ExtResource("2_hull")
+view_yaw_deg = 232.0
+frame_distance = 0.0

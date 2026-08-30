@@ -53,6 +53,7 @@ const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/null_maw.tres"),
 	preload("res://resources/codex/shield_carrier.tres"),
 	preload("res://resources/codex/choir_harvester.tres"),
+	preload("res://resources/codex/long_cortege.tres"),
 	preload("res://resources/codex/pale_leviathan.tres"),
 ]
 
@@ -66,10 +67,17 @@ const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
 ## Préfixes des marqueurs comptés sur la coque pour la fiche d'une forteresse.
 ## COMPTÉS, jamais saisis : ajouter une septième tourelle au `.glb` met la fiche à
 ## jour toute seule, exactement comme les dimensions.
+## ⚠️ LES MARQUEURS D'UNE COQUE PEUVENT ÊTRE ENFANTS DE SES TRONÇONS, et non de sa racine. La
+## citadelle porte les siens à plat ; le Long Cortège les range sous cinq `Section_NN`. Compter
+## à un seul niveau aurait rendu « 0 TOURELLES » sur un vaisseau qui en porte dix-sept, sans une
+## erreur, et la fiche aurait été parfaitement lisible.
 const FITTINGS: Dictionary[StringName, String] = {
 	&"turrets": "Turret_",
 	&"beacons": "Beacon_",
 	&"batteries": "Muzzle_Battery",
+	&"bays": "Bay_",
+	&"nodes": "Spine_",
+	&"sections": "Section_",
 }
 
 # --- Présentoir ---------------------------------------------------------------
@@ -132,6 +140,9 @@ var _hull: Node3D
 var _flight: ShipFlight
 var _yaw_angle: float = deg_to_rad(DEFAULT_YAW_DEG)
 var _pitch_angle: float = deg_to_rad(DEFAULT_PITCH_DEG)
+## La distance de caméra pour laquelle `space_backdrop.tscn` a été composé (z = 6 dans la scène).
+const BACKDROP_REFERENCE := 6.0
+
 var _base_distance: float = 6.0
 var _zoom: float = 1.0
 var _dragging: bool = false
@@ -175,6 +186,28 @@ func _requested_index() -> int:
 ## `center_calm` assombrit le tiers central pour que le combat s'y lise. Ici le sujet
 ## EST au centre, et garder le réglage de jeu creuserait un trou pile derrière la
 ## coque qu'on présente.
+## Met le fond spatial à l'échelle de la coque présentée.
+##
+## ⚠️ IL EXISTE PARCE QUE LE FOND N'EST PAS UN CIEL, C'EST UN DÉCOR DE PROXIMITÉ. Un quad de
+## 90 × 70 posé à z = −4, plus quatre `Sprite3D` entre z = −1 et z = −10 : tout cela a été
+## dimensionné pour une caméra à z = 6 devant un chasseur de 2,46 m, et ça marche pour les onze
+## coques du catalogue, qui tiennent toutes dans une vingtaine de mètres.
+##
+## Le Long Cortège fait 500 m. La caméra recule d'autant, et le décor entier se réduit alors à
+## une TACHE de cent cinquante pixels au milieu d'un cadre noir — que j'ai d'abord prise pour un
+## émissif de la coque, puis pour la fusion de ses vingt-deux lampes. Ni l'un ni l'autre : elle
+## ne bougeait avec aucune pose parce qu'elle n'appartenait pas au vaisseau. La fiche du
+## Specter-9, capturée en témoin, a montré la nébuleuse entière là où celle du Cortège était
+## noire — c'est cette comparaison qui a tranché, pas le raisonnement.
+##
+## Le fond suit donc la caméra. La référence est la distance d'origine de la scène (z = 6),
+## celle pour laquelle le décor a été composé.
+func _scale_backdrop() -> void:
+	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
+	if backdrop == null:
+		return
+	backdrop.scale = Vector3.ONE * maxf(_base_distance / BACKDROP_REFERENCE, 1.0)
+
 func _tune_backdrop() -> void:
 	var backdrop := get_node_or_null("SpaceBackdrop") as MeshInstance3D
 	if backdrop == null or backdrop.mesh == null:
@@ -224,17 +257,34 @@ func _mount(entry: CodexEntry) -> void:
 	# calée sur un chasseur de 2 m et lit comme du bruit rayé sur une pièce de 19,6 m
 	# — c'est le constat de `title_stage.gd`, on ne le refait pas.
 	if entry.family == CodexEntry.Family.FORTRESS:
-		CitadelDetail.apply(_hull)
-		# Tourelles, balises et respiration des émissifs. Sans cet appel, la citadelle
-		# serait la seule fiche présentée figée, alors qu'elle est la plus animée du
-		# jeu — et l'opérateur a demandé « animé pour voir ce qui bouge ».
-		CitadelLife.apply(_hull, CitadelTurretScene, CitadelBeaconScene)
+		# ⚠️ CHAQUE CAMP EST HABILLÉ PAR SES PROPRES PIÈCES. `CitadelLife` instancie
+		# `citadel_turret.tscn` sur tout marqueur `Turret_` : tant que la seule forteresse du
+		# jeu était l'Aegis Citadel, c'était sans conséquence. Une forteresse du Null Choir
+		# recevrait l'armement d'Helios sur sa coque — une fiche lisible, animée, et fausse,
+		# que rien n'aurait signalé.
+		if entry.camp == CodexEntry.Camp.HELIOS:
+			# ⚠️ `CitadelDetail` N'EST PAS UNE FEUILLE GÉNÉRIQUE MALGRÉ SON EMPLOI : elle
+			# applique les cartes de la CITADELLE — bordé, greebles, et l'émissif de ses
+			# facettes de cristal. Posée sur une coque du Null Choir, elle lui collait le
+			# panneautage d'Helios et allumait un halo CYAN en plein milieu, la couleur du
+			# noyau de la citadelle. Constaté sur capture, jamais au journal.
+			CitadelDetail.apply(_hull)
+			# Tourelles, balises et respiration des émissifs. Sans cet appel, la citadelle
+			# serait la seule fiche présentée figée, alors qu'elle est la plus animée du
+			# jeu — et l'opérateur a demandé « animé pour voir ce qui bouge ».
+			CitadelLife.apply(_hull, CitadelTurretScene, CitadelBeaconScene)
+		else:
+			# La coque porte ses propres matériaux : le bestiaire montre EXACTEMENT ce que
+			# le joueur survole, et une retouche d'habillage se voit dans les deux endroits.
+			CortegeSkin.apply(_hull)
+			CortegeLife.apply(_hull)
 	else:
 		HullDetail.apply(_hull)
 		_flight = ShipFlight.apply(_hull)
 	_attach_plumes(bounds, entry.camp)
 
 	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
+	_scale_backdrop()
 	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
 	_pop()
 
@@ -250,6 +300,9 @@ func _count_fittings(hull: Node3D) -> Dictionary[StringName, int]:
 		for child in hull.get_children():
 			if String(child.name).begins_with(prefix):
 				total += 1
+			for grandchild in child.get_children():
+				if String(grandchild.name).begins_with(prefix):
+					total += 1
 		counts[key] = total
 	return counts
 
@@ -297,9 +350,11 @@ func _reframe() -> void:
 	if entry.frame_distance > 0.0:
 		return
 	_base_distance = _framing_distance(_hull_bounds(_hull))
+	_scale_backdrop()
 
 func _reset_view() -> void:
-	_yaw_angle = deg_to_rad(DEFAULT_YAW_DEG)
+	var entry := ROSTER[_index]
+	_yaw_angle = deg_to_rad(entry.view_yaw_deg if entry.view_yaw_deg != 0.0 else DEFAULT_YAW_DEG)
 	_pitch_angle = deg_to_rad(DEFAULT_PITCH_DEG)
 	_zoom = 1.0
 	_idle = 0.0

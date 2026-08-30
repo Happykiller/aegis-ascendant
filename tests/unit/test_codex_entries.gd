@@ -143,3 +143,42 @@ func test_validate_rejects_two_stats_sources() -> void:
 	entry.enemy_data = load("res://resources/enemies/needle_scout.tres") as EnemyData
 	var errors := entry.validate()
 	assert_true(not errors.is_empty(), "two stats sources are rejected")
+
+## Le Long Cortege — la premiere forteresse du Null Choir au bestiaire.
+##
+## ⚠️ CE TEST GARDE UN PIEGE DE CAMP, PAS UNE PRESENCE. L'ecran habille toute fiche de famille
+## FORTRESS avec `CitadelDetail` et `CitadelLife` — les cartes ET les tourelles de l'Aegis
+## Citadel. C'etait sans consequence tant que la seule forteresse du jeu etait la citadelle
+## elle-meme. Une forteresse ennemie recevait, elle, le panneautage et l'armement d'HELIOS sur sa
+## coque, plus un halo cyan au milieu : une fiche parfaitement lisible, parfaitement animee, et
+## fausse. Rien au journal. Si une troisieme forteresse arrive un jour, c'est ce test qui dira
+## qu'il faut choisir son habillage.
+func test_the_long_cortege_is_an_enemy_fortress() -> void:
+	var cortege := _named("Long Cortege")
+	assert_true(cortege != null, "le Long Cortege est au bestiaire")
+	if cortege == null:
+		return
+	assert_eq(cortege.family, CodexEntry.Family.FORTRESS,
+		"il n'a ni PV ni vitesse dans le code : le gabarit chasseur lui rendrait des tirets")
+	assert_eq(cortege.camp, CodexEntry.Camp.NULL_CHOIR,
+		"et il n'est PAS d'Helios — c'est ce camp qui decide de son habillage")
+	assert_true(cortege.validate().is_empty(), "sa fiche valide sans source de valeurs de jeu")
+
+## ⚠️ LES MARQUEURS D'UNE COQUE NE SONT PAS TOUS A SA RACINE. La citadelle porte les siens a
+## plat ; le Cortege les range sous ses cinq `Section_NN`. Le compteur d'equipements ne regardait
+## qu'un niveau : la fiche affichait « 0 TOURELLES » sur un vaisseau qui en porte dix-sept, sans
+## une erreur et sans que rien ne bouge a l'ecran.
+func test_a_hull_can_carry_its_fittings_under_its_sections() -> void:
+	var kit: PackedScene = load("res://assets/imported/models/backgrounds/long_cortege.glb")
+	assert_true(kit != null, "la coque du Cortege se charge")
+	var hull := track(kit.instantiate()) as Node3D
+	var a_plat := 0
+	var sous_troncon := 0
+	for child in hull.get_children():
+		if String(child.name).begins_with("Turret_"):
+			a_plat += 1
+		for grandchild in child.get_children():
+			if String(grandchild.name).begins_with("Turret_"):
+				sous_troncon += 1
+	assert_eq(a_plat, 0, "aucune tourelle a la racine — c'est bien le piege")
+	assert_eq(sous_troncon, 17, "les dix-sept sont sous les troncons")

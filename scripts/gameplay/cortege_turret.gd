@@ -320,6 +320,7 @@ func is_weakened() -> bool:
 func wreck_progress() -> float:
 	return _wreck
 
+
 ## Un pas de la tourelle. ⚠️ APPELÉE PAR LE GESTIONNAIRE, pas par `_process`. Vingt-neuf points
 ## d'ancrage qui traitent chacun leur propre image, c'est vingt-neuf appels de script par trame
 ## pour un travail que rien n'oblige à disperser — et un ordre de passage dont on ne sait plus

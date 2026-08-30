@@ -521,7 +521,7 @@ func show_entry(entry: CodexEntry, index: int, bounds: AABB, triangles: int,
 	_set_value(&"polys", _thousands(triangles))
 
 	if entry.family == CodexEntry.Family.FORTRESS:
-		_fill_fortress_rows(fittings)
+		_fill_fortress_rows(entry, fittings)
 	else:
 		_fill_combat_rows(entry)
 
@@ -551,18 +551,48 @@ func _fill_combat_rows(entry: CodexEntry) -> void:
 	else:
 		_set_row_caption(&"extra", "TOUCHE", "%.2f m" % entry.hitbox_radius())
 
+## L'ordre dans lequel les équipements remplissent les quatre lignes d'une forteresse. ⚠️ IL EST
+## DÉCLARÉ ET NON DÉDUIT : trier par nombre décroissant ferait changer l'ordre des lignes d'une
+## coque à l'autre, et le lecteur ne saurait plus où regarder.
+##
+## ⚠️ LIBELLÉS EN ASCII SANS ACCENT (ADR-0012) : Press Start 2P dessine les capitales accentuées
+## en hauteur de bas-de-casse, et un `Œ` ou un `Ç` troue le mot.
+const FORTRESS_ROWS: Array = [
+	[&"turrets", "TOURELLES"],
+	[&"bays", "PONTS"],
+	[&"nodes", "NOEUDS"],
+	[&"beacons", "BALISES"],
+	[&"batteries", "BATTERIES"],
+	[&"sections", "TRONCONS"],
+]
+
 ## Une forteresse n'a ni structure, ni vitesse, ni cadence — elle n'est pas un objet
-## de combat dans le code. Les trois emplacements de jauge servent donc ses
-## ÉQUIPEMENTS, comptés sur la coque, et sans barre : six tourelles ne se lisent pas
-## sur une échelle.
-func _fill_fortress_rows(fittings: Dictionary[StringName, int]) -> void:
-	_set_row_caption(&"hull", "TOURELLES", "")
-	_set_gauge(&"hull", str(fittings.get(&"turrets", 0)), -1.0)
-	_set_row_caption(&"speed", "BALISES", "")
-	_set_gauge(&"speed", str(fittings.get(&"beacons", 0)), -1.0)
-	_set_row_caption(&"rate", "BATTERIES", "")
-	_set_gauge(&"rate", str(fittings.get(&"batteries", 0)), -1.0)
-	_set_row_caption(&"extra", "APPONTAGE", "1 BAIE")
+## de combat dans le code. Les quatre emplacements servent donc ses ÉQUIPEMENTS,
+## comptés sur la coque, et sans barre : six tourelles ne se lisent pas sur une échelle.
+##
+## ⚠️ LES LIGNES SUIVENT CE QUE LA COQUE PORTE, ELLES NE SONT PLUS ÉCRITES EN DUR. Tant que la
+## seule forteresse du jeu était l'Aegis Citadel, « TOURELLES / BALISES / BATTERIES / APPONTAGE
+## 1 BAIE » était vrai. Le Long Cortège n'a ni balise, ni batterie, et n'apponte personne : la
+## même fiche lui aurait affiché deux zéros et un mensonge — bien alignés, dans la bonne police,
+## sans une erreur au journal. Un équipement à zéro ne prend donc pas de ligne.
+func _fill_fortress_rows(entry: CodexEntry, fittings: Dictionary[StringName, int]) -> void:
+	var slots: Array[StringName] = [&"hull", &"speed", &"rate", &"extra"]
+	var porte: Array = []
+	for row in FORTRESS_ROWS:
+		if int(fittings.get(row[0], 0)) > 0:
+			porte.append(row)
+	for i in slots.size():
+		if i < porte.size():
+			_set_row_caption(slots[i], String(porte[i][1]), "")
+			_set_gauge(slots[i], str(int(fittings.get(porte[i][0], 0))), -1.0)
+		elif i == slots.size() - 1 and entry.fortress_note_caption != "":
+			# La ligne déclarée ne prend la place que si les comptes n'ont pas rempli les
+			# quatre : une coque qui porte quatre équipements dit ce qu'elle PORTE.
+			_set_row_caption(slots[i], entry.fortress_note_caption, entry.fortress_note_value)
+			_set_gauge(slots[i], "", -1.0)
+		else:
+			_set_row_caption(slots[i], "", "")
+			_set_gauge(slots[i], "", -1.0)
 
 func _set_value(key: StringName, text: String) -> void:
 	var label := _readouts.get(key) as Label

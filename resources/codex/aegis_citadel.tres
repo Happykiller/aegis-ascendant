@@ -5,6 +5,8 @@
 
 [resource]
 script = ExtResource("1_entry")
+fortress_note_caption = "APPONTAGE"
+fortress_note_value = "1 BAIE"
 display_name = "Aegis Citadel"
 camp = 0
 family = 1

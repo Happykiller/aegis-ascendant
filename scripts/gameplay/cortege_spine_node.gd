@@ -129,6 +129,7 @@ func _ready() -> void:
 	_build_node()
 	_build_arcs()
 
+
 ## Assemble les trois pièces du kit. Le berceau et les entretoises portent le nœud ; le cœur
 ## porte la lumière, et c'est le seul que la mort emporte.
 func _build_node() -> void:
