@@ -177,6 +177,69 @@ RAIL_GAUGE = 2.30
 
 BLOCK_X, BLOCK_Z, BLOCK_H = 1.30, 0.90, 0.45
 
+# --------------------------------------------------------------------------
+# LES DEUX BATTANTS (BRIEF-0095) — cotes DONNEES par le moteur
+# --------------------------------------------------------------------------
+# ⚠️ AUCUNE DE CES QUATRE COTES N'EST UN CHOIX D'AUTEUR. Elles viennent de
+# `scripts/gameplay/cortege_bay.gd`, qui fabriquait les battants lui-meme en
+# `BoxMesh` de 3,00 x 0,14 x 8,50 et les retire de 3,00 m sur +-X. Les changer
+# ici ne changerait pas le moteur : cela ferait seulement un battant qui ne
+# ferme plus. Elles sont donc RELUES depuis l'ouverture, jamais recopiees.
+#
+#   emprise    x de 0 a -3,00 (bâbord), z de -4,25 a +4,25
+#   epaisseur  <= 0,22
+#   plafond    <= +0,18 au-dessus de la peau (il passe SOUS la levre du coaming)
+#   course     3,00 m sur +-X
+
+#: Le battant couvre exactement une demi-ouverture, et sa longueur EST celle du
+#: puits : c'est ce qui fait qu'il n'y a aucun jour contre les montants.
+DOOR_SPAN_X = OPEN_HALF_X                   # 3,00
+DOOR_HALF_Z = OPEN_HALF_Z                   # 4,25
+#: La course du moteur (`CortegeBay.DOOR_SLIDE`). Ici pour la planche et pour la
+#: mesure de debord ouverte — le mouvement, lui, reste au moteur.
+DOOR_SLIDE = 3.00
+
+#: Plan superieur courant, et plan de la poutre de nez / des sabots. Le second
+#: est le POINT LE PLUS HAUT de la piece : 0,175 < 0,18, sous la levre.
+DOOR_TOP = 0.150
+DOOR_RIM_TOP = 0.175
+#: Fond des caissons (7,5 cm de creux) et fond de la rainure de sabot (5 cm).
+DOOR_POCKET_Y = 0.075
+DOOR_SHOE_GROOVE_Y = DOOR_RIM_TOP - 0.05
+
+#: LA DENTURE. Six bandes alternees sur les 8,50 m : trois dents et trois creux
+#: par battant, donc six alternances sur la ligne de fermeture.
+#:
+#: ⚠️ LA DENT AVANCE PLUS QUE LE CREUX NE RECULE (0,12 contre 0,10), ET C'EST LA
+#: SEULE FACON D'AVOIR « AUCUN JOUR » SANS FACES COINCIDENTES. A egalite, les
+#: deux battants se toucheraient sur des faces exactement coplanaires : un jour
+#: nul en geometrie, mais un scintillement garanti au rendu. Avec 2 cm
+#: d'interpenetration, il n'existe aucun (x, z) de l'ouverture que l'un des deux
+#: ne couvre pas — et `_audit()` le RASTERISE pour le prouver, il ne le suppose
+#: pas.
+DOOR_TOOTH = 0.12
+DOOR_NOTCH = 0.10
+DOOR_TEETH = 6
+
+#: Sabot de guidage a chaque extremite en Z, la ou le battant s'engage dans le
+#: cadre : bande surelevee au plan de la poutre, creusee d'une rainure.
+DOOR_SHOE = 0.45
+#: Refend entre deux caissons.
+DOOR_LAND = 0.65
+
+#: LE CHEVRON — le sens de lecture, et il ne coute pas un triangle.
+#: La levre INTERIEURE des caissons n'est pas droite : elle s'ecarte vers
+#: l'exterieur (-X) a mesure qu'on approche du milieu du battant. Les trois
+#: caissons dessinent donc une pointe large, tournee vers le cote ou le battant
+#: se retire. Un chevron en relief aurait coute quatre stations de profil, soit
+#: +448 triangles pour la paire : le budget de 1 200 ne les a pas.
+DOOR_RIM_IN_END = -0.62
+DOOR_RIM_IN_MID = -1.70
+DOOR_RIM_OUT = -2.66
+
+#: Budget du brief pour les DEUX battants reunis.
+TRI_BUDGET_DOORS = 1_200
+
 #: OU CHAQUE PIECE TOMBE DANS LE HANGAR ASSEMBLE, et combien de fois.
 #: ⚠️ Ce n'est pas une commodite de rapport : sans elle, l'aire par materiau se
 #: mesurerait dans le repere de CHAQUE piece, ou la jupe enterree du coaming
@@ -186,12 +249,21 @@ BLOCK_X, BLOCK_Z, BLOCK_H = 1.30, 0.90, 0.45
 ASSEMBLY_OFFSET: dict[str, tuple[float, float, float]] = {}
 ASSEMBLY_COPIES: dict[str, int] = {}
 
-#: Les sept noms de nœuds. Le moteur monte par le NOM : le harnais echoue si
+#: Les neuf noms de nœuds. Le moteur monte par le NOM : le harnais echoue si
 #: l'un manque, si l'un est en trop, ou si l'un porte un enfant.
+#:
+#: ⚠️ LES DEUX BATTANTS SONT EN FIN DE LISTE, ET CE N'EST PAS COSMETIQUE. Les
+#: sept premieres pieces sont acceptees, cablees et mesurees cote moteur : leurs
+#: accesseurs doivent sortir aux memes octets qu'avant BRIEF-0095. L'exporteur
+#: ecrit dans l'ordre des objets ; ajouter en tete decalerait les sept.
 PART_NAMES = (
     "bay_frame_left", "bay_frame_right", "bay_frame_top",
     "bay_inner_wall", "bay_floor", "bay_launch_rail", "bay_service_block",
+    "bay_door_left", "bay_door_right",
 )
+#: Les sept pieces que BRIEF-0095 s'interdit de toucher. Le harnais compare leurs
+#: accesseurs a la reference si on la lui donne (`--check-frozen <glb>`).
+FROZEN_PARTS = PART_NAMES[:7]
 
 ASSEMBLY_OFFSET.update({
     "bay_frame_left": (-OPEN_HALF_X, 0.0, 0.0),
@@ -201,6 +273,10 @@ ASSEMBLY_OFFSET.update({
     "bay_floor": (0.0, -WELL_DEPTH, 0.0),
     "bay_launch_rail": (-RAIL_GAUGE * 0.5, -WELL_DEPTH, -RAIL_LEN * 0.5),
     "bay_service_block": (OPEN_HALF_X + COAM_W * 0.5, COAM_H, 2.6),
+    # Fermes, les deux battants sont a leur point d'assemblage : leur origine EST
+    # le centre de l'ouverture, au plan de la peau.
+    "bay_door_left": (0.0, 0.0, 0.0),
+    "bay_door_right": (0.0, 0.0, 0.0),
 })
 #: La traverse est posee DEUX fois (avant et arriere, demi-tour), le rail deux
 #: fois (les deux voies) et le bloc deux fois (la variation que le brief prevoit).

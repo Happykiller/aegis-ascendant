@@ -89,6 +89,7 @@ func _ready() -> void:
 	adopt_units()
 	if _player != null and _player.has_signal("game_over"):
 		_player.game_over.connect(_on_game_over)
+	_push_music(0)
 	# ⚠️ OUTIL DE VÉRIFICATION, PAS UN RACCOURCI DE JEU. `--cortege-from=<n>` démarre le survol
 	# au tronçon n : sans lui, juger la section 3 demande d'attendre deux minutes de défilement,
 	# et une capture automatisée n'y arrive pas du tout. Même esprit que `--skip-to-*` du
@@ -182,6 +183,7 @@ func _draw_debug_zones() -> void:
 
 func _on_section_entered(index: int) -> void:
 	print("[Cortege] SECTION %02d / %02d" % [index + 1, TUNING.section_count])
+	_push_music(index)
 	if _hud != null and _hud.has_method("show_banner"):
 		_hud.show_banner("SECTION %02d" % (index + 1), Color("d93d9c"), 1.4)
 	if index >= 0 and index < SECTION_LINES.size():
@@ -216,6 +218,13 @@ func _on_survey_finished() -> void:
 	if _finished or _defeated:
 		return
 	_finished = true
+	# ⚠️ LA MUSIQUE DE VICTOIRE ATTEND QUE L'ÉCRAN SE VIDE, comme au niveau 1 : une résolution
+	# qui tomberait par-dessus des tirs encore en vol se lirait comme une erreur de montage.
+	if _runtime != null:
+		_runtime.music.level_phase = MusicContext.LevelPhase.VICTORY
+		_runtime.music.hostiles_clear = _bullets == null \
+			or _bullets.team_count(BulletManager.Team.ENEMY) == 0
+		_runtime.push_music()
 	print("[Cortege] VICTORY — score %d" % _game_state.score)
 	say(&"survey_end")
 	_game_state.transition_to(GameStateScript.State.VICTORY)
@@ -231,3 +240,21 @@ func _on_game_over() -> void:
 	get_tree().create_timer(1.6).timeout.connect(
 		show_report.bind(MissionReport.Outcome.DEFEAT))
 
+## Pousse l'état musical du survol. ⚠️ IL N'Y EN AVAIT AUCUN, ET ÇA NE S'ENTENDAIT PAS COMME UN
+## SILENCE. Le niveau 2 n'écrivait pas une ligne d'audio : il héritait donc de la piste que le
+## niveau 1 laissait tourner en quittant son rapport de mission, et la jouait pendant les
+## 208 secondes du survol. Le journal de la partie du 2026-08-30 le dit en creux — aucun
+## `[Audio] music X -> Y` entre l'entrée dans le Cortège et sa fin. Un défaut qui ne produit
+## aucune erreur et aucune absence de son est exactement celui qu'on ne cherche jamais.
+##
+## ⚠️ ET C'EST LE TRONÇON QUI FAIT MONTER LA MUSIQUE, PAS UNE HORLOGE. Le survol n'a ni vagues
+## ni boss : sa seule progression est spatiale. La rendre en `wave_progress` réutilise la montée
+## déjà réglée du niveau 1 (Launch → Skirmish → Fleet Battle) sans ajouter un état à
+## `MusicContext.LevelPhase` — dont `test_music_director.gd` garde les valeurs une par une.
+func _push_music(section: int) -> void:
+	if _runtime == null:
+		return
+	var derniere := maxi(TUNING.section_count - 1, 1)
+	_runtime.music.level_phase = MusicContext.LevelPhase.FIGHTER_WAVES
+	_runtime.music.wave_progress = clampf(float(section) / float(derniere), 0.0, 1.0)
+	_runtime.push_music()
