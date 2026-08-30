@@ -186,27 +186,37 @@ func _requested_index() -> int:
 ## `center_calm` assombrit le tiers central pour que le combat s'y lise. Ici le sujet
 ## EST au centre, et garder le réglage de jeu creuserait un trou pile derrière la
 ## coque qu'on présente.
-## Met le fond spatial à l'échelle de la coque présentée.
+## Met le fond spatial à l'échelle de la coque présentée, ET LE RECULE DERRIÈRE ELLE.
 ##
-## ⚠️ IL EXISTE PARCE QUE LE FOND N'EST PAS UN CIEL, C'EST UN DÉCOR DE PROXIMITÉ. Un quad de
-## 90 × 70 posé à z = −4, plus quatre `Sprite3D` entre z = −1 et z = −10 : tout cela a été
-## dimensionné pour une caméra à z = 6 devant un chasseur de 2,46 m, et ça marche pour les onze
-## coques du catalogue, qui tiennent toutes dans une vingtaine de mètres.
+## ⚠️ LE FOND N'EST PAS UN CIEL, C'EST UN DÉCOR DE PROXIMITÉ. Un quad de 90 × 70 posé à z = −4,
+## plus quatre `Sprite3D` de repère entre z = −1 et z = −10 : tout cela a été composé pour une
+## caméra à z = 6 devant un chasseur de 2,46 m, et ça sert très bien les onze coques du catalogue,
+## qui tiennent toutes dans une vingtaine de mètres.
 ##
-## Le Long Cortège fait 500 m. La caméra recule d'autant, et le décor entier se réduit alors à
-## une TACHE de cent cinquante pixels au milieu d'un cadre noir — que j'ai d'abord prise pour un
-## émissif de la coque, puis pour la fusion de ses vingt-deux lampes. Ni l'un ni l'autre : elle
-## ne bougeait avec aucune pose parce qu'elle n'appartenait pas au vaisseau. La fiche du
-## Specter-9, capturée en témoin, a montré la nébuleuse entière là où celle du Cortège était
-## noire — c'est cette comparaison qui a tranché, pas le raisonnement.
+## Le Long Cortège fait 500 m. La caméra recule d'autant, et le décor entier se réduisait alors à
+## une tache au milieu d'un cadre noir.
 ##
-## Le fond suit donc la caméra. La référence est la distance d'origine de la scène (z = 6),
-## celle pour laquelle le décor a été composé.
-func _scale_backdrop() -> void:
+## ⚠️ MAIS LE METTRE À L'ÉCHELLE NE SUFFIT PAS, ET LE FAIRE SEUL EST PIRE QUE LE DÉFAUT D'ORIGINE.
+## Le décor reste centré sur l'origine du plateau — là où vit la coque. À l'échelle ×100, ses
+## repères s'étalent de z = −100 à z = −1000 : ils traversent le vaisseau, et une galaxie se
+## retrouve plantée dans la proue. « On dirait qu'une texture du décor rentre en collision avec
+## les modèles » (opérateur) — ce n'était pas une texture, c'étaient deux volumes au même endroit.
+## Corrigé une fois, ce défaut avait donc été REMPLACÉ par un autre, et il a fallu que l'opérateur
+## le voie pour que je l'apprenne.
+##
+## Le décor est donc aussi RECULÉ, d'assez pour passer derrière le point le plus lointain de la
+## coque. Le recul est nul pour une petite coque : les onze fiches du catalogue ne bougent pas
+## d'un pixel, et c'est la condition pour que cette correction n'en casse pas onze autres.
+func _scale_backdrop(bounds: AABB) -> void:
 	var backdrop := get_node_or_null("SpaceBackdrop") as Node3D
 	if backdrop == null:
 		return
-	backdrop.scale = Vector3.ONE * maxf(_base_distance / BACKDROP_REFERENCE, 1.0)
+	# Le rayon de la coque : ce que le décor doit dépasser pour rester derrière, quelle que soit
+	# la rotation que le joueur lui imprime.
+	var radius := bounds.size.length() * 0.5
+	var push := maxf(radius * 1.2 - BACKDROP_REFERENCE * 0.5, 0.0)
+	backdrop.position.z = -push
+	backdrop.scale = Vector3.ONE * maxf((_base_distance + push) / BACKDROP_REFERENCE, 1.0)
 
 func _tune_backdrop() -> void:
 	var backdrop := get_node_or_null("SpaceBackdrop") as MeshInstance3D
@@ -284,7 +294,7 @@ func _mount(entry: CodexEntry) -> void:
 	_attach_plumes(bounds, entry.camp)
 
 	_base_distance = entry.frame_distance if entry.frame_distance > 0.0 else _framing_distance(bounds)
-	_scale_backdrop()
+	_scale_backdrop(bounds)
 	_datasheet.show_entry(entry, _index, bounds, triangles, fittings)
 	_pop()
 
@@ -349,8 +359,9 @@ func _reframe() -> void:
 	var entry: CodexEntry = ROSTER[_index]
 	if entry.frame_distance > 0.0:
 		return
-	_base_distance = _framing_distance(_hull_bounds(_hull))
-	_scale_backdrop()
+	var bounds := _hull_bounds(_hull)
+	_base_distance = _framing_distance(bounds)
+	_scale_backdrop(bounds)
 
 func _reset_view() -> void:
 	var entry := ROSTER[_index]
