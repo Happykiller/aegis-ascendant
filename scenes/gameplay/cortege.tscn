@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/gameplay/cortege_hardpoints.gd" id="16_hardpoints"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="17_spawner"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_cortege_approach.tres" id="18_approach"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_patrol.tres" id="19_patrol"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
 [ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
@@ -124,6 +125,21 @@ script = ExtResource("16_hardpoints")
 [node name="ApproachSpawner" type="Node" parent="."]
 script = ExtResource("17_spawner")
 wave = ExtResource("18_approach")
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+
+; La patrouille de coque : un SECOND spawner, monte et peuple au meme instant
+; que le premier, avec sa propre horloge. Il tient les 170 secondes qui suivent
+; la reception de proue — celles ou le niveau se jouait a vide.
+;
+; ⚠️ UN SPAWNER SEPARE, ET NON DES ENTREES AJOUTEES A L'APPROCHE. Les deux
+; vagues n'ont pas la meme fin : `wave_cleared` de l'approche marque le passage
+; de relais a la coque, et le noyer dans 170 s de patrouille effacerait le seul
+; repere de rythme du debut de niveau. C'est aussi ce que fait le niveau 1 avec
+; son champ d'asteroides, et la classe n'est pas modifiee d'une ligne.
+[node name="PatrolSpawner" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("19_patrol")
 bullet_manager_path = NodePath("../BulletManager")
 player_path = NodePath("../PlayerFighter")
 

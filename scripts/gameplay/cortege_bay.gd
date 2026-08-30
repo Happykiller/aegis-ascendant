@@ -27,10 +27,44 @@ enum Pass { AHEAD, LIVE, PASSED }
 ## niveau 1. Le plongeur descend droit sur la coque, l'intercepteur coupe en travers — deux
 ## lectures différentes du même pont, ce qui suffit à ce qu'un lâcher ne se joue pas toujours
 ## pareil.
-const RELEASE_SCENES: Array[String] = [
-	"res://scenes/enemies/needle_scout_diver.tscn",
-	"res://scenes/enemies/crescent_interceptor.tscn",
+## Ce qu'un pont lâche, TRONÇON PAR TRONÇON.
+##
+## ⚠️ IL Y AVAIT DEUX COQUES POUR TOUT LE NIVEAU, ET ELLES NE CHANGEAIENT JAMAIS. Sept ponts
+## répartis sur 208 secondes crachaient un plongeur et un intercepteur, du premier au dernier :
+## rien ne montait, et le bestiaire du jeu — treize coques — restait à onze inemployées.
+## « Faut utiliser tout le bestiaire » (opérateur, 2026-08-30, en jouant).
+##
+## ⚠️ ET C'EST LE TRONÇON QUI CHOISIT, PAS LE HASARD. Un tirage donnerait un survol différent à
+## chaque lancement, donc deux captures qu'on ne peut plus comparer — et l'équilibrage d'un
+## survol se lit en comparant deux passages. Le tronçon, lui, dit aussi une progression : on
+## commence par des éclaireurs et on finit par des porteurs.
+##
+## ⚠️ CE QUI SORT D'UN PONT RESTE MOBILE. Une mine d'ancrage lâchée d'un puits resterait figée
+## au-dessus de la coque qui défile, à dériver toute seule : elle appartient à la patrouille,
+## qui arrive par le haut de l'écran (`wave_cortege_patrol.tres`), pas à une usine.
+const RELEASE_BY_SECTION: Array = [
+	["res://scenes/enemies/needle_scout_diver.tscn",
+	 "res://scenes/enemies/crescent_interceptor.tscn"],
+	["res://scenes/enemies/needle_scout_diver.tscn",
+	 "res://scenes/enemies/needle_scout_serpent.tscn",
+	 "res://scenes/enemies/crescent_interceptor.tscn"],
+	["res://scenes/enemies/crescent_interceptor.tscn",
+	 "res://scenes/enemies/leech_drone.tscn",
+	 "res://scenes/enemies/needle_scout_spiral.tscn"],
+	["res://scenes/enemies/leech_drone.tscn",
+	 "res://scenes/enemies/needle_scout_lancer.tscn",
+	 "res://scenes/enemies/needle_scout_raider.tscn"],
+	["res://scenes/enemies/needle_scout_raider.tscn",
+	 "res://scenes/enemies/shield_carrier.tscn",
+	 "res://scenes/enemies/needle_scout_lancer.tscn"],
 ]
+
+## Ce que lâche un pont de ce tronçon. ⚠️ STATIQUE ET PURE : c'est ce qui permet de vérifier
+## l'escalade sans monter un hangar, et donc de la vérifier du tout. Un tronçon au-delà de la
+## table reprend le dernier — le vaisseau a sept sections, le niveau n'en survole que cinq.
+static func releases_for(p_section: int) -> Array:
+	var index := clampi(p_section, 0, RELEASE_BY_SECTION.size() - 1)
+	return RELEASE_BY_SECTION[index]
 
 # --- Le hangar, assemblé depuis le kit de la forge -----------------------------
 #
@@ -199,7 +233,8 @@ func build(bullet_manager: BulletManager, player: PlayerFighterController, vfx: 
 	_bullet_manager = bullet_manager
 	_vfx = vfx
 	for i in tuning.bay_pool_size:
-		var path: String = RELEASE_SCENES[i % RELEASE_SCENES.size()]
+		var choix := releases_for(section)
+		var path: String = choix[i % choix.size()]
 		var packed: PackedScene = load(path) as PackedScene
 		if packed == null:
 			continue
