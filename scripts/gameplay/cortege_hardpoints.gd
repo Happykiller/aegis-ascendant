@@ -24,7 +24,7 @@ signal bay_destroyed(bay: CortegeBay)
 signal node_destroyed(node: CortegeSpineNode)
 ## Un nœud entre dans sa fenêtre — le niveau s'en sert pour l'expliquer, une seule fois.
 signal node_engaged(node: CortegeSpineNode)
-signal section_silenced(section: int, turrets: int)
+signal section_weakened(section: int, turrets: int)
 
 var tuning: CortegeTuning
 
@@ -142,13 +142,17 @@ func bay_count() -> int:
 func node_count() -> int:
 	return _nodes.size()
 
-## Combien de tourelles restent debout dans un tronçon — pour l'annonce faite au joueur.
-func turrets_alive_in(section: int) -> int:
-	var alive := 0
+## Combien de tourelles restent INTACTES dans un tronçon — pour l'annonce faite au joueur.
+##
+## ⚠️ UNE TOURELLE ABÎMÉE N'EST PAS COMPTÉE ICI, ET ELLE EST POURTANT BIEN VIVANTE. Ce compte
+## sert à dire au joueur ce que son nœud vient de lui gagner ; une pièce diminuée est justement
+## ce qu'il a gagné. `is_alive()` répond à l'autre question — celle des dégâts.
+func turrets_intact_in(section: int) -> int:
+	var intact := 0
 	for turret in _turrets:
-		if turret.section == section and turret.is_alive() and not turret.is_silenced():
-			alive += 1
-	return alive
+		if turret.section == section and turret.is_alive() and not turret.is_weakened():
+			intact += 1
+	return intact
 
 func _on_turret_destroyed(turret: CortegeTurret) -> void:
 	turret_destroyed.emit(turret)
@@ -161,20 +165,20 @@ func _on_node_engaged(node: CortegeSpineNode) -> void:
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	node_destroyed.emit(node)
-	if not tuning.node_silences_next_section:
+	if not tuning.node_weakens_next_section:
 		return
-	var target := CortegeSpineNode.silenced_section(node.section, _sections_built)
+	var target := CortegeSpineNode.weakened_section(node.section, _sections_built)
 	if target < 0:
 		# Le dernier nœud du survol ne soulage rien : il n'y a pas de tronçon d'après DANS CE
 		# NIVEAU. Ce n'est pas une erreur — le vaisseau, lui, continue.
 		return
-	var silenced := 0
+	var touched := 0
 	for turret in _turrets:
-		if turret.section == target and turret.is_alive() and not turret.is_silenced():
-			turret.silence()
-			silenced += 1
-	# ⚠️ RIEN À DIRE QUAND IL N'Y A RIEN À ÉTEINDRE. Annoncer « tronçon 02 éteint · 0 tourelles »
+		if turret.section == target and turret.is_alive() and not turret.is_weakened():
+			turret.weaken()
+			touched += 1
+	# ⚠️ RIEN À DIRE QUAND IL N'Y A RIEN À ABÎMER. Annoncer « tronçon 02 · 0 tourelles »
 	# apprendrait au joueur que la mécanique ne sert à rien, au moment exact où elle vient de
 	# lui coûter un effort.
-	if silenced > 0:
-		section_silenced.emit(target, silenced)
+	if touched > 0:
+		section_weakened.emit(target, touched)

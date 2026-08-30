@@ -9,7 +9,7 @@ extends "res://tests/test_case.gd"
 ##      d'une taxe (spec §11.2), et il ne se voit pas sur une capture ;
 ##   2. un pont qui NE TOMBE PAS dans sa fenetre — il serait indestructible en pratique, et le
 ##      joueur croirait mal jouer (le defaut qu'ADR-0024 a paye sur le flux du Leviathan) ;
-##   3. un noeud qui n'eteint RIEN — la troisieme mecanique n'existerait alors pas du tout, et
+##   3. un noeud qui n'abime RIEN — la troisieme mecanique n'existerait alors pas du tout, et
 ##      rien a l'ecran ne le dirait, puisque sa recompense arrive quarante secondes plus tard.
 ##
 ## Les pieces recoivent leur position en parametre (`tick(delta, world)`) : c'est ce qui les
@@ -83,18 +83,34 @@ func test_a_turret_that_has_passed_is_gone_for_good() -> void:
 	turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_true(turret.has_passed(), "elle ne se rallume pas quand la position repasse dans la fenetre")
 
-func test_a_silenced_turret_stays_shootable() -> void:
+func test_a_weakened_turret_stays_shootable() -> void:
 	var turret := _turret()
-	turret.silence()
-	assert_true(turret.is_silenced(), "elle est eteinte")
-	# ⚠️ VIVANTE, DONC ENCORE UNE CIBLE. Faire disparaitre les tourelles qu'un nœud eteint
+	turret.weaken()
+	assert_true(turret.is_weakened(), "elle est abimee")
+	# ⚠️ VIVANTE, DONC ENCORE UNE CIBLE. Faire disparaitre les tourelles qu'un nœud abime
 	# couterait au joueur le score de ce qu'il vient de neutraliser : il apprendrait a ne plus
 	# abattre les nœuds.
-	assert_true(turret.is_alive(), "eteinte n'est pas detruite")
-	var avant := turret.aim()
-	for i in 400:
-		turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
-	assert_eq(turret.aim(), avant, "elle ne pivote meme plus : sa tete est morte")
+	assert_true(turret.is_alive(), "abimee n'est pas detruite")
+
+## ⚠️ CE TEST DIT L'INVERSE DE CELUI QU'IL REMPLACE, ET C'EST LE POINT. Sa version precedente
+## gardait « elle ne pivote meme plus : sa tete est morte ». C'etait vrai, verifie, vert — et
+## c'etait le defaut : mesure en jeu le 2026-08-30, ce silence total neutralisait QUINZE
+## tourelles sur dix-sept avant meme qu'elles soient a portee, et l'operateur a lu des pieces
+## cassees la ou le jeu croyait offrir une recompense. Une piece immobile n'explique rien.
+func test_a_weakened_turret_still_turns_and_still_bites() -> void:
+	var intacte := _turret()
+	var abimee := _turret()
+	abimee.weaken()
+	assert_eq(intacte.turn_slack(), 1.0, "intacte, elle pivote a son taux nominal")
+	assert_eq(intacte.fire_slack(), 1.0, "et elle mord a sa cadence nominale")
+	# Elle est DIMINUEE...
+	assert_true(abimee.turn_slack() < 1.0, "abimee, elle pivote plus lentement")
+	assert_true(abimee.fire_slack() > 1.0, "et elle laisse plus de temps entre deux morsures")
+	# ...mais elle n'est pas ETEINTE. C'est cette seconde moitie qui manquait.
+	assert_true(abimee.turn_slack() > 0.0,
+		"elle pivote ENCORE — une tourelle immobile se lit comme cassee, pas comme abimee")
+	assert_true(abimee.fire_slack() < INF,
+		"et elle tire encore : sans un seul tir, le joueur la croit morte et n'apprend rien")
 
 # --- 2. Le pont tombe dans sa fenetre -----------------------------------------
 
@@ -148,17 +164,17 @@ func test_a_bay_releases_enough_times_to_be_worth_killing() -> void:
 # --- 3. Le noeud eteint le troncon SUIVANT ------------------------------------
 
 func test_a_node_silences_the_next_section_not_its_own() -> void:
-	assert_eq(NodeScript.silenced_section(0, 5), 1,
+	assert_eq(NodeScript.weakened_section(0, 5), 1,
 		"le noeud du troncon 1 eteint le troncon 2")
-	assert_eq(NodeScript.silenced_section(2, 5), 3, "et ainsi de suite")
+	assert_eq(NodeScript.weakened_section(2, 5), 3, "et ainsi de suite")
 	# ⚠️ Eteindre son propre troncon recompenserait apres coup un joueur qui a deja traverse le
 	# danger : la mecanique n'aurait aucun effet sur sa partie.
-	assert_true(NodeScript.silenced_section(1, 5) != 1, "jamais le sien")
+	assert_true(NodeScript.weakened_section(1, 5) != 1, "jamais le sien")
 
 func test_the_last_node_of_the_survey_relieves_nothing() -> void:
 	# Ce n'est pas une erreur : le vaisseau continue, le niveau s'arrete. Le dernier noeud n'a
 	# pas de troncon d'apres DANS CE NIVEAU.
-	assert_eq(NodeScript.silenced_section(4, 5), -1,
+	assert_eq(NodeScript.weakened_section(4, 5), -1,
 		"le dernier noeud ne designe aucun troncon — le code appelant doit le lire, pas planter")
 
 func test_a_node_only_becomes_a_target_inside_its_window() -> void:
@@ -210,13 +226,13 @@ func _two_sections() -> Array[Node3D]:
 		sections.append(section)
 	return sections
 
-func test_killing_a_node_silences_the_next_sections_turrets() -> void:
+func test_killing_a_node_weakens_the_next_sections_turrets() -> void:
 	var manager := track(HardpointsScript.new()) as CortegeHardpoints
 	manager.build(_two_sections(), TUNING, null, null, null)
 	assert_eq(manager.turret_count(), 4, "quatre tourelles montees")
 	assert_eq(manager.node_count(), 2, "deux noeuds montes")
 	var announced := [-1, -1]
-	manager.section_silenced.connect(func(section: int, count: int) -> void:
+	manager.section_weakened.connect(func(section: int, count: int) -> void:
 		announced[0] = section
 		announced[1] = count)
 	# Le noeud du PREMIER troncon tombe.
@@ -224,23 +240,28 @@ func test_killing_a_node_silences_the_next_sections_turrets() -> void:
 	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)
 	assert_false(node.is_alive(), "le noeud est tombe")
-	assert_eq(manager.turrets_alive_in(1), 0,
-		"les deux tourelles du troncon SUIVANT sont eteintes")
-	assert_eq(manager.turrets_alive_in(0), 2,
+	assert_eq(manager.turrets_intact_in(1), 0,
+		"les deux tourelles du troncon SUIVANT sont abimees")
+	assert_eq(manager.turrets_intact_in(0), 2,
 		"celles de son propre troncon ne le sont pas — la recompense serait arrivee apres le danger")
+	# ⚠️ ABIMEES, PAS SUPPRIMEES. Le compte des intactes tombe a zero ; celui des vivantes ne
+	# bouge pas. Confondre les deux est exactement ce qui a vide le niveau.
+	for turret in manager.turrets():
+		if turret.section == 1:
+			assert_true(turret.is_alive(), "une tourelle abimee reste debout et reste une cible")
 	# ⚠️ ET ELLE EST ANNONCEE. Rien a l'ecran ne relie une cause a un effet separes de quarante
 	# secondes : sans le signal, la troisieme mecanique n'existe pas pour le joueur.
 	assert_eq(announced[0], 1, "le troncon eteint est annonce")
 	assert_eq(announced[1], 2, "avec le nombre de tourelles qu'il vient de perdre")
 
-func test_the_last_node_silences_nothing_and_says_nothing() -> void:
+func test_the_last_node_weakens_nothing_and_says_nothing() -> void:
 	var manager := track(HardpointsScript.new()) as CortegeHardpoints
 	manager.build(_two_sections(), TUNING, null, null, null)
 	var heard := [0]
-	manager.section_silenced.connect(func(_s: int, _c: int) -> void: heard[0] += 1)
+	manager.section_weakened.connect(func(_s: int, _c: int) -> void: heard[0] += 1)
 	# ⚠️ Le reglage livre declare CINQ troncons ; le banc n'en monte que deux. Le dernier noeud
 	# du BANC (rang 1) designe donc le troncon 2, qui n'existe pas ici — et le gestionnaire ne
-	# doit ni planter ni annoncer une extinction vide.
+	# doit ni planter ni annoncer un affaiblissement vide.
 	var node := manager.nodes()[1]
 	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)

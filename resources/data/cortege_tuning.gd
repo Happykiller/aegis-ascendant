@@ -120,9 +120,20 @@ extends Resource
 ## Un nœud par tronçon.
 @export var node_visible_span: float = 14.0
 @export var node_health: float = 260.0
-## Ce qu'un nœud abattu éteint : les tourelles du tronçon SUIVANT.
-@export var node_silences_next_section: bool = true
+## Ce qu'un nœud abattu abîme : les tourelles du tronçon SUIVANT.
+@export var node_weakens_next_section: bool = true
 @export var node_score: int = 2600
+
+## Ce qu'il reste à une tourelle abîmée, en part de son réglage nominal.
+##
+## ⚠️ CES DEUX FACTEURS EXISTENT PARCE QUE L'EXTINCTION TOTALE A VIDÉ LE NIVEAU. Mesuré en jeu le
+## 2026-08-30 : les cinq nœuds tombent, chacun éteignait tout son tronçon, et **quinze tourelles
+## sur dix-sept** se taisaient avant d'être à portée. Le joueur y lisait une panne, pas une
+## récompense. Une tourelle abîmée reste donc vivante — elle pivote plus lentement et tire moins
+## souvent — et l'invariant 8 borne les deux valeurs des DEUX côtés : trop haut la récompense ne
+## se sent pas, trop bas on retrouve l'extinction sous un autre nom.
+@export var turret_weakened_turn_factor: float = 0.45
+@export var turret_weakened_interval_factor: float = 2.6
 
 # ==========================================================================
 # Fonctions dérivées — à lire, jamais à recopier dans un test
@@ -301,5 +312,31 @@ func validate() -> PackedStringArray:
 	if turret_range > 0.0 and turret_range < diagonale:
 		errors.append("portée de tourelle %.1f pour une diagonale de plan de %.1f — le télégraphe désignerait une cible que le faisceau n'atteint pas"
 			% [turret_range, diagonale])
+
+	# --- INVARIANT 8 : une tourelle abîmée reste une tourelle ------------
+	# ⚠️ CE N'EST PAS UN GARDE-FOU DE CONFORT. Sa version précédente — l'extinction — a été
+	# mesurée en jeu : 15 tourelles sur 17 neutralisées, un niveau vidé par sa propre
+	# récompense, et une pièce immobile que le joueur a lue comme cassée. Les deux bornes qui
+	# suivent disent la même chose dans les deux sens : l'affaiblissement doit se SENTIR, et il
+	# ne doit jamais redevenir un silence.
+	if turret_weakened_turn_factor <= 0.0:
+		errors.append("turret_weakened_turn_factor doit être > 0 — une tourelle abîmée qui ne pivote plus se lit comme cassée, pas comme abîmée, et c'est le défaut que ce réglage corrige")
+	elif turret_weakened_turn_factor < 0.2:
+		errors.append("turret_weakened_turn_factor = %.2f : à ce point la rotation ne se voit plus, et l'extinction revient sous un autre nom"
+			% turret_weakened_turn_factor)
+	elif turret_weakened_turn_factor >= 1.0:
+		errors.append("turret_weakened_turn_factor = %.2f : abattre un nœud ne changerait rien à la rotation, donc la récompense ne se sentirait pas"
+			% turret_weakened_turn_factor)
+	if turret_weakened_interval_factor <= 1.0:
+		errors.append("turret_weakened_interval_factor doit être > 1 — sinon une tourelle abîmée tire aussi vite qu'intacte")
+	elif turret_burn_interval > 0.0 and turret_visible_span > 0.0 and scroll_speed > 0.0:
+		# Combien de fois une tourelle abîmée mord ENCORE pendant qu'on la survole. En dessous de
+		# deux, le joueur ne la voit jamais tirer et croit qu'elle est morte — ce qui nous
+		# ramène exactement au défaut d'origine.
+		var traversee := turret_visible_span / scroll_speed
+		var morsures := traversee / (turret_burn_interval * turret_weakened_interval_factor)
+		if morsures < 2.0:
+			errors.append("une tourelle abîmée ne tirerait que %.1f fois pendant sa fenêtre (%.1f s) : en dessous de deux morsures le joueur ne la voit jamais tirer et la croit morte"
+				% [morsures, traversee])
 
 	return errors

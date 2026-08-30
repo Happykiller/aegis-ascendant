@@ -79,7 +79,7 @@ func _ready() -> void:
 	_hardpoints.turret_destroyed.connect(_on_turret_destroyed)
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
-	_hardpoints.section_silenced.connect(_on_section_silenced)
+	_hardpoints.section_weakened.connect(_on_section_weakened)
 	_hardpoints.node_engaged.connect(_on_node_engaged)
 	# ⚠️ UNE SECONDE ADOPTION, ET ELLE EST NÉCESSAIRE. Le socle a adopté les unités déjà dans
 	# l'arbre — la réception de proue — mais `build()` vient de monter sept pools de ponts
@@ -151,12 +151,12 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 ## d'un nœud arrive quarante secondes plus tard, sur un tronçon que le joueur n'a pas encore vu :
 ## rien à l'écran ne relie la cause à l'effet. Le niveau doit donc DIRE ce qui vient de se passer,
 ## au moment où ça se passe, et nommer sa conséquence.
-func _on_section_silenced(section: int, turrets: int) -> void:
-	print("[Cortege] tronçon %02d éteint — %d tourelles" % [section + 1, turrets])
+func _on_section_weakened(section: int, turrets: int) -> void:
+	print("[Cortege] tronçon %02d affaibli — %d tourelles" % [section + 1, turrets])
 	if turrets <= 0:
 		return
 	if _hud != null and _hud.has_method("show_banner"):
-		_hud.show_banner("TRONÇON %02d ÉTEINT · %d TOURELLES" % [section + 1, turrets],
+		_hud.show_banner("TRONÇON %02d AFFAIBLI · %d TOURELLES" % [section + 1, turrets],
 			Color("7a4de8"), 2.0)
 
 ## ⚠️ LA JAUGE SE MET À JOUR ICI ET NON DANS LE HUD. Le HUD ne connaît aucun niveau en

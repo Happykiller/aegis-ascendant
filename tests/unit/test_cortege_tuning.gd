@@ -15,6 +15,15 @@ const SHIPPED := "res://resources/levels/long_cortege_tuning.tres"
 func _sound() -> CortegeTuning:
 	return load(SHIPPED).duplicate()
 
+## Le reglage refuse-t-il ce cas, et le dit-il en NOMMANT ce qui cloche ? ⚠️ On cherche le mot,
+## pas seulement un compte d'erreurs : une validation qui refuse pour une AUTRE raison passerait
+## au vert sans rien garder du tout.
+func _says(reglage: CortegeTuning, mot: String) -> bool:
+	for e in reglage.validate():
+		if mot in e:
+			return true
+	return false
+
 func test_the_shipped_resource_validates() -> void:
 	var tuning: CortegeTuning = load(SHIPPED)
 	var errors := tuning.validate()
@@ -129,3 +138,30 @@ func test_a_node_is_sized_against_the_nose_guns_not_the_wing_guns() -> void:
 			% [tuning.node_reference_dps, tuning.reference_dps])
 	assert_true(tuning.node_reachable() < tuning.bay_reachable(),
 		"donc un noeud offre moins de degats atteignables qu'un pont, a fenetre comparable")
+
+## L'invariant 8 — une tourelle abimee reste une tourelle.
+##
+## ⚠️ IL EXISTE PARCE QUE SA VERSION PRECEDENTE A ETE MESUREE EN JEU. Le noeud d'epine ETEIGNAIT
+## le troncon suivant ; le 2026-08-30, sur une partie complete, quinze tourelles sur dix-sept se
+## sont tues avant d'etre a portee et le niveau s'est vide de lui-meme. Ce test garde les deux
+## bords du reglage qui l'a remplace : assez bas pour que la recompense se sente, assez haut
+## pour qu'elle ne redevienne jamais un silence.
+func test_a_weakened_turret_is_still_a_turret() -> void:
+	var tuning := _sound()
+	tuning.turret_weakened_turn_factor = 0.0
+	assert_true(_says(tuning, "turret_weakened_turn_factor"),
+		"une tourelle abimee qui ne pivote plus se lit comme cassee — c'est le defaut corrige")
+	tuning = _sound()
+	tuning.turret_weakened_turn_factor = 1.0
+	assert_true(_says(tuning, "turret_weakened_turn_factor"),
+		"et un facteur de 1 ne retire rien : la recompense ne se sentirait pas")
+	tuning = _sound()
+	tuning.turret_weakened_interval_factor = 1.0
+	assert_true(_says(tuning, "turret_weakened_interval_factor"),
+		"un facteur de 1 ferait tirer une tourelle abimee aussi vite qu'intacte")
+	# ⚠️ ET LE BORD HAUT, celui qui ramenerait le silence sous un autre nom : une tourelle qui ne
+	# mord pas deux fois pendant qu'on la survole n'est jamais vue en train de tirer.
+	tuning = _sound()
+	tuning.turret_weakened_interval_factor = 60.0
+	assert_true(_says(tuning, "morsures"),
+		"trop espacee, elle ne tire jamais dans sa fenetre et le joueur la croit morte")

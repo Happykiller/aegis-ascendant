@@ -104,6 +104,13 @@ const HIT_LIFT := 0.90
 
 const MUZZLE_REACH := 3.50
 
+## L'énergie de l'œil selon l'état. ⚠️ AFFAIBLIE N'EST PAS MORTE, ET ÇA DOIT SE VOIR : une pièce
+## abîmée garde une braise, une pièce abattue est noire. Sans cet écart, le joueur n'a aucun
+## moyen de savoir laquelle des deux il regarde — et donc aucune raison de tirer sur l'une.
+const EYE_SHOT := 3.0
+const EYE_WEAK := 0.55
+const EYE_DEAD := 0.0
+
 signal destroyed(turret: CortegeTurret)
 
 var tuning: CortegeTuning
@@ -131,7 +138,7 @@ var _barrel: Node3D
 var _burn_timer: float = 0.0
 var _health: float = 0.0
 var _alive: bool = true
-var _silenced: bool = false
+var _weakened: bool = false
 ## Où le canon pointe À CET INSTANT. ⚠️ IL SUIT LE JOUEUR, MAIS IL A DU RETARD, et ce retard EST
 ## la difficulté : la tourelle ne rate pas parce qu'elle vise mal, elle rate parce qu'elle
 ## n'arrive pas à suivre. C'est une règle qu'on comprend en une seconde de jeu, sans qu'aucun
@@ -255,18 +262,30 @@ func target() -> BulletTarget:
 func is_engaged() -> bool:
 	return _pass == Pass.LIVE
 
-## Éteinte par le nœud d'épine du tronçon précédent. ⚠️ ELLE RESTE TIRABLE : la récompense du
-## nœud est de supprimer la MENACE, pas de faire disparaître la cible. Sans quoi abattre un nœud
-## coûterait aussi le score des tourelles qu'il éteint, et le joueur apprendrait à ne plus le
+## Affaiblie par le nœud d'épine du tronçon précédent. ⚠️ ELLE RESTE TIRABLE : la récompense du
+## nœud est de réduire la MENACE, pas de faire disparaître la cible. Sans quoi abattre un nœud
+## coûterait aussi le score des tourelles qu'il touche, et le joueur apprendrait à ne plus le
 ## faire.
-func silence() -> void:
-	if _silenced:
+##
+## ⚠️ ELLE AFFAIBLIT, ELLE N'ÉTEINT PAS — ET C'EST UNE CORRECTION, PAS UN CHOIX DE DÉPART. La
+## première version faisait taire toute la pièce : plus de rotation, plus de tir. Mesuré en jeu
+## le 2026-08-30, ça vidait le niveau — **quinze tourelles sur dix-sept** neutralisées avant même
+## d'être à portée, parce que les cinq nœuds tombent et que la chaîne se referme. Le joueur ne
+## lisait pas une récompense, il lisait une panne : « certaines tours canon ne sont pas actives,
+## ne bougent pas, ne tirent pas » (opérateur). Une pièce immobile ne dit RIEN de ce qui l'a
+## rendue inoffensive.
+##
+## Une tourelle affaiblie continue donc de pivoter et de tirer — plus lentement, et son œil
+## reste bas. C'est ce qui rend la récompense LISIBLE : on voit la même pièce, on la voit
+## traîner, et on comprend d'un coup d'œil que quelque chose l'a abîmée.
+func weaken() -> void:
+	if _weakened:
 		return
-	_silenced = true
-	_set_eye(0.25)
+	_weakened = true
+	_set_eye(EYE_WEAK)
 
-func is_silenced() -> bool:
-	return _silenced
+func is_weakened() -> bool:
+	return _weakened
 
 ## Un pas de la tourelle. ⚠️ APPELÉE PAR LE GESTIONNAIRE, pas par `_process`. Vingt-neuf points
 ## d'ancrage qui traitent chacun leur propre image, c'est vingt-neuf appels de script par trame
@@ -303,7 +322,7 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 				return
 	if _target != null:
 		_target.position = here
-	if not _alive or _silenced:
+	if not _alive:
 		return
 	# ⚠️ ELLE CHERCHE SON AXE AVANT DE POUVOIR TIRER, et c'est ce qui remplace le télégraphe. Sa
 	# fenêtre de tir fait 20 unités ; elle commence à se tourner vers le joueur sur le DOUBLE.
@@ -327,12 +346,12 @@ func _run_fire(delta: float, here: Vector2) -> void:
 	_burn_timer -= delta
 	if _burn_timer > 0.0 or _bullet_manager == null:
 		return
-	_burn_timer = tuning.turret_burn_interval
+	_burn_timer = tuning.turret_burn_interval * fire_slack()
 	# ⚠️ LA BALLE PART DE LA BOUCHE, pas du centre de la coupole : sinon elle naît dans le socle
 	# et le joueur voit un tir sortir du décor.
 	_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
 		here + _aim * MUZZLE_REACH, _aim, SHOT)
-	_set_eye(3.0)
+	_set_eye(EYE_SHOT)
 
 
 ## Fait pivoter le canon vers le joueur, sans jamais dépasser sa vitesse de rotation.
@@ -344,7 +363,23 @@ func _run_fire(delta: float, here: Vector2) -> void:
 func _turn_toward(delta: float, here: Vector2) -> void:
 	var wanted := _direction_to_player(here).angle()
 	_aim = Vector2.from_angle(turn_step(_aim.angle(), wanted,
-		tuning.turret_turn_rate_deg, delta))
+		tuning.turret_turn_rate_deg * turn_slack(), delta))
+
+## Ce que l'affaiblissement retire à la rotation. ⚠️ IL NE PEUT PAS ALLER À ZÉRO : c'est la
+## rotation qui dit au joueur que la pièce est vivante mais diminuée. `CortegeTuning.validate()`
+## borne le facteur des deux côtés, pour cette raison exactement.
+##
+## ⚠️ PUBLIQUE PARCE QUE C'EST LA SEULE PORTE OÙ L'ÉTAT SE LIT SANS JOUEUR. Vérifier la rotation
+## sur la pièce montée demanderait un `PlayerFighterController` — sans lui la tourelle vise
+## `Vector2.DOWN` et ne bouge pas, donc un test « elle pivote encore » passerait au vert pour la
+## mauvaise raison. Ici il n'y a que l'état et deux nombres.
+func turn_slack() -> float:
+	return tuning.turret_weakened_turn_factor if _weakened else 1.0
+
+## Ce que l'affaiblissement ajoute au délai entre deux tirs. Un multiplicateur ≥ 1 : la tourelle
+## tire toujours, elle tire moins.
+func fire_slack() -> float:
+	return tuning.turret_weakened_interval_factor if _weakened else 1.0
 
 
 ## Oriente le canon sur l'axe visé. ⚠️ Le canon est enfant du marqueur, qui défile : on lui
@@ -376,7 +411,7 @@ func _take_damage(damage: float) -> void:
 	if _health > 0.0:
 		return
 	_alive = false
-	_set_eye(0.0)
+	_set_eye(EYE_DEAD)
 	if _vfx != null:
 		_vfx.spawn_explosion(_world, VfxExplosion.Category.MEDIUM)
 	_retire()

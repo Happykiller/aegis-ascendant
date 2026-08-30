@@ -335,6 +335,6 @@ func _retire() -> void:
 ## récompenserait après coup un joueur qui a déjà traversé le danger, et ne changerait donc
 ## rien à sa partie. Renvoie -1 quand il n'y a plus de suivant — le dernier nœud du survol ne
 ## soulage rien, et c'est une information de conception, pas un cas d'erreur.
-static func silenced_section(section_index: int, section_count: int) -> int:
+static func weakened_section(section_index: int, section_count: int) -> int:
 	var next := section_index + 1
 	return next if next < section_count else -1
