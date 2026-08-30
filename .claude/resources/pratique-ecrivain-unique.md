@@ -211,3 +211,18 @@ pas appartient à quelqu'un d'autre.
 ⚠️ Le contenu final était correct — la forge a repoussé sa version. Ce qui reste est **l'historique**,
 qui attribue à un commit de VFX un fichier qui n'a rien à y faire. Un `git log --follow` sur ce
 script mènera un jour quelqu'un à un commit qui ne parle pas de lui.
+
+## Ne pas déployer pendant que l'opérateur joue (30/08/2026)
+
+`deploy-win.sh` **écrase** `C:\tmp\aegis-ascendant\` avant de lancer. Fait pendant qu'une partie
+est en cours, il écrase le jeu **sous les pieds du joueur** : la session de l'opérateur s'est
+terminée en **code 255**, fenêtre fermée en pleine partie, sans qu'aucun des deux côtés ne
+comprenne d'où ça venait avant de lire le journal.
+
+Le cas est le symétrique de celui de `C:\tmp` non cloisonné plus haut : là on craignait l'autre
+agent, ici c'est **l'opérateur lui-même** qu'on interrompt — et il ne pense pas plus que nous à
+faire le lien entre « ma fenêtre s'est fermée » et « l'agent construit ».
+
+**La règle** : tant qu'une fenêtre de jeu lancée pour l'opérateur est ouverte, **aucun
+`export-win.sh` ni `deploy-win.sh`**. La notification de fin de tâche du `play.sh` en arrière-plan
+est le signal d'autorisation — pas l'absence de nouvelles.

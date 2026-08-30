@@ -251,3 +251,63 @@ sont **déjà masqués** : elle traversait du vide. Capture entièrement noire, 
 
 ⚠️ **Un PNG de 15 Ko à 1920×1080 est presque uniforme.** La taille du fichier est le test le
 moins cher qui soit : elle a signalé l'écran noir avant même l'ouverture de l'image.
+
+## ⚠️ Le TÉMOIN : capturer un AUTRE sujet avant de théoriser (30/08/2026)
+
+Une tache blanche-cyan est apparue au milieu de la fiche du Long Cortège, dans le bestiaire. J'ai
+proposé **trois causes successives, toutes fausses**, chacune plausible et chacune coûtant un
+cycle export + déploiement + capture :
+
+1. un émissif de la coque — démenti en lisant le binaire : un seul émissif, magenta ;
+2. la fusion des vingt-deux émissifs des pièces montées à l'échelle de la fiche — démenti en les
+   baissant à 0,22 : la tache n'a pas bougé d'un pixel ;
+3. le halo de l'environnement en mode écran — démenti par une capture `--no-glow` : la coque
+   n'est translucide dans aucun des deux.
+
+**La réponse est venue en trente secondes**, en capturant une **autre fiche** (`--codex-entry=0`,
+le Specter-9) : elle portait la nébuleuse entière là où celle du Cortège était noire. Le fond
+n'était pas un ciel mais un décor de proximité, et la caméra reculée pour une coque de 500 m le
+réduisait à une tache au centre du cadre.
+
+**La règle** : quand un artefact apparaît sur UN sujet, la première capture suivante doit être un
+**autre sujet**, pas une hypothèse. Un témoin sépare en un coup « c'est cette pièce » de « c'est
+l'écran ». Raisonner d'abord coûte un cycle par hypothèse, et les hypothèses plausibles sont
+nombreuses.
+
+⚠️ **Corollaire** : une correction posée sur une cause fausse ne devient pas inoffensive parce
+qu'elle est verte. Les deux correctifs d'ombre écrits ici (étendre la portée, puis la couper) ont
+été **retirés** — les garder aurait laissé dans le code deux garde-fous qui prétendent réparer ce
+qu'ils n'ont jamais réparé, et le prochain lecteur aurait cherché ailleurs.
+
+⚠️ **Et une correction d'échelle sur une composition dont on n'a pas lu TOUS les décalages
+DÉPLACE le défaut au lieu de le fermer.** Trois corrections successives sur le même fond : réduit
+à une tache → décor qui traverse la coque (repères `Landmarks` à z = +4, projetés devant le
+vaisseau à l'échelle ×100) → décor posé devant elle. À chaque fois c'est l'opérateur qui l'a vu.
+La sortie n'a pas été une quatrième formule mais un **changement d'approche** : ramener la pièce
+au gabarit du présentoir plutôt qu'adapter le présentoir à la pièce.
+
+## ⚠️ Un `grep` dans le tuyau avale une porte ROUGE (30/08/2026)
+
+Écrit pour raccourcir la sortie :
+
+```bash
+./scripts/check.sh 2>&1 | grep -E "ALL GREEN|FAILED" | tail -2 && ./scripts/export-win.sh debug
+```
+
+Le code de retour d'un tuyau est celui de sa **dernière** commande. `check.sh` était **rouge**
+(une erreur de compilation dans `codex_screen.gd`), `tail` a rendu 0, le `&&` a vu vert, l'export
+a tourné **sur les sources précédentes** — et j'ai commenté la capture obtenue comme si elle
+prouvait une correction. Elle était identique à la précédente **au MD5 près**.
+
+**La règle** : ne jamais enchaîner une construction derrière une porte de qualité filtrée.
+
+```bash
+set -o pipefail                       # ou, plus sûr :
+./scripts/check.sh > /tmp/chk.log 2>&1 || { echo "CHECK ROUGE"; tail -5 /tmp/chk.log; exit 1; }
+```
+
+Et **comparer les MD5** des captures successives : deux images identiques à l'octet près après un
+changement de code signifient que le binaire n'a pas changé, pas que la correction est sans effet.
+⚠️ L'inverse n'est pas vrai : une fiche de chasseur est **animée**, ses pixels diffèrent à chaque
+capture — un MD5 différent ne prouve rien du tout. On compare les MD5 pour détecter l'IDENTIQUE,
+jamais pour valider une différence.
