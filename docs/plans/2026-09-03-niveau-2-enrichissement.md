@@ -20,28 +20,35 @@ et le tableau ci-dessous dit lequel — pour qu'aucun lot ne repaie ce qui est d
 
 ## Traçabilité des 20 consignes
 
+> **État au 2026-09-03 — les quatre lots sont livrés et le plan est éteint.** A, B et C commités
+> (`1fa3f45` → `be27250`), **D tranché en playtest** : survol complet des cinq tronçons, victoire,
+> score 77130, zéro erreur, et l'opérateur valide le rythme **sans retouche**. Deux consignes n'ont
+> pas été exécutées telles quelles et c'est **assumé, pas oublié** : la 11 est chiffrée non faisable
+> (§C2), la 12 est arbitrée contre au profit de la 16 (§C1). L'archivage du plan reste une décision
+> de l'opérateur.
+
 | # | Consigne | Statut | Lot |
 |---|---|---|---|
 | 1 | Ne pas refaire le vaisseau depuis zéro | **règle du plan**, pas un lot | — |
-| 2 | Casser les deux bords parallèles (±15-25 %) | ❌ à faire | **B** |
-| 3 | Créer des secteurs visuellement différents | ❌ à faire | **C** |
-| 4 | Terrasses de coque, plusieurs niveaux | ⚠️ **à faire sous contrainte dure** (§C3) | **B** |
+| 2 | Casser les deux bords parallèles (±15-25 %) | ✅ **livré** — lot B1 | **B** |
+| 3 | Créer des secteurs visuellement différents | ✅ **livré** — contour, asymétrie, fosses, passerelle et Ambry donnent son identité à chaque tronçon (arbitré en C1 : les bastions, qui n'ajoutaient pas de lecture, sont retirés) | **C** |
+| 4 | Terrasses de coque, plusieurs niveaux | ✅ **livré sous la contrainte** — quatre fosses creusées dans le bordé (lot B3) ; la hauteur, elle, reste plafonnée à 1,10 m au-dessus du pont intérieur | **B** |
 | 5 | Conserver une zone de circulation claire | **garde-fou**, vérifié au test | — |
 | 6 | Artère = tranchée technique, pas ligne de terrain | ✅ **livré** — lot 3 de la refonte : canal enfoncé de 0,56 m, rebords à \|x\| ≤ 1,70, plus de crête centrale | — |
-| 7 | Trois échelles de défense | ❌ à faire | **A** |
-| 8 | Hiérarchie grosse / moyenne / petite | ❌ à faire | **A** |
-| 9 | Petites tourelles en batteries (clusters) | ❌ à faire | **A** |
+| 7 | Trois échelles de défense | ✅ **livré** — lot A | **A** |
+| 8 | Hiérarchie grosse / moyenne / petite | ✅ **livré** — lot A | **A** |
+| 9 | Petites tourelles en batteries (clusters) | ✅ **livré** — 21 tourelles légères en 7 batteries | **A** |
 | 10 | Ponts d'envol = cavités reconnaissables | ✅ **livré** — lot 1 de la refonte : vraies ouvertures, peau générée trouée, appareil au fond | — |
-| 11 | Varier la disposition des ponts d'envol | ❌ à faire | **C** |
-| 12 | Gros volumes pour fabriquer le level design | ❌ à faire | **C** |
-| 13 | Ponts transversaux ponctuels | ❌ à faire | **C** |
-| 14 | Asymétrie obligatoire | ❌ à faire | **B** |
-| 15 | Éviter la répétition procédurale visible | ⚠️ **plafonné** (§C2) | **D** |
-| 16 | Laisser de grandes surfaces calmes | ⚠️ **plafonné à 50,3 %** (§C2) | **D** |
+| 11 | Varier la disposition des ponts d'envol | ⛔ **non faisable à coût raisonnable, chiffré en C2** — une ouverture est générée dans la peau par indices d'anneau et points de profil ; la tourner demanderait de refaire le mécanisme de `BRIEF-0091`. La **latéralité** est déjà variée : 4 bâbord, 3 tribord | **C** |
+| 12 | Gros volumes pour fabriquer le level design | ⚖️ **arbitré contre, en C1** — trois bastions construits, mesurés et **retirés** : 33 m de bordé pour aucune lecture nouvelle, et la part calme repassait sous son point de départ. La consigne 16, non encore satisfaite, l'emporte | **C** |
+| 13 | Ponts transversaux ponctuels | ✅ **livré** — une passerelle enjambe le vaisseau, **un seul** élément et c'est le but | **C** |
+| 14 | Asymétrie obligatoire | ✅ **livré** — quatre zones asymétriques | **B** |
+| 15 | Éviter la répétition procédurale visible | ✅ **jugé au playtest** (2026-09-03) — l'opérateur valide sans retouche | **D** |
+| 16 | Laisser de grandes surfaces calmes | ✅ **livré à 261,0 m / 52,2 %**, validé au playtest. ⚠️ Le 58,6 % annoncé au lot B4 était faux : le compte ignorait fosses, passerelle et bastions | **D** |
 | 17 | Limiter le magenta | ✅ **livré** — lot 4 : palette 80/15/5, facette extérieure dévioletée | — |
 | 18 | Priorité absolue aux silhouettes (test N&B) | ✅ **c'est déjà LE test d'acceptation** de la refonte, repris ici tel quel | — |
 | 19 | Rester techniquement économique (primitives) | ✅ **règle en vigueur** : ≤ 6-8 primitives par structure | — |
-| 20 | Contour extérieur qui varie nettement | ❌ à faire — **c'est le critère de sortie du lot B** | **B** |
+| 20 | Contour extérieur qui varie nettement | ✅ **livré** — sept événements de contour, critère de sortie du lot B tenu | **B** |
 
 ---
 

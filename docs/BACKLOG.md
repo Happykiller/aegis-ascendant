@@ -480,6 +480,22 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 
 ## ⚠️ Niveau 2 — ce qui reste après la refonte de géométrie (2026-08-29)
 
+> **Joué le 2026-09-03**, survol complet des cinq tronçons, victoire, score 77130, zéro erreur.
+> L'opérateur a validé le rythme de l'enrichissement géométrique (lots A à D) **sans retouche** :
+> « moi c'est ok ». C'est la nature de preuve qu'attend le **lot 6** ci-dessous — le déblocage
+> reste sa décision, pas une déduction de session.
+
+- [ ] **Donner un numéro de série aux ponts d'envol**, comme en portent déjà les tourelles
+      (`turret.serial`). `[Cortege] pont d'envol détruit — tronçon 03` s'imprime **deux fois**
+      dans un survol normal, puisque les stations `BAYS` 224,6 et 290,0 sont toutes deux dans le
+      tronçon 03 : la chronologie se lit comme une double émission de signal. Coût déjà payé une
+      fois — une investigation complète pour un comportement correct (2026-09-03). Trois lignes
+      dans `cortege_bay.gd` / `cortege_root.gd`.
+- [ ] **Horodater le journal du survol.** Rien n'y porte de temps : l'ordre des événements est
+      sûr, les **durées** ne s'en tirent pas — ni le respect des 208 s annoncées, ni la longueur
+      réelle d'une plage de calme à l'écran. C'est ce qui a empêché de mesurer le rythme du
+      niveau autrement qu'au ressenti de l'opérateur (lot D, 2026-09-03).
+
 - [ ] **Mesurer le coût GPU du survol sur la Quadro T1000.** Toutes les mesures de la session
       portent la ligne Vulkan **RTX 4080** : 0,93 à 1,71 ms par image. La machine qui CONTRAINT
       est l'autre, et le rapport entre les deux est de **×14** — ce qui placerait le niveau entre
