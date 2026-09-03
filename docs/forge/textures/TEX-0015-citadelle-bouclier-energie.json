@@ -1,0 +1,199 @@
+{
+  "id": "TEX-0015",
+  "slug": "citadelle-bouclier-energie",
+  "schema_version": "1.0",
+  "date": "2026-09-03",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Le PANNEAU de bouclier de la Citadelle de Défense — la surface d'énergie qui ferme le passage central et que le joueur doit apprendre à ne PAS attaquer. Sert aussi, à une autre échelle UV, la peau du noyau qu'elle protège.",
+    "game_context": "Niveau 2, séquence de mi-parcours. Le bouclier couvre l'ouverture centrale (8 à 10 m de large) tant que les deux relais latéraux vivent. Il encaisse les tirs sans perdre de vie : chaque impact doit se voir SUR LUI. Il tombe d'un coup à la destruction du second relais.",
+    "priority": "⚠️ C'EST LA SEULE CARTE QUE LES CINQ EXISTANTES NE PEUVENT PAS SERVIR. `TEX-0013` (artère) est bâtie sur la règle inverse — « au moins la moitié de l'aire SOMBRE », « pas d'aplat lumineux plein cadre » — parce qu'elle est un conduit étroit. Un bouclier est une SURFACE tenue, pleine et translucide. Employer TEX-0013 ici donnerait un mur de canaux, c'est-à-dire un décor, pas une barrière."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "color",
+    "alpha_usage": "none",
+    "output_usage": "albedo_and_emission"
+  },
+  "world_scale": {
+    "texture_width_m": 5.0,
+    "texture_height_m": 5.0,
+    "reference_element": "Le panneau central fait 8 à 10 m de large : la tuile s'y répète deux fois. La maille structurelle du bouclier doit donc faire 40 à 80 cm au monde — lisible à 23 px/m, soit 9 à 18 px par maille.",
+    "confidence": "decided",
+    "rationale": "DÉCIDÉE et non mesurée : la géométrie de la citadelle n'existe pas encore (LOT 2 du plan). 5 m reprend l'échelle des cartes de coque livrées, ce qui garantit qu'un raccord bouclier/coque ne montrera pas deux densités de détail. ⚠️ À REMESURER au LOT 2 : si la largeur retenue s'écarte de 8-10 m, c'est l'échelle UV qui bouge, pas la carte."
+  },
+  "composition": {
+    "main_elements": [
+      "une maille hexagonale ou losangée régulière, fine, qui structure toute la surface",
+      "des lignes de force plus vives qui parcourent la maille sans la contredire",
+      "des nœuds légèrement plus lumineux aux croisements principaux",
+      "un grain de diffusion très fin entre les lignes, jamais un aplat lisse"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "La maille traverse les quatre bords et s'y raccorde exactement : deux tuiles côte à côte ne doivent montrer ni décalage de maille ni ligne de couture.",
+    "empty_space": "⚠️ ICI L'IMAGE EST TENUE, ET C'EST L'INVERSE DE `TEX-0013`. Aucun grand vide sombre : un bouclier qui laisse voir des trous n'arrête rien. Mais la surface RESPIRE — entre les lignes, la valeur descend, sans jamais devenir noire. Vise 40 à 60 % de l'aire au-dessus de la mi-luminance."
+  },
+  "visual": {
+    "subject": "Champ de force vu de face : maille énergétique translucide, lignes de force, nœuds de croisement.",
+    "materials": [
+      "énergie contenue",
+      "verre trempé traversé de courant"
+    ],
+    "details": [
+      "maille régulière",
+      "lignes de force d'intensités inégales",
+      "nœuds aux croisements",
+      "très légères irrégularités de champ, comme une interférence"
+    ],
+    "style": "barrière d'énergie industrielle, dense et stable — pas une aurore, pas de la fumée, pas un plasma qui bout",
+    "color_palette": {
+      "dominant": [
+        "magenta #D93D9C",
+        "rose vif #FF6EC7"
+      ],
+      "secondary": [
+        "violet #7A4DE8 dans les creux de maille",
+        "blanc rosé au cœur des lignes de force"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "orange",
+        "vert",
+        "jaune",
+        "bleu franc",
+        "arc-en-ciel",
+        "dégradé multicolore",
+        "aplat uni sans structure",
+        "fumée",
+        "nuage",
+        "flamme",
+        "éclair ramifié",
+        "rouille",
+        "métal apparent"
+      ]
+    },
+    "surface_character": "⚠️ ELLE DOIT SE LIRE COMME UNE SURFACE, PAS COMME UNE LUMIÈRE. Le joueur doit comprendre en une seconde qu'il y a là quelque chose de SOLIDE et d'infranchissable. La maille est ce qui le dit : une lueur sans structure lirait comme un effet, et on tire à travers les effets.",
+    "age_and_damage": "Aucun. Un bouclier n'a pas d'histoire : il est actif ou il n'est pas. Ni rayure, ni salissure, ni dépôt."
+  },
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "Ce n'est pas une carte de données : c'est une couleur et une émission. Les états (stable, instable, surcharge) sont pilotés PAR LE MOTEUR sur cette même carte — intensité, défilement, pulsation.",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage externe cuit. La lumière propre de la maille EST le sujet, mais elle reste CONTENUE dans les lignes : pas de halo peint, le moteur le pose.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "une maille structurelle visible sur toute la surface — c'est elle qui dit « solide »",
+      "un tuilage parfait sur les quatre bords",
+      "⚠️ de la valeur dans les creux : la maille se détache d'un fond qui vit, jamais du noir"
+    ],
+    "must_not_have": [
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste",
+      "aplat uni",
+      "halo peint",
+      "dégradé du centre vers les bords",
+      "fumée",
+      "nuage",
+      "flamme",
+      "éclair ramifié",
+      "trou dans le champ",
+      "objet derrière le bouclier",
+      "reflet du vaisseau",
+      "étoiles",
+      "espace"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais à l'œil",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit"
+    ],
+    "readability_requirements": [
+      "à 23 px/m, une maille de 40 à 80 cm fait 9 à 18 px : elle doit s'y compter, sans moirer",
+      "⚠️ ET SE DISTINGUER DES TIRS ENNEMIS, QUI SONT MAGENTA EUX AUSSI. C'est la structure qui les sépare, pas la teinte : un tir est un point net qui bouge, le bouclier est une maille fixe. Vérifié en capture, écran chargé."
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Nouveau matériau `AA_Shield_Field` du panneau central de la Citadelle, et de la peau du noyau à une échelle UV plus serrée.",
+    "shader_usage": "StandardMaterial3D, `emission_enabled`, `transparency` ALPHA. La carte sert d'`albedo_texture` ET d'`emission_texture`. L'opacité et l'énergie d'émission sont PILOTÉES PAR L'ÉTAT (stable / instable / surcharge) — la carte ne change pas.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/citadel_shield_1024.png --out assets/imported/textures/cortege --check-tiling",
+    "additional_notes": "⚠️ AUCUN ÉTAT N'EST PEINT DANS LA CARTE. Les quatre états visuels (§15 du brief) sont du moteur : une carte par état ferait quatre choses à maintenir et trois à oublier."
+  },
+  "x_delivery": {
+    "status": "à générer — opérateur (ADR-0028, la texture est la voie de l'opérateur)",
+    "priority": "obligatoire pour le LOT 3 du plan ; le LOT 1 se joue sans elle",
+    "source_path": "assets/source/textures/cortege/citadel_shield_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "citadel_shield_nrm.png",
+      "citadel_shield_rough.png",
+      "citadel_shield_ao.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD : la tuile est pleine cadre, ses quatre coins portent de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper.",
+      "mesurer la part au-dessus de la mi-luminance : entre 40 et 60 %. Sous 40 le bouclier a des trous, au-dessus il devient un aplat.",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK — jamais l'œil",
+      "⚠️ puis EN JEU, écran chargé, tirs ennemis à l'écran (ADR-0006) : la maille doit rester distincte des projectiles magenta. C'est la seule vérification qui peut refuser la carte."
+    ],
+    "provenance_csv_line": "citadel_shield,assets/source/textures/cortege/citadel_shield_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,2026-09-03,docs/forge/textures/TEX-0015-citadelle-bouclier-energie.json,,\"Panneau de bouclier de la Citadelle de Defense (niveau 2) et peau du noyau. Materiau AA_Shield_Field. Plan docs/plans/2026-09-03-citadelle-de-defense-midpoint.md.\""
+  }
+}

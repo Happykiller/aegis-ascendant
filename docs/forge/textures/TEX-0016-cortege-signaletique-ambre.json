@@ -1,0 +1,201 @@
+{
+  "id": "TEX-0016",
+  "slug": "cortege-signaletique-ambre",
+  "schema_version": "1.0",
+  "date": "2026-09-03",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "L'ATLAS DE SIGNALISATION du Long Cortège : cabochons, filets courts et seuils ambre `#FFA92B` posés au ras du pont, comme les LED de balisage d'une installation technique. Sert la Citadelle en premier, puis tout le vaisseau.",
+    "game_context": "Niveau 2. Jusqu'ici le niveau n'a qu'UNE couleur fonctionnelle, le magenta de l'énergie. L'ambre ajoute un second registre : le repère technique — bord de piste, seuil de hangar, circulation, jalon de plateforme.",
+    "priority": "⚠️ ELLE DIT « REPÈRE », JAMAIS « CIBLE » — c'est la clause 3 d'ADR-0043. Le magenta signale une fonction, donc quelque chose à détruire. Si l'ambre lui ressemble en usage, le joueur apprend à tirer sur du décor et perd son temps à chaque balisage."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "color",
+    "alpha_usage": "none",
+    "output_usage": "albedo_and_emission"
+  },
+  "world_scale": {
+    "texture_width_m": 5.0,
+    "texture_height_m": 5.0,
+    "reference_element": "Un cabochon fait 12 à 20 cm au monde, un filet de seuil 15 cm de large sur 1 à 2 m. À 5 m par tuile et 23 px/m, un cabochon fait 3 à 5 px à l'écran : un point, et c'est voulu.",
+    "confidence": "measured",
+    "rationale": "MESURÉE sur le dépliage déjà livré : les cartes de coque du Cortège sont toutes à 5 m par tuile (0,200 tuile/m). Une signalétique à une autre échelle montrerait deux densités de détail sur la même surface."
+  },
+  "composition": {
+    "main_elements": [
+      "des cabochons ronds ou carrés ambre, isolés, alignés par deux ou trois",
+      "de courts filets lumineux le long d'arêtes, jamais continus d'un bord à l'autre",
+      "quelques doubles points marquant un seuil",
+      "de larges plages de métal sombre NON éclairé entre les groupes"
+    ],
+    "density": "low",
+    "distribution": "clustered",
+    "edge_behavior": "Le métal de fond se raccorde exactement sur les quatre bords. ⚠️ Aucun cabochon ne doit être coupé par un bord : une LED tranchée en deux se lit comme un défaut de tuilage, pas comme un motif.",
+    "empty_space": "⚠️ C'EST LA CONTRAINTE PRINCIPALE, ET ELLE EST CHIFFRÉE : au plus 3 % de l'aire est ambre. Le reste est du métal sombre. Une signalétique dense n'est plus une signalétique — c'est un aplat orange, et ADR-0043 clause 2 le refuse explicitement."
+  },
+  "visual": {
+    "subject": "Pont technique vu de dessus : métal sombre parcouru de petites diodes de balisage ambre.",
+    "materials": [
+      "métal anthracite mat",
+      "verre de cabochon",
+      "joints sombres"
+    ],
+    "details": [
+      "cabochons ambre d'intensités très légèrement inégales",
+      "courts filets de seuil",
+      "logement métallique autour de chaque diode",
+      "quelques diodes ÉTEINTES, sombres"
+    ],
+    "style": "balisage d'installation technique — piste, quai, seuil. Sobre, fonctionnel, régulier. Pas une guirlande, pas une enseigne, pas un panneau d'affichage.",
+    "color_palette": {
+      "dominant": [
+        "anthracite #24252B",
+        "gris métal sombre"
+      ],
+      "secondary": [
+        "ambre #FFA92B pour les diodes UNIQUEMENT",
+        "blanc chaud au cœur des plus vives"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "magenta",
+        "violet",
+        "rose",
+        "vert",
+        "bleu",
+        "rouge",
+        "aplat orange",
+        "grande surface lumineuse",
+        "dégradé multicolore",
+        "néon continu",
+        "guirlande",
+        "rouille",
+        "peinture écaillée"
+      ]
+    },
+    "surface_character": "⚠️ L'AMBRE EST PONCTUEL, LE MÉTAL EST LE SUJET. Une diode éclaire son logement sur deux ou trois centimètres et rien de plus : elle ne baigne pas le pont. Le halo est le travail du moteur, pas de l'image.",
+    "age_and_damage": "Installation en service : quelques diodes mortes, des logements ternis, de la poussière dans les rainures. Aucune rouille."
+  },
+  "data_semantics": {
+    "enabled": false,
+    "meaning": "Pas une carte de données : albédo et émission. Le moteur module l'intensité, jamais le placement.",
+    "black": "",
+    "gray": "",
+    "white": ""
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage externe cuit. Seules les diodes émettent, et elles émettent PEU.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ au plus 3 % de l'aire en ambre — mesuré, pas estimé",
+      "de larges plages de métal entièrement sombres",
+      "quelques diodes éteintes : une installation dont 100 % des voyants marchent n'a pas d'âge",
+      "un tuilage parfait, aucun cabochon coupé par un bord"
+    ],
+    "must_not_have": [
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste",
+      "aplat orange",
+      "grande surface lumineuse",
+      "néon continu",
+      "guirlande",
+      "dégradé",
+      "halo peint",
+      "magenta",
+      "violet",
+      "rose",
+      "texte",
+      "numéro"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais à l'œil",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "aucun cabochon à cheval sur un bord"
+    ],
+    "readability_requirements": [
+      "à 23 px/m, un cabochon fait 3 à 5 px : un POINT net, jamais une tache floue",
+      "⚠️ ET IL NE DOIT PAS SE LIRE COMME UN TIR ENNEMI. L'ambre est à 26,7° de teinte du corail #FF5A3D (ADR-0043) : l'écart est réel mais mince. Ce qui les sépare à l'écran est que la diode NE BOUGE PAS et qu'elle est petite. Toute diode plus grosse ou plus vive rapproche les deux — vérifié en capture, écran chargé."
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Nouveau matériau `AA_Signal_Amber`, posé en petites facettes sur les plateformes de la Citadelle (LOT 3), puis étendu au reste du Cortège si la capture le valide (ADR-0043, Portée).",
+    "shader_usage": "StandardMaterial3D, `emission_enabled`, énergie d'émission BASSE — plus basse que l'artère magenta : un repère ne dispute pas la vedette à une fonction.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/cortege_signal_amber_1024.png --out assets/imported/textures/cortege --check-tiling",
+    "additional_notes": "⚠️ CETTE CARTE NE RÉGÉNÈRE PAS TEX-0010 À TEX-0014, qui gardent `forbidden: \"orange\"` : leurs surfaces ne sont pas de la signalétique (ADR-0043). Seule celle-ci a l'ambre pour sujet."
+  },
+  "x_delivery": {
+    "status": "à générer — opérateur (ADR-0028)",
+    "priority": "utile au LOT 3 ; le LOT 1 et le LOT 2 se jouent sans elle",
+    "source_path": "assets/source/textures/cortege/cortege_signal_amber_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "cortege_signal_amber_nrm.png",
+      "cortege_signal_amber_rough.png",
+      "cortege_signal_amber_ao.png"
+    ],
+    "verify": [
+      "⚠️ MESURER LA PART AMBRE : au plus 3 % de l'aire au-dessus de la mi-luminance en teinte 30-45°. Au-delà, renvoyer — c'est la clause 2 d'ADR-0043, et elle est chiffrée pour ne pas se juger à l'œil.",
+      "vérifier qu'aucun cabochon n'est coupé par un bord",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK",
+      "⚠️ puis EN JEU, écran chargé, tirs ennemis présents (ADR-0006) : une diode ne doit jamais se prendre pour un projectile. C'est le test qui peut refuser ADR-0043 lui-même."
+    ],
+    "provenance_csv_line": "cortege_signal_amber,assets/source/textures/cortege/cortege_signal_amber_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,2026-09-03,docs/forge/textures/TEX-0016-cortege-signaletique-ambre.json,,\"Atlas de signalisation ambre #FFA92B du Long Cortege (ADR-0043). Materiau AA_Signal_Amber. Ponctuel, au plus 3 pct de l aire.\""
+  }
+}

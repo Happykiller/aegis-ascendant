@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | **à appliquer** — rien n'est engagé. Trois arbitrages attendent l'opérateur (§Tensions) |
+| **État** | **à appliquer** — rien n'est engagé côté code. ✅ **Les trois arbitrages sont tranchés** (2026-09-03) ; reste la seule cote verticale (C1), au LOT 0. Les deux demandes de texture sont écrites et partent en parallèle |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -119,37 +119,76 @@ voit **sur le bouclier**. Un noyau à 99 % de PV qui descend lentement racontera
 
 ---
 
-# Les tensions à arbitrer — décisions de l'opérateur
+# Les tensions — ✅ **TRANCHÉES par l'opérateur le 2026-09-03**
 
-## T1 — ⚠️ La planche est **symétrique**, le brief l'interdit
+## T1 — La symétrie est **autorisée**
 
-La planche montre deux bastions octogonaux en miroir parfait, deux relais aux mêmes hauteurs, un
-bouclier centré. Le brief §14 écrit noir sur blanc : « ne pas faire une Citadelle parfaitement
-symétrique », et §7 : « ne pas réaliser un simple miroir parfait ».
+> « pas grave dans le cadre d'un boss ou event pour la symétrie »
 
-⚠️ **Les deux ne peuvent pas être vrais.** Et la symétrie n'est pas gratuite ici : c'est elle qui
-fait lire « GAUCHE + DROITE → CENTRE » en une seconde, ce que §4 exige. Proposition à valider :
-**symétrie de la FONCTION, asymétrie du DÉTAIL** — mêmes places pour les deux relais (lisibilité),
-mais orientation des tourelles, hauteur de plateforme, nombre de petites pièces et découpe des
-volumes différents d'un bord à l'autre. C'est ce que le lot B2 a fait pour la coque, et ça a marché.
+La planche fait foi : **deux bastions en miroir, deux relais aux mêmes places, bouclier centré.**
+L'interdit du §14 du brief visait la coque courante, où la symétrie fabrique le couloir que toute la
+refonte du 2026-08-29 a combattu. **Un événement n'est pas la coque** : il est vu une fois, il doit
+se lire en une seconde, et c'est précisément la symétrie qui fait comprendre « GAUCHE + DROITE →
+CENTRE » sans un mot de HUD (§4).
 
-## T2 — L'**orange** de la planche n'est pas dans la palette
+⚠️ **Ce que ça n'autorise pas** : le §7 reste vrai *dans le détail* — orientation des tourelles,
+nombre de petites pièces, découpe des volumes secondaires. La **fonction** est en miroir, la
+**finition** ne l'est pas. Un miroir au pixel près relèverait du copier-coller, pas de la
+composition.
 
-La planche porte une dizaine de balises orange chaudes au sol. La palette du niveau est
-**80 anthracite / 15 gris / 5 magenta**, et le §13 du brief la confirme (« le magenta signale
-l'énergie fonctionnelle »). L'orange serait une **quatrième couleur**, sur l'écran le plus chargé du
-niveau. À écarter, ou à acter par un ADR avec sa fonction (balisage de piste ? feux résiduels de
-l'état 3 ?) — dans ce second cas, **après** la boucle jouable, jamais avant.
+## T2 — L'ambre entre dans la palette — ✅ **`ADR-0043`**
 
-## T3 — Le nœud d'épine `Spine_03` est à **260,2**, soit dix mètres derrière
+> « je trouve que les lumières orange vont bien dans le décor telles des LED de signalement dans un
+> env technologie, on pourrait même l'étendre au reste du long parcours »
 
-Le niveau a déjà, à cet endroit précis, un objectif qui **change l'état du tronçon suivant** (il
-l'affaiblit). Deux verrous consécutifs à dix mètres l'un de l'autre, aux grammaires différentes,
-risquent de se brouiller. Trois options : décaler la citadelle vers 240, absorber `Spine_03` dans
-la citadelle (il deviendrait le noyau — élégant, mais il porte son propre équilibrage), ou assumer
-les deux et les séparer par la respiration du §18.
+Acté, et la teinte est **mesurée, pas choisie à l'œil** : `#FFA92B`, à **26,7° du corail `#FF5A3D`**
+qui est le tir ennemi. Un « orange » posé au jugé atterrit à 10-20° du corail et lui volerait sa
+lisibilité — la règle qui a déjà coûté une itération sur le bolide d'impact (`ADR-0027`).
+
+Trois clauses de l'ADR gouvernent tout usage : écart de teinte ≥ 25° du corail ; **ponctuelle,
+jamais surfacique** (au plus 3 % de l'aire) ; et elle **ne signale jamais une cible** — le magenta
+dit « fonction, donc à détruire », l'ambre dit « repère technique ». L'extension au reste du Cortège
+est validée **dans son principe**, à faire après que la citadelle l'ait montrée en jeu.
+
+## T3 — La citadelle **se décale** vers la proue
+
+> « oki décale »
+
+Elle ne voisine plus `Spine_03` (s = 260,2). **Centre retenu : s ≈ 240**, dans la fenêtre libre de
+C2 (236 → 254), ce qui laisse **20 m** entre le bord aval de la citadelle et le nœud d'épine — assez
+pour que la respiration du §18 sépare les deux verrous au lieu de les faire se chevaucher.
+
+⚠️ **Conséquence à ne pas perdre** : à s ≈ 240 la citadelle mange la respiration voulue « s 214 à
+246 ». C'est assumé — un verrou EST une rupture de rythme — mais la respiration doit alors être
+**rendue après**, ce que le LOT 5 porte déjà.
 
 ---
+
+# Les demandes de texture — à générer **en parallèle** des lots
+
+L'opérateur les produit pendant que le code avance (`ADR-0028` : la texture est la voie de
+l'opérateur). Elles sont écrites, validées contre les six règles du contrat, et **ne bloquent ni le
+LOT 1 ni le LOT 2** — la boucle et la silhouette se jouent en gris.
+
+| Demande | Ce qu'elle sert | Requise pour |
+|---|---|---|
+| [`TEX-0015`](../forge/textures/TEX-0015-citadelle-bouclier-energie.json) — bouclier | le panneau d'énergie central, et la peau du noyau à une échelle plus serrée | **LOT 3** |
+| [`TEX-0016`](../forge/textures/TEX-0016-cortege-signaletique-ambre.json) — signalétique ambre | les diodes de balisage `#FFA92B` d'`ADR-0043` | **LOT 3** |
+
+⚠️ **DEUX, ET PAS SIX — c'est délibéré.** Le blindage de la citadelle, ses panneaux greffés et sa
+machinerie sont servis par `TEX-0010`, `TEX-0011` et `TEX-0012`, déjà livrées et intégrées. Le brief
+§1 demande de réutiliser au maximum, et §19 exige que la citadelle soit **identifiable par sa
+géométrie même sans emissif** : si elle a besoin d'une texture pour se distinguer du bordé, c'est la
+géométrie du LOT 2 qui a échoué, pas la carte qui manque.
+
+**Pourquoi `TEX-0015` ne peut pas être `TEX-0013`** : l'artère est bâtie sur la règle inverse — « au
+moins la moitié de l'aire SOMBRE », « pas d'aplat lumineux plein cadre » — parce qu'elle est un
+conduit étroit. Un bouclier est une surface **tenue**. Réutiliser l'artère donnerait un mur de
+canaux : un décor, pas une barrière.
+
+**Et le noyau n'a pas sa carte** : il porte `TEX-0015` à une échelle UV plus serrée. Ses trois états
+(protégé, surchargé, éteint) sont pilotés **par le moteur** — une carte par état ferait quatre
+choses à maintenir et trois à oublier.
 
 # Les lots — et l'ordre est imposé par le brief
 
@@ -157,10 +196,17 @@ les deux et les séparer par la respiration du §18.
 > jouable de bout en bout. »** C'est la consigne que l'opérateur a demandé de garder, et elle est la
 > règle de production de ce plan. Chaque lot ci-dessous se termine par quelque chose de **jouable**.
 
-## LOT 0 — Trancher, mesurer, et ne rien construire
+## LOT 0 — ✅ **presque clos** : il ne reste que la cote verticale
 
-Trois décisions (T1, T2, T3) et une cote (C1). **Livrable** : les arbitrages écrits, et la hauteur
-réelle des bastions posée en chiffre. Rien d'autre. ⚠️ Ce lot peut réécrire la silhouette du brief.
+T1, T2 et T3 sont **tranchées** (voir ci-dessus), et `ADR-0043` acte l'ambre. Reste **C1**, la seule
+question à laquelle l'opérateur ne peut pas répondre sans un chiffre : les bastions demandés à
+« +1,5 à +2,5 m » ne disposent que de **1,30 m** (décor) ou **1,90 m** (gameplay).
+
+**Livrable** : la hauteur des bastions posée en chiffre, et la voie retenue parmi les trois de C1.
+⚠️ **Ma recommandation : la voie (b), obtenir la hauteur par le CREUX.** Le lot B3 l'a déjà démontré
+sur cette coque — quatre fosses de 1,55 m ont donné du relief là où le plafond interdisait de
+monter, pour 384 triangles. Une citadelle dont la porte s'enfonce dans le pont lit **plus** fermée
+qu'une qui dépasse de 1,30 m, et elle ne coûte aucun amendement d'`ADR-0041`.
 
 ## LOT 1 — La boucle, en cubes gris
 
