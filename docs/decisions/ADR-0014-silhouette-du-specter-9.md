@@ -5,6 +5,14 @@
 - **Amende** : ADR-0009 (« les assets produits restent originaux »), spec §0.2 via `CLAUDE.md`
 - **Portée** : **le Specter-9 uniquement**. Aucune autre coque n'est concernée.
 
+
+> ⚠️ **PRÉCISION DE PORTÉE, 2026-09-03 — le sujet est clos.** Cet ADR annonçait une révision « si le
+> projet devait un jour être distribué ». Les dépôts sont publics et des releases existent, mais le
+> propriétaire a tranché : **la portée réelle est un partage entre amis**, sans vente ni promotion.
+> L'ADR s'applique donc **tel quel**, sa clause de révision ne se déclenche pas, et aucune purge
+> n'est à prévoir. Seule une **vente ou une mise en boutique** la rouvrirait. Ne pas reposer la
+> question.
+
 ## Contexte
 
 La reforge BRIEF-0033 a échoué à rapprocher le chasseur de

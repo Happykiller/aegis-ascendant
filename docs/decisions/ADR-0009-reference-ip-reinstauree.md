@@ -5,6 +5,14 @@
 - **Supersede** : ADR-0005 sur le point de l'**exclusion comme source d'inspiration**, et prime
   (au sens « ADR > spec ») sur les interdits spec §0.2 / §3 et CHARTE_CREATIVE §5 dans ce contexte.
 
+
+> ⚠️ **PRÉCISION DE PORTÉE, 2026-09-03 — le sujet est clos.** Cet ADR annonçait une révision « si le
+> projet devait un jour être distribué ». Les dépôts sont publics et des releases existent, mais le
+> propriétaire a tranché : **la portée réelle est un partage entre amis**, sans vente ni promotion.
+> L'ADR s'applique donc **tel quel**, sa clause de révision ne se déclenche pas, et aucune purge
+> n'est à prévoir. Seule une **vente ou une mise en boutique** la rouvrirait. Ne pas reposer la
+> question.
+
 ## Contexte
 
 L'ADR-0005 avait quarantiné les 7 planches `reference_*.png` (marques « Macross », « Valkyrie »,

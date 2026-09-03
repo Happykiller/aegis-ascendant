@@ -340,30 +340,28 @@ laissent, en revanche, n'appartient à aucun d'eux :
       puis disparaît — mesuré, la coque a perdu 33 % de luminance pour un relief invisible.
       Relever le budget permet plus de SILHOUETTE et plus de VARIÉTÉ, pas plus de finesse.
 
-## ⛔ BLOQUANT AVANT TOUTE PLATEFORME — `ADR-0009` repose sur une prémisse fausse (2026-08-30)
+## ✅ TRANCHÉ — la portée du projet est un partage entre amis (2026-09-03)
 
-`ADR-0009` a assoupli les interdits IP de la spec §0.2/§3 et de la charte §5 en s'appuyant
-explicitement sur trois mots : projet **« personnel, non commercial, non distribué »**. Il écrit
-lui-même que « si le projet devait un jour être distribué ou commercialisé, cet ADR serait à
-réviser », et que la purge devrait porter sur **l'arbre ET l'historique git/LFS**
-(`git filter-repo` + purge LFS), pas un `git rm`.
+**Décision du propriétaire, prise en connaissance des faits ci-dessous. Le sujet est CLOS : ne pas
+le rouvrir, ne pas le reposer en début de session.**
 
-**Deux des trois mots ne tiennent déjà plus, et ça précède la question des plateformes :**
+`ADR-0009` et `ADR-0014` avaient été écrits sur la formule « personnel, non commercial, **non
+distribué** », et prévoyaient une révision en cas de distribution. Les faits ont bougé — les deux
+dépôts sont publics, quatre releases existent — mais **la portée réelle n'a pas changé** : le jeu
+est partagé à des amis, il n'est ni vendu ni promu. Le propriétaire assume le risque IP, comme les
+deux ADR l'énonçaient déjà.
 
-- `Happykiller/aegis-ascendant` est **PUBLIC** (`gh repo view` → `"visibility":"PUBLIC"`), et il
-  versionne les **dix planches** de `assets/reference/inspiration/`, dont celles portant des
-  marques tierces visibles ;
-- une release publique existe depuis le 2026-08-28 (`v0.3.0`), une seconde depuis le 2026-08-30
-  (`v0.4.0`), sur `Happykiller/aegis-ascendant-releases`.
+Ce que ça règle, et qu'il est inutile de recalculer :
 
-⚠️ **Le jeu lui-même n'est pas en cause** : les assets livrés sont originaux, et le binaire ne
-contient aucune planche. C'est le **dépôt** qui expose, et l'ADR qui ne décrit plus la réalité.
+- les 10 planches de `assets/reference/inspiration/` **restent versionnées** (LFS) et restent la
+  cible d'inspiration du rendu — `ADR-0009` s'applique tel quel ;
+- le **Specter-9 garde le plan de sa planche**, dérives comprises — `ADR-0014` s'applique tel quel,
+  et son « premier élément à refaire en cas de distribution » ne se déclenche pas ;
+- aucune purge d'arbre ni d'historique n'est à prévoir ; aucun dépôt n'est à repasser en privé.
 
-**Ce qu'il faut décider (opérateur), pas ce qu'il faut faire :** passer le dépôt en privé, ou
-purger l'arbre et l'historique, ou réviser l'ADR pour acter la distribution et son risque. Les
-trois sont défendables ; aucune ne se prend sans lui. Une mise en ligne sur Steam ou itch.io
-n'ajouterait pas le risque — elle lui donnerait un **interlocuteur à qui adresser une
-réclamation**.
+⚠️ **Le seul cas qui rouvrirait le sujet est une VENTE ou une mise en boutique** (Steam, itch.io) —
+c'est-à-dire le mot « non commercial », qui est le seul des trois à n'avoir jamais bougé. Rien
+d'autre : ni le nombre de releases, ni la visibilité des dépôts, ni un nouvel asset de référence.
 
 ## ⚠️ La densité ×3,5 du niveau 2 — jouée le 2026-09-03, son coût toujours pas mesuré
 
