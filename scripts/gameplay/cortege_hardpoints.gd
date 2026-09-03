@@ -75,7 +75,13 @@ const BATTERIES: Array = [
 	["Turret_05", [[-1.4, -3.6], [-2.9, -4.6]]],
 	# ⚠️ RIEN AU DÉBUT DU TRONÇON 3 (s 214 à 246) : c'est la respiration, et elle est voulue.
 	["Bay_05", [[-1.4, 5.6], [0.3, 6.0], [-0.8, 7.4], [0.8, 8.2]]],
-	["Turret_10", [[1.0, 4.0], [2.3, 5.3], [0.6, 5.8]]],
+	# ⚠️ VERS LA PROUE, ET NON VERS LA POUPE — corrigé après observation en jeu (2026-09-03).
+	# `Bay_06` est à s = 344,3, soit 8,3 m derrière cet hôte, dont le socle de tronçon 4 fait
+	# 3,00 m de rayon : il n'y a pas quatre mètres libres entre les deux. La grappe posée en
+	# aval tombait DANS l'ouverture — deux pièces le centre au-dessus du vide, une en surplomb.
+	# Le signe de `ds` est tout ce qui la ramène sur du plein ; les `dx` ne bougent pas, ils
+	# tiennent la grappe sur le pont médian, du bon côté de la contremarche.
+	["Turret_10", [[1.0, -4.0], [2.3, -5.3], [0.6, -5.8]]],
 	# ⚠️ ET RIEN ENTRE 348 ET 410 : la seconde respiration, avant que le tronçon 5 ne se ferme.
 	["Turret_13", [[-1.0, -4.2], [0.6, -4.8], [-0.4, -6.2]]],
 	["Turret_16", [[0.6, 4.2], [2.4, 4.7], [1.0, 6.2], [2.8, 6.8]]],

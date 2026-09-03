@@ -212,6 +212,63 @@ func test_no_battery_piece_sits_on_the_installation_it_guards() -> void:
 					"une piece de %s est a %.2f m de son hote pour %.2f m de socles cumules"
 						% [host, distance, pad + light_pad])
 
+## ⚠️ LE TEST CI-DESSUS NE REGARDE QUE L'HOTE, ET C'EST PAR LA QUE TROIS PIECES SONT TOMBEES
+## DANS UN PUITS. `test_no_battery_piece_sits_on_the_installation_it_guards` compare une piece a
+## la SEULE installation qui la porte : la batterie de `Turret_10` visait `Bay_06`, huit metres
+## en aval, et personne ne regardait ce couple-la. Observe en jouant le 2026-09-03, pas trouve
+## par un test — deux pieces avaient le centre au-dessus du vide, la troisieme le socle en
+## surplomb, et la coque restait deterministe, le banc vert, le journal muet.
+##
+## UNE OUVERTURE DE PONT D'ENVOL N'APPARTIENT A PERSONNE. C'est un trou dans la peau, pas la
+## propriete de la batterie qui la garde : il faut donc confronter CHAQUE piece a CHAQUE baie,
+## et non a la sienne. La meme classe de defaut vaudrait pour les fosses le jour ou une batterie
+## en approchera une.
+func test_no_battery_piece_falls_into_any_bay_well() -> void:
+	var markers := _hull_markers_in_hull_space()
+	var light_pad := _kit_pad_radius() * TurretScript.LIGHT_GEOM_SCALE
+	var bays := {}
+	for name in markers:
+		if String(name).begins_with("Bay_"):
+			bays[name] = markers[name]
+	assert_true(bays.size() > 0, "la coque livree porte des ponts d'envol")
+	for entry in HardpointsScript.BATTERIES:
+		var host := String(entry[0])
+		if not markers.has(host):
+			continue
+		var host_pos: Vector3 = markers[host]
+		for offset in entry[1]:
+			# `ds` court vers la poupe, le Z local decroit d'autant — meme conversion que
+			# `_add_battery`, sans quoi ce test garderait le miroir de ce qui est monte.
+			var piece_x: float = host_pos.x + float(offset[0])
+			var piece_z: float = host_pos.z - float(offset[1])
+			for bay_name in bays:
+				var bay: Vector3 = bays[bay_name]
+				var dx := absf(piece_x - bay.x)
+				var dz := absf(piece_z - bay.z)
+				assert_true(dx > BAY_KEEPOUT_X or dz > BAY_HALF_S + light_pad,
+					"une piece de %s tombe dans le puits de %s (dx %.2f, dz %.2f)"
+						% [host, bay_name, dx, dz])
+
+## ⚠️ LES MARQUEURS SONT LOCAUX A LEUR TRONCON, ET DEUX TRONCONS SE SUPERPOSENT. `_hull_markers()`
+## rend la position telle que la porte la `Section_NN` qui la contient : deux marqueurs de
+## sections differentes peuvent avoir le meme Z sans etre voisins de cent metres. Comparer une
+## piece a TOUTES les baies exige donc le repere de la coque — sans quoi `Turret_10` (troncon 4)
+## se retrouve a quatre metres de `Bay_02` (troncon 2), qui est a deux cents metres de la.
+func _hull_markers_in_hull_space() -> Dictionary:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	assert_true(packed != null, "la coque du Long Cortege se charge")
+	var hull := track(packed.instantiate()) as Node3D
+	var markers := {}
+	for section in hull.get_children():
+		var sec := section as Node3D
+		if sec == null or not sec.name.begins_with("Section_"):
+			continue
+		for child in sec.get_children():
+			var marker := child as Node3D
+			if marker != null:
+				markers[String(marker.name)] = sec.transform * marker.position
+	return markers
+
 func _kit_pad_radius() -> float:
 	var kit: PackedScene = load(TurretScript.KIT_PATH)
 	assert_true(kit != null, "le kit de tourelle se charge")
