@@ -370,12 +370,76 @@ BRACE_SPACING = (16.0, 30.0)
 # nœud est a s = 88 avec (1, 1) : la derivee d'un smoothstep y est NULLE, donc le
 # profil est deja plat 12 m avant la jonction a s = 100. C'est ce qui rend la
 # jonction 1-2 invisible ET ce qui autorise l'egalite exacte des deux anneaux.
+# --------------------------------------------------------------------------
+# LA LARGEUR — le fuseau de proue, PUIS le contour du reste de la coque
+# --------------------------------------------------------------------------
+# ⚠️ IL Y AVAIT 412 M DE BORDS STRICTEMENT PARALLELES, ET C'ETAIT MESURABLE.
+# Cette table s'arretait a s = 88 ; au-dela, `_scales()` rendait (1,0 ; 1,0) et
+# la demi-largeur valait `HALF_WIDTH` AU MICRON de 88 a 500. Le constat de
+# l'operateur — « casser l'effet piste rectangulaire » — ne decrivait pas une
+# impression, il decrivait cette table.
+#
+# ⚠️ SEUL `kx` VARIE AU-DELA DU FUSEAU, JAMAIS `ky`. La hauteur commande les
+# PALIERS du pont (peau a -4,30, contremarche de chine, pont median a -4,99) et
+# c'est sur eux que les vingt-quatre Y de marqueurs sont echantillonnes. Faire
+# respirer la coque en epaisseur les rejouerait tous, et rejouerait avec eux le
+# cliquet de plafond du kit et l'arbitrage `ACCEPTED_PAD_BAY_PROXIMITY`. La
+# largeur seule donne le contour demande, et ne coute rien de tout cela.
+#
+# ⚠️ AUCUNE VARIATION SOUS UN PONT D'ENVOL — ET C'EST UNE CONTRAINTE DURE, TENUE
+# PAR `_assert_taper_spares_the_bays()`. Les ouvertures ne sont pas percees : la
+# peau est GENEREE trouee, et sa grille passe par des points de profil poses a
+# `|x_baie| +/- 3,00`, en dur. Ces points supposent la largeur nominale. Faire
+# respirer la coque sous une baie decalerait la peau sans decaler l'ouverture —
+# un trou aux mauvaises cotes, en silence.
+#
+# Les variations vivent donc ENTRE les installations, ce qui est aussi ce que le
+# rythme demande : zone calme, evenement, respiration.
+#
+# Amplitude retenue : -20 a +24 pct, dans la fourchette des consignes (15 a 25).
+# Le cadre de la camera fait 41,60 m et la coque nominale 28 m (67,3 pct) : a
+# +24 pct elle en couvre 83 pct, a -20 pct 54 pct. Le contour entre et sort du
+# cadre sans jamais le remplir.
 TAPER: tuple[tuple[float, float, float], ...] = (
+    # --- le fuseau de proue, compose a la main (inchange) ---
     (0.0, 0.008, 0.16),
     (5.0, 0.100, 0.26),
     (58.0, 0.940, 0.93),
     (88.0, 1.000, 1.00),
+    # --- le contour du reste de la coque ---
+    (94.0, 1.000, 1.00),
+    (106.0, 0.820, 1.00),   # le col, avant le troncon 2
+    (118.0, 1.000, 1.00),
+    (134.0, 1.000, 1.00),
+    (150.0, 1.210, 1.00),   # premier epaulement
+    (165.0, 1.000, 1.00),
+    (190.0, 1.000, 1.00),
+    (205.0, 0.840, 1.00),   # etranglement
+    (220.0, 1.000, 1.00),
+    (236.0, 1.000, 1.00),
+    (258.0, 1.230, 1.00),   # le grand elargissement du troncon 3
+    (282.0, 1.000, 1.00),
+    (298.0, 1.000, 1.00),
+    (313.0, 0.830, 1.00),   # etranglement
+    (328.0, 1.000, 1.00),
+    (356.0, 1.000, 1.00),
+    (378.0, 1.240, 1.00),   # la plateforme d'artillerie — le point le plus large
+    (402.0, 1.000, 1.00),
+    # ⚠️ RIEN ENTRE 402 ET 482, ET CE N'EST PAS UN OUBLI. Un epaulement etait
+    # ecrit a s = 453 ; il tombait sur AMBRY (446 a 474), l'avant-poste humain
+    # greffe sur le borde. Elargir la coque sous elle l'etirait avec, et sa
+    # densite de texels chutait a 0,141 tuile/m pour 0,396 exigees — le harnais
+    # d'UV l'a refuse. Une greffe ne s'etire pas avec ce qui la porte.
+    (482.0, 1.000, 1.00),
+    (491.0, 0.800, 1.00),   # la poupe se resserre
+    (500.0, 0.860, 1.00),
 )
+#: Fin du FUSEAU DE PROUE — et non de la table. ⚠️ LES DEUX ONT ETE LE MEME
+#: NOMBRE, ET NE LE SONT PLUS. Les X de marqueurs au-dela de cette station ont
+#: ete poses a la main sur une coque ou `kx` valait 1 : ils se lisent donc comme
+#: des X A LARGEUR NOMINALE, que `_marker_x()` rapporte a la largeur locale. En
+#: deca, le fuseau est compose a la main, marqueurs compris — on n'y touche pas.
+PROW_TAPER_END = 88.0
 TAPER_END = TAPER[-1][0]
 
 # --------------------------------------------------------------------------
@@ -615,9 +679,16 @@ def _smoothstep(t: float) -> float:
 
 
 def _scales(s: float) -> tuple[float, float]:
-    """Echelles laterale et verticale de la section a la station `s`."""
+    """Echelles laterale et verticale de la section a la station `s`.
+
+    ⚠️ AU-DELA DE LA DERNIERE STATION, ON REND LA DERNIERE VALEUR ET NON (1, 1).
+    Tant que la table s'arretait au fuseau, les deux revenaient au meme ; depuis
+    qu'elle va jusqu'a la poupe, rendre (1, 1) ferait sauter la coque de sa
+    largeur finale a sa largeur nominale sur la derniere face — une marche de
+    deux metres, sur le seul bord que le joueur voit de face en fin de niveau.
+    """
     if s >= TAPER_END:
-        return 1.0, 1.0
+        return TAPER[-1][1], TAPER[-1][2]
     for (s0, kx0, ky0), (s1, kx1, ky1) in zip(TAPER, TAPER[1:]):
         if s <= s1:
             t = _smoothstep((s - s0) / (s1 - s0))
@@ -632,6 +703,27 @@ def _half_profile(s: float) -> list[tuple[float, float]]:
 
 def _half_width(s: float) -> float:
     return HALF_WIDTH * _scales(s)[0]
+
+
+def _marker_x(s: float, x: float) -> float:
+    """Le X d'un marqueur, rapporte a la largeur LOCALE de la coque.
+
+    ⚠️ SANS CETTE FONCTION, ETRANGLER LA COQUE POSE SES ORGANES DANS LE VIDE. Les
+    X de la table sont absolus ; la peau, elle, respire. A `kx = 0,82`, le pont
+    median s'arrete a |x| = 8,45 et `Turret_16`, ecrit a 10,20, se retrouverait
+    au-dela du bord — un affut flottant a cote de son vaisseau, sans qu'aucune
+    assertion ne s'en apercoive.
+    ⚠️ ET C'EST AUSSI CE QUI GARDE CHAQUE MARQUEUR SUR SON PALIER. Le pont
+    interieur, la contremarche de chine et le pont median s'echelonnent tous
+    par `kx` : un marqueur qui suit le meme facteur reste du meme cote de la
+    marche PAR CONSTRUCTION, quelle que soit la largeur locale.
+    ⚠️ EN DECA DE `PROW_TAPER_END`, ON NE TOUCHE A RIEN : les deux marqueurs du
+    fuseau ont ete cales a la main sur la coque retrecie de la proue. Leur
+    appliquer `kx` une seconde fois les rentrerait vers l'axe sans raison.
+    """
+    if s <= PROW_TAPER_END:
+        return x
+    return x * _scales(s)[0]
 
 
 def _surface_y(s: float, x: float) -> float:
@@ -704,6 +796,49 @@ RING_ON_DECK = _ring_deck_flags()
 # --------------------------------------------------------------------------
 # L'artere : ce que le profil dit, relu par des constantes nommees
 # --------------------------------------------------------------------------
+
+
+def _assert_taper_spares_the_bays() -> None:
+    """La largeur ne respire JAMAIS sous une ouverture de pont d'envol.
+
+    ⚠️ CE QUE CETTE ASSERTION A APPRIS DES SA PREMIERE EXECUTION, ET QUI CORRIGE
+    SA PROPRE PREMISSE. Ecrite pour refuser TOUT ecart a 1,0, elle a immediatement
+    arrete le build sur `Bay_01` — qui vit a s = 86, dans le fuseau de proue, ou
+    `kx` vaut 0,984 depuis toujours. Or cette baie fonctionne, et la raison est
+    instructive : l'ouverture est definie par des INDICES D'ANNEAU, pas par des
+    coordonnees absolues, si bien qu'elle s'echelonne avec la peau. Le trou suit.
+
+    Ce qui ne suit PAS, c'est le coaming de `bay_kit.glb` : il est modelise a
+    cotes fixes et pose sur le marqueur. A 1,6 pct d'ecart (l'existant), les
+    10 cm se noient dans la collerette. A 18 pct, ce serait 54 cm de debord de
+    chaque cote — la peau et son puits ne se rejoindraient plus, en silence.
+
+    Le seuil porte donc sur l'AMPLEUR et non sur l'egalite : il laisse passer ce
+    que la proue impose depuis toujours, et refuse toute respiration deliberee.
+    """
+    tolerance = 0.03
+    guard = BAY_HALF_S + 3.75
+    protected: list[tuple[str, float, float]] = [
+        (f"le pont d'envol a s = {sc:.0f}", sc - guard, sc + guard) for sc, _ in BAYS
+    ]
+    # ⚠️ ET AMBRY, POUR UNE AUTRE RAISON. L'avant-poste humain est une GREFFE : il
+    # est deplie a 0,700 tuile/m quand le borde est a 0,200, et il n'a aucune
+    # contrainte de jonction. Elargir la coque sous lui l'etire, et sa densite de
+    # texels tombe sous la borne de la projection en boite — refuse par le harnais
+    # d'UV, qui a arrete un epaulement ecrit a s = 453. Une greffe ne s'etire pas
+    # avec ce qui la porte.
+    protected.append(("Ambry", AMBRY_S[0] - 3.75, AMBRY_S[1] + 3.75))
+    for label, low, high in protected:
+        for s in (low, (low + high) * 0.5, high):
+            kx = _scales(s)[0]
+            if abs(kx - 1.0) > tolerance:
+                raise SystemExit(
+                    f"[long_cortege] TAPER fait respirer la coque a s = {s:.1f} "
+                    f"(kx = {kx:.3f}, ecart {abs(kx - 1.0) * 100:.1f} pct pour "
+                    f"{tolerance * 100:.0f} pct tolere), dans la garde de {label}. "
+                    "La peau bougerait sans que la piece qu'elle porte ne bouge "
+                    "avec elle, et rien ne le dirait."
+                )
 
 
 def _assert_canal() -> None:
@@ -1347,8 +1482,23 @@ def _stations(index: int) -> list[float]:
     s0 = index * SECTION_LENGTH
     s1 = s0 + SECTION_LENGTH
     if index > 0:
-        steps = 20                       # 5,00 m : le profil y est constant
+        steps = 20                       # 5,00 m : le pas de base
         values = [s0 + (s1 - s0) * k / steps for k in range(steps + 1)]
+        # ⚠️ ET DES STATIONS EN PLUS LA OU LA LARGEUR BOUGE. Le pas de 5,00 m
+        # datait d'une coque a profil CONSTANT au-dela du fuseau ; depuis que
+        # `TAPER` va jusqu'a la poupe, une transition de douze metres n'aurait
+        # que deux segments pour tourner. Le contour se lirait en facettes — et
+        # une facette de six metres sur un vaisseau de 6,8 km se voit.
+        for a, b in zip(TAPER, TAPER[1:]):
+            if abs(a[1] - b[1]) < 1e-6:
+                continue
+            v = max(a[0], s0)
+            stop = min(b[0], s1)
+            while v < stop - 1e-6:
+                values.append(v)
+                v += 1.25
+            if s0 <= stop <= s1:
+                values.append(stop)
     else:
         # Troncon 1 : le fuseau demande de la finesse la ou il tourne.
         values = [0.0, 0.8, 1.8, 3.0, 4.2]
@@ -1356,11 +1506,18 @@ def _stations(index: int) -> list[float]:
         while v < 58.0 - 1e-6:
             values.append(v)
             v += 3.0
+        # ⚠️ `PROW_TAPER_END` ET NON `TAPER_END`, ET LA CONFUSION A ETE PAYEE. Les
+        # deux ont longtemps valu 88,0 : la table s'arretait au fuseau. Depuis
+        # qu'elle va jusqu'a la poupe, `TAPER_END` vaut 500 — et cette boucle,
+        # inchangee, a seme le TRONCON 1 de stations jusqu'a z = -500. Le `.glb`
+        # restait valide ; c'est le harnais de jonction qui l'a vu, en annoncant
+        # 400 m d'ecart entre deux troncons voisins. Ce qui borne cette boucle
+        # est la fin du FUSEAU, pas la fin de la table.
         v = 58.0
-        while v < TAPER_END - 1e-6:
+        while v < PROW_TAPER_END - 1e-6:
             values.append(v)
             v += 3.75
-        values.append(TAPER_END)
+        values.append(PROW_TAPER_END)
         values += [91.0, 94.0, 97.0, 100.0]
     for sc, _ in BAYS:
         if s0 <= sc < s1:
@@ -2465,8 +2622,9 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         # levre du socle cuit (peau + 0,65) au PLAN D'ASSISE, c'est-a-dire au
         # point le plus haut de l'emprise du kit. C'est ce plan-la, et lui seul,
         # sur lequel `turret_kit.glb` est modelise.
-        seat, _ = turret_seat_y(s, x)
-        anchors.append((f"Turret_{number:02d}", Vector((x, seat, _z(s)))))
+        mx = _marker_x(s, x)
+        seat, _ = turret_seat_y(s, mx)
+        anchors.append((f"Turret_{number:02d}", Vector((mx, seat, _z(s)))))
         pads += 1
     bays = 0
     for number, (s, x) in enumerate(BAYS, start=1):
@@ -2888,9 +3046,22 @@ def _audit(path: str) -> dict:
     if triangles_total > TRI_BUDGET_TOTAL:
         problems.append(
             f"{triangles_total} triangles au total > budget {TRI_BUDGET_TOTAL}")
-    if abs(widest - HALF_WIDTH) > 1e-3:
+    # ⚠️ LA LARGEUR N'EST PLUS CONSTANTE, ET CE CONTRAT A DU APPRENDRE A LIRE
+    # `TAPER`. Il comparait la demi-largeur mesuree a `HALF_WIDTH` : une coque de
+    # 28 m au micron, ce qui etait vrai tant que 412 m de bordes etaient
+    # paralleles. Il compare desormais au MAXIMUM que la table annonce — le
+    # garde-fou reste entier (une coque plus large que son propre profil reste
+    # refusee), et il refuse en plus une table qui deraperait au-dela des +25 pct
+    # que les consignes autorisent.
+    expected = HALF_WIDTH * max(k for _, k, _ in TAPER)
+    if abs(widest - expected) > 1e-3:
         problems.append(
-            f"largeur hors-tout {2 * widest:.4f} m au lieu de {2 * HALF_WIDTH}")
+            f"largeur hors-tout {2 * widest:.4f} m au lieu de {2 * expected:.4f} "
+            f"annoncee par TAPER (nominal {2 * HALF_WIDTH})")
+    if expected > HALF_WIDTH * 1.25 + 1e-6:
+        problems.append(
+            f"TAPER elargit la coque de {(expected / HALF_WIDTH - 1) * 100:.0f} pct, "
+            "au-dela des 25 pct que les consignes de silhouette autorisent")
 
     # --- jonctions : bout a bout, sans trou ni recouvrement --------------------
     for number in range(1, SECTION_COUNT):
@@ -3286,6 +3457,7 @@ def build() -> dict:
             "TABLES DE MARQUEURS ROMPUES — long_cortege\n"
             + "\n".join(f"  - {p}" for p in clashes))
     _assert_canal()
+    _assert_taper_spares_the_bays()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []

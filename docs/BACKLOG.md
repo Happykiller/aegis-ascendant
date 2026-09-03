@@ -68,7 +68,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) ; lots 0, B, C, D à faire |
+| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) et **B1 livré** (le contour varie, 7 événements de largeur) ; lots 0, B2-B4, C, D à faire |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
@@ -370,6 +370,28 @@ moi.
 tronçon 02, non comparable au 2,076 ms d'avant densification (autre moment, autre contenu à
 l'écran). C'est la **Quadro T1000** qui contraint le budget (×14 à build identique, `ADR-0011`),
 et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signale des saccades.
+
+## ⚠️ Niveau 2 — ce que le LOT B1 laisse ouvert (2026-09-03)
+
+- [ ] **B2 — l'asymétrie n'est pas faite.** ⚠️ Et son coût n'est pas dans les cotes, il est dans la
+      STRUCTURE du générateur : `_ring()` construit la moitié tribord puis la **recopie en
+      miroir**. Deux voies, tranchées dans le plan : (a) asymétrie **par les modules** (bastion
+      posé d'un seul bord) — moins cher et suffisant pour la consigne 14 ; (b) casser le miroir
+      dans le profil lui-même — beaucoup plus cher. **(a) d'abord.**
+- [ ] **B3 — le relief en creux**, et ⚠️ **pas en hauteur** : le décor inerte n'a que 1,26 m
+      au-dessus du pont (`ADR-0041`). Fosses, baies de maintenance, décrochements de bordé.
+- [ ] **B4 — le repositionnement des installations n'a pas eu lieu**, et c'est une bonne
+      nouvelle : `ky` n'ayant pas bougé, les 24 Y sont intacts et le coût annoncé n'a pas été payé.
+      ⚠️ **Mais le lot D (le rythme) le réclame toujours**, et il reste au même prix qu'avant —
+      les fenêtres de relâche et d'engagement du `BRIEF-0092` sont de l'équilibrage mesuré.
+- [ ] **Quatre-vingts mètres sans aucune variation, entre s = 402 et 482.** C'est la conséquence
+      des gardes : `Turret_13` porte une batterie, `Bay_07` est une ouverture, et Ambry occupe
+      446 à 474. La seule fenêtre libre y fait 10 m, trop court pour une transition. ⚠️ **Le
+      tronçon 5 est donc le moins mouvementé du niveau, au moment où le rythme devrait monter.**
+      À reprendre au lot B4, quand les installations pourront bouger.
+- [ ] **Le témoin à largeur nominale n'a pas pu être isolé.** Toute zone à `kx = 1` voisine une
+      transition, si bien que la part de perspective dans l'élargissement mesuré (1 094 → 1 517 px)
+      n'est pas chiffrée. Ce qui tranche visuellement est la FORME du bord, pas le nombre.
 
 ## ⚠️ Niveau 2 — ce que le LOT A laisse ouvert (2026-09-03)
 

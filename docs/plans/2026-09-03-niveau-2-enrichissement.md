@@ -290,18 +290,65 @@ entre les deux tirs est borné par un **test** sur les deux Resources.
 
 # LOT B — La coque cesse d'être un rectangle
 
+> **B1 ✅ LIVRÉ (2026-09-03)** — la largeur varie, le contour est courbe, le critère 20 est
+> atteint. **B2 (asymétrie), B3 (relief), B4 (repositionnement) restent à faire.**
+
 Le plus gros lot, et celui qui porte le critère de sortie de l'opérateur (consigne 20).
 
-## B1 — La largeur varie
+## B1 — La largeur varie — ✅ LIVRÉ
 
-Étendre `TAPER` **au-delà de `s = 88`** avec des stations de largeur, sur les 412 m aujourd'hui
-constants : étranglements, élargissements, épaulements, décrochements. **±15 à 25 %** de
-`HALF_WIDTH`, pas davantage — « ce n'est pas un nouveau vaisseau ».
+`TAPER` va désormais jusqu'à la poupe. **Sept événements de contour** sur les 412 m qui étaient
+constants, espacés irrégulièrement (44, 55, 53, 55, 65, 113 m) :
 
-⚠️ **`_scales()` applique aujourd'hui kx ET ky ensemble.** Faire varier la largeur sans toucher la
-hauteur demande de les découpler, ou d'assumer que la coque s'épaissit là où elle s'élargit — ce
-qui est peut-être souhaitable (un renflement se lit mieux). **À arbitrer en regardant, pas en
-raisonnant.**
+| s | kx | Ce que c'est |
+|---|---|---|
+| 106 | 0,82 | le col, avant le tronçon 2 |
+| 150 | 1,21 | premier épaulement |
+| 205 | 0,84 | étranglement |
+| 258 | 1,23 | le grand élargissement du tronçon 3 |
+| 313 | 0,83 | étranglement |
+| 378 | **1,24** | la plateforme d'artillerie — le point le plus large |
+| 491 | 0,80 | la poupe se resserre |
+
+**`ky` ne bouge jamais**, et c'est la décision qui rend le lot abordable : la hauteur commande les
+paliers du pont, sur lesquels les 24 Y de marqueurs sont échantillonnés. La largeur seule donne le
+contour demandé et ne rejoue ni `ACCEPTED_PAD_BAY_PROXIMITY`, ni le cliquet de plafond, ni les Y.
+**Le coût annoncé en §C3 n'a donc pas été payé.**
+
+**`_marker_x()`** rapporte chaque marqueur à la largeur locale. Deux effets, dont le second n'était
+pas prévu :
+
+1. sans elle, étrangler la coque à 0,82 laisserait `Turret_16` (écrite à 10,20) **au-delà du bord**,
+   un affût flottant à côté de son vaisseau ;
+2. ⚠️ **et chaque marqueur reste sur son palier PAR CONSTRUCTION.** Le pont intérieur, la
+   contremarche et le pont médian s'échelonnent tous par le même `kx` : un marqueur qui le suit ne
+   peut plus franchir la marche, quelle que soit la largeur locale. Le problème que le lot A avait
+   dû résoudre à la main ne se pose plus.
+
+### ⚠️ Trois choses que le build a refusées, et ce qu'elles ont appris
+
+| Ce qui a été refusé | Par quoi | Ce que ça a appris |
+|---|---|---|
+| Le tronçon 1 semé de stations jusqu'à **z = −500** | le harnais de **jonction** (« écart de 400 m ») | `TAPER_END` valait 88 (fin du **fuseau**) et vaut 500 (fin de la **table**) ; `_stations(0)` s'en servait pour borner la proue. Un renommage sémantique a changé un calcul à l'autre bout du fichier. D'où `PROW_TAPER_END`, distinct |
+| Toute variation sous un **pont d'envol** | l'assertion neuve `_assert_taper_spares_the_bays()` | Elle a arrêté le build sur `Bay_01` dès sa première exécution — qui vit à s = 86, dans le fuseau, à kx = 0,984 **depuis toujours**. L'ouverture, définie par **indices d'anneau**, suit la peau ; c'est le **coaming du kit**, à cotes fixes, qui ne suit pas. Le seuil porte donc sur l'**ampleur** (3 %), pas sur l'égalité |
+| Un épaulement à **s = 453** | le harnais **d'UV** (densité 0,141 pour 0,396 requises) | Il tombait sur **Ambry**, l'avant-poste humain greffé sur le bordé, déplié à 0,700 tuile/m. **Une greffe ne s'étire pas avec ce qui la porte** : Ambry rejoint les baies dans la garde |
+
+### Ce que ça coûte, mesuré
+
+- **41 874 triangles** sur 90 000 (46,5 %) — la densification des stations (1,25 m au lieu de 5,00 m
+  dans les transitions, sans quoi le contour se lirait en facettes de six mètres) coûte ~1 400 tri.
+- **Déterminisme préservé** : `build-hull.sh --check` vert, 0 octet divergent.
+- Largeur hors-tout **34,72 m** ; sommet à **−3,200**, le plafond du décor tient.
+- Le contrat de largeur a appris à lire `TAPER` — et refuse désormais une table qui dépasserait
+  **+25 %**, la borne des consignes.
+
+### Le critère 20, vérifié
+
+Capture au grand élargissement (s ≈ 258) : le contour est **courbe** là où les captures
+d'avant-reforge, même niveau et même caméra, montraient deux droites. Largeur mesurée sur l'image :
+**1 094 px en haut, 1 517 px en bas**. ⚠️ Une part de cet écart est la perspective — un témoin à
+largeur strictement nominale n'a pas pu être isolé (les zones nominales voisinent toujours une
+transition). Ce qui tranche est la **forme** du bord, droite avant, courbe maintenant.
 
 ## B2 — L'asymétrie (consigne 14)
 
