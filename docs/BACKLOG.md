@@ -68,7 +68,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) et **B1+B2+B3 livrés** (7 événements de largeur, 4 zones asymétriques, 4 fosses) ; lots 0, B4, C, D à faire |
+| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) | **LOT B COMPLET** (contour, asymétrie, fosses, repositionnement — coque calme 50,3 → 58,6 %) ; lots 0, C, D à faire |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
@@ -382,10 +382,10 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
       384 triangles (les abscisses 2,20 et 6,80 étaient déjà des points du profil). ⚠️ **La leçon
       qui dépasse ce lot** : sans arête claire, un creux n'est pas un volume, c'est une tache. La
       géométrie était juste, sondée et mesurée dans le `.glb`, et restait invisible en jeu.
-- [ ] **B4 — le repositionnement des installations n'a pas eu lieu**, et c'est une bonne
-      nouvelle : `ky` n'ayant pas bougé, les 24 Y sont intacts et le coût annoncé n'a pas été payé.
-      ⚠️ **Mais le lot D (le rythme) le réclame toujours**, et il reste au même prix qu'avant —
-      les fenêtres de relâche et d'engagement du `BRIEF-0092` sont de l'équilibrage mesuré.
+- [x] ~~**B4 — le repositionnement des installations**~~ — livré : 22 des 24 ont bougé, coque calme
+      50,3 → **58,6 %**, emprises fusionnées 248,6 → 206,8 m. ⚠️ **Le « plafond théorique » de la
+      forge n'en était pas un** : les emprises FUSIONNENT quand elles se recouvrent, donc grouper
+      libère du calme. La clause « sans déplacer un marqueur » portait tout le poids.
 - [ ] **Quatre-vingts mètres sans aucune variation, entre s = 402 et 482.** C'est la conséquence
       des gardes : `Turret_13` porte une batterie, `Bay_07` est une ouverture, et Ambry occupe
       446 à 474. La seule fenêtre libre y fait 10 m, trop court pour une transition. ⚠️ **Le
@@ -394,6 +394,24 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **Le témoin à largeur nominale n'a pas pu être isolé.** Toute zone à `kx = 1` voisine une
       transition, si bien que la part de perspective dans l'élargissement mesuré (1 094 → 1 517 px)
       n'est pas chiffrée. Ce qui tranche visuellement est la FORME du bord, pas le nombre.
+
+## ⚠️ Niveau 2 — ce que le LOT B4 laisse ouvert (2026-09-03)
+
+- [ ] **Le nouveau rythme n'a été jugé par personne EN JOUANT.** ⚠️ C'est le lot qui touche le
+      plus directement au ressenti : 22 installations ont changé de station, donc l'ordre et
+      l'espacement de tout ce que le joueur rencontre. La densité instantanée est bornée (3
+      installations par fenêtre de 20 m, inchangée) et `test_the_survey_does_not_open_on_dead_air`
+      garde l'ouverture — mais **une borne n'est pas un ressenti**.
+- [ ] **Les fenêtres de relâche et d'engagement du `BRIEF-0092` n'ont pas été rejouées.** Elles
+      portaient les positions d'origine. Rien ne dit qu'elles sont fausses — rien ne dit qu'elles
+      sont encore vraies.
+- [ ] **Le solveur vit dans le scratchpad, pas dans le dépôt.** Les positions sont désormais des
+      constantes comme les autres ; le recuit qui les a trouvées, avec ses huit contraintes
+      apprises une à une, n'est nulle part. ⚠️ Le jour où une installation doit bouger, tout est à
+      refaire — ou à réapprendre par les mêmes refus.
+- [ ] **Deux tourelles restent à 5,3 m l'une de l'autre** (`Turret_01`/`02` à 68,0 et 73,3, bords
+      opposés) : la contrainte anti-symétrie exige 5 m, elles y sont tout juste. À regarder en
+      jouant — c'est la toute première rencontre du niveau.
 
 ## ⚠️ Niveau 2 — ce que le LOT B3 laisse ouvert (2026-09-03)
 

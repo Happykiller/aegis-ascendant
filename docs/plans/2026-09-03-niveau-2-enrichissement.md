@@ -290,8 +290,8 @@ entre les deux tirs est borné par un **test** sur les deux Resources.
 
 # LOT B — La coque cesse d'être un rectangle
 
-> **B1 ✅, B2 ✅ et B3 ✅ LIVRÉS (2026-09-03)** — la largeur varie, les bords ne sont plus
-> jumeaux, et le pont n'est plus plat. **B4 (repositionnement) reste à faire.**
+> **LOT B COMPLET ✅ (2026-09-03)** — B1 la largeur varie, B2 les bords ne sont plus jumeaux,
+> B3 le pont n'est plus plat, B4 les installations ont bougé. **Reste : lot 0 (jouer), C, D.**
 
 Le plus gros lot, et celui qui porte le critère de sortie de l'opérateur (consigne 20).
 
@@ -453,20 +453,55 @@ Trois captures in-game ont été dépensées à chercher une fosse invisible ava
 `y` porte la station, `z` la hauteur. Une sonde qui rend « 0 sommet » ne prouve rien tant que son
 repère n'a pas été vérifié sur une valeur connue.
 
-## B4 — Le repositionnement des installations
+## B4 — Le repositionnement des installations — ✅ LIVRÉ
 
-⚠️ **C'est ici, et nulle part ailleurs** (voir §C2). Le lot B rejoue déjà les Y : c'est le seul
-moment où déplacer un `s` de marqueur ne coûte pas une seconde reforge.
+**22 des 24 installations ont bougé** (les 7 hôtes de batterie sont restés en place, pour que les
+gardes de `TAPER` et les tests de palier du lot A continuent de valoir).
 
-Ce qui doit être rejoué **et re-déclaré** :
+| Mesure | Avant | Après |
+|---|---|---|
+| Emprises fusionnées | 248,6 m | **206,8 m** |
+| Coque calme | 251,4 m (**50,3 %**) | **293,2 m (58,6 %)** |
+| Plages ≥ 12 m | 9 | **12** |
+| Plages ≥ 8 m | 12 | **14** |
+| Tronçon 5 (le plus pauvre) | 33,6 % | **47,4 %** |
+| Densité max (installations / 20 m) | 3 | **3** — inchangée |
 
-- les 24 Y échantillonnés (`turret_seat_y`, `bay_mouth_y`) ;
-- `ACCEPTED_PAD_BAY_PROXIMITY` — **avec sa vraie nature** : un canon qui balaie à ~0,55 m
-  au-dessus du coaming, et non la lèvre statique de 0,25 m qu'il déclare encore. Sinon « le
-  prochain lecteur arbitrera sur un fait faux » ;
-- `_marker_clashes()` et le cliquet de plafond du kit ;
-- les fenêtres de relâche et d'engagement du `BRIEF-0092`, **qui sont de l'équilibrage mesuré** :
-  les déplacer sans les rejouer est la seule façon de casser ce niveau en silence.
+### ⚠️ Le « plafond théorique » n'en était pas un
+
+Le générateur annonçait : « les 30 marqueurs occupent 248,6 m d'emprises fusionnées […] la forge ne
+peut pas faire mieux **sans déplacer un marqueur** ». C'était exact — et la clause finale portait
+tout le poids. Les emprises **fusionnent quand elles se recouvrent** : rapprocher deux installations
+réduit l'emprise totale. Le calme n'est donc pas une constante à redistribuer, **c'est une variable
+à optimiser** — 41,8 m gagnés en groupant.
+
+### Comment : un recuit simulé, et six contraintes que le jeu a dictées
+
+Les positions ont été cherchées par recuit hors Blender (le modèle reproduit exactement les
+248,6 / 251,4 / 50,3 % du générateur, ce qui le rend digne de confiance). **Chaque contrainte a été
+ajoutée après un refus**, jamais par anticipation :
+
+| Ce que l'optimiseur a produit | Qui l'a refusé | La contrainte qui en découle |
+|---|---|---|
+| Des tourelles entrées dans l'**ouverture** d'un hangar | `_marker_clashes()` | Le rayon du socle **dépend du tronçon** (2,30 → 3,20) et la collision se joue **en 2D**, pas sur le seul `s` |
+| Des socles **touchant le coaming** | le même | Le coaming déborde de 0,80 m. Trois exceptions à déclarer — alors que la seule existante était déjà notée périmée : **on écarte** |
+| `Turret_17` à **s = 503**, hors de la coque | (rien — mon modèle) | Tout reste entre 56 et 494 |
+| Des paires **face à face** (`Turret_01`/`02` à la même station) | (rien) | ⚠️ **Grouper maximise le calme, et le groupement le plus efficace est d'apparier bâbord et tribord** : l'optimiseur reconstruisait la symétrie que B2 venait de supprimer. La consigne 14 est donc une **contrainte**, pas une préférence |
+| `Spine_01` à **s = 36,4**, dans le fuseau | le générateur, deux fois | « le berceau (1,32 m) ne tient pas dans le fond plat du canal (1,12 m) » — un nœud vit **dans** l'artère, il lui faut une artère à taille réelle |
+| **61 m nus à la proue** | ⚠️ `test_the_survey_does_not_open_on_dead_air` | Maximiser le calme pousse tout vers la poupe. Le test borne des deux côtés : la réception de proue passe le relais à la coque sans déborder dessus |
+| `Bay_01` remontée à **s = 81,6** | le harnais des intrus | ⚠️ L'emprise d'une ouverture est en **x absolu**, mais la coque respire : près de la proue, la **facette extérieure** entre dans l'emprise et la peau « se referme » sur le hangar |
+
+### ⚠️ Une dette du backlog fermée par une assertion, pas par une relecture
+
+`ACCEPTED_PAD_BAY_PROXIMITY` est **vide**. Elle déclarait `Turret_14`/`Bay_07` sur un chiffre que le
+backlog signalait périmé depuis le 2026-08-30. Le repositionnement a écarté les deux pièces, et le
+générateur a exigé : « retirer sa ligne plutôt que de la laisser mentir ».
+
+### Ce qui n'a PAS eu à être rejoué
+
+Les 24 Y échantillonnés, le cliquet de plafond et les assises : **`ky` n'a jamais bougé** (§B1), et
+un déplacement en `s` ne change pas la hauteur de la peau sous une pièce. Le coût annoncé en §C3
+n'a été payé nulle part dans ce lot.
 
 ## B5 — La circulation reste claire (consigne 5)
 

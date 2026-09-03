@@ -505,12 +505,12 @@ TAPER_END = TAPER[-1][0]
 #: silence. Le `x` ne bouge pas non plus : c'est lui qui met le socle sur une
 #: bande plate.
 TURRETS: tuple[tuple[float, float], ...] = (
-    (68.0, -6.00), (76.0, 9.40),                                    # troncon 1
-    (118.0, 9.60), (140.0, -9.20), (173.0, 5.60),                   # troncon 2
-    (214.0, -8.40), (246.0, 9.80), (278.0, -5.60),                  # troncon 3
-    (312.0, 8.20), (336.0, -9.80), (360.0, 10.10), (386.0, -6.20),  # troncon 4
-    (410.0, 8.80), (428.0, -9.40), (452.0, -6.00),                  # troncon 5
-    (470.0, -10.20), (488.0, 9.00),
+    (68.0, -6.0), (73.3, 9.4),                                     # troncon 1
+    (120.7, 9.6), (152.1, -9.2), (173.0, 5.6),                    # troncon 2
+    (216.6, -8.4), (258.0, 9.8), (263.0, -5.6),                   # troncon 3
+    (323.0, 8.2), (336.0, -9.8), (375.0, 10.1), (380.0, -6.2),    # troncon 4
+    (410.0, 8.8), (415.2, -9.4), (463.3, -6.0),                   # troncon 5
+    (470.0, -10.2), (478.8, 9.0),
 )
 #: Rayon hors-tout de la plateforme, par troncon : « de plus en plus massives »
 #: (maquette 3). 2,30 m a la proue, 3,20 m au troncon 5.
@@ -519,11 +519,11 @@ PAD_RADIUS = (2.30, 2.55, 2.75, 3.00, 3.20)
 #: 7 ponts d'envol, vers l'exterieur (pont median + facette). Ce sont des
 #: OUVERTURES depuis BRIEF-0091 : la peau n'existe pas a leur emprise.
 BAYS: tuple[tuple[float, float], ...] = (
-    (86.0, 9.00),                                                   # troncon 1
-    (126.0, -9.20), (182.0, 9.20),                                  # troncon 2
-    (228.0, -9.30), (290.0, 9.30),                                  # troncon 3
-    (348.0, -9.30),                                                 # troncon 4
-    (436.0, -9.30),                                                 # troncon 5
+    (86.4, 9.0),                                                  # troncon 1
+    (126.0, -9.2), (180.7, 9.2),                                  # troncon 2
+    (224.6, -9.3), (290.0, 9.3),                                  # troncon 3
+    (344.3, -9.3),                                                # troncon 4
+    (450.0, -9.3),                                                # troncon 5
 )
 
 # --------------------------------------------------------------------------
@@ -678,7 +678,7 @@ PIT_KEEPOUT = 2.20
 #: autres, puisque les cinq partagent un seul maillage et un seul jeu de
 #: materiaux. La coque porte le MARQUEUR ; `spine_kit.glb` porte le berceau, le
 #: cœur et les entretoises, et le moteur ne detruit que le cœur.
-SPINES: tuple[float, ...] = (50.0, 150.0, 250.0, 350.0, 450.0)
+SPINES: tuple[float, ...] = (54.1, 151.8, 260.2, 338.5, 458.8)
 
 #: ⚠️ EMPRISE QUE `spine_kit.glb` POSE DANS LE FOND DU CANAL, berceau compris.
 #: Elle vit ICI parce que c'est ici qu'on echantillonne la peau pour calculer
@@ -1220,12 +1220,15 @@ BAY_COAMING_W = 0.80
 #: une intention, et deplacerait un marqueur qui va bien.
 #:
 #: (tourelle, baie, raison — la raison est obligatoire, c'est tout l'interet)
-ACCEPTED_PAD_BAY_PROXIMITY: tuple[tuple[str, str, str], ...] = (
-    ("Turret_14", "Bay_07",
-     "la levre du socle effleure le coaming sur 0,25 m et n'entre PAS dans "
-     "l'ouverture : deux installations qui se touchent est une lecture "
-     "credible, pas un defaut (arbitrage BRIEF-0092)"),
-)
+#: ⚠️ ELLE EST VIDE DEPUIS LE REPOSITIONNEMENT DU 2026-09-03, ET C'EST LE HARNAIS
+#: QUI L'A EXIGE. Elle declarait `Turret_14`/`Bay_07` — « la levre du socle
+#: effleure le coaming sur 0,25 m », arbitrage du BRIEF-0092. Le backlog notait
+#: depuis le 2026-08-30 que ce chiffre etait PERIME : depuis le kit, ce qui
+#: depasse n'est plus une levre statique mais un canon qui balaie a ~0,55 m.
+#: Le repositionnement a ecarte les deux pieces, et le generateur a refuse de
+#: laisser la ligne mentir — « retirer sa ligne plutot que de la laisser
+#: mentir ». Une dette du backlog fermee par une assertion, pas par une relecture.
+ACCEPTED_PAD_BAY_PROXIMITY: tuple[tuple[str, str, str], ...] = ()
 
 
 def _pad_bay_clearances() -> list[tuple[str, str, float, float, bool]]:
