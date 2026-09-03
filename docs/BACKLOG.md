@@ -596,11 +596,11 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **Rythme du champ d'astéroïdes** — la composition de la vague est une **hypothèse de
   conception**, pas une mesure : densité des barrages, superposition puits/sangsues, pic à 32 s.
   Elle se juge en jouant (`ADR-0019`). C'est le lot 4 du plan.
-- [ ] **Écran titre** — ⚠️ **la moitié de cette ligne était fausse** : l'emblème
-  `helios_vanguard_emblem.svg` **est** utilisé, et par trois écrans (`boot.tscn`,
-  `mission_report.tscn`, `pause_screen.tscn`), et l'accueil porte un `SpaceBackdrop` — il n'est pas
-  « nu ». Ce qui reste vrai : **`title_backdrop.svg` dort dans `assets/source/ui/screens/`**, jamais
-  importé. À prendre ou à écarter par un ADR, pas à laisser dormir. (ex-tâche **H3**).
+- [x] ~~**Écran titre**~~ — les deux moitiés sont closes. L'emblème `helios_vanguard_emblem.svg`
+  **était déjà utilisé** par trois écrans (`boot.tscn`, `mission_report.tscn`, `pause_screen.tscn`)
+  et l'accueil porte un `SpaceBackdrop` : il n'a jamais été « nu ». Et `title_backdrop.svg` est
+  **écarté par `ADR-0042`** — sixième cadre SVG plein écran de `BRIEF-0017`, le seul qu'`ADR-0012`
+  n'avait pas nommé. Il n'y a plus d'asset qui dort : il y a un asset jugé. (ex-tâche **H3**).
 - [x] **Écrans** — **pause** et **victoire / rapport** reforgés dans le langage d'interface de
   l'accueil (ADR-0012). Les cadres SVG plein écran de la forge sont abandonnés, pas intégrés.
 - [x] ~~**Écran d'échec de mission**~~ — **livré le 2026-07-23** (`d1f4c5a`), enrichi le
