@@ -290,8 +290,8 @@ entre les deux tirs est borné par un **test** sur les deux Resources.
 
 # LOT B — La coque cesse d'être un rectangle
 
-> **B1 ✅ LIVRÉ (2026-09-03)** — la largeur varie, le contour est courbe, le critère 20 est
-> atteint. **B2 (asymétrie), B3 (relief), B4 (repositionnement) restent à faire.**
+> **B1 ✅ et B2 ✅ LIVRÉS (2026-09-03)** — la largeur varie et les deux bords ne sont plus
+> jumeaux. **B3 (relief), B4 (repositionnement) restent à faire.**
 
 Le plus gros lot, et celui qui porte le critère de sortie de l'opérateur (consigne 20).
 
@@ -350,24 +350,59 @@ d'avant-reforge, même niveau et même caméra, montraient deux droites. Largeur
 largeur strictement nominale n'a pas pu être isolé (les zones nominales voisinent toujours une
 transition). Ce qui tranche est la **forme** du bord, droite avant, courbe maintenant.
 
-## B2 — L'asymétrie (consigne 14)
+## B2 — L'asymétrie — ✅ LIVRÉ, ET PAR LA VOIE QUI ÉTAIT DITE LA PLUS CHÈRE
 
-⚠️ **Le profil est aujourd'hui construit par miroir** : `_ring()` calcule la moitié tribord puis
-la recopie en bâbord. **Une coque asymétrique demande de casser ce miroir**, ce qui touche
-`_half_profile`, `_ring`, `_ring_x`, `_ring_materials`, `_ring_deck_flags` et le dépliage UV.
+Ce plan recommandait **(a)** — garder le miroir et poser l'asymétrie par les modules — en réservant
+**(b)** (casser le miroir du profil) comme « beaucoup plus cher ». C'est **(b)** qui a été fait, et
+l'estimation était fausse pour une raison qu'il vaut la peine d'écrire :
 
-C'est le vrai coût du lot B, et il n'est pas dans les cotes : il est dans la **structure du
-générateur**. Deux voies, à trancher avant d'écrire :
+> **La topologie de l'anneau ne change pas d'un point.** Mêmes indices, même ordre, mêmes
+> matériaux, mêmes drapeaux de pont. Seules les **abscisses** d'un côté bougent. Rien de ce qui
+> indexe l'anneau — `RING_MATERIALS`, `_ring_deck_flags`, `_bay_cell` — n'a besoin de le savoir.
 
-- **(a)** garder le miroir pour la section transversale et poser l'asymétrie **par les modules**
-  (bastions, excroissances, épaulements posés d'un seul bord) — moins cher, et suffisant pour la
-  consigne 14 telle qu'elle est formulée (« un gros bastion à droite, quelques petites défenses à
-  gauche ») ;
-- **(b)** casser le miroir dans le profil lui-même — plus fidèle à « la coque peut être plus large
-  d'un côté pendant quelques dizaines de mètres », beaucoup plus cher.
+Le coût réel a donc été de **quatre fonctions**, pas d'une refonte : `_asym()`, `_side_scale()`,
+`_half_profile(s, side)` et `_ring()`. Et (a) aurait de toute façon échoué sur le critère 20 : un
+module posé sur le pont ne change pas le **contour extérieur**, qui est ce que l'opérateur juge.
 
-**Recommandation : (a) d'abord, et ne passer à (b) que si la capture ne suffit pas.** La consigne
-20 juge un **contour**, et un bastion de 6 m posé d'un seul bord modifie un contour.
+### Ce qui est livré
+
+`ASYMMETRY` donne un facteur **par bord**, multiplié par celui de `TAPER` :
+
+| s | Bord | Écart | Ce que c'est |
+|---|---|---|---|
+| 177 | bâbord | **−17,0 %** | le bord se pince d'un seul côté |
+| 342 | tribord | **+16,0 %** | épaulement |
+| 413 | bâbord | **+13,8 %** | bâbord bombe… |
+| 434 | tribord | **−15,0 %** | …et tribord se pince 21 m plus loin : un décalage |
+
+⚠️ **Aucun cumul avec un événement de `TAPER`** : les quatre asymétries sont posées sur des
+plateaux où `kx` vaut 1, si bien qu'un bord mesure toujours exactement 14,00 m. Sans cette règle,
+un épaulement de +16 % sur une coque déjà élargie de +24 % sortirait des +25 % que les consignes
+bornent — et le contrat de largeur le refuserait. Largeur maximale mesurée : **34,72 m** pour une
+borne à 35,00.
+
+### ⚠️ Les gardes sont PAR BORD, et c'est ce qui rend le lot possible
+
+Une baie à bâbord ne craint rien d'un épaulement à tribord. Protéger les deux côtés aurait fermé
+presque toute la coque — les plateaux à `kx = 1` ne font que 16 à 28 m une fois les installations
+protégées, et « quelques dizaines de mètres » est précisément ce que la consigne demande.
+
+### ⚠️ Deux fonctions qui auraient menti en silence
+
+- **`_surface_y(s, x)`** prenait `abs(x)`. C'est la fonction que **tout** le vocabulaire modulaire
+  interroge — plaques, nervures, socles, greffes prennent leur base ici, coin par coin. Sur une
+  coque asymétrique, elle aurait rendu l'assise de tribord à une pièce de bâbord : jusqu'à 19 % de
+  largeur d'écart, donc une base posée sur une peau qui n'est pas la sienne.
+- **`_clip_lane()`** rabattait les voies sur *la* demi-largeur. Une lisse rabattue sur tribord
+  serait partie en porte-à-faux au-dessus du vide là où bâbord est pincé.
+
+Aucune des deux n'aurait produit d'erreur.
+
+### Ce que ça coûte
+
+**48 678 triangles** sur 90 000 (54,1 %), contre 41 838 avant la densification des transitions
+d'asymétrie — ~6 800 tri pour que le bord qui se pince ne se lise pas en facettes, précisément sur
+le côté que la consigne 14 veut faire remarquer. Déterminisme préservé, 0 octet divergent.
 
 ## B3 — Le relief, en creux et en largeur (consigne 4)
 

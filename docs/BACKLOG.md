@@ -68,7 +68,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) et **B1 livré** (le contour varie, 7 événements de largeur) ; lots 0, B2-B4, C, D à faire |
+| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) et **B1+B2 livrés** (7 événements de largeur, 4 zones asymétriques) ; lots 0, B3, B4, C, D à faire |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
@@ -373,11 +373,11 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 
 ## ⚠️ Niveau 2 — ce que le LOT B1 laisse ouvert (2026-09-03)
 
-- [ ] **B2 — l'asymétrie n'est pas faite.** ⚠️ Et son coût n'est pas dans les cotes, il est dans la
-      STRUCTURE du générateur : `_ring()` construit la moitié tribord puis la **recopie en
-      miroir**. Deux voies, tranchées dans le plan : (a) asymétrie **par les modules** (bastion
-      posé d'un seul bord) — moins cher et suffisant pour la consigne 14 ; (b) casser le miroir
-      dans le profil lui-même — beaucoup plus cher. **(a) d'abord.**
+- [x] ~~**B2 — l'asymétrie**~~ — livré, et par la voie (b) que le plan disait « beaucoup plus
+      chère ». ⚠️ **L'estimation était fausse, et la raison vaut d'être retenue** : casser le
+      miroir ne change PAS la topologie de l'anneau (mêmes indices, mêmes matériaux, mêmes
+      drapeaux) — seules les abscisses d'un côté bougent. Quatre fonctions, pas une refonte. Et
+      (a) aurait échoué sur le critère 20 : un module posé sur le pont ne change pas le CONTOUR.
 - [ ] **B3 — le relief en creux**, et ⚠️ **pas en hauteur** : le décor inerte n'a que 1,26 m
       au-dessus du pont (`ADR-0041`). Fosses, baies de maintenance, décrochements de bordé.
 - [ ] **B4 — le repositionnement des installations n'a pas eu lieu**, et c'est une bonne
@@ -392,6 +392,21 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **Le témoin à largeur nominale n'a pas pu être isolé.** Toute zone à `kx = 1` voisine une
       transition, si bien que la part de perspective dans l'élargissement mesuré (1 094 → 1 517 px)
       n'est pas chiffrée. Ce qui tranche visuellement est la FORME du bord, pas le nombre.
+
+## ⚠️ Niveau 2 — ce que le LOT B2 laisse ouvert (2026-09-03)
+
+- [ ] **L'asymétrie n'a pas encore été REGARDÉE en jeu.** Elle est vérifiée numériquement (4 zones,
+      écarts de 13,8 à 17,0 %, aucun cumul avec `TAPER`, largeur max 34,72 m sous la borne de
+      35,00) et la coque est déterministe — mais aucune capture in-game ni planche n'a encore été
+      jugée. ⚠️ C'est exactement le genre de chose qu'`ADR-0006` refuse de considérer comme acquis :
+      le lot A a montré qu'une composition valide au calcul pouvait ne pas se lire à l'écran.
+- [ ] **Le budget triangles est monté à 54,1 %** (48 678 / 90 000), contre 46,5 % avant la
+      densification des transitions d'asymétrie. Il reste de la marge, mais B3 (le relief) et C
+      (les secteurs) puisent dans le même budget, et le coût GPU n'est toujours pas mesuré sur la
+      Quadro T1000.
+- [ ] **Les plateaux à `kx = 1` ne font que 16 à 28 m** une fois les installations protégées : il
+      n'y a plus de place pour une cinquième asymétrie sans déplacer un marqueur. ⚠️ Comme pour le
+      rythme (lot D), l'espace de composition est **plafonné par les positions figées**.
 
 ## ⚠️ Niveau 2 — ce que le LOT A laisse ouvert (2026-09-03)
 

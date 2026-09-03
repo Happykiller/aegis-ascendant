@@ -434,6 +434,48 @@ TAPER: tuple[tuple[float, float, float], ...] = (
     (491.0, 0.800, 1.00),   # la poupe se resserre
     (500.0, 0.860, 1.00),
 )
+# --------------------------------------------------------------------------
+# L'ASYMETRIE — un bord peut etre plus large que l'autre
+# --------------------------------------------------------------------------
+# ⚠️ `_ring()` CONSTRUISAIT LA MOITIE TRIBORD ET LA RECOPIAIT. Le contour pouvait
+# donc respirer (`TAPER`), mais toujours des DEUX cotes a la fois : la planche de
+# recette montre cinq troncons rigoureusement symetriques. La consigne 14 demande
+# l'inverse — « la coque peut elle-meme etre plus large d'un cote pendant quelques
+# dizaines de metres ».
+#
+# Cette table donne un facteur par BORD, multiplie par celui de `TAPER`. La
+# topologie de l'anneau ne change pas d'un point : memes indices, memes materiaux,
+# memes drapeaux de pont. Seules les abscisses d'un cote bougent.
+#
+# ⚠️ LES GARDES SONT PAR BORD, ET C'EST CE QUI REND LE LOT POSSIBLE. Une baie a
+# babord ne craint rien d'un epaulement a tribord. Les plateaux ou `TAPER` vaut 1
+# sont courts (16 a 28 m) une fois les installations protegees — mais « quelques
+# dizaines de metres » est exactement ce que la consigne demande, et c'est ce
+# qu'ils offrent.
+#
+# ⚠️ AUCUN CUMUL AVEC UN EVENEMENT DE `TAPER`. Les quatre asymetries sont posees
+# sur des plateaux ou `kx` vaut 1 : sans cela, un epaulement de +19 pct sur une
+# coque deja elargie de +24 pct sortirait des +25 pct que les consignes bornent,
+# et le contrat de largeur le refuserait.
+#
+# (s, tribord, babord) — tribord = x positif.
+ASYMMETRY: tuple[tuple[float, float, float], ...] = (
+    (0.0, 1.000, 1.000),
+    (165.0, 1.000, 1.000),
+    (177.0, 1.000, 0.830),   # babord se pince, tribord ne bouge pas
+    (190.0, 1.000, 1.000),
+    (328.0, 1.000, 1.000),
+    (342.0, 1.190, 1.000),   # tribord s'epaule
+    (356.0, 1.000, 1.000),
+    (402.0, 1.000, 1.000),
+    (413.0, 1.000, 1.160),   # babord bombe...
+    (424.0, 1.000, 1.000),
+    (426.0, 1.000, 1.000),
+    (434.0, 0.850, 1.000),   # ...et tribord se pince juste apres : un decalage
+    (442.0, 1.000, 1.000),
+    (500.0, 1.000, 1.000),
+)
+
 #: Fin du FUSEAU DE PROUE — et non de la table. ⚠️ LES DEUX ONT ETE LE MEME
 #: NOMBRE, ET NE LE SONT PLUS. Les X de marqueurs au-dela de cette station ont
 #: ete poses a la main sur une coque ou `kx` valait 1 : ils se lisent donc comme
@@ -696,13 +738,44 @@ def _scales(s: float) -> tuple[float, float]:
     return 1.0, 1.0
 
 
-def _half_profile(s: float) -> list[tuple[float, float]]:
-    kx, ky = _scales(s)
-    return [(px * kx, Y_PIVOT + (py - Y_PIVOT) * ky) for px, py, _ in PROFILE]
+def _asym(s: float) -> tuple[float, float]:
+    """Facteurs de largeur (tribord, babord) a la station `s`."""
+    if s <= ASYMMETRY[0][0]:
+        return ASYMMETRY[0][1], ASYMMETRY[0][2]
+    if s >= ASYMMETRY[-1][0]:
+        return ASYMMETRY[-1][1], ASYMMETRY[-1][2]
+    for (s0, t0, b0), (s1, t1, b1) in zip(ASYMMETRY, ASYMMETRY[1:]):
+        if s <= s1:
+            if s1 - s0 < 1e-9:
+                return t1, b1
+            t = _smoothstep((s - s0) / (s1 - s0))
+            return t0 + (t1 - t0) * t, b0 + (b1 - b0) * t
+    return 1.0, 1.0
 
 
-def _half_width(s: float) -> float:
-    return HALF_WIDTH * _scales(s)[0]
+def _side_scale(s: float, side: float) -> float:
+    """L'echelle laterale du bord `side` (+1 tribord, -1 babord) a la station `s`.
+
+    ⚠️ LE FUSEAU DE PROUE RESTE SYMETRIQUE. Il est compose a la main, marqueurs
+    compris, et son etrave est le seul endroit du vaisseau que le joueur voit
+    de face : une pointe de travers s'y lirait comme un defaut, pas comme une
+    intention.
+    """
+    kx = _scales(s)[0]
+    if s <= PROW_TAPER_END:
+        return kx
+    tri, bab = _asym(s)
+    return kx * (tri if side >= 0.0 else bab)
+
+
+def _half_profile(s: float, side: float = 1.0) -> list[tuple[float, float]]:
+    k = _side_scale(s, side)
+    ky = _scales(s)[1]
+    return [(px * k, Y_PIVOT + (py - Y_PIVOT) * ky) for px, py, _ in PROFILE]
+
+
+def _half_width(s: float, side: float = 1.0) -> float:
+    return HALF_WIDTH * _side_scale(s, side)
 
 
 def _marker_x(s: float, x: float) -> float:
@@ -723,7 +796,7 @@ def _marker_x(s: float, x: float) -> float:
     """
     if s <= PROW_TAPER_END:
         return x
-    return x * _scales(s)[0]
+    return x * _side_scale(s, 1.0 if x >= 0.0 else -1.0)
 
 
 def _surface_y(s: float, x: float) -> float:
@@ -733,7 +806,12 @@ def _surface_y(s: float, x: float) -> float:
     nervure ou un socle prend sa base ici, coin par coin. C'est ce qui lui permet
     d'epouser la chine et la facette sans une seule rotation ecrite a la main.
     """
-    half = _half_profile(s)[: DECK_LAST + 1]
+    # ⚠️ LE PROFIL DEPEND DESORMAIS DU BORD. Prendre `abs(x)` sans dire de quel
+    # cote rendrait l'assise de tribord a une piece de babord : sur une coque
+    # asymetrique, jusqu'a 19 pct d'ecart de largeur, donc une base posee sur une
+    # peau qui n'est pas la sienne. Tout le vocabulaire modulaire interroge cette
+    # fonction — plaques, nervures, socles, greffes — et aucun ne l'aurait dit.
+    half = _half_profile(s, 1.0 if x >= 0.0 else -1.0)[: DECK_LAST + 1]
     ax = abs(x)
     if ax >= half[-1][0]:
         return half[-1][1]
@@ -747,9 +825,17 @@ def _surface_y(s: float, x: float) -> float:
 
 
 def _ring(s: float) -> list[tuple[float, float]]:
-    """Anneau ferme de 34 points, tribord puis babord."""
-    half = _half_profile(s)
-    return half + [(-x, y) for x, y in reversed(half[1:-1])]
+    """Anneau ferme de 34 points, tribord puis babord.
+
+    ⚠️ IL RECOPIAIT LA MOITIE TRIBORD EN MIROIR, et c'etait toute la symetrie du
+    vaisseau. Les deux moities sont desormais calculees separement — meme
+    topologie, memes indices, memes materiaux : seules les abscisses d'un bord
+    changent. Rien de ce qui indexe l'anneau (`RING_MATERIALS`, `_ring_deck_flags`,
+    `_bay_cell`) n'a besoin de le savoir.
+    """
+    tribord = _half_profile(s, 1.0)
+    babord = _half_profile(s, -1.0)
+    return tribord + [(-x, y) for x, y in reversed(babord[1:-1])]
 
 
 def _ring_materials() -> list[str]:
@@ -818,8 +904,14 @@ def _assert_taper_spares_the_bays() -> None:
     """
     tolerance = 0.03
     guard = BAY_HALF_S + 3.75
-    protected: list[tuple[str, float, float]] = [
-        (f"le pont d'envol a s = {sc:.0f}", sc - guard, sc + guard) for sc, _ in BAYS
+    # ⚠️ LA GARDE EST PAR BORD, ET C'EST CE QUI LAISSE DE LA PLACE A L'ASYMETRIE.
+    # Une baie a babord ne craint rien d'un epaulement a tribord : la protéger des
+    # deux cotes aurait ferme presque toute la coque, et la consigne 14 n'aurait
+    # eu nulle part ou vivre. Le quatrieme membre dit quel bord est concerne.
+    protected: list[tuple[str, float, float, float]] = [
+        (f"le pont d'envol a s = {sc:.0f}", sc - guard, sc + guard,
+         1.0 if xc >= 0.0 else -1.0)
+        for sc, xc in BAYS
     ]
     # ⚠️ ET AMBRY, POUR UNE AUTRE RAISON. L'avant-poste humain est une GREFFE : il
     # est deplie a 0,700 tuile/m quand le borde est a 0,200, et il n'a aucune
@@ -827,14 +919,16 @@ def _assert_taper_spares_the_bays() -> None:
     # texels tombe sous la borne de la projection en boite — refuse par le harnais
     # d'UV, qui a arrete un epaulement ecrit a s = 453. Une greffe ne s'etire pas
     # avec ce qui la porte.
-    protected.append(("Ambry", AMBRY_S[0] - 3.75, AMBRY_S[1] + 3.75))
-    for label, low, high in protected:
+    # Ambry vit a tribord (AMBRY_X va de 7,60 a 13,60).
+    protected.append(("Ambry", AMBRY_S[0] - 3.75, AMBRY_S[1] + 3.75, 1.0))
+    for label, low, high, side in protected:
         for s in (low, (low + high) * 0.5, high):
-            kx = _scales(s)[0]
-            if abs(kx - 1.0) > tolerance:
+            k = _side_scale(s, side)
+            if abs(k - 1.0) > tolerance:
+                bord = "tribord" if side >= 0.0 else "babord"
                 raise SystemExit(
-                    f"[long_cortege] TAPER fait respirer la coque a s = {s:.1f} "
-                    f"(kx = {kx:.3f}, ecart {abs(kx - 1.0) * 100:.1f} pct pour "
+                    f"[long_cortege] la coque respire a {bord}, s = {s:.1f} "
+                    f"(facteur {k:.3f}, ecart {abs(k - 1.0) * 100:.1f} pct pour "
                     f"{tolerance * 100:.0f} pct tolere), dans la garde de {label}. "
                     "La peau bougerait sans que la piece qu'elle porte ne bouge "
                     "avec elle, et rien ne le dirait."
@@ -1489,11 +1583,21 @@ def _stations(index: int) -> list[float]:
         # `TAPER` va jusqu'a la poupe, une transition de douze metres n'aurait
         # que deux segments pour tourner. Le contour se lirait en facettes — et
         # une facette de six metres sur un vaisseau de 6,8 km se voit.
+        # ⚠️ LES DEUX TABLES, ET PAS SEULEMENT `TAPER`. Une transition d'asymetrie
+        # fait douze metres comme les autres : la laisser au pas de 5,00 m
+        # donnerait deux segments pour tourner, et le bord qui se pince se
+        # lirait en facettes — precisement sur le cote que la consigne 14 veut
+        # faire remarquer.
+        edges: list[tuple[float, float]] = []
         for a, b in zip(TAPER, TAPER[1:]):
-            if abs(a[1] - b[1]) < 1e-6:
-                continue
-            v = max(a[0], s0)
-            stop = min(b[0], s1)
+            if abs(a[1] - b[1]) > 1e-6:
+                edges.append((a[0], b[0]))
+        for a, b in zip(ASYMMETRY, ASYMMETRY[1:]):
+            if abs(a[1] - b[1]) > 1e-6 or abs(a[2] - b[2]) > 1e-6:
+                edges.append((a[0], b[0]))
+        for lo, hi in edges:
+            v = max(lo, s0)
+            stop = min(hi, s1)
             while v < stop - 1e-6:
                 values.append(v)
                 v += 1.25
@@ -1637,12 +1741,16 @@ def _clip_lane(s: float, x0: float, x1: float,
     compte de modules imprime a chaque build a montre deux colonnes a zero.
     C'est pourquoi ce compte est imprime.
     """
-    limit = _half_width(s) - 0.45
+    # ⚠️ UNE LIMITE PAR BORD DEPUIS QUE LA COQUE EST ASYMETRIQUE. Une voie rabattue
+    # sur la demi-largeur TRIBORD deborderait a babord la ou ce bord est pince —
+    # une lisse en porte-a-faux au-dessus du vide, que rien ne signalerait.
     lo, hi = x0, x1
-    if lo < -limit:
-        lo = -limit
-    if hi > limit:
-        hi = limit
+    limit_port = _half_width(s, -1.0) - 0.45
+    limit_star = _half_width(s, 1.0) - 0.45
+    if lo < -limit_port:
+        lo = -limit_port
+    if hi > limit_star:
+        hi = limit_star
     if hi - lo < minimum:
         return None
     return lo, hi
@@ -1973,8 +2081,8 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
         # la reverifie donc sur sa boite englobante, qui majore, contre la
         # meme demi-largeur utile que `_clip_lane`. Sans cela, une greffe de
         # bord passerait par-dessus l'arete du borde a la premiere rotation.
-        if px0 < -(_half_width(centre_s) - 0.45) \
-                or px1 > _half_width(centre_s) - 0.45:
+        if px0 < -(_half_width(centre_s, -1.0) - 0.45) \
+                or px1 > _half_width(centre_s, 1.0) - 0.45:
             break
         if _ambry_clash(ps0, ps1, px0, px1):
             break
