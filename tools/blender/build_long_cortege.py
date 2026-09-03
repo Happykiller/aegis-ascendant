@@ -623,6 +623,53 @@ PROFILE: tuple[tuple[float, float, str], ...] = _subdivide_profile(
 DECK_LAST = next(i for i, p in enumerate(PROFILE)
                  if abs(p[0] - HALF_WIDTH) < 1e-9)
 
+# --------------------------------------------------------------------------
+# LES FOSSES — le relief se prend VERS LE BAS
+# --------------------------------------------------------------------------
+# ⚠️ LE PLAFOND INTERDIT LE RELIEF VERS LE HAUT, ET C'EST MESURE. Le decor inerte
+# ne monte pas au-dessus de -3,00 (`ADR-0041`) et le pont est a -4,30 : il reste
+# 1,26 m. La consigne 4 demande « de grands volumes de plusieurs metres produisant
+# de vraies ombres » — vers le haut, c'est impossible, et une terrasse de 3 m
+# masquerait le combat sans jamais pouvoir etre touchee.
+#
+# La profondeur, elle, est libre : il y a 8 m entre le pont et la quille (-12,60).
+# Une fosse de 1,55 m se lit comme un volume de 1,55 m, et ne coute rien au
+# plafond. C'est la meme sortie que le lot 1 de la refonte a prise pour les ponts
+# d'envol, et pour la meme raison.
+#
+# ⚠️ ELLES N'AJOUTENT AUCUN POINT DE PROFIL, ET C'EST CE QUI LES REND GRATUITES EN
+# TOPOLOGIE. Une fosse occupe tout le pont interieur d'un bord — de |x| = 2,20 a
+# 6,80 — et ces deux abscisses sont DEJA des points du profil. Un point neuf
+# aurait coute deux segments d'anneau sur TOUTE la longueur du vaisseau, a chaque
+# station des cinq troncons : ~600 triangles par point, pour un creux local.
+#
+# ⚠️ ET ELLES SUIVENT L'ECHELLE TOUTES SEULES. Comme les ouvertures de baie, une
+# fosse est definie par des INDICES d'anneau et non par des coordonnees absolues :
+# `RING_X` est nominal. Elle se pince donc avec le bord qui se pince, sans qu'une
+# ligne de plus soit ecrite — ce qui la rend posable dans une zone de variation.
+#
+# (s du centre, demi-longueur, bord : +1 tribord / -1 babord)
+# ⚠️ DEUX POSITIONS ONT ETE CORRIGEES PAR L'ASSERTION, PAS PAR LE JUGEMENT. Les
+# fosses etaient d'abord ecrites a s = 126 et 413 — a huit et trois metres des
+# socles de `Turret_03` et `Turret_13`. En x elles ne les touchaient pas (la fosse
+# tient sur le pont INTERIEUR, ces deux affuts sont sur le pont median), mais leurs
+# gardes se recouvraient : un trou de 1,55 m a 72 cm du bord d'un socle. Rien
+# n'aurait produit d'erreur.
+PITS: tuple[tuple[float, float, float], ...] = (
+    (136.0, 6.0, 1.0),
+    (228.0, 6.0, 1.0),
+    (292.0, 6.0, -1.0),
+    (393.0, 6.0, 1.0),
+)
+#: Les deux abscisses NOMINALES de l'emprise — deux points existants du profil.
+PIT_X = (2.20, 6.80)
+#: Profondeur sous la peau. Moins que le puits d'un pont d'envol (1,80 m) : une
+#: fosse de maintenance n'a pas a pouvoir contenir un appareil, et un creux plus
+#: profond que la baie voisine brouillerait la hierarchie des deux lectures.
+PIT_DEPTH = 1.55
+#: Garde autour d'une fosse : rien ne s'y pose, et elle ne mord aucune installation.
+PIT_KEEPOUT = 2.20
+
 #: 5 nœuds d'arete dorsale, exactement un par troncon, sur l'axe.
 #: ⚠️ LA COQUE N'EN CUIT PLUS AUCUN (BRIEF-0094). `build_spine_bulb()` a disparu,
 #: comme `build_bay()` (BRIEF-0091) et `build_turret_pad()` (BRIEF-0093) avant
@@ -935,6 +982,56 @@ def _assert_taper_spares_the_bays() -> None:
                 )
 
 
+def _assert_pits_are_clear() -> None:
+    """Aucune fosse ne mord une installation, ni une autre fosse.
+
+    ⚠️ CE QU'ELLE EMPECHE EST INVISIBLE ET DEFINITIF. Une fosse est un TROU dans la
+    peau : creusee sous un socle de tourelle, elle laisse l'affut en l'air ; sous
+    un noeud d'arete, elle emporte son assise ; sous un pont d'envol, deux
+    ouvertures se recouvrent et la collerette de l'une traverse le puits de
+    l'autre. Rien de tout cela ne produit d'erreur — le `.glb` reste valide, le
+    build reste vert, et le defaut ne se voit qu'en capture, si l'on capture
+    justement la.
+    """
+    problems: list[str] = []
+    for sc, hs, side in PITS:
+        lo, hi = sc - hs - PIT_KEEPOUT, sc + hs + PIT_KEEPOUT
+        x_lo = min(PIT_X[0] * side, PIT_X[1] * side) - PIT_KEEPOUT
+        x_hi = max(PIT_X[0] * side, PIT_X[1] * side) + PIT_KEEPOUT
+        def touches(ps: float, px: float, radius: float) -> bool:
+            return (lo - radius <= ps <= hi + radius
+                    and x_lo - radius <= px <= x_hi + radius)
+        for number, (ts, tx) in enumerate(TURRETS, start=1):
+            if touches(ts, _marker_x(ts, tx), TURRET_FOOTPRINT_R):
+                problems.append(
+                    f"la fosse a s = {sc:.0f} mord le socle de Turret_{number:02d} "
+                    f"(s = {ts:.0f}, x = {tx:+.2f}) — l'affut resterait en l'air")
+        for number, (bs, bx) in enumerate(BAYS, start=1):
+            if touches(bs, bx, max(BAY_HALF_S, BAY_HALF_X)):
+                problems.append(
+                    f"la fosse a s = {sc:.0f} recouvre l'ouverture de Bay_{number:02d} "
+                    f"(s = {bs:.0f}, x = {bx:+.2f}) — deux trous l'un dans l'autre")
+        for number, ns in enumerate(SPINES, start=1):
+            if lo - APRON_SPINE <= ns <= hi + APRON_SPINE and x_lo <= 0.0 <= x_hi:
+                problems.append(
+                    f"la fosse a s = {sc:.0f} emporte l'assise de Spine_{number:02d} "
+                    f"(s = {ns:.0f})")
+        if side > 0.0 and not (hi < AMBRY_S[0] or lo > AMBRY_S[1]):
+            problems.append(
+                f"la fosse a s = {sc:.0f} est sous Ambry ({AMBRY_S[0]:.0f} a "
+                f"{AMBRY_S[1]:.0f}, tribord) — la greffe humaine perdrait son pont")
+    for a in range(len(PITS)):
+        for b in range(a + 1, len(PITS)):
+            sa, ha, _ = PITS[a]
+            sb, hb, _ = PITS[b]
+            if abs(sa - sb) < ha + hb + PIT_KEEPOUT:
+                problems.append(
+                    f"les fosses a s = {sa:.0f} et {sb:.0f} se chevauchent")
+    if problems:
+        raise SystemExit("[long_cortege] FOSSES MAL POSEES\n"
+                         + "\n".join(f"  - {p}" for p in problems))
+
+
 def _assert_canal() -> None:
     """Le canal decrit par `CANAL_*` est-il celui que `PROFILE_BASE` dessine ?
 
@@ -1034,6 +1131,41 @@ def _bay_cell(i: int, s0: float, s1: float) -> tuple[float, float] | None:
                 and s1 <= sc + BAY_HALF_S + 1e-6):
             return sc, xc
     return None
+
+
+def _pit_cell(i: int, s0: float, s1: float) -> tuple[float, float, float] | None:
+    """La cellule (segment `i`, station `s0 -> s1`) est-elle DANS une fosse ?
+
+    Meme mecanique que `_bay_cell` : on n'emet pas la face, et les parois sont
+    posees ensuite. Les bornes sont en x NOMINAL, comme `RING_X`.
+    """
+    if not RING_ON_DECK[i]:
+        return None
+    lo = min(RING_X[i], RING_X[(i + 1) % RING_SIZE])
+    hi = max(RING_X[i], RING_X[(i + 1) % RING_SIZE])
+    for sc, hs, side in PITS:
+        x0 = PIT_X[0] * side
+        x1 = PIT_X[1] * side
+        if (lo >= min(x0, x1) - 1e-6 and hi <= max(x0, x1) + 1e-6
+                and s0 >= sc - hs - 1e-6 and s1 <= sc + hs + 1e-6):
+            return sc, hs, side
+    return None
+
+
+def _pit_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
+    """Le module (s0..s1, x0..x1) mord-il l'emprise d'une fosse ?
+
+    ⚠️ MEME DANGER QU'UNE BAIE, ET IL EST PIRE ICI PARCE QU'IL EST DISCRET. Une
+    plaque qui enjambe une fosse ne flotte que de 1,55 m : assez pour se voir en
+    capture, pas assez pour qu'on la cherche.
+    """
+    for sc, hs, side in PITS:
+        xc = (PIT_X[0] + PIT_X[1]) * 0.5 * side
+        half_x = (PIT_X[1] - PIT_X[0]) * 0.5 + PIT_KEEPOUT
+        if not (s1 < sc - hs - PIT_KEEPOUT or s0 > sc + hs + PIT_KEEPOUT
+                or x1 < xc - half_x or x0 > xc + half_x):
+            return True
+    return False
 
 
 def _bay_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
@@ -1391,6 +1523,31 @@ def _weld(obj: bpy.types.Object, dist: float = 1e-5) -> None:
     bm.free()
 
 
+def _face_towards(bm: bmesh.types.BMesh, verts: list, material: str,
+                  target: Vector):
+    """Pose une face et GARANTIT que sa normale pointe vers `target`.
+
+    ⚠️ CE FICHIER N'APPELLE PAS `recalc_face_normals`, ET C'EST DELIBERE : les
+    troncons 2 a 5 sont des tubes ouverts aux deux bouts, ou l'heuristique se
+    trompe et retourne la coque entiere (voir `_assert_skin_outward`). Le sens
+    d'une face neuve est donc EXACTEMENT celui de l'ordre de ses sommets — et
+    raisonner sur cet ordre marche pour le fond d'une fosse, echoue pour sa paroi
+    interieure, remarche pour sa paroi exterieure, et s'inverse a nouveau quand la
+    fosse passe a babord. Quatre chances de se tromper par fosse.
+
+    Une face mal orientee ne produit aucune erreur : elle DISPARAIT simplement en
+    jeu (culling arriere), et le journal reste muet. Declarer la direction voulue
+    plutot que l'ordre des sommets rend l'intention lisible et le defaut impossible.
+    """
+    face = _face(bm, verts, material)
+    if face is None:
+        return None
+    face.normal_update()
+    if face.normal.dot(target) < 0.0:
+        face.normal_flip()
+    return face
+
+
 def _face(bm: bmesh.types.BMesh, verts: list, material: str):
     clean: list = []
     for v in verts:
@@ -1626,6 +1783,13 @@ def _stations(index: int) -> list[float]:
     for sc, _ in BAYS:
         if s0 <= sc < s1:
             values += [sc - BAY_HALF_S, sc + BAY_HALF_S]
+    # ⚠️ ET LES BORDS DES FOSSES, POUR LA MEME RAISON QUE LES BAIES. Sans station a
+    # `sc +/- hs`, l'emprise n'est pas pavee par des cellules entieres et « ne pas
+    # emettre les faces » rend un creux aux cotes approchees — plus large ou plus
+    # court que ses parois, avec un jour tout autour.
+    for sc, hs, _ in PITS:
+        if s0 <= sc < s1:
+            values += [sc - hs, sc + hs]
     return sorted({round(v, 6) for v in values})
 
 
@@ -1648,7 +1812,7 @@ def build_skin(bm: bmesh.types.BMesh, index: int) -> int:
         front, back = rings[k], rings[k + 1]
         s0, s1 = stations[k], stations[k + 1]
         for i in range(RING_SIZE):
-            if _bay_cell(i, s0, s1) is not None:
+            if _bay_cell(i, s0, s1) is not None or _pit_cell(i, s0, s1) is not None:
                 skipped += 1
                 continue
             j = (i + 1) % RING_SIZE
@@ -1661,6 +1825,103 @@ def build_skin(bm: bmesh.types.BMesh, index: int) -> int:
         # ce bord-la EST vu a la fin du niveau. On le ferme.
         _cap(bm, rings[-1], "AA_Greeble", facing_front=False)
     return skipped
+
+
+def build_pits(bm: bmesh.types.BMesh, index: int) -> int:
+    """Creuse les fosses du troncon : quatre parois et un fond.
+
+    ⚠️ LE FOND EST PLAT, LES PAROIS EPOUSENT LA PEAU. Le pont descend de 8 cm entre
+    |x| = 2,20 et 6,80 ; un fond qui suivrait cette pente ferait une fosse dont on
+    ne lit pas le niveau. Un fond plat, lui, donne une horizontale franche au creux
+    — et c'est ce qui le fait lire comme un volume plutot que comme une tache
+    sombre.
+
+    ⚠️ LES ABSCISSES SONT MISES A L'ECHELLE DU BORD, comme la peau. Prendre les x
+    nominaux poserait les parois a cote du trou partout ou la coque respire.
+
+    Rend le nombre de quads poses.
+    """
+    origin = index * SECTION_LENGTH
+    quads = 0
+    for sc, hs, side in PITS:
+        if not (origin <= sc < origin + SECTION_LENGTH):
+            continue
+        s_lo, s_hi = sc - hs, sc + hs
+        stations = [v for v in _stations(index) if s_lo - 1e-6 <= v <= s_hi + 1e-6]
+        if len(stations) < 2:
+            continue
+        # Le fond : sous le point le PLUS BAS de l'emprise, pour qu'il soit
+        # partout au moins a `PIT_DEPTH` de la peau.
+        floor = min(_surface_y(v, PIT_X[k] * side)
+                    for v in stations for k in (0, 1)) - PIT_DEPTH
+
+        def edge(v: float, k: int) -> float:
+            return PIT_X[k] * side * _side_scale(v, side)
+
+        # ⚠️ LE FOND EST EN MATIERE DE COQUE, LES PAROIS EN NOIR DE CREUX — ET
+        # C'EST L'INVERSE DE LA PREMIERE ECRITURE, CORRIGE EN REGARDANT. Un fond
+        # `AA_Greeble` (#141419) rendait la fosse comme un APLAT NOIR : le meme
+        # defaut que `BRIEF-0094` reprochait aux greffes, « des aplats, pas des
+        # volumes ». Pire, il mettait un second grand noir dans le cadre, alors que
+        # l'artere doit rester LE creux du vaisseau — la raison meme pour laquelle
+        # la contremarche de chine est repassee en `AA_Hull`.
+        # Le creux se lit desormais par ses PAROIS sombres et l'ombre qu'elles
+        # portent, et son fond reste de la matiere de coque : un plancher plus bas,
+        # et non un trou.
+        #
+        # ⚠️ CHAQUE FACE DECLARE OU ELLE REGARDE. Toutes les normales d'une fosse
+        # pointent vers son INTERIEUR : le fond vers le haut, les deux parois
+        # longues l'une vers l'autre, les bouts l'un vers l'autre. C'est la seule
+        # formulation qui reste juste quand la fosse passe a babord — ou tous les
+        # signes en x s'inversent.
+        # --- le fond ---------------------------------------------------------
+        for a, b in zip(stations, stations[1:]):
+            _face_towards(bm, [
+                bm.verts.new(Vector((edge(a, 0), floor, _z(a)))),
+                bm.verts.new(Vector((edge(a, 1), floor, _z(a)))),
+                bm.verts.new(Vector((edge(b, 1), floor, _z(b)))),
+                bm.verts.new(Vector((edge(b, 0), floor, _z(b)))),
+            ], "AA_Hull", Vector((0.0, 1.0, 0.0)))
+            quads += 1
+        # --- les deux parois longues -----------------------------------------
+        # La paroi interieure (k = 0) regarde vers le large, l'exterieure (k = 1)
+        # regarde vers l'axe : les deux vers le creux.
+        for k, inward in ((0, 1.0), (1, -1.0)):
+            for a, b in zip(stations, stations[1:]):
+                ya = _surface_y(a, PIT_X[k] * side)
+                yb = _surface_y(b, PIT_X[k] * side)
+                _face_towards(bm, [
+                    bm.verts.new(Vector((edge(a, k), ya, _z(a)))),
+                    bm.verts.new(Vector((edge(b, k), yb, _z(b)))),
+                    bm.verts.new(Vector((edge(b, k), floor, _z(b)))),
+                    bm.verts.new(Vector((edge(a, k), floor, _z(a)))),
+                ], "AA_Greeble", Vector((inward * side, 0.0, 0.0)))
+                quads += 1
+        # --- les deux parois de bout ------------------------------------------
+        # ⚠️ ELLES SONT CLAIRES, ET C'EST LA CORRECTION QUI A RENDU LA FOSSE
+        # LISIBLE. Fond anthracite et parois noires, le creux existait dans le
+        # `.glb` — sondee, mesuree, rendue — et restait INVISIBLE en jeu : a 23
+        # px/m sous une camera qui plonge a 70°, il se confondait avec les bandes
+        # sombres du borde. Le pont d'envol voisin, lui, se lit d'un coup d'œil :
+        # il a un coaming CLAIR. Sans arete claire, un creux n'est pas un volume,
+        # c'est une tache.
+        #
+        # ⚠️ SEULEMENT LES DEUX BOUTS, ET NON TOUT LE POURTOUR. `BRIEF-0089` a
+        # mesure qu'« un materiau clair sur une arete CONTINUE occupe plus de
+        # pixels qu'une piece entiere ». Deux plans de 4,6 m accrochent la lumiere
+        # et disent « ca descend » ; un ruban de douze metres aurait redessine la
+        # coque.
+        #
+        # `s` croit vers la poupe et `z` decroit : le bout amont regarde vers -z.
+        for v, face_z in ((s_lo, -1.0), (s_hi, 1.0)):
+            _face_towards(bm, [
+                bm.verts.new(Vector((edge(v, 0), _surface_y(v, PIT_X[0] * side), _z(v)))),
+                bm.verts.new(Vector((edge(v, 1), _surface_y(v, PIT_X[1] * side), _z(v)))),
+                bm.verts.new(Vector((edge(v, 1), floor, _z(v)))),
+                bm.verts.new(Vector((edge(v, 0), floor, _z(v)))),
+            ], "AA_Trim", Vector((0.0, 0.0, face_z)))
+            quads += 1
+    return quads
 
 
 def build_bay_flanges(bm: bmesh.types.BMesh, index: int) -> int:
@@ -1820,7 +2081,8 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                 # les quatre familles qui tirent APRES un rejet (plaques,
                 # nervures, greffes, pastilles) : on tire, puis on decide
                 # d'emettre. Le filtre d'emprise obeit a la meme regle.
-                if _bay_clash(s, s + length, min(x0, x1), max(x0, x1)):
+                if _bay_clash(s, s + length, min(x0, x1), max(x0, x1)) \
+                        or _pit_clash(s, s + length, min(x0, x1), max(x0, x1)):
                     s += cell
                     continue
                 if not _in_apron(s, s + length, aprons):
@@ -1903,7 +2165,8 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                                       max(side * a, side * b))
                     if lane is None \
                             or _ambry_clash(s, s + width, lane[0], lane[1]) \
-                            or _bay_clash(s, s + width, lane[0], lane[1]):
+                            or _bay_clash(s, s + width, lane[0], lane[1]) \
+                            or _pit_clash(s, s + width, lane[0], lane[1]):
                         continue
                     _surface_box(bm, lane[0], lane[1], s, s + width,
                                  rise, 0.60, "AA_Greeble", top, draft=0.10)
@@ -2041,7 +2304,8 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
     if _ambry_clash(s, s + length, lane[0], lane[1]):
         return count
     # Voir `build_plates` : on tire, puis on decide d'emettre.
-    blocked = _bay_clash(s, s + length, lane[0], lane[1])
+    blocked = _bay_clash(s, s + length, lane[0], lane[1]) \
+        or _pit_clash(s, s + length, lane[0], lane[1])
     # ⚠️ LA REGLE DE RYTHME, ET C'EST ELLE QUI FAIT LE LIVRABLE « ZONES
     # CALMES ». Une greffe est HEBERGEE par une emprise de marqueur : elle
     # doit y tenir tout entiere. Elle n'a donc pas le droit de s'installer
@@ -2158,7 +2422,8 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
         half_x = 0.15 if long_pip else 0.26
         half_s = 0.44 if long_pip else 0.24
         # Voir `build_plates` : on tire, puis on decide d'emettre.
-        if _bay_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
+        if _bay_clash(s - 0.5, s + 0.5, lane[0], lane[1]) \
+                or _pit_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
             continue
         if not _in_apron(s - half_s, s + half_s, aprons) \
                 or not _inside_zone(s - half_s, s + half_s):
@@ -2672,6 +2937,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     counts = {
         "cellules_percees": skipped,
         "collerettes": build_bay_flanges(bm, index),
+        "fosses": build_pits(bm, index),
         "greffes": grafts,
         "plaques": build_plates(bm, index, rng, aprons, busy),
         "nervures": build_ribs(bm, index, rng, busy),
@@ -3566,6 +3832,7 @@ def build() -> dict:
             + "\n".join(f"  - {p}" for p in clashes))
     _assert_canal()
     _assert_taper_spares_the_bays()
+    _assert_pits_are_clear()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []
@@ -3595,9 +3862,14 @@ def _print_report(report: dict) -> None:
           f"{100.0 * report['triangles'] / TRI_BUDGET_TOTAL:>7.1f}%   "
           f"largeur {report['width']:.4f} m, sommet {report['top']:+.3f} "
           f"(plafond {CEILING_Y})")
+    # ⚠️ CETTE LISTE EST BLANCHE, ET C'EST UN PIEGE QUE CE FICHIER DOCUMENTE DEJA :
+    # « le compte de modules imprime a chaque build a montre deux colonnes a zero ».
+    # Une famille absente d'ici ne se compte pas, donc ne se surveille pas — les
+    # fosses ont ete construites un build entier sans qu'aucune ligne ne les
+    # mentionne, et l'on a cherche dans le rendu ce qu'il fallait chercher ici.
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
                   "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
-                  "cellules_percees", "collerettes"):
+                  "fosses", "cellules_percees", "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<18} {line}   = {total}")

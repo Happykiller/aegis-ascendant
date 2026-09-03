@@ -290,8 +290,8 @@ entre les deux tirs est borné par un **test** sur les deux Resources.
 
 # LOT B — La coque cesse d'être un rectangle
 
-> **B1 ✅ et B2 ✅ LIVRÉS (2026-09-03)** — la largeur varie et les deux bords ne sont plus
-> jumeaux. **B3 (relief), B4 (repositionnement) restent à faire.**
+> **B1 ✅, B2 ✅ et B3 ✅ LIVRÉS (2026-09-03)** — la largeur varie, les bords ne sont plus
+> jumeaux, et le pont n'est plus plat. **B4 (repositionnement) reste à faire.**
 
 Le plus gros lot, et celui qui porte le critère de sortie de l'opérateur (consigne 20).
 
@@ -404,12 +404,54 @@ Aucune des deux n'aurait produit d'erreur.
 d'asymétrie — ~6 800 tri pour que le bord qui se pince ne se lise pas en facettes, précisément sur
 le côté que la consigne 14 veut faire remarquer. Déterminisme préservé, 0 octet divergent.
 
-## B3 — Le relief, en creux et en largeur (consigne 4)
+## B3 — Le relief, en creux — ✅ LIVRÉ
 
-Voir **§C4** : le décor inerte n'a que **1,26 m** au-dessus du pont. Le relief se compose donc en
-fosses, baies de maintenance en creux, décrochements de bordé et épaulements — **jamais en
-terrasses hautes**. Une seule exception possible : une masse **destructible** peut monter jusqu'à
-−2,40, mais elle devient alors une pièce de gameplay, avec PV, fenêtre et invariants.
+Le décor inerte n'a que **1,26 m** au-dessus du pont (§C4) : la consigne 4 demande « de grands
+volumes de plusieurs mètres », et vers le haut c'est impossible. La profondeur, elle, est libre —
+8 m entre le pont et la quille.
+
+**Quatre fosses** de 12 × 4,6 m, profondes de **1,55 m**, sur le pont intérieur : s = 136 et 393
+(tribord), 228 (tribord), 292 (bâbord).
+
+### ⚠️ Elles ne coûtent que 384 triangles, et c'est une décision de composition
+
+Une fosse occupe **tout le pont intérieur d'un bord**, de |x| = 2,20 à 6,80 — deux abscisses qui
+sont **déjà des points du profil**. Un point neuf aurait coûté deux segments d'anneau sur toute la
+longueur du vaisseau, à chaque station des cinq tronçons : ~600 triangles par point, pour un creux
+local. Et comme les ouvertures de baie, une fosse est définie par **indices d'anneau** : elle se
+pince avec le bord qui se pince, sans une ligne de plus.
+
+### ⚠️ Quatre défauts, tous silencieux, et l'ordre dans lequel ils sont tombés
+
+| # | Le défaut | Comment il a été trouvé |
+|---|---|---|
+| 1 | Les fosses **n'apparaissaient pas au rapport** | Le tableau des modules est une **liste blanche** de labels : `fosses` n'y était pas. Elles ont été construites un build entier sans qu'aucune ligne ne les compte — et l'on a cherché dans le rendu ce qu'il fallait chercher ici. ⚠️ **Ce tableau existe précisément parce qu'une famille de modules a déjà disparu en silence dans ce fichier** |
+| 2 | Deux fosses **mordaient un socle** de tourelle | L'assertion neuve `_assert_pits_are_clear()`, dès sa première exécution. En x elles ne les touchaient pas ; leurs **gardes** se recouvraient — un trou de 1,55 m à 72 cm du bord d'un socle |
+| 3 | La moitié des faces regardait **du mauvais côté** | Ce fichier n'appelle pas `recalc_face_normals` (les tronçons sont des tubes ouverts, l'heuristique s'y trompe) : le sens d'une face est celui de l'ordre de ses sommets, et cet ordre s'inverse quand la fosse passe à bâbord. **Quatre chances de se tromper par fosse.** D'où `_face_towards()`, qui déclare la **direction voulue** au lieu de l'ordre |
+| 4 | Le creux **existait et restait invisible** | Sondé dans le `.glb` (sommets à z = −5,89 aux bons x), rendu en Cycles, mesuré — et introuvable en jeu. Fond en `AA_Greeble`, il se lisait comme un **aplat noir**, le défaut même que `BRIEF-0094` reprochait aux greffes, et il mettait un second grand noir dans le cadre alors que **l'artère doit rester LE creux du vaisseau** |
+
+### ⚠️ Ce qui a finalement rendu la fosse lisible
+
+Le fond est passé en **matière de coque** (`AA_Hull`) et les parois en **noir de creux**
+(`AA_Greeble`) — l'inverse de la première écriture. Puis, comme cela ne suffisait toujours pas :
+les **deux parois de bout** sont en `AA_Trim`.
+
+> **Sans arête claire, un creux n'est pas un volume : c'est une tache.** Le pont d'envol voisin se
+> lit d'un coup d'œil parce qu'il a un coaming clair ; à 23 px/m sous une caméra qui plonge à 70°,
+> une fosse anthracite aux parois noires se confond avec les bandes sombres du bordé.
+
+⚠️ **Seulement les deux bouts, pas tout le pourtour** : `BRIEF-0089` a mesuré qu'« un matériau clair
+sur une arête **continue** occupe plus de pixels qu'une pièce entière ». Deux plans de 4,6 m
+accrochent la lumière ; un ruban de douze mètres aurait redessiné la coque.
+
+### Le détour qui a coûté le plus, et ce qu'il enseigne
+
+Trois captures in-game ont été dépensées à chercher une fosse invisible avant de **sonder le
+`.glb`** — qui a répondu en une minute que la géométrie était juste, et déplacé la question du
+« est-elle construite ? » vers le « pourquoi ne se voit-elle pas ? ». ⚠️ **Le repère de la sonde
+était faux deux fois** (s = 200 − z, puis s = −z) avant qu'on remarque que glTF permute les axes :
+`y` porte la station, `z` la hauteur. Une sonde qui rend « 0 sommet » ne prouve rien tant que son
+repère n'a pas été vérifié sur une valeur connue.
 
 ## B4 — Le repositionnement des installations
 
