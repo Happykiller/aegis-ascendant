@@ -67,11 +67,17 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-conformite-bible.md`](plans/2026-08-27-conformite-bible.md) | Fermer les écarts du rapport de conformité — secousse exposée, `FAN`/`AIMED` en jeu, manette, ouverture calme, hit stop | **lots 0, 1 et 2 livrés** ; lots 3-5 bloqués |
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
-| [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) | **LOT B COMPLET** (contour, asymétrie, fosses, repositionnement — coque calme 50,3 → 58,6 %) ; **LOT C : C1 tranché (bastions retirés), C3 livré (passerelle), C2 chiffré non faisable** ; lots 0, D à faire |
-| [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
+| [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) DÉBLOQUÉ** — la partie jouée qu'il attendait a eu lieu le 2026-09-03 |
+| [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
+> ✅ **L'enrichissement du niveau 2 est CLOS** (2026-09-03) — les quatre lots des 20
+> consignes sont livrés, le plan est dans [`plans/archive/`](plans/archive/). Deux
+> consignes assumées non exécutées : la **11** (orienter une baie demanderait de refaire
+> le mécanisme de `BRIEF-0091`, chiffré non faisable) et la **12** (bastions construits,
+> mesurés, **retirés** — 33 m de bordé pour aucune lecture nouvelle). Livré à **261,0 m
+> de calme, 52,2 %**, soit **+1,9 point** — et non les +8,3 annoncés en cours de route.
+>
 > ✅ **Le chantier du boss est CLOS** (2026-08-25). Ses deux plans sont dans
 > [`plans/archive/`](plans/archive/) et ce qui restait ouvert est dans **P0 bis** ci-dessous.
 >
@@ -506,11 +512,11 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
       alternés, **jamais `--novsync`**.
 - [x] ~~**Les cinq images de texture** (`TEX-0010` à `TEX-0014`)~~ — livrées par l'opérateur,
       dérivées et câblées. Le journal dit « coque habillée — 21 surfaces ».
-- [ ] **LOT 6 — la décoration**, dernier lot de la refonte de géométrie du niveau 2. ⚠️ **Il
-      attend explicitement la validation des lots 1 à 5 par l'opérateur**, et c'est le plan qui
-      le dit : décorer avant que les fonctions soient jugées lisibles, c'est ajouter du bruit
-      par-dessus une hiérarchie non validée. Les lots 1 à 5 sont livrés et vérifiés en capture ;
-      il manque une **partie jouée**.
+- [ ] **LOT 6 — la décoration**, dernier lot de la refonte de géométrie du niveau 2.
+      ✅ **Sa condition d'ouverture est LEVÉE** : il attendait que l'opérateur juge les lots 1 à 5
+      en jouant — décorer avant que les fonctions soient lisibles, c'est ajouter du bruit sur une
+      hiérarchie non validée. La partie a eu lieu le **2026-09-03** (survol complet, victoire,
+      score 77130, rythme validé sans retouche). **Le lot est prenable.**
 - [ ] **Le neuvième slot `AA_Gear` (grège moyen)** — proposé par la forge au `BRIEF-0094`, pas
       créé. La palette de l'Unisson n'a rien entre `AA_Hull` (#24252B) et `AA_Trim` (#DDDCD2),
       ce qui empêche de tenir les 15 % d'appareillage sans forcer `AA_Trim` — or un matériau

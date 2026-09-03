@@ -7,6 +7,10 @@
   dont il reprend **la règle de production et le test d'acceptation sans les modifier**. Ce plan
   ne supersède rien : les lots 1 à 5 de la refonte sont livrés et tiennent.
 - **Source** : les 20 consignes de redesign de l'opérateur, 2026-09-03.
+- **État** : ✅ **éteint et archivé le 2026-09-03** — les quatre lots sont livrés (0 en
+  playtest, A/B/C en dépôt, D tranché et validé par l'opérateur sans retouche). Deux
+  consignes ne sont pas exécutées telles quelles et c'est **assumé** : la 11 est chiffrée
+  non faisable (§C2), la 12 est arbitrée contre au profit de la 16 (§C1).
 
 ## Le constat de l'opérateur
 
