@@ -68,7 +68,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) | **LOT B COMPLET** (contour, asymétrie, fosses, repositionnement — coque calme 50,3 → 58,6 %) ; **C3 livré** (le pont transversal) ; lots 0, C1-C2, D à faire |
+| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) | **LOT B COMPLET** (contour, asymétrie, fosses, repositionnement — coque calme 50,3 → 58,6 %) ; **LOT C : C1 tranché (bastions retirés), C3 livré (passerelle), C2 chiffré non faisable** ; lots 0, D à faire |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
@@ -394,6 +394,21 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **Le témoin à largeur nominale n'a pas pu être isolé.** Toute zone à `kx = 1` voisine une
       transition, si bien que la part de perspective dans l'élargissement mesuré (1 094 → 1 517 px)
       n'est pas chiffrée. Ce qui tranche visuellement est la FORME du bord, pas le nombre.
+
+## ⚠️ Niveau 2 — ce que le LOT C laisse ouvert (2026-09-03)
+
+- [ ] **`build_bastions()` est du code mort volontaire.** La table `BASTIONS` est vide : trois
+      bastions ont été construits, mesurés à 33 m de bordé, et retirés parce qu'ils faisaient
+      passer le calme SOUS son point de départ. Le code et son assertion restent. ⚠️ **À supprimer
+      si personne ne les réclame** — du code qui ne s'exécute jamais finit par mentir.
+- [ ] **C2 — l'orientation des ponts d'envol n'est pas modifiable** à coût raisonnable : une
+      ouverture est un trou GENERE dans la peau (indices d'anneau + points de profil en dur), pas
+      un objet posé. La tourner demanderait de refaire le mécanisme que `BRIEF-0091` a construit
+      pour éviter les booléens. À rouvrir si les sept hangars se ressemblent trop **en jouant**.
+- [ ] ⚠️ **Le « PLAFOND THEORIQUE » du rapport ne compte que les marqueurs** (293,2 m), alors que
+      le calme réel est de 261,0 m depuis que fosses, passerelle et bastions y entrent. Les deux
+      chiffres sont justes et mesurent deux choses ; leur voisinage dans le même rapport peut
+      tromper un lecteur pressé.
 
 ## ⚠️ Niveau 2 — ce que le LOT B4 laisse ouvert (2026-09-03)
 

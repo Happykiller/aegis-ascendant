@@ -513,11 +513,63 @@ qu'il vaut aujourd'hui.
 
 # LOT C — Secteurs fonctionnels, ponts variés, pont transversal
 
-## C1 — Des secteurs lisibles à la silhouette (consigne 3)
+## C1 — Les secteurs — ✅ SATISFAIT, ET **SANS** LES VOLUMES QUI ÉTAIENT PRÉVUS
 
-Les 5 tronçons de 100 m deviennent **5 secteurs de fonction différente** — étroit et militaire,
-large avec ponts d'envol, très mécanique… ⚠️ **Le changement doit être visible avant même les
-textures**, donc porté par les gros volumes et la largeur (lot B), pas par la peinture.
+Trois bastions ont été écrits, construits, assertionnés et **mesurés**. Puis retirés. Voici
+pourquoi, parce que la décision vaut plus que le code.
+
+### ⚠️ D'abord, un défaut de mesure que les bastions ont révélé
+
+Le calme se calculait sur les modules **seedés** (`busy`) plus les emprises d'installations. Les
+**fosses**, la **passerelle** et les **bastions** ne sont ni l'un ni l'autre : ils occupaient
+jusqu'à 36 m de bordé **sans qu'un mètre ne sorte du compte**. Le 58,6 % annoncé au lot B4
+surestimait donc le calme dès que le lot B3 avait creusé ses premières fosses.
+
+> **Un indicateur qui ne voit pas ce qu'on vient d'ajouter ne mesure plus rien.** Même classe de
+> défaut que la liste blanche du tableau des modules, découverte au lot B3.
+
+Corrigé : les trois familles entrent dans l'occupation.
+
+### Ce que les vrais chiffres disent
+
+| | Calme | Part |
+|---|---|---|
+| Avant la session (aucun relief posé) | 251,4 m | 50,3 % |
+| Après B4, **compte incomplet** | 293,2 m | 58,6 % |
+| Après B4, compte **corrigé**, avec fosses + passerelle + 3 bastions | 241,0 m | **48,2 %** |
+| **Livré** : sans les bastions | **261,0 m** | **52,2 %** |
+
+Les bastions coûtaient 33 m et faisaient passer le niveau **sous son point de départ**.
+
+### Pourquoi les retirer plutôt que les réduire
+
+La consigne 3 demande des secteurs reconnaissables. ⚠️ **Elle l'est déjà, et sans eux** : sept
+événements de contour (B1), quatre zones asymétriques (B2), quatre fosses (B3), une passerelle
+(C3) et Ambry donnent à chaque tronçon son identité. Les bastions n'ajoutaient pas une **lecture**,
+ils ajoutaient du **remplissage** — et la consigne 16 dit que « le gigantisme vient aussi du vide ».
+
+Quand deux consignes s'opposent, celle qui n'est pas encore satisfaite l'emporte. Ici la 3 l'était
+déjà : c'est la 16 qui décide.
+
+⚠️ **Et la hauteur ne pouvait de toute façon pas différencier** : le plafond de construction
+(−3,20) ne laisse que **1,10 m** au-dessus du pont intérieur — ce qu'une greffe occupe déjà. Un
+« gros volume » ne peut pas être plus haut qu'un petit. Il ne restait que l'emprise (les bastions)
+et la profondeur (les fosses) ; la profondeur s'est révélée la bonne.
+
+`build_bastions()` et son assertion **restent au dépôt**, la table est vide. Ils reviendront le
+jour où une fonction les réclamera pour elle-même, et non pour occuper un tronçon.
+
+## C2 — Varier la disposition des ponts d'envol — ⚠️ NON FAIT, ET CHIFFRÉ
+
+**La latéralité est déjà variée** (4 bâbord, 3 tribord). **L'orientation ne l'est pas, et ne peut
+pas l'être à coût raisonnable** : une ouverture n'est pas un objet posé mais un **trou généré**
+dans la peau, défini par des indices d'anneau et des stations alignées sur des points de profil
+écrits en dur (`|x| ± 3,00`). La tourner demanderait de percer autrement que par « ne pas émettre
+les cellules » — c'est-à-dire de refaire le mécanisme que `BRIEF-0091` a construit **pour éviter
+les booléens** et garder le déterminisme.
+
+C'est un chantier de générateur, pas un réglage. À rouvrir si l'opérateur juge que les sept
+hangars se ressemblent trop **en jouant**.
 
 ## C2 — Les ponts d'envol se diversifient (consignes 11, 12)
 

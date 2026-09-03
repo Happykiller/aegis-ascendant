@@ -671,6 +671,42 @@ PIT_DEPTH = 1.55
 PIT_KEEPOUT = 2.20
 
 # --------------------------------------------------------------------------
+# LES BASTIONS — ce qui donne une FONCTION a un troncon
+# --------------------------------------------------------------------------
+# ⚠️ LA HAUTEUR NE PEUT PAS DIFFERENCIER, ET C'EST LA CONTRAINTE QUI DECIDE DE
+# TOUT. La consigne 3 demande des secteurs reconnaissables « uniquement par la
+# silhouette et les gros volumes » ; or le plafond de CONSTRUCTION (-3,20) ne
+# laisse que 1,10 m au-dessus du pont interieur — soit ce qu'une greffe occupe
+# deja. Un « gros volume » ne peut donc pas etre plus HAUT qu'un petit.
+#
+# Il reste deux dimensions : l'EMPRISE et la PROFONDEUR. Les fosses ont pris la
+# seconde ; les bastions prennent la premiere. Et ils vivent sur le pont MEDIAN,
+# a -4,99, ou le plafond laisse 1,79 m au lieu de 1,10 — le seul endroit du
+# vaisseau ou 1,2 m de relief tiennent.
+#
+# ⚠️ AUCUN N'EST SOUS UNE TOURELLE, ET CE N'EST PAS UN CHOIX DE COMPOSITION.
+# `turret_seat_y()` echantillonne la PEAU, pas les modules : un bastion pose sous
+# un socle enfoncerait l'affut de sa propre hauteur, et rien ne le dirait.
+#
+# (s centre, demi-longueur, x interieur, x exterieur, hauteur au-dessus de la peau)
+# ⚠️ ELLE EST VIDE, ET C'EST LA CONSIGNE 16 QUI A TRANCHE CONTRE LA 3. Trois
+# bastions ont ete construits, poses et mesures. Ils coutaient 33 m de borde —
+# et le compte de calme, corrige au meme moment, a montre que les fosses, la
+# passerelle et eux ramenaient le niveau de 58,6 pct a 48,2 pct : SOUS les
+# 50,3 pct d'ou le lot B4 etait parti.
+#
+# La consigne 3 demande des secteurs reconnaissables. Elle l'est deja, et sans
+# eux : sept evenements de contour, quatre zones asymetriques, quatre fosses, une
+# passerelle et Ambry donnent a chaque troncon son identite. Les bastions
+# n'ajoutaient pas une LECTURE, ils ajoutaient du remplissage — et « le
+# gigantisme vient aussi du vide ».
+#
+# Le code qui les construit reste : il est verifie, assertionne, et la table
+# suffit a les faire revenir le jour ou une fonction les reclamera pour
+# elle-meme, et non pour occuper un troncon.
+BASTIONS: tuple[tuple[float, float, float, float, float], ...] = ()
+
+# --------------------------------------------------------------------------
 # LE PONT TRANSVERSAL — un seul, et c'est tout l'interet
 # --------------------------------------------------------------------------
 # ⚠️ C'EST LE GESTE LE PLUS EFFICACE CONTRE L'AXE INFINI, et le plus facile a
@@ -1015,6 +1051,56 @@ def _assert_taper_spares_the_bays() -> None:
                     "La peau bougerait sans que la piece qu'elle porte ne bouge "
                     "avec elle, et rien ne le dirait."
                 )
+
+
+def _assert_bastions_are_clear() -> None:
+    """Chaque bastion tient dans SON troncon, et ne mord aucune installation.
+
+    ⚠️ LA JONCTION D'ABORD, ET C'EST ELLE QUI A REFUSE LE PREMIER JET. Un bastion
+    est place dans le troncon de son CENTRE, mais sa geometrie s'etend de part et
+    d'autre : ecrit a s = 205 avec 6,5 m de demi-longueur, il debordait a 198,5 —
+    dans le troncon voisin. Le `.glb` restait valide ; c'est le harnais de
+    jonction qui a vu la bbox du troncon 3 depasser de 1,50 m. Meme piege que la
+    passerelle, evite pour elle et retombe ici.
+
+    ⚠️ ET AUCUN SOUS UNE TOURELLE : `turret_seat_y()` echantillonne la peau et non
+    les modules, donc un affut pose sur un bastion s'y enfoncerait de 1,20 m.
+    """
+    problems: list[str] = []
+    for sc, hs, xi, xo, _h in BASTIONS:
+        s0, s1 = sc - hs, sc + hs
+        section = int(sc // SECTION_LENGTH)
+        low, high = section * SECTION_LENGTH, (section + 1) * SECTION_LENGTH
+        if s0 < low + JOINT_CLEARANCE or s1 > high - JOINT_CLEARANCE:
+            problems.append(
+                f"le bastion a s = {sc:.0f} deborde de son troncon "
+                f"({s0:.1f} a {s1:.1f} pour {low:.0f}-{high:.0f}) : il serait "
+                "coupe en deux maillages")
+        x_lo, x_hi = min(xi, xo), max(xi, xo)
+        for number, (ts, tx) in enumerate(TURRETS, start=1):
+            r = PAD_RADIUS[min(int(ts // SECTION_LENGTH), SECTION_COUNT - 1)]
+            mx = _marker_x(ts, tx)
+            if (s0 - r <= ts <= s1 + r) and (x_lo - r <= mx <= x_hi + r):
+                problems.append(
+                    f"le bastion a s = {sc:.0f} passe sous Turret_{number:02d} "
+                    f"(s = {ts:.1f}, x = {mx:+.2f}) : l'affut s'y enfoncerait")
+        for number, (bs, bx) in enumerate(BAYS, start=1):
+            if (s0 - BAY_HALF_S <= bs <= s1 + BAY_HALF_S) \
+                    and (x_lo - BAY_HALF_X <= bx <= x_hi + BAY_HALF_X):
+                problems.append(
+                    f"le bastion a s = {sc:.0f} recouvre Bay_{number:02d}")
+        for pc, ph, pside in PITS:
+            px_lo = min(PIT_X[0] * pside, PIT_X[1] * pside)
+            px_hi = max(PIT_X[0] * pside, PIT_X[1] * pside)
+            if not (s1 < pc - ph or s0 > pc + ph
+                    or x_hi < px_lo or x_lo > px_hi):
+                problems.append(
+                    f"le bastion a s = {sc:.0f} recouvre la fosse a s = {pc:.0f}")
+        if x_lo >= 0.0 and not (s1 < AMBRY_S[0] or s0 > AMBRY_S[1]):
+            problems.append(f"le bastion a s = {sc:.0f} est sous Ambry")
+    if problems:
+        raise SystemExit("[long_cortege] BASTIONS MAL POSES\n"
+                         + "\n".join(f"  - {p}" for p in problems))
 
 
 def _assert_pits_are_clear() -> None:
@@ -1985,6 +2071,35 @@ def _box_outward(bm: bmesh.types.BMesh, x0: float, x1: float, y0: float,
     for pts, n in faces:
         _face_towards(bm, [v(*p) for p in pts], material, Vector(n))
     return len(faces)
+
+
+def build_bastions(bm: bmesh.types.BMesh, index: int) -> int:
+    """Les bastions : de grandes masses basses, sur le pont median.
+
+    ⚠️ LEUR ASSISE SUIT LA PEAU, COIN PAR COIN. Le pont median descend de 5 cm sur
+    sa largeur et la coque respire : une base posee a une hauteur unique
+    flotterait d'un cote et s'enfoncerait de l'autre. On prend le point le plus
+    BAS de l'emprise et on s'y enterre de 10 cm — le meme geste que la jupe des
+    modules.
+    """
+    origin = index * SECTION_LENGTH
+    quads = 0
+    for sc, hs, xi, xo, height in BASTIONS:
+        if not (origin <= sc < origin + SECTION_LENGTH):
+            continue
+        side = 1.0 if xi >= 0.0 else -1.0
+        s0, s1 = sc - hs, sc + hs
+        corners = [_surface_y(v, x) for v in (s0, sc, s1) for x in (xi, xo)]
+        foot = min(corners) - 0.10
+        k0 = _side_scale(s0, side)
+        k1 = _side_scale(s1, side)
+        # Les deux bouts suivent chacun la largeur locale : sur un bord qui se
+        # pince, un bastion droit sortirait de la coque a une extremite.
+        quads += _box_outward(bm, xi * k0, xo * k0, foot, foot + height,
+                              s0, sc, "AA_Hull")
+        quads += _box_outward(bm, xi * k1, xo * k1, foot, foot + height,
+                              sc, s1, "AA_Hull")
+    return quads
 
 
 def build_cross_bridge(bm: bmesh.types.BMesh, index: int) -> int:
@@ -3027,6 +3142,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         "collerettes": build_bay_flanges(bm, index),
         "fosses": build_pits(bm, index),
         "passerelle": build_cross_bridge(bm, index),
+        "bastions": build_bastions(bm, index),
         "greffes": grafts,
         "plaques": build_plates(bm, index, rng, aprons, busy),
         "nervures": build_ribs(bm, index, rng, busy),
@@ -3053,6 +3169,19 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     # Ce qui est compte, c'est ce que le brief nomme : plaques, nervures,
     # greffes, pastilles — et l'emprise des installations elles-memes.
     occupied = list(busy)
+    # ⚠️ LES RELIEFS POSES A LA MAIN COMPTENT AUSSI, ET ILS MANQUAIENT. Le calme se
+    # calculait sur `busy` (les modules SEEDES) plus les emprises d'installations.
+    # Les fosses, la passerelle et les bastions ne sont ni l'un ni l'autre : ils
+    # occupaient jusqu'a 36 m de borde sans qu'un metre ne sorte du compte, et le
+    # chiffre annonce SURESTIMAIT le calme. Un indicateur qui ne voit pas ce qu'on
+    # vient d'ajouter ne mesure plus rien — c'est la meme classe de defaut que la
+    # liste blanche du tableau des modules.
+    for pc, ph, _side in PITS:
+        occupied.append((pc - ph, pc + ph))
+    for bc, bh, _xi, _xo, _h in BASTIONS:
+        occupied.append((bc - bh, bc + bh))
+    occupied.append((CROSS_BRIDGE_S - CROSS_BRIDGE_HS,
+                     CROSS_BRIDGE_S + CROSS_BRIDGE_HS))
     for a, b, _n, _x in INSTALLATION_SPANS:
         lo = max(a, origin)
         hi = min(b, origin + SECTION_LENGTH)
@@ -3922,6 +4051,7 @@ def build() -> dict:
     _assert_canal()
     _assert_taper_spares_the_bays()
     _assert_pits_are_clear()
+    _assert_bastions_are_clear()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []
@@ -3958,7 +4088,8 @@ def _print_report(report: dict) -> None:
     # mentionne, et l'on a cherche dans le rendu ce qu'il fallait chercher ici.
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
                   "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
-                  "fosses", "passerelle", "cellules_percees", "collerettes"):
+                  "fosses", "passerelle", "bastions", "cellules_percees",
+                  "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<18} {line}   = {total}")
