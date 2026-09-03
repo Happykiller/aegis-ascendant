@@ -68,7 +68,7 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) attend une partie jouée** |
-| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **plan écrit**, lots 0-D à faire |
+| [`2026-09-03-niveau-2-enrichissement.md`](plans/2026-09-03-niveau-2-enrichissement.md) | **Les 20 consignes de redesign de l'opérateur, triées contre le code** : 5 déjà livrées par la refonte du 2026-08-29, 15 à faire. ⚠️ **412 m de bords strictement parallèles** mesurés dans `TAPER` ; élargir la coque **rejoue les 24 Y de marqueurs**, donc le repositionnement des installations vit DANS ce lot ou il se paie deux fois | **LOT A livré** (21 tourelles légères en 7 batteries) ; lots 0, B, C, D à faire |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; reste les IMAGES, que l'opérateur fournit (`TEX-0010` à `TEX-0014`) et la mesure GPU sur la Quadro T1000 |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
@@ -370,6 +370,26 @@ moi.
 tronçon 02, non comparable au 2,076 ms d'avant densification (autre moment, autre contenu à
 l'écran). C'est la **Quadro T1000** qui contraint le budget (×14 à build identique, `ADR-0011`),
 et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signale des saccades.
+
+## ⚠️ Niveau 2 — ce que le LOT A laisse ouvert (2026-09-03)
+
+- [ ] **La grappe se lit-elle comme un GROUPE en jeu ?** Les batteries sont resserrées (moins de
+      3 m d'étendue chacune, contre 12 à 16 m à la première écriture) et deux tests le tiennent,
+      mais **aucune capture propre du groupe entier n'a été obtenue** : le tronçon 5 est encombré
+      par la patrouille, et le porteur de bouclier masque la zone à chaque essai. ⚠️ C'est la
+      question que le lot existe pour résoudre (consigne 9) — elle se tranche **en jouant**, pas
+      en capturant.
+- [ ] **Le coût GPU des 21 pièces actives n'est pas mesuré**, et surtout pas sur la Quadro T1000.
+      Chacune pivote, tire et porte une cible inscrite au gestionnaire de balles pendant sa
+      fenêtre. Relevés RTX 4080 pendant les captures : **5,4 à 6,0 ms/image** au tronçon 5 — mais
+      avec un porteur de bouclier à l'écran, donc non comparable à quoi que ce soit.
+- [ ] **Trois réglages morts, laissés en place.** `turret_burn_damage`, `turret_range` et
+      `turret_beam_half_width` ne sont lus par AUCUN script ni test depuis qu'`ADR-0040` a
+      remplacé le faisceau par des balles. Ils servent encore de garde aux invariants 5 et 6, ce
+      qui les rend inoffensifs — mais un lecteur les prendra pour des réglages. À retirer, ou à
+      rebrancher, le jour où l'on touche à l'équilibrage des tourelles.
+- [ ] **La troisième échelle (point-defense) n'est pas faite**, et c'est délibéré : l'opérateur
+      l'écrit « éventuelle ». Elle se décide après avoir vu la deuxième jouer.
 
 ## ⚠️ Niveau 2 — ce qui reste après la refonte de géométrie (2026-08-29)
 

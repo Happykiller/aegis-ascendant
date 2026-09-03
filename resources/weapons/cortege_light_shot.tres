@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ProjectileData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/projectile_data.gd" id="1_data"]
+
+; Le tir des tourelles LEGERES du Long Cortege (echelle `CortegeTuning.TurretScale.LIGHT`).
+;
+; ⚠️ MEME VITESSE QUE LE TIR LOURD, ET C'EST LE CHOIX QUI DEMANDE UNE JUSTIFICATION. Une piece
+; « plus rapide » appelait un projectile plus vif ; il aurait ete faux. Le joueur lit un danger
+; a sa VITESSE d'approche : deux rythmes de balle ennemie sur le meme ecran lui apprendraient
+; qu'il existe deux dangers la ou il n'y en a qu'un, et lui feraient rater l'esquive du plus
+; lent. Ce qui est plus rapide chez la tourelle legere est sa ROTATION — la seule chose qu'on
+; peut accelerer sans brouiller la lecture, et la seule que l'invariant 3 sait borner.
+;
+; ⚠️ PLUS PETIT ET MOINS DANGEREUX, PARCE QU'ELLES VIENNENT PAR QUATRE. La moitie du degat du
+; tir lourd (3,0 contre 6,0) et un rayon reduit de 31 pct : une batterie complete doit peser
+; moins qu'UNE tourelle lourde, sinon la hierarchie des echelles s'inverse dans le seul endroit
+; ou le joueur la mesure — ce qui lui coute des points de vie.
+;
+; ⚠️ MEME CORAIL QUE TOUT LE RESTE DES TIRS ENNEMIS. Le rayon et la vitesse disent l'echelle ;
+; la couleur dit la faction, et elle n'a pas a dire autre chose (`cortege_turret.gd`, BEAM_EDGE).
+
+[resource]
+script = ExtResource("1_data")
+speed = 5.5
+radius = 0.11
+damage = 3.0
+ttl = 4.0

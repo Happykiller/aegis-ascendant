@@ -49,9 +49,12 @@ enum Pass { AHEAD, LIVE, PASSED }
 const BEAM_CORE := Color(1.0, 0.90, 0.86)
 const BEAM_EDGE := Color("c93a31")
 
-## Le projectile. ⚠️ Une Resource partagée : tous les tirs de tourelle du niveau sont le même
-## objet, comme partout ailleurs dans le jeu (spec §31).
+## Les projectiles, un par échelle. ⚠️ DES Resources PARTAGÉES : toutes les tourelles lourdes du
+## niveau tirent le même objet, toutes les légères aussi (spec §31). Deux Resources et non deux
+## copies réglées à la main — l'écart entre les deux EST la hiérarchie des échelles, et il est
+## borné par un test.
 const SHOT := preload("res://resources/weapons/cortege_turret_shot.tres")
+const LIGHT_SHOT := preload("res://resources/weapons/cortege_light_shot.tres")
 
 ## ⚠️ ELLE CHERCHE SON AXE SUR LE DOUBLE DE SA PORTÉE DE TIR. Voir le canon se tourner vers soi
 ## AVANT d'être à portée est ce qui remplace le télégraphe : la menace s'annonce par un geste,
@@ -87,6 +90,44 @@ const FAMILIES: Array = [
 	[true,  "turret_barrel",       0.86, [118.0, -118.0],  180.0],
 	[true,  "turret_barrel",       0.98, [96.0, -142.0],   205.0],
 ]
+
+# --- L'échelle légère : le MÊME kit, en plus petit et en plus court -----------
+#
+## ⚠️ AUCUNE GÉOMÉTRIE NEUVE, ET C'EST UNE DÉCISION, PAS UNE ÉCONOMIE. Le plan de refonte pose la
+## règle : une structure de gameplay s'identifie à sa seule SILHOUETTE, avec au plus 6 à 8
+## primitives. Une tourelle légère est donc le sous-ensemble ANCRÉ du même affût — socle,
+## couronne, corps, UN tube court — à la moitié de sa taille. Quatre primitives, aucun coffret,
+## aucune conduite, aucune jupe : ce qu'on retire est ce qui fait lire « installation ».
+##
+## ⚠️ ET C'EST CE QUI LA REND DISTINGUABLE EN NOIR ET BLANC, émissifs coupés — le test qui
+## décide. Deux tubes écartés sur un tambour large contre un tube unique sur une embase : la
+## différence tient à la silhouette, pas à une teinte ni à une taille seule.
+const LIGHT_GEOM_SCALE := 0.5
+
+## Le canon unique, décalé du rang de montage. ⚠️ ELLES VIENNENT PAR QUATRE : quatre pièces
+## rigoureusement identiques, posées côte à côte, se lisent comme un motif imprimé — exactement
+## la « répétition procédurale visible » que la consigne 15 interdit. Trois décalages suffisent à
+## casser l'alignement sans qu'aucune ne cesse d'être la même pièce.
+const LIGHT_BARREL_OFFSETS: PackedFloat32Array = [0.0, -0.16, 0.16]
+
+## ⚠️ SON ANGLE DE REPOS DÉPEND DE SON RANG. Toutes les tourelles naissent en visant
+## `Vector2.DOWN` ; sur une batterie de quatre, ça donne quatre canons parfaitement parallèles à
+## l'entrée dans le champ — un peigne, pas une défense. Un quart de tour réparti entre elles suffit
+## à ce qu'elles aient l'air de surveiller des secteurs, et le premier balayage vers le joueur
+## n'en est que plus lisible.
+const LIGHT_REST_SPREAD_DEG := 26.0
+
+## Hauteur de masse et allonge, par échelle. ⚠️ ELLES NE SE DÉDUISENT PAS DE `LIGHT_GEOM_SCALE` :
+## la première dit où la pièce se PROJETTE sur le plan de jeu sous une caméra qui plonge à 70°,
+## la seconde d'où la balle SORT. Les lier à un facteur d'échelle marcherait aujourd'hui et
+## deviendrait faux le jour où le kit change de proportions.
+const LIGHT_HIT_LIFT := 0.45
+const LIGHT_MUZZLE_REACH := 1.60
+## Le rayon de la cible. ⚠️ PLUS GÉNÉREUX QUE SA GÉOMÉTRIE (0,70 pour une pièce deux fois plus
+## petite que la lourde et son 1,05). Une tourelle légère est une cible d'OPPORTUNITÉ, balayée en
+## passant : une hitbox fidèle au millimètre en ferait une corvée de précision, ce qui est
+## exactement le rôle qu'elle ne doit pas avoir.
+const LIGHT_TARGET_RADIUS := 0.70
 
 ## L'œil de la tourelle. ⚠️ IL EXISTE PARCE QUE LA GÉOMÉTRIE LIVRÉE EST CUITE DANS LE TRONÇON :
 ## les coupoles font partie du maillage de la section et partagent leurs matériaux avec elle. On
@@ -137,6 +178,16 @@ signal destroyed(turret: CortegeTurret)
 var tuning: CortegeTuning
 ## Le tronçon d'appartenance, pour que le nœud d'épine du tronçon précédent sache qui éteindre.
 var section: int = 0
+## Lourde ou légère. ⚠️ UNE ÉCHELLE, PAS UNE SOUS-CLASSE. Les deux familles partagent tout ce qui
+## fait une tourelle de coque — le cycle `AHEAD/LIVE/PASSED`, la pose enfant du marqueur, la
+## rotation lente, l'épave, l'affaiblissement par un nœud d'épine. Ce qui les sépare tient dans
+## une table de nombres (`CortegeTuning`) et un assemblage plus court. Deux classes auraient
+## dupliqué les cinq mécaniques pour n'en changer aucune, et la prochaine correction n'aurait été
+## appliquée qu'à l'une des deux.
+## ⚠️ `turret_scale` ET NON `scale` : `Node3D` a déjà un membre `scale`, et le redéfinir est une
+## erreur de compilation — pas un avertissement. Le nom long dit d'ailleurs mieux ce qu'il est :
+## une échelle de DÉFENSE, pas un facteur de taille.
+var turret_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.HEAVY
 
 var _bullet_manager: BulletManager
 var _player: PlayerFighterController
@@ -174,17 +225,39 @@ var _wreck: float = -1.0
 ## ferait sauter le canon avant de le faire tomber.
 var _wreck_from: Vector3 = Vector3.ZERO
 
-static func make(p_tuning: CortegeTuning, p_section: int) -> CortegeTurret:
+static func make(p_tuning: CortegeTuning, p_section: int,
+		p_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.HEAVY) -> CortegeTurret:
 	var turret := CortegeTurret.new()
 	turret.tuning = p_tuning
 	turret.section = p_section
-	turret._health = p_tuning.turret_health
+	turret.turret_scale = p_scale
+	# ⚠️ LES PV SE LISENT DANS LA TABLE, PAR ÉCHELLE. Recopier ici la valeur lourde puis la
+	# corriger ailleurs pour les légères aurait donné une pièce dont les points de vie ne sont
+	# pas ceux que `validate()` a bornés — et l'invariant 2 se serait comparé à lui-même.
+	turret._health = p_tuning.turret_health_of(p_scale)
 	# ⚠️ LA CIBLE NAIT AVEC LA PIECE, pas avec son cablage. Une tourelle sans BulletManager reste
 	# une tourelle : elle a des points de vie et une facon de les perdre. Les creer dans `setup`
 	# rendait la piece intestable sans gestionnaire de balles — et donc intestee.
-	turret._target = BulletTarget.make(BulletManager.Team.ENEMY, 1.05, turret._take_damage)
+	turret._target = BulletTarget.make(BulletManager.Team.ENEMY,
+		LIGHT_TARGET_RADIUS if p_scale == CortegeTuning.TurretScale.LIGHT else 1.05,
+		turret._take_damage)
 	turret._target.enabled = false
 	return turret
+
+## Lourde ou légère, lu de l'extérieur. ⚠️ EXPOSÉ PARCE QUE LE SCORE, LA HAUTEUR DE MASSE ET LES
+## TESTS EN DÉPENDENT, et qu'aucun des trois ne doit le redéduire de la géométrie.
+func is_light() -> bool:
+	return turret_scale == CortegeTuning.TurretScale.LIGHT
+
+## Où se projette la masse de la pièce. ⚠️ UNE MÉTHODE ET NON LA CONSTANTE `HIT_LIFT` : les deux
+## échelles n'ont pas la même hauteur, et le gestionnaire ne peut pas le deviner depuis le
+## marqueur, qui est le même dans les deux cas.
+func hit_lift() -> float:
+	return LIGHT_HIT_LIFT if is_light() else HIT_LIFT
+
+## Ce que rapporte CETTE pièce. Lu par le niveau, qui ne connaît pas les échelles.
+func score() -> int:
+	return tuning.turret_score_of(turret_scale)
 
 func setup(bullet_manager: BulletManager, player: PlayerFighterController,
 		vfx: VFXManager) -> void:
@@ -207,6 +280,10 @@ func _build_head() -> void:
 		push_error("[Cortege] kit de tourelle introuvable : %s" % KIT_PATH)
 		return
 	var kit := packed.instantiate()
+	if is_light():
+		_build_light_head(kit)
+		kit.queue_free()
+		return
 	var family: Array = FAMILIES[(serial + section) % FAMILIES.size()]
 	_place(kit, "turret_pad", Vector3.ZERO, 0.0, self)
 	if bool(family[0]):
@@ -229,6 +306,34 @@ func _build_head() -> void:
 			Vector3(side * gauge * 0.5, BARREL_LIFT, BARREL_SEAT_Z), 0.0, _barrel)
 	kit.queue_free()
 
+## Assemble la tourelle légère : quatre pièces, un seul tube, rien d'ancré autour.
+##
+## ⚠️ CE QU'ON RETIRE EST CE QUI FAIT LIRE « INSTALLATION ». Les coffrets, la conduite et la jupe
+## d'ancrage sont ce qui donne à l'affût lourd son air d'organe vissé sur la coque. Les garder en
+## réduisant la taille aurait produit une petite grosse tourelle — une lecture ambiguë, donc le
+## contraire d'une hiérarchie. Ici : une embase, une couronne, un corps, un tube court.
+func _build_light_head(kit: Node) -> void:
+	_place(kit, "turret_pad", Vector3.ZERO, 0.0, self)
+	_barrel = Node3D.new()
+	_barrel.name = "Rotator"
+	add_child(_barrel)
+	_place(kit, "turret_ring", Vector3(0.0, RING_LIFT, 0.0), 0.0, _barrel)
+	_place(kit, "turret_body", Vector3(0.0, BODY_LIFT, 0.0), 0.0, _barrel)
+	var offset := LIGHT_BARREL_OFFSETS[(serial + section) % LIGHT_BARREL_OFFSETS.size()]
+	_place(kit, "turret_barrel_short",
+		Vector3(offset, BARREL_LIFT, BARREL_SEAT_Z), 0.0, _barrel)
+	# ⚠️ SON ANGLE DE REPOS VIENT DE SON RANG, ET NON D'UN TIRAGE. Un tirage donnerait une
+	# batterie différente à chaque lancement, donc deux captures qu'on ne peut pas comparer — et
+	# l'équilibrage d'un survol se lit en comparant deux passages.
+	var spread := deg_to_rad(LIGHT_REST_SPREAD_DEG)
+	var rank := float((serial % 4) - 1.5) / 1.5
+	_aim = Vector2.DOWN.rotated(spread * rank)
+	_aim_barrel()
+
+## Le facteur d'échelle de la géométrie assemblée.
+func _geom_scale() -> float:
+	return LIGHT_GEOM_SCALE if is_light() else 1.0
+
 func _place(kit: Node, part: String, offset: Vector3, yaw: float, parent: Node) -> void:
 	var source := kit.get_node_or_null(part) as MeshInstance3D
 	if source == null:
@@ -237,7 +342,13 @@ func _place(kit: Node, part: String, offset: Vector3, yaw: float, parent: Node) 
 	var piece := MeshInstance3D.new()
 	piece.name = part
 	piece.mesh = source.mesh
-	piece.position = offset
+	# ⚠️ L'ÉCHELLE S'APPLIQUE AUSSI À L'OFFSET, PAS SEULEMENT AU MAILLAGE. Réduire la pièce en
+	# laissant ses cotes d'assemblage aurait posé un tube deux fois trop petit à la hauteur de la
+	# grosse tourelle : un canon flottant au-dessus de son propre masque. Les deux vont ensemble.
+	var k := _geom_scale()
+	piece.position = offset * k
+	if not is_equal_approx(k, 1.0):
+		piece.scale = Vector3.ONE * k
 	piece.rotation.y = yaw
 	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_claim_glow(piece, source)
@@ -346,7 +457,7 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var half := tuning.turret_visible_span * 0.5
+	var half := tuning.turret_span_of(turret_scale) * 0.5
 	match _pass:
 		Pass.AHEAD:
 			if here.y <= half:
@@ -384,11 +495,12 @@ func _run_fire(delta: float, here: Vector2) -> void:
 	_burn_timer -= delta
 	if _burn_timer > 0.0 or _bullet_manager == null:
 		return
-	_burn_timer = tuning.turret_burn_interval * fire_slack()
+	_burn_timer = tuning.turret_burn_interval_of(turret_scale) * fire_slack()
 	# ⚠️ LA BALLE PART DE LA BOUCHE, pas du centre de la coupole : sinon elle naît dans le socle
 	# et le joueur voit un tir sortir du décor.
 	_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
-		here + _aim * MUZZLE_REACH, _aim, SHOT)
+		here + _aim * (LIGHT_MUZZLE_REACH if is_light() else MUZZLE_REACH), _aim,
+		LIGHT_SHOT if is_light() else SHOT)
 	_set_eye(EYE_SHOT)
 
 
@@ -401,7 +513,7 @@ func _run_fire(delta: float, here: Vector2) -> void:
 func _turn_toward(delta: float, here: Vector2) -> void:
 	var wanted := _direction_to_player(here).angle()
 	_aim = Vector2.from_angle(turn_step(_aim.angle(), wanted,
-		tuning.turret_turn_rate_deg * turn_slack(), delta))
+		tuning.turret_turn_rate_of(turret_scale) * turn_slack(), delta))
 
 ## Ce que l'affaiblissement retire à la rotation. ⚠️ IL NE PEUT PAS ALLER À ZÉRO : c'est la
 ## rotation qui dit au joueur que la pièce est vivante mais diminuée. `CortegeTuning.validate()`
@@ -429,7 +541,7 @@ func _aim_barrel() -> void:
 
 ## Dans sa fenêtre de TIR — plus étroite que sa fenêtre de recherche.
 func _in_window(here: Vector2) -> bool:
-	return absf(here.y) <= tuning.turret_visible_span * 0.5
+	return absf(here.y) <= tuning.turret_span_of(turret_scale) * 0.5
 
 
 func _direction_to_player(here: Vector2) -> Vector2:

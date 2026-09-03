@@ -13,6 +13,15 @@ extends Resource
 ## contre une cadence optimiste d'un facteur 2,4, qu'aucun test ne voyait parce que l'invariant
 ## se comparait à lui-même. Le modèle de ce fichier est `LeviathanTuning` et ses sept invariants.
 
+## Les échelles de défense de la coque. ⚠️ ELLES VIVENT ICI ET NON SUR `CortegeTurret` : c'est
+## cette Resource qui RÈGLE les deux, et faire dépendre le réglage de la pièce créerait un cycle
+## là où il n'y a qu'une table de nombres. La pièce, elle, se contente de dire laquelle elle est.
+##
+## ⚠️ UNE TROISIÈME ÉCHELLE NE S'AJOUTE PAS ICI SANS TOUCHER `validate()`. Les invariants
+## bouclent sur `TurretScale.values()` — une valeur de plus est une famille de plus à borner, et
+## c'est voulu : une échelle non bornée est exactement ce qui rend un survol injouable en silence.
+enum TurretScale { HEAVY, LIGHT }
+
 # ==========================================================================
 # Hypothèses de dimensionnement — PAS des réglages
 # ==========================================================================
@@ -100,6 +109,49 @@ extends Resource
 ## Ce que rapporte une tourelle abattue.
 @export var turret_score: int = 900
 
+@export_group("Tourelles légères")
+## ⚠️ ELLES MEUBLENT, ELLES NE DÉCIDENT PAS. Une grosse tourelle est un événement local : on la
+## voit venir, on choisit de s'en occuper. Une tourelle légère est du décor ACTIF — elle pose une
+## pression continue et faible, en batteries, et le joueur la balaie en passant sans jamais avoir
+## à s'arrêter dessus. Le jour où l'une des deux prend le rôle de l'autre, la hiérarchie tombe et
+## on retrouve la « forêt uniforme de tourelles identiques » que la consigne 8 interdit.
+
+## Sa fenêtre est PLUS COURTE que celle de la grosse, et ce n'est pas un réglage de difficulté :
+## une pièce trois fois plus petite se distingue trois fois moins loin. Lui donner la fenêtre de
+## la grosse ferait tirer une chose qu'on ne voit pas encore.
+@export var light_turret_visible_span: float = 14.0
+## ⚠️ ELLE TOMBE EN PASSANT, ET C'EST SA DÉFINITION. À 55 PV elle coûte 4 % de ce qu'un joueur de
+## référence peut placer dans sa fenêtre : une rafale d'appoint suffit. L'invariant 2 borne le
+## HAUT (au-delà de 35 %, s'en occuper empêche de faire autre chose) ; c'est le rôle de la pièce
+## qui borne le bas — une petite tourelle qu'il faut travailler est une grosse tourelle ratée.
+@export var light_turret_health: float = 55.0
+## ⚠️ ELLE PIVOTE PLUS VITE QUE LA GROSSE, ET C'EST TOUT CE QUE « PLUS PETITE DONC PLUS RAPIDE »
+## PEUT VOULOIR DIRE ICI. Mais la borne de l'invariant 3 ne se négocie pas : un joueur à 14 u/s
+## contourne une pièce à 8 unités en 100 °/s, et une tourelle au-delà de 60 °/s le suit quoi
+## qu'il fasse. À 56 °/s elle est vive — un tiers de plus que les 42 °/s de la grosse — et elle
+## reste distançable, avec 7 % de marge sous le plafond. ⚠️ NE PAS MONTER À 66 : la valeur
+## d'abord écrite cassait l'invariant, et un faisceau qu'on ne peut pas semer est une taxe.
+@export var light_turret_turn_rate_deg: float = 56.0
+## Une cadence PLUS LENTE que la grosse, et c'est contre-intuitif pour une pièce dite « rapide ».
+## ⚠️ PARCE QU'ELLES VIENNENT PAR QUATRE. Une batterie à la cadence de la lourde cracherait dix
+## balles par seconde à elle seule : la somme d'une batterie doit rester sous la menace d'UNE
+## grosse tourelle, sinon la hiérarchie s'inverse et le joueur apprend à craindre les petites.
+## Ce qui est « plus rapide » chez elle est sa ROTATION, pas son débit.
+@export var light_turret_burn_interval: float = 0.62
+
+## ⚠️ IL N'Y A NI `light_turret_burn_damage` NI `light_turret_range`, ET C'EST DÉLIBÉRÉ. Leurs
+## équivalents lourds — `turret_burn_damage`, `turret_range`, `turret_beam_half_width` — ne sont
+## lus par AUCUN script ni test depuis qu'`ADR-0040` a remplacé le faisceau par des balles : les
+## dégâts et la portée d'un tir de tourelle vivent dans son `ProjectileData`
+## (`cortege_turret_shot.tres`, `cortege_light_shot.tres`). Leur donner ici un jumeau léger
+## aurait créé un réglage que l'on croit régler et qui ne fait rien — le pire des deux mondes, et
+## exactement le piège qu'`ADR-0024` a payé. L'écart de dégâts entre les deux échelles est donc
+## borné par un TEST sur les deux Resources, pas par un invariant sur des champs morts.
+## Ce que rapporte une tourelle légère abattue. ⚠️ PETIT, ET DÉLIBÉRÉMENT : à quatre pièces par
+## batterie, un score généreux ferait des batteries la meilleure source de points du niveau, et
+## le joueur cesserait de viser ce qui compte.
+@export var light_turret_score: int = 240
+
 @export_group("Ponts d'envol")
 ## ⚠️ ILS COÛTENT CHER À FAIRE TOMBER, C'EST LEUR RAISON D'ÊTRE. Un pont laissé debout produit
 ## en continu ; l'abattre est une décision, pas un réflexe. Mais le prix a une borne, et c'est
@@ -164,6 +216,40 @@ func reachable_damage(visible_span: float, dps: float, occupancy: float) -> floa
 
 func turret_reachable() -> float:
 	return reachable_damage(turret_visible_span, reference_dps, occupancy_hull)
+
+# --------------------------------------------------------------------------
+# Les réglages, LUS PAR ÉCHELLE
+# --------------------------------------------------------------------------
+# ⚠️ CES SEPT FONCTIONS EXISTENT POUR QUE `validate()` ET LA PIÈCE LISENT LA MÊME TABLE. Une
+# seconde échelle recopiée à la main dans la tourelle serait une échelle que les invariants ne
+# voient pas — exactement le défaut d'`ADR-0024`, où l'invariant se comparait à lui-même pendant
+# que le vrai réglage dérivait. Ici il n'y a qu'une porte, et les tests passent par elle.
+#
+# ⚠️ ELLES NE SONT PAS DANS UNE BOUCLE CRITIQUE. La tourelle les lit à chaque image, mais une
+# lecture de champ derrière un `match` ne coûte rien et n'alloue pas (spec §31).
+
+func turret_span_of(scale: TurretScale) -> float:
+	return light_turret_visible_span if scale == TurretScale.LIGHT else turret_visible_span
+
+func turret_health_of(scale: TurretScale) -> float:
+	return light_turret_health if scale == TurretScale.LIGHT else turret_health
+
+func turret_turn_rate_of(scale: TurretScale) -> float:
+	return light_turret_turn_rate_deg if scale == TurretScale.LIGHT else turret_turn_rate_deg
+
+func turret_burn_interval_of(scale: TurretScale) -> float:
+	return light_turret_burn_interval if scale == TurretScale.LIGHT else turret_burn_interval
+
+func turret_score_of(scale: TurretScale) -> int:
+	return light_turret_score if scale == TurretScale.LIGHT else turret_score
+
+## Ce qu'un joueur de référence peut placer dans la fenêtre de CETTE échelle.
+func turret_reachable_of(scale: TurretScale) -> float:
+	return reachable_damage(turret_span_of(scale), reference_dps, occupancy_hull)
+
+## Le nom de l'échelle, pour que le message d'un invariant dise LAQUELLE des deux il refuse.
+static func turret_scale_name(scale: TurretScale) -> String:
+	return "une tourelle légère" if scale == TurretScale.LIGHT else "une tourelle"
 
 func bay_reachable() -> float:
 	return reachable_damage(bay_visible_span, reference_dps, occupancy_hull)
@@ -243,13 +329,21 @@ func validate() -> PackedStringArray:
 		elif pv < atteignable * 0.45:
 			errors.append("%s demande %.0f dégâts pour %.0f atteignables — il tombe en passant, et le choix de le viser n'existe plus"
 				% [nom, pv, atteignable])
-	if turret_visible_span <= 0.0:
-		errors.append("une tourelle : sa fenêtre de tir est nulle")
-	elif turret_health <= 0.0:
-		errors.append("une tourelle : ses points de vie doivent être > 0")
-	elif turret_health > turret_reachable() * 0.35:
-		errors.append("une tourelle demande %.0f dégâts, soit %.0f%% de la fenêtre — au-delà de 35%%, s'en occuper empêche de faire autre chose et le survol devient une file d'attente"
-			% [turret_health, turret_health / turret_reachable() * 100.0])
+	# ⚠️ LES DEUX ÉCHELLES PASSENT LE MÊME PLAFOND. Une tourelle légère qu'il faudrait travailler
+	# n'est pas une tourelle légère : c'est une grosse tourelle ratée, et le joueur qui s'arrête
+	# sur une batterie de quatre a perdu son survol. Boucler ici plutôt que de recopier le test
+	# est ce qui garantit qu'une échelle future ne naîtra pas hors invariant.
+	for scale in TurretScale.values():
+		var nom_t := turret_scale_name(scale)
+		var portee_t := turret_span_of(scale)
+		var pv_t := turret_health_of(scale)
+		if portee_t <= 0.0:
+			errors.append("%s : sa fenêtre de tir est nulle" % nom_t)
+		elif pv_t <= 0.0:
+			errors.append("%s : ses points de vie doivent être > 0" % nom_t)
+		elif pv_t > turret_reachable_of(scale) * 0.35:
+			errors.append("%s demande %.0f dégâts, soit %.0f%% de la fenêtre — au-delà de 35%%, s'en occuper empêche de faire autre chose et le survol devient une file d'attente"
+				% [nom_t, pv_t, pv_t / turret_reachable_of(scale) * 100.0])
 
 	# --- INVARIANT 3 : UNE TOURELLE SE DISTANCE -------------------------
 	#
@@ -267,13 +361,36 @@ func validate() -> PackedStringArray:
 	const PLAYER_SPEED := 14.0     # `player_stats.gd` : max_speed
 	const CLOSE_RANGE := 8.0       # la distance à laquelle on passe VRAIMENT près d'une pièce
 	var escapable_deg := rad_to_deg(PLAYER_SPEED / CLOSE_RANGE)
-	if turret_turn_rate_deg <= 0.0:
-		errors.append("turret_turn_rate_deg doit être > 0 — une tourelle qui ne pivote pas ne vise jamais personne")
-	elif turret_turn_rate_deg > escapable_deg * 0.6:
-		errors.append("une tourelle pivote à %.0f °/s alors qu'un joueur en contourne une à %.0f °/s : elle le suivrait quoi qu'il fasse, et un faisceau qu'on ne peut pas semer est une taxe, pas une difficulté"
-			% [turret_turn_rate_deg, escapable_deg])
-	if turret_burn_interval <= 0.0:
-		errors.append("turret_burn_interval doit être > 0 — sinon la morsure dépend de la cadence d'affichage")
+	# ⚠️ LA BORNE EST LA MÊME POUR LES DEUX, PARCE QU'ELLE DÉCRIT LE JOUEUR ET NON LA PIÈCE.
+	# Elle se calcule à partir de sa vitesse et de la distance de passage ; une pièce plus petite
+	# ne rend pas le joueur plus agile. C'est ce qui plafonne « plus petite donc plus rapide » à
+	# 60 °/s, et une tourelle légère à 66 °/s a été refusée ici avant d'atteindre le jeu.
+	for scale in TurretScale.values():
+		var nom_r := turret_scale_name(scale)
+		var rate := turret_turn_rate_of(scale)
+		if rate <= 0.0:
+			errors.append("%s : sa vitesse de rotation doit être > 0 — une tourelle qui ne pivote pas ne vise jamais personne" % nom_r)
+		elif rate > escapable_deg * 0.6:
+			errors.append("%s pivote à %.0f °/s alors qu'un joueur en contourne une à %.0f °/s : elle le suivrait quoi qu'il fasse, et un tir qu'on ne peut pas semer est une taxe, pas une difficulté"
+				% [nom_r, rate, escapable_deg])
+		if turret_burn_interval_of(scale) <= 0.0:
+			errors.append("%s : son intervalle de tir doit être > 0 — sinon la morsure dépend de la cadence d'affichage" % nom_r)
+
+	# --- INVARIANT 3 bis : LA HIÉRARCHIE DES ÉCHELLES EXISTE -------------
+	# ⚠️ SANS LUI, RIEN N'EMPÊCHE LES DEUX FAMILLES DE CONVERGER. Elles ont chacune sept
+	# réglages ; à force d'ajustements, une légère qui tape aussi fort et voit aussi loin
+	# qu'une lourde redevient la « forêt uniforme de tourelles identiques » que ce lot existe
+	# pour éviter — et rien, ni test ni capture, ne le signalerait. Les trois écarts qui
+	# PORTENT la hiérarchie sont donc déclarés, pas espérés.
+	if light_turret_health >= turret_health:
+		errors.append("une tourelle légère a %.0f PV pour %.0f à la lourde : elle ne tombe plus en passant, et la hiérarchie des échelles disparaît"
+			% [light_turret_health, turret_health])
+	if light_turret_burn_interval <= turret_burn_interval:
+		errors.append("une tourelle légère tire toutes les %.2f s pour %.2f s à la lourde : elles viennent par quatre, et une batterie plus dense qu'une pièce lourde inverse la hiérarchie"
+			% [light_turret_burn_interval, turret_burn_interval])
+	if light_turret_visible_span >= turret_visible_span:
+		errors.append("une tourelle légère se voit sur %.1f pour %.1f à la lourde : une pièce trois fois plus petite ne se distingue pas d'aussi loin"
+			% [light_turret_visible_span, turret_visible_span])
 
 	# --- INVARIANT 4 : un pont laissé debout PRODUIT ---------------------
 	# Sans quoi l'abattre ne serait pas une décision : c'est la pression qu'il exerce qui
@@ -329,14 +446,24 @@ func validate() -> PackedStringArray:
 			% turret_weakened_turn_factor)
 	if turret_weakened_interval_factor <= 1.0:
 		errors.append("turret_weakened_interval_factor doit être > 1 — sinon une tourelle abîmée tire aussi vite qu'intacte")
-	elif turret_burn_interval > 0.0 and turret_visible_span > 0.0 and scroll_speed > 0.0:
+	elif scroll_speed > 0.0:
 		# Combien de fois une tourelle abîmée mord ENCORE pendant qu'on la survole. En dessous de
 		# deux, le joueur ne la voit jamais tirer et croit qu'elle est morte — ce qui nous
 		# ramène exactement au défaut d'origine.
-		var traversee := turret_visible_span / scroll_speed
-		var morsures := traversee / (turret_burn_interval * turret_weakened_interval_factor)
-		if morsures < 2.0:
-			errors.append("une tourelle abîmée ne tirerait que %.1f fois pendant sa fenêtre (%.1f s) : en dessous de deux morsures le joueur ne la voit jamais tirer et la croit morte"
-				% [morsures, traversee])
+		#
+		# ⚠️ ET C'EST L'ÉCHELLE LÉGÈRE QUI EST LE CAS SERRÉ, PAS LA LOURDE : elle a la fenêtre la
+		# plus courte ET l'intervalle le plus long. Ne vérifier que la lourde laisserait passer
+		# une batterie entière de pièces muettes — et une batterie muette se lit comme un décor,
+		# pas comme une récompense.
+		for scale in TurretScale.values():
+			var intervalle := turret_burn_interval_of(scale)
+			var fenetre := turret_span_of(scale)
+			if intervalle <= 0.0 or fenetre <= 0.0:
+				continue
+			var traversee := fenetre / scroll_speed
+			var morsures := traversee / (intervalle * turret_weakened_interval_factor)
+			if morsures < 2.0:
+				errors.append("%s abîmée ne tirerait que %.1f fois pendant sa fenêtre (%.1f s) : en dessous de deux morsures le joueur ne la voit jamais tirer et la croit morte"
+					% [turret_scale_name(scale), morsures, traversee])
 
 	return errors

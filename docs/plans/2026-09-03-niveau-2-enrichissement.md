@@ -176,7 +176,7 @@ quatre questions —
 
 ---
 
-# LOT A — Trois échelles de défense
+# LOT A — Trois échelles de défense — ✅ LIVRÉ (2026-09-03)
 
 C'est la demande de départ de l'opérateur, et **le seul lot qui ne touche aucun marqueur
 existant** : il est donc livrable seul, et en premier.
@@ -206,16 +206,48 @@ d'abord, l'émissif ne fait que renforcer une fonction déjà lisible*.
 ⚠️ **Elle doit rester lisible comme une tourelle, et lisible comme une PETITE.** Le test N&B (§18)
 oppose aujourd'hui tourelle et hangar ; il devra désormais opposer **trois** objets.
 
-## A3 — Les marqueurs, en clusters
+## A3 — Les batteries — ⚠️ **RÉSOLU AUTREMENT QUE PRÉVU, ET MIEUX**
 
-- **Préfixe neuf** : `TurretL_NN` (L = léger). `CortegeHardpoints.build()` dispatche déjà sur
-  `Turret_` / `Bay_` / `Spine_` — une branche de plus, et rien d'existant n'est touché.
-- ⚠️ **Posés à la main, en table séparée**, comme les 30 autres : « une position de gameplay ne se
-  seede pas : elle se décide, elle se relit et elle se corrige ».
-- **En batteries de 2 à 4**, autour d'une grosse installation, le long d'un bord, ou autour d'un
-  hangar. **Jamais un pas régulier.**
-- ⚠️ **Ces marqueurs seront rejoués par le lot B**, qui reforge la coque. Le coût est petit (une
-  table) et il est annoncé ici pour qu'il ne soit pas découvert plus tard.
+Ce plan proposait des marqueurs neufs `TurretL_NN` dans la coque. **Ce n'est pas ce qui a été
+fait**, pour deux raisons dont la seconde est la bonne :
+
+1. un marqueur neuf demande une reforge du `.glb` (Blender n'est même pas installé sur ce poste) ;
+2. surtout, il aurait posé la batterie en **absolu**. Le jour où le lot B déplace une
+   installation, chaque batterie serait restée en arrière, orpheline de ce qu'elle garde.
+
+**Une batterie est donc enfant du marqueur de son HÔTE, décalée en local** (`BATTERIES` dans
+`cortege_hardpoints.gd`). C'est ce que dit la consigne 9 — « 2 à 4 petites pièces autour d'une
+grosse installation » — et ça annule le coût annoncé : **le lot B n'a rien à rejouer**, les
+batteries suivent leurs hôtes sans qu'une ligne de la table ne change.
+
+Livré : **7 batteries, 21 pièces**, sur 24 installations. Deux respirations franches (rien entre
+s = 214 et 246, rien entre 348 et 410).
+
+### ⚠️ Ce que la capture a corrigé, et que le calcul n'aurait pas trouvé
+
+La première table écartait les pièces le long de la coque. Tests verts, distances respectées,
+positions valides — et **à l'écran, chaque tourelle arrivait seule** : des files, jamais un
+groupe. Seul le fait de regarder l'a montré (`ADR-0006`).
+
+La cause est mesurable, et elle vaut pour tout le reste du lot :
+
+| Palier | Largeur utile | Il faut |
+|---|---|---|
+| Pont médian (\|x\| 7,35 → 10,30) | **2,95 m** | ~4,05 m entre une petite et le socle de sa lourde |
+| Pont intérieur (\|x\| 2,20 → 6,80) | **4,60 m** | idem |
+
+⚠️ **Aucune grappe TRANSVERSALE n'est possible sur cette coque.** Mais deux petites n'ont besoin
+que de 1,70 m l'une de l'autre : la batterie se pose donc en grappe serrée, **décalée de 4 à 7 m
+devant son hôte**. Chaque batterie tient désormais dans moins de 3 m de coque, et deux tests
+neufs le tiennent (`test_a_battery_reads_as_one_group_not_a_file`,
+`test_two_pieces_of_a_battery_never_overlap`).
+
+### ⚠️ Et la contremarche de chine, qui aurait coûté une capture de plus
+
+Une pièce **hérite du Y de son hôte**. Le pont a deux paliers séparés par une marche de 60 cm à
+\|x\| entre 6,80 et 7,35. Une batterie qui franchit la marche **flotte au-dessus du vide**, en
+silence. Chaque offset garde donc sa pièce sur le palier de son hôte, et le test le vérifie sur la
+**coque livrée**, pas sur cette phrase.
 
 ## A4 — Le moteur
 
@@ -232,14 +264,27 @@ oppose aujourd'hui tourelle et hangar ; il devra désormais opposer **trois** ob
   gestionnaire de balles. Avec 20-30 pièces de plus, ce n'est plus une optimisation, c'est la
   condition pour que le coût par balle reste borné.
 
-## A5 — Ce qui prouve le lot
+## A5 — Ce qui prouve le lot — état au 2026-09-03
 
-- test N&B à trois objets (§A2) ;
-- un test qui **refuse un pas régulier** : aucune batterie ne doit être reproductible par une
-  formule `tous les X mètres` ;
-- invariants 2/3/6/8 verts sur la nouvelle échelle ;
-- **une capture regardée** (`ADR-0006`) ;
-- **coût GPU mesuré sur T1000**, avec et sans les pièces neuves (§C6).
+| Preuve | État |
+|---|---|
+| Les invariants 2, 3, 5, 8 bouclent sur les deux échelles | ✅ `cortege_tuning.gd` |
+| **Invariant 3 bis neuf** : la hiérarchie est déclarée, pas espérée (PV, cadence, fenêtre) | ✅ |
+| 15 tests neufs (`test_cortege_light_turrets.gd`), 799 au total, 0 échec | ✅ |
+| Les hôtes existent sur la **coque livrée** — un nom de travers = batterie jamais montée, en silence | ✅ |
+| Aucune pièce ne franchit la contremarche, ni ne chevauche son hôte ou sa voisine | ✅ |
+| Le journal confirme le montage : `17 tourelles (+21 légères)` | ✅ |
+| **Capture regardée** : la silhouette légère est distincte de la lourde et bien assise | ✅ |
+| **La grappe se lit-elle comme un groupe en jeu ?** | ⏳ **non tranché** — le tronçon 5 est encombré par la patrouille, aucune capture propre du groupe entier. Se juge en jouant |
+| **Coût GPU sur Quadro T1000** | ⏳ non mesuré (21 pièces actives de plus) |
+
+### ⚠️ Un réglage mort découvert en chemin, et non reproduit
+
+`turret_burn_damage`, `turret_range` et `turret_beam_half_width` **ne sont lus par aucun script ni
+test** depuis qu'`ADR-0040` a remplacé le faisceau par des balles : les dégâts vivent dans le
+`ProjectileData`. Leur donner un jumeau léger aurait créé un réglage qu'on croit régler et qui ne
+fait rien. L'échelle légère n'a donc que **cinq** réglages, tous branchés, et l'écart de dégâts
+entre les deux tirs est borné par un **test** sur les deux Resources.
 
 ---
 
@@ -409,9 +454,9 @@ LOT 0  jouer                    ← prérequis ; peut invalider B, C et D
        └── LOT D  le rythme     ← ne peut être mesuré qu'après B
 ```
 
-⚠️ **A avant B est un choix, pas une contrainte** : c'est la demande de départ de l'opérateur, et
-le lot livrable le plus tôt. Le prix est que B rejouera la table `TurretL_NN` — une table, pas une
-reforge.
+✅ **A est livré, et il ne coûte rien à B.** Les batteries étant ancrées sur leurs hôtes, le lot B
+peut déplacer une installation sans toucher une ligne de la table : la garde suit. C'est le seul
+endroit de ce plan où la solution retenue s'est révélée moins chère que celle proposée.
 
 ⚠️ **B avant C et D est une contrainte**, pas un choix : C compose sur les volumes de B, et D ne
 peut pas être mesuré avant que les marqueurs aient bougé.
@@ -420,7 +465,7 @@ peut pas être mesuré avant que les marqueurs aient bougé.
 
 | Lot | Brief | Nature |
 |---|---|---|
-| A | `BRIEF-0096` | tourelle légère : assemblage d'un sous-ensemble du kit existant, ≤ 6 primitives |
+| A | ~~`BRIEF-0096`~~ | ✅ **aucune forge nécessaire** : la tourelle légère est un assemblage à 0,5 du kit existant (socle, couronne, corps, `turret_barrel_short`), 4 primitives |
 | B | `BRIEF-0097` | reforge de la coque : largeur variable, relief en creux, repositionnement |
 | C | `BRIEF-0098` | secteurs, variantes de baie, pont transversal |
 | D | — | pas de forge : mesure et arbitrage |

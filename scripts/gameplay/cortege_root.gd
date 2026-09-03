@@ -118,8 +118,13 @@ func _ready() -> void:
 # recalent en jouant, et un chiffre écrit dans le script du niveau échapperait à `validate()`
 # comme aux tests (spec §31).
 
-func _on_turret_destroyed(_turret: CortegeTurret) -> void:
-	_game_state.add_score(TUNING.turret_score)
+## ⚠️ LA PIÈCE DIT CE QU'ELLE VAUT, LE NIVEAU NE LE DÉDUIT PAS. Deux échelles de tourelle
+## partagent ce signal ; lire `TUNING.turret_score` ici aurait payé une pièce d'appoint au prix
+## d'une installation, et un joueur qui rase une batterie de quatre aurait gagné plus qu'en
+## abattant la tourelle lourde qu'elle garde — la hiérarchie inversée à l'endroit exact où elle
+## se mesure.
+func _on_turret_destroyed(turret: CortegeTurret) -> void:
+	_game_state.add_score(turret.score())
 
 ## ⚠️ UN PONT ABATTU S'ANNONCE. Il coûte quinze cents points de vie, soit les deux tiers de ce
 ## qu'un joueur de référence peut placer dans sa fenêtre : sans un retour franc, l'effort le plus
