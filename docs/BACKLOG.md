@@ -365,7 +365,12 @@ trois sont défendables ; aucune ne se prend sans lui. Une mise en ligne sur Ste
 n'ajouterait pas le risque — elle lui donnerait un **interlocuteur à qui adresser une
 réclamation**.
 
-## ⚠️ La densité ×3,5 du niveau 2 n'a été jouée par personne (2026-08-30)
+## ⚠️ La densité ×3,5 du niveau 2 — jouée le 2026-09-03, son coût toujours pas mesuré
+
+> ✅ **Le titre de cette section disait « n'a été jouée par personne » : ce n'est plus vrai.** La
+> partie du 2026-09-03 (survol complet, victoire, score 77130) a été jouée avec la patrouille à
+> 209 coques, et l'opérateur n'a pas demandé de redescendre. **Ce qui reste ouvert est le COÛT**,
+> ci-dessous — la jouabilité est tranchée, la performance non.
 
 L'opérateur a validé le niveau à **59 coques** de patrouille (« c'est beaucoup mieux »), puis a
 demandé « au moins ×3 ou ×4 ». La patrouille livrée et **publiée en v0.4.0** en porte **209**, sur
@@ -445,7 +450,8 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 
 ## ⚠️ Niveau 2 — ce que le LOT B4 laisse ouvert (2026-09-03)
 
-- [ ] **Le nouveau rythme n'a été jugé par personne EN JOUANT.** ⚠️ C'est le lot qui touche le
+- [x] ~~**Le nouveau rythme n'a été jugé par personne EN JOUANT.**~~ — jugé le **2026-09-03**,
+      validé par l'opérateur **sans retouche**. Énoncé d'origine — ⚠️ C'est le lot qui touche le
       plus directement au ressenti : 22 installations ont changé de station, donc l'ordre et
       l'espacement de tout ce que le joueur rencontre. La densité instantanée est bornée (3
       installations par fenêtre de 20 m, inchangée) et `test_the_survey_does_not_open_on_dead_air`
@@ -553,8 +559,10 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **`build_bay_kit._tile_close()` porte la même expression de caméra roulée** que celle que
       la forge a corrigée dans le kit de tourelle. Sans effet sur le `.glb` — c'est un helper de
       rendu de planche — mais il rendra une vignette fausse au prochain usage.
-- [ ] **Un playtest humain du niveau 2.** Le pilote automatique n'a détruit qu'UNE cible de coque
-      en 208 s : il ne vise pas un bordé. Les PV sont **dimensionnés**, pas **mesurés** (ADR-0019).
+- [x] ~~**Un playtest humain du niveau 2.**~~ — fait le **2026-09-03** : survol complet des cinq
+      tronçons, victoire, score 77130, zéro erreur. ⚠️ **Ce qu'il ne dit toujours pas** : les PV des
+      cibles de coque restent **dimensionnés**, pas **mesurés** (ADR-0019) — la partie s'est gagnée,
+      elle n'a pas relevé combien de cibles sont tombées dans leur fenêtre.
 - [ ] **Les deux réglages d'habillage n'ont jamais été jugés EN JOUANT.**
       `CortegeSkin.EMISSIVE_ENERGY` (1,0 → **0,45**) et `CortegeSkin.PANEL_DAMP` (**0,45**) ont
       été arrêtés sur trois captures fixes, **au seul tronçon 2**, et sur **RTX 4080**. Une
@@ -570,7 +578,7 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
       portent l'équilibrage mesuré (fenêtres de relâche et d'engagement, arbitrages du
       `BRIEF-0092`). ⚠️ C'est un arbitrage, pas une limite technique : le jour où l'on voudra le
       rythme complet, il faudra rejouer ces mesures, et c'est un chantier, pas un réglage.
-- [ ] **La proximité acceptée `Turret_14` / `Bay_07` déclare un chiffre PÉRIMÉ.**
+- [x] ~~**La proximité acceptée `Turret_14` / `Bay_07` déclare un chiffre PÉRIMÉ.**~~ — ⚠️ **caduc : `ACCEPTED_PAD_BAY_PROXIMITY` est une table VIDE** (`= ()`), elle ne déclare plus rien. L'audit du 2026-09-03 le confirme géométriquement : zéro tourelle lourde en contact avec une baie. Énoncé d'origine —
       `ACCEPTED_PAD_BAY_PROXIMITY` (dans `build_long_cortege.py`) dit « la lèvre du socle
       effleure le coaming sur 0,25 m », arbitrage du `BRIEF-0092` — donc **avant** que la
       tourelle ait des canons. Depuis le kit, ce qui dépasse n'est plus une lèvre statique mais
@@ -590,13 +598,22 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
 - [ ] **Rythme du champ d'astéroïdes** — la composition de la vague est une **hypothèse de
   conception**, pas une mesure : densité des barrages, superposition puits/sangsues, pic à 32 s.
   Elle se juge en jouant (`ADR-0019`). C'est le lot 4 du plan.
-- [ ] **Écran titre** — texte nu. Le `title_backdrop.svg` et les emblèmes de faction de la forge
-  **ne sont pas utilisés**. (ex-tâche **H3**).
+- [ ] **Écran titre** — ⚠️ **la moitié de cette ligne était fausse** : l'emblème
+  `helios_vanguard_emblem.svg` **est** utilisé, et par trois écrans (`boot.tscn`,
+  `mission_report.tscn`, `pause_screen.tscn`), et l'accueil porte un `SpaceBackdrop` — il n'est pas
+  « nu ». Ce qui reste vrai : **`title_backdrop.svg` dort dans `assets/source/ui/screens/`**, jamais
+  importé. À prendre ou à écarter par un ADR, pas à laisser dormir. (ex-tâche **H3**).
 - [x] **Écrans** — **pause** et **victoire / rapport** reforgés dans le langage d'interface de
   l'accueil (ADR-0012). Les cadres SVG plein écran de la forge sont abandonnés, pas intégrés.
-- [ ] **Écran d'échec de mission** — il n'en existe **aucun** : perdre tous les chasseurs appelle
-  `continue_run()` et la partie repart, sans écran ni choix offert au joueur. Manque de gameplay
-  autant que d'interface. → ex-tâche **H4**, redéfinie par l'ADR-0012.
+- [x] ~~**Écran d'échec de mission**~~ — **livré le 2026-07-23** (`d1f4c5a`), enrichi le
+  2026-08-28 (`a5bfb61`). `MissionReport.Outcome.DEFEAT` : titre « DEFAITE », « SPECTER-9 PERDU ·
+  ENTREE PORTEE AU REGISTRE », relais « 0 MS · RADIE », COMMS « SIGNAL PERDU », boutons
+  **REESSAYER** / **TITRE**, et la navigatrice qui rapporte (`mission_failed`). `_on_game_over()`
+  transite réellement vers `GAME_OVER` — le `continue_run()` silencieux a disparu — et le rapport
+  se lève après `DEFEAT_HOLD` (1,6 s) pour ne pas escamoter la mort. Câblé dans les **deux**
+  niveaux (`graybox_root`, `cortege_root`). ⚠️ **Reste un vrai trou** : aucun test ne couvre
+  `mission_report.gd`, alors qu'il décide de la fin de partie et porte trois embranchements
+  (REJOUER / CONTINUER / REESSAYER).
 - [ ] **Pacing de l'appontage** — trop rapide ; ajouter des temps de pause entre l'arrivée de la
   Citadelle, l'autopilote et le transfert (`graybox_root._start_docking`).
 - [ ] **Équilibrage démo** — vérifier que la difficulté est « facile mais nerveuse ».
@@ -689,7 +706,7 @@ La bible listait **deux** garde-fous anti-spirale de la mort à vérifier. Véri
 - [ ] **Trois coques à 97-98 % de garde-fous de script** posés sans justification mesurée
   (`null_maw` 7 000, `crescent_interceptor` 3 000, `leech_drone` 4 000), alors que le plafond
   normatif de leur classe est **12 000** (`ADR-0011`). Le prochain détail y butera.
-- [ ] **`shaft_radius()` rend toujours la borne de sa table** (abscisses décroissantes contre
+- [x] ~~**`shaft_radius()` rend toujours la borne de sa table**~~ — ⚠️ **caduc : la fonction n'existe plus**. Aucune occurrence dans un `.gd` ni un `.py` du dépôt ; elle ne survit que dans des rapports de forge archivés. La dette portait sur du code disparu. Énoncé d'origine — (abscisses décroissantes contre
   un `lerp_table()` qui teste `x <= table[0][0]`) : c'est la **cause** des `Ring_01..05` à
   19 cm. ⚠️ La corriger donnerait un passage de 2,99 m, **sous** la cible de 4,2 m de
   `BRIEF-0083` — les deux décisions se prennent ensemble.
@@ -706,11 +723,13 @@ La bible listait **deux** garde-fous anti-spirale de la mort à vérifier. Véri
   **Crescent Interceptor est livré** (cette ligne l'annonçait encore comme à faire) ; restent
   Choir Mine, Leech Drone, Null Bomber, Shield Carrier, Frigate Turret. `EnemyController` est
   une base de composition prête à étendre.
-- [ ] **EncounterDirector** formel (remplacer le pilotage en dur dans `graybox_root`) : timeline
+- [x] ~~**EncounterDirector** formel (remplacer le pilotage en dur dans `graybox_root`)~~ —
+      **livré** : `scripts/gameplay/encounter_director.gd`, monté par `LevelRoot.setup_arc()`, et
+      `graybox_root.gd:271` l'appelle (`_director = setup_arc(ARC)`). Timeline
   data-driven, checkpoints, synchro musique/caméra.
 - [ ] **Objectifs de défense** (« Citadel Under Siege ») : batteries à protéger.
 - [ ] **Scoring avancé** : multiplicateur, combos, précision ; **résumé de fin détaillé** (spec §14.3).
-- [ ] **Manette** + **remapping** des touches.
+- [ ] **Remapping** des touches. ⚠️ **La manette, elle, est faite** : `input_bootstrap._register_joypad()` enregistre les actions au démarrage. Seul le remapping reste, et `input_bootstrap.gd:4` l'annonce déjà comme la suite.
 
 ## P2 — Accessibilité & méta (spec §13, §19)
 
