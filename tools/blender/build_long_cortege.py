@@ -670,6 +670,41 @@ PIT_DEPTH = 1.55
 #: Garde autour d'une fosse : rien ne s'y pose, et elle ne mord aucune installation.
 PIT_KEEPOUT = 2.20
 
+# --------------------------------------------------------------------------
+# LE PONT TRANSVERSAL — un seul, et c'est tout l'interet
+# --------------------------------------------------------------------------
+# ⚠️ C'EST LE GESTE LE PLUS EFFICACE CONTRE L'AXE INFINI, et le plus facile a
+# gacher. La consigne 13 le dit elle-meme : « ne pas en abuser — un element
+# EXCEPTIONNEL est plus interessant qu'un motif repete ». Il y en a UN.
+#
+# ⚠️ IL EST BAS, ET CE N'EST PAS UN CHOIX. Le plafond du decor inerte est a -3,00
+# et le pont a -4,30 : 1,30 m pour tout. Une passerelle de 0,80 m d'epaisseur ne
+# laisserait que 0,50 m de jour et se lirait comme une barre POSEE. A 0,45 m elle
+# laisse 0,70 m au-dessus du pont — et surtout 0,98 m au-dessus du FOND DE LA
+# TRANCHEE, qui est l'endroit ou le joueur le verra enjamber quelque chose.
+#
+# ⚠️ ET IL VIT LOIN D'UNE JONCTION DE TRONCON. Les cinq troncons sont des objets
+# SEPARES : une piece a cheval sur z = -200 serait coupee en deux maillages, sans
+# qu'aucune erreur ne le dise. s = 195 est au cœur de la plus large plage calme
+# hors proue (186 a 212) et a cinq metres de la jonction.
+CROSS_BRIDGE_S = 195.0
+CROSS_BRIDGE_HS = 1.50          # 3,00 m de profondeur : assez pour se lire
+# ⚠️ 10,30 ET NON 6,80, CORRIGE EN REGARDANT. La premiere passerelle s'arretait au
+# bord du pont INTERIEUR : 13,6 m sur 28, elle se confondait avec les vingt et une
+# TRAVEES DE CANAL qui enjambent deja la tranchee. Or la consigne 13 ne demande pas
+# d'enjamber l'artere — elle demande de « relier visuellement les DEUX COTES du
+# vaisseau ». A 10,30 elle atteint le bord du pont median, la ou vivent les
+# tourelles, et ses piles gagnent au passage 1,29 m de hauteur visible : le pont
+# median est a -4,99, un demi-metre plus bas que le pont interieur.
+CROSS_BRIDGE_X = 10.30
+# ⚠️ -3,25 ET NON -3,15 : le plafond qui compte ici n'est pas celui du DECOR
+# (-3,00) mais celui de la CONSTRUCTION (-3,20), et la difference est reservee a
+# « ce que le jeu posera sur les points d'attache ». La premiere poutre a ete
+# refusee a -3,150 par `_assert_build_ceiling`.
+CROSS_BRIDGE_TOP = -3.25
+CROSS_BRIDGE_BOTTOM = -3.70     # 0,45 m d'epaisseur
+CROSS_BRIDGE_PIER = 0.90        # largeur des deux piles, aux extremites
+
 #: 5 nœuds d'arete dorsale, exactement un par troncon, sur l'axe.
 #: ⚠️ LA COQUE N'EN CUIT PLUS AUCUN (BRIEF-0094). `build_spine_bulb()` a disparu,
 #: comme `build_bay()` (BRIEF-0091) et `build_turret_pad()` (BRIEF-0093) avant
@@ -1927,6 +1962,56 @@ def build_pits(bm: bmesh.types.BMesh, index: int) -> int:
     return quads
 
 
+def _box_outward(bm: bmesh.types.BMesh, x0: float, x1: float, y0: float,
+                 y1: float, s0: float, s1: float, material: str) -> int:
+    """Un pave dont les six faces regardent DEHORS. Rend le nombre de quads.
+
+    ⚠️ `_face_towards` ET NON `_face` : ce fichier n'appelle pas
+    `recalc_face_normals` (voir `_assert_skin_outward`), et une face de module
+    retournee DISPARAIT en jeu sans un mot. Les fosses ont paye cette lecon.
+    """
+    xa, xb = min(x0, x1), max(x0, x1)
+    ya, yb = min(y0, y1), max(y0, y1)
+    za, zb = _z(min(s0, s1)), _z(max(s0, s1))
+    v = lambda x, y, z: bm.verts.new(Vector((x, y, z)))
+    faces = (
+        ([(xa, yb, za), (xb, yb, za), (xb, yb, zb), (xa, yb, zb)], (0, 1, 0)),
+        ([(xa, ya, za), (xb, ya, za), (xb, ya, zb), (xa, ya, zb)], (0, -1, 0)),
+        ([(xb, ya, za), (xb, yb, za), (xb, yb, zb), (xb, ya, zb)], (1, 0, 0)),
+        ([(xa, ya, za), (xa, yb, za), (xa, yb, zb), (xa, ya, zb)], (-1, 0, 0)),
+        ([(xa, ya, za), (xb, ya, za), (xb, yb, za), (xa, yb, za)], (0, 0, 1)),
+        ([(xa, ya, zb), (xb, ya, zb), (xb, yb, zb), (xa, yb, zb)], (0, 0, -1)),
+    )
+    for pts, n in faces:
+        _face_towards(bm, [v(*p) for p in pts], material, Vector(n))
+    return len(faces)
+
+
+def build_cross_bridge(bm: bmesh.types.BMesh, index: int) -> int:
+    """La passerelle transversale : une poutre et ses deux piles.
+
+    ⚠️ CHAQUE EXTREMITE SUIT SON PROPRE BORD. La coque est asymetrique depuis le
+    lot B2 : prendre `CROSS_BRIDGE_X` des deux cotes poserait une poutre qui
+    depasse d'un bord et s'arrete avant l'autre.
+    """
+    origin = index * SECTION_LENGTH
+    if not (origin <= CROSS_BRIDGE_S < origin + SECTION_LENGTH):
+        return 0
+    s0 = CROSS_BRIDGE_S - CROSS_BRIDGE_HS
+    s1 = CROSS_BRIDGE_S + CROSS_BRIDGE_HS
+    x_star = CROSS_BRIDGE_X * _side_scale(CROSS_BRIDGE_S, 1.0)
+    x_port = -CROSS_BRIDGE_X * _side_scale(CROSS_BRIDGE_S, -1.0)
+    quads = _box_outward(bm, x_port, x_star, CROSS_BRIDGE_BOTTOM,
+                         CROSS_BRIDGE_TOP, s0, s1, "AA_Hull")
+    # Les piles : sans elles la poutre flotte, et le regard le voit avant de
+    # savoir pourquoi.
+    for x_end, inward in ((x_star, -1.0), (x_port, 1.0)):
+        foot = _surface_y(CROSS_BRIDGE_S, x_end) - 0.10
+        quads += _box_outward(bm, x_end, x_end + inward * CROSS_BRIDGE_PIER,
+                              foot, CROSS_BRIDGE_BOTTOM, s0, s1, "AA_Greeble")
+    return quads
+
+
 def build_bay_flanges(bm: bmesh.types.BMesh, index: int) -> int:
     """La collerette : le bord de l'ouverture se replie, il ne reste pas cru.
 
@@ -2941,6 +3026,7 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         "cellules_percees": skipped,
         "collerettes": build_bay_flanges(bm, index),
         "fosses": build_pits(bm, index),
+        "passerelle": build_cross_bridge(bm, index),
         "greffes": grafts,
         "plaques": build_plates(bm, index, rng, aprons, busy),
         "nervures": build_ribs(bm, index, rng, busy),
@@ -3872,7 +3958,7 @@ def _print_report(report: dict) -> None:
     # mentionne, et l'on a cherche dans le rendu ce qu'il fallait chercher ici.
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
                   "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
-                  "fosses", "cellules_percees", "collerettes"):
+                  "fosses", "passerelle", "cellules_percees", "collerettes"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<18} {line}   = {total}")

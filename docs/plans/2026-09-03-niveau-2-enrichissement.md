@@ -529,16 +529,27 @@ Le catalogue de gros volumes autorisé par l'opérateur : bastion de défense, e
 plateforme d'artillerie, zone de maintenance en creux, bloc rapporté gigantesque, conduit
 transversal.
 
-## C3 — Le pont transversal (consigne 13)
+## C3 — Le pont transversal — ✅ LIVRÉ
 
-Une structure qui **enjambe la tranchée centrale** et relie les deux bords. C'est le geste le plus
-efficace contre l'axe infini — et le plus facile à gâcher : **un seul**, ou deux au maximum.
-« Un élément exceptionnel est plus intéressant qu'un motif répété. »
+**Un seul**, à s = 195, au cœur de la plus large plage calme hors proue (186 à 212). 18 quads : une
+poutre et ses deux piles.
 
-⚠️ **Il passe au-dessus de la tranchée, donc au-dessus du canal émissif** — et le plafond du décor
-(−3,00) le borne. Le plan de refonte prévoyait déjà ce cas pour le bandeau dorsal : « la tranchée
-lui mange un demi-mètre et il culmine sous −3,00 ». Le pont transversal se dimensionne pareil, et
-**son propre test le vérifie**.
+### ⚠️ Trois cotes, et aucune n'est un goût
+
+| Cote | Valeur | Pourquoi pas autrement |
+|---|---|---|
+| Dessus | **−3,25** | Le plafond qui compte n'est pas celui du **décor** (−3,00) mais celui de la **construction** (−3,20) — la marge est réservée à ce que le jeu pose sur les marqueurs. Une première poutre à −3,15 a été refusée par `_assert_build_ceiling` |
+| Épaisseur | **0,45 m** | Il ne reste que 1,30 m entre le pont (−4,30) et le plafond. À 0,80 m d'épaisseur il ne resterait que 0,50 m de jour, et la poutre se lirait comme une barre **posée** |
+| Portée | **±10,30** | ⚠️ **Corrigé en regardant.** La première passerelle s'arrêtait au bord du pont intérieur (±6,80) : 13,6 m sur 28, elle se confondait avec les **21 travées de canal** qui enjambent déjà la tranchée. La consigne 13 ne demande pas d'enjamber l'artère, elle demande de **relier les deux côtés du vaisseau** |
+
+Bénéfice inattendu de la portée : le pont médian est un demi-mètre plus bas que le pont intérieur,
+si bien que les piles y gagnent **1,29 m de hauteur visible** au lieu de 0,74.
+
+⚠️ **Loin d'une jonction de tronçon.** Les cinq tronçons sont des objets **séparés** : une pièce à
+cheval sur z = −200 serait coupée en deux maillages, sans qu'aucune erreur ne le dise.
+
+**Vérifié en jeu** : la passerelle traverse toute la coque d'un bord à l'autre, coupe l'axe et porte
+son ombre sur le pont.
 
 ---
 
