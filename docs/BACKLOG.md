@@ -416,6 +416,33 @@ et elle n'a pas été mesurée. Premier endroit où regarder si un joueur signal
       chiffres sont justes et mesurent deux choses ; leur voisinage dans le même rapport peut
       tromper un lecteur pressé.
 
+## ⚠️ Niveau 2 — le placement des tourelles, audité le 2026-09-03
+
+> Audit déclenché par une observation de l'opérateur en jouant : « des petites tourelles dans les
+> ponts de décollage ». Les tables sont relues dans les sources (`TURRETS`, `BAYS`, `PITS`,
+> `SPINES`, `AMBRY_*` de `build_long_cortege.py`, `BATTERIES` de `cortege_hardpoints.gd`).
+
+- [x] ~~**Trois pièces légères dans l'ouverture de `Bay_06`**~~ — corrigé : la batterie de
+      `Turret_10` est retournée vers la proue. ⚠️ **Le reste de la coque est net** : zéro pièce
+      légère sur un socle lourd, zéro pièce qui en traverse une autre, zéro tourelle lourde dans
+      une baie. Le défaut était unique, et il était le seul que le jeu montrait.
+- [ ] **Quatre paires de lourdes reproduisent le MÊME motif** : `Turret_01/02` (5,3 m),
+      `07/08` (5,0), `11/12` (5,0), `13/14` (5,2) — deux pièces sur bords opposés, écart de 5,0 à
+      5,3 m, **étendue de 0,3 m sur quatre occurrences**. C'est la signature d'un optimiseur qui
+      **sature sa contrainte** : le recuit du lot B4 avait 5,00 m comme borne anti-symétrie, et il
+      s'y est collé quatre fois. Un joueur qui a lu la première paire sait lire les trois autres.
+      ⚠️ **Le corriger n'est pas un réglage** : un marqueur déplacé rejoue son Y (échantillonné sur
+      la peau) et les fenêtres de relâche du `BRIEF-0092`. C'est un arbitrage d'opérateur, pas une
+      déduction de session — et il se juge en jouant, les paires étant séparées de 100 à 190 m
+      (≈ 80 s au rythme du survol).
+- [ ] **Les `|x|` se rangent en deux rails, et c'est structurel.** 11 tourelles entre 8,2 et 10,2
+      (pont médian), 6 entre 5,6 et 6,2 (pont intérieur), **rien entre 6,2 et 8,2** — c'est la
+      contremarche de chine (6,80 à 7,35) plus les gardes de socle. La coque n'a pas de position
+      intermédiaire à offrir ; le seul levier serait un palier de plus, donc une reforge.
+- [ ] **Le tronçon 5 porte 5 lourdes sur 17**, dont trois d'affilée (`15`, `16`, `17` à 463,3 /
+      470,0 / 478,8, deux du même bord). Densité voulue en fin de niveau — à confirmer en jouant,
+      c'est le même endroit que les trois autres manques déjà consignés du tronçon 5.
+
 ## ⚠️ Niveau 2 — ce que le LOT B4 laisse ouvert (2026-09-03)
 
 - [ ] **Le nouveau rythme n'a été jugé par personne EN JOUANT.** ⚠️ C'est le lot qui touche le
