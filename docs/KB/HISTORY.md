@@ -424,3 +424,29 @@ Trois leçons qui ne valent pas que pour ce niveau :
   mesure au binaire se juge à l'écran** — les deux réglages qui ont corrigé le rendu sont côté
   moteur (`EMISSIVE_ENERGY` 1,0 → 0,45, `PANEL_DAMP` 0,45), pas côté géométrie.
 - **2026-08-30** — Niveau 2 joué et corrigé sur retour d'opérateur : le nœud d'épine **affaiblit** au lieu d'éteindre (15 tourelles sur 17 étaient neutralisées avant d'être à portée), les pièces abattues ont une **épave**, les portes du hangar sortent du kit (`BRIEF-0095`), la patrouille passe de 14 à **209 coques** avec les treize types du bestiaire, et le niveau reçoit **sa** musique — il jouait celle du rapport de mission du niveau 1. Le Long Cortège entre au bestiaire, ce qui a révélé **quatre réglages du présentoir calés sur des coques d'une vingtaine de mètres** ; réponse : ramener la coque au gabarit plutôt qu'adapter le décor. Publication **v0.4.0**.
+
+## 2026-09-03 — la géométrie du Long Cortège s'enrichit, et le rythme se juge en jouant
+
+Vingt consignes de l'opérateur sur la géométrie du niveau 2, traitées en quatre lots : le contour
+cesse d'être un rectangle (sept événements), les deux bords cessent d'être jumeaux (quatre zones
+asymétriques), le pont se creuse (quatre fosses), les installations se regroupent, et une
+passerelle enjambe le vaisseau. **Trois bastions ont été construits, mesurés, puis retirés** : ils
+coûtaient 33 m de bordé et faisaient passer la part calme **sous** son point de départ, sans
+ajouter de lecture que le contour et les fosses ne donnaient déjà. Livré à **261,0 m de calme,
+52,2 %** — un gain réel de **+1,9 point**, et non les +8,3 annoncés en cours de route.
+
+Deux leçons, et la seconde n'est que la première vue d'un autre angle :
+
+- **Un indicateur ne voit que ce qu'il compte.** La part calme s'établissait sur les modules seedés
+  et les emprises d'installations ; fosses, passerelle et bastions n'étant ni l'un ni l'autre,
+  jusqu'à 36 m de bordé occupé sortaient du compte. Même classe de défaut que la liste blanche du
+  tableau des modules, trouvée le même jour et **de la même façon** : un chiffre n'avait pas bougé
+  alors qu'il aurait dû. Rien d'autre ne l'aurait trouvé — tests verts, build déterministe, aucune
+  erreur. Capitalisé dans
+  [`pratique-un-indicateur-ne-voit-que-ce-qu-il-compte`](../../.claude/resources/pratique-un-indicateur-ne-voit-que-ce-qu-il-compte.md).
+- **Le rythme d'un survol ne se mesure pas dans son journal.** Il n'y a aucun horodatage : l'ordre
+  est sûr, les durées non. Le niveau a donc été **joué** (survol complet, victoire, score 77130,
+  zéro erreur) et validé par l'opérateur sans retouche. Au passage, une fausse alerte payée d'une
+  investigation complète : `pont d'envol détruit — tronçon 03` s'imprime deux fois parce que le
+  tronçon 03 **porte deux ponts** — une ligne de journal qui ne nomme pas sa pièce se lit comme un
+  bug. Les deux constats sont versés dans le skill `/jouer`, qui rend cette chronologie.

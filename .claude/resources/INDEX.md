@@ -123,6 +123,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   d'*1 m*, et ce chiffre partait dans un compte-rendu — une mesure fausse est plus dangereuse
   qu'aucune mesure, elle porte l'autorité du chiffre. ⚠️ Et une mesure que son propre correctif rend
   vide ne prouve rien : après `--fix-tiling`, le tuilage vaut 0,0 % **par construction**. ⚠️ **Un seuil absolu peut être aveugle à la nature de l'image** : `--check-tiling` compare deux colonnes d'UN pixel, donc sur une texture à grain fin il mesure la variance du grain et crie à la couture. Le témoin gratuit : l'écart entre deux colonnes **adjacentes à l'intérieur**. Vécu sur quatre textures, le verdict s'inverse **dans les deux sens**.
+- [Un indicateur ne voit que ce qu'il compte](pratique-un-indicateur-ne-voit-que-ce-qu-il-compte.md)
+  — un indicateur juste le jour où il est écrit devient faux **tout seul** dès qu'on ajoute au monde
+  une chose qu'il n'énumère pas : il ne casse pas, il rend un chiffre plausible. ⚠️ **Le symptôme est
+  un chiffre qui n'a pas bougé alors qu'il aurait dû** — c'est ce qui a trouvé les deux cas du
+  2026-09-02, et rien d'autre ne les aurait trouvés (tests verts, build déterministe, aucune erreur).
+  Coût : **58,6 %** de coque calme annoncés à l'opérateur pour **48,2 %** réels, et un gain de lot
+  annoncé **+8,3 points** au lieu de **+1,9**. ⚠️ Les deux formes qui piègent : une **liste blanche**
+  et un **ensemble seedé** — énumérer la géométrie POSÉE, pas la liste de ce qu'on croyait poser.
 - [Dessiner avant de raisonner](pratique-dessiner-avant-de-raisonner.md) — quand le joueur et la
   mesure se contredisent, **c'est le joueur qui a raison** : instrumenter le JEU, pas raffiner le
   banc. ⚠️ **Quatre diagnostics chiffrés** ont précédé une superposition des formes de collision

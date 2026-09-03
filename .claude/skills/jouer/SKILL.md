@@ -87,6 +87,28 @@ Ce qu'un journal propre raconte :
 
 Signaler ce qui **manque** autant que ce qui est là : pas de `SCRIPT ERROR`, pas d'assert.
 
+Et l'absence d'une ligne **attendue** est un fait de jeu, pas un trou : sans
+`nœud d'épine 02 abattu`, le tronçon 03 se traverse à pleine défense — le dire, c'est rendre à
+l'opérateur la moitié du récit qu'il ne peut pas relire.
+
+⚠️ **TROIS CHOSES QUE CE JOURNAL NE DIT PAS**, et qu'il ne faut donc pas prétendre en tirer.
+
+- **Il n'a aucun horodatage.** L'ordre des événements est sûr, les **durées ne le sont pas** :
+  impossible d'en tirer si les 208 s annoncées ont été tenues, ni combien de temps une plage de
+  calme a duré à l'écran. Un rythme se rend en **séquence**, jamais en secondes, tant que rien
+  n'horodate le survol.
+- **Une ligne qui ne nomme pas la pièce se lit comme un doublon.**
+  `[Cortege] pont d'envol détruit — tronçon 03` est émis **deux fois** dans un survol normal :
+  la table `BAYS` (`tools/blender/build_long_cortege.py`) pose sept ponts sur des tronçons de
+  100 m, et les stations 224,6 et 290,0 tombent **toutes deux** dans le tronçon 03 (comme 126,0
+  et 180,7 dans le 02). Une station à 290 meurt d'ailleurs souvent **après** l'annonce de
+  `SECTION 04`, sa fenêtre débordant la frontière. Avant de signaler une double émission :
+  **compter les pièces du tronçon dans la table**. Coût de l'oubli : une investigation complète
+  pour un comportement correct (2026-09-03). Les tourelles portent un `serial`, les ponts non.
+- **Un journal vert ne valide pas une géométrie.** Fosses, passerelle, contour ne loggent
+  **rien** : ils n'existent, pour un verdict, que dans une capture regardée ou dans l'œil de
+  l'opérateur.
+
 ## Drapeaux de jeu
 
 **À n'ajouter QUE sur demande explicite de l'opérateur** (voir le défaut plus haut : un `/jouer`
