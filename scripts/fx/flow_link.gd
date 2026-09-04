@@ -62,8 +62,15 @@ static func build(tint: Color, width: float, energy: float) -> MeshInstance3D:
 ## `age` fait avancer le chapelet ; `camera_basis` garde le ruban FACE À LA CAMÉRA — sans
 ## quoi son orientation autour de la corde reste arbitraire et on le voit par la tranche,
 ## donc presque pas. Défaut déjà payé sur ce même lien.
+## ⚠️ `density` EXISTE PARCE QU'UN LIEN COURT NE SE LIT PAS COMME UN FLUX À LA DENSITÉ DES
+## LONGS. `DOTS_PER_UNIT` a été réglée sur les liens du porteur, qui font des dizaines de mètres.
+## Les conduits de la Citadelle en font 6,4 : à 0,55 point par mètre ils rendent TROIS gros
+## lampions, vus en capture — deux lumières, pas une circulation. Le défaut est le pendant exact
+## de celui que la largeur a payé : là c'était trop fin pour se voir, ici c'est trop gros pour
+## dire quelque chose. Le défaut de ce paramètre garde tous les appelants existants inchangés.
 static func aim(link: MeshInstance3D, from: Vector3, to: Vector3,
-		camera_basis: Basis, width: float, age: float) -> void:
+		camera_basis: Basis, width: float, age: float,
+		density: float = DOTS_PER_UNIT) -> void:
 	var span := from.distance_to(to)
 	if link == null or span < 0.05:
 		if link != null:
@@ -75,7 +82,7 @@ static func aim(link: MeshInstance3D, from: Vector3, to: Vector3,
 	var material := link.material_override as StandardMaterial3D
 	if material == null:
 		return
-	var dots := maxf(span * DOTS_PER_UNIT, 1.0)
+	var dots := maxf(span * density, 1.0)
 	material.uv1_scale = Vector3(1.0, dots, 1.0)
 	material.uv1_offset = Vector3(0.0, fmod(age * FLOW_SPEED, 1.0), 0.0)
 
@@ -84,5 +91,5 @@ static func aim(link: MeshInstance3D, from: Vector3, to: Vector3,
 ## fichier qui se vérifie sans arbre de scène, et elle garde l'invariant qui compte : un
 ## lien court ne doit jamais tomber à zéro point, sinon il disparaît quand il devrait
 ## seulement raccourcir.
-static func dot_count(span: float) -> float:
-	return maxf(span * DOTS_PER_UNIT, 1.0)
+static func dot_count(span: float, density: float = DOTS_PER_UNIT) -> float:
+	return maxf(span * density, 1.0)

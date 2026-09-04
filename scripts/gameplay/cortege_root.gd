@@ -119,6 +119,15 @@ func _ready() -> void:
 	add_child(_survey_zones)
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
+		# ⚠️ OUTIL DE VÉRIFICATION, PAS UN RACCOURCI DE JEU. Le critère du LOT 3 de la
+		# citadelle est « une capture par état », et aucun des trois derniers n'est atteignable
+		# sans un joueur : le pilote automatique tire droit devant. Même esprit que
+		# `--leviathan-phase=2`. Les dégâts partent par le VRAI chemin — voir
+		# `CortegeCitadel._apply_forced_state()`.
+		if arg.begins_with("--citadel-state=") and _citadel != null:
+			var niveau := arg.substr(16).to_int()
+			_citadel.force_state(niveau)
+			print("[Cortege] citadelle : état %d demandé au verrouillage" % niveau)
 		if arg.begins_with("--cortege-from="):
 			var section := maxi(arg.substr(15).to_int() - 1, 0)
 			_flyby.skip_to_section(section)

@@ -94,6 +94,40 @@ Pour ceux-là, la recette du dépôt est meilleure : fond noir + `bg-key-alpha.p
 reconstruit un alpha **doux** dérivé de la luminance et préserve le dégradé de disparition. Si un
 damier a malgré tout été peint, `--mode sat` est le rattrapage (moins propre, résidu possible).
 
+## ⚠️ Le plancher de MODULATION — ce que le rendu rétro détruit, quoi qu'on demande
+
+Relevé le 2026-09-04, en mesurant pourquoi la maille hexagonale de `TEX-0015` était **invisible**
+sur le panneau de bouclier de la Citadelle alors que toute la chaîne était juste.
+
+La chaîne de texture était **correcte à 1 % près** : pas de maille mesuré à 28,4 px à l'écran pour
+28,6 prédits, échelle UV juste, mipmaps activées. Et pourtant : rien. La cause est **en aval**, et
+elle borne tout ce que ce contrat peut demander :
+
+| Maillon | Ce qu'il fait | Mesuré |
+|---|---|---|
+| `retro_post.gdshader` | accroche l'image à `target_res` | **960 × 540** — le panneau de 152 px n'en fait plus que 76 |
+| `levels = 20.0` | postérise | pas de **12,75 niveaux de gris** ; le panneau ne contient QUE 204 / 217 / 229 / 242 / 255 |
+| la maille | ce qu'elle module | **0,83 niveau** — un quinzième d'une marche |
+
+⚠️ **UN DÉTAIL DONT LA MODULATION EST SOUS ~6 NIVEAUX DE GRIS N'EXISTE PAS DANS CE JEU.** Il ne
+franchit pas une marche de postérisation. Le tramage de Bayer le porte encore *statistiquement* —
+c'est pourquoi il se **mesure** au spectre — mais l'œil ne le voit pas, et aucun réglage de la
+carte, de l'UV ou de l'import n'y change quoi que ce soit.
+
+⚠️ **ET LA SATURATION MANGE UN CANAL À LA FOIS.** Sur ce même panneau le rouge était écrêté sur
+52 % de l'aire, avec **deux valeurs en tout** : il ne transportait plus aucune texture. Une carte
+posée sous une émission forte perd ses canaux un par un, le plus saturé d'abord.
+
+**Ce que ça change pour une demande** : `readability_requirements` doit raisonner en **contraste**,
+pas seulement en pixels. « 9 à 18 px par maille » était vrai et insuffisant — la maille faisait
+29 px et ne se voyait pas. La bonne question est : *de combien de niveaux de gris ce détail
+module-t-il, une fois l'émission appliquée ?* Sous six, ne pas le demander.
+
+⚠️ **Le corollaire est une économie.** Un détail invisible est une carte payée pour rien. Avant de
+demander de la finesse, vérifier qu'elle a la place de vivre : une surface petite, très émissive
+et postérisée à 20 niveaux ne porte que des **aplats et des silhouettes** — ce que la consigne 19
+du redesign dit déjà pour la géométrie, et qui vaut aussi pour la matière.
+
 ### Deux limites qui ne sont pas des règles
 
 - **`grayscale` n'est pas un dogme.** `ADR-0013 §3` autorise la couleur **quand elle est motivée**

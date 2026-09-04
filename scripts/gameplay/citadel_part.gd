@@ -144,6 +144,15 @@ func set_vulnerable(on: bool) -> void:
 	_vulnerable = on
 
 ## La part de vie qui reste, de 1 à 0. Lue par la mise en scène, jamais par la règle.
+## Fait battre la lueur de CETTE pièce, en part de l'énergie que la forge lui a calibrée.
+##
+## ⚠️ RELATIF ET NON ABSOLU : écrire une énergie en dur ici écraserait `emissiveStrength` du
+## binaire, et la prochaine reforge qui la retoucherait n'aurait aucun effet — en silence. Même
+## contrat que le nœud d'épine.
+func set_glow(factor: float) -> void:
+	for material in _glow:
+		material.emission_energy_multiplier = _glow_base * maxf(factor, 0.0)
+
 func health_ratio() -> float:
 	return clampf(_health / maxf(_health_max, 0.001), 0.0, 1.0)
 

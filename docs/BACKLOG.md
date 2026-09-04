@@ -72,6 +72,45 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
 
+### Ouvert par le LOT 3 de la Citadelle (2026-09-04)
+
+- ⚠️ **UN DETAIL SOUS ~6 NIVEAUX DE GRIS DE MODULATION N'EXISTE PAS DANS CE JEU**, et c'est
+  desormais au contrat de texture. Mesure : `retro_post` accroche l'image a **960 x 540** puis
+  posterise a `levels = 20`, soit un pas de **12,75 niveaux**. La maille de `TEX-0015` module de
+  **0,83 niveau** — un quinzieme d'une marche — alors que sa chaine de texture est juste a 1 pct
+  pres (28,4 px mesures pour 28,6 predits). Le tramage de Bayer la porte encore STATISTIQUEMENT,
+  c'est pourquoi elle se MESURE au spectre, mais l'œil ne la voit pas. ⚠️ Corollaire d'economie :
+  un detail invisible est une carte payee pour rien — avant de demander de la finesse, verifier
+  qu'elle a la place de vivre.
+- ⚠️ **LA SATURATION MANGE UN CANAL A LA FOIS.** Sur le panneau de bouclier le rouge est ecrete
+  sur 52 pct de l'aire avec **deux valeurs en tout** : il ne transporte plus aucune texture. Une
+  carte posee sous une emission forte perd ses canaux un par un, le plus sature d'abord.
+- **L'affaiblissement du bouclier ne se lit pas seul** (203 → 188 de luminance, surtout une perte
+  de vert) : il CONFIRME le signal porte par l'anneau du relais eteint, il ne le porte pas. Pour
+  qu'une moitie d'energie perdue se lise par elle-meme, il faudrait le dire en GEOMETRIE —
+  demi-hauteur, moitie de maille manquante — et non en intensite. A juger en jouant.
+- **Methode, confirmee trois fois** : le premier lancement apres un deploiement lit **0,2 a
+  0,8 ms trop haut** (cache de shaders froid). Prendre une mediane sur plusieurs tirs, jamais un
+  seul — sinon on lit une modification la ou il n'y a qu'un cache.
+- ⚠️ **29 DES 50 CARTES 3D DU DEPOT SONT IMPORTEES SANS MIPMAPS, ET LE DEFAUT EST MESURE.** Le
+  defaut de Godot est `mipmaps/generate=false` ; seul le jeu `cortege/` les a, parce que
+  quelqu'un les a mises — et `cortege_skin.gd` ecrit pourquoi : « une fois les mipmaps activees
+  (et il le fallait, sans elles la coque SCINTILLE) ». Les 28 autres sont tout le jeu `citadel/`
+  (Aegis Citadel), les feuilles `hull/`, et les cartes de lune et d'asteroide.
+  **La preuve chiffree**, relevee sur le panneau de bouclier avant correction : ~1 106 texels
+  d'une carte 1024² ecrases dans 152 px d'ecran, soit une minification **7:1**. Sans mipmap, le
+  trait de l'hexagone est echantillonne au hasard — modulation residuelle **std 5,0** (2,5 pct de
+  contraste, huit fois moins que la scanline qui la recouvre) et **spectre horizontal plat** :
+  aucun reseau. La maille faisait pourtant 29 px. ⚠️ **Ce n'est donc pas « on ne voit pas le
+  detail » : c'est la chaine d'echantillonnage qui le detruit avant l'ecran.**
+  ⚠️ **Un defaut par projet serait FAUX** : les 21 autres fichiers sans mipmaps sont des sprites
+  d'interface et les portraits de Lyra, ou les mipmaps flouteraient sans rien gagner (aucune
+  minification). Le remede est par famille, pas global — et il vaut une ligne dans le contrat de
+  texture, parce que la prochaine carte deposee arrivera avec le defaut de Godot.
+  **Corrige pour `citadel_shield.png` seulement** (LOT 3 de la Citadelle) ; les 28 autres sont a
+  juger EN REGARDANT, une famille a la fois : activer les mipmaps change le rendu de cinq assets
+  deja valides.
+
 ### Ouvert par le LOT 2 de la Citadelle (2026-09-04)
 
 - ⚠️ **TROIS PLANCHES DE RECETTE ONT ETE VALIDEES SUR DES IMAGES INCOMPLETES.** L'importateur

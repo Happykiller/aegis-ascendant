@@ -147,7 +147,75 @@ const CORE_RADIUS := 1.50
 ## elle ne s'applique pas à une tourelle.
 const SHIELD_BASE_Y := -3.90
 const SHIELD_S := 2.10
-const SHIELD_TINT := Color(0.30, 0.72, 1.00, 0.28)
+## ⚠️ MAGENTA ET NON BLEU DEPUIS LE LOT 3 : c'est la teinte de `TEX-0015`, la carte livrée.
+## Elle met le bouclier dans la MÊME famille que le noyau et que les tirs ennemis — et c'est
+## assumé, parce que ce qui doit les séparer est la STRUCTURE : une maille fixe, un point qui
+## bouge, un volume plein. Le bleu du LOT 1 séparait par la couleur, donc il enseignait une
+## grammaire que le jeu n'a pas.
+const SHIELD_TINT := Color(0.85, 0.24, 0.61, 0.34)
+const SHIELD_MAP_PATH := "res://assets/imported/textures/cortege/citadel_shield.png"
+## L'énergie d'émission du panneau À PLEINE ALIMENTATION.
+##
+## ⚠️ 0,75 APRÈS AVOIR REGARDÉ, ET NON 1,35 : à 1,35 le panneau CRAME. Vu en capture, il rendait
+## une dalle blanche lisse et **aucun hexagone ne se lisait** — la maille de 0,68 m fait pourtant
+## 15 px à 23 px/m, donc elle devrait se compter. Ce n'est pas la taille de la maille qui la
+## noyait, c'est la saturation : émission blanche à 1,35, plus le `glow` de l'environnement, et
+## la structure disparaît dans le blanc. On payait une texture que personne ne voyait.
+const SHIELD_ENERGY := 0.75
+## ⚠️ MESURÉE : le panneau fait 3,60 m pour 0,720 d'étendue UV, soit 5 m par tuile — et la maille
+## de la carte y ferait 1,02 m quand la demande veut 40 à 80 cm. À 1,50 la tuile couvre 3,33 m et
+## la maille tombe à 0,68 m. La chaîne est juste **à 1 % près**, vérifiée en capture : le pas
+## mesuré à l'écran est de 28,4 px pour 28,6 prédits.
+##
+## ⚠️ ET LA MAILLE NE SE VOIT PAS QUAND MÊME — CE QUI N'EST NI LA CARTE, NI L'UV, NI LES MIPMAPS.
+## Elle est détruite en aval, par le post-traitement rétro, et c'est chiffré : `retro_post` accroche
+## l'image à une grille de 960 × 540 où le panneau ne fait plus que 76 px, puis postérise à
+## `levels = 20`, soit **un pas de 12,75 niveaux de gris**. La modulation de la maille vaut
+## **0,83 niveau** : un quinzième d'une marche. Elle ne peut pas la franchir. Et le canal rouge est
+## saturé sur la moitié du panneau, donc il ne transporte plus rien.
+##
+## L'échelle est conservée telle quelle : elle est juste, elle documente l'intention, et elle
+## redeviendra utile le jour où le panneau sera plus grand (l'ouverture du LOT 4 l'élargit). Ce
+## qu'il faut retenir est ailleurs, et c'est au contrat de texture : **sous ~6 niveaux de gris de
+## modulation, un détail n'existe pas dans ce jeu.**
+const SHIELD_UV_SCALE := 1.50
+const SHIELD_MESH_METRES := 0.68
+
+## LES CONDUITS — ce qui rend la règle du verrou visible sans un mot de HUD.
+const CONDUIT_TINT := Color("d93d9c")
+## ⚠️ DÉDUITE DE LA PROFONDEUR : 0,55 suffit dans le plan de jeu (14 m de la caméra), le pont est
+## à 19,5 m, soit 1,4 fois plus loin. En dessous, le lien tombe sous le pixel et disparaît à
+## l'anticrénelage — présent, invisible, donc inexistant pour un signe qui ne sert qu'à désigner.
+## ⚠️ 0,55 APRÈS AVOIR REGARDÉ, ET NON 0,75 : à 0,75 les points mesuraient 20 à 27 px et se
+## lisaient comme des lampions, pas comme une circulation. Le pendant exact du défaut que le
+## porteur a payé dans l'autre sens — là c'était 1,7 px, donc invisible ; ici c'était trop gros
+## pour dire quelque chose.
+const CONDUIT_WIDTH := 0.55
+## ⚠️ PLUS DENSE QUE LE DÉFAUT DE `FlowLink`, ET C'EST UNE QUESTION DE LONGUEUR. Sa constante est
+## réglée sur les liens du porteur, qui font des dizaines de mètres ; un conduit de la Citadelle
+## en fait 6,4. À 0,55 point par mètre il rend TROIS points — deux lumières, pas un flux. À 1,4
+## il en rend neuf, et le chapelet se lit comme ce qu'il est.
+const CONDUIT_DENSITY := 1.4
+const CONDUIT_ENERGY := 2.4
+## De combien le chapelet bat, en part de son énergie. Un flux stable serait un tuyau ; ce qu'on
+## veut lire est une ALIMENTATION.
+const CONDUIT_PULSE := 0.22
+
+## LE BATTEMENT DU NOYAU, par état. ⚠️ IL EST LE SEUL SIGNE D'INSTABILITÉ dont on dispose sans
+## toucher à la géométrie : protégé il bat lentement et bas, exposé il bat vite et fort. C'est ce
+## qui doit dire « maintenant, ça compte » à l'instant où le bouclier tombe.
+const CORE_CALM_HZ := 0.55
+const CORE_CALM_DEPTH := 0.18
+const CORE_LIVE_HZ := 2.6
+const CORE_LIVE_DEPTH := 0.55
+## L'énergie de base du noyau exposé, par-dessus laquelle le battement s'applique.
+const CORE_LIVE_GAIN := 1.6
+
+## LES FEUX RÉSIDUELS — ce qui reste quand le noyau est mort, pendant l'ouverture.
+## ⚠️ DES EXPLOSIONS DU BANC COMMUN ET NON UN EFFET NEUF : `VfxExplosion` est poolée, et un
+## système de particules de plus coûterait un émetteur pour ce qui dure deux secondes.
+const EMBER_INTERVAL := 0.28
+const EMBER_SPREAD := 2.4
 
 ## LES TOURELLES LÉGÈRES DU VERROU — quatre, deux par bord, SUR DEUX PONTS.
 ##
@@ -205,6 +273,30 @@ var _vfx: VFXManager = null
 
 var _gate: Node3D = null
 var _shield: MeshInstance3D = null
+## Le matériau du panneau, tenu à part : c'est son ÉNERGIE qui dit combien de relais l'alimentent.
+var _shield_material: StandardMaterial3D = null
+## Les deux chapelets relais → noyau. ⚠️ PRÉALLOUÉS AU MONTAGE : un lien créé par image allouerait
+## dans la boucle de rendu, et c'est la leçon que le porteur de bouclier a déjà payée.
+var _conduits: Array[MeshInstance3D] = []
+## L'âge du flux, qui fait défiler les points. Une seule horloge pour les deux : deux chapelets
+## déphasés se liraient comme deux mécanismes distincts.
+var _flow_age: float = 0.0
+var _pulse: float = 0.0
+var _ember_timer: float = 0.0
+## ⚠️ SEMÉ UNE FOIS, comme les arcs du nœud d'épine : un tirage libre rendrait deux captures
+## incomparables, et un survol se juge en comparant deux passages.
+var _rng := RandomNumberGenerator.new()
+## L'état où le verrou doit se trouver À L'ARRÊT — outil de vérification, jamais un raccourci.
+##
+## ⚠️ IL EXISTE PARCE QUE LE CRITÈRE DU LOT 3 EST « UNE CAPTURE PAR ÉTAT », et qu'aucun des trois
+## derniers n'est atteignable sans un joueur : le pilote automatique tire droit devant, il
+## n'abat pas un relais. Même esprit que `--leviathan-phase=2`, dont l'absence avait coûté trois
+## lancements avant qu'on s'aperçoive qu'il existait déjà.
+##
+## ⚠️ ET IL S'APPLIQUE À L'ARRÊT, PAS AU MONTAGE. Appliqué au montage, l'état 3 ferait courir
+## l'ouverture pendant l'approche : la route serait rendue avant même que le mur n'arrive, et il
+## n'y aurait rien à capturer. Appliqué au verrouillage, la séquence est cadrée.
+var _forced_state: int = 0
 
 var _relays: Array[CitadelPart] = []
 var _core: CitadelPart = null
@@ -270,6 +362,7 @@ static func make(p_tuning: CortegeTuning) -> CortegeCitadel:
 	# vulnérable est touchable pendant la trame qui sépare sa création de son câblage, et ce
 	# genre de fenêtre d'une image ne se reproduit jamais quand on la cherche.
 	citadel._core.set_vulnerable(false)
+	citadel._rng.seed = 0x00C17ADE
 	return citadel
 
 # --- La pose, en fonctions PURES ---------------------------------------------
@@ -402,6 +495,7 @@ func _build_mass() -> void:
 	# ⚠️ LE NOYAU EST SUR L'AXE : sa géométrie est déjà centrée en x, il n'a rien à retrancher.
 	_core.mount(kit.get_node_or_null("citadel_core") as MeshInstance3D)
 	_build_shield(kit)
+	_build_conduits()
 	kit.queue_free()
 
 ## Ouvre le kit. ⚠️ SON ABSENCE NE CASSE PAS LE NIVEAU, ET ELLE SE DIT. Le binaire vient de la
@@ -423,10 +517,12 @@ func _open_kit() -> Node:
 ## QUELQUE PART, sur une surface qui a une place : un halo posé sur le noyau se lirait comme une
 ## propriété du noyau — donc comme « il encaisse » —, et non comme « quelque chose le protège ».
 ##
-## ⚠️ SA TEINTE EST PROVISOIRE, ET SA REMPLAÇANTE EST DÉJÀ AU DÉPÔT. `TEX-0015` est livrée et
-## acceptée : elle rendra le panneau MAGENTA au LOT 3, de la même famille que le noyau qu'il
-## protège. C'est alors la STRUCTURE — une maille fixe contre un point net qui bouge — qui devra
-## les séparer, et ça ne s'est encore vu sur aucune capture.
+## ⚠️ ET IL EST MAGENTA, PAS BLEU, DEPUIS QUE `TEX-0015` EST CÂBLÉE. C'est la teinte que la
+## demande de texture argumente, et elle met le bouclier dans la MÊME FAMILLE que le noyau qu'il
+## protège et que les tirs ennemis. Ce qui les sépare n'est donc pas la teinte, c'est la
+## STRUCTURE : le bouclier est une maille FIXE, un tir est un point net qui BOUGE, le noyau est
+## un volume plein. Le placeholder bleu du LOT 1 séparait par la couleur — c'était plus facile à
+## lire et ça enseignait la mauvaise grammaire.
 func _build_shield(kit: Node) -> void:
 	var source := kit.get_node_or_null("citadel_shield") as MeshInstance3D
 	if source == null:
@@ -437,19 +533,72 @@ func _build_shield(kit: Node) -> void:
 	_shield.mesh = source.mesh
 	_shield.position = Vector3(0.0, SHIELD_BASE_Y, -SHIELD_S)
 	_shield.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = SHIELD_TINT
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.emission_enabled = true
-	mat.emission = Color(SHIELD_TINT.r, SHIELD_TINT.g, SHIELD_TINT.b)
-	mat.emission_energy_multiplier = 0.9
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_shield.material_override = mat
+	_shield_material = StandardMaterial3D.new()
+	_shield_material.albedo_color = SHIELD_TINT
+	_shield_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_shield_material.emission_enabled = true
+	_shield_material.emission = Color(SHIELD_TINT.r, SHIELD_TINT.g, SHIELD_TINT.b)
+	_shield_material.emission_energy_multiplier = SHIELD_ENERGY
+	_shield_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_dress_shield()
+	_shield.material_override = _shield_material
 	add_child(_shield)
 	# ⚠️ IL SUIT L'ÉTAT ET NON L'ORDRE DE MONTAGE. Le bouclier peut naître APRÈS que les deux
 	# relais soient tombés — un `--cortege-from` posé au mauvais endroit, un banc de mesure — et
 	# un rideau devant un noyau touchable apprendrait au joueur l'inverse de la règle.
 	_shield.visible = _core != null and not _core.is_vulnerable()
+
+## Habille le panneau avec `TEX-0015`, si elle est là.
+##
+## ⚠️ CHARGÉE AU RUNTIME ET NON `preload`, comme les cinq cartes de coque : elle vient de
+## l'opérateur (`ADR-0028`), et un `preload` sur un fichier absent est une erreur de COMPILATION
+## en GDScript — le niveau entier cesserait de se monter pour un habillage. Sans elle le bouclier
+## reste un aplat translucide : il fait toujours son travail, il ne dit plus « surface ».
+##
+## ⚠️ ET L'ÉCHELLE UV EST MESURÉE, PAS CHOISIE. Le panneau fait 3,60 m pour une étendue UV de
+## 0,720 — soit exactement les 0,200 tuile/m que le brief demandait, donc 5 m par tuile. Or la
+## maille hexagonale de la carte fait 1,02 m à cette échelle, quand la demande veut 40 à 80 cm :
+## `TEX-0015` le disait elle-même — « à REMESURER au LOT 2 : si la largeur retenue s'écarte de
+## 8-10 m, c'est l'ÉCHELLE UV qui bouge, pas la carte ». À 1,50 la tuile couvre 3,33 m et la
+## maille tombe à **0,68 m**, dans la fenêtre.
+func _dress_shield() -> void:
+	if not ResourceLoader.exists(SHIELD_MAP_PATH):
+		print("[Citadel] bouclier NU — %s absent" % SHIELD_MAP_PATH.get_file())
+		return
+	var carte: Texture2D = load(SHIELD_MAP_PATH) as Texture2D
+	if carte == null:
+		push_error("[Citadel] carte de bouclier illisible : %s" % SHIELD_MAP_PATH)
+		return
+	# La MÊME image sert d'albédo et d'émission : c'est ce que `TEX-0015` déclare
+	# (`output_usage: albedo_and_emission`), et c'est pourquoi elle ne reçoit aucune normale.
+	_shield_material.albedo_texture = carte
+	_shield_material.emission_texture = carte
+	_shield_material.albedo_color = Color(1.0, 1.0, 1.0, SHIELD_TINT.a)
+	_shield_material.emission = Color.WHITE
+	_shield_material.uv1_scale = Vector3(SHIELD_UV_SCALE, SHIELD_UV_SCALE, 1.0)
+	print("[Citadel] bouclier habillé — maille de %.2f m" % SHIELD_MESH_METRES)
+
+## Les deux conduits qui ALIMENTENT le noyau, et qui s'éteignent avec leur relais.
+##
+## ⚠️ UN CHAPELET QUI DÉFILE, PAS UN TRAIT PLEIN, ET LE SENS EST L'ESSENTIEL. `FlowLink` existe
+## pour cette raison exacte, apprise en jouant sur le porteur de bouclier : « pas de trait
+## grossier comme ça […] plutôt un effet de particule » (opérateur). Un trait plein est du carton
+## — il ne dit ni sens, ni mouvement, ni intensité — et surtout il s'était fait LIRE À L'ENVERS.
+## Ici les points partent du RELAIS et remontent vers le NOYAU : « ceci alimente cela », donc
+## « coupe les deux côtés d'abord ». C'est la règle du verrou, rendue en géométrie animée, sans
+## un mot de HUD.
+##
+## ⚠️ ET LA LARGEUR EST DÉDUITE DE LA PROFONDEUR, PAS RECOPIÉE. Le porteur a payé la leçon :
+## à 0,22 m son lien faisait 1,7 pixel et disparaissait à l'anticrénelage — présent, invisible,
+## donc inexistant pour un signe dont le seul rôle est de désigner. Il a été porté à 0,55 dans le
+## PLAN DE JEU. Les conduits, eux, courent sur le pont : 19,5 m de la caméra contre 14 pour le
+## plan, soit 1,4 fois plus loin. D'où 0,75.
+func _build_conduits() -> void:
+	for i in _relays.size():
+		var link := FlowLink.build(CONDUIT_TINT, CONDUIT_WIDTH, CONDUIT_ENERGY)
+		link.name = "Conduit%s" % ("Port" if i == 0 else "Star")
+		add_child(link)
+		_conduits.append(link)
 
 # ==========================================================================
 # LA BOUCLE
@@ -471,12 +620,111 @@ func tick(delta: float, travelled: float, eye: Vector3) -> void:
 		var wt := piece_world(tuning, turret.position, travelled) \
 			+ Vector3(0.0, turret.hit_lift(), 0.0)
 		turret.tick(delta, wt, GameplayPlane.aim_point_of(wt, eye))
+	_tick_dress(delta, travelled, eye)
 	_advance(delta)
 
 ## Relève où la face avant se projette dans le plan. ⚠️ LES DEUX BOUTS, ET NON LE CENTRE : le mur
 ## fait 34 m de large et la parallaxe n'est pas la même à ses deux extrémités. Un segment déduit
 ## du centre serait juste au milieu et faux aux bords, c'est-à-dire exactement là où le joueur
 ## cherche à passer.
+## L'énergie du panneau pour `alimentation` relais vivants sur `total`.
+##
+## ⚠️ PURE, PARCE QUE C'EST LE SIGNE QUI PORTE LA RÈGLE — et que le reste du LOT 3 ne se vérifie
+## qu'en regardant. Un bouclier qui garderait sa pleine énergie avec un seul relais dirait au
+## joueur que couper le premier n'a servi à rien ; un bouclier qui tomberait dès le premier
+## dirait qu'un seul suffit. La proportion est l'information.
+static func shield_energy(alimentation: int, total: int) -> float:
+	if total <= 0:
+		return 0.0
+	return SHIELD_ENERGY * float(clampi(alimentation, 0, total)) / float(total)
+
+## Une base dont le Z regarde vers la caméra. ⚠️ ELLE SUFFIT, et c'est mesuré dans le code qui la
+## consomme : `MoonFlyby.billboard_basis()` ne lit que `camera_basis.z` (et `y` dans son cas
+## dégénéré). Reconstruire une base complète depuis un nœud de caméra demanderait l'arbre de
+## scène, que ce fichier a justement cessé de lire.
+static func eye_basis(eye: Vector3, at: Vector3) -> Basis:
+	var z := eye - at
+	if z.length_squared() < 0.0001:
+		return Basis.IDENTITY
+	z = z.normalized()
+	var x := Vector3.UP.cross(z)
+	if x.length_squared() < 0.000001:
+		x = Vector3.RIGHT
+	x = x.normalized()
+	return Basis(x, z.cross(x), z)
+
+## Ce que les QUATRE ÉTATS donnent à voir — et c'est tout l'objet du LOT 3.
+##
+## | état | ce qui change à l'écran |
+## |---|---|
+## | verrou intact | deux conduits alimentent le noyau, bouclier à pleine énergie, noyau qui bat lentement |
+## | un relais tombé | **son** conduit s'éteint, et le bouclier perd la moitié de son énergie |
+## | bouclier à terre | le panneau disparaît, le noyau bat vite et fort — « maintenant, ça compte » |
+## | noyau mort | surcharge, puis feux résiduels pendant l'ouverture |
+##
+## ⚠️ LE BOUCLIER QUI FAIBLIT EST LE MEILLEUR DES QUATRE, ET IL NE COÛTE QU'UNE DIVISION. C'est le
+## seul qui rende la CAUSE visible au lieu de l'effet : couper un relais ne fait pas seulement
+## disparaître un relais, ça affaiblit VISIBLEMENT ce qu'il alimentait. Sans lui, le joueur voit
+## deux morts sans conséquence, puis un bouclier qui tombe d'un coup — et il n'apprend le lien
+## qu'après.
+func _tick_dress(delta: float, travelled: float, eye: Vector3) -> void:
+	_flow_age += delta
+	_pulse += delta
+	var core_world := piece_world(tuning, _core.position, travelled) \
+		+ Vector3(0.0, _core.lift, 0.0)
+	var alimentation := 0
+	for i in _conduits.size():
+		var link := _conduits[i]
+		var relay := _relays[i]
+		if not relay.is_alive():
+			# ⚠️ ÉTEINT ET NON RETIRÉ : un conduit qu'on libère est un conduit qu'il faudrait
+			# reconstruire, donc une allocation en cours de partie.
+			link.visible = false
+			continue
+		alimentation += 1
+		var depart := piece_world(tuning, relay.position, travelled) \
+			+ Vector3(0.0, relay.lift, 0.0)
+		# ⚠️ LE RELAIS EN PREMIER, LE NOYAU EN SECOND, ET C'EST TOUT LE SENS. `FlowLink` fait
+		# défiler ses points du premier vers le second : « ceci alimente cela », donc « coupe les
+		# deux côtés d'abord ». Inverser les deux arguments enseignerait la règle à l'envers — et
+		# c'est arrivé, sur le porteur de bouclier, où l'opérateur avait lu « on me ralentit ».
+		FlowLink.aim(link, depart, core_world, eye_basis(eye, depart), CONDUIT_WIDTH,
+			_flow_age, CONDUIT_DENSITY)
+		var flux := link.material_override as StandardMaterial3D
+		if flux != null:
+			flux.emission_energy_multiplier = CONDUIT_ENERGY \
+				* (1.0 + CONDUIT_PULSE * sin(_pulse * TAU * CORE_CALM_HZ * 2.0))
+	if _shield != null:
+		_shield.visible = _core.is_alive() and not _core.is_vulnerable()
+		if _shield_material != null:
+			_shield_material.emission_energy_multiplier = shield_energy(
+				alimentation, _relays.size())
+	if _core.is_alive():
+		var vif := _core.is_vulnerable()
+		var hz := CORE_LIVE_HZ if vif else CORE_CALM_HZ
+		var creux := CORE_LIVE_DEPTH if vif else CORE_CALM_DEPTH
+		var gain := CORE_LIVE_GAIN if vif else 1.0
+		_core.set_glow(gain * (1.0 + creux * sin(_pulse * TAU * hz)))
+	elif _state == State.CORE_DEAD or _state == State.OPENING:
+		_tick_embers(delta, core_world)
+
+## Les feux résiduels. ⚠️ DES EXPLOSIONS DU BANC COMMUN, POOLÉES, et non un système de particules
+## de plus : ça dure deux secondes, et un émetteur pour deux secondes est un émetteur qu'on
+## oubliera d'éteindre. ⚠️ ET LE TIRAGE EST SEMÉ : un aléa libre donnerait une répartition
+## différente à chaque lancement, donc deux captures qu'on ne peut plus comparer — c'est la leçon
+## des arcs du nœud d'épine.
+func _tick_embers(delta: float, centre: Vector3) -> void:
+	if _vfx == null:
+		return
+	_ember_timer -= delta
+	if _ember_timer > 0.0:
+		return
+	_ember_timer = EMBER_INTERVAL
+	_vfx.spawn_explosion(centre + Vector3(
+		_rng.randf_range(-EMBER_SPREAD, EMBER_SPREAD), 0.0,
+		_rng.randf_range(-EMBER_SPREAD, EMBER_SPREAD)),
+		VfxExplosion.Category.SMALL, CONDUIT_TINT)
+
 func _measure_wall(travelled: float, eye: Vector3) -> void:
 	_wall_a = GameplayPlane.aim_point_of(piece_world(tuning, gate_end_local(-1.0), travelled), eye)
 	_wall_b = GameplayPlane.aim_point_of(piece_world(tuning, gate_end_local(1.0), travelled), eye)
@@ -535,11 +783,34 @@ func _advance_wall() -> void:
 	_locked = true
 	_log("VERROU — le survol est à l'arrêt, deux relais et un noyau")
 	wall_locked.emit()
+	_apply_forced_state()
 	# ⚠️ ET L'ÉTAT NE RECULE JAMAIS. Si le combat a déjà commencé pendant le freinage, la
 	# machine est en `ONE_RELAY` (ou au-delà) et y reste : un relais abattu EST abattu. Seul un
 	# verrou encore intact traverse `LOCKED`.
 	if _state == State.APPROACH:
 		_enter(State.LOCKED)
+
+## Amène le verrou à l'état demandé par `--citadel-state`, PAR LE VRAI CHEMIN DES DÉGÂTS.
+##
+## ⚠️ PAR `hit_callback` ET NON PAR UNE MÉTHODE ÉCRITE POUR L'OCCASION. Un raccourci qui
+## poserait les drapeaux à la main capturerait un état que le jeu ne produit pas : le bouclier
+## éteint sans que son relais soit mort, le noyau vulnérable sans que la machine soit passée par
+## `SHIELD_DOWN`. On tire donc réellement, et tout ce qui suit est ce que le joueur verrait.
+func _apply_forced_state() -> void:
+	if _forced_state <= 0:
+		return
+	_log("état forcé %d — outil de vérification, on tire pour de vrai" % _forced_state)
+	if _forced_state >= 1 and _relays.size() > 0:
+		_relays[0].target().hit_callback.call(tuning.citadel_relay_health)
+	if _forced_state >= 2 and _relays.size() > 1:
+		_relays[1].target().hit_callback.call(tuning.citadel_relay_health)
+	if _forced_state >= 3:
+		_core.target().hit_callback.call(tuning.citadel_core_health)
+
+## ⚠️ OUTIL DE VÉRIFICATION, PAS UN RÉGLAGE DE JEU. Il ne s'écrit que depuis la ligne de
+## commande, et le journal le dit à chaque fois qu'il sert.
+func force_state(niveau: int) -> void:
+	_forced_state = maxi(niveau, 0)
 
 func _enter(next: State) -> void:
 	if _state == next:

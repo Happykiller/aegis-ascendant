@@ -893,3 +893,103 @@ func test_the_bastion_sits_exactly_on_the_trench_the_hull_digs() -> void:
 	# ⚠️ ET C'EST BIEN UN CREUX, pas un plancher au niveau du pont : le pont median est a -4,99.
 	assert_true(CitadelScript.BASTION_BASE_Y < -6.0,
 		"la tranchee descend nettement sous le pont median (%.2f)" % CitadelScript.BASTION_BASE_Y)
+
+
+# =============================================================================
+# 12. LE LOT 3 — CE QUE LES QUATRE ETATS DONNENT A VOIR
+# =============================================================================
+
+## ⚠️ LE BOUCLIER QUI FAIBLIT EST LE SEUL DES QUATRE SIGNES A RENDRE LA CAUSE VISIBLE, et pas
+## seulement l'effet. Couper un relais ne doit pas seulement faire disparaitre un relais : ca doit
+## AFFAIBLIR VISIBLEMENT ce qu'il alimentait. Un bouclier qui garderait sa pleine energie avec un
+## seul relais dirait que couper le premier n'a servi a rien ; un bouclier qui tomberait des le
+## premier dirait qu'un seul suffit. La proportion EST l'information.
+func test_the_shield_weakens_in_proportion_to_the_relays_that_feed_it() -> void:
+	var plein := CitadelScript.shield_energy(2, 2)
+	var moitie := CitadelScript.shield_energy(1, 2)
+	var rien := CitadelScript.shield_energy(0, 2)
+	assert_true(plein > 0.0, "deux relais vivants alimentent le bouclier (%.2f)" % plein)
+	assert_almost_eq(moitie, plein * 0.5, 0.001,
+		"un seul relais lui laisse la moitie de son energie (%.2f pour %.2f)" % [moitie, plein])
+	assert_almost_eq(rien, 0.0, 0.001, "aucun relais, aucune energie")
+	# ⚠️ ET AUCUN CAS DEGENERE NE DOIT RENDRE UNE ENERGIE NEGATIVE OU UNE DIVISION PAR ZERO : ce
+	# sont les deux facons dont un materiau devient NaN, et un materiau NaN ne dessine RIEN — sans
+	# une ligne au journal.
+	assert_almost_eq(CitadelScript.shield_energy(1, 0), 0.0, 0.001,
+		"zero relais au total ne divise pas par zero")
+	assert_almost_eq(CitadelScript.shield_energy(5, 2), plein, 0.001,
+		"et plus de relais vivants que de relais ne depasse pas le plein")
+
+## ⚠️ LE CHAPELET DOIT FAIRE FACE A LA CAMERA, SINON ON LE VOIT PAR LA TRANCHE — donc presque
+## pas. `MoonFlyby.billboard_basis()` ne lit que le Z de la base qu'on lui donne, et son propre
+## en-tete dit que le cas degenere y est SILENCIEUX : normaliser un vecteur nul rend NaN, qui se
+## propage jusqu'a faire disparaitre le panneau sans une erreur. Ce test garde les deux bouts.
+func test_the_eye_basis_always_looks_back_at_the_camera() -> void:
+	var eye := Vector3(0.0, 14.0, 5.0)
+	var at := Vector3(6.2, -4.3, -6.0)
+	var base := CitadelScript.eye_basis(eye, at)
+	var vers := (eye - at).normalized()
+	assert_almost_eq(base.z.dot(vers), 1.0, 0.001,
+		"le Z de la base regarde vers la camera (produit %.4f)" % base.z.dot(vers))
+	assert_almost_eq(base.z.length(), 1.0, 0.001, "et la base est normalisee")
+	# Les trois axes restent finis et orthogonaux — c'est ce qui interdit le NaN.
+	for axe in [base.x, base.y, base.z]:
+		assert_true(is_finite(axe.x) and is_finite(axe.y) and is_finite(axe.z),
+			"aucun axe de la base n'est NaN : %s" % str(axe))
+	assert_almost_eq(base.x.dot(base.z), 0.0, 0.001, "x est orthogonal a z")
+	assert_almost_eq(base.y.dot(base.z), 0.0, 0.001, "y est orthogonal a z")
+
+## ⚠️ ET LES DEUX CAS DEGENERES SONT ATTEIGNABLES. Camera confondue avec la piece : le survol
+## place la citadelle sous la camera au fil du defilement. Camera pile a l'aplomb : c'est le cas
+## de tout ce qui passe sous l'axe optique, donc de l'artere entiere.
+func test_the_eye_basis_survives_both_degenerate_cases() -> void:
+	var confondue := CitadelScript.eye_basis(Vector3.ZERO, Vector3.ZERO)
+	assert_true(is_finite(confondue.z.x) and is_finite(confondue.z.y),
+		"camera confondue avec la piece : la base reste finie")
+	var aplomb := CitadelScript.eye_basis(Vector3(0.0, 14.0, 0.0), Vector3(0.0, -4.3, 0.0))
+	for axe in [aplomb.x, aplomb.y, aplomb.z]:
+		assert_true(is_finite(axe.x) and is_finite(axe.y) and is_finite(axe.z),
+			"camera a l'aplomb : la base reste finie (%s)" % str(axe))
+	assert_almost_eq(aplomb.z.length(), 1.0, 0.001, "et normalisee")
+
+## La carte du bouclier est celle que `TEX-0015` a livree, et l'echelle UV est celle qui met la
+## maille dans la fenetre de la demande.
+func test_the_shield_wears_the_delivered_map_at_a_readable_mesh_size() -> void:
+	assert_true(ResourceLoader.exists(CitadelScript.SHIELD_MAP_PATH),
+		"la carte du bouclier est au depot : %s" % CitadelScript.SHIELD_MAP_PATH)
+	# ⚠️ LA MAILLE MESUREE, PAS SUPPOSEE. Le panneau fait 3,60 m pour 0,720 d'etendue UV, soit
+	# 5,00 m par tuile ; la maille hexagonale de la carte y fait 1,02 m, quand TEX-0015 en veut
+	# 40 a 80 cm. C'est l'ECHELLE UV qui corrige, pas la carte — la demande le disait elle-meme.
+	var maille: float = 1.02 / CitadelScript.SHIELD_UV_SCALE
+	assert_almost_eq(maille, CitadelScript.SHIELD_MESH_METRES, 0.02,
+		"a l'echelle %.2f la maille fait %.2f m" % [CitadelScript.SHIELD_UV_SCALE, maille])
+	assert_true(maille >= 0.40 and maille <= 0.80,
+		"et elle tombe dans la fenetre 40-80 cm de TEX-0015 (%.2f m)" % maille)
+
+## ⚠️ UN LIEN COURT NE SE LIT PAS COMME UN FLUX A LA DENSITE DES LONGS, et les deux defauts sont
+## symetriques. `FlowLink.DOTS_PER_UNIT` est reglee sur les liens du porteur de bouclier, qui font
+## des dizaines de metres ; les conduits de la Citadelle en font 6,4. Vu en capture a la densite
+## par defaut : TROIS gros points, soit deux lumieres et pas une circulation — le pendant exact du
+## defaut que la LARGEUR a paye dans l'autre sens (1,7 px, present et invisible).
+func test_a_short_conduit_still_reads_as_a_chain_of_dots() -> void:
+	var portee: float = CitadelScript.RELAY_X - 0.0
+	assert_true(portee > 4.0, "le conduit a bien une portee mesurable (%.1f m)" % portee)
+	var defaut := FlowLink.dot_count(portee)
+	var notre := FlowLink.dot_count(portee, CitadelScript.CONDUIT_DENSITY)
+	assert_true(defaut < 5.0,
+		"a la densite par defaut le conduit ne porte que %.1f points — deux lumieres" % defaut)
+	assert_true(notre >= 7.0,
+		"a la notre il en porte %.1f, et le chapelet se lit comme un chapelet" % notre)
+	# ⚠️ ET LE DEFAUT DE `FlowLink` NE BOUGE PAS : le porteur et le rayon tracteur du Null Maw
+	# l'emploient, et les regler par la bande aurait change deux signes deja valides en jeu.
+	assert_almost_eq(FlowLink.dot_count(20.0), 20.0 * FlowLink.DOTS_PER_UNIT, 0.001,
+		"un lien long garde la densite d'origine")
+
+## ⚠️ UN LIEN COURT NE DOIT JAMAIS TOMBER A ZERO POINT — sinon il DISPARAIT quand il devrait
+## seulement raccourcir. C'est l'invariant que `dot_count` porte depuis le porteur ; la densite
+## par lien ne doit pas l'avoir casse.
+func test_no_density_ever_empties_a_link() -> void:
+	for densite in [0.01, CitadelScript.CONDUIT_DENSITY, FlowLink.DOTS_PER_UNIT]:
+		for portee in [0.1, 1.0, 6.4]:
+			assert_true(FlowLink.dot_count(portee, densite) >= 1.0,
+				"un lien de %.1f m a la densite %.2f porte au moins un point" % [portee, densite])

@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | ✅ **LOT 0 clos, LOT 1 et LOT 2 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 3 (les quatre états), 4 (l'ouverture), 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
+| **État** | ✅ **LOT 0 clos, LOTS 1, 2 et 3 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 4 (l'ouverture) et le LOT 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -684,11 +684,112 @@ sont noyés dans la fente d'ombre de l'axe. **Aucun artefact de bord** — ni ra
 limite `x = 10,30`, ni extrémité de tranchée ouverte : la silhouette du socle se referme sur
 elle-même.
 
-## LOT 3 — Les quatre états se voient
+## LOT 3 — Les quatre états se voient — ✅ **LIVRÉ (2026-09-04)**
 
-Conduits magenta relais → bouclier, extinction d'un conduit, instabilité, surcharge, feux résiduels.
+Conduits magenta relais → noyau, extinction d'un conduit, instabilité, surcharge, feux résiduels.
 C'est le lot qui rend la règle compréhensible **sans HUD** (§5). **Ce qui prouve le lot** : une
 capture par état, et un joueur qui n'a pas lu le plan sait quoi tirer.
+
+### Ce que chaque état donne à voir
+
+| État | Ce qui change à l'écran |
+|---|---|
+| verrou intact | **deux** conduits alimentent le noyau, bouclier à pleine énergie, noyau qui bat lentement |
+| un relais tombé | **son** conduit s'éteint, et le bouclier perd **la moitié** de son énergie |
+| bouclier à terre | le panneau disparaît, le noyau bat vite et fort — « maintenant, ça compte » |
+| noyau mort | surcharge, puis feux résiduels pendant l'ouverture |
+
+⚠️ **Le bouclier qui faiblit est le seul des quatre à rendre la CAUSE visible**, et il ne coûte
+qu'une division. Couper un relais ne fait pas seulement disparaître un relais : ça affaiblit
+visiblement ce qu'il alimentait. Sans lui, le joueur voit deux morts sans conséquence, puis un
+bouclier qui tombe d'un coup — et il n'apprend le lien qu'après.
+
+### Deux réutilisations plutôt que deux inventions
+
+**Les conduits sont des `FlowLink`**, l'outil écrit pour le porteur de bouclier — et son en-tête
+dit exactement pourquoi : « pas de trait grossier comme ça […] plutôt un effet de particule »
+(opérateur, en jouant). Un trait plein est du carton : il ne dit ni sens, ni mouvement, ni
+intensité. Et surtout il s'était fait **lire à l'envers** — « on me ralentit » là où le lien
+disait « c'est lui qui les tient ». Ici les points partent du **relais** vers le **noyau** :
+*ceci alimente cela*, donc *coupe les deux côtés d'abord*.
+
+⚠️ **Le sens ne se vérifie qu'en jouant** : une capture ne montre pas un mouvement. C'est la seule
+chose de ce lot qui reste due, et elle est due à l'opérateur.
+
+**Les feux résiduels sont des explosions du banc commun**, poolées, avec un tirage **semé** : un
+aléa libre rendrait deux captures incomparables — la leçon des arcs du nœud d'épine.
+
+### ⚠️ Trois réglages posés au jugé, tous les trois corrigés en regardant
+
+1. **Les conduits lisaient comme des lampions.** À 0,75 de large, les points faisaient 20 à 27 px
+   — quatre à six fois le seuil que je craignais. Le problème était l'**inverse** de celui que
+   j'anticipais, et sa cause était ailleurs : `FlowLink.DOTS_PER_UNIT` est réglée sur les liens du
+   porteur, qui font des dizaines de mètres. Un conduit en fait 6,4 → **trois points**. Deux
+   lumières, pas une circulation. Corrigé sur les deux axes — largeur **0,55**, densité **1,4/m**
+   → cinq billes nettes séparées par un vide visible. `FlowLink.aim()` a gagné un paramètre de
+   densité **au défaut inchangé**, pour ne pas dérégler par la bande deux signes déjà validés.
+2. **Le panneau cramait.** Émission blanche à 1,35 plus le `glow` : une dalle blanche lisse.
+   Ramenée à **0,75**, la dalle est passée de blanche à **rose**.
+3. **Et les trois sont désormais bornés des DEUX côtés**, ce qu'ils n'étaient pas : largeur 0,55
+   est juste (à 25 % du pic la bille couvre 51 px pour un pas de 30) ; densité 1,4 est le
+   **plafond** et non le milieu — à 1,6 le pas tomberait à 26 px, égal à la largeur de bille, et
+   on retrouverait le trait plein ; énergie 0,75 ne doit pas descendre, le rouge est encore
+   écrêté sur 48 % et baisser ternirait sans rien révéler.
+
+### ⛔ La maille du bouclier ne se voit pas — et ce n'est ni la carte, ni l'UV, ni les mipmaps
+
+C'est le résultat le plus utile du lot, parce qu'il dépasse la citadelle.
+
+`TEX-0015` est câblée, et la chaîne est **juste à 1 % près** : pas de maille mesuré à **28,4 px**
+à l'écran pour 28,6 prédits, échelle UV vérifiée jusque dans les texels de la carte. Un défaut
+d'import a bien été trouvé et corrigé au passage — `mipmaps/generate=false`, le défaut de Godot,
+qui écrasait 1 106 texels dans 152 px sans filtrage : **plancher de bruit du spectre divisé par
+deux** une fois activées. Mais elles ont **nettoyé** le crénelage, pas révélé le motif.
+
+La cause est **en aval**, et elle est chiffrée :
+
+| Maillon | Mesuré |
+|---|---|
+| `retro_post` accroche l'image à `target_res` | **960 × 540** — le panneau de 152 px n'en fait plus que 76 |
+| `levels = 20.0` postérise | pas de **12,75 niveaux** ; le panneau ne contient QUE 204 / 217 / 229 / 242 / 255 |
+| la maille module de | **0,83 niveau** — un quinzième d'une marche |
+| le canal rouge | saturé sur **52 %** du panneau, **deux valeurs en tout** |
+
+⚠️ **Un détail dont la modulation est sous ~6 niveaux de gris n'existe pas dans ce jeu.** Le
+tramage de Bayer le porte encore *statistiquement* — c'est pourquoi il se **mesure** au spectre —
+mais l'œil ne le voit pas, et aucun réglage n'y change rien. La leçon est remontée au **contrat de
+texture** (`docs/forge/textures/README.md`) : `readability_requirements` doit raisonner en
+**contraste**, pas seulement en pixels. « 9 à 18 px par maille » était vrai et **insuffisant** — la
+maille en faisait 29 et ne se voyait pas.
+
+La carte est **conservée** : elle donne sa teinte et son grain au panneau, les mipmaps sont un gain
+net, et l'échelle redeviendra utile le jour où l'ouverture du LOT 4 élargira le panneau.
+
+### Un drapeau de vérification, parce que le critère l'exigeait
+
+`--citadel-state=<0..3>` amène le verrou à l'état voulu **au moment où il s'immobilise**, et il
+tire **pour de vrai**, par `hit_callback`. Un raccourci qui poserait les drapeaux à la main
+capturerait un état que le jeu ne produit pas — un bouclier éteint sans que son relais soit mort,
+un noyau vulnérable sans passer par `SHIELD_DOWN`. Sans lui, « une capture par état » était
+inatteignable : le pilote automatique tire droit devant, il n'abat pas un relais. Même esprit que
+`--leviathan-phase=2`, dont l'absence avait coûté trois lancements.
+
+### Ce que les captures ont dit, et ce qui reste
+
+**L'asymétrie de l'état 1 saute aux yeux** sans comparer deux images : l'anneau du relais bâbord
+s'éteint (luminance 104 → 39, pic 255 → 76) et son conduit disparaît, tandis que tribord garde le
+sien. **La séparation par la structure tient** : le panneau lit comme un volume plat devant une
+coupole ronde, et les tirs ennemis ne posent aucun problème — ils sont **orange**, pas magenta.
+
+⚠️ **L'affaiblissement du panneau ne se lit pas seul** : 203 → 188 de luminance, essentiellement
+une perte de vert. Il confirme le signal porté par l'anneau, il ne le porte pas. Pour qu'une
+moitié d'énergie perdue se lise par elle-même, il faudrait le dire en **géométrie** — demi-hauteur,
+moitié de maille manquante — et non en intensité. À juger si le besoin s'en fait sentir en jouant.
+
+**Coût GPU** : **3,92 ms/image** sur Quadro T1000, 23 % du budget. Tripler la densité des billes
+n'a rien coûté de mesurable. ⚠️ Et une leçon de méthode confirmée trois fois : **le premier
+lancement après un déploiement lit 0,2 à 0,8 ms trop haut** — cache de shaders froid. Prendre une
+médiane, jamais un tir.
 
 ## LOT 4 — L'ouverture (solution C)
 
