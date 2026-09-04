@@ -92,7 +92,27 @@ voir un cockpit, et les tuyères sont douze pétales chacune.
 Puis mon propre rendu (`render-hull.py`) et une capture **en jeu** (bestiaire, accueil), post-process
 actif — le studio flatte.
 
-## LOT 2 — Le code — à faire
+## LOT 2 — Le code — ✅ **LIVRÉ pour ce qui ne dépend pas du `.glb`** (2026-09-04, `5f0c474`, `2bdd5c7`)
+
+Ce qui est fait, testé (882 tests, 0 échec) et committé — **avant** que la coque existe, parce
+que rien ici n'en dépend :
+
+- `ShipFlight` : `set_brake`, `set_docking`, sept familles optionnelles, lacet de tuyère ; **l'axe
+  d'un pétale est dérivé de sa position radiale** dans le repère de sa tuyère, et le test vérifie
+  que la POINTE s'écarte de l'axe plutôt que de faire confiance au signe. Les plafonds du test sont
+  les **cibles du brief** — ⚠️ à recaler sur le rapport de forge.
+- `HullDetailSet` + `hull_detail_default.tres` ; `HullDetail.apply(hull)` résout le jeu depuis le
+  `scene_file_path` de la coque et pose la matière de tuyère **par nœud**. Registre `SETS` vide
+  jusqu'au LOT 3.
+- Le contrôleur pousse le freinage subi (`_shown_drag`) et l'approche d'appontage
+  (`begin_docking`, distinct de `begin_autopilot` que la plongée du boss emploie aussi).
+- Le héros de l'accueil monte la coque choisie au bestiaire (`_swap_hero_hull`).
+
+Ce qui attend le `.glb` : la fiche `specter_9_c.tres` et son entrée au `ROSTER`, le recalage des
+constantes de `ShipFlight` et de `test_ship_flight.gd` sur les plafonds mesurés, l'axe réel des
+gouvernes (`FIN_CANT_DEG`), et une capture en jeu.
+
+### Ce que le lot prévoyait
 
 | Pièce | Ce qui change | Test |
 |---|---|---|
