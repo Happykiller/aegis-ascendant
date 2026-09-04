@@ -175,25 +175,22 @@
   "integration_notes": {
     "engine_usage": "Nouveau matériau `AA_Shield_Field` du panneau central de la Citadelle, et de la peau du noyau à une échelle UV plus serrée.",
     "shader_usage": "StandardMaterial3D, `emission_enabled`, `transparency` ALPHA. La carte sert d'`albedo_texture` ET d'`emission_texture`. L'opacité et l'énergie d'émission sont PILOTÉES PAR L'ÉTAT (stable / instable / surcharge) — la carte ne change pas.",
-    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/citadel_shield_1024.png --out assets/imported/textures/cortege --check-tiling",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/citadel_shield_1024.png --out /tmp --check-tiling   # VERIFICATION SEULE : aucune carte n'est derivee, voir x_delivery.post_processing_note",
     "additional_notes": "⚠️ AUCUN ÉTAT N'EST PEINT DANS LA CARTE. Les quatre états visuels (§15 du brief) sont du moteur : une carte par état ferait quatre choses à maintenir et trois à oublier."
   },
   "x_delivery": {
-    "status": "à générer — opérateur (ADR-0028, la texture est la voie de l'opérateur)",
+    "status": "LIVREE le 2026-09-04 par l'operateur, ACCEPTEE apres rattrapage de tuilage. Mesures : teinte 310-320 deg (magenta/rose), zero cyan, zero corail, aucun vignettage (ecart coin/centre 0,018), part au-dessus de la mi-valeur 59 % (cible 40-60). ⚠️ Le tuilage LIVRE etait REFUSE : ecart 11,5 % en X et 11,2 % en Y pour un seuil de 4 % (regle 4 du contrat). Aucun recadrage ne le sauvait — la meilleure tuile carree possible, cherchee sur toutes les tailles de 900 a 1254 px et tous les decalages, plafonnait a 5,0 %. Rattrapee par fondu miroir de 48 px puis reechantillonnage en 1024 : 0,1 % sur les deux axes, et la planche 2x2 a ete REGARDEE (ADR-0006) — la maille hexagonale absorbe le fondu, aucune bande miroir visible. C'est le cas que `derive-maps --fix-tiling` decrit : « il sauve une image presque bonne ».",
     "priority": "obligatoire pour le LOT 3 du plan ; le LOT 1 se joue sans elle",
     "source_path": "assets/source/textures/cortege/citadel_shield_1024.png",
     "derived_dir": "assets/imported/textures/cortege",
-    "derived_files": [
-      "citadel_shield_nrm.png",
-      "citadel_shield_rough.png",
-      "citadel_shield_ao.png"
-    ],
+    "derived_files": [],
     "verify": [
       "⚠️ LE CADRE D'ABORD : la tuile est pleine cadre, ses quatre coins portent de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper.",
       "mesurer la part au-dessus de la mi-luminance : entre 40 et 60 %. Sous 40 le bouclier a des trous, au-dessus il devient un aplat.",
       "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK — jamais l'œil",
       "⚠️ puis EN JEU, écran chargé, tirs ennemis à l'écran (ADR-0006) : la maille doit rester distincte des projectiles magenta. C'est la seule vérification qui peut refuser la carte."
     ],
-    "provenance_csv_line": "citadel_shield,assets/source/textures/cortege/citadel_shield_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,2026-09-03,docs/forge/textures/TEX-0015-citadelle-bouclier-energie.json,,\"Panneau de bouclier de la Citadelle de Defense (niveau 2) et peau du noyau. Materiau AA_Shield_Field. Plan docs/plans/2026-09-03-citadelle-de-defense-midpoint.md.\""
+    "provenance_csv_line": "citadel_shield,assets/source/textures/cortege/citadel_shield_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,2026-09-03,docs/forge/textures/TEX-0015-citadelle-bouclier-energie.json,,\"Panneau de bouclier de la Citadelle de Defense (niveau 2) et peau du noyau. Materiau AA_Shield_Field. Plan docs/plans/2026-09-03-citadelle-de-defense-midpoint.md.\"",
+    "post_processing_note": "⚠️ AUCUNE CARTE DERIVEE, ET C'EST LA REGLE 2 DU CONTRAT QUI LE DIT. Cette demande listait `citadel_shield_nrm/rough/ao` — c'etait une erreur d'ecriture : `output_usage` vaut `albedo_and_emission`, pas `source_for_normal`. Deriver une normale d'une carte de COULEUR donne des gradients faux qui ont l'air corrects, exactement le defaut que la regle 2 existe pour empecher ; et un champ d'energie translucide et emissif n'a aucun relief a ombrer (`lighting.enabled: false`). Meme traitement que `cortege_emissive` (TEX-0013), qui porte deja cette phrase."
   }
 }
