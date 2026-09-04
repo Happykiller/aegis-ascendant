@@ -1,6 +1,6 @@
 # BRIEF-0098 — Specter-9 Talvern : la cellule-témoin, **la plus belle des trois coques**
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal (session Fable 5.1)
 - **Date** : 2026-09-04
