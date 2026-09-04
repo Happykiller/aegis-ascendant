@@ -80,10 +80,14 @@ plan plus récent, **le plan gagne**.
   ouvert — mais a pleine image la poutre parait continue. Les vantaux retractes, la poutre fixe et
   la coque vue A TRAVERS la passe partagent **le meme gris** ; le seul endroit ou l'ouverture se
   voit est la ou la tranchee sombre de l'artere apparait au travers.
-  ⚠️ **Et ce qui manque a deja un nom** : `TEX-0016`, la signaletique ambre REFUSEE, demande
-  « quelques doubles points marquant **un seuil** ». Un marquage au sol dans la passe dirait
-  « voici par ou » la ou la valeur ne le dit pas. **La carte a regenerer a maintenant un emploi
-  precis qui l'attend** — ce qui change sa priorite.
+  ⚠️ **Et ce qui manque a deja un nom** : `TEX-0016` demande « quelques doubles points marquant
+  **un seuil** ». ✅ **Carte REGENEREE le 2026-09-04** : repetition interne disparue, vrais
+  cabochons, filets d'arete presents, tuilage OK, aire 0,190 pct sur 3. ⚠️ Cabochons encore a
+  14 px de mediane = **1,3 px a l'ecran a 5 m/tuile** pour 3 a 5 exiges (facteur 2,3 manquant ;
+  l'aire monterait a 1,2 pct, toujours sous le plafond). **MAIS elle est utilisable telle quelle
+  pour le SEUIL** : sur une surface dediee de ~8 m, a **12 m/tuile**, ses cabochons font 13,4 cm
+  et **3,1 px — dans la cible**. Interdit en revanche comme couche de signalisation du BORDE, qui
+  est a 5 m/tuile : deux densites cote a cote se voient. Source deposee, non cablee.
 - ⚠️ **LE VANTAIL BABORD N'EST JAMAIS LISIBLE**, ni a mi-course ni ouvert : son bout interieur se
   lit comme une tranche plate alors que la collision prouve qu'il a bouge symetriquement. **C'est
   le meme defaut que les socles de bastion**, et c'est la troisieme fois qu'il se paie : une seule

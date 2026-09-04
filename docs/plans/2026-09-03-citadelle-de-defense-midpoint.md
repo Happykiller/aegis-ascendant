@@ -59,10 +59,19 @@ tire **pour de vrai** au moment du verrouillage.
 
 - ⛔ **L'ouverture de la porte NE SE LIT PAS**, et c'est un problème de **ton** : vantaux
   rétractés, poutre fixe et coque vue au travers partagent le même gris. Ce qui manque a un nom —
-  `TEX-0016` (signalétique ambre, **refusée**) demande « quelques doubles points marquant **un
-  seuil** ». **Régénérer cette carte est devenu le meilleur investissement du chantier** : elle
-  sert le balisage du Cortège *et* le seuil de la passe. Cabochons **trois fois plus gros** ; le
-  budget d'aire en laisse dix fois.
+  `TEX-0016` demande « quelques doubles points marquant **un seuil** ».
+  ✅ **Et la carte a été RÉGÉNÉRÉE le 2026-09-04, en fin de session.** La répétition interne a
+  disparu, les cabochons sont enfin des bagues rondes à cœur ambre, les courts filets d'arête sont
+  là, tuilage OK, aire ambre 0,190 % (plafond 3). ⚠️ **Mais ils font encore 14 px de médiane,
+  soit 1,3 px à l'écran à 5 m/tuile** pour les 3 à 5 exigés — il leur manque un facteur **2,3**,
+  et l'aire ne serait alors qu'à 1,2 %, toujours sous le plafond.
+  ⚠️ **UNE SECONDE VOIE S'EST OUVERTE, ET ELLE EST UTILISABLE TELLE QUELLE** : sur une **surface
+  dédiée** — le sol de la passe, ~8 m de large — la carte tient à **12 m/tuile**, où ses cabochons
+  font 13,4 cm et **3,1 px, dans la cible**. Ce que 12 m/tuile interdit, c'est l'emploi comme
+  couche de signalisation du **bordé**, qui est à 5 m/tuile : deux densités de détail côte à côte
+  se voient (c'est le raisonnement de `TEX-0015`). **Donc : le seuil de la passe est faisable dès
+  le LOT 5, la signalisation générale attend une troisième passe.** Source déposée en
+  `assets/source/`, non câblée.
 - ⚠️ **TOUT CE QUI EST À BÂBORD OU À TRIBORD PERD SON RASANT, SELON LA FACE.** Une seule
   directionnelle vient du haut-gauche. Le défaut s'est payé **trois fois** : socle de bastion
   tribord, vantail bâbord, et les petites tourelles. **Une lumière de remplissage réglerait les
