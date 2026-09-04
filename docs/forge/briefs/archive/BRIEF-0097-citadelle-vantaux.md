@@ -1,6 +1,6 @@
 # BRIEF-0097 — les vantaux de la Citadelle : la porte s'ouvre
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-04
@@ -10,7 +10,7 @@
 Remplacer `citadel_gate` — une poutre d'un seul tenant — par **deux vantaux qui se rétractent
 dans deux logements latéraux**, et donner à la denture la **mâchoire en vis-à-vis** qui lui
 manque. C'est le **LOT 4** du plan
-[`2026-09-03-citadelle-de-defense-midpoint.md`](../../plans/2026-09-03-citadelle-de-defense-midpoint.md) :
+[`2026-09-03-citadelle-de-defense-midpoint.md`](../../../plans/2026-09-03-citadelle-de-defense-midpoint.md) :
 **l'ouverture**.
 
 ## Contexte

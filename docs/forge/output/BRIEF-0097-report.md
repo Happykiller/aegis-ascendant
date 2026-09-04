@@ -2,7 +2,7 @@
 
 - **Agent** : `asset-forge`
 - **Date** : 2026-09-04
-- **Brief** : [`docs/forge/briefs/BRIEF-0097-citadelle-vantaux.md`](../briefs/BRIEF-0097-citadelle-vantaux.md)
+- **Brief** : [`docs/forge/briefs/BRIEF-0097-citadelle-vantaux.md`](../briefs/archive/BRIEF-0097-citadelle-vantaux.md)
 - **Plan** : [LOT 4 — l'ouverture](../../plans/2026-09-03-citadelle-de-defense-midpoint.md)
 - **Script source** : `tools/blender/build_citadel_kit.py` — **modifié**, pas remplacé (Blender 4.5.11,
   kit `aegis_kit` **inchangé**)

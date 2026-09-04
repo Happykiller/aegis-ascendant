@@ -2,7 +2,7 @@
 
 - **Agent** : `asset-forge`
 - **Date** : 2026-09-04
-- **Brief** : [`docs/forge/briefs/BRIEF-0096-citadelle-kit.md`](../briefs/BRIEF-0096-citadelle-kit.md)
+- **Brief** : [`docs/forge/briefs/BRIEF-0096-citadelle-kit.md`](../briefs/archive/BRIEF-0096-citadelle-kit.md)
 - **Plan** : [LOT 2 — la silhouette](../../plans/2026-09-03-citadelle-de-defense-midpoint.md)
 - **Script source** : `tools/blender/build_citadel_kit.py` (Blender 4.5.11, kit `aegis_kit` **inchangé**)
 

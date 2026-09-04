@@ -1,6 +1,6 @@
 # BRIEF-0096 — le kit de la Citadelle de Défense
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-04
@@ -9,7 +9,7 @@
 
 Produire **`citadel_kit.glb`** : les sept pièces du verrou de mi-parcours du Long Cortège, que le
 moteur assemble à la station `s = 240` du tronçon 3. C'est le **LOT 2** du plan
-[`2026-09-03-citadelle-de-defense-midpoint.md`](../../plans/2026-09-03-citadelle-de-defense-midpoint.md) :
+[`2026-09-03-citadelle-de-defense-midpoint.md`](../../../plans/2026-09-03-citadelle-de-defense-midpoint.md) :
 **la silhouette**.
 
 ## Contexte
