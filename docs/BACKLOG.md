@@ -68,9 +68,42 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) DÉBLOQUÉ** — la partie jouée qu'il attendait a eu lieu le 2026-09-03 |
-| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. **Joue a la main le 2026-09-04** : la boucle tient, la regle se lit sans HUD, et le chronometre a refuse le dimensionnement — 55,1 s pour un budget de 45. Recale sur la mesure (occupation 0,45 → **0,19**, PV 3800 → **2700**), le verrou dure **41,1 s**. **LOT 2 livre** : `citadel_kit.glb` (BRIEF-0096), huit pieces, 1 304 triangles, et le test noir et blanc tenu — bastion, relais, noyau et passage se distinguent sans couleur. Reste les lots 3 a 5, le second ordre de relais et le chemin du nœud d'epine. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
+| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. **Joue a la main le 2026-09-04** : la boucle tient, la regle se lit sans HUD, et le chronometre a refuse le dimensionnement — 55,1 s pour un budget de 45. Recale sur la mesure (occupation 0,45 → **0,19**, PV 3800 → **2700**), le verrou dure **41,1 s**. **LOTS 2, 3 et 4 livres** : `citadel_kit.glb` (BRIEF-0096 puis 0097), neuf pieces, 1 348 triangles ; le test noir et blanc tenu ; les quatre etats se voient (conduits `FlowLink`, bouclier qui faiblit de moitie, noyau qui bat vite, feux residuels) ; et la porte s'OUVRE — deux vantaux qui se retractent, passe mesuree a **7,00 unites de plan** (4x la largeur du chasseur), collision nulle a `CLEARED` verifiee a l'overlay. **Reste le seul LOT 5** (la respiration), plus le second ordre de relais et le chemin du nœud d'epine. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
+
+### Ouvert par le LOT 4 de la Citadelle (2026-09-04)
+
+- ⛔ **L'OUVERTURE DE LA PORTE NE SE LIT PAS, ET C'EST UN PROBLEME DE TON, PAS DE GEOMETRIE.** La
+  collision disparait — mesure a l'overlay : une seule plage fermee (125 → 1795), deux plages
+  raccourcies a mi-course (795 px chacune contre 835, trou central de 117 px), **zero pixel**
+  ouvert — mais a pleine image la poutre parait continue. Les vantaux retractes, la poutre fixe et
+  la coque vue A TRAVERS la passe partagent **le meme gris** ; le seul endroit ou l'ouverture se
+  voit est la ou la tranchee sombre de l'artere apparait au travers.
+  ⚠️ **Et ce qui manque a deja un nom** : `TEX-0016`, la signaletique ambre REFUSEE, demande
+  « quelques doubles points marquant **un seuil** ». Un marquage au sol dans la passe dirait
+  « voici par ou » la ou la valeur ne le dit pas. **La carte a regenerer a maintenant un emploi
+  precis qui l'attend** — ce qui change sa priorite.
+- ⚠️ **LE VANTAIL BABORD N'EST JAMAIS LISIBLE**, ni a mi-course ni ouvert : son bout interieur se
+  lit comme une tranche plate alors que la collision prouve qu'il a bouge symetriquement. **C'est
+  le meme defaut que les socles de bastion**, et c'est la troisieme fois qu'il se paie : une seule
+  directionnelle venant du haut-gauche, donc aucun rasant sur la face opposee. Une lumiere de
+  remplissage reglerait les trois d'un coup.
+- **Le portique occupe la course du vantail** : 1,33 m² des 4,32 m² de section, sur jusqu'a 1,55 m
+  de course (x 15,60 → 17,15, Y −6,54 a −4,06). Mesure comme **invisible en jeu** — le vantail
+  culmine 1,05 m au-dessus, la camera plonge a 70°, les joues du logement ferment les flancs — et
+  porte fermee, ce qu'on apercoit au fond de la rainure est le chapiteau, 1,11 m sous le seuil :
+  de la machinerie au fond d'une poche, plutot un gain. **Le correctif est connu et tient en deux
+  constantes** de `build_citadel_kit.py` : `PYLON_LEG_S 0,66 → 0,76` et
+  `PYLON_LEG_HALF_S 0,24 → 0,14`. ⚠️ **Non applique deliberement** : c'est invisible-vers-invisible
+  sur une piece validee au LOT 2, et toucher une piece validee pour reparer ce que personne ne peut
+  voir est le genre de changement qui doit attendre une raison.
+- **Dessus de dents et merlons de couronne partagent une signature** (barres ivoire). Si la
+  confusion apparait en jouant, la correction tient en un caractere : passer le dessus des dents en
+  `AA_Hull` et laisser l'ombre des mortaises porter seule.
+- **Le logement se lit d'en haut comme un plateau a rainure** plutot que comme une fente noire
+  (3,62 m de creux, eclaires par le dessus), et il est a 83 pct du demi-cadre — donc au ras du
+  bord. A revoir si le LOT 5 rapproche la camera.
 
 ### Ouvert par le LOT 3 de la Citadelle (2026-09-04)
 

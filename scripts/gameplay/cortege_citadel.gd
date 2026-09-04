@@ -96,6 +96,28 @@ const GATE_HALF_S := 0.60
 const GATE_BASE_Y := -6.60
 const GATE_TOP_Y := DECOR_CEILING_Y
 
+## LES VANTAUX — la porte est en DEUX MOITIÉS depuis le `BRIEF-0097`, et c'est ce qui lui permet
+## de s'ouvrir. Chacun est modelé tribord, **origine à son bout INTÉRIEUR** : la course s'écrit
+## donc comme une translation en `x`, sans une ligne d'arithmétique de côté.
+##
+## ⚠️ ET IL N'EST PAS CENTRÉ EN Z SUR SON ORIGINE, contrairement aux cinq autres pièces
+## miroitées. C'est voulu, et le harnais du kit distingue les deux cas : ce que le yaw de π
+## retourne est l'excentricité en `s`, et le vantail y est bien centré (±0,60). Son `x`, lui, est
+## délibérément asymétrique — c'est de là qu'il coulisse.
+const LEAF_LENGTH := 12.90
+## La course de rétraction. ⚠️ ELLE EST LA SEULE COTE LIBRE DE LA CHAÎNE, et les trois autres la
+## contraignent des deux côtés : ouvert, le vantail va de 4,25 à **17,15**, soit 5 cm sous le bout
+## de la poutre ; fermé, il chevauche son logement de **0,20 m**, donc il n'y a aucun jour.
+const LEAF_TRAVEL := 4.25
+
+## LES LOGEMENTS — deux fourreaux qui reçoivent les vantaux rétractés.
+##
+## ⚠️ SON ASSISE DESCEND, SON SOMMET NE MONTE PAS, ET C'EST LA COTE QUI POUVAIT TOUT CASSER EN
+## SILENCE. Un fourreau doit être plus grand que ce qu'il reçoit ; s'il gagnait sa garde par le
+## haut depuis la même assise, il franchirait le plafond du décor inerte (`ADR-0041`). Il part
+## donc de −6,90 pour culminer à −3,00 exactement, comme le vantail.
+const HOUSING_BASE_Y := -6.90
+
 ## LES BASTIONS — la masse, sur le pont médian. Deux, en miroir : `T1` autorise la symétrie POUR
 ## UN ÉVÉNEMENT, parce qu'elle est ce qui fait lire « gauche + droite → centre » en une seconde.
 const BASTION_X := Vector2(6.90, 11.40)
@@ -271,7 +293,11 @@ var _bullets: BulletManager = null
 var _player: PlayerFighterController = null
 var _vfx: VFXManager = null
 
-var _gate: Node3D = null
+## Les deux vantaux, et leur course. ⚠️ TENUS À PART DES AUTRES PIÈCES parce qu'ils sont les
+## seuls à BOUGER : tout le reste du kit est posé une fois pour toutes.
+var _leaves: Array[MeshInstance3D] = []
+## De 0 (fermé) à `LEAF_TRAVEL` (ouvert).
+var _course: float = 0.0
 var _shield: MeshInstance3D = null
 ## Le matériau du panneau, tenu à part : c'est son ÉNERGIE qui dit combien de relais l'alimentent.
 var _shield_material: StandardMaterial3D = null
@@ -321,6 +347,10 @@ var _locked: bool = false
 var _wall_a: Vector2 = Vector2.ZERO
 var _wall_b: Vector2 = Vector2.ZERO
 var _wall_y: float = 1000.0
+## Les deux bouts INTÉRIEURS des vantaux, projetés dans le plan : c'est entre eux que passe le
+## chasseur, et c'est cette distance que le critère du lot demande de MESURER.
+var _pass_a: Vector2 = Vector2.ZERO
+var _pass_b: Vector2 = Vector2.ZERO
 ## ⚠️ TANT QUE LE MUR N'A PAS ÉTÉ RELEVÉ, IL N'EXISTE PAS. Sans ce drapeau, la première image
 ## physique verserait une capsule de 90 cm posée à l'ORIGINE du plan — c'est-à-dire exactement
 ## là où le chasseur naît. Le joueur serait dégagé d'un mur invisible au premier dixième de
@@ -370,6 +400,11 @@ static func make(p_tuning: CortegeTuning) -> CortegeCitadel:
 # ⚠️ ELLES EXISTENT POUR QUE LE MONTAGE ET LES TESTS LISENT LA MÊME TABLE. Une position recopiée
 # dans un test vérifie le test, pas le jeu — et c'est le défaut qu'`ADR-0024` a payé, où
 # l'invariant se comparait à lui-même pendant que le vrai réglage dérivait.
+
+## Le bout INTÉRIEUR d'un vantail, à la course donnée. ⚠️ PURE, parce que c'est elle qui décide
+## de la largeur de la passe — donc du critère d'acceptation du lot.
+static func leaf_inner_local(side: float, course: float) -> Vector3:
+	return Vector3(side * course, GATE_TOP_Y, 0.0)
 
 static func gate_end_local(side: float) -> Vector3:
 	return Vector3(side * GATE_HALF_X, GATE_TOP_Y, 0.0)
@@ -458,7 +493,7 @@ func _ready() -> void:
 ##
 ## Format : [nom dans le kit, assise Y, décalage `ds`, en miroir ?].
 const PIECES: Array = [
-	["citadel_gate", GATE_BASE_Y, 0.00, false],
+	["citadel_housing", HOUSING_BASE_Y, 0.00, true],
 	["citadel_pylon", PYLON_BASE_Y, 0.00, true],
 	["citadel_bastion", BASTION_BASE_Y, 2.80, true],
 	["citadel_crown", BASTION_TOP_Y, 3.50, true],
@@ -483,8 +518,6 @@ func _build_mass() -> void:
 			piece.rotation.y = 0.0 if side > 0.0 else PI
 			piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(piece)
-			if nom == "citadel_gate":
-				_gate = piece
 	# ⚠️ LES DEUX PIÈCES QUI MEURENT PRENNENT LEUR FORME ICI, ET CHACUNE S'APPROPRIE SA LUEUR.
 	# Deux relais qui partageraient le matériau du `.glb` s'éteindraient ensemble — le piège que
 	# les cinq bulbes d'épine cuits dans la coque rendaient inévitable.
@@ -494,6 +527,7 @@ func _build_mass() -> void:
 		_relays[i].mount(relay_mesh, -1.0 if i == 0 else 1.0, RELAY_X)
 	# ⚠️ LE NOYAU EST SUR L'AXE : sa géométrie est déjà centrée en x, il n'a rien à retrancher.
 	_core.mount(kit.get_node_or_null("citadel_core") as MeshInstance3D)
+	_build_leaves(kit)
 	_build_shield(kit)
 	_build_conduits()
 	kit.queue_free()
@@ -547,6 +581,72 @@ func _build_shield(kit: Node) -> void:
 	# relais soient tombés — un `--cortege-from` posé au mauvais endroit, un banc de mesure — et
 	# un rideau devant un noyau touchable apprendrait au joueur l'inverse de la règle.
 	_shield.visible = _core != null and not _core.is_vulnerable()
+
+## Monte les deux vantaux. ⚠️ MIROITÉS PAR UN YAW DE π COMME LES CINQ AUTRES, et c'est ce qui rend
+## la course indésynchronisable : les deux reçoivent **exactement la même translation locale**, et
+## le yaw fait le reste. Écrire `side * course` sur deux nœuds serait deux écritures pour une
+## seule vérité.
+func _build_leaves(kit: Node) -> void:
+	var source := kit.get_node_or_null("citadel_leaf") as MeshInstance3D
+	if source == null:
+		push_error("[Citadel] pièce de kit manquante : citadel_leaf")
+		return
+	for side in [-1.0, 1.0]:
+		var leaf := MeshInstance3D.new()
+		leaf.name = "Leaf%s" % ("Port" if side < 0.0 else "Star")
+		leaf.mesh = source.mesh
+		leaf.rotation.y = 0.0 if side > 0.0 else PI
+		leaf.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(leaf)
+		_leaves.append(leaf)
+	_place_leaves()
+
+## Pose les deux vantaux à la course courante.
+##
+## ⚠️ LE `x` LOCAL EST LE MÊME POUR LES DEUX, ET LE YAW LE RETOURNE. C'est la propriété que le
+## `BRIEF-0097` a fait porter par la géométrie : l'origine du vantail est son bout INTÉRIEUR, donc
+## la course est une translation pure. Le jour où l'un des deux prendrait un signe, il s'ouvrirait
+## du mauvais côté — et personne ne le verrait sans regarder les deux bords en même temps.
+func _place_leaves() -> void:
+	for leaf in _leaves:
+		leaf.position = Vector3(_course, GATE_BASE_Y, 0.0)
+
+## L'avancement de l'ouverture, de 0 (fermé) à 1 (ouvert).
+##
+## ⚠️ IL SE DÉDUIT DE L'ÉTAT ET DE L'HORLOGE, IL NE S'ANIME PAS À PART. Un `Tween` sur les deux
+## vantaux vivrait sa vie indépendamment de la machine à états : le jour où le noyau meurt pendant
+## le freinage, ou où un `--citadel-state` force la séquence, la porte se retrouverait ouverte
+## dans un état qui la dit fermée. Ici il n'y a qu'une source de vérité.
+##
+## ⚠️ ET L'OUVERTURE NE COMMENCE QU'À `OPENING`, PAS À `CORE_DEAD`. Le noyau explose d'abord, les
+## mécanismes bougent ensuite — c'est le §16 du brief, et c'est ce qui donne à la mort du noyau
+## une seconde à elle. `CORE_BEAT_SHARE` partage le budget entre les deux temps.
+func opening_progress() -> float:
+	match _state:
+		State.OPENING:
+			var beat := tuning.citadel_open_time * CORE_BEAT_SHARE
+			var span := tuning.citadel_open_time - beat
+			if span <= 0.001:
+				return 1.0
+			return clampf((_open_clock - beat) / span, 0.0, 1.0)
+		State.CLEARED:
+			return 1.0
+		_:
+			return 0.0
+
+## La largeur de la passe, DANS LE PLAN DE JEU, à la course courante.
+##
+## ⚠️ MESURÉE ET NON ESTIMÉE — c'est le critère d'acceptation du LOT 4, mot pour mot. Elle se lit
+## sur les deux bouts intérieurs PROJETÉS, pas sur les cotes de coque : la caméra plonge, et 8,50 m
+## de coque ne font pas 8,50 unités de plan.
+func passage_width() -> float:
+	return absf(_pass_b.x - _pass_a.x)
+
+## Ce que la passe doit laisser au chasseur, au minimum. ⚠️ SON CORPS FAIT 1,76 UNITÉ EN TRAVERS
+## (`body_radius` = 0,88, `ADR-0034`) : sous le double, on ne traverse plus une porte, on enfile
+## une aiguille. La chambre du réacteur a déjà payé l'inverse — « c'est comme si tout le cercle
+## était un mur pour moi ».
+const PASSAGE_FLOOR := 3.60
 
 ## Habille le panneau avec `TEX-0015`, si elle est là.
 ##
@@ -729,6 +829,13 @@ func _measure_wall(travelled: float, eye: Vector3) -> void:
 	_wall_a = GameplayPlane.aim_point_of(piece_world(tuning, gate_end_local(-1.0), travelled), eye)
 	_wall_b = GameplayPlane.aim_point_of(piece_world(tuning, gate_end_local(1.0), travelled), eye)
 	_wall_y = (_wall_a.y + _wall_b.y) * 0.5
+	# ⚠️ ET LES DEUX BOUTS INTÉRIEURS, À LA COURSE COURANTE. C'est entre eux que passe le
+	# chasseur : la passe se MESURE sur des points projetés, jamais sur les cotes de coque — la
+	# caméra plonge, et 8,50 m de bordé ne font pas 8,50 unités de plan.
+	_pass_a = GameplayPlane.aim_point_of(
+		piece_world(tuning, leaf_inner_local(-1.0, _course), travelled), eye)
+	_pass_b = GameplayPlane.aim_point_of(
+		piece_world(tuning, leaf_inner_local(1.0, _course), travelled), eye)
 	_measured = true
 
 func _advance(delta: float) -> void:
@@ -756,9 +863,22 @@ func _advance(delta: float) -> void:
 				_enter(State.OPENING)
 		State.OPENING:
 			_open_clock += delta
+			# ⚠️ LA COURSE SUIT L'HORLOGE, ET ELLE N'EST PAS INTERPOLÉE À PART. Un `Tween` sur
+			# les vantaux vivrait sa vie hors de la machine à états : le jour où un
+			# `--citadel-state` force la séquence, la porte se retrouverait ouverte dans un état
+			# qui la dit fermée. Une seule source de vérité.
+			_course = LEAF_TRAVEL * opening_progress()
+			_place_leaves()
 			if _open_clock >= tuning.citadel_open_time:
 				_enter(State.CLEARED)
 		State.CLEARED:
+			# ⚠️ LA COURSE EST POSÉE À FOND ICI, ET NON LAISSÉE OÙ L'HORLOGE L'A MISE. Une trame
+			# lente pendant l'ouverture laisserait les vantaux à 98 % — deux battants presque
+			# fermés sur une route déclarée praticable, et c'est le mensonge que ce lot existe
+			# pour supprimer.
+			if _course < LEAF_TRAVEL:
+				_course = LEAF_TRAVEL
+				_place_leaves()
 			_resume_clock = minf(_resume_clock + delta, tuning.citadel_resume_time)
 		_:
 			pass
@@ -842,12 +962,10 @@ func _enter(next: State) -> void:
 			# solide reste : un passage ouvert par l'animation et non par l'état laisserait
 			# traverser un mur encore debout, ou l'inverse — un mur invisible.
 			_log("route praticable — le survol repart")
-			# ⚠️ ET LA PORTE CESSE D'ÊTRE DESSINÉE. Le fichier se prémunit du mur invisible ;
-			# sans cette ligne il livrait l'injustice miroir — un volume de 34 m qui dit
-			# « fermé » pendant que le joueur le traverse. Escamoter la boîte n'est PAS
-			# l'ouverture du lot 4 : c'est la version qui ne mente pas en attendant.
-			if _gate != null:
-				_gate.visible = false
+			# ⚠️ PLUS RIEN N'EST ESCAMOTÉ : LES VANTAUX SE SONT OUVERTS. Le LOT 2 cachait
+			# la poutre à cet instant — un palliatif assumé, « la version qui ne mente pas
+			# en attendant ». Depuis le `BRIEF-0097` la porte a deux moitiés, elles se
+			# rétractent dans leurs logements, et ce qu'on voit est ce qui s'est passé.
 			cleared.emit()
 	state_changed.emit(_state)
 
@@ -934,13 +1052,24 @@ func scroll_factor() -> float:
 ## poster derrière lui pendant le freinage, puis se retrouver du mauvais côté sans avoir rien
 ## fait de mal.
 func fill_solids(shapes: PlaneShapes) -> void:
+	# ⚠️ À `CLEARED`, PLUS RIEN — ET C'EST DÉLIBÉRÉ ALORS QUE LES VANTAUX SONT TOUJOURS LÀ. Le
+	# critère du lot dit « la collision disparaît », et il a raison : un vantail resté solide
+	# pendant que la coque reprend son défilement POUSSERAIT un joueur resté au large, sur toute
+	# la largeur du plan. C'est exactement le défaut pour lequel `PlaneCollider` a été écrit —
+	# « je fonce tout droit et mon vaisseau est bloqué » — et on ne va pas le recréer pour la
+	# rigueur d'une barrière qu'on vient d'ouvrir.
 	if _state == State.CLEARED or not _measured:
 		return
 	# ⚠️ AUCUN `reserve()` ICI, ET C'EST VOULU. `PlaneShapes._push()` dimensionne lui-même, une
 	# fois, par croissance géométrique ; demander `size() + 1` à chaque image physique ferait
 	# dépendre la capacité de l'ORDRE des fournisseurs le jour où un second verse dans la même
 	# liste — et le contrat de `reserve()` dit « à appeler UNE FOIS, au montage ».
-	shapes.add_capsule(_wall_a, _wall_b, wall_radius())
+	# ⚠️ DEUX CAPSULES ET NON UNE, DEPUIS QUE LA PORTE A DEUX MOITIÉS. Chacune va du bout
+	# intérieur de son vantail au bout extérieur de la poutre : la passe s'élargit donc
+	# RÉELLEMENT pendant l'ouverture, et le joueur la sent s'ouvrir au lieu de la voir
+	# disparaître d'un coup.
+	shapes.add_capsule(_wall_a, _pass_a, wall_radius())
+	shapes.add_capsule(_pass_b, _wall_b, wall_radius())
 
 ## L'épaisseur du mur dans le plan. ⚠️ PLUS ÉPAIS QUE SA GÉOMÉTRIE, ET DÉLIBÉRÉMENT : un chasseur
 ## à 14 u/s parcourt 23 cm par image physique. Une paroi fine se traverse sur une image lente,

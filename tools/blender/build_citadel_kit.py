@@ -1,4 +1,4 @@
-"""build_citadel_kit.py — le kit de la Citadelle de Defense (BRIEF-0096).
+"""build_citadel_kit.py — le kit de la Citadelle de Defense (BRIEF-0096/0097).
 
     blender45 -b -t 1 -P tools/blender/build_citadel_kit.py
     blender45 -b -t 1 -P tools/blender/build_citadel_kit.py -- --plate
@@ -6,7 +6,7 @@
     ./scripts/build-hull.sh --check citadel_kit      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/citadel_kit.glb` et, avec `--plate`,
-la planche de recette `docs/forge/output/BRIEF-0096-planche-citadelle.png`.
+la planche de recette `docs/forge/output/BRIEF-0097-planche-vantaux.png`.
 
 Le script EST la source (ADR-0008) : aucun `.blend` versionne, aucun alea, deux
 executions successives rendent le meme sha256.
@@ -14,10 +14,11 @@ executions successives rendent le meme sha256.
 
 CE QUE CE FICHIER EST, ET POURQUOI IL EXISTE
 ============================================
-Huit pieces, chacune modelisee dans le repere de la CITADELLE, que le moteur
+Neuf pieces, chacune modelisee dans le repere de la CITADELLE, que le moteur
 (`CortegeCitadel`) assemble a la station s = 240 du troncon 3 du Long Cortege.
 
-    citadel_gate      la PORTE, poutre transversale de 34,40 m — la LONGUEUR
+    citadel_leaf      le VANTAIL, 12,90 m — la MOITIE de la porte, qui coulisse
+    citadel_housing   le LOGEMENT, un FOURREAU de 4,50 m qui le recoit
     citadel_pylon     le PORTIQUE d'extremite, qui porte le surplomb
     citadel_bastion   la MASSE etagee, dans la tranchee du pont median
     citadel_crown     la COURONNE qui coiffe le bastion
@@ -32,13 +33,41 @@ QUATRIEME FOIS. Les hangars (BRIEF-0091), les affuts (BRIEF-0093) puis les nœud
 d'epine (BRIEF-0094) ont tous quitte `build_long_cortege.py` pour la meme raison :
 une piece cuite dans un troncon ne meurt pas sans emporter ses voisines, les cinq
 troncons partageant un maillage et un jeu de materiaux. Ici DEUX relais et UN
-noyau se detruisent separement, et la porte s'ouvrira au LOT 4.
+noyau se detruisent separement, et la porte S'OUVRE (LOT 4 : deux vantaux qui se
+retractent dans deux logements, plutot qu'une poutre escamotee d'un bloc).
 
 D'ou la regle dure, reprise mot pour mot du nœud d'epine :
 **AUCUN EMISSIF HORS DES PIECES QUI MEURENT** (`citadel_relay`, `citadel_core`).
-S'il y en avait sur la porte, les bastions ou les couronnes, la mort d'un relais
-ne se VERRAIT pas. Le harnais compte l'aire emissive piece par piece et echoue
-le build si une autre en porte un millimetre carre.
+S'il y en avait sur les vantaux, les bastions ou les couronnes, la mort d'un
+relais ne se VERRAIT pas. Le harnais compte l'aire emissive piece par piece et
+echoue le build si une autre en porte un millimetre carre.
+
+
+LE LOT 4 (BRIEF-0097) : LA PORTE S'OUVRE — CE QUI A CHANGE, ET RIEN D'AUTRE
+==========================================================================
+`citadel_gate`, poutre d'un seul tenant de 34,40 m, est REMPLACEE par deux
+pieces miroitees : `citadel_leaf` (le vantail) et `citadel_housing` (le
+logement). **Les six autres pieces ne bougent pas d'un micron** — leur code
+n'est pas touche, et le compte-rendu le PROUVE par le sha256 des accesseurs de
+chaque nœud, pas par une affirmation.
+
+La chaine de cotes du brief tient TROIS choses a la fois, et elle est
+arithmetique :
+
+    ferme     le vantail va de x = 0,00 a 12,90 ; le logement de 12,70 a 17,20.
+              Recouvrement 0,20 m : AUCUN JOUR au bout.
+    ouvert    course de 4,25 m -> le vantail va de 4,25 a 17,15, soit 5 cm SOUS
+              le bout exterieur (17,20) : rien ne depasse jamais.
+    la passe  |x| < 4,25, donc 8,50 m monde — quatre fois la largeur du corps du
+              Specter-9 (1,76 unite, ADR-0034).
+
+⚠️ ET LE SOMMET DU LOGEMENT EST LA COTE QUI PEUT TOUT CASSER EN SILENCE. Un
+fourreau est plus grand que ce qu'il recoit ; s'il montait de 30 cm au-dessus du
+vantail depuis la meme assise, il franchirait le plafond du decor inerte
+(`ADR-0041`, -3,00) sans qu'aucun test ne rougisse. C'est donc son ASSISE qui
+descend (-6,90 contre -6,60), et son sommet tombe a -3,00 exactement, comme
+celui du vantail. Le harnais compose assise + hauteur mesuree et echoue au
+centimetre.
 
 
 LES QUATRE SILHOUETTES — C'EST LE CRITERE D'ACCEPTATION
@@ -56,14 +85,9 @@ quatrieme ne peut pas se poser sur leurs axes sans tomber du cote de l'une :
 Les quatre pieces du verrou prennent donc quatre axes NEUFS, et chacun est
 MESURE au harnais, pas affirme au commentaire :
 
-  1. la PORTE = la LONGUEUR. 34,40 m pour 1,20 m d'epaisseur, soit 28,7 : 1. Rien
-     d'autre sur ce vaisseau ne traverse le cadre. Elle porte une DENTURE en son
-     centre — deux series de six dents qui s'engrenent sur |x| <= 2,40 — parce
-     que c'est par la qu'elle s'ouvrira (LOT 4) et qu'une porte qui ne montre pas
-     sa jointure ne se lit pas comme une porte. ⚠️ La denture est faite pour etre
-     vue D'EN HAUT : la camera du jeu plonge a 70 deg, donc a 20 deg de la
-     VERTICALE. Un joint de finger cut dans la face avant ne rendrait aucun pixel
-     — c'est la mesure qui a coute une couronne emissive au nœud d'epine.
+  1. la PORTE = la LONGUEUR. 34,40 m assemblee (deux vantaux et deux logements)
+     pour 1,20 m d'epaisseur, soit 28,7 : 1. Rien d'autre sur ce vaisseau ne
+     traverse le cadre. Et elle se lit en DEUX MOITIES : voir la machoire.
   2. le BASTION = la MASSE ETAGEE. Le seul volume a deux niveaux du vaisseau
      (corps +2,90, couronne +0,60 par-dessus). Il est PLUS LARGE QUE HAUT
      (4,50 m pour 2,90 m), et c'est cela qui l'empeche de se lire comme un affut
@@ -81,6 +105,70 @@ MESURE au harnais, pas affirme au commentaire :
      porte). Il monte la PARCE QU'IL SE TIRE DESSUS : le seul volume autorise a
      culminer est celui qu'on peut detruire, et c'est ce qui le designe comme le
      centre sans un mot de HUD.
+
+
+LES DEUX MACHOIRES — C'EST LE CRITERE D'ACCEPTATION DU LOT 4
+===========================================================
+« Il manque le vantail : pas de tableau, pas de ligne de refend au milieu, pas
+de deux moitiees. » — capture du 2026-09-04, sur la denture du LOT 2.
+
+Cette denture-la etait un PEIGNE POSE SUR LE DESSUS : douze dents alternant le
+long de x, dents vers le haut, sans rangee en vis-a-vis. Vue d'en haut elle se
+lit comme un creneau de rempart. Trois choses la remplacent, et elles ne sont
+pas des gouts :
+
+  1. LES DENTS SONT DANS L'EPAISSEUR. L'epaisseur (1,20 m) est decoupee en SIX
+     bandes de 0,20 m ; ce vantail porte les bandes 0, 2 et 4 — TROIS dents, un
+     compte IMPAIR — et laisse les trois autres en mortaises.
+     ⚠️ CE N'EST PAS UN CHOIX D'AXE, C'EST LE SEUL QUI MARCHE. Le miroir du
+     moteur est un yaw de pi : il envoie (x, s) sur (-x, -s). Une denture qui
+     alternerait EN HAUTEUR reviendrait donc identique sur l'autre vantail —
+     dent contre dent. C'est l'excentricite en `s`, et elle seule, que le yaw
+     retourne. La bande k revient en bande 5-k : {0,2,4} devient {5,3,1}, soit
+     exactement le complementaire. Chaque dent tombe en face d'une mortaise.
+  2. LA LIGNE DE REFEND SE VOIT, et elle se voit D'EN HAUT — la camera plonge a
+     70 deg, donc a 20 deg de la VERTICALE, et un joint grave dans la face avant
+     ne rendrait aucun pixel (c'est la mesure qui a coute une couronne emissive
+     au nœud d'epine). Trois signaux la portent :
+       * le TABLEAU : les 2,40 m les plus internes du vantail sont plus EPAIS en
+         haut que la poutre (sommet de 0,96 m de large contre 0,60), ce qui pose
+         deux lignes transversales a x = +/- 2,40 et double la largeur apparente
+         du dessus au centre ;
+       * la MACHOIRE : trois dents claires et trois mortaises noires de 0,60 m
+         de creux, et la PHASE S'INVERSE en franchissant x = 0. C'est le seul
+         endroit du vaisseau ou un motif change de phase sur une ligne : l'œil y
+         lit deux pieces, pas une ;
+       * le REFEND : les cinq premiers centimetres du vantail rentrent de 5 cm.
+         Ferme, les deux rentrants font une gorge en V de 10 cm de large qui
+         descend les deux faces et passe sous la porte.
+  3. ET LA FERMETURE EST ARITHMETIQUE, PAS ESPEREE. Une denture qui se
+     RECOUVRIRAIT vraiment est IMPOSSIBLE ici, et la demonstration tient en deux
+     lignes : notons a(s) l'abscisse la plus interne de la matiere du vantail
+     dans la bande s. Le vantail babord occupe alors x <= -a(-s). Il n'y a de
+     jour nulle part si et seulement si a(s) + a(-s) <= 0 pour toute bande ;
+     avec une denture de saillie p (a(s) vaut a et a+p selon la bande), cela
+     force a <= -p/2 : le vantail devrait FRANCHIR l'axe de la moitie de sa
+     saillie. Il perdrait autant sur la passe (8,50 - p) et sortirait de son
+     emprise « x 0 -> 12,90 ». La denture est donc a TENON ET MORTAISE : la face
+     de butee reste pleine et plane a x = 0, la dent d'un vantail vient fermer
+     la mortaise de l'autre, et le motif s'engrene A L'ŒIL sans qu'aucun metre
+     cube ne se chevauche. `_seam_report()` le MESURE au lancer de rayons sur le
+     binaire, dans les deux directions, plutot que de le supposer.
+
+
+LE LOGEMENT — UN FOURREAU, DONC UN VOLUME CREUX, DONC OUVERT PAR LE HAUT
+=======================================================================
+Le vantail rentre jusqu'a 17,15 et son sommet est DEJA au plafond du decor
+(-3,00). Le logement ne peut donc rien avoir au-dessus de lui : c'est un U —
+deux joues et une sole — et non une boite. Ce qui se voit d'en haut, porte
+fermee, est une FENTE SOMBRE de 1,24 m de large et 4,30 m de long a chaque bout
+de la porte ; ouverte, le vantail la remplit. La fente EST l'explication du
+mecanisme, et elle ne coute pas un triangle de plus.
+
+Les jeux sont mesures, pas supposes : 2 cm en lateral (joues a 0,62 pour un
+vantail a 0,60) et 2 cm sous l'assise (sole a 0,28 pour un vantail assis
+0,30 plus haut). `_housing_fit()` les relit sur les sommets du binaire, aux DEUX
+positions de la course.
 
 
 DEUX ECARTS AU TABLEAU DU BRIEF, ASSUMES ET MESURES
@@ -145,7 +233,7 @@ import build_bay_kit as baykit         # noqa: E402  (planche : outillage commun
 import build_turret_kit as turretkit   # noqa: E402  (planche + harnais partages)
 
 OUTPUT = os.path.join(_REPO, "assets/imported/models/backgrounds/citadel_kit.glb")
-PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0096-planche-citadelle.png")
+PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0097-planche-vantaux.png")
 HULL = cortege.OUTPUT
 FIGHTER = cortege.FIGHTER
 
@@ -156,31 +244,54 @@ FIGHTER = cortege.FIGHTER
 # +Z = PROUE. La station `s` d'une piece se lit donc en Z par z = -(s - 240).
 #
 # ⚠️ CHAQUE PIECE EST CENTREE EN Z SUR SON ORIGINE, ET CE N'EST PAS UN DETAIL DE
-# MISE EN PAGE. Le moteur MIROITE cinq pieces par un yaw de pi, qui envoie
+# MISE EN PAGE. Le moteur MIROITE sept pieces par un yaw de pi, qui envoie
 # (x, z) sur (-x, -z). Une piece dont la boite n'est pas centree en Z se
 # retrouverait, a babord, DECALEE LE LONG DU VAISSEAU d'exactement deux fois son
 # excentricite — un bastion a s+6 d'un bord et a s-6 de l'autre. Aucune bbox,
 # aucun compte de triangles ne le verrait ; il faudrait jouer la sequence et
-# regarder les deux bords en meme temps. Le harnais l'exige donc sur les huit.
+# regarder les deux bords en meme temps. Le harnais l'exige donc sur les neuf.
 #
 # En X au contraire, le X DE LA COQUE EST CUIT DANS LA GEOMETRIE (le bastion vit
 # a x 6,90..11,40 dans son propre maillage). C'est ce qui permet au moteur de
 # poser tribord et babord avec LA MEME translation (0, assise, z_c) et pour seule
 # difference le yaw — donc de ne pas pouvoir les desynchroniser.
+#
+# ⚠️ ET IL Y A DESORMAIS DEUX REGLES DE MIROIR, PAS UNE — LE HARNAIS LES DISTINGUE.
+# Six pieces sont FRANCHEMENT TRIBORD : leur matiere commence a x > 0,05, et les
+# deux copies ne se touchent jamais. Le VANTAIL, lui, a pour origine SON BOUT
+# INTERIEUR (x = 0) et non son centre : c'est ce qui permet au moteur d'ecrire la
+# course comme une translation en x — 0 ferme, 4,25 ouvert — sans arithmetique de
+# cote. Sa matiere COMMENCE donc a x = 0 exactement, et les deux copies se
+# TOUCHENT sur l'axe : c'est meme la definition d'une porte fermee. Une regle
+# unique « x > 0,05 » refuserait une piece juste ; une regle unique « x >= 0 »
+# laisserait passer un bastion qui deborde. `ORIGIN_AT_INNER_END` nomme la
+# difference (voir `_audit`). Le centrage en Z, lui, vaut pour les neuf sans
+# exception : c'est l'excentricite en `s` que le yaw retourne, et la boite du
+# vantail est bien centree en s (+/- 0,60) — ce qui est EXCENTRE chez lui, c'est
+# la matiere de sa machoire dans cette boite, et c'est precisement ce qu'on veut
+# retourner.
 CITADEL_STATION = 240.0
 
-#: Les huit noms. Ils sont FIGES PAR LE BRIEF, pas choisis ici : le moteur monte
+#: Les neuf noms. Ils sont FIGES PAR LE BRIEF, pas choisis ici : le moteur monte
 #: par le NOM et un renommage casse le niveau EN SILENCE — rien n'est trouve,
 #: rien n'est dit. Le harnais echoue si l'un manque ou si l'un est en trop.
 PART_NAMES = (
-    "citadel_gate", "citadel_pylon", "citadel_bastion", "citadel_crown",
-    "citadel_relay", "citadel_conduit", "citadel_core", "citadel_shield",
+    "citadel_leaf", "citadel_housing", "citadel_pylon", "citadel_bastion",
+    "citadel_crown", "citadel_relay", "citadel_conduit", "citadel_core",
+    "citadel_shield",
 )
 
 #: Les pieces que le moteur MIROITE (yaw pi). Elles sont modelees TRIBORD, et
 #: aucune version babord n'est livree.
-MIRRORED = ("citadel_pylon", "citadel_bastion", "citadel_crown",
-            "citadel_relay", "citadel_conduit")
+MIRRORED = ("citadel_leaf", "citadel_housing", "citadel_pylon",
+            "citadel_bastion", "citadel_crown", "citadel_relay",
+            "citadel_conduit")
+
+#: ⚠️ LA PIECE DONT L'ORIGINE EST SON BOUT INTERIEUR, ET NON SON CENTRE. Elle a
+#: le droit — le devoir — de commencer a x = 0 : c'est la ou elle rencontre sa
+#: jumelle babord quand la porte est fermee. Le harnais lui applique « x >= 0 »
+#: au lieu de « x > 0,05 », et rien d'autre ne change.
+ORIGIN_AT_INNER_END = ("citadel_leaf",)
 
 #: Ce que le moteur DETRUIT separement — et donc les deux seules pieces qui ont
 #: le droit de porter de l'emissif.
@@ -195,7 +306,9 @@ DESTRUCTIBLE = ("citadel_relay", "citadel_core")
 # elles servent a COMPOSER la cote de plafond, ce que le brief exige en toutes
 # lettres — « a verifier en composant l'assise du plan avec la hauteur mesuree ».
 SEAT: dict[str, float] = {
-    "citadel_gate": -6.60,      # assise ENTERREE — voir plus bas
+    "citadel_leaf": -6.60,      # assise ENTERREE — celle de la porte du LOT 2
+    "citadel_housing": -6.90,   # 30 cm PLUS BAS : un fourreau descend, il ne
+                                # monte pas (le sommet reste a -3,00)
     "citadel_pylon": -7.65,     # la lisse d'epaule
     "citadel_bastion": -6.50,   # le fond de la tranchee de bastion
     "citadel_crown": -3.60,     # le pont du bastion
@@ -217,7 +330,8 @@ SHIELD_IS_DECIDED = True
 #: Z d'assemblage de chaque piece : z_c = -(s_centre - 240). C'est le SECOND et
 #: dernier nombre dont le moteur a besoin par piece.
 ASSEMBLY_Z: dict[str, float] = {
-    "citadel_gate": 0.00,       # s 240,00 — la face avant du verrou
+    "citadel_leaf": 0.00,       # s 240,00 — la face avant du verrou
+    "citadel_housing": 0.00,    # s 240,00 — il enserre le bout du vantail
     "citadel_pylon": 0.00,      # s 240,00 — il enserre le bout de la poutre
     "citadel_bastion": -2.80,   # s 242,80 (emprise 239,60 -> 246,00)
     "citadel_crown": -3.50,     # s 243,50 (emprise 241,60 -> 245,40)
@@ -229,9 +343,9 @@ ASSEMBLY_Z: dict[str, float] = {
 
 #: Combien de fois chaque piece tombe dans le verrou assemble.
 ASSEMBLY_COPIES: dict[str, int] = {
-    "citadel_gate": 1, "citadel_pylon": 2, "citadel_bastion": 2,
-    "citadel_crown": 2, "citadel_relay": 2, "citadel_conduit": 2,
-    "citadel_core": 1, "citadel_shield": 1,
+    "citadel_leaf": 2, "citadel_housing": 2, "citadel_pylon": 2,
+    "citadel_bastion": 2, "citadel_crown": 2, "citadel_relay": 2,
+    "citadel_conduit": 2, "citadel_core": 1, "citadel_shield": 1,
 }
 
 #: Les deux plafonds d'`ADR-0041`. Ils s'appliquent aux pieces de KIT et non au
@@ -265,50 +379,101 @@ FORBIDDEN_HEX = cortege.FORBIDDEN_HEX
 TRIM_SHARE_MAX = 0.03
 
 # ==========================================================================
-# LA PORTE — la LONGUEUR
+# LE VANTAIL — la MOITIE de la porte, et la MACHOIRE
 # ==========================================================================
-#: Demi-longueur. ⚠️ 17,20 ET NON 14,00, ET CE N'EST PAS UN EXCES DE ZELE. La
-#: coque fait 28 m bord a bord ; le cadre de la camera, au plan du pont, en fait
-#: 41,60. Une barriere arretee au borde laisserait le joueur CONTOURNER le verrou
-#: par le vide, et la sequence deviendrait facultative.
-GATE_HALF_X = 17.20
-GATE_HALF_S = 0.60
-GATE_H = 3.60
+#: Le bout EXTERIEUR de la porte assemblee. ⚠️ 17,20 ET NON 14,00, ET CE N'EST
+#: PAS UN EXCES DE ZELE. La coque fait 28 m bord a bord ; le cadre de la camera,
+#: au plan du pont, en fait 41,60. Une barriere arretee au borde laisserait le
+#: joueur CONTOURNER le verrou par le vide, et la sequence deviendrait
+#: facultative. La valeur est celle du LOT 2, inchangee : c'est elle que le
+#: portique va chercher (`PYLON_X1`).
+DOOR_HALF_X = 17.20
+#: LA CHAINE DE COTES, ET ELLE EST ARITHMETIQUE (voir l'en-tete).
+#:      0,00 + 12,90 = 12,90  ferme : le bout entre de 0,20 m dans le logement
+#:      4,25 + 12,90 = 17,15  ouvert : 5 cm SOUS le bout exterieur
+#:      2 x 4,25     =  8,50  la passe, quatre fois la largeur du chasseur
+LEAF_LEN = 12.90
+LEAF_TRAVEL = 4.25
+LEAF_HALF_S = 0.60
+LEAF_H = 3.60
 #: Le rentrant du couronnement : la poutre s'amincit de 1,20 a 0,92 m au-dessus
 #: de 2,62. C'est cette ligne d'ombre horizontale, filant sur 34 m, qui fait lire
 #: la LONGUEUR — une boite lisse de 34 m ne se lit que par ses deux bouts.
-GATE_SILL_Y = 2.34
-GATE_STEP_Y = 2.62
-GATE_HALF_S_TOP = 0.46
-GATE_COPING_Y = 3.30
-GATE_HALF_S_CAP = 0.30
-#: ⚠️ PAS DE CONTREFORT SUR LA POUTRE, ET C'EST UNE MESURE QUI L'A TRANCHE. Deux
-#: bossages de 0,12 m au droit des bastions avaient ete modeles : ils portaient
-#: l'emprise en `s` a +/- 0,72 alors que le brief la fige a +/- 0,60, et le
-#: harnais les a refuses. Les rentrer en CREUX au lieu de les sortir en BOSSE ne
-#: sert a rien : sous une camera a 20 deg de la verticale, un creux dans le flanc
-#: d'une poutre de 1,20 m est integralement masque par son propre couronnement.
-#: La longueur se raconte donc par ce qui se voit D'EN HAUT — deux lignes
-#: horizontales continues (le rentrant a 2,62 et le chanfrein a 3,30), la denture
-#: au milieu, les portiques aux bouts — et la poutre reste MINCE, ce que le brief
-#: demande en toutes lettres. Les 300 triangles economises sont alles au noyau et
-#: a la denture, qui se voient.
-GATE_BUTTRESS_X = ()
-GATE_BUTTRESS_PAD = 0.0
+LEAF_SILL_Y = 2.34
+LEAF_STEP_Y = 2.62
+LEAF_HALF_S_TOP = 0.46
+LEAF_COPING_Y = 3.30
+LEAF_HALF_S_CAP = 0.30
 
-#: LA DENTURE — six dents par rangee, deux rangees en OPPOSITION DE PHASE.
-#: ⚠️ ELLE S'ENGRENE EN PLAN, PAS EN ELEVATION. Vue d'en haut — la seule vue que
-#: la camera du jeu donne vraiment — la rangee avant et la rangee arriere
-#: dessinent un creneau alterne : c'est la figure « deux peignes emboites », et
-#: c'est par la que les deux vantaux se separeront au LOT 4.
-TEETH_HALF_X = 2.40
-TEETH_CELLS = 12
-TEETH_BED_Y = 3.20          # le lit de denture : le dessus de poutre y descend
-TEETH_TOP_Y = GATE_H        # les dents seules atteignent +3,60
-TEETH_ROOT_Y = 2.95         # elles plongent DANS la poutre (pas posees dessus)
-TEETH_GAP_Y = 3.16          # le fond entre deux dents, sous le lit
-TEETH_ROW_HALF_S = 0.245    # une rangee = un peu moins d'une demi-epaisseur
-TEETH_ROW_OVERLAP = 0.03    # les deux rangees se CHEVAUCHENT au milieu
+#: LE TABLEAU — les 2,40 m les plus internes, PLUS EPAIS EN HAUT que la poutre.
+#: Son dessus fait 0,96 m de large la ou celui de la poutre en fait 0,60 : deux
+#: lignes transversales a x = +/- 2,40 encadrent le joint, et la largeur
+#: apparente du dessus DOUBLE au centre. C'est le « tableau » que la capture du
+#: LOT 2 disait manquant, et il ne coute qu'un jeu de cotes dans la meme section.
+JAMB_X = 2.40
+JAMB_RAMP = 0.20            # jamais une marche : voir `_leaf_plan`
+JAMB_HALF_S_TOP = 0.58
+JAMB_HALF_S_CAP = 0.48
+JAMB_COPING_Y = 3.46
+
+#: LE REFEND — les 5 premiers centimetres rentrent de 5 cm. Ferme, les deux
+#: rentrants font une gorge de 10 cm qui descend les deux faces et passe sous la
+#: porte : c'est le « jeu d'ombre » que le brief demande, et le seul signal du
+#: joint qui se voie AUTREMENT que d'en haut.
+REVEAL_X = 0.05
+REVEAL_IN = 0.05
+
+#: LA MACHOIRE — six bandes dans l'EPAISSEUR, trois dents par vantail.
+#: ⚠️ COMPTE IMPAIR, ET C'EST LE MIROIR QUI L'EXIGE. Le yaw de pi envoie la bande
+#: k sur la bande 5-k : {0,2,4} revient en {5,3,1}, le complementaire exact. Une
+#: dent tombe donc toujours en face d'une mortaise. Avec quatre dents (huit
+#: bandes) la meme regle donnerait {0,2,4,6} -> {7,5,3,1} : cela marcherait aussi,
+#: mais 0,15 m de dent ne portent plus d'ombre a 23 px/m. Trois, donc.
+TOOTH_BANDS = 6
+TOOTH_MINE = (0, 2, 4)
+TOOTH_LEN = 1.25            # la dent avance de x = 0 a x = 1,25
+TOOTH_ROOT_X = 1.10         # la ou le tableau reprend sa pleine hauteur
+TOOTH_BED_Y = 3.00          # le LIT : fond des mortaises. Plein en dessous —
+                            # une mortaise traversante serait un jour.
+TOOTH_ROOT_Y = 2.90         # la dent plonge de 10 cm DANS le lit
+#: ⚠️ LA DENT S'ARRETE 7 cm AVANT LE PLAN DE JOINT, ET C'EST LA LIGNE DE REFEND.
+#: Porte fermee, les deux retraits font au MILIEU EXACT une gorge transversale de
+#: 0,14 m de large et 0,60 m de creux qui traverse toute l'epaisseur — un trait
+#: NOIR, franc, perpendiculaire a la porte. C'est le seul signal qui dise « ici »
+#: plutot que « quelque chose est pose la » : sans lui, la machoire se lisait
+#: comme UN bloc clair au centre (premier tirage de la planche), et non comme
+#: deux peignes qui se rejoignent. La butee, elle, reste pleine : ce sont les
+#: CORPS des deux vantaux qui se touchent a x = 0, pas les dents.
+TOOTH_TIP_GAP = 0.07
+
+# ==========================================================================
+# LE LOGEMENT — un FOURREAU, donc un U et non une boite
+# ==========================================================================
+#: Il chevauche le vantail ferme de 0,20 m (12,70 contre 12,90) : c'est ce
+#: recouvrement, et rien d'autre, qui interdit un jour au bout de la porte.
+HOUSING_X = (12.70, DOOR_HALF_X)
+HOUSING_HALF_S = 0.80
+HOUSING_H = 3.90
+#: LE JEU MECANIQUE, 2 cm sur chaque axe. Les joues laissent passer un vantail de
+#: 0,60 ; la sole s'arrete 2 cm sous son assise. Un fourreau qui affleurerait sa
+#: piece donnerait deux faces COPLANAIRES entre deux nœuds — et le moteur les
+#: fait glisser l'une sur l'autre.
+HOUSING_CHEEK_IN = 0.62
+HOUSING_SILL_Y = 0.28
+#: L'EMBOUCHURE : la joue fait 0,80 sur ses 60 premiers centimetres puis
+#: s'amincit a 0,74. Le collier qui en resulte est le seul endroit ou le logement
+#: touche l'emprise du brief, et il DIT ou le vantail disparait.
+HOUSING_MOUTH_X = 13.30
+HOUSING_MOUTH_RAMP = 0.20
+HOUSING_CHEEK_OUT = 0.74
+HOUSING_CAP_Y = 3.72        # depart du chanfrein de couronnement de la joue
+HOUSING_CAP_IN = 0.10
+#: Deux cerces par joue : elles debordent de 6 cm, donc elles portent une ombre.
+HOUSING_RIBS = (14.60, 16.10)
+HOUSING_RIB_HALF_X = 0.16
+HOUSING_RIB_IN = 0.68
+HOUSING_RIB_Y = 3.60
+
 
 # ==========================================================================
 # LE PORTIQUE — le porte-a-faux, un defaut mesure a corriger
@@ -317,7 +482,7 @@ TEETH_ROW_OVERLAP = 0.03    # les deux rangees se CHEVAUCHENT au milieu
 # surplombent le vide, etoiles visibles dessous ». Ce n'est pas rattrapable en
 # raccourcissant la porte — elle doit couvrir tout le plan de vol.
 PYLON_X0 = 15.60
-PYLON_X1 = GATE_HALF_X
+PYLON_X1 = DOOR_HALF_X
 PYLON_HALF_S = 0.90
 PYLON_LEG_HALF_S = 0.24     # deux jambes, de part et d'autre de la poutre
 PYLON_LEG_S = 0.66          # ecart des jambes a l'axe de la poutre
@@ -639,7 +804,7 @@ def _box(bm: bmesh.types.BMesh, x0: float, x1: float, y0: float, y1: float,
 
 
 # ==========================================================================
-# LA PORTE — la LONGUEUR, et sa DENTURE
+# LE VANTAIL — la MOITIE de la porte, et sa MACHOIRE
 # ==========================================================================
 
 _HULL = "AA_Hull"
@@ -648,101 +813,159 @@ _TRIM = "AA_Trim"
 _EMISSIVE = "AA_Emissive_Engine"
 _GLASS = "AA_Glass"
 
-#: Les dix aretes de la section de poutre, et leur materiau. `AA_Trim` n'y est
-#: PAS : 34,40 m de lisere ivoire suivant une arete CONTINUE occupent plus de
+#: Les dix aretes de la section de vantail, et leur materiau. `AA_Trim` n'y est
+#: PAS : 12,90 m de lisere ivoire suivant une arete CONTINUE occupent plus de
 #: pixels que n'importe quelle piece du niveau (lecon de BRIEF-0089, payee deux
 #: fois : l'ivoire du borde, puis le violet des facettes). Le trim du verrou est
-#: reserve a la denture, ou il DIT quelque chose.
-_GATE_BAND = [_GREEBLE, _HULL, _GREEBLE, _HULL, _HULL,
+#: reserve aux DENTS, ou il DIT quelque chose.
+_LEAF_BAND = [_GREEBLE, _HULL, _GREEBLE, _HULL, _HULL,
               _HULL, _HULL, _HULL, _GREEBLE, _HULL]
+#: Le TABLEAU porte en plus ses deux chanfreins de couronnement en `AA_Greeble` :
+#: sous une lumiere qui vient d'en haut, ce sont eux qui dessinent le cadre du
+#: joint. Une bande sombre de 0,14 m survit au downscale, une gravure non
+#: (mesure de BRIEF-0093).
+_JAMB_BAND = [_GREEBLE, _HULL, _GREEBLE, _HULL, _GREEBLE,
+              _HULL, _GREEBLE, _HULL, _GREEBLE, _HULL]
 
 
-def _gate_section(pad: float, high: bool) -> list[tuple[float, float]]:
-    """La section de la poutre, en (z, y). Convexe, dix points."""
-    hs = GATE_HALF_S + pad
-    hs_top = GATE_HALF_S_TOP + pad
-    hs_cap = GATE_HALF_S_CAP + pad
-    top = GATE_H if high else TEETH_BED_Y
-    coping = GATE_COPING_Y if high else TEETH_BED_Y - 0.18
-    return [(-hs, 0.0), (hs, 0.0), (hs, GATE_SILL_Y), (hs_top, GATE_STEP_Y),
-            (hs_top, coping), (hs_cap, top), (-hs_cap, top),
-            (-hs_top, coping), (-hs_top, GATE_STEP_Y), (-hs, GATE_SILL_Y)]
+def _leaf_section(hs: float, hs_top: float, hs_cap: float, coping: float,
+                  top: float) -> list[tuple[float, float]]:
+    """La section du vantail, en (z, y). DIX points, toujours les memes.
 
-
-def _teeth_row(bm: bmesh.types.BMesh, z0: float, z1: float,
-               phase: int) -> None:
-    """Une rangee de dents : une case sur deux, en opposition avec l'autre rangee.
-
-    ⚠️ CHAQUE DENT EST UNE COQUE A PART, ET C'EST UNE LEÇON PAYEE. Le creneau
-    avait d'abord ete lofte d'un seul tenant, les gorges venant d'une marche du
-    profil. Une marche ou seul le SOMMET change aligne trois sommets sur quatre :
-    la facette de fermeture est plate, son aire est nulle, et la supprimer laisse
-    une JONCTION EN T — le mur de la dent porte une arete entiere la ou ses deux
-    voisines en portent deux. Resultat : 63 aretes de bord sur une piece qui
-    paraissait juste. Des dents separees, enfoncees dans la poutre, n'ont ni
-    marche ni jonction ; elles coutent une dizaine de triangles de plus et elles
-    se prouvent.
+    ⚠️ LE NOMBRE DE POINTS EST UNE CONTRAINTE, PAS UNE COMMODITE : un loft ne
+    relie que des anneaux de meme cardinal. C'est elle qui donne sa forme au
+    TABLEAU — on ne peut pas « ajouter » un volume au bout de la poutre, on ne
+    peut qu'ecarter les memes dix cotes. Il se trouve que c'est le bon dessin :
+    le tableau est la MEME poutre, moins amincie.
     """
-    width = 2.0 * TEETH_HALF_X / TEETH_CELLS
-    for k in range(TEETH_CELLS):
-        if (k % 2) != phase:
-            continue
-        x0 = -TEETH_HALF_X + k * width
-        _box(bm, x0 + 0.03, x0 + width - 0.03, TEETH_ROOT_Y, TEETH_TOP_Y,
-             z0, z1, _GREEBLE, _TRIM, _GREEBLE)
+    return [(-hs, 0.0), (hs, 0.0), (hs, LEAF_SILL_Y), (hs_top, LEAF_STEP_Y),
+            (hs_top, coping), (hs_cap, top), (-hs_cap, top),
+            (-hs_top, coping), (-hs_top, LEAF_STEP_Y), (-hs, LEAF_SILL_Y)]
 
 
-def build_gate() -> bpy.types.Object:
-    """La poutre transversale de 34,40 m — et sa jointure centrale.
+def _tooth_band(k: int) -> tuple[float, float]:
+    """Les bornes en `s` de la bande `k`, sur les six de l'epaisseur."""
+    width = 2.0 * LEAF_HALF_S / TOOTH_BANDS
+    return (-LEAF_HALF_S + k * width, -LEAF_HALF_S + (k + 1) * width)
 
-    Trois coques : la poutre, et les DEUX rangees de dents. Le brief demande
-    « deux series de dents qui s'engrenent sur x +/- 2,40, parce que c'est par la
-    qu'elle s'ouvrira (LOT 4) et qu'une porte qui ne montre pas sa jointure ne se
-    lit pas comme une porte ».
 
-    ⚠️ LA JOINTURE EST FAITE POUR ETRE VUE D'EN HAUT. La camera du jeu plonge a
-    70 deg : elle est a 20 deg de la VERTICALE, et la face avant de la poutre lui
-    est presentee a 20 deg de l'incidence rasante. Un joint de finger cut dans
-    cette face — la solution evidente, celle d'une porte reelle — ne rendrait
-    quasiment aucun pixel. Le creneau est donc EN PLAN : rangee avant et rangee
-    arriere alternent en x, et le dessus de la poutre montre six dents claires
-    decalees deux a deux. C'est exactement la mesure qui a coute une couronne
-    emissive au nœud d'epine (BRIEF-0094), et elle n'a pas ete repayee ici.
+def build_leaf() -> bpy.types.Object:
+    """Le vantail : une poutre de 12,90 m, un tableau, et trois dents.
+
+    ⚠️ SON ORIGINE EST SON BOUT INTERIEUR (x = 0), PAS SON CENTRE. C'est ce qui
+    permet au moteur d'ecrire la course comme une simple translation en x — 0
+    ferme, 4,25 ouvert — la meme des deux cotes, le yaw de pi faisant le reste.
+    Sa boite reste centree en `s` (+/- 0,60), ce qui est la seule chose dont le
+    miroir ait besoin.
+
+    ⚠️ ET LA FACE DE BUTEE EST PLEINE ET PLANE. La demonstration est dans
+    l'en-tete : une denture qui se recouvrirait vraiment forcerait le vantail a
+    franchir l'axe de la moitie de sa saillie, donc a manger la passe et a sortir
+    de son emprise. Le tenon d'un vantail ferme la mortaise de l'autre ; les deux
+    series s'engrenent A L'ŒIL — la phase du motif s'inverse en franchissant
+    x = 0 — sans qu'un metre cube ne se chevauche. `_seam_report()` le mesure au
+    lancer de rayons, dans les deux directions, sur le binaire livre.
+
+    Quatre coques : le corps et ses TROIS dents. Une dent separee, enfoncee de
+    10 cm dans le lit, n'a ni marche ni jonction en T — la lecon de la denture du
+    LOT 2, qui avait coute 63 aretes de bord avant d'etre payee.
     """
     bm = bmesh.new()
-    plan: list[tuple[float, float, bool]] = [
-        (-GATE_HALF_X, 0.0, True),
-        # ⚠️ Le lit de denture s'atteint par une RAMPE DE 0,20 m et non par une
-        # marche. Sur une marche, les six points bas de la section ne bougent
-        # pas : la facette balayee est PLATE, la supprimer ouvre une jonction en
-        # T, et la garder fabrique un triangle d'aire nulle dont la tangente
-        # casse la byte-identite. Deux decimetres suffisent — a 23 px/m la rampe
-        # se lit comme une marche, et la piece se PROUVE fermee.
-        (-TEETH_HALF_X - 0.40, 0.0, True),
-        (-TEETH_HALF_X - 0.20, 0.0, False),
-        (TEETH_HALF_X + 0.20, 0.0, False),
-        (TEETH_HALF_X + 0.40, 0.0, True),
-        (GATE_HALF_X, 0.0, True),
+    beam = (LEAF_HALF_S, LEAF_HALF_S_TOP, LEAF_HALF_S_CAP, LEAF_COPING_Y,
+            LEAF_H)
+    jamb = (LEAF_HALF_S, JAMB_HALF_S_TOP, JAMB_HALF_S_CAP, JAMB_COPING_Y,
+            LEAF_H)
+    bed = (LEAF_HALF_S, JAMB_HALF_S_TOP, JAMB_HALF_S_CAP,
+           TOOTH_BED_Y - 0.14, TOOTH_BED_Y)
+    # ⚠️ LE REFEND NE MORD QUE LE HAUT DE LA SECTION, ET C'EST MESURE. Applique
+    # aussi au pied (hs), il ouvrait sous la porte fermee une encoche de
+    # 0,10 x 0,05 m par flanc — traversante, donc un JOUR, que `_seam_report()`
+    # a rapportee au premier tirage. Il ne rentre donc qu'au-dessus de la lisse
+    # (2,34), la ou la camera voit quelque chose de toute façon.
+    reveal = (bed[0], bed[1] - REVEAL_IN, bed[2] - REVEAL_IN, bed[3], bed[4])
+    # ⚠️ AUCUNE MARCHE DANS CE PLAN, QUE DES RAMPES DE 0,20 m. Sur une marche —
+    # deux anneaux a la meme abscisse — les points qui ne bougent pas fabriquent
+    # une facette d'aire nulle : la supprimer ouvre une jonction en T, la garder
+    # donne une tangente de rattrapage qui casse la byte-identite d'un build a
+    # l'autre. A 23 px/m une rampe de 20 cm se lit comme une marche.
+    plan: list[tuple[float, tuple]] = [
+        (0.00, reveal),                     # le refend
+        (REVEAL_X, bed),
+        (TOOTH_ROOT_X, bed),                # le lit de machoire
+        (TOOTH_ROOT_X + JAMB_RAMP, jamb),
+        (JAMB_X, jamb),                     # le tableau
+        (JAMB_X + JAMB_RAMP, beam),
+        (LEAF_LEN, beam),                   # la poutre
     ]
-    rings = [_ring_x(x, _gate_section(p, high)) for x, p, high in plan]
-    materials: list = []
-    axial: list = []
-    for i in range(len(plan) - 1):
-        materials.append(_GATE_BAND)
-        if abs(plan[i][0] - plan[i + 1][0]) < 1e-9:
-            # Une marche. Le contrefort GROSSIT (la couronne regarde vers -x
-            # quand on monte en x) ; le lit de denture RETRECIT.
-            shrinks = (plan[i + 1][1] < plan[i][1]) or \
-                (plan[i][2] and not plan[i + 1][2])
-            axial.append(1 if shrinks else -1)
-        else:
-            axial.append(None)
-    _loft(bm, rings, materials, cap_low=_HULL, cap_high=_HULL, axis=0,
-          axial=axial)
-    half = TEETH_ROW_HALF_S
-    _teeth_row(bm, TEETH_ROW_OVERLAP * 0.5, TEETH_ROW_OVERLAP * 0.5 + half, 0)
-    _teeth_row(bm, -TEETH_ROW_OVERLAP * 0.5 - half, -TEETH_ROW_OVERLAP * 0.5, 1)
-    return _new_object("citadel_gate", bm)
+    rings = [_ring_x(x, _leaf_section(*sec)) for x, sec in plan]
+    bands = [_JAMB_BAND, _JAMB_BAND, _JAMB_BAND, _JAMB_BAND, _LEAF_BAND,
+             _LEAF_BAND]
+    _loft(bm, rings, bands, cap_low=_HULL, cap_high=_HULL, axis=0)
+    for k in TOOTH_MINE:
+        z0, z1 = _tooth_band(k)
+        _box(bm, TOOTH_TIP_GAP, TOOTH_LEN, TOOTH_ROOT_Y, LEAF_H, z0, z1,
+             _GREEBLE, _TRIM, _GREEBLE)
+    return _new_object("citadel_leaf", bm)
+
+
+# ==========================================================================
+# LE LOGEMENT — le FOURREAU
+# ==========================================================================
+
+#: Les cinq aretes de la section de joue : dessous, flanc exterieur, chanfrein de
+#: couronnement, dessus, flanc INTERIEUR (celui qui guide le vantail).
+_CHEEK_BAND = [_GREEBLE, _HULL, _GREEBLE, _HULL, _GREEBLE]
+
+
+def _cheek_section(side: float, outer: float) -> list[tuple[float, float]]:
+    """La section d'une joue, en (z, y). Cinq points.
+
+    Elle est ETOILEE autour de son propre centre — c'est ce que `_loft` demande
+    pour decider le bobinage, et non la convexite. Un fruit a redent (epaisse en
+    bas, mince en haut, avec une marche) rendrait un produit scalaire nul sur le
+    flanc et le bobinage tomberait a pile ou face.
+    """
+    return [(side * HOUSING_CHEEK_IN, 0.0), (side * outer, 0.0),
+            (side * outer, HOUSING_CAP_Y),
+            (side * (outer - HOUSING_CAP_IN), HOUSING_H),
+            (side * HOUSING_CHEEK_IN, HOUSING_H)]
+
+
+def build_housing() -> bpy.types.Object:
+    """Deux joues, quatre cerces, une sole — et RIEN au-dessus du vantail.
+
+    ⚠️ C'EST UN U ET NON UNE BOITE, ET LA COTE L'IMPOSE. Le sommet du vantail est
+    DEJA au plafond du decor inerte (-3,00) : il ne reste pas un centimetre pour
+    un couvercle. C'est pour cela que le fourreau descend au lieu de monter —
+    assise -6,90 contre -6,60 — et c'est ce qui rend le mecanisme LISIBLE : porte
+    fermee, le U montre une fente sombre de 1,24 m de large et 4,30 m de long a
+    chaque bout de la porte ; porte ouverte, le vantail la remplit. La fente est
+    l'explication du mecanisme, et elle ne coute pas un triangle.
+
+    Sept coques : deux joues, quatre cerces, une sole. La sole PENETRE les joues
+    de 4 cm et s'arrete 4 cm en deca des bouts : deux volumes qui s'affleurent
+    partagent des sommets, `remove_doubles` les soude, et l'arete commune porte
+    alors quatre faces — plus rien n'est prouvable sur la piece (lecon du
+    chapiteau de portique, BRIEF-0096).
+    """
+    bm = bmesh.new()
+    plan = ((HOUSING_X[0], HOUSING_HALF_S),
+            (HOUSING_MOUTH_X, HOUSING_HALF_S),
+            (HOUSING_MOUTH_X + HOUSING_MOUTH_RAMP, HOUSING_CHEEK_OUT),
+            (HOUSING_X[1], HOUSING_CHEEK_OUT))
+    for side in (-1.0, 1.0):
+        rings = [_ring_x(x, _cheek_section(side, outer)) for x, outer in plan]
+        _loft(bm, rings, [_CHEEK_BAND] * (len(plan) - 1), cap_low=_GREEBLE,
+              cap_high=_GREEBLE, axis=0)
+        lo = min(side * HOUSING_RIB_IN, side * HOUSING_HALF_S)
+        hi = max(side * HOUSING_RIB_IN, side * HOUSING_HALF_S)
+        for cx in HOUSING_RIBS:
+            _box(bm, cx - HOUSING_RIB_HALF_X, cx + HOUSING_RIB_HALF_X,
+                 0.0, HOUSING_RIB_Y, lo, hi, _GREEBLE, _GREEBLE, _GREEBLE)
+    _box(bm, HOUSING_X[0] + 0.04, HOUSING_X[1] - 0.04, 0.0, HOUSING_SILL_Y,
+         -HOUSING_CHEEK_IN - 0.04, HOUSING_CHEEK_IN + 0.04,
+         _GREEBLE, _GREEBLE, _GREEBLE)
+    return _new_object("citadel_housing", bm)
 
 
 # ==========================================================================
@@ -1086,7 +1309,8 @@ def build_shield() -> bpy.types.Object:
 #: planche (precedent mesure au BRIEF-0093 : deux colliers de conduite fusionnes
 #: en un seul, restes ainsi jusqu'a ce que ce compte soit ECRIT).
 SHELL_COUNT: dict[str, int] = {
-    "citadel_gate": 13,         # la poutre, et DOUZE dents separees
+    "citadel_leaf": 4,          # le corps, et TROIS dents separees
+    "citadel_housing": 7,       # deux joues, quatre cerces, une sole
     "citadel_pylon": 4,         # deux jambes, un chapiteau, un talon
     "citadel_bastion": 1,
     "citadel_crown": 5,         # la dalle, quatre merlons
@@ -1098,8 +1322,9 @@ SHELL_COUNT: dict[str, int] = {
 
 
 def build_parts() -> list[bpy.types.Object]:
-    parts = [build_gate(), build_pylon(), build_bastion(), build_crown(),
-             build_relay(), build_conduit(), build_core(), build_shield()]
+    parts = [build_leaf(), build_housing(), build_pylon(), build_bastion(),
+             build_crown(), build_relay(), build_conduit(), build_core(),
+             build_shield()]
     names = [obj.name for obj in parts]
     if names != list(PART_NAMES):
         raise ak.ContractError(
@@ -1222,7 +1447,8 @@ def export(parts: list[bpy.types.Object], filepath: str) -> dict:
 #: la fige pas. C'est ce tableau que le harnais confronte au binaire.
 EMPRISE: dict[str, tuple] = {
     # nom : (x0, x1, y0, y1, s0, s1) — s relatif a la station 240
-    "citadel_gate": (-17.20, 17.20, 0.00, 3.60, -0.60, 0.60),
+    "citadel_leaf": (0.00, 12.90, 0.00, 3.60, -0.60, 0.60),
+    "citadel_housing": (12.70, 17.20, 0.00, 3.90, -0.80, 0.80),
     "citadel_pylon": (15.60, 17.20, 0.00, 3.60, -0.90, 0.90),
     "citadel_bastion": (6.90, 11.40, 0.00, 2.90, -0.40, 6.00),
     "citadel_crown": (7.40, 10.00, 0.00, 0.60, 1.60, 5.40),
@@ -1261,7 +1487,12 @@ CORE_RADIUS_MAX = 1.30
 #: comme « visible » une jupe qui ne rendra jamais un pixel, pas a decider quoi
 #: que ce soit.
 VISIBLE_ABOVE: dict[str, float] = {
-    "citadel_gate": -4.99, "citadel_pylon": -9.00, "citadel_bastion": -4.97,
+    # Le vantail garde le plan de la porte du LOT 2 (meme assise, meme station).
+    # Le LOGEMENT, lui, vit au-dela du borde (x 12,70 a 17,20, demi-largeur de
+    # coque 14,0 a cette station) : il n'a rien d'enterre, et son plan
+    # d'emergence est donc sa propre assise.
+    "citadel_leaf": -4.99, "citadel_housing": -6.90,
+    "citadel_pylon": -9.00, "citadel_bastion": -4.97,
     "citadel_crown": -3.61, "citadel_relay": -4.31, "citadel_conduit": -4.31,
     "citadel_core": -4.02, "citadel_shield": -4.58,
 }
@@ -1331,6 +1562,196 @@ def _pylon_bite() -> tuple[float, float]:
     return lo, hi
 
 
+def _ray_runs(tris: list, axis: int, u: float, v: float) -> list[tuple]:
+    """Les intervalles de MATIERE le long de `axis`, aux deux autres coordonnees.
+
+    ⚠️ PAR NOMBRE D'ENLACEMENT, ET NON PAR PARITE. Le vantail est une union de
+    quatre coques qui S'INTERPENETRENT (le corps et ses trois dents, enfoncees de
+    10 cm dans le lit). Une parite compterait « dehors » au milieu d'un
+    recouvrement, et rapporterait donc un JOUR la ou il y a deux epaisseurs de
+    metal — l'exact contraire de ce qu'on mesure. Chaque coque etant fermee et
+    orientee vers l'exterieur (`_assert_solid`, avant l'export), la somme des
+    signes de traversee vaut le nombre d'enlacement : >= 1 = dans la matiere.
+
+    Les facettes paralleles au rayon sont ecartees (elles ne le traversent pas) ;
+    les grilles d'echantillonnage evitent les cotes des sections, ou un rayon
+    passerait exactement par une arete.
+    """
+    a, b = [k for k in range(3) if k != axis]
+    # (axis, a, b) doit etre une permutation DIRECTE pour que le determinant de
+    # la projection soit la composante axiale de la normale : (0,1,2) et (2,0,1)
+    # le sont, (1,0,2) non — d'ou le signe.
+    hand = -1.0 if axis == 1 else 1.0
+    events: list[tuple[float, int]] = []
+    for p0, p1, p2 in tris:
+        d1a, d1b = p1[a] - p0[a], p1[b] - p0[b]
+        d2a, d2b = p2[a] - p0[a], p2[b] - p0[b]
+        det = d1a * d2b - d1b * d2a
+        if abs(det) < 1e-12:
+            continue
+        ra, rb = u - p0[a], v - p0[b]
+        s = (ra * d2b - rb * d2a) / det
+        t = (rb * d1a - ra * d1b) / det
+        if s < 0.0 or t < 0.0 or s + t > 1.0:
+            continue
+        events.append((p0[axis] + s * (p1[axis] - p0[axis])
+                       + t * (p2[axis] - p0[axis]),
+                       1 if det * hand < 0.0 else -1))
+    events.sort()
+    runs: list[tuple[float, float]] = []
+    wind = 0
+    start = 0.0
+    for pos, delta in events:
+        before = wind
+        wind += delta
+        if before <= 0 < wind:
+            start = pos
+        elif before > 0 >= wind:
+            runs.append((start, pos))
+    return runs
+
+
+def _covered(runs: list[tuple], pos: float, tol: float = 1e-6) -> bool:
+    return any(lo - tol <= pos <= hi + tol for lo, hi in runs)
+
+
+def _seam_report(tris: list) -> dict:
+    """LA FERMETURE, MESUREE AU LANCER DE RAYONS SUR LE BINAIRE LIVRE.
+
+    Deux vantaux, l'un tel quel, l'autre par le yaw de pi du moteur : la matiere
+    du vantail babord en (y, s) est celle du tribord en (y, -s), retournee en x.
+    Deux questions, et ce sont les deux seules manieres dont une porte fuit :
+
+      1. LE JOUR D'UNE PORTE — un rayon HORIZONTAL, le long de x. Partout ou la
+         porte a de la matiere a cette hauteur et cette bande, le plan de joint
+         x = 0 doit etre couvert par l'un des deux vantaux. C'est la que se
+         verifie « le tenon ferme la mortaise de l'autre » : dans les bandes 0, 2
+         et 4 c'est le vantail tribord qui tient le joint, dans les bandes 1, 3
+         et 5 c'est celui de babord. Une seule bande decouverte, et on voit les
+         etoiles au travers.
+      2. LE JOUR DE LA CAMERA — un rayon VERTICAL, le long de y, sur toute
+         l'emprise de la porte fermee. C'est lui qui prouve que les mortaises
+         sont des POCHES et non des fentes traversantes : le lit est plein a
+         3,00, et la camera qui plonge a 70 deg ne voit jamais la coque a travers
+         la machoire.
+    """
+    bands = TOOTH_BANDS
+    width = 2.0 * LEAF_HALF_S / bands
+    gap_max = 0.0
+    gap_at: tuple[float, float] | None = None
+    holder = {"les deux": 0, "gorge": 0, "sans objet": 0}
+    tested = 0
+    for i in range(bands * 4):
+        # quatre hauteurs par bande, decalees pour ne jamais tomber sur une cote
+        z = -LEAF_HALF_S + width * (i // 4) + width * (0.17 + 0.22 * (i % 4))
+        for j in range(23):
+            y = 0.041 + 3.52 * j / 22.0
+            here = _ray_runs(tris, 0, y, z)
+            there = [(-hi, -lo) for lo, hi in _ray_runs(tris, 0, y, -z)]
+            # ⚠️ ON NE TESTE LE JOINT QUE LA OU IL Y A DEUX CHOSES A JOINDRE.
+            # Au-dessus du lit, la mortaise d'un vantail est un CANAL OUVERT que
+            # rien ne doit fermer — c'est le motif de la machoire, mesure a part
+            # (`jaw`). Exiger de la matiere au plan de joint a CETTE hauteur
+            # reviendrait a interdire la denture qu'on demande.
+            near_here = any(lo < 0.30 for lo, _h in here)
+            near_there = any(hi > -0.30 for _l, hi in there)
+            if not (near_here and near_there):
+                holder["sans objet"] += 1
+                continue
+            tested += 1
+            if _covered(here, 0.0) and _covered(there, 0.0):
+                holder["les deux"] += 1
+            else:
+                # ⚠️ LES DEUX CORPS NE SE TOUCHENT PAS ICI : c'est soit la GORGE
+                # DE REFEND — un rentrant de surface, borne par construction a
+                # deux fois sa profondeur en x — soit un vrai jour. La seule
+                # chose qui les separe est la LARGEUR, et c'est pour cela qu'on
+                # la mesure au lieu de compter des echecs.
+                holder["gorge"] += 1
+                lo = max((hi for _l, hi in there), default=-math.inf)
+                hi = min((l for l, _h in here), default=math.inf)
+                if hi - lo > gap_max:
+                    gap_max, gap_at = hi - lo, (y, z)
+    # ⚠️ LA MACHOIRE SE MESURE PAR LE PROFIL DE CRETE, BANDE PAR BANDE, DE PART
+    # ET D'AUTRE DU JOINT — c'est la seule chose qui distingue une denture d'un
+    # peigne decoratif. A 30 cm du plan de joint, on demande a la matiere jusqu'ou
+    # elle monte : dans les bandes de CE vantail elle monte au sommet (dent), dans
+    # les autres elle s'arrete au lit (mortaise), et la PHASE S'INVERSE en
+    # franchissant l'axe. Le vantail babord etant le tribord par un yaw de pi, sa
+    # crete en (x, s) est celle du tribord en (-x, -s).
+    jaw: list[tuple[float, float]] = []
+    for k in range(bands):
+        z = -LEAF_HALF_S + width * (k + 0.5)
+        jaw.append((
+            max((hi for _l, hi in _ray_runs(tris, 1, 0.30, z)), default=0.0),
+            max((hi for _l, hi in _ray_runs(tris, 1, 0.30, -z)), default=0.0)))
+    # ⚠️ ET LE JOUR QUI COMPTE VRAIMENT EST VERTICAL. La camera plonge a 70 deg,
+    # donc a 20 deg de la verticale : ce qui se verrait au travers d'une mortaise
+    # devenue fente, c'est la coque deux metres plus bas. On tire donc a la
+    # verticale sur toute la zone du joint, les deux vantaux montes.
+    holes: list[tuple[float, float]] = []
+    thinnest = math.inf
+    for i in range(61):
+        x = -3.00 + 6.00 * i / 60.0
+        for j in range(bands * 3):
+            z = -LEAF_HALF_S + width * (j // 3) + width * (0.21 + 0.29 * (j % 3))
+            depth = sum(hi - lo for lo, hi in _ray_runs(tris, 1, x, z)) \
+                + sum(hi - lo for lo, hi in _ray_runs(tris, 1, -x, -z))
+            if depth <= 1e-6:
+                holes.append((x, z))
+            else:
+                thinnest = min(thinnest, depth)
+    return {"seam_tested": tested, "seam_gap": gap_max, "seam_gap_at": gap_at,
+            "seam_holder": holder, "jaw": jaw, "vertical_holes": holes,
+            "vertical_min": thinnest}
+
+
+def _housing_fit(leaf: dict, housing: dict, travel: float) -> dict:
+    """LE VANTAIL DANS SON FOURREAU — jeux relus sur les SOMMETS du binaire.
+
+    Le fourreau n'est pas decrit par ses constantes mais RETROUVE dans le
+    fichier : sa demi-largeur utile est le plus petit |s| de tout ce qui se
+    trouve au-dessus de sa sole (donc la face interieure des joues), et le
+    dessus de sa sole est le plus haut sommet compris entre ces deux joues. Un
+    logement dont on aurait epaissi une joue par megarde rendrait donc un jeu
+    negatif, et le build echouerait.
+    """
+    seat_l, seat_h = SEAT["citadel_leaf"], SEAT["citadel_housing"]
+    hpts = housing["points"]
+    cavity_s = min((abs(p[2]) for p in hpts
+                    if p[1] > HOUSING_SILL_Y + 0.05), default=0.0)
+    x0, x1 = housing["min"][0], housing["max"][0]
+    # ⚠️ LE FOND DU FOURREAU SE TIRE AU RAYON, IL NE SE LIT PAS SUR LES SOMMETS.
+    # La sole DEBORDE dans les joues (de 4 cm, pour ne pas leur affleurer) :
+    # aucun de ses sommets n'est donc « dans » la cavite, et un max sur les
+    # sommets rendait 0,00 — c'est-a-dire un jeu de 0,30 m annonce la ou il y en
+    # a 0,02. On demande donc a la matiere, verticalement, ce qu'elle a de plus
+    # haut a l'interieur du U : cela mesure la sole ET tout ce qui viendrait un
+    # jour barrer la course.
+    sill = 0.0
+    for i in range(19):
+        px = x0 + (x1 - x0) * (i + 0.5) / 19.0
+        for j in range(9):
+            pz = -cavity_s + 2.0 * cavity_s * (j + 0.5) / 9.0
+            for _lo, hi in _ray_runs(housing["geom"], 1, px, pz):
+                sill = max(sill, hi)
+    inside = [p for p in leaf["points"] if p[0] + travel >= x0]
+    lateral = cavity_s - max((abs(p[2]) for p in inside), default=0.0)
+    vertical = (seat_l + min((p[1] for p in inside), default=0.0)) \
+        - (seat_h + sill)
+    return {
+        "travel": travel,
+        "cavity_half_s": cavity_s,
+        "sill_y": seat_h + sill,
+        "leaf_x": (leaf["min"][0] + travel, leaf["max"][0] + travel),
+        "overlap": leaf["max"][0] + travel - x0,
+        "margin_out": housing["max"][0] - (leaf["max"][0] + travel),
+        "passe": 2.0 * (leaf["min"][0] + travel),
+        "lateral": lateral,
+        "vertical": vertical,
+    }
+
+
 def _frame_width(plane_y: float) -> float:
     """La largeur du cadre de la camera du jeu, au plan `plane_y`.
 
@@ -1385,7 +1806,7 @@ def _audit(path: str) -> dict:
     roots = gltf.get("scenes", [{}])[0].get("nodes", list(range(len(nodes))))
     root_names = [nodes[i].get("name", "?") for i in roots]
 
-    # --- LES HUIT NOMS, ET RIEN D'AUTRE ----------------------------------
+    # --- LES NEUF NOMS, ET RIEN D'AUTRE ----------------------------------
     for name in PART_NAMES:
         if name not in root_names:
             problems.append(f"piece '{name}' absente du kit — le moteur monte "
@@ -1480,7 +1901,11 @@ def _audit(path: str) -> dict:
         stats[name] = {"triangles": triangles, "min": tuple(lo),
                        "max": tuple(hi),
                        "size": tuple(hi[a] - lo[a] for a in range(3)),
-                       "points": pts}
+                       "points": pts,
+                       # les triangles en COORDONNEES : c'est sur eux que le
+                       # lancer de rayons de `_seam_report()` travaille, donc
+                       # sur le binaire et non sur la scene Blender.
+                       "geom": [(pts[a], pts[b], pts[c]) for a, b, c in tris]}
 
     # --- LA REGLE DURE : AUCUN EMISSIF HORS DES PIECES QUI MEURENT --------
     for name in PART_NAMES:
@@ -1527,7 +1952,15 @@ def _audit(path: str) -> dict:
                 "demande par le brief — et aucun ecart n'est declare pour ce "
                 "champ (`_EMPRISE_ECARTS`)")
 
-    # --- LE MIROIR : CENTRE EN Z, ET FRANCHEMENT TRIBORD ------------------
+    # --- LE MIROIR : DEUX REGLES, ET LE HARNAIS LES DISTINGUE -------------
+    # ⚠️ LE CENTRAGE EN Z VAUT POUR LES NEUF, SANS EXCEPTION : c'est
+    # l'excentricite en `s` que le yaw de pi retourne, et une boite qui n'y
+    # serait pas centree poserait la copie babord DECALEE LE LONG DU VAISSEAU.
+    # La regle de COTE, elle, depend de ce que l'origine de la piece designe :
+    # son centre pour six d'entre elles — qui doivent donc rester franchement
+    # tribord — son BOUT INTERIEUR pour le vantail, dont la matiere commence a
+    # x = 0 tout juste, parce que c'est la que les deux moities se rejoignent.
+    # Une regle unique refuserait l'une ou laisserait passer l'autre.
     for name in PART_NAMES:
         got = stats.get(name)
         if got is None:
@@ -1538,7 +1971,18 @@ def _audit(path: str) -> dict:
                 f"{name} : centre en Z a {centre_z:+.5f} au lieu de 0 — le yaw "
                 "de pi du moteur enverrait la copie babord a DEUX FOIS cette "
                 "excentricite le long du vaisseau, et rien ne le dirait")
-        if name in MIRRORED and got["min"][0] <= 0.05:
+        if name in ORIGIN_AT_INNER_END:
+            if got["min"][0] < -1e-4:
+                problems.append(
+                    f"{name} : sa matiere franchit l'axe de "
+                    f"{-got['min'][0]:.3f} m — la copie babord recouvrirait la "
+                    "sienne, et la passe ouverte perdrait le double")
+            elif got["min"][0] > 1e-3:
+                problems.append(
+                    f"{name} : sa matiere commence a x = {got['min'][0]:+.4f} "
+                    f"au lieu de 0 — porte fermee, les deux moities laisseraient "
+                    f"un jour de {2 * got['min'][0]:.3f} m au milieu")
+        elif name in MIRRORED and got["min"][0] <= 0.05:
             problems.append(
                 f"{name} : il atteint x = {got['min'][0]:+.3f} — une piece "
                 "miroitee doit rester franchement tribord, sans quoi les deux "
@@ -1563,21 +2007,43 @@ def _audit(path: str) -> dict:
                 f"{got['max'][1]:.3f})")
 
     # --- LES QUATRE SILHOUETTES, MESUREES ---------------------------------
-    gate = stats.get("citadel_gate")
+    leaf = stats.get("citadel_leaf")
+    housing = stats.get("citadel_housing")
     bastion = stats.get("citadel_bastion")
     relay = stats.get("citadel_relay")
     conduit = stats.get("citadel_conduit")
     core = stats.get("citadel_core")
-    if gate is not None:
-        ratio = gate["size"][0] / gate["size"][2]
+    if leaf is not None:
+        ratio = 2.0 * DOOR_HALF_X / leaf["size"][2]
         if ratio < 20.0:
             problems.append(
-                f"citadel_gate : {ratio:.1f} : 1 de rapport longueur/epaisseur — "
-                "sa signature est la LONGUEUR, elle doit rester la seule chose "
-                "du niveau qui traverse le cadre")
-        if gate["size"][0] <= max(s["size"][0] for n, s in stats.items()
-                                  if n != "citadel_gate"):
-            problems.append("citadel_gate n'est plus la piece la plus longue")
+                f"la porte assemblee : {ratio:.1f} : 1 de rapport "
+                "longueur/epaisseur — sa signature est la LONGUEUR, elle doit "
+                "rester la seule chose du niveau qui traverse le cadre")
+        if leaf["size"][0] <= max(s["size"][0] for n, s in stats.items()
+                                  if n != "citadel_leaf"):
+            problems.append("citadel_leaf n'est plus la piece la plus longue")
+    if leaf is not None and housing is not None:
+        # ⚠️ LE FOURREAU EST PLUS GRAND QUE CE QU'IL RECOIT, ET IL LE DEVIENT
+        # PAR LE BAS. C'est la cote qui peut tout casser en silence : un
+        # logement qui gagnerait sa garde en montant franchirait le plafond du
+        # decor inerte (ADR-0041) sans qu'aucun test ne rougisse.
+        if housing["size"][2] <= leaf["size"][2] + 1e-6:
+            problems.append(
+                f"citadel_housing : {housing['size'][2]:.2f} m d'epaisseur pour "
+                f"un vantail de {leaf['size'][2]:.2f} m — un fourreau plus mince "
+                "que sa piece ne la recoit pas")
+        if SEAT["citadel_housing"] >= SEAT["citadel_leaf"] - 1e-6:
+            problems.append(
+                "citadel_housing : son assise n'est pas SOUS celle du vantail — "
+                "un fourreau qui gagne sa garde par le haut franchit le plafond")
+        crest_l = SEAT["citadel_leaf"] + leaf["max"][1]
+        crest_h = SEAT["citadel_housing"] + housing["max"][1]
+        if abs(crest_h - crest_l) > 1.5e-3:
+            problems.append(
+                f"citadel_housing culmine a {crest_h:+.3f} et le vantail a "
+                f"{crest_l:+.3f} : les deux doivent affleurer le plafond du "
+                "decor, pas se marcher dessus")
     if bastion is not None:
         if bastion["size"][0] <= bastion["size"][1]:
             problems.append(
@@ -1649,15 +2115,15 @@ def _audit(path: str) -> dict:
 
     # --- LA PORTE FERME-T-ELLE VRAIMENT LA ROUTE ? ------------------------
     frame = _frame_width(-4.30)
-    covered = 2.0 * GATE_HALF_X / frame
+    covered = 2.0 * DOOR_HALF_X / frame
     if covered < 0.80:
         problems.append(
-            f"citadel_gate ne couvre que {100 * covered:.1f} pct du cadre de la "
+            f"la porte ne couvre que {100 * covered:.1f} pct du cadre de la "
             "camera : le joueur contournerait le verrou, et la sequence "
             "deviendrait facultative")
     # --- ET LE SURPLOMB EST-IL PORTE ? ------------------------------------
     hull_half = cortege._half_width(CITADEL_STATION, 1.0)
-    overhang = GATE_HALF_X - hull_half
+    overhang = DOOR_HALF_X - hull_half
     bite_lo, bite_hi = _pylon_bite()
     if bite_lo <= 0.02:
         problems.append(
@@ -1678,6 +2144,70 @@ def _audit(path: str) -> dict:
         problems.append(
             f"citadel_conduit : il FLOTTE de {floating:.3f} m au-dessus de la "
             "peau — le talus de l'artere n'est pas la ou son dessous le croit")
+
+    # --- LA FERMETURE ET LA COURSE, MESUREES SUR LE BINAIRE ----------------
+    seam = _seam_report(leaf["geom"]) if leaf is not None else None
+    if seam is not None:
+        if seam["seam_gap"] > 2.0 * REVEAL_X + 1e-3:
+            y, z = seam["seam_gap_at"]
+            problems.append(
+                f"le plan de joint est ouvert de {seam['seam_gap']:.3f} m "
+                f"(a y = {y:.2f}, s = {z:+.2f}) : c'est plus que la gorge de "
+                f"refend ({2 * REVEAL_X:.2f} m), donc un JOUR — porte fermee, "
+                "on verrait au travers")
+        if seam["vertical_holes"]:
+            x, z = seam["vertical_holes"][0]
+            problems.append(
+                f"{len(seam['vertical_holes'])} echantillon(s) traversent la "
+                f"porte fermee VERTICALEMENT (par exemple x = {x:+.2f}, "
+                f"s = {z:+.2f}) — une mortaise est devenue une fente, et la "
+                "camera plonge a 70 deg")
+        step = LEAF_H - TOOTH_BED_Y
+        signs = [1 if a > b + 0.5 * step else (-1 if b > a + 0.5 * step else 0)
+                 for a, b in seam["jaw"]]
+        if 0 in signs:
+            problems.append(
+                f"profil de crete {['%.2f/%.2f' % ab for ab in seam['jaw']]} : "
+                f"une bande au moins ne montre pas de marche de {step:.2f} m "
+                "entre les deux vantaux — la machoire ne s'engrene pas, et la "
+                "porte se lira comme un mur")
+        elif any(signs[k] == signs[k + 1] for k in range(len(signs) - 1)):
+            problems.append(
+                f"profil de crete {signs} : deux bandes voisines montent du "
+                "MEME cote — une dent tombe en face d'une dent, ce que le "
+                "compte impair est justement la pour interdire")
+        elif signs.count(1) != len(TOOTH_MINE) or signs.count(1) % 2 == 0:
+            problems.append(
+                f"{signs.count(1)} dent(s) par vantail au lieu de "
+                f"{len(TOOTH_MINE)}, et le compte doit rester IMPAIR")
+    fits = []
+    if leaf is not None and housing is not None:
+        for travel in (0.0, LEAF_TRAVEL):
+            fit = _housing_fit(leaf, housing, travel)
+            fits.append(fit)
+            if fit["lateral"] < 0.005:
+                problems.append(
+                    f"course {travel:.2f} : le vantail ne passe plus dans son "
+                    f"fourreau ({fit['lateral']:+.3f} m de jeu lateral)")
+            if fit["vertical"] < 0.005:
+                problems.append(
+                    f"course {travel:.2f} : le vantail touche la sole du "
+                    f"fourreau ({fit['vertical']:+.3f} m de jeu)")
+            if fit["margin_out"] < -1e-4:
+                problems.append(
+                    f"course {travel:.2f} : le vantail depasse le bout "
+                    f"exterieur de {-fit['margin_out']:.3f} m — rien ne doit "
+                    f"sortir de x = {DOOR_HALF_X:.2f}")
+        if abs(fits[0]["overlap"] - 0.20) > 1.5e-3:
+            problems.append(
+                f"ferme, le vantail n'entre dans son logement que de "
+                f"{fits[0]['overlap']:.3f} m au lieu de 0,20 — c'est ce "
+                "recouvrement qui interdit un jour au bout de la porte")
+        if abs(fits[1]["passe"] - 8.50) > 1.5e-3:
+            problems.append(
+                f"ouverte, la passe fait {fits[1]['passe']:.3f} m au lieu de "
+                "8,50 — le corps du Specter-9 en fait 1,76 (ADR-0034), et une "
+                "passe qu'il faut enfiler n'est pas une passe")
 
     # --- UV, materiaux, textures ------------------------------------------
     if prims_total == 0 or prims_uv != prims_total:
@@ -1743,6 +2273,7 @@ def _audit(path: str) -> dict:
 
     for name in stats:
         stats[name].pop("points", None)
+        stats[name].pop("geom", None)
     assembled = sum(stats[n]["triangles"] * ASSEMBLY_COPIES[n]
                     for n in PART_NAMES)
     return {
@@ -1770,6 +2301,8 @@ def _audit(path: str) -> dict:
         "pylon_bite": (bite_lo, bite_hi),
         "conduit_ground": (clearance, floating, buried),
         "trim_share": trim_share,
+        "seam": seam,
+        "fits": fits,
         "bytes": os.path.getsize(path),
     }
 
@@ -1796,7 +2329,8 @@ def _print_report(report: dict) -> None:
               f"{s['size'][0]:9.2f} x {s['size'][1]:6.2f} x {s['size'][2]:7.2f}")
     print(f"  {'TOTAL (kit)':<17} {report['triangles']:>5}     "
           f"budget {TRI_BUDGET_KIT}")
-    print(f"  verrou assemble (13 instances) : {report['assembled']} triangles")
+    print(f"  verrou assemble ({sum(ASSEMBLY_COPIES.values())} instances) : "
+          f"{report['assembled']} triangles")
 
     print("\n  L'EMPRISE MESUREE, PIECE PAR PIECE — c'est elle qui dit au moteur")
     print("  ou poser. Repere local : x de COQUE, y depuis l'ASSISE, s relatif a")
@@ -1834,20 +2368,27 @@ def _print_report(report: dict) -> None:
         print(f"    {name:<17} {SEAT[name]:8.2f} {s['max'][1]:8.2f} "
               f"{crest:8.2f} {ceiling:8.2f} {ceiling - crest:7.2f}")
     print(f"    Le noyau culmine a {report['crests']['citadel_core']:+.2f} : "
-          f"{report['crests']['citadel_core'] - report['crests']['citadel_gate']:+.2f} m "
-          "au-dessus de la porte et\n    des couronnes. Le seul volume autorise a "
-          "culminer est celui qu'on peut tirer.")
+          f"{report['crests']['citadel_core'] - report['crests']['citadel_leaf']:+.2f} m "
+          "au-dessus des vantaux et\n    des couronnes. Le seul volume autorise "
+          "a culminer est celui qu'on peut tirer.")
+    print(f"    Vantail et logement affleurent le MEME plafond "
+          f"({report['crests']['citadel_leaf']:+.2f} et "
+          f"{report['crests']['citadel_housing']:+.2f}) : le fourreau a gagne sa "
+          "garde\n    par le BAS (assise -6,90 contre -6,60), jamais par le "
+          "haut.")
 
     print("\n  LES QUATRE SILHOUETTES, MESUREES (pas affirmees)")
-    gate = report["parts"]["citadel_gate"]
+    leaf = report["parts"]["citadel_leaf"]
+    housing = report["parts"]["citadel_housing"]
     bastion = report["parts"]["citadel_bastion"]
     relay = report["parts"]["citadel_relay"]
     conduit = report["parts"]["citadel_conduit"]
     core = report["parts"]["citadel_core"]
-    print(f"    porte    LONGUEUR      {gate['size'][0]:.2f} m pour "
-          f"{gate['size'][2]:.2f} m d'epaisseur, soit "
-          f"{gate['size'][0] / gate['size'][2]:.1f} : 1 ; denture de "
-          f"{2 * TEETH_HALF_X:.2f} m, {TEETH_CELLS // 2} dents par rangee")
+    print(f"    porte    LONGUEUR      {2 * DOOR_HALF_X:.2f} m assemblee pour "
+          f"{leaf['size'][2]:.2f} m d'epaisseur, soit "
+          f"{2 * DOOR_HALF_X / leaf['size'][2]:.1f} : 1 ; DEUX vantaux de "
+          f"{leaf['size'][0]:.2f} m, {len(TOOTH_MINE)} dents chacun sur "
+          f"{TOOTH_BANDS} bandes")
     print(f"    bastion  MASSE ETAGEE  {bastion['size'][0]:.2f} m de large pour "
           f"{bastion['size'][1]:.2f} m de haut (plus large que haut), deux "
           f"niveaux : {SEAT['citadel_bastion'] + bastion['size'][1]:+.2f} puis "
@@ -1864,10 +2405,42 @@ def _print_report(report: dict) -> None:
           f"prismatique (1,0000 = revolution parfaite) ; rayon "
           f"{core['size'][0] / 2:.2f} m")
 
+    print("\n  LA MACHOIRE ET LA COURSE — MESUREES SUR LE BINAIRE LIVRE")
+    seam = report["seam"]
+    print(f"    plan de joint : {seam['seam_tested']} echantillons de rayon "
+          f"horizontal ; ouverture maximale {seam['seam_gap']:.3f} m, pour une "
+          f"gorge de refend de {2 * REVEAL_X:.2f} m")
+    print(f"      les deux corps se touchent {seam['seam_holder']['les deux']} "
+          f"fois, la gorge de refend en ecarte {seam['seam_holder']['gorge']}, "
+          f"et {seam['seam_holder']['sans objet']} echantillons sont hors sujet\n"
+          "      (canal de mortaise ouvert : il n'y a rien a joindre a cette "
+          "hauteur)")
+    print("    PROFIL DE CRETE a 30 cm du joint, bande par bande — c'est la "
+          "MACHOIRE, mesuree :")
+    for k, (a, b) in enumerate(seam["jaw"]):
+        mark = "dent  " if a > b else "mortaise"
+        print(f"      bande {k} (s {-LEAF_HALF_S + 2 * LEAF_HALF_S * k / TOOTH_BANDS:+.2f} "
+              f"a {-LEAF_HALF_S + 2 * LEAF_HALF_S * (k + 1) / TOOTH_BANDS:+.2f}) : "
+              f"tribord {a:.2f}  babord {b:.2f}   -> {mark} a tribord")
+    print(f"    traversee verticale : {len(seam['vertical_holes'])} trou(s) ; "
+          f"epaisseur minimale rencontree {seam['vertical_min']:.3f} m "
+          "(les mortaises sont des POCHES)")
+    for fit in report["fits"]:
+        print(f"    course {fit['travel']:.2f} m : vantail x "
+              f"{fit['leaf_x'][0]:+.2f} a {fit['leaf_x'][1]:+.2f} ; "
+              f"engagement dans le logement {fit['overlap']:+.3f} m ; marge sous "
+              f"{DOOR_HALF_X:.2f} : {fit['margin_out']:+.3f} m ;\n"
+              f"      passe {fit['passe']:.2f} m ; jeux dans le fourreau "
+              f"{fit['lateral']:+.3f} m lateral, {fit['vertical']:+.3f} m sous "
+              "l'assise")
+    print(f"    fourreau relu sur le binaire : demi-largeur utile "
+          f"{report['fits'][0]['cavity_half_s']:.2f} m, sole a "
+          f"{report['fits'][0]['sill_y']:+.2f}")
+
     print("\n  LE SURPLOMB, ET CE QUI LE PORTE")
     print(f"    cadre de la camera au plan du pont : "
           f"{report['frame_width']:.2f} m ; porte "
-          f"{2 * GATE_HALF_X:.2f} m, soit {100 * report['gate_cover']:.1f} pct")
+          f"{2 * DOOR_HALF_X:.2f} m, soit {100 * report['gate_cover']:.1f} pct")
     print(f"    demi-largeur de coque a s = {CITADEL_STATION:.0f} : "
           f"{report['hull_half']:.2f} m (taper du troncon 3) -> "
           f"{report['overhang']:.2f} m de poutre en l'air par bord")
@@ -1947,6 +2520,7 @@ TILE_W = 1440
 SCENE_H = 660
 PLAN_H = 460
 CLOSE_H = 620
+MOVE_H = 560                # les deux positions ouvertes : le cadre suffit
 FRONT_H = 300
 UV_H = 420
 
@@ -2000,25 +2574,32 @@ def _place(name: str, position: Vector, yaw: float = 0.0) -> list:
     return keep
 
 
-def _assemble(shift: float, relays: tuple[bool, bool] = (True, True),
+def _assemble(shift: float, travel: float = 0.0,
+              relays: tuple[bool, bool] = (True, True),
               core: bool = True, shield: bool = True,
               turrets: bool = True) -> list:
     """Monte LE VERROU ENTIER, comme le fera `CortegeCitadel`.
 
-    C'est la SEULE façon de juger le lot : le kit livre huit pieces et aucune ne
+    C'est la SEULE façon de juger le lot : le kit livre neuf pieces et aucune ne
     prouve quoi que ce soit seule. `relays` et `core` permettent de rendre le
-    verrou APRES sabotage — la seule image qui montre a quoi sert le partage en
-    huit nœuds.
+    verrou APRES sabotage ; `travel` est LA COURSE DES VANTAUX — 0 ferme, 4,25
+    ouvert — et c'est la seule chose que le moteur ajoutera a la pose.
+
+    ⚠️ LA COURSE EST UNE TRANSLATION EN X, ET SON SIGNE EST CELUI DU BORD. Le
+    vantail est modelise tribord, origine au bout interieur ; la copie babord
+    subit le yaw de pi, donc sa course s'ecrit -travel dans le repere parent. Le
+    moteur n'aura pas d'autre arithmetique de cote a faire.
     """
     placed: list = []
     base = -CITADEL_STATION + shift
 
-    def pose(name: str, yaw: float = 0.0) -> None:
-        placed.extend(_place(name, Vector((0.0, SEAT[name],
+    def pose(name: str, yaw: float = 0.0, dx: float = 0.0) -> None:
+        placed.extend(_place(name, Vector((dx, SEAT[name],
                                            base + ASSEMBLY_Z[name])), yaw))
 
-    pose("citadel_gate")
     for side, yaw in ((1.0, 0.0), (-1.0, math.pi)):
+        pose("citadel_housing", yaw)
+        pose("citadel_leaf", yaw, side * travel)
         pose("citadel_pylon", yaw)
         pose("citadel_bastion", yaw)
         pose("citadel_crown", yaw)
@@ -2061,7 +2642,8 @@ def _light_turret(centre: Vector, aim: float) -> list:
     return pieces
 
 
-def _tile_acceptance(path: str, report: dict, greyscale: bool) -> None:
+def _tile_acceptance(path: str, report: dict, greyscale: bool,
+                     travel: float = 0.0, height: int = SCENE_H) -> None:
     """LE TEST D'ACCEPTATION : le verrou entier, a la camera du jeu.
 
     ⚠️ EN NOIR ET BLANC ET EMISSIFS COUPES, C'EST LE CRITERE QUI DECIDE DU LOT.
@@ -2073,7 +2655,7 @@ def _tile_acceptance(path: str, report: dict, greyscale: bool) -> None:
     baykit._plate_reset()
     shift = baykit._game_shift(ACCEPTANCE_AIM)
     decor = baykit._import(HULL, "Decor", Vector((0.0, 0.0, shift)))
-    kits = _assemble(shift)
+    kits = _assemble(shift, travel)
     fighter = baykit._import(FIGHTER, "Player", Vector((4.6, 0.0, 3.4)))
     if greyscale:
         baykit._to_greyscale(decor + kits + fighter)
@@ -2081,44 +2663,60 @@ def _tile_acceptance(path: str, report: dict, greyscale: bool) -> None:
     camera = baykit._plate_camera("game", _to_blender(CAM_POS),
                                   _to_blender(CAM_FORWARD),
                                   _to_blender(CAM_UP), CAM_FOV_V)
-    if greyscale:
+    passe = 2.0 * travel
+    if greyscale and travel <= 0.0:
         baykit._label(
             camera, "TEST D'ACCEPTATION — NOIR ET BLANC, EMISSIFS COUPES : "
-            "BASTION != RELAIS != NOYAU != PASSAGE",
-            -0.97, 0.91, 0.038, TILE_W, SCENE_H, (1.0, 0.88, 0.55))
+            "PORTE FERMEE, ET ON DOIT LIRE « CA S'OUVRE AU MILIEU »",
+            -0.97, 0.91, 0.038, TILE_W, height, (1.0, 0.88, 0.55))
         baykit._label(
-            camera, "porte : la LONGUEUR — 34,40 m pour 1,20 m d'epaisseur "
-            "(28,7 : 1), denture de 4,80 m au centre.   bastion : la MASSE "
-            "ETAGEE — 4,50 m de large pour 2,90 m de haut, plus une couronne.",
-            -0.97, 0.845, 0.026, TILE_W, SCENE_H)
+            camera, "trois signaux, et aucun n'est une couleur. Le TABLEAU : "
+            "les 2,40 m internes de chaque vantail sont plus epais EN HAUT — "
+            "0,96 m de dessus contre 0,60.\nLa MACHOIRE : trois dents claires, "
+            "trois mortaises de 0,60 m de creux, et la PHASE S'INVERSE en "
+            "franchissant l'axe.",
+            -0.97, 0.845, 0.026, TILE_W, height)
         baykit._label(
-            camera, "relais : le BRANCHEMENT — un fut prismatique de 1,60 m, un "
-            "collier, et un caisson de 4,20 m qui court vers le centre.   "
-            "noyau : la REVOLUTION — le seul tambour, et le point le plus haut.",
-            -0.97, 0.785, 0.026, TILE_W, SCENE_H, (0.72, 0.84, 1.0))
+            camera, "Le REFEND : au milieu exact, une gorge de 0,14 m sur "
+            "0,60 m de creux traverse toute l'epaisseur.\nLes six autres "
+            "pieces du kit n'ont pas bouge d'un micron — memes octets.",
+            -0.97, 0.725, 0.026, TILE_W, height, (0.72, 0.84, 1.0))
+    elif greyscale:
+        baykit._label(
+            camera, f"COURSE {travel:.2f} m — "
+            + ("A MI-CHEMIN" if travel < LEAF_TRAVEL - 1e-6
+               else "OUVERTE : LA ROUTE EST LA"),
+            -0.97, 0.91, 0.038, TILE_W, height, (1.0, 0.88, 0.55))
+        baykit._label(
+            camera, f"passe {passe:.2f} m — le corps du Specter-9 en fait 1,76 "
+            f"(ADR-0034), soit {passe / 1.76:.1f} fois sa largeur. Les deux "
+            f"vantaux vont de {travel:+.2f} a {travel + LEAF_LEN:+.2f} : rien "
+            f"ne sort de {DOOR_HALF_X:.2f}.",
+            -0.97, 0.845, 0.026, TILE_W, height)
     else:
         baykit._label(
             camera, "LE MEME CADRE, EN COULEUR — ce que l'emissif AJOUTE a une "
             "fonction deja lisible en geometrie",
-            -0.97, 0.91, 0.038, TILE_W, SCENE_H, (1.0, 0.88, 0.55))
+            -0.97, 0.91, 0.038, TILE_W, height, (1.0, 0.88, 0.55))
         baykit._label(
             camera, "deux lampes de relais et une ceinture de noyau, et RIEN "
-            "d'autre n'est emissif : la porte, les bastions, les couronnes, les "
-            "portiques et les conduits sont eteints.",
-            -0.97, 0.845, 0.026, TILE_W, SCENE_H)
+            "d'autre n'est emissif : les vantaux, les logements, les bastions, "
+            "les couronnes, les portiques et les conduits sont eteints.",
+            -0.97, 0.845, 0.026, TILE_W, height)
         baykit._label(
-            camera, "C'est ce qui fait qu'un relais abattu se VOIT abattu — le "
-            "moteur detruit `citadel_relay` et `citadel_core` separement.",
-            -0.97, 0.785, 0.026, TILE_W, SCENE_H, (0.72, 0.84, 1.0))
+            camera, "Un vantail qui brillerait entrerait en concurrence avec "
+            "les deux seuls signaux d'etat du verrou — c'est la regle du "
+            "BRIEF-0097, plus dure encore que celle du LOT 2.",
+            -0.97, 0.785, 0.026, TILE_W, height, (0.72, 0.84, 1.0))
     baykit._label(
         camera, "camera de graybox.tscn sans retouche (0, 14, 5), FOV 62, "
         "70 deg sous l'horizontale ; Specter-9 reel a sa place de jeu ; "
         "tourelles de garde a l'echelle LEGERE",
-        -0.97, -0.93, 0.026, TILE_W, SCENE_H, (0.72, 0.84, 1.0))
-    baykit._render(path, TILE_W, SCENE_H)
+        -0.97, -0.93, 0.026, TILE_W, height, (0.72, 0.84, 1.0))
+    baykit._render(path, TILE_W, height)
 
 
-def _tile_plan(path: str, report: dict) -> None:
+def _tile_plan(path: str, report: dict, travel: float = 0.0) -> None:
     """LES QUATRE AXES, VUS D'EN HAUT, EN NOIR ET BLANC.
 
     La camera du jeu est a 20 deg de la VERTICALE : le plan est donc, a peu de
@@ -2128,7 +2726,7 @@ def _tile_plan(path: str, report: dict) -> None:
     """
     baykit._plate_reset()
     decor = baykit._import(HULL, "Decor", Vector((0.0, 0.0, 0.0)))
-    kits = _assemble(0.0)
+    kits = _assemble(0.0, travel)
     baykit._to_greyscale(decor + kits)
     baykit._plate_lights()
     centre = -(CITADEL_STATION + 3.1)
@@ -2138,59 +2736,74 @@ def _tile_plan(path: str, report: dict) -> None:
         _to_blender(Vector((0.0, 0.0, -1.0))),
         math.radians(30.0), ortho=PLAN_H * 42.0 / TILE_W)
     baykit._label(
-        camera, "LE PLAN, EN NOIR ET BLANC — proue en bas, 42 m de large",
+        camera, "LE PLAN, EN NOIR ET BLANC — proue en bas, 42 m de large "
+        f"(course {travel:.2f} m)",
         -0.985, 0.88, 0.048, TILE_W, PLAN_H, (1.0, 0.88, 0.55))
     baykit._label(
-        camera, "la LONGUEUR traverse tout le cadre et sa DENTURE marque le "
-        "milieu ; les deux MASSES etagees tiennent les bords ; deux "
-        "BRANCHEMENTS pointent l'axe ; un seul volume est ROND.",
-        -0.985, -0.86, 0.036, TILE_W, PLAN_H)
+        camera, "la camera du jeu est a 20 deg de la VERTICALE : ce plan est, "
+        "a peu de chose pres, ce que le joueur voit.\nLa MACHOIRE s'y lit — six "
+        "bandes, et la phase change au milieu. Aux deux bouts, la FENTE du "
+        "logement dit ou va le vantail.",
+        -0.985, -0.80, 0.036, TILE_W, PLAN_H)
     baykit._render(path, TILE_W, PLAN_H)
 
 
 def _tile_close(path: str, report: dict) -> None:
-    """LE DEMI-VERROU DE TROIS QUARTS — et un relais ABATTU.
+    """LA MACHOIRE DE PRES — la preuve du LOT 4, en noir et blanc.
 
-    A babord le relais et son conduit ont disparu : c'est ce que le joueur voit
-    apres avoir sabote un cote, et la seule image qui montre a quoi sert le
-    partage en huit nœuds. Le bastion, la couronne et le portique restent — un
-    relais abattu laisse une carcasse, pas un trou.
+    ⚠️ CETTE VIGNETTE EST LE JUGE DU BRIEF, PAS UN PORTRAIT. La capture du LOT 2
+    a lu la denture d'alors comme un creneau de rempart : « pas de tableau, pas
+    de ligne de refend, pas de deux moities ». On regarde donc le joint a la
+    distance ou la question se pose, et sans une couleur : trois dents claires
+    d'un cote, trois mortaises noires de l'autre, la phase qui s'inverse sur
+    l'axe, et le tableau qui encadre les 4,80 m centraux.
+
+    Le cote babord est rendu SABOTE (relais et conduit retires) : la meme image
+    montre donc aussi a quoi sert le partage en neuf nœuds.
     """
     baykit._plate_reset()
-    baykit._import(HULL, "Decor", Vector((0.0, 0.0, 0.0)))
-    _assemble(0.0, relays=(True, False), shield=False)
+    decor = baykit._import(HULL, "Decor", Vector((0.0, 0.0, 0.0)))
+    parts = _assemble(0.0, shield=False)
+    # ⚠️ LE DECOR AUSSI, ET C'EST UNE ERREUR DE PREMIER TIRAGE. Convertir le seul
+    # kit laissait les conduits magenta et la lisse cyan de la COQUE en couleur
+    # au milieu d'une vignette annoncee « noir et blanc » : le test perdait sa
+    # valeur de preuve la ou il est justement le juge.
+    baykit._to_greyscale(decor + parts)
     baykit._plate_lights()
     # ⚠️ CADRE CENTRE SUR L'AXE, ET C'EST LE SUJET QUI L'IMPOSE. Vise a 3,4 m a
     # tribord, la vignette ne montrait qu'un demi-verrou : la comparaison
     # « intact / sabote » qu'elle est censee porter tombait hors champ a gauche.
-    target = Vector((0.0, -4.00, -(CITADEL_STATION + 2.4)))
-    eye = target + Vector((6.0, 13.0, 20.0))
+    target = Vector((0.0, -3.90, -CITADEL_STATION))
+    eye = target + Vector((2.6, 6.4, 6.4))
     forward, up = turretkit._look_at(eye, target)
     camera = baykit._plate_camera("close", _to_blender(eye),
                                   _to_blender(forward), _to_blender(up),
                                   math.radians(36.0))
     baykit._label(
-        camera, "TROIS QUARTS — a droite le relais de tribord, a gauche le cote "
-        "SABOTE (relais et conduit retires)",
+        camera, "LA MACHOIRE, EN NOIR ET BLANC — trois dents par vantail, "
+        "chacune en face d'une mortaise",
         -0.97, 0.91, 0.036, TILE_W, CLOSE_H, (1.0, 0.88, 0.55))
     baykit._label(
-        camera, "le bastion, sa couronne et le portique RESTENT : le moteur ne "
-        "detruit que `citadel_relay` et `citadel_core`, et c'est pour cela\n"
-        "qu'aucune autre piece ne porte d'emissif. Le bouclier est masque ici, "
-        "il ne vit que tant que les deux relais tiennent.",
+        camera, f"l'epaisseur (1,20 m) est coupee en {TOOTH_BANDS} bandes de "
+        f"{2 * LEAF_HALF_S / TOOTH_BANDS:.2f} m ; ce vantail porte les bandes "
+        f"{', '.join(str(k) for k in TOOTH_MINE)}, le yaw de pi du moteur les "
+        f"renvoie en {', '.join(str(TOOTH_BANDS - 1 - k) for k in TOOTH_MINE)}\n"
+        "— le complementaire exact, donc jamais une dent en face d'une dent. "
+        "Au milieu, la GORGE DE REFEND : les dents s'arretent 7 cm avant le "
+        "plan de joint, les corps s'y touchent.",
         -0.97, 0.83, 0.026, TILE_W, CLOSE_H)
     baykit._label(
-        camera, f"collier de relais debordant de "
-        f"{RELAY_HALF - RELAY_BODY_HALF:.2f} m ; caisson de "
-        f"{CONDUIT_X[1] - CONDUIT_X[0]:.2f} m sur trois colliers, dessus "
-        f"horizontal a {SEAT['citadel_conduit'] + CONDUIT_TOP_Y:+.2f} ; "
+        camera, f"mortaise de {LEAF_H - TOOTH_BED_Y:.2f} m de creux sur un lit "
+        f"PLEIN a {SEAT['citadel_leaf'] + TOOTH_BED_Y:+.2f} (aucune fente "
+        f"traversante) ; gorge de refend {2 * TOOTH_TIP_GAP:.2f} m ; tableau "
+        f"sur {JAMB_X:.2f} m ; "
         f"{report['triangles']} triangles pour tout le kit "
         f"(budget {TRI_BUDGET_KIT})",
         -0.97, -0.91, 0.026, TILE_W, CLOSE_H, (0.72, 0.84, 1.0))
     baykit._render(path, TILE_W, CLOSE_H)
 
 
-def _tile_front(path: str, report: dict) -> None:
+def _tile_front(path: str, report: dict, travel: float = 0.0) -> None:
     """LE SURPLOMB, ET CE QUI LE PORTE — elevation de face, a l'echelle du cadre.
 
     ⚠️ CETTE VIGNETTE EXISTE POUR UN DEFAUT MESURE, PAS POUR FAIRE JOLI. Capture
@@ -2201,7 +2814,7 @@ def _tile_front(path: str, report: dict) -> None:
     """
     baykit._plate_reset()
     baykit._import(HULL, "Decor", Vector((0.0, 0.0, 0.0)))
-    _assemble(0.0, turrets=False)
+    _assemble(0.0, travel, turrets=False)
     baykit._plate_lights()
     # ⚠️ LE PLAN DE CAMERA EST A 0,20 m DE LA PORTE, ET NON A 9 m. En
     # orthographique, les rayons partent du PLAN de la camera : neuf metres de
@@ -2232,15 +2845,17 @@ def _tile_front(path: str, report: dict) -> None:
         -0.985, 0.80, 0.058, TILE_W, FRONT_H, (1.0, 0.88, 0.55))
     baykit._label(
         camera, f"coque {2 * report['hull_half']:.2f} m — porte "
-        f"{2 * GATE_HALF_X:.2f} m ({100 * report['gate_cover']:.0f} pct du "
+        f"{2 * DOOR_HALF_X:.2f} m ({100 * report['gate_cover']:.0f} pct du "
         f"cadre) — donc {report['overhang']:.2f} m en l'air par bord, et le "
         f"portique les couvre en entier (x {PYLON_HEEL_X:.2f} a "
         f"{PYLON_X1:.2f}).",
         -0.985, -0.72, 0.046, TILE_W, FRONT_H)
     baykit._label(
-        camera, f"son talon mord la lisse d'epaule de "
-        f"{report['pylon_bite'][0]:.2f} a {report['pylon_bite'][1]:.2f} m — "
-        "mesure sur le profil reel, taper du troncon 3 compris.",
+        camera, f"course {travel:.2f} m : chaque vantail va de "
+        f"{travel:+.2f} a {travel + LEAF_LEN:+.2f}, son logement de "
+        f"{HOUSING_X[0]:.2f} a {HOUSING_X[1]:.2f} — recouvrement "
+        f"{report['fits'][0]['overlap']:.2f} m, et rien ne sort de "
+        f"{DOOR_HALF_X:.2f}.",
         -0.985, -0.87, 0.046, TILE_W, FRONT_H, (0.72, 0.84, 1.0))
     baykit._render(path, TILE_W, FRONT_H)
 
@@ -2249,7 +2864,7 @@ def _tile_uv(path: str, report: dict) -> None:
     baykit._plate_reset()
     shift = baykit._game_shift(ACCEPTANCE_AIM)
     decor = baykit._import(HULL, "Decor", Vector((0.0, 0.0, shift)))
-    kits = _assemble(shift, turrets=False)
+    kits = _assemble(shift, LEAF_TRAVEL * 0.5, turrets=False)
     baykit._apply_checker(decor + kits)
     baykit._plate_lights()
     camera = baykit._plate_camera("uv", _to_blender(CAM_POS),
@@ -2274,21 +2889,34 @@ def render_plate(report: dict) -> None:
     staging = tempfile.mkdtemp(prefix="aegis-citadelkit-plate-")
     tiles: list[tuple[str, int]] = []
     try:
-        path = os.path.join(staging, "bw.png")
-        _tile_acceptance(path, report, greyscale=True)
+        # ⚠️ L'ORDRE EST CELUI DE LA DEMONSTRATION, PAS CELUI DU CONFORT. Le
+        # brief demande la porte AUX TROIS POSITIONS et le test noir et blanc :
+        # ferme d'abord — c'est la seule position ou la question « est-ce que ca
+        # s'ouvre au milieu ? » se pose — puis a mi-course, puis ouverte.
+        path = os.path.join(staging, "bw_closed.png")
+        _tile_acceptance(path, report, greyscale=True, travel=0.0)
         tiles.append((path, SCENE_H))
-        path = os.path.join(staging, "plan.png")
-        _tile_plan(path, report)
-        tiles.append((path, PLAN_H))
-        path = os.path.join(staging, "color.png")
-        _tile_acceptance(path, report, greyscale=False)
-        tiles.append((path, SCENE_H))
+        path = os.path.join(staging, "bw_half.png")
+        _tile_acceptance(path, report, greyscale=True,
+                         travel=LEAF_TRAVEL * 0.5, height=MOVE_H)
+        tiles.append((path, MOVE_H))
+        path = os.path.join(staging, "bw_open.png")
+        _tile_acceptance(path, report, greyscale=True, travel=LEAF_TRAVEL,
+                         height=MOVE_H)
+        tiles.append((path, MOVE_H))
         path = os.path.join(staging, "close.png")
         _tile_close(path, report)
         tiles.append((path, CLOSE_H))
+        path = os.path.join(staging, "plan.png")
+        _tile_plan(path, report)
+        tiles.append((path, PLAN_H))
         path = os.path.join(staging, "front.png")
         _tile_front(path, report)
         tiles.append((path, FRONT_H))
+        path = os.path.join(staging, "color.png")
+        _tile_acceptance(path, report, greyscale=False, travel=LEAF_TRAVEL,
+                         height=MOVE_H)
+        tiles.append((path, MOVE_H))
         path = os.path.join(staging, "uv.png")
         _tile_uv(path, report)
         tiles.append((path, UV_H))

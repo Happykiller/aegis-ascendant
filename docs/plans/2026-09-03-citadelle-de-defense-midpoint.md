@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | ✅ **LOT 0 clos, LOTS 1, 2 et 3 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 4 (l'ouverture) et le LOT 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
+| **État** | ✅ **LOT 0 clos, LOTS 1 à 4 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le seul LOT 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -791,10 +791,112 @@ n'a rien coûté de mesurable. ⚠️ Et une leçon de méthode confirmée trois
 lancement après un déploiement lit 0,2 à 0,8 ms trop haut** — cache de shaders froid. Prendre une
 médiane, jamais un tir.
 
-## LOT 4 — L'ouverture (solution C)
+## LOT 4 — L'ouverture (solution C) — ✅ **LIVRÉ (2026-09-04)**
 
 Explosion du noyau, puis mécanismes latéraux qui écartent la voie. **Ce qui prouve le lot** : la
-collision disparaît à l'`SolidsOverlay`, et la largeur de passage est mesurée, pas estimée.
+collision disparaît à l'`SolidsOverlay`, et la largeur de passage est **mesurée**, pas estimée.
+
+### Le mécanisme — deux vantaux qui se rétractent dans deux logements
+
+`citadel_gate`, la poutre d'un seul tenant, est **remplacée** par `citadel_leaf` (miroité) et
+`citadel_housing` (`BRIEF-0097`). La chaîne de cotes devait tenir **trois choses en même temps**,
+et c'est elle qui a décidé du mécanisme :
+
+| | fermé | ouvert |
+|---|---|---|
+| vantail | `x` 0 → 12,90 | `x` **4,25 → 17,15** |
+| recouvrement vantail/logement | **+0,20 m** — aucun jour | +4,45 |
+| marge sous le bout de la poutre (17,20) | +4,30 | **+0,05** |
+| passe | nulle | **8,50 m** de coque, soit **7,00 unités de plan** |
+
+⚠️ **Toute variante qui fait GLISSER les vantaux vers l'extérieur allonge le porte-à-faux** que le
+LOT 2 venait de corriger. La rétraction dans un fourreau est la seule forme qui garde le bout
+extérieur à `x = 17,20` — donc qui continue de couvrir tout le plan de vol, décision du LOT 1 —
+tout en dégageant un centre mesurable.
+
+⚠️ **Et le sommet du logement est la cote qui pouvait tout casser en silence.** Un fourreau est
+plus grand que ce qu'il reçoit ; s'il gagnait sa garde par le haut depuis la même assise, il
+franchirait le plafond du décor inerte. Il part donc de **−6,90** pour culminer à **−3,00
+exactement**, comme le vantail.
+
+**La passe fait quatre fois la largeur du chasseur, et c'est mesuré** : son corps réel fait
+**1,76 unité** en travers (`body_radius = 0,88`, `ADR-0034`). La chambre du réacteur a payé
+l'inverse — « c'est comme si tout le cercle était un mur pour moi ».
+
+### ⚠️ La forge a REFUSÉ une de mes cotes, avec une démonstration
+
+Une denture qui se **recouvre vraiment** est arithmétiquement impossible sous ces cotes, et elle
+l'a prouvé au lieu de l'appliquer en silence. Soit `a(s)` l'abscisse la plus interne de la matière
+tribord dans la bande `s` : le miroir par yaw de π fait qu'à bâbord la matière occupe `x ≤ −a(−s)`,
+donc « aucun jour » ⟺ `a(s) + a(−s) ≤ 0`. Avec une saillie `p`, cela force **`a ≤ −p/2`** — le
+vantail devrait franchir l'axe de la moitié de sa saillie, donc manger la passe et sortir de
+l'emprise déclarée. Une saillie lisible demandait `p ≥ 0,50` : passe à 8,00 et emprise fausse de
+25 cm.
+
+Elle a **tenu les cotes** et fait le joint **à tenon et mortaise** : face de butée pleine à
+`x = 0`, la dent d'un vantail ferme la mortaise de l'autre. Son argument, et il tient : à 20° de
+la verticale, **un tenon qui entre et un tenon qui s'arrête devant donnent la même image** — ce
+qui se lit est l'alternance et son changement de phase en franchissant l'axe.
+
+**Trois dents par vantail, et le compte impair est IMPOSÉ par le miroir** : le yaw envoie la bande
+`k` sur `5 − k`, donc {0, 2, 4} → {5, 3, 1}, complémentaire exact. Un compte pair mettrait une
+dent en face d'une dent. Et une **gorge de refend** de 0,14 m au milieu, ajoutée **après le
+premier tirage** où la mâchoire se lisait comme un seul bloc clair — `ADR-0006` a encore payé.
+
+### Vérifié indépendamment : les six pièces conservées sont intactes
+
+Le compte de triangles et la boîte englobante ne prouvent rien — on déplace un sommet sans changer
+ni l'un ni l'autre. J'ai donc récupéré l'ancien binaire depuis LFS et haché, **nœud par nœud, les
+octets de chaque accesseur** (positions, normales, UV, tangentes, indices) plus le nom de matériau
+de chaque primitive. Les six sont **byte-identiques**. Kit à **1 348 triangles** (+44) pour un
+plafond de 2 300.
+
+### La collision disparaît, et c'est mesuré à l'overlay
+
+| | plages de l'overlay |
+|---|---|
+| fermé | **une seule** plage continue, colonnes 125 → 1795 — les deux capsules se touchent, aucun jour |
+| mi-course | **deux** plages, 107 → 902 et 1019 → 1814 : **795 px chacune** contre ≈835 fermées, et un trou central de **117 px** symétrique |
+| ouvert | **0 pixel d'overlay sur l'image entière** — aucune capsule résiduelle, ni au centre ni ailleurs |
+
+Les capsules sont donc **raccourcies** (−40 px) *et* reculées (−18 px) : ce n'est pas une simple
+translation. La passe s'élargit réellement pendant l'ouverture, et
+`test_the_passage_widens_while_the_leaves_retract` garde qu'elle ne se referme jamais en cours de
+route.
+
+⚠️ **À `CLEARED`, plus rien — alors que les vantaux sont toujours là**, et c'est délibéré. Un
+vantail resté solide pendant que la coque reprend son défilement **pousserait** un joueur resté au
+large, sur toute la largeur du plan : c'est exactement le défaut pour lequel `PlaneCollider` a été
+écrit — « je fonce tout droit et mon vaisseau est bloqué » — et on ne va pas le recréer pour la
+rigueur d'une barrière qu'on vient d'ouvrir.
+
+**Coût GPU** : **3,93 ms** médiane sur quatre tirs à l'état 0, contre 3,92 avant — **dérive
+nulle**. Porte ouverte : 3,68 ms, un peu moins.
+
+### ⚠️ La réserve du LOT 2 est levée — mais l'ouverture, elle, ne se lit pas encore
+
+**La porte fermée se lit comme une porte.** Au zoom sur le joint : deux mâchoires en vis-à-vis,
+trois bandes claires par vantail **décalées verticalement** l'une par rapport à l'autre, et une
+ligne verticale sombre franche au centre exact. L'œil voit deux moitiés et sait où ça s'ouvrira.
+⚠️ *Cette lecture-là a été vérifiée au zoom par le vérificateur, pas par moi à pleine image : à
+distance de jeu la denture n'est qu'un petit motif rayé, et c'est sa **position** — au centre du
+couloir — qui porte l'information.*
+
+⛔ **Et l'ouverture ne se lit pas, pour une raison de TON et non de géométrie.** Regardé à pleine
+image : la poutre paraît continue. Les vantaux rétractés, la poutre fixe et la coque vue **à
+travers** la passe partagent le même gris ; le seul endroit où l'ouverture se voit est là où la
+**tranchée sombre de l'artère** apparaît au travers. Le seul autre indice à vitesse de jeu est le
+départ du bloc denté vers la droite.
+
+⚠️ **Et le vantail bâbord n'est JAMAIS lisible** — ni à mi-course, ni ouvert : son bout intérieur
+se lit comme une tranche plate, alors que la collision prouve qu'il a bougé symétriquement. C'est
+le même défaut que les socles de bastion : **une seule directionnelle venant du haut-gauche**, donc
+aucun rasant à tribord — et ici c'est bâbord qui perd, parce que c'est la face opposée qui compte.
+
+**Ce qui manquerait est un SEUIL**, et il a déjà un nom : `TEX-0016`, la signalétique ambre
+refusée, demande « quelques doubles points marquant **un seuil** ». Un marquage au sol dans la
+passe dirait « voici par où » là où la valeur ne le dit pas. La carte est à régénérer — elle a
+maintenant un emploi précis qui l'attend.
 
 ## LOT 5 — La respiration, et la seconde moitié
 

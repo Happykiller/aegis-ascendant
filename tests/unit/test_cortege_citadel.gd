@@ -476,8 +476,11 @@ func test_the_solid_stands_until_cleared_and_not_one_frame_longer() -> void:
 	citadel.tick(0.016, lock, eye)
 	var shapes := PlaneShapes.new()
 	citadel.fill_solids(shapes)
-	assert_eq(shapes.size(), 1, "le verrou ferme la route avant meme d'avoir ete engage")
-	assert_eq(shapes.kind_at(0), PlaneShapes.Kind.CAPSULE, "et il le fait par un segment epais")
+	# ⚠️ DEUX CAPSULES DEPUIS QUE LA PORTE A DEUX MOITIES (BRIEF-0097) : une par vantail, du bout
+	# interieur au bout exterieur de la poutre. C'est ce qui fait que la passe s'elargit REELLEMENT
+	# pendant l'ouverture au lieu de disparaitre d'un coup.
+	assert_eq(shapes.size(), 2, "les deux vantaux ferment la route avant meme d'avoir ete engages")
+	assert_eq(shapes.kind_at(0), PlaneShapes.Kind.CAPSULE, "et ils le font par des segments epais")
 	for relay in citadel.relays():
 		relay.target().hit_callback.call(TUNING.citadel_relay_health)
 	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
@@ -488,8 +491,9 @@ func test_the_solid_stands_until_cleared_and_not_one_frame_longer() -> void:
 		shapes.clear()
 		citadel.fill_solids(shapes)
 		if not citadel.is_cleared():
-			assert_eq(shapes.size(), 1,
-				"la route reste fermee tant que l'etat n'est pas CLEARED (%s)" % citadel.state_name())
+			assert_eq(shapes.size(), 2,
+				"les deux vantaux restent solides tant que l'etat n'est pas CLEARED (%s)"
+					% citadel.state_name())
 	shapes.clear()
 	citadel.fill_solids(shapes)
 	assert_eq(shapes.size(), 0, "et elle s'ouvre exactement a CLEARED")
@@ -993,3 +997,132 @@ func test_no_density_ever_empties_a_link() -> void:
 		for portee in [0.1, 1.0, 6.4]:
 			assert_true(FlowLink.dot_count(portee, densite) >= 1.0,
 				"un lien de %.1f m a la densite %.2f porte au moins un point" % [portee, densite])
+
+
+# =============================================================================
+# 13. LE LOT 4 — L'OUVERTURE, ET LA PASSE SE MESURE
+# =============================================================================
+
+## ⚠️ « LA LARGEUR DE PASSAGE EST MESUREE, PAS ESTIMEE » — c'est le critere d'acceptation du lot,
+## mot pour mot. Et elle se mesure sur les deux bouts PROJETES, pas sur les cotes de coque : la
+## camera plonge, et 8,50 m de borde ne font pas 8,50 unites de plan.
+func test_the_passage_is_measured_and_wide_enough_for_the_fighter() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	citadel.tick(0.016, lock, eye)
+	assert_almost_eq(citadel.passage_width(), 0.0, 0.001,
+		"fermee, la porte ne laisse aucune passe (%.3f)" % citadel.passage_width())
+	# On ouvre pour de vrai, par le chemin des degats.
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	var horloge := 0.0
+	while not citadel.is_cleared() and horloge < 20.0:
+		citadel.tick(0.05, lock, eye)
+		horloge += 0.05
+	var passe := citadel.passage_width()
+	# ⚠️ LE CORPS DU CHASSEUR FAIT 1,76 UNITE EN TRAVERS (body_radius = 0,88, ADR-0034). Sous le
+	# double, on n'ouvre pas une porte, on enfile une aiguille — et la chambre du reacteur a deja
+	# paye l'inverse : « c'est comme si tout le cercle etait un mur pour moi ».
+	assert_true(passe >= CitadelScript.PASSAGE_FLOOR,
+		"la passe ouverte fait %.2f unites de plan pour un plancher de %.2f"
+			% [passe, CitadelScript.PASSAGE_FLOOR])
+	assert_true(passe >= 2.0 * 1.76,
+		"soit au moins deux fois la largeur du chasseur (%.2f pour 3,52)" % passe)
+
+## ⚠️ ELLE S'ELARGIT PROGRESSIVEMENT, ET C'EST TOUT L'INTERET DES DEUX CAPSULES. Une collision
+## retiree d'un coup se voit disparaitre ; une passe qui s'ouvre se SENT s'ouvrir. Le joueur
+## attentif peut s'y engager avant la fin de la course.
+func test_the_passage_widens_while_the_leaves_retract() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	citadel.tick(0.016, lock, eye)
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	var largeurs: Array[float] = []
+	var horloge := 0.0
+	while not citadel.is_cleared() and horloge < 20.0:
+		citadel.tick(0.05, lock, eye)
+		horloge += 0.05
+		if citadel.state() == CitadelScript.State.OPENING:
+			largeurs.append(citadel.passage_width())
+	assert_true(largeurs.size() >= 4,
+		"l'ouverture dure assez pour se mesurer (%d relevés)" % largeurs.size())
+	for i in range(1, largeurs.size()):
+		assert_true(largeurs[i] >= largeurs[i - 1] - 0.001,
+			"la passe ne se referme jamais en cours d'ouverture (%.3f apres %.3f)"
+				% [largeurs[i], largeurs[i - 1]])
+	assert_true(largeurs[largeurs.size() - 1] > largeurs[0] + 0.5,
+		"et elle s'est vraiment elargie (%.2f puis %.2f)"
+			% [largeurs[0], largeurs[largeurs.size() - 1]])
+
+## ⚠️ UNE TRAME LENTE NE DOIT PAS LAISSER LES VANTAUX A 98 PCT. Deux battants presque fermes sur
+## une route declaree praticable, c'est exactement le mensonge que ce lot existe pour supprimer —
+## le pendant du mur invisible, dans l'autre sens.
+func test_the_leaves_are_pinned_fully_open_once_the_route_is_cleared() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	citadel.tick(0.016, lock, eye)
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	# ⚠️ DEUX TRAMES ENORMES, ET NON UNE : la machine ne franchit QU'UNE transition par image,
+	# donc la premiere va de `CORE_DEAD` a `OPENING` et la seconde de `OPENING` a `CLEARED`. C'est
+	# le comportement voulu — un etat sauté serait un etat qu'aucun signal n'annonce — et le
+	# constater ici evite de le prendre un jour pour un blocage.
+	citadel.tick(30.0, lock, eye)
+	assert_eq(citadel.state(), CitadelScript.State.OPENING,
+		"la premiere trame enorme n'ouvre que l'ouverture, pas la route")
+	citadel.tick(30.0, lock, eye)
+	assert_true(citadel.is_cleared(), "la seconde rend la route praticable")
+	assert_almost_eq(citadel.opening_progress(), 1.0, 0.001,
+		"et la course est posee A FOND, pas la ou l'horloge l'a laissee")
+	var shapes := PlaneShapes.new()
+	citadel.fill_solids(shapes)
+	assert_eq(shapes.size(), 0, "la route est praticable sur toute sa largeur")
+
+## ⚠️ L'OUVERTURE NE COMMENCE QU'A `OPENING`, PAS A `CORE_DEAD`. Le noyau explose d'abord, les
+## mecanismes bougent ensuite : c'est ce qui donne a sa mort une seconde a elle.
+func test_the_leaves_hold_still_while_the_core_burns() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	citadel.tick(0.016, lock, eye)
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	citadel.tick(0.016, lock, eye)
+	assert_eq(citadel.state(), CitadelScript.State.CORE_DEAD, "le noyau brule d'abord")
+	assert_almost_eq(citadel.opening_progress(), 0.0, 0.001,
+		"et les vantaux n'ont pas encore bouge")
+	assert_almost_eq(citadel.passage_width(), 0.0, 0.001, "la passe est encore nulle")
+
+## Le bout interieur d'un vantail est bien miroite, et la course l'ecarte des DEUX cotes.
+func test_both_leaves_retract_away_from_the_axis() -> void:
+	var ferme_g := CitadelScript.leaf_inner_local(-1.0, 0.0)
+	var ferme_d := CitadelScript.leaf_inner_local(1.0, 0.0)
+	assert_almost_eq(ferme_g.x, 0.0, 0.001, "fermes, les deux vantaux se touchent sur l'axe")
+	assert_almost_eq(ferme_d.x, 0.0, 0.001, "des deux cotes")
+	var ouvert_g := CitadelScript.leaf_inner_local(-1.0, CitadelScript.LEAF_TRAVEL)
+	var ouvert_d := CitadelScript.leaf_inner_local(1.0, CitadelScript.LEAF_TRAVEL)
+	assert_true(ouvert_g.x < 0.0 and ouvert_d.x > 0.0,
+		"ouverts, ils s'ecartent chacun de SON cote (%.2f et %.2f)" % [ouvert_g.x, ouvert_d.x])
+	assert_almost_eq(ouvert_d.x - ouvert_g.x, 2.0 * CitadelScript.LEAF_TRAVEL, 0.001,
+		"et la passe de coque vaut deux fois la course")
+
+## ⚠️ LA CHAINE DE COTES DOIT TENIR TROIS CHOSES EN MEME TEMPS, et c'est elle qui a decide du
+## mecanisme : ferme il n'y a aucun jour, ouvert rien ne depasse le bout de la poutre, et la passe
+## est mesurable. Une seule des trois qui glisse et l'une des deux autres casse.
+func test_the_retraction_chain_holds_at_both_ends() -> void:
+	var bout: float = CitadelScript.GATE_HALF_X
+	var ouvert: float = CitadelScript.LEAF_TRAVEL + CitadelScript.LEAF_LENGTH
+	assert_true(ouvert <= bout,
+		"ouvert, le vantail finit a %.2f et ne depasse pas le bout de la poutre (%.2f)"
+			% [ouvert, bout])
+	assert_true(bout - ouvert < 0.20,
+		"et il n'en reste pas loin : %.2f m de marge, sinon la passe serait plus etroite qu'elle ne peut"
+			% (bout - ouvert))
