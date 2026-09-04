@@ -91,8 +91,36 @@ func test_the_level_lasts_what_the_geometry_and_the_speed_say() -> void:
 	tuning.section_count = 5
 	tuning.section_length = 100.0
 	tuning.scroll_speed = 2.5
-	assert_almost_eq(tuning.level_duration(), 200.0, 0.001, "500 unites a 2,5 u/s")
+	assert_almost_eq(tuning.scroll_duration(), 200.0, 0.001, "500 unites a 2,5 u/s")
 	assert_almost_eq(tuning.section_duration(), 40.0, 0.001, "et 40 s par section")
+
+## ⚠️ ET LE TEMPS PASSE A L'ARRET COMPTE DANS LA PROMESSE. Le verrou de mi-parcours immobilise le
+## survol une trentaine de secondes : les lire hors de `level_duration()` faisait comparer 208 s
+## a la promesse pendant que le niveau en durait 240 — et rien ne l'aurait dit.
+func test_the_promised_duration_counts_the_time_spent_stopped() -> void:
+	var tuning := _sound()
+	tuning.section_count = 5
+	tuning.section_length = 100.0
+	tuning.scroll_speed = 2.5
+	var arret := tuning.citadel_sequence_time()
+	assert_true(arret > 20.0, "la sequence du verrou pese vraiment (%.1f s)" % arret)
+	assert_almost_eq(tuning.level_duration(), tuning.scroll_duration() + arret, 0.001,
+		"la duree jouee est le defilement PLUS le verrou")
+
+## ⚠️ LES DEUX BORNES DOIVENT ETRE COMPATIBLES, ET CA NE VA PAS DE SOI : l'invariant 9 borne le
+## VERROU, l'invariant 1 borne le NIVEAU, et ils ne se parlent pas. Le pire verrou que le 9
+## accepte doit rester dans la promesse du 1 — sinon il existe un reglage vert partout qui rompt
+## la promesse faite au joueur, et c'est exactement le defaut qu'ADR-0024 a paye.
+func test_the_worst_lock_the_fight_bound_allows_still_fits_the_promise() -> void:
+	var pire := (load(SHIPPED) as CortegeTuning).duplicate() as CortegeTuning
+	# Le plafond de l'invariant 9 : 30 s de tir.
+	pire.citadel_core_health = 30.0 * pire.reference_dps * pire.occupancy_citadel \
+		- 2.0 * pire.citadel_relay_health
+	assert_true(pire.citadel_fight_time() <= 30.01,
+		"ce verrou est pile au plafond de l'invariant 9 (%.1f s)" % pire.citadel_fight_time())
+	assert_eq(pire.validate().size(), 0,
+		"et il reste dans la promesse du niveau (%.0f s) : %s"
+			% [pire.level_duration(), str(pire.validate())])
 
 func test_a_survey_that_drags_beyond_the_promise_is_refused() -> void:
 	var tuning := _sound()

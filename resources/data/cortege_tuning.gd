@@ -62,7 +62,11 @@ enum TurretScale { HEAVY, LIGHT }
 @export var section_length: float = 100.0
 
 ## Durée visée pour le niveau entier, et sa tolérance. C'est la promesse faite au joueur.
-@export var target_duration: float = 210.0
+## ⚠️ 240 ET NON 210 DEPUIS LA CITADELLE, ET LA PROMESSE A CHANGÉ PARCE QUE LE CONTENU A CHANGÉ.
+## Le survol défile en 208 s ; le verrou de mi-parcours en ajoute une trentaine, à l'arrêt. Garder
+## 210 aurait obligé à raccourcir l'un des deux pour tenir un chiffre qui décrivait un niveau sans
+## verrou. C'est `level_duration()` qui compte les deux, et l'invariant 1 qui les borne ensemble.
+@export var target_duration: float = 240.0
 @export var duration_tolerance: float = 30.0
 
 # ==========================================================================
@@ -187,6 +191,59 @@ enum TurretScale { HEAVY, LIGHT }
 @export var turret_weakened_turn_factor: float = 0.45
 @export var turret_weakened_interval_factor: float = 2.6
 
+@export_group("La Citadelle de Défense")
+## Le verrou de mi-parcours : une fortification transversale qui FERME LA ROUTE, s'ouvre en
+## sabotant deux relais puis un noyau, et rend le passage praticable.
+##
+## ⚠️ CE N'EST PAS UN BOSS, ET C'EST LA CONTRAINTE QUI PRIME SUR TOUTES LES AUTRES. Pas de barre
+## de vie, pas de rideau de projectiles, pas de cycles. Ce qui la distingue d'un boss n'est pas
+## une intention mais un CHIFFRE : `citadel_fight_time()`, borné des deux côtés ci-dessous. Sous
+## le plancher, c'est un dos d'âne ; au-dessus du plafond, c'est un boss qui ne dit pas son nom,
+## et le niveau 2 en a déjà un au niveau 1.
+
+## La station de la FACE AVANT du verrou, comptée depuis la proue.
+##
+## ⚠️ ELLE EST CONTRAINTE PAR TROIS VOISINS MESURÉS, pas choisie : la garde de la fosse de
+## `s = 228` finit à 236,2 ; le socle de `Turret_07` commence à 255,25 ; `Spine_03` est à 260,2.
+## Il reste 19 m, et la citadelle en occupe 6,4. ⚠️ ET LA COQUE S'Y ÉLARGIT — `TAPER` monte de
+## 1,000 à 236 vers 1,230 à 258 : la fortification est posée sur une rampe, pas sur un plateau.
+## C'est assumé (un verrou qui s'évase se lit comme un contrefort) mais ça se sait avant de
+## sculpter la géométrie définitive.
+@export var citadel_station: float = 240.0
+
+## Où la face avant s'IMMOBILISE dans le plan de jeu, en unités du plan.
+##
+## ⚠️ LE RALENTISSEMENT N'EST PAS UN EFFET DE MISE EN SCÈNE, C'EST CE QUI REND LA SÉQUENCE
+## POSSIBLE. À 2,4 u/s, 40 s de combat vaudraient 96 m de coque — un cinquième du vaisseau, quand
+## la fenêtre libre en fait 19. Le survol s'arrête donc pendant le combat, et c'est cet arrêt qui
+## fabrique l'arène : le mur en haut, le joueur dessous.
+@export var citadel_wall_plane_y: float = 4.0
+
+## Sur combien d'unités de plan le survol freine avant de s'arrêter. La décélération est
+## CONSTANTE (`brake_factor()`), donc la durée du freinage vaut `2 x span / vitesse`.
+@export var citadel_brake_span: float = 5.0
+## Combien de temps le survol met à retrouver sa vitesse une fois la route ouverte.
+@export var citadel_resume_time: float = 3.0
+## Ce que dure l'ouverture, entre le noyau mort et la route praticable.
+@export var citadel_open_time: float = 2.2
+
+## Part du temps où le joueur peut réellement placer ses tirs PENDANT LE VERROU.
+##
+## ⚠️ PLUS BASSE QUE SUR LA COQUE OUVERTE, ET C'EST UNE CONSÉQUENCE, PAS UN RÉGLAGE DE
+## DIFFICULTÉ. L'arène fait une dizaine d'unités de haut au lieu de seize, la fortification tient
+## le haut de l'écran, et ses tourelles tirent depuis un point fixe : le joueur esquive plus qu'il
+## ne tire. Se dimensionner sur `occupancy_hull` reviendrait à se donner raison — c'est le défaut
+## qu'`ADR-0024` a payé sur le flux du Léviathan.
+@export var occupancy_citadel: float = 0.45
+
+## Les deux relais, dans n'importe quel ordre. Tant qu'UN SEUL vit, le noyau est intouchable.
+@export var citadel_relay_health: float = 1200.0
+## Le noyau. ⚠️ PLUS CHER QU'UN RELAIS, et l'invariant 10 le tient : un noyau qui tomberait plus
+## vite que ce qui le protège inverserait la lecture « GAUCHE + DROITE → CENTRE ».
+@export var citadel_core_health: float = 1900.0
+@export var citadel_relay_score: int = 2200
+@export var citadel_core_score: int = 6000
+
 # ==========================================================================
 # Fonctions dérivées — à lire, jamais à recopier dans un test
 # ==========================================================================
@@ -257,14 +314,72 @@ func bay_reachable() -> float:
 func node_reachable() -> float:
 	return reachable_damage(node_visible_span, node_reference_dps, occupancy_node)
 
-## La durée du niveau, déduite de la géométrie et de la vitesse — jamais saisie à la main.
-func level_duration() -> float:
+## Le temps passé à DÉFILER, déduit de la géométrie et de la vitesse — jamais saisi à la main.
+func scroll_duration() -> float:
 	if scroll_speed <= 0.001:
 		return 0.0
 	return float(section_count) * section_length / scroll_speed
 
+## La durée du niveau TELLE QU'ELLE SE JOUE.
+##
+## ⚠️ ELLE N'EST PLUS CELLE DU DÉFILEMENT, ET C'EST UN DÉFAUT CORRIGÉ. Le verrou de mi-parcours
+## IMMOBILISE le survol : freinage, combat et ouverture se jouent à vitesse nulle ou réduite,
+## soit une trentaine de secondes que la géométrie ne voit pas. L'invariant 1 comparait donc
+## 208 s à la promesse pendant que le niveau en durait 240 — et rien ne l'aurait dit. Pire : la
+## borne haute de l'invariant 9 (30 s de tir) autorise un verrou qui pousserait le niveau à
+## 245 s, hors de la promesse, en restant vert partout.
+func level_duration() -> float:
+	return scroll_duration() + citadel_sequence_time()
+
+## Le rythme d'un tronçon. ⚠️ SUR LE DÉFILEMENT ET NON SUR LA DURÉE JOUÉE : c'est une cadence
+## spatiale — combien de temps sépare deux entrées de tronçon — et le verrou n'en déplace aucune.
 func section_duration() -> float:
-	return level_duration() / float(maxi(section_count, 1))
+	return scroll_duration() / float(maxi(section_count, 1))
+
+# --------------------------------------------------------------------------
+# La Citadelle — ce que ses réglages COÛTENT en temps
+# --------------------------------------------------------------------------
+
+## Combien de temps le verrou tient un joueur de référence, dégâts seuls.
+##
+## ⚠️ LES TROIS CIBLES COMPTENT ENSEMBLE, ET DANS N'IMPORTE QUEL ORDRE. Les deux relais se
+## valent, le noyau vient après : la somme est la même quel que soit le chemin, et c'est
+## précisément ce que le lot 1 doit prouver en jouant les deux ordres.
+func citadel_fight_time() -> float:
+	var dps := reference_dps * occupancy_citadel
+	if dps <= 0.001:
+		return 0.0
+	return (2.0 * citadel_relay_health + citadel_core_health) / dps
+
+## Ce que dure la séquence ENTIÈRE : le freinage, le combat, l'ouverture, la reprise.
+##
+## ⚠️ LE FREINAGE COMPTE DANS LE BUDGET, ET IL A FAILLI ÊTRE OUBLIÉ. À décélération constante,
+## un survol qui s'arrête sur `span` unités y passe `2 x span / vitesse` — cinq secondes ici,
+## soit un sixième de la séquence. Le mesurer à part reviendrait à promettre 30 s et à en jouer
+## 35. ⚠️ La vitesse employée est celle du DÉFILEMENT et non celle du plan : la projection de
+## la caméra les sépare d'environ 18 %, dans le sens qui allonge le freinage réel. L'estimation
+## est donc OPTIMISTE, et c'est le sens sûr pour un plafond.
+func citadel_sequence_time() -> float:
+	var freinage := 0.0
+	if scroll_speed > 0.001:
+		freinage = 2.0 * citadel_brake_span / scroll_speed
+	return freinage + citadel_fight_time() + citadel_open_time + citadel_resume_time
+
+## La hauteur d'arène que le mur laisse au joueur, du plancher du plan à la face avant.
+func citadel_arena_height() -> float:
+	return citadel_wall_plane_y - GameplayPlane.BOUNDS.position.y
+
+## Le facteur de vitesse pendant le freinage, à `remaining` unités de plan de l'arrêt.
+##
+## ⚠️ EN RACINE ET NON EN LINÉAIRE, ET LA DIFFÉRENCE EST QU'UNE DES DEUX N'ARRIVE JAMAIS. Un
+## facteur linéaire en distance donne `du/dt = -k.u` : une approche exponentielle, qui ne touche
+## pas l'arrêt en temps fini — le vaisseau se traînerait indéfiniment devant le mur, et l'état
+## suivant ne s'ouvrirait pas. La racine, elle, EST la décélération constante : `v² = 2.a.d`.
+## Elle atteint zéro, et elle se lit comme un vaisseau qui freine.
+static func brake_factor(remaining: float, span: float) -> float:
+	if span <= 0.001:
+		return 0.0 if remaining <= 0.0 else 1.0
+	return sqrt(clampf(remaining / span, 0.0, 1.0))
 
 # ==========================================================================
 # validate() — les invariants
@@ -465,5 +580,72 @@ func validate() -> PackedStringArray:
 			if morsures < 2.0:
 				errors.append("%s abîmée ne tirerait que %.1f fois pendant sa fenêtre (%.1f s) : en dessous de deux morsures le joueur ne la voit jamais tirer et la croit morte"
 					% [turret_scale_name(scale), morsures, traversee])
+
+	# --- INVARIANT 9 : LA CITADELLE N'EST PAS UN BOSS, ET C'EST UN CHIFFRE ---
+	#
+	# ⚠️ LES DEUX BORNES DISENT LA MÊME CHOSE DANS LES DEUX SENS, et aucune n'est un confort.
+	# Sous le plancher, le verrou tombe avant d'avoir été compris : le joueur traverse une
+	# fortification de 500 m sans savoir ce qu'il vient de faire, et les deux relais n'ont servi
+	# à rien. Au-dessus du plafond, ce n'est plus un verrou de level design, c'est un troisième
+	# boss — et le brief l'interdit en une phrase (« ce n'est pas un boss »).
+	const CITADEL_FIGHT_FLOOR := 12.0
+	const CITADEL_FIGHT_CEILING := 30.0
+	const CITADEL_SEQUENCE_FLOOR := 25.0
+	const CITADEL_SEQUENCE_CEILING := 45.0
+	if occupancy_citadel <= 0.0 or occupancy_citadel > 1.0:
+		errors.append("occupancy_citadel est une part de temps, dans (0, 1]")
+	elif occupancy_citadel > occupancy_hull:
+		errors.append("occupancy_citadel = %.2f pour %.2f sur la coque ouverte : l'arène du verrou est PLUS étroite, la déclarer plus généreuse revient à se dimensionner contre soi-même"
+			% [occupancy_citadel, occupancy_hull])
+	if citadel_relay_health <= 0.0 or citadel_core_health <= 0.0:
+		errors.append("les points de vie de la citadelle doivent être > 0")
+	elif occupancy_citadel > 0.0 and reference_dps > 0.0:
+		var combat := citadel_fight_time()
+		if combat > CITADEL_FIGHT_CEILING:
+			errors.append("le verrou tient %.0f s de tir pour %.0f au plus : au-delà ce n'est plus un verrou de level design, c'est un troisième boss"
+				% [combat, CITADEL_FIGHT_CEILING])
+		elif combat < CITADEL_FIGHT_FLOOR:
+			errors.append("le verrou tient %.0f s de tir pour %.0f au moins : il tomberait avant d'avoir été compris, et les deux relais n'auraient servi à rien"
+				% [combat, CITADEL_FIGHT_FLOOR])
+		var sequence := citadel_sequence_time()
+		if sequence > CITADEL_SEQUENCE_CEILING or sequence < CITADEL_SEQUENCE_FLOOR:
+			errors.append("la séquence entière dure %.0f s, hors de la fourchette %.0f–%.0f du brief — freinage %.1f s, combat %.1f s, ouverture %.1f s, reprise %.1f s"
+				% [sequence, CITADEL_SEQUENCE_FLOOR, CITADEL_SEQUENCE_CEILING,
+					2.0 * citadel_brake_span / maxf(scroll_speed, 0.001), citadel_fight_time(),
+					citadel_open_time, citadel_resume_time])
+	if citadel_open_time <= 0.0 or citadel_resume_time <= 0.0 or citadel_brake_span <= 0.0:
+		errors.append("freinage, ouverture et reprise de la citadelle doivent être > 0 — un verrou qui s'arrête et repart d'un coup n'a pas de séquence")
+
+	# --- INVARIANT 10 : « GAUCHE + DROITE → CENTRE » se lit dans les PV -----
+	# ⚠️ SANS LUI, LE VERROU S'INVERSE EN SILENCE. Le noyau est ce que les deux relais
+	# protègent : un noyau moins cher qu'un seul d'entre eux ferait de la protection l'obstacle
+	# et de l'objectif une formalité, et la règle que la planche explique sans un mot de HUD
+	# deviendrait fausse à l'usage sans qu'aucune capture ne le montre.
+	if citadel_core_health > 0.0 and citadel_relay_health > 0.0 \
+			and citadel_core_health < citadel_relay_health:
+		errors.append("le noyau a %.0f PV pour %.0f à un relais : ce qui protège coûterait plus cher que ce qu'il protège, et la lecture « gauche + droite → centre » s'inverse"
+			% [citadel_core_health, citadel_relay_health])
+
+	# --- INVARIANT 11 : LE MUR LAISSE UNE ARÈNE, ET IL EST DANS LE PLAN -----
+	#
+	# ⚠️ LES DEUX BORNES SONT GÉOMÉTRIQUES, PAS ESTHÉTIQUES. Trop haut, le mur sort du plan de
+	# vol : il ne bloque plus rien, et l'arrêt du survol devient un temps mort où le joueur
+	# attend sans comprendre. Trop bas, il ne reste plus de terrain — la chambre du réacteur a
+	# déjà payé ce défaut, mesuré : « c'est comme si tout le cercle était un mur pour moi ».
+	const CITADEL_ARENA_FLOOR := 9.0
+	const CITADEL_WALL_MARGIN := 2.0
+	if citadel_arena_height() < CITADEL_ARENA_FLOOR:
+		errors.append("le mur à y = %.1f ne laisse que %.1f unités d'arène pour %.1f au moins — un lieu où l'on ne peut pas exister n'est pas un terrain"
+			% [citadel_wall_plane_y, citadel_arena_height(), CITADEL_ARENA_FLOOR])
+	if citadel_wall_plane_y > GameplayPlane.BOUNDS.end.y - CITADEL_WALL_MARGIN:
+		errors.append("le mur à y = %.1f sort du plan de vol (plafond %.1f) : il n'arrêterait plus personne, et l'arrêt du survol deviendrait un temps mort"
+			% [citadel_wall_plane_y, GameplayPlane.BOUNDS.end.y])
+
+	# --- INVARIANT 12 : LE VERROU EST SUR LA COQUE, PAS DEVANT ELLE --------
+	# Une station hors du survol donnerait un verrou qui ne se déclenche jamais — et un niveau
+	# qui se joue exactement comme avant, sans une ligne au journal.
+	if citadel_station <= 0.0 or citadel_station >= section_length * float(section_count):
+		errors.append("la citadelle est à s = %.0f, hors du survol (0 à %.0f) : elle ne se déclencherait jamais"
+			% [citadel_station, section_length * float(section_count)])
 
 	return errors

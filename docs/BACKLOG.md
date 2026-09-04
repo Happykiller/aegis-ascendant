@@ -68,9 +68,54 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) DÉBLOQUÉ** — la partie jouée qu'il attendait a eu lieu le 2026-09-03 |
-| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **a appliquer** — rien d'engage, **3 arbitrages attendent l'operateur** (symetrie, orange hors palette, voisinage du noeud d'epine) |
+| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. Reste les lots 2 a 5 — et **une partie jouee a la main**, dans les DEUX ordres de relais. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
+
+### Textures de la Citadelle — une acceptee, une a regenerer (2026-09-04)
+
+- ⛔ **`TEX-0016` (signaletique ambre) est REFUSEE sur la LISIBILITE, et pas sur ce qu'on
+  craignait.** Tuilage OK (1,8 % / 1,5 %), aucun cabochon coupe par un bord, aucun vignettage — et
+  la clause 2 d'`ADR-0043` (au plus **3 %** d'ambre) est tenue **cent fois** : l'image en emploie
+  **0,031 %**. Mais les 18 taches font **9 px de large en mediane** sur 1254, soit **3,6 cm au
+  monde** a 5 m/tuile pour les 12 a 20 cm demandes : **0,8 px a l'ecran** au lieu de 3 a 5. Et
+  aucune echelle UV ne rattrape ca — il faudrait une tuile de 16,7 m, donc des plaques de borde de
+  6,6 m, plus large que le pont interieur. **A regenerer : memes plaques, memes groupes, cabochons
+  trois fois plus gros.** Le budget d'aire laisse de quoi les grossir dix fois. ⚠️ La lecon vaut
+  au-dela de cette carte : **la contrainte qu'on ecrit en majuscules n'est pas toujours celle qui
+  decide**. Ici c'est la borne BASSE de lisibilite, pas le plafond d'aire, et le generateur a
+  optimise la mauvaise.
+- ✅ **`TEX-0015` (bouclier) est acceptee APRES rattrapage.** Le tuilage livre etait refuse
+  (11,5 % / 11,2 % pour un seuil de 4 %) et **aucun recadrage ne le sauvait** : la meilleure tuile
+  carree possible, cherchee sur toutes les tailles de 900 a 1254 px et tous les decalages,
+  plafonnait a 5,0 %. Fondu miroir de 48 px + reechantillonnage 1024 → **0,1 %**, planche 2x2
+  REGARDEE. Deposee, **non cablee** (LOT 3).
+- ⚠️ **Une demande de texture peut se contredire, et celle-ci le faisait.** `TEX-0015` listait
+  `citadel_shield_nrm/rough/ao` alors que son `output_usage` vaut `albedo_and_emission` : la
+  regle 2 du contrat interdit d'en deriver une normale — une carte de COULEUR donne des gradients
+  faux **qui ont l'air corrects**. Corrige dans le JSON. **A verifier sur toute demande future dont
+  `output_usage` n'est pas `source_for_normal`.**
+- ⚠️ **Le bouclier sera MAGENTA au LOT 3**, alors que le placeholder du LOT 1 est bleu `#4DB8FF`.
+  Bouclier et noyau seront donc de la meme famille de teinte, et c'est la **structure** qui devra
+  les separer (maille fixe contre point net qui bouge). La demande l'argumente ; ca ne s'est encore
+  vu sur **aucune capture**.
+
+### Ouvert par le LOT 1 de la Citadelle (2026-09-04)
+
+- ⚠️ **Le pilote automatique est BLOQUE au verrou, et c'est structurel.** `--demo` tire droit
+  devant : il n'abat pas les relais, donc le survol ne repart jamais. **`balance-prober` ne peut
+  plus rendre une chronologie d'arc complete du niveau 2** — c'est son objet meme, et c'est le
+  pendant exact du blocage de l'iris du Choir Harvester deja liste plus bas. Ce n'est pas un defaut
+  du verrou : c'est le prix d'un verrou. Deux sorties possibles le jour ou ca genera — un drapeau
+  qui saute la sequence pour la mesure, ou un pilote qui sait viser une cible de coque.
+- **Le niveau 2 ne verse aucune UNITE dans ses solides.** `CombatRuntime.fill_solids()` rend
+  solides les coques trop lourdes a ecraser ; le niveau 1 le fait depuis toujours, le niveau 2
+  jamais — il n'en avait pas besoin, on survole. La citadelle a ouvert la liste (`_physics_process`
+  de `cortege_root`) mais n'y verse QUE son mur : ajouter les unites changerait la collision de
+  tout le survol, ce qui n'appartenait pas au lot. **A juger en jouant.**
+- **La teinte magenta des relais et du noyau est une bequille du lot 1**, assumee et ecrite dans le
+  code : le LOT 2 doit les rendre identifiables **sans emissif** (consigne 19), et c'est le test
+  d'acceptation du plan.
 
 > ✅ **L'enrichissement du niveau 2 est CLOS** (2026-09-03) — les quatre lots des 20
 > consignes sont livrés, le plan est dans [`plans/archive/`](plans/archive/). Deux

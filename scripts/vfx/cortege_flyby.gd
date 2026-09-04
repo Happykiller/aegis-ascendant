@@ -132,6 +132,16 @@ func progress() -> float:
 func current_section() -> int:
 	return clampi(int(_travelled / maxf(section_length, 0.001)), 0, section_count - 1)
 
+## Ce qui a été parcouru, en unités monde depuis le début du survol.
+##
+## ⚠️ IL EXISTE PARCE QU'UNE PIÈCE POSÉE SUR LA COQUE NE PEUT PAS LIRE SA PROPRE POSITION HORS
+## DE L'ARBRE : `global_position` ne répond que dans une scène montée, et renvoie l'identité
+## ailleurs — en silence. Une mécanique qui a besoin de savoir OÙ elle est pour décider (le
+## verrou de mi-parcours s'arrête à une station précise) le déduit donc de ce nombre, avec
+## `section_z_at()`. C'est ce qui la rend vérifiable sans jouer deux minutes de défilement.
+func travelled() -> float:
+	return _travelled
+
 func _build() -> void:
 	add_child(_make_sky())
 	var decor: Node3D = null

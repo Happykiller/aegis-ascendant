@@ -36,6 +36,17 @@ const REPORT_DELAY := 7.5
 @onready var _backdrop: Node3D = get_node_or_null("SpaceBackdrop") as Node3D
 @onready var _hardpoints: CortegeHardpoints = $Hardpoints
 
+## Le verrou de mi-parcours. ⚠️ IL N'EST PAS DANS LA SCÈNE, ET IL NE PEUT PAS L'ÊTRE : il se
+## monte SOUS UN TRONÇON de la coque livrée, donc après `reveal()`, comme les points d'ancrage.
+## Un nœud posé dans le `.tscn` resterait immobile pendant que le vaisseau défile sous lui.
+var _citadel: CortegeCitadel = null
+
+## L'œil de la caméra de jeu. ⚠️ TENU PAR LE NIVEAU PARCE QUE LUI EST DANS L'ARBRE : les pièces
+## posées hors du plan de jeu se touchent là où elles se PROJETTENT (`aim_point_of`), et ce
+## point dépend d'où on les regarde. La caméra bouge — secousses, recadrages — donc on la relit
+## à chaque image plutôt que de figer un décalage qui deviendrait faux au premier tremblement.
+var _eye: Node3D = null
+
 var _finished: bool = false
 var _defeated: bool = false
 ## ⚠️ « PREMIÈRE FOIS » ET NON « À CHAQUE FOIS ». Sept ponts et cinq nœuds tombent dans une
@@ -74,13 +85,22 @@ func _ready() -> void:
 	# ⚠️ APRÈS `reveal`, parce que `reveal` repose le décor : les points d'ancrage lisent leur
 	# position dans le monde, et les monter avant reviendrait à les créer sur une coque qui n'est
 	# pas encore là où elle sera.
+	_eye = get_node_or_null("CameraDirector/Camera3D") as Node3D
+	# ⚠️ SON ABSENCE NE PASSE PAS EN SILENCE. Sans œil, `aim_point_of` prend sa branche dégénérée
+	# — caméra dans le plan — et rend la projection brute : toutes les pièces du niveau se
+	# touchent alors ailleurs qu'où on les voit, le verrou s'immobilise 20 % trop loin, et tout
+	# continue sans un mot. Le banc de test refuse explicitement cette valeur ; le runtime doit
+	# la refuser aussi.
+	if _eye == null:
+		push_error("[Cortege] CameraDirector/Camera3D introuvable — les pièces de coque se toucheraient ailleurs qu'où on les voit")
 	_hardpoints.build(_flyby.sections(), TUNING, _bullets, _player as PlayerFighterController,
-		_vfx, get_node_or_null("CameraDirector/Camera3D") as Node3D)
+		_vfx, _eye)
 	_hardpoints.turret_destroyed.connect(_on_turret_destroyed)
 	_hardpoints.bay_destroyed.connect(_on_bay_destroyed)
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
 	_hardpoints.section_weakened.connect(_on_section_weakened)
 	_hardpoints.node_engaged.connect(_on_node_engaged)
+	_mount_citadel()
 	# ⚠️ UNE SECONDE ADOPTION, ET ELLE EST NÉCESSAIRE. Le socle a adopté les unités déjà dans
 	# l'arbre — la réception de proue — mais `build()` vient de monter sept pools de ponts
 	# d'envol, soixante-dix coques de plus. Le runtime adopte par le GROUPE : ce qui n'était pas
@@ -148,6 +168,16 @@ func _on_node_engaged(_node: CortegeSpineNode) -> void:
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	_game_state.add_score(TUNING.node_score)
+	# ⚠️ ET LE VERROU FAIBLIT AVEC SON TRONÇON. Les points d'ancrage éteignent les vingt-et-une
+	# batteries de coque ; les quatre tourelles de la citadelle ne sont pas dans leurs listes, et
+	# ce sont précisément celles qui canardent le joueur pendant qu'il est IMMOBILE devant le
+	# mur. Sans cette ligne, la récompense a un trou exactement là où elle se sent le plus.
+	#
+	# ⚠️ LE TRONÇON SE RECALCULE ICI ET NE S'ÉCOUTE PAS : `section_weakened` ne part que si une
+	# tourelle LOURDE intacte a été touchée, ce qui n'a rien à voir avec la question posée.
+	if _citadel != null:
+		_citadel.weaken_section(
+			CortegeSpineNode.weakened_section(node.section, _flyby.sections().size()))
 	print("[Cortege] nœud d'épine %02d abattu" % (node.section + 1))
 	if not _said_node_down:
 		_said_node_down = true
@@ -174,9 +204,85 @@ func _process(_delta: float) -> void:
 	# voit pas comme un défaut : elle se voit comme des ennemis qui « passent à travers ».
 	if _runtime != null and not (_finished or _defeated):
 		_runtime.crush()
+	if not (_finished or _defeated):
+		_tick_citadel(_delta)
 	if _hud != null and not (_finished or _defeated):
 		_hud.set_survey(_flyby.progress(), _flyby.current_section())
 	_draw_debug_zones()
+
+# --- LE VERROU DE MI-PARCOURS -------------------------------------------------
+
+## Monte la Citadelle de Défense sous son tronçon.
+##
+## ⚠️ ELLE SE POSE PAR ARITHMÉTIQUE ET NON SUR UN MARQUEUR, et c'est une exception assumée. Les
+## trente marqueurs de la coque sont figés — leur en ajouter un demande une reforge du `.glb`,
+## et le lot 1 doit être jouable avant. La station est donc convertie ici en `z` local, par les
+## deux fonctions pures de `CortegeCitadel` que les tests interrogent. ⚠️ LE LOT 2 REND CETTE
+## POSE CADUQUE : quand la géométrie entrera dans `build_long_cortege.py`, elle portera son
+## propre marqueur et cette conversion disparaîtra.
+func _mount_citadel() -> void:
+	# ⚠️ PAS DE CITADELLE SANS COQUE, ET C'EST LA MÊME RÈGLE QUE POUR LES TRENTE MARQUEURS. La
+	# doublure procédurale pose ses tronçons à `HULL_Y = -8` et ne porte AUCUN marqueur : elle
+	# n'a donc ni tourelle, ni pont, ni nœud. Un verrou posé dessus dessinerait ses boîtes huit
+	# mètres sous la dalle — enterrées, invisibles — pendant que le mur solide, lui, arrêterait
+	# le joueur à sa hauteur nominale. Un mur invisible qui bloque : le pire des deux.
+	if _flyby.is_stand_in():
+		print("[Cortege] citadelle NON MONTÉE — la coque est doublée, il n'y a pas de tronçon à équiper")
+		return
+	var sections := _flyby.sections()
+	var index := CortegeCitadel.section_of(TUNING)
+	if index < 0 or index >= sections.size():
+		push_error("[Cortege] la citadelle vise le tronçon %d, la coque en porte %d"
+			% [index + 1, sections.size()])
+		return
+	_citadel = CortegeCitadel.make(TUNING)
+	_citadel.name = "Citadel"
+	_citadel.setup(_bullets, _player as PlayerFighterController, _vfx)
+	_citadel.position = Vector3(0.0, 0.0, CortegeCitadel.local_z_in_section(TUNING))
+	sections[index].add_child(_citadel)
+	_citadel.turret_destroyed.connect(_on_turret_destroyed)
+	_citadel.relay_destroyed.connect(_on_citadel_part_destroyed)
+	_citadel.core_destroyed.connect(_on_citadel_part_destroyed)
+	print("[Cortege] citadelle armée — s = %.0f, tronçon %d, %.0f s de séquence attendues"
+		% [TUNING.citadel_station, index + 1, TUNING.citadel_sequence_time()])
+
+## Une pièce du verrou est tombée. ⚠️ LE SCORE VIENT DE LA PIÈCE, PAS DU NIVEAU : relais et
+## noyau ne valent pas la même chose, et lire ici un seul chiffre les paierait au même prix.
+func _on_citadel_part_destroyed(part: CitadelPart) -> void:
+	_game_state.add_score(part.score)
+
+## ⚠️ LE VERROU COMMANDE LA VITESSE, ET LE NIVEAU L'APPLIQUE. Laisser la citadelle écrire
+## `scroll_speed` donnerait deux écrivains à la même valeur : le jour où l'un se tait, la vitesse
+## reste là où l'autre l'a laissée — et un survol figé ne produit aucune erreur.
+func _tick_citadel(delta: float) -> void:
+	if _citadel == null:
+		return
+	var eye := _eye.global_position if is_instance_valid(_eye) else Vector3.ZERO
+	_citadel.tick(delta, _flyby.travelled(), eye)
+	_flyby.scroll_speed = TUNING.scroll_speed * _citadel.scroll_factor()
+
+## Refait les obstacles du plan et les donne au chasseur.
+##
+## ⚠️ CE NIVEAU N'EN AVAIT AUCUN, et il n'en avait pas besoin : on survole, on ne heurte rien.
+## La citadelle est la première chose du Long Cortège qui ARRÊTE un corps — donc la première
+## raison de tenir cette liste ici. ⚠️ ET C'EST CELLE DU SOCLE, pas une seconde : `LevelRoot` la
+## dessine déjà dans ses calques de debug, donc en tenir une à soi rendrait `--show-solids`
+## aveugle au seul mur du niveau.
+##
+## ⚠️ EN IMAGE PHYSIQUE, ET AVANT RIEN D'AUTRE. Le chasseur se dégage CHEZ LUI, après son propre
+## déplacement : la liste doit être à jour quand il la lit, et refaite à chaque image parce que
+## le mur défile jusqu'à s'arrêter.
+##
+## ⚠️ LES UNITÉS NE SONT PAS VERSÉES ICI, ET C'EST UN MANQUE CONNU. `CombatRuntime.fill_solids()`
+## rendrait solides les coques trop lourdes à écraser — le niveau 1 le fait, le niveau 2 ne l'a
+## jamais fait. L'ajouter changerait la collision de tout le survol, ce qui n'appartient pas à ce
+## lot : c'est au backlog, à juger en jouant.
+func _physics_process(_delta: float) -> void:
+	_solids.clear()
+	if _citadel != null:
+		_citadel.fill_solids(_solids)
+	if _player != null and _player.solids != _solids:
+		_player.solids = _solids
 
 ## Les zones de debug : celles du socle, plus les fenêtres de tir que lui seul ne peut pas
 ## connaître — elles viennent du réglage de ce niveau.

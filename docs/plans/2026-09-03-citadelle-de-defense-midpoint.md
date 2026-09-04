@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | **à appliquer** — rien n'est engagé côté code. ✅ **Les trois arbitrages sont tranchés** (2026-09-03) ; reste la seule cote verticale (C1), au LOT 0. Les deux demandes de texture sont écrites et partent en parallèle |
+| **État** | ✅ **LOT 0 clos et LOT 1 livré** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 2 (silhouette), 3 (les quatre états), 4 (l'ouverture), 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -44,9 +44,10 @@ objectif qui **change l'état du niveau**), le kit de tourelle paramétrique, Ly
 
 # Les contraintes dures — aucune n'est une opinion
 
-## C1 — ⛔ Le budget vertical est de **1,30 m**, le brief en demande **2,50**
+## C1 — ⛔ Le budget vertical est de **1,30 m**, le brief en demande **2,50** — ✅ **TRANCHÉ**
 
 C'est le point qui décide de la silhouette, et il tombe avant tout le reste.
+**Résolu le 2026-09-04 par la voie (b), la hauteur par le creux — voir le LOT 0 pour les cotes.**
 
 ```
   -2,40   plafond du GAMEPLAY  (ADR-0041 — une tourelle se tire dessus)
@@ -164,16 +165,19 @@ pour que la respiration du §18 sépare les deux verrous au lieu de les faire se
 
 ---
 
-# Les demandes de texture — à générer **en parallèle** des lots
+# Les demandes de texture — livrées par l'opérateur le 2026-09-04
+
+**Une acceptée, une refusée, et les deux verdicts sont chiffrés.** Aucune n'est nécessaire avant
+le LOT 3 : le refus ne bloque rien.
 
 L'opérateur les produit pendant que le code avance (`ADR-0028` : la texture est la voie de
-l'opérateur). Elles sont écrites, validées contre les six règles du contrat, et **ne bloquent ni le
-LOT 1 ni le LOT 2** — la boucle et la silhouette se jouent en gris.
+l'opérateur). Elles **ne bloquent ni le LOT 1 ni le LOT 2** — la boucle et la silhouette se
+jouent en gris.
 
-| Demande | Ce qu'elle sert | Requise pour |
-|---|---|---|
-| [`TEX-0015`](../forge/textures/TEX-0015-citadelle-bouclier-energie.json) — bouclier | le panneau d'énergie central, et la peau du noyau à une échelle plus serrée | **LOT 3** |
-| [`TEX-0016`](../forge/textures/TEX-0016-cortege-signaletique-ambre.json) — signalétique ambre | les diodes de balisage `#FFA92B` d'`ADR-0043` | **LOT 3** |
+| Demande | Ce qu'elle sert | Requise pour | État |
+|---|---|---|---|
+| [`TEX-0015`](../forge/textures/TEX-0015-citadelle-bouclier-energie.json) — bouclier | le panneau d'énergie central, et la peau du noyau à une échelle plus serrée | **LOT 3** | ✅ acceptée après rattrapage |
+| [`TEX-0016`](../forge/textures/TEX-0016-cortege-signaletique-ambre.json) — signalétique ambre | les diodes de balisage `#FFA92B` d'`ADR-0043` | **LOT 3** | ⛔ refusée, à régénérer |
 
 ⚠️ **DEUX, ET PAS SIX — c'est délibéré.** Le blindage de la citadelle, ses panneaux greffés et sa
 machinerie sont servis par `TEX-0010`, `TEX-0011` et `TEX-0012`, déjà livrées et intégrées. Le brief
@@ -190,25 +194,114 @@ canaux : un décor, pas une barrière.
 (protégé, surchargé, éteint) sont pilotés **par le moteur** — une carte par état ferait quatre
 choses à maintenir et trois à oublier.
 
+
+## ✅ `TEX-0015` — le bouclier : **ACCEPTÉE après rattrapage de tuilage**
+
+Artistiquement juste, et ça se mesure : maille hexagonale à deux échelles (lattice de lignes
+vives + grain cellulaire fin dans les alvéoles, ce que `main_elements` demandait mot pour mot),
+teinte **310–320°** — magenta/rose —, **zéro cyan, zéro corail**, aucun vignettage (écart
+coin/centre 0,018), aucun texte ni pictogramme, **59 %** de l'aire au-dessus de la mi-valeur pour
+une cible de 40–60.
+
+⚠️ **Mais le tuilage livré était REFUSÉ** : écart **11,5 % en X et 11,2 % en Y** pour un seuil de
+4 % (règle 4 du contrat). Et **aucun recadrage ne le sauvait** — la meilleure tuile carrée
+possible, cherchée sur toutes les tailles de 900 à 1254 px et **tous** les décalages, plafonnait à
+5,0 % : le générateur n'a pas produit une image périodique, il a produit une belle image.
+
+**Rattrapée par fondu miroir de 48 px puis rééchantillonnage en 1024** → **0,1 % sur les deux
+axes**. Et la planche 2×2 a été **regardée** (`ADR-0006`) : la maille hexagonale absorbe le fondu,
+aucune bande miroir visible. C'est exactement le cas que `derive-maps --fix-tiling` décrit —
+« il sauve une image presque bonne ».
+
+⚠️ **Et elle ne reçoit AUCUNE carte dérivée.** La demande listait
+`citadel_shield_nrm/rough/ao` : c'était une erreur d'écriture, corrigée dans le JSON. `output_usage`
+vaut `albedo_and_emission`, pas `source_for_normal` — dériver une normale d'une carte de **couleur**
+donne des gradients faux **qui ont l'air corrects**, le défaut même que la règle 2 existe pour
+empêcher ; et un champ translucide émissif n'a aucun relief à ombrer. Même traitement que
+`cortege_emissive`.
+
+Déposée en **`assets/source/textures/cortege/citadel_shield_1024.png`** — et **là seulement**.
+⚠️ `assets/imported/` ne porte « rien qui ne soit chargé » (`assets/README.md`) : la copie runtime
+y entrera au LOT 3, avec le matériau `AA_Shield_Field` qui la lit. Y déposer une carte que rien
+n'ouvre ferait de ce dossier une réserve, et c'est exactement la frontière que cette règle tient.
+Sa dernière recette est en jeu, écran chargé, tirs ennemis présents.
+
+⚠️ **Conséquence à ne pas perdre** : le placeholder du LOT 1 est un bouclier **bleu**
+(`#4DB8FF`) ; `TEX-0015` le rend **magenta**. Au LOT 3, bouclier et noyau seront donc de la même
+famille de teinte, et c'est la **structure** qui devra les séparer — c'est ce que la demande
+argumente, mais ça ne s'est encore vu sur aucune capture.
+
+## ⛔ `TEX-0016` — la signalétique ambre : **REFUSÉE, et pas sur ce qu'on craignait**
+
+Tout ce que la demande redoutait est tenu, et largement : tuilage **OK** (1,8 % / 1,5 %),
+anthracite dominant, aucun cabochon coupé par un bord, aucun vignettage (écart 0,002), aucun
+texte. La clause 2 d'`ADR-0043` plafonne l'ambre à **3 %** de l'aire : l'image en emploie
+**0,031 %**, soit **cent fois moins que le budget**.
+
+⚠️ **Et c'est là qu'elle échoue.** Les 18 taches ambre mesurent **9 px de large en médiane** sur
+1254, soit **3,6 cm au monde** à 5 m/tuile — quand la demande veut 12 à 20 cm. À 23 px/m, un
+cabochon fait **0,8 px à l'écran** pour les **3 à 5 px** exigés : sous-pixel, donc il scintille ou
+il disparaît au filtrage. Et **aucune échelle UV ne rattrape ça** : il faudrait une tuile de
+**16,7 m** pour amener la diode à 12 cm, ce qui donnerait des plaques de bordé de 6,6 m — plus
+large que le pont intérieur (4,6 m) et que le pont médian (2,95 m).
+
+**Ce qu'il faut demander à la régénération, en une phrase** : *les mêmes plaques, les mêmes
+groupes, mais des cabochons trois fois plus gros* — le budget de 3 % laisse de quoi les grossir
+**dix fois** avant de le toucher. La contrainte qui a bridé le générateur n'était pas la bonne :
+c'est la borne **basse** de lisibilité qui décide ici, pas le plafond d'aire.
+
+Non déposée : un asset qui ne peut pas se lire n'entre pas dans le dépôt.
+
 # Les lots — et l'ordre est imposé par le brief
 
 > **« Ne pas passer du temps sur les greebles ou les effets tant que la boucle complète n'est pas
 > jouable de bout en bout. »** C'est la consigne que l'opérateur a demandé de garder, et elle est la
 > règle de production de ce plan. Chaque lot ci-dessous se termine par quelque chose de **jouable**.
 
-## LOT 0 — ✅ **presque clos** : il ne reste que la cote verticale
+## LOT 0 — ✅ **CLOS** (2026-09-04) : la voie (b), et la cote est un chiffre
 
-T1, T2 et T3 sont **tranchées** (voir ci-dessus), et `ADR-0043` acte l'ambre. Reste **C1**, la seule
-question à laquelle l'opérateur ne peut pas répondre sans un chiffre : les bastions demandés à
-« +1,5 à +2,5 m » ne disposent que de **1,30 m** (décor) ou **1,90 m** (gameplay).
+T1, T2 et T3 étaient tranchées ; `ADR-0043` actait l'ambre. Restait **C1**, la cote verticale.
 
-**Livrable** : la hauteur des bastions posée en chiffre, et la voie retenue parmi les trois de C1.
-⚠️ **Ma recommandation : la voie (b), obtenir la hauteur par le CREUX.** Le lot B3 l'a déjà démontré
-sur cette coque — quatre fosses de 1,55 m ont donné du relief là où le plafond interdisait de
-monter, pour 384 triangles. Une citadelle dont la porte s'enfonce dans le pont lit **plus** fermée
-qu'une qui dépasse de 1,30 m, et elle ne coûte aucun amendement d'`ADR-0041`.
+**Tranché : la voie (b) — la hauteur se prend par le CREUX.** Une **douve de 1,55 m** est creusée
+sous l'emprise de la citadelle. Ce n'est pas une profondeur neuve : c'est **exactement `PIT_DEPTH`**,
+celle des quatre fosses du lot B3, déjà bâtie, déjà assertionnée sur cette coque. En inventer une
+seconde aurait donné deux creux de profondeurs différentes sans qu'aucune raison ne les sépare.
 
-## LOT 1 — La boucle, en cubes gris
+Ce que la douve achète, en cotes :
+
+| Pièce | Assise | Sommet | Hauteur bâtie | **Hauteur lue** depuis le fond de douve |
+|---|---|---|---|---|
+| Porte | −5,10 | **−3,00** (plafond décor) | 2,10 m | **2,85 m** |
+| Bastion | −5,10 | −3,60 | 1,50 m | 2,25 m |
+| Couronne | −3,60 | **−3,00** | 0,60 m | **2,85 m** |
+| Relais | −4,30 (pont intérieur) | **−2,40** (plafond gameplay) | 1,90 m | 3,45 m |
+| Noyau | −4,58 (fond de l'artère) | **−2,40** | 2,18 m | 3,73 m |
+
+**Le brief demandait 1,5 à 2,5 m ; la lecture en donne 2,85.** On dépasse la demande sans toucher
+`ADR-0041`, ce qu'aucune des deux autres issues ne permettait — (a) rabotait la silhouette, (c)
+demandait d'amender un ADR et de démontrer que rien n'est masqué.
+
+⚠️ **Et la hiérarchie tient dans une seule règle** : le seul volume autorisé à culminer à −2,40 est
+celui qu'on peut **tirer**. Le noyau est donc le point le plus haut de la citadelle, 60 cm au-dessus
+de la porte et des couronnes. C'est ce qui le désigne comme le centre **sans un mot de HUD**, et
+`test_the_destructible_pieces_stay_under_the_gameplay_ceiling` le garde.
+
+### ⚠️ Deux contraintes découvertes en posant les cotes, et qui appartiennent au LOT 2
+
+1. **La fenêtre libre est sur une RAMPE, pas sur un plateau.** `TAPER` vaut 1,000 à `s = 236` et
+   monte à 1,230 à `s = 258` — le grand élargissement du tronçon 3 commence *dans* l'emprise. La
+   coque s'évase donc de +2 % à l'avant du verrou à +9 % à l'arrière. Le plan ne l'avait pas vu :
+   il n'avait compté que les marqueurs et les fosses. **C'est assumé** — un verrou qui s'évase se
+   lit comme un contrefort — mais le LOT 2 doit suivre `_side_scale(s, side)` comme tout le reste
+   du fichier, et ne surtout pas poser des `x` absolus.
+2. **La barrière déborde la coque, et il faudra la porter.** La coque fait 28 m ; le plan de vol,
+   parallaxe appliquée, en couvre davantage. Une barrière arrêtée au bordé laisserait le joueur
+   **contourner le verrou par le vide** — la séquence deviendrait facultative. La porte couvre donc
+   **tout le plan** (|x| = 17,2 en monde, ±14,17 projeté). ⚠️ **Dû au LOT 2/3 : la partie qui
+   déborde doit recevoir un PORTEUR VISIBLE** (portique, rideau de bouclier). Un mur invisible est
+   la même injustice qu'une tourelle qu'on croit pouvoir raser et qui traverse.
+
+## LOT 1 — La boucle, en cubes gris — ✅ **LIVRÉ (2026-09-04)**
 
 **Aucune géométrie définitive, aucun effet.** Des boîtes grises aux bonnes places, et la machine à
 états du §16 :
@@ -218,9 +311,111 @@ qu'une qui dépasse de 1,30 m, et elle ne coûte aucun amendement d'`ADR-0041`.
 - le passage bloqué par une `PlaneShape`, **retirée à `CLEARED`** ;
 - `scroll_speed` piloté par l'état.
 
-**Ce qui prouve le lot** : une partie se joue de bout en bout, dans les deux ordres de relais, et le
-chasseur franchit le passage sans téléportation. ⚠️ **Et une partie où l'animation d'ouverture est
-volontairement coupée doit rester jouable** (§11) — la route ne dépend jamais d'un visuel.
+### Ce qui est livré
+
+| | |
+|---|---|
+| `scripts/gameplay/cortege_citadel.gd` | la boucle, les sept états, la pose, le freinage, la forme solide |
+| `scripts/gameplay/citadel_part.gd` | une pièce destructible **qui sait refuser** — le noyau rend les tirs sans perdre un point |
+| `resources/data/cortege_tuning.gd` | dix réglages et **quatre invariants** (9 à 12) |
+| `scripts/vfx/cortege_flyby.gd` | `travelled()` — voir « ce qui a coûté » |
+| `tests/unit/test_cortege_citadel.gd` | 32 méthodes |
+
+**La pose, mesurée :** face avant à `s = 240,0`, emprise `239,6 → 246,0`. Garde de la fosse de
+`s = 228` finie à 236,2 (**3,4 m** de marge) ; socle de `Turret_07` commencé à 255,25 (**9,25 m**).
+Le verrou s'immobilise à `travelled ≈ 256,1`, mur à `y = +4,0`, **arène de 12 unités**.
+Relais à `(±5,0 ; 4,9)`, noyau à `(0 ; 6,5)`, quatre tourelles légères entre `y = 4,2` et `5,7` —
+toutes dans le plan de vol **et** dans leur propre fenêtre de 14 unités.
+
+**Le budget, tenu :** freinage 4,2 s (mesuré **5,0 s** en jeu — l'invariant estime avec la vitesse
+de défilement, la vraie est celle du plan, 18 % plus lente : l'estimation est **optimiste**, donc
+sûre pour un plafond), combat 22,8 s, ouverture 2,2 s, reprise 3,0 s → **32 s**, dans la fourchette
+30–45 du brief.
+
+### ⚠️ Cinq choses que le code a refusées, et ce qu'elles ont appris
+
+1. **`global_position` ne répond QUE dans l'arbre de scène.** Hors de lui, le moteur rend
+   l'identité et écrit une ligne au journal que personne ne lit dans une suite de 844 tests. La
+   citadelle lisait sa position et celle de la caméra ainsi : **tous ses tests de pose passaient au
+   vert sur une projection dégénérée**. Elle reçoit désormais `travelled` et l'œil — d'où
+   `CortegeFlyby.travelled()`. C'est la même leçon que `CortegeSpineNode` avait déjà écrite ; elle
+   a été repayée.
+2. **Le banc lisait un œil à (0, 0, 0), et `aim_point_of` a un cas dégénéré documenté pour ça** :
+   caméra dans le plan, le calcul « marche » et rend la position de la caméra — toutes les cibles au
+   même endroit, sans erreur. Le test lit maintenant la caméra **de la scène du niveau**, en
+   composant les transformations à la main, et **refuse un œil à moins d'une unité du plan**.
+3. **Une tourelle légère ne tient pas sur la couronne.** À −3,00 son affût culmine à −2,15 et
+   franchit le plafond du gameplay. Elle siège donc sur le pont du bastion à −3,60 (sommet −2,75,
+   35 cm de marge), et **la couronne est bâtie ailleurs que sous les tourelles** — le même arbitrage
+   que `build_long_cortege.py` fait déjà entre bastions et socles d'affût.
+4. **Un relais abattu pendant le freinage figeait le mur deux unités trop haut.** Les relais
+   deviennent tirables à l'instant précis où le freinage commence : quitter `APPROACH` faisait
+   tomber la vitesse à zéro d'un coup, sur une porte que le joueur ne pouvait plus atteindre. Le
+   mur va désormais jusqu'à sa station **quoi qu'il arrive aux relais** — c'est la géométrie qui
+   dit quand il est en place, pas l'état du combat. Atteignable dès la première partie.
+5. **`--cortege-from=4` gelait le survol pour toujours.** Un départ en aval pose le mur *derrière*
+   le joueur : sa hauteur de plan est négative, donc la condition d'arrêt est vraie, et le verrou
+   s'armait sur une porte qu'on ne peut plus ni voir ni tirer. Aucune erreur, aucun journal. Le
+   verrou répute désormais la route franchie. Un outil de vérification qui gèle le jeu est pire que
+   pas d'outil.
+
+### ⚠️ Ce que la relecture a trouvé, et qui est corrigé (2026-09-04)
+
+`godot-reviewer` a rendu **huit défauts, zéro bloquant**. Aucun n'aurait produit d'erreur ; six
+n'auraient pas été vus en jouant. Tous sont fermés, chacun avec son garde.
+
+| # | Le défaut | Ce qu'il coûtait |
+|---|---|---|
+| **1** | `level_duration()` ne comptait **que le défilement** | Le niveau se joue en 240 s et l'invariant en affirmait 208. Pire : la borne haute de l'invariant 9 autorisait un verrou qui rompait la promesse en restant **vert partout**. `level_duration()` compte désormais `citadel_sequence_time()`, `scroll_duration()` porte le défilement seul, et **`target_duration` passe de 210 à 240** — la promesse a changé parce que le contenu a changé |
+| **2** | L'état `LOCKED` était **sautable**, précisément sur le chemin documenté comme normal | Un relais abattu pendant le freinage faisait passer `ONE_RELAY` avant que le mur soit en place : `LOCKED` n'était jamais traversé, la ligne horodatée « VERROU » ne s'imprimait pas — et le critère « sous 45 s » ne repose sur rien d'autre. Le mur annonce maintenant son arrivée par **son propre signal `wall_locked`**, quoi que fasse le combat. Mon test gravait le saut au lieu de le voir : il l'exige désormais |
+| **3** | Les quatre tourelles du verrou **échappaient au nœud d'épine** | Le nœud du tronçon 2 éteint le tronçon 3, celui du verrou : les 21 batteries de coque faiblissaient, annoncées au bandeau, et les **seules** tourelles qui canardent le joueur pendant qu'il est immobile gardaient toute leur vigueur. C'est le trou de récompense exactement là où il se sent |
+| **4** | L'inscription au gestionnaire de balles était **asymétrique** | Une pièce qui quittait le plan puis y rentrait restait éteinte **à vie** : cible inscrite, tir qui la traverse, **verrou inouvrable** — sans une ligne au journal. Et une pièce vivante hors plan restait inscrite deux minutes. Va-et-vient symétrique + passe monotone, comme la tourelle et le nœud |
+| **5** | L'œil manquant devenait **(0, 0, 0) en silence** | C'est le cas dégénéré documenté d'`aim_point_of` : toutes les pièces se touchent ailleurs qu'où on les voit. Le banc le refusait, le runtime l'acceptait. `push_error` désormais |
+| **6** | `reserve()` appelée à **chaque image physique** | Son contrat dit « une fois, au montage », et `size() + 1` faisait dépendre la capacité de l'**ordre** des fournisseurs. Retirée : `PlaneShapes._push()` dimensionne lui-même |
+| **7** | La porte restait **dessinée** après `CLEARED` | Le fichier se prémunissait du mur invisible et livrait l'injustice miroir : 34 m de volume qui disent « fermé » pendant que le joueur les traverse. Escamotée — ce n'est pas l'ouverture du lot 4, c'est la version qui ne mente pas en attendant |
+| **8** | `piece_world()` suppose le tronçon à `y = 0` — **vrai du `.glb`, faux de la doublure** | La doublure pose ses tronçons à −8 et ne porte aucun marqueur : le verrou y aurait dessiné ses boîtes huit mètres sous la dalle pendant que le mur solide arrêtait le joueur à sa hauteur nominale. **Un mur invisible qui bloque.** La citadelle ne se monte plus sans coque livrée — même règle que les trente marqueurs |
+
+### Mesuré en jeu, sur Windows (`godot-verifier`, 4 lancements)
+
+| | |
+|---|---|
+| **Verdict visuel** | **vert** — le verrou se voit sans ambiguïté, il s'immobilise, le mur couvre toute la largeur |
+| **Coût GPU** | **3,90 ms/image** pendant le verrou, sur **Quadro T1000** (pas la RTX 4080) — 23 % du budget 60 Hz. La citadelle seule : **≈ 0,2 ms**, à peine au-dessus du bruit de mesure (0,16 ms), et c'est un **majorant** (la trame de référence porte trois chasseurs que celle du verrou n'a pas) |
+| **Anomalies** | aucune — zéro `ERROR`, zéro `SCRIPT ERROR` sur les quatre lancements |
+
+⚠️ **Deux choses vues à la capture, et regardées** (`ADR-0006`) :
+
+1. **Le porte-à-faux est réel.** Le cœur du verrou est franchement planté — bastions, relais,
+   noyau, tourelles s'appuient sur la coque — mais **les deux tiers extérieurs de la poutre
+   surplombent le vide**, étoiles visibles dessous. C'est la conséquence directe de « fermer tout
+   le plan », et c'est ce que le LOT 2 doit porter. Fonctionnellement juste, mais ça se lit comme
+   une poutre en l'air.
+2. **Les quatre tourelles sont peu lisibles** : gris sombre sur plinthe gris-brun, très petites,
+   à la limite du repérable sans zoom. Relais, noyau et bouclier claquent ; elles, non. À traiter
+   au LOT 2 (silhouette) plutôt qu'à coup de teinte.
+
+### Ce que le lot laisse ouvert, et qui n'est pas un oubli
+
+- ⚠️ **Le pilote automatique reste bloqué au verrou.** `--demo` tire droit devant : il n'abat pas
+  les relais, donc le survol ne repart jamais. **`balance-prober` ne peut plus rendre une
+  chronologie d'arc complète du niveau 2** — exactement le pendant du blocage de l'iris du Choir
+  Harvester, déjà au backlog. Ce n'est pas un défaut du verrou, c'est le prix d'un verrou.
+- **Les unités ne sont pas versées dans les solides du niveau 2.** `CombatRuntime.fill_solids()`
+  rendrait solides les coques trop lourdes à écraser ; le niveau 1 le fait, le niveau 2 ne l'a
+  jamais fait. L'ajouter changerait la collision de tout le survol — au backlog, à juger en jouant.
+- **La teinte magenta des relais et du noyau est une béquille de lot 1.** Le LOT 2 doit les rendre
+  identifiables **sans émissif**, et c'est le test d'acceptation.
+
+### Ce qui prouve le lot
+
+Vérifié en headless (`--goto-level=long_cortege --cortege-from=3 --demo`) : le verrou s'arme, freine
+en **5,0 s**, s'immobilise, et le journal est **horodaté**. 844 tests verts, dont 32 sur ce lot.
+
+⚠️ **Ce qui reste dû, et qui n'appartient qu'à l'opérateur** (`ADR-0006`, `ADR-0019`) : une partie
+jouée à la main, **dans les deux ordres de relais**, où le chasseur franchit le passage sans
+téléportation — et une partie où l'animation d'ouverture est volontairement coupée doit rester
+jouable (§11). La route ne dépend jamais d'un visuel : `test_the_route_opens_only_after_the_opening_has_run`
+le garde, mais seul un humain dit si l'arène de 12 unités se **joue**.
 
 ## LOT 2 — La silhouette
 
