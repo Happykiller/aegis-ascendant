@@ -45,6 +45,7 @@ const PLUME_THROTTLE := 0.85
 const ROSTER: Array[CodexEntry] = [
 	preload("res://resources/codex/specter_9.tres"),
 	preload("res://resources/codex/specter_9_b.tres"),
+	preload("res://resources/codex/specter_9_c.tres"),
 	preload("res://resources/codex/aegis_citadel.tres"),
 	preload("res://resources/codex/needle_scout.tres"),
 	preload("res://resources/codex/crescent_interceptor.tres"),

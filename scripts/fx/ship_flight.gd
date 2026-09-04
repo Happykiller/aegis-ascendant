@@ -39,33 +39,45 @@ const SWEEP_DEG := 26.0
 ## l'échelle ne bouge plus : ce sont les pétales qui s'ouvrent, sur leur charnière.
 const NOZZLE_OPEN := 1.45
 
-## Les familles d'`ADR-0044`. Chaque valeur est UN CRAN SOUS le plafond mécanique que
-## BRIEF-0098 impose à la forge (le build échoue sous la cible) : la marge absorbe le
-## lissage. ⚠️ À RECALER sur le rapport de forge (`BRIEF-0098-report.md`) : les cibles
-## du brief sont des planchers, le rapport donne les plafonds réels.
+## Les familles d'`ADR-0044`. Chaque valeur est UN CRAN SOUS le plafond mécanique
+## MESURÉ par le build de `specter_9_c` (balayage BVH au pas de 1°, jeu minimal 2,5 mm,
+## `build-hull.sh specter_9_c` du 2026-09-04) : la marge absorbe le lissage.
 ##
-## | Famille   | cible du brief | réglage |
-## |-----------|----------------|---------|
-## | pétales   | ≥ 20°          | 16°     |
-## | lacet     | ±6°            | 4°      |
-## | aérofrein | ≥ 55°          | 45°     |
-## | rampe     | ≥ 12°          | 9°      |
-## | gouverne  | ±22°           | 18°     |
-## | grappin   | ≥ 90°          | 85°     |
-## | verrière  | ≥ 35°          | 30°     |
-const PETAL_DEG := 16.0
-const NOZZLE_YAW_DEG := 4.0
-const AIRBRAKE_DEG := 45.0
-const INTAKE_DEG := 9.0
-const RUDDER_DEG := 18.0
-const GRAPPLE_DEG := 85.0
-const CANOPY_DEG := 30.0
+## | Famille   | plafond mesuré                    | réglage |
+## |-----------|-----------------------------------|---------|
+## | pétales   | 30° (Petal_R_07 touche son voisin) | 24°     |
+## | lacet     | 7° (douille de nacelle)            | 5°      |
+## | aérofrein | 94° (baie, arête, dérives)         | 60°     |
+## | rampe     | aucune butée                       | 15°     |
+## | gouverne  | 32° (dérive, nacelle)              | 24°     |
+## | grappin   | aucune butée                       | 90°     |
+## | verrière  | aucune butée                       | 40°     |
+##
+## « Aucune butée » ne veut pas dire « n'importe quoi » : au-delà, la pièce ne traverse
+## rien mais raconte autre chose (un grappin à 150° rentre dans le fuselage par l'arrière).
+const PETAL_DEG := 24.0
+const NOZZLE_YAW_DEG := 5.0
+const AIRBRAKE_DEG := 60.0
+const INTAKE_DEG := 15.0
+const RUDDER_DEG := 24.0
+const GRAPPLE_DEG := 90.0
+const CANOPY_DEG := 40.0
 
-## Inclinaison des dérives, donc de l'axe des gouvernes. La gouverne tourne autour de
-## l'axe de SA dérive, pas autour de la verticale — une gouverne qui pivoterait sur +Y
-## traverserait une dérive inclinée à 30°. ⚠️ Le rapport de forge donne le vecteur
-## mesuré ; d'ici là, l'angle de `build_specter_9.py` (`FIN_CANT_DEG = 30`).
-const FIN_CANT_DEG := 30.0
+## SENS D'OUVERTURE, MESURÉS sur le `.glb` par la forge (rotation de +5° et lecture du
+## déplacement d'un sommet) — jamais déduits. Aérofreins et rampes : rotation POSITIVE
+## autour de +X = le bord arrière DESCEND, donc s'ouvrir, c'est tourner en négatif.
+## Grappins : positif = la pointe descend (déployé). Verrière : positif = l'avant monte.
+const AIRBRAKE_OPEN_SIGN := -1.0
+const INTAKE_OPEN_SIGN := -1.0
+const GRAPPLE_OPEN_SIGN := 1.0
+const CANOPY_OPEN_SIGN := 1.0
+
+## L'axe des gouvernes : celui de LEUR dérive, mesuré sur le `.glb` — inclinée de 30°
+## vers l'extérieur ET couchée vers l'arrière (composante +Z). Une gouverne qui
+## pivoterait sur +Y traverserait sa dérive. Rotation positive : le bord de fuite va vers
+## +X (tribord) des deux côtés — c'est un lacet, pas une paire de volets.
+const RUDDER_AXIS_L := Vector3(-0.4810, 0.8331, 0.2731)
+const RUDDER_AXIS_R := Vector3(0.4810, 0.8331, 0.2731)
 
 ## Vitesses de réponse. Les volets sont vifs — ce sont des gouvernes, elles réagissent
 ## avec le pilote. Les tuyères sont lentes : une tuyère qui claque à chaque pression de
@@ -227,11 +239,11 @@ func _process(delta: float) -> void:
 	for i in _petals.size():
 		_petals[i].quaternion = Quaternion(_petal_axes[i], petal)
 
-	var brake := deg_to_rad(AIRBRAKE_DEG * _brake)
+	var brake := AIRBRAKE_OPEN_SIGN * deg_to_rad(AIRBRAKE_DEG * _brake)
 	for airbrake in _airbrakes:
 		airbrake.rotation.x = brake
 
-	var intake := deg_to_rad(INTAKE_DEG * _thrust)
+	var intake := INTAKE_OPEN_SIGN * deg_to_rad(INTAKE_DEG * _thrust)
 	for ramp in _intakes:
 		ramp.rotation.x = intake
 
@@ -240,20 +252,14 @@ func _process(delta: float) -> void:
 	# de SA derive.
 	var rudder := deg_to_rad(RUDDER_DEG * _bank)
 	if _rudder_l != null:
-		_rudder_l.quaternion = Quaternion(_fin_axis(1.0), rudder)
+		_rudder_l.quaternion = Quaternion(RUDDER_AXIS_L.normalized(), rudder)
 	if _rudder_r != null:
-		_rudder_r.quaternion = Quaternion(_fin_axis(-1.0), rudder)
+		_rudder_r.quaternion = Quaternion(RUDDER_AXIS_R.normalized(), rudder)
 
 	# Appontage : les grappins sortent sur la premiere moitie de la course, la verriere
 	# s'ouvre sur la seconde — un mecanisme apres l'autre, pas tout en meme temps.
-	var grapple := deg_to_rad(GRAPPLE_DEG * clampf(_dock * 2.0, 0.0, 1.0))
+	var grapple := GRAPPLE_OPEN_SIGN * deg_to_rad(GRAPPLE_DEG * clampf(_dock * 2.0, 0.0, 1.0))
 	for hook in _grapples:
 		hook.rotation.x = grapple
 	if _canopy != null:
-		_canopy.rotation.x = deg_to_rad(CANOPY_DEG * clampf(_dock * 2.0 - 1.0, 0.0, 1.0))
-
-## L'axe d'une dérive inclinée de `FIN_CANT_DEG` vers l'extérieur, dans le repère de la
-## coque (Godot : +Y vers le haut, +X vers tribord). `side` : +1 bâbord, −1 tribord.
-static func _fin_axis(side: float) -> Vector3:
-	var cant := deg_to_rad(FIN_CANT_DEG)
-	return Vector3(-side * sin(cant), cos(cant), 0.0).normalized()
+		_canopy.rotation.x = CANOPY_OPEN_SIGN * deg_to_rad(CANOPY_DEG * clampf(_dock * 2.0 - 1.0, 0.0, 1.0))

@@ -155,15 +155,17 @@ func test_a_hull_without_moving_parts_degrades_quietly() -> void:
 
 # --- ADR-0044 : les familles optionnelles -----------------------------------
 
-## Cibles du BRIEF-0098 — le build de la forge ECHOUE en dessous. Ce sont des planchers
-## de plafond : le rapport donnera les vrais. ⚠️ A RECALER sur `BRIEF-0098-report.md`.
-const HARD_PETAL_DEG := 20.0
-const HARD_YAW_DEG := 6.0
-const HARD_AIRBRAKE_DEG := 55.0
-const HARD_INTAKE_DEG := 12.0
-const HARD_RUDDER_DEG := 22.0
-const HARD_GRAPPLE_DEG := 90.0
-const HARD_CANOPY_DEG := 35.0
+## Plafonds MECANIQUES de la cellule-temoin, MESURES par le build de `specter_9_c`
+## (balayage BVH, pas 1 deg, jeu 2,5 mm — log du 2026-09-04). Les pieces sans butee
+## (rampe, grappin, verriere) recoivent la borne au-dela de laquelle elles racontent
+## autre chose (planche des mecanismes : 30 / 150 / 70).
+const HARD_PETAL_DEG := 30.0
+const HARD_YAW_DEG := 7.0
+const HARD_AIRBRAKE_DEG := 94.0
+const HARD_INTAKE_DEG := 30.0
+const HARD_RUDDER_DEG := 32.0
+const HARD_GRAPPLE_DEG := 150.0
+const HARD_CANOPY_DEG := 70.0
 
 ## La coque de la cellule-temoin, en Node3D nommes : les six pieces d'avant, plus
 ## douze petales par tuyere posés sur un cercle de rayon 0,1 dans le repere de la
@@ -242,17 +244,23 @@ func test_brake_closes_the_petals_and_raises_the_airbrakes() -> void:
 	_settle(rig[1])
 	assert_true(rad_to_deg(petal.quaternion.get_angle()) < open_deg * 0.1,
 		"a plein freinage les petales se referment (%.2f -> %.2f)" % [open_deg, rad_to_deg(petal.quaternion.get_angle())])
-	var brake_deg := rad_to_deg(absf((rig[0].get_node("Airbrake_L") as Node3D).rotation.x))
+	var brake_rot := (rig[0].get_node("Airbrake_L") as Node3D).rotation.x
+	var brake_deg := rad_to_deg(absf(brake_rot))
 	assert_true(brake_deg > 30.0 and brake_deg <= HARD_AIRBRAKE_DEG,
 		"les aerofreins se levent sous le plafond (%.2f deg)" % brake_deg)
+	# Mesure de la forge : rotation + autour de +X = le bord arriere DESCEND. S'ouvrir,
+	# c'est donc tourner en negatif — un signe faux enfoncerait l'aerofrein dans sa baie.
+	assert_true(brake_rot < 0.0, "l'aerofrein tourne dans le sens qui le LEVE (%.3f rad)" % brake_rot)
 	rig[0].free()
 
 func test_intakes_follow_thrust_under_the_ceiling() -> void:
 	var rig := _rich_rig()
 	rig[1].call("set_thrust", 1.0)
 	_settle(rig[1])
-	var deg := rad_to_deg(absf((rig[0].get_node("Intake_R") as Node3D).rotation.x))
+	var rot := (rig[0].get_node("Intake_R") as Node3D).rotation.x
+	var deg := rad_to_deg(absf(rot))
 	assert_true(deg > 5.0 and deg <= HARD_INTAKE_DEG, "la rampe s'ouvre sous le plafond (%.2f deg)" % deg)
+	assert_true(rot < 0.0, "la rampe tourne dans le sens qui la LEVE (mesure forge : + = descend)")
 	rig[0].free()
 
 func test_rudders_yaw_together_on_their_canted_axis() -> void:
@@ -266,11 +274,14 @@ func test_rudders_yaw_together_on_their_canted_axis() -> void:
 	var angle_l := rad_to_deg(l.quaternion.get_angle())
 	assert_true(angle_l > 8.0 and angle_l <= HARD_RUDDER_DEG, "la gouverne braque sous le plafond (%.2f deg)" % angle_l)
 	assert_almost_eq(rad_to_deg(r.quaternion.get_angle()), angle_l, 0.01, "les deux gouvernes braquent du meme angle")
-	var cant := ShipFlightScript.FIN_CANT_DEG
-	assert_almost_eq(rad_to_deg(l.quaternion.get_axis().angle_to(Vector3.UP)), cant, 0.01,
-		"l'axe de la gouverne est incline comme sa derive")
+	assert_almost_eq(l.quaternion.get_axis().angle_to(ShipFlightScript.RUDDER_AXIS_L), 0.0, 1e-3,
+		"la gouverne babord tourne autour de l'axe MESURE de sa derive")
+	assert_almost_eq(r.quaternion.get_axis().angle_to(ShipFlightScript.RUDDER_AXIS_R), 0.0, 1e-3,
+		"la gouverne tribord aussi")
 	assert_true(l.quaternion.get_axis().x * r.quaternion.get_axis().x < 0.0,
 		"les deux axes penchent vers l'exterieur, en miroir")
+	assert_true(l.quaternion.get_axis().z > 0.0 and r.quaternion.get_axis().z > 0.0,
+		"et sont couches vers l'arriere, comme les derives")
 	rig[0].free()
 
 func test_docking_deploys_grapples_then_opens_the_canopy() -> void:
