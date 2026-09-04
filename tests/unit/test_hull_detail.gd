@@ -96,7 +96,23 @@ func test_apply_dresses_hull_and_skips_glass() -> void:
 	assert_true(tuned.albedo_texture == DefaultSet.mul, "avec la carte de multiplication du jeu")
 	assert_true(tuned.normal_enabled and tuned.normal_texture == DefaultSet.normal, "et sa normale")
 	var glass := hull.get_node("Glass") as MeshInstance3D
-	assert_true(glass.get_surface_override_material(0) == null, "la vitre ne recoit rien")
+	assert_true(glass.get_surface_override_material(0) == null, "la vitre ne recoit rien (glass_alpha = -1)")
+
+func test_a_set_can_open_the_glass() -> void:
+	# La cellule-temoin a un cockpit DERRIERE sa vitre ; le kit livre la meme vitre a
+	# 0,86 pour toutes les coques. C'est le jeu qui l'eclaircit, pas le kit.
+	var hull := _hull()
+	var detail: HullDetailSet = DefaultSet.duplicate()
+	detail.glass_alpha = 0.35
+	assert_true(detail.validate().is_empty(), "une opacite dans [0, 1] est valide")
+	HullDetail.apply(hull, detail)
+	var glass := (hull.get_node("Glass") as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+	assert_true(glass != null, "la vitre recoit un materiau ajuste")
+	assert_almost_eq(glass.albedo_color.a, 0.35, 1e-6, "avec l'opacite du jeu")
+	assert_eq(glass.transparency, BaseMaterial3D.TRANSPARENCY_ALPHA, "et une vraie transparence")
+	assert_true(glass.albedo_texture == null, "mais aucune carte de plaques sur une vitre")
+	detail.glass_alpha = 1.5
+	assert_false(detail.validate().is_empty(), "au-dela de 1, refuse")
 
 func test_without_a_nozzle_set_the_nozzle_wears_the_hull_maps() -> void:
 	var hull := _hull()

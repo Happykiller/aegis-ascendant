@@ -27,6 +27,16 @@ extends Resource
 ## Facteur d'`uv1_scale` : < 1,0 agrandit les plaques (moins de répétitions).
 @export_range(0.01, 8.0, 0.01) var tiling: float = 0.25
 
+@export_group("Verriere")
+## Opacité de `AA_Glass` pour cette coque, ou -1 pour garder celle du `.glb`.
+##
+## ⚠️ ELLE EXISTE PARCE QUE LE KIT IMPOSE LA MÊME VITRE À TOUTES LES COQUES : alpha 0,86,
+## une verrière sombre, juste ce qu'il faut pour lire « verre » sur un chasseur sans
+## intérieur. La cellule-témoin a un cockpit DEDANS (berceau, arceau, consoles) et le
+## rapport de forge le dit : « dans Godot l'intérieur sera faible ». Une vitre se règle
+## côté moteur, pas en changeant le kit pour quinze coques.
+@export_range(-1.0, 1.0, 0.01) var glass_alpha: float = -1.0
+
 @export_group("Tuyeres (optionnel, tout ou rien)")
 @export var nozzle_mul: Texture2D
 @export var nozzle_normal: Texture2D
@@ -51,6 +61,8 @@ func validate() -> PackedStringArray:
 		errors.append("normal_scale must be >= 0")
 	if tiling <= 0.0:
 		errors.append("tiling must be > 0")
+	if glass_alpha > 1.0 or (glass_alpha < 0.0 and glass_alpha != -1.0):
+		errors.append("glass_alpha must be -1 (untouched) or within [0, 1]")
 	var nozzle_maps := 0
 	for map: Texture2D in [nozzle_mul, nozzle_normal, nozzle_roughness, nozzle_ao]:
 		if map != null:

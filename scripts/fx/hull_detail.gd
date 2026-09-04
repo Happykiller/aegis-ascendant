@@ -32,7 +32,9 @@ const DEFAULT_SET: HullDetailSet = preload("res://resources/player/hull_detail_d
 ## instancie). Une coque absente d'ici recoit le jeu partage. ⚠️ La cle est le nom
 ## de fichier, pas le chemin complet : une coque montee via une scene d'ajustement
 ## (`specter_9_b.tscn`) garde son .glb comme racine et c'est lui qu'on lit.
-const SETS: Dictionary = {}
+const SETS: Dictionary = {
+	"specter_9_c.glb": preload("res://resources/player/hull_detail_specter_9_c.tres"),
+}
 
 ## Materiaux qui recoivent le detail. Le verre (fenetre lisse) et l'emissif
 ## (lueur de tuyere) en sont EXCLUS : une carte de plaques n'a aucun sens sur eux,
@@ -59,7 +61,12 @@ static func apply(hull: Node, detail: HullDetailSet = null) -> void:
 		var on_nozzle := detail.has_nozzle_set() and _under_nozzle(mesh, hull)
 		for i in mesh.get_surface_override_material_count():
 			var base := mesh.get_active_material(i) as StandardMaterial3D
-			if base == null or not _DETAILED.has(base.resource_name):
+			if base == null:
+				continue
+			if base.resource_name == "AA_Glass":
+				_tint_glass(mesh, i, base, detail)
+				continue
+			if not _DETAILED.has(base.resource_name):
 				continue
 			# On DUPLIQUE : le materiau importe est partage entre toutes les
 			# instances du .glb (les 4 vaisseaux de l'accueil, le joueur). Le
@@ -73,6 +80,17 @@ static func apply(hull: Node, detail: HullDetailSet = null) -> void:
 				_dress(tuned, detail.mul, detail.normal, detail.roughness, detail.ao,
 					detail.normal_scale, detail.tiling)
 			mesh.set_surface_override_material(i, tuned)
+
+## La vitre : on ne lui pose aucune carte, mais le jeu peut lui donner SON opacité — la
+## seule chose qui permette de voir un cockpit modélisé derrière (`HullDetailSet.glass_alpha`).
+static func _tint_glass(mesh: MeshInstance3D, surface: int, base: StandardMaterial3D,
+		detail: HullDetailSet) -> void:
+	if detail.glass_alpha < 0.0:
+		return
+	var tuned: StandardMaterial3D = base.duplicate()
+	tuned.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tuned.albedo_color.a = detail.glass_alpha
+	mesh.set_surface_override_material(surface, tuned)
 
 static func _dress(tuned: StandardMaterial3D, mul: Texture2D, normal: Texture2D,
 		roughness: Texture2D, ao: Texture2D, normal_scale: float, tiling: float) -> void:

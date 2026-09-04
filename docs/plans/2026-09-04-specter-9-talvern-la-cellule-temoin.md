@@ -5,7 +5,7 @@
 | **Date** | **2026-09-04** |
 | **Auteur** | session Claude (Fable 5.1), sur la demande orale de l'opérateur |
 | **Périmètre** | une **troisième carrosserie jouable** du Specter-9 : la plus détaillée des trois, riche en géométrie, **micro-animée** (ailes, volets, pétales de tuyère, aérofreins, rampes d'entrée d'air, gouvernes, grappins, verrière), avec son jeu de textures dédié généré par l'opérateur |
-| **État** | ✅ **LOT 0 clos** (2026-09-04) — `ADR-0044`, `BRIEF-0098`, `TEX-0017` à `0019` écrits. **LOT 1 lancé** : la forge construit |
+| **État** | ✅ **LOTS 0, 1 et 2 livrés** (2026-09-04) — la coque existe (`9b2d187`), est au bestiaire, s'anime, et a été **regardée en jeu**. Restent le LOT 3 (textures de l'opérateur), le LOT 4 (mesure GPU) et le LOT 5 (jouer) — et un éventuel brief correctif si l'opérateur veut plus |
 | **Décision** | [`ADR-0044`](../decisions/ADR-0044-la-cellule-temoin-troisieme-coque-sans-plafond.md) |
 | **Supersède** | rien. Les deux coques existantes restent en service et ne bougent pas |
 | **Source** | l'opérateur, 2026-09-04 : « *le plus beau que tu puisses réaliser, sans aucune restriction […] beaucoup de détails, beaucoup de polygones […] micro-animer, les ailes qui se rétractent, les volets qui bougent, les tuyères qui s'ouvrent et qui se ferment* » ; planches `assets/reference/inspiration/specter_9_multi_angle_turnaround.png` et `reference_specter_9_design_sheet.png` |
@@ -14,18 +14,43 @@
 
 ## En une phrase
 
-**La décision est actée et la forge est lancée.** Rien n'est encore rendu ni regardé : le premier
-`.glb` n'existe pas. Aucun code n'a bougé.
+**La cellule-témoin vole.** `specter_9_c.glb` (102 738 tri, 39 pièces mobiles, 10 attaches) est
+au bestiaire, troisième du roster ; `ShipFlight` l'anime sur les plafonds **mesurés** par son
+build ; le héros de l'accueil monte la coque choisie ; l'appontage sort les grappins. 883 tests.
 
 ## Ce qui reste à faire, dans l'ordre
 
-1. **LOT 1** — relire le rapport de forge **sur les planches, pas sur le texte** ; un brief
-   correctif s'il faut (`BRIEF-0099`).
-2. **LOT 2** — le code : `ShipFlight` étendu, `HullDetailSet`, fiche du bestiaire, accueil et
-   appontage.
-3. **LOT 3** — les textures de l'opérateur, dérivées et câblées, **regardées en jeu**.
-4. **LOT 4** — la mesure GPU qui décide (`ADR-0044` §2).
-5. **LOT 5** — jouer.
+1. **LOT 3** — les textures de l'opérateur (`TEX-0017` d'abord), dérivées, importées **avec
+   mipmaps**, câblées dans `hull_detail_specter_9_c.tres`, regardées en jeu.
+2. **LOT 4** — la mesure GPU qui décide (`ADR-0044` §2). ⚠️ Deux tirs isolés du bestiaire ont donné
+   **2,33 ms** (Talvern, premier lancement) et **6,88 ms** (coque en service, second lancement) sur
+   RTX 4080 — l'ordre attendu est INVERSÉ et ça ne veut rien dire : un tir sans dispersion ne vaut
+   rien, et la scène du bestiaire n'est pas une scène de mesure. Trois tirs par coque, accueil et
+   combat, `godot-verifier`.
+3. **LOT 5** — jouer : bestiaire (rotation, zoom, cockpit), accueil, une partie, l'appontage.
+4. **Si l'opérateur veut plus** — `BRIEF-0099`, sur ce que la capture a montré (ci-dessous).
+
+## Ce que la capture en jeu a montré (bestiaire, `--codex-entry=2`, post-traitement actif)
+
+À 1:1 (`inspect-capture.py`), la Talvern lit **nettement plus riche** que la coque en service au
+même cadrage : cadre de verrière doré à trois montants, lignes de panneau creusées, couronnes de
+pétales, tubes de chine, baies de grappin avec leurs marques rouges, nacelles rondes. Mais :
+
+- ⛔ **Le cockpit ne se voit pas.** `AA_Glass` sort du kit à alpha 0,86 pour toutes les coques ; la
+  planche de forge l'avait rendu à 0,22 et le rapport le disait (§9.3). Corrigé côté moteur :
+  `HullDetailSet.glass_alpha` (0,35 pour la Talvern), jamais côté kit. **À revérifier en capture.**
+- ⚠️ **La surface reste sobre pour « beaucoup de polygones »** : 102 k triangles, les cassures de
+  panneaux se lisent surtout en couleur (bleu en retrait) et l'aire vue de la caméra de jeu est à
+  Hull 55,6 / Panel 18,7 / Trim 4,4 / Greeble 17,4 %. C'est propre, ce n'est pas encore somptueux.
+  Ce que le rapport nomme lui-même : aérofreins en lames de 27 × 157 mm (le seul dos plat
+  disponible), rampe d'entrée d'air qui lit comme une plaque posée, lacet ±6° peu lisible.
+- ⚠️ **Hérité du plan de BRIEF-0035/36, et nommé par la forge** : lames bien plus courtes que la
+  planche de référence, nez en aiguille là où la planche a un nez large à chines, verrière plus
+  étroite. C'est le plan de la coque en service ; s'en écarter est une décision d'opérateur, pas un
+  correctif.
+- ⚠️ **Hors périmètre, trouvé par la forge** : `./scripts/build-hull.sh specter_9` ne reproduit
+  **plus** le `.glb` committé (`3fb521b9…` contre `14aba06d…`), avec ou sans les ajouts du kit. La
+  source de la coque en service ne reproduit plus son binaire — au backlog.
 
 ---
 
@@ -75,7 +100,14 @@ voir un cockpit, et les tuyères sont douze pétales chacune.
   n'est donc possible que parce que les tuyères sont des **nœuds séparés** — `HullDetail` saura
   poser un jeu sur `Nozzle_*`/`Petal_*` et un autre sur le reste.
 
-## LOT 1 — La coque, par la forge — ⏳ **EN COURS**
+## LOT 1 — La coque, par la forge — ✅ **LIVRÉ (2026-09-04, `9b2d187`, rapport `23c7291`)**
+
+Interrompu une fois par la limite d'API pendant les rendus, repris pour le seul rapport. Tout ce
+que le brief demandait est là ; ce que la forge a dit **qui ne va pas** est au rapport §9-10 et
+repris ci-dessus. Deux corrections apportées par la forge à mon brief : **39 nœuds et non 48**
+(erreur de somme), et le grappin lu « charnière à la racine avant, bras vers l'arrière au repos ».
+
+### Ce que je relis, et dans cet ordre
 
 `BRIEF-0098`. Ce que je relirai, et dans cet ordre :
 

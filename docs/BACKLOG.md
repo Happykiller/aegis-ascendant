@@ -36,6 +36,23 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Ouvert par la cellule-témoin (ADR-0044, 2026-09-04)
+
+- [ ] **`./scripts/build-hull.sh specter_9` ne reproduit plus le `.glb` committé** — `3fb521b9…`
+  (2 336 564 o) contre `14aba06d…` (2 325 476 o), **avec ou sans** les ajouts 1.2.0 du kit (testé
+  par `git stash` par la forge, BRIEF-0098-report §9.5). La source de la coque en service ne
+  reproduit plus son binaire : version de Blender, ou kit d'alors ? À élucider avant toute
+  retouche de `build_specter_9.py`, sinon la première reforge embarque un diff qu'on n'a pas
+  voulu. ⚠️ Et le rapport signale que les insets de la coque loftée partaient **vers l'extérieur**
+  avant un `recalc_face_normals` ajouté sur la Talvern — le code de la coque en service est
+  identique sur ce point.
+- [ ] **28 cartes 3D sur 50 importées sans mipmaps** (relevé Citadelle) — les textures de la
+  Talvern (`TEX-0017` à `0019`) devront être importées avec, et c'est l'occasion de traiter une
+  famille.
+- [ ] **Les mesures GPU du bestiaire ne sont pas des mesures** : 2,33 ms (Talvern) contre 6,88
+  (coque en service) sur deux tirs isolés, ordre inversé. `ADR-0044` §2 exige trois tirs, accueil
+  et combat, deux machines.
+
 ## Outillage de développement — demandé le 2026-08-28
 
 > ✅ **Les deux lignes ci-dessous sont LIVRÉES** (commits `c745be5` et `f821292`, 2026-08-28).
