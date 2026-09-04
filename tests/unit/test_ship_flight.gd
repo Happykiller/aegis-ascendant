@@ -152,3 +152,182 @@ func test_a_hull_without_moving_parts_degrades_quietly() -> void:
 	var bare := Node3D.new()
 	assert_true(ShipFlightScript.apply(bare) == null, "coque sans volet : aucune animation, aucune erreur")
 	bare.free()
+
+# --- ADR-0044 : les familles optionnelles -----------------------------------
+
+## Cibles du BRIEF-0098 — le build de la forge ECHOUE en dessous. Ce sont des planchers
+## de plafond : le rapport donnera les vrais. ⚠️ A RECALER sur `BRIEF-0098-report.md`.
+const HARD_PETAL_DEG := 20.0
+const HARD_YAW_DEG := 6.0
+const HARD_AIRBRAKE_DEG := 55.0
+const HARD_INTAKE_DEG := 12.0
+const HARD_RUDDER_DEG := 22.0
+const HARD_GRAPPLE_DEG := 90.0
+const HARD_CANOPY_DEG := 35.0
+
+## La coque de la cellule-temoin, en Node3D nommes : les six pieces d'avant, plus
+## douze petales par tuyere posés sur un cercle de rayon 0,1 dans le repere de la
+## tuyere (pivot sur l'axe, plan des charnieres — la contrainte du brief), et les
+## familles d'ADR-0044.
+func _rich_rig() -> Array:
+	var rig := _rig()
+	var hull: Node3D = rig[0]
+	for side in ["L", "R"]:
+		var nozzle := hull.get_node("Nozzle_" + side) as Node3D
+		for k in 12:
+			var petal := Node3D.new()
+			petal.name = "Petal_%s_%02d" % [side, k]
+			var phi := TAU * k / 12.0
+			petal.position = Vector3(0.1 * cos(phi), 0.1 * sin(phi), 0.0)
+			nozzle.add_child(petal)
+		for family in ["Airbrake_", "Intake_", "Rudder_", "Grapple_"]:
+			var part := Node3D.new()
+			part.name = family + side
+			hull.add_child(part)
+	var canopy := Node3D.new()
+	canopy.name = "Canopy"
+	hull.add_child(canopy)
+	# `_ready` a deja tourne sur le rig nu : on rebranche sur la coque riche.
+	rig[1].call("_ready")
+	return rig
+
+## Le point d'un petale a 10 cm en arriere de sa charniere (+Z Godot = vers la poupe),
+## dans le repere de la tuyere : c'est sa POINTE, et c'est elle qui doit s'ecarter.
+static func _petal_tip(petal: Node3D) -> Vector3:
+	return petal.position + petal.quaternion * Vector3(0.0, 0.0, 0.1)
+
+func test_petals_open_outward_at_full_thrust() -> void:
+	# LE test du lot : l'axe de charniere est DERIVE de la position radiale du petale.
+	# Un signe faux fermerait les douze petales vers l'axe, les uns dans les autres.
+	var rig := _rich_rig()
+	var nozzle := rig[0].get_node("Nozzle_L") as Node3D
+	var closed: Array[float] = []
+	for k in 12:
+		var petal := nozzle.get_node("Petal_L_%02d" % k) as Node3D
+		closed.append(Vector2(_petal_tip(petal).x, _petal_tip(petal).y).length())
+	rig[1].call("set_thrust", 1.0)
+	_settle(rig[1])
+	for k in 12:
+		var petal := nozzle.get_node("Petal_L_%02d" % k) as Node3D
+		var radius := Vector2(_petal_tip(petal).x, _petal_tip(petal).y).length()
+		assert_true(radius > closed[k] + 0.02,
+			"petale %d : la pointe s'ecarte de l'axe (%.3f -> %.3f)" % [k, closed[k], radius])
+	assert_true(absf(nozzle.scale.x - 1.0) < 1e-6, "avec des petales, la tuyere ne change plus d'echelle")
+	rig[0].free()
+
+func test_petals_are_closed_at_rest_and_under_the_ceiling() -> void:
+	var rig := _rich_rig()
+	var petal := (rig[0].get_node("Nozzle_R") as Node3D).get_node("Petal_R_03") as Node3D
+	_settle(rig[1])
+	assert_true(petal.quaternion.get_angle() < 1e-4, "au repos, les petales sont fermes")
+	var peak := 0.0
+	for phase in [1.0, 0.0, 1.0]:
+		rig[1].call("set_thrust", phase)
+		for i in 300:
+			rig[1].call("_process", 0.05)
+			peak = maxf(peak, rad_to_deg(petal.quaternion.get_angle()))
+	assert_true(peak <= HARD_PETAL_DEG, "les petales restent sous le plafond (%.2f <= %.1f)" % [peak, HARD_PETAL_DEG])
+	assert_true(peak > 10.0, "l'ouverture se voit (%.2f deg)" % peak)
+	rig[0].free()
+
+func test_brake_closes_the_petals_and_raises_the_airbrakes() -> void:
+	# Le freinage subi se lit DEUX fois sur la coque : petales qui se referment (comme
+	# la plume s'etrangle) et aerofreins qui se levent.
+	var rig := _rich_rig()
+	rig[1].call("set_thrust", 1.0)
+	_settle(rig[1])
+	var petal := (rig[0].get_node("Nozzle_L") as Node3D).get_node("Petal_L_00") as Node3D
+	var open_deg := rad_to_deg(petal.quaternion.get_angle())
+	rig[1].call("set_brake", 1.0)
+	_settle(rig[1])
+	assert_true(rad_to_deg(petal.quaternion.get_angle()) < open_deg * 0.1,
+		"a plein freinage les petales se referment (%.2f -> %.2f)" % [open_deg, rad_to_deg(petal.quaternion.get_angle())])
+	var brake_deg := rad_to_deg(absf((rig[0].get_node("Airbrake_L") as Node3D).rotation.x))
+	assert_true(brake_deg > 30.0 and brake_deg <= HARD_AIRBRAKE_DEG,
+		"les aerofreins se levent sous le plafond (%.2f deg)" % brake_deg)
+	rig[0].free()
+
+func test_intakes_follow_thrust_under_the_ceiling() -> void:
+	var rig := _rich_rig()
+	rig[1].call("set_thrust", 1.0)
+	_settle(rig[1])
+	var deg := rad_to_deg(absf((rig[0].get_node("Intake_R") as Node3D).rotation.x))
+	assert_true(deg > 5.0 and deg <= HARD_INTAKE_DEG, "la rampe s'ouvre sous le plafond (%.2f deg)" % deg)
+	rig[0].free()
+
+func test_rudders_yaw_together_on_their_canted_axis() -> void:
+	# Les gouvernes vont du MEME cote (un lacet), a la difference des volets qui
+	# s'opposent — et chacune tourne autour de l'axe de SA derive, pas de la verticale.
+	var rig := _rich_rig()
+	rig[1].call("set_bank", 1.0)
+	_settle(rig[1])
+	var l := rig[0].get_node("Rudder_L") as Node3D
+	var r := rig[0].get_node("Rudder_R") as Node3D
+	var angle_l := rad_to_deg(l.quaternion.get_angle())
+	assert_true(angle_l > 8.0 and angle_l <= HARD_RUDDER_DEG, "la gouverne braque sous le plafond (%.2f deg)" % angle_l)
+	assert_almost_eq(rad_to_deg(r.quaternion.get_angle()), angle_l, 0.01, "les deux gouvernes braquent du meme angle")
+	var cant := ShipFlightScript.FIN_CANT_DEG
+	assert_almost_eq(rad_to_deg(l.quaternion.get_axis().angle_to(Vector3.UP)), cant, 0.01,
+		"l'axe de la gouverne est incline comme sa derive")
+	assert_true(l.quaternion.get_axis().x * r.quaternion.get_axis().x < 0.0,
+		"les deux axes penchent vers l'exterieur, en miroir")
+	rig[0].free()
+
+func test_docking_deploys_grapples_then_opens_the_canopy() -> void:
+	var rig := _rich_rig()
+	var hook := rig[0].get_node("Grapple_L") as Node3D
+	var canopy := rig[0].get_node("Canopy") as Node3D
+	rig[1].call("set_docking", 1.0)
+	# A mi-course, les grappins sont sortis et la verriere encore fermee : un mecanisme
+	# apres l'autre.
+	var canopy_moved_before_hooks := false
+	for i in 400:
+		rig[1].call("_process", 0.05)
+		if canopy.rotation.x > 0.01 and absf(hook.rotation.x) < deg_to_rad(ShipFlightScript.GRAPPLE_DEG * 0.9):
+			canopy_moved_before_hooks = true
+	assert_false(canopy_moved_before_hooks, "la verriere n'ouvre qu'une fois les grappins sortis")
+	var hook_deg := rad_to_deg(absf(hook.rotation.x))
+	var canopy_deg := rad_to_deg(absf(canopy.rotation.x))
+	assert_true(hook_deg > 60.0 and hook_deg <= HARD_GRAPPLE_DEG, "le grappin pend sous le plafond (%.2f deg)" % hook_deg)
+	assert_true(canopy_deg > 15.0 and canopy_deg <= HARD_CANOPY_DEG, "la verriere ouvre sous le plafond (%.2f deg)" % canopy_deg)
+	rig[0].free()
+
+func test_nozzle_yaw_follows_bank_under_the_ceiling() -> void:
+	var rig := _rich_rig()
+	rig[1].call("set_bank", -1.0)
+	_settle(rig[1])
+	var l := rad_to_deg((rig[0].get_node("Nozzle_L") as Node3D).rotation.y)
+	var r := rad_to_deg((rig[0].get_node("Nozzle_R") as Node3D).rotation.y)
+	assert_true(absf(l) > 2.0 and absf(l) <= HARD_YAW_DEG, "la tuyere vectorise sous le plafond (%.2f deg)" % l)
+	assert_almost_eq(l, r, 1e-6, "les deux tuyeres vectorisent du meme cote")
+	rig[0].free()
+
+func test_a_long_frame_never_overshoots_the_new_families() -> void:
+	# Le piege du lissage, rejoue sur chaque famille neuve : une image d'une seconde ne
+	# doit envoyer aucune piece au-dela de son plafond.
+	var rig := _rich_rig()
+	rig[1].call("set_thrust", 1.0)
+	rig[1].call("set_brake", 1.0)
+	rig[1].call("set_docking", 1.0)
+	rig[1].call("set_bank", 1.0)
+	rig[1].call("_process", 1.0)
+	rig[1].call("_process", 1.0)
+	var checks := {
+		"Airbrake_L": HARD_AIRBRAKE_DEG, "Intake_L": HARD_INTAKE_DEG,
+		"Grapple_L": HARD_GRAPPLE_DEG, "Canopy": HARD_CANOPY_DEG,
+	}
+	for part_name: String in checks:
+		var deg := rad_to_deg(absf((rig[0].get_node(part_name) as Node3D).rotation.x))
+		assert_true(deg <= checks[part_name], "%s ne depasse pas son plafond sur une image longue (%.2f)" % [part_name, deg])
+	rig[0].free()
+
+func test_the_six_part_hull_ignores_the_new_families() -> void:
+	# La coque en service n'a ni petale, ni aerofrein, ni grappin : pousser les quatre
+	# ratios ne doit rien casser, et la tuyere doit CONTINUER de grandir (BRIEF-0033).
+	var rig := _rig()
+	rig[1].call("set_brake", 1.0)
+	rig[1].call("set_docking", 1.0)
+	rig[1].call("set_thrust", 1.0)
+	_settle(rig[1])
+	assert_true((rig[0].get_node("Nozzle_L") as Node3D).scale.x > 1.3, "sans petales, l'echelle ouvre encore la tuyere")
+	rig[0].free()
