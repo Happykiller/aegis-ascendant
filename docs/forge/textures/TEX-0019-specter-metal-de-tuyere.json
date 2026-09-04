@@ -1,0 +1,207 @@
+{
+  "id": "TEX-0019",
+  "slug": "specter-metal-de-tuyere",
+  "schema_version": "1.0",
+  "date": "2026-09-04",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du MÉTAL DE TUYÈRE du Specter-9 Talvern (`specter_9_c.glb`, BRIEF-0098) — la matière des nœuds `Nozzle_*` et de leurs douze pétales `Petal_*`, dépliés CYLINDRIQUEMENT autour de l'axe de poussée.",
+    "game_context": "Les tuyères sont le point focal ARRIÈRE de la coque, et le seul détail de niveau 3 visible en combat : la caméra de jeu est à 20° de la verticale, légèrement en arrière — on voit les couronnes s'ouvrir à la poussée. Au bestiaire et à l'accueil elles sont en gros plan (~240 px/m). La couronne, l'anneau et le fond de chambre sont DANS LA GÉOMÉTRIE ; la carte donne la matière des pétales et du corps : lamelles, raidisseurs, faïençage thermique.",
+    "priority": "Deuxième des trois par ordre d'intérêt. Sans elle les tuyères reçoivent la feuille de peau et lisent comme du plastique. ⚠️ Elle est posée PAR NŒUD (`Nozzle_*`/`Petal_*`), pas par matériau : c'est ce qui rend possible une matière de tuyère distincte de la coque sans huitième matériau (`ADR-0044`, plan §LOT 0)."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 0.3,
+    "texture_height_m": 0.3,
+    "reference_element": "Le brief impose un dépliage cylindrique : `u` fait le tour de la tuyère (circonférence ~0,62 m pour un rayon de ~0,10 m, soit 2 tuiles au tour), `v` court le long de l'axe à la même densité (~3,3 tuiles/m). ⚠️ L'AXE `v` DE L'IMAGE EST L'AXE DE POUSSÉE : les bandes horizontales de l'image deviennent des anneaux autour de la tuyère, les lignes verticales des raidisseurs longitudinaux.",
+    "confidence": "decided",
+    "rationale": "DÉCIDÉE : 2 tuiles au tour pour que les lamelles se répètent sans montrer leur période sur un cylindre qu'on voit à moitié. À REMESURER sur le .glb : le rapport de forge donne la densité cylindrique réelle."
+  },
+  "composition": {
+    "main_elements": [
+      "des lamelles HORIZONTALES (donc des anneaux autour de la tuyère) qui se recouvrent en écailles, 2 à 3 cm de haut, bord inférieur saillant",
+      "des raidisseurs VERTICAUX fins (2 à 4 mm, donc longitudinaux), régulièrement espacés de 3 à 5 cm, qui passent sous les lamelles",
+      "un rang de rivets de 4 à 6 mm le long du bord de chaque lamelle",
+      "un faïençage thermique TRÈS fin et TRÈS faible — un réseau de micro-fissures de surface, à peine perceptible, uniforme sur toute la tuile"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "Lamelles et raidisseurs traversent les quatre bords et s'y raccordent exactement : la couture en `u` est celle qui se verrait le plus (elle ferait une ligne le long de la tuyère).",
+    "empty_space": "Les faces de lamelle sont nues entre deux rangs : 50 à 65 % de l'aire au niveau de référence."
+  },
+  "visual": {
+    "subject": "Peau métallique d'une tuyère de réacteur vue à plat : lamelles en écailles, raidisseurs longitudinaux, rivets, faïençage thermique.",
+    "materials": [
+      "alliage réfractaire",
+      "lamelles de refroidissement",
+      "rivetage"
+    ],
+    "details": [
+      "lamelles à recouvrement",
+      "raidisseurs longitudinaux",
+      "rangs de rivets",
+      "faïençage fin"
+    ],
+    "style": "propulsion aéronautique de haute précision — ordonnée, dense, technique",
+    "color_palette": {
+      "dominant": [
+        "gris moyen"
+      ],
+      "secondary": [
+        "gris clair sur les bords de lamelle"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "rouille",
+        "texte",
+        "lettres",
+        "chiffres",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "couleur",
+        "teinte",
+        "irisation",
+        "bleuissement",
+        "émissif",
+        "flamme",
+        "lueur",
+        "noir absolu",
+        "magenta",
+        "violet",
+        "vue en perspective de la tuyère",
+        "tuyère entière",
+        "cercle"
+      ]
+    },
+    "surface_character": "Métal MAT, fin, tendu sur des raidisseurs. Le relief principal est le recouvrement des lamelles : un pas net, pas un bombé.",
+    "age_and_damage": "⚠️ Le faïençage thermique est la SEULE marque d'usage autorisée, et il est uniforme : cette tuyère a chauffé au banc, jamais au combat. Aucune suie, aucune coulure, aucune irisation (la teinte est interdite : une irisation violette se confondrait avec l'énergie ennemie)."
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosité, AO et carte de multiplication DÉRIVÉES par tools/derive-maps.py — aucune carte de normale n'est demandée (règle 2 du contrat).",
+    "black": "⚠️ INTERDIT. Le creux sous un bord de lamelle s'arrête vers 90/255.",
+    "gray": "face de lamelle, ~150/255 — 50 à 65 % de l'aire",
+    "white": "bords inférieurs de lamelle et têtes de rivet — 220-255 ; les raidisseurs sont à ~180"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit : les pétales pivotent et la lumière glisse dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ des lamelles HORIZONTALES dans l'image — elles deviennent des anneaux autour de la tuyère. Verticales, elles feraient des rayures le long de l'axe et la tuyère lirait comme un tonneau",
+      "des raidisseurs VERTICAUX fins, réguliers",
+      "une plage dynamique nette : creux ~90/255, saillies 255",
+      "un tuilage parfait en `u` (bords gauche/droit) — c'est la couture qui ferait une ligne le long de la tuyère"
+    ],
+    "must_not_have": [
+      "la tuyère elle-même",
+      "un cercle",
+      "une vue en perspective",
+      "flamme",
+      "lueur",
+      "émissif",
+      "irisation",
+      "bleuissement",
+      "suie",
+      "coulure",
+      "damier",
+      "grille",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais à l'œil — et sur le faïençage fin, comparer deux colonnes adjacentes internes comme témoin",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles ; les lamelles doivent se raccorder en anneaux continus"
+    ],
+    "readability_requirements": [
+      "en gros plan (~240 px/m) une lamelle de 2,5 cm fait 6 px et un raidisseur de 3 mm moins d'un pixel : les lamelles se COMPTENT, les raidisseurs se lisent par leur ombre dérivée",
+      "en combat (48 px, la tuyère fait ~6 px), la carte doit DISPARAÎTRE dans les mipmaps : le faïençage ne doit porter aucune haute fréquence contrastée",
+      "en CONTRASTE : le pas de lamelle doit franchir une marche de postérisation (≥ 6 niveaux de gris de modulation, éclairé) — c'est lui qui dit « métal » ; le faïençage, lui, est SOUS le plancher et c'est accepté : il n'existe qu'au zoom maximal"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Jeu dédié du Specter-9 Talvern (`ADR-0044` §4) : `HullDetailSet.nozzle_*` posé par `scripts/fx/hull_detail.gd` sur TOUS les matériaux non émissifs des nœuds `Nozzle_L/R` et `Petal_*_00..11` de `specter_9_c.glb` — sélection PAR NOM DE NŒUD, pas par matériau. `AA_Emissive_Engine` (fond de chambre) reste exclu.",
+    "shader_usage": "StandardMaterial3D. Normale, rugosité et AO DÉRIVÉES. Carte de multiplication en `albedo_texture` sur la couleur de palette du nœud (anthracite pour le corps, or pour l'anneau). `normal_scale` ~0,8.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/specter/specter_nozzle_height_1024.png --out assets/imported/textures/specter --name specter_nozzle --mul --check-tiling --preview /tmp/specter_nozzle.png",
+    "additional_notes": "⚠️ IMPORT AVEC MIPMAPS. ⚠️ Le dépliage cylindrique est fait PAR LA FORGE (BRIEF-0098) — ne pas tenter de la poser sur une projection en boîte, les anneaux se briseraient aux arêtes de boîte. ⚠️ Si le rapport de forge donne une densité `u` différente de 2 tuiles au tour, c'est `uv1_scale` du jeu de tuyère qui s'ajuste, pas la carte."
+  },
+  "x_delivery": {
+    "status": "à commander — LOT 3 du plan, DEUXIÈME des trois par ordre d'intérêt",
+    "priority": "obligatoire pour le LOT 3 : les tuyères sont le point focal arrière et le seul détail fin vu en combat",
+    "source_path": "assets/source/textures/specter/specter_nozzle_height_1024.png",
+    "derived_dir": "assets/imported/textures/specter",
+    "derived_files": [
+      "specter_nozzle_nrm.png",
+      "specter_nozzle_rough.png",
+      "specter_nozzle_ao.png",
+      "specter_nozzle_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD : les quatre coins portent de la MATIÈRE — pas de vignettage",
+      "⚠️ L'ORIENTATION : les lamelles sont HORIZONTALES dans l'image. Verticales = à renvoyer, pas à tourner (une rotation déplace la couture dominante sur l'autre axe)",
+      "mesurer le minimum (≥ ~90/255) et la part au niveau de référence (50-65 %)",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK sur les DEUX axes ; `u` est la plus critique",
+      "⚠️ puis EN JEU, bestiaire, tuyère en gros plan et pétales OUVERTS (ADR-0006) : les anneaux doivent tourner AUTOUR de la tuyère, et en combat la tuyère ne doit pas scintiller"
+    ],
+    "provenance_csv_line": "specter_nozzle_height,assets/source/textures/specter/specter_nozzle_height_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,<date>,docs/forge/textures/TEX-0019-specter-metal-de-tuyere.json,,\"Hauteur du metal de tuyere du Specter-9 Talvern (specter_9_c.glb, ADR-0044) : lamelles en anneaux, raidisseurs longitudinaux, rivets, faiencage. Tuile repetable 1024 px pour 0,30 m x 0,30 m, depliage CYLINDRIQUE (u = circonference, 2 tuiles au tour). Posee par NOEUD sur Nozzle_* et Petal_*.\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\n⚠️ CE N'EST PAS L'IMAGE D'UNE TUYÈRE. C'est la PEAU d'une tuyère, DÉROULÉE À PLAT : aucun cercle, aucune vue en perspective, aucune flamme, aucune lueur.\n\nCarte de hauteur en niveaux de gris du métal réfractaire d'une tuyère de réacteur, vu à plat. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun reflet spéculaire. Image strictement monochrome : c'est une carte de HAUTEUR, pas une carte de relief colorée.\n\nMotif répétable sans couture sur les quatre bords : lamelles et raidisseurs traversent naturellement les bords et s'y raccordent.\n\nÉchelle réelle : la tuile couvre 30 centimètres sur 30 centimètres. Des lamelles HORIZONTALES qui se recouvrent en écailles, de 2 à 3 cm de haut chacune, le bord inférieur de chaque lamelle saillant sur la suivante — une fois enroulées, elles deviennent des anneaux autour de la tuyère. Sous les lamelles passent des raidisseurs VERTICAUX fins, de 2 à 4 mm, régulièrement espacés de 3 à 5 cm. Le long du bord de chaque lamelle, un rang de rivets de 4 à 6 mm. Sur toute la surface, uniforme, un faïençage thermique très fin et à peine perceptible : un réseau de micro-fissures de surface.\n\nLes faces de lamelle sont nues entre deux rangs : 50 à 65 % de l'image reste au niveau de référence. Métal MAT, fin, tendu. Cette tuyère a chauffé au banc, jamais au combat : aucune suie, aucune coulure, aucune irisation, aucun bleuissement, aucune rouille.\n\nLe gris code la HAUTEUR et rien d'autre : gris moyen ~150/255 pour la face de lamelle, ~180 pour les raidisseurs, blanc 220-255 pour les bords inférieurs de lamelle et les têtes de rivet, et le creux sous un bord de lamelle ne descend JAMAIS plus bas que 90/255. Aucune couleur, aucune teinte, aucun texte, aucun chiffre, aucun logo, aucune signature."
+  }
+}

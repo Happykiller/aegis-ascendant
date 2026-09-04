@@ -1,0 +1,206 @@
+{
+  "id": "TEX-0018",
+  "slug": "specter-mecanique-de-baie",
+  "schema_version": "1.0",
+  "date": "2026-09-04",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur de la MÉCANIQUE INTERNE du Specter-9 Talvern (`specter_9_c.glb`, BRIEF-0098) — ce qu'on voit quand un mécanisme s'ouvre : fond des baies d'aérofrein, logements de grappin, gorge des entrées d'air, bâti du cockpit. Matériau `AA_Greeble` de la coque (hors tuyères).",
+    "game_context": "La coque est micro-animée (`ADR-0044` §3) : aérofreins qui se lèvent au freinage, grappins qui sortent à l'appontage, rampes d'entrée d'air qui s'ouvrent à la poussée. Chaque ouverture découvre une baie. Les vérins principaux sont DANS LA GÉOMÉTRIE ; cette carte donne le fond de baie — le reste de la mécanique, celui qu'on ne modélise pas. Vue au bestiaire (zoom, ~240 px/m) et à l'accueil ; en combat les baies font quelques pixels.",
+    "priority": "Troisième des trois par ordre d'intérêt : visible seulement mécanismes ouverts. Mais c'est elle qui fait la différence entre « une trappe qui s'ouvre sur un aplat gris » et « une trappe qui s'ouvre sur une machine ». Sans elle, le LOT 3 pose `TEX-0017` partout et les baies lisent comme de la peau — faux, mais pas cassé."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 0.25,
+    "texture_height_m": 0.25,
+    "reference_element": "Le brief impose la boîte à 4 tuiles/m sur `AA_Greeble` : une tuile couvre 0,25 m x 0,25 m. Une baie d'aérofrein fait ~0,25 x 0,12 m, un logement de grappin ~0,15 x 0,06 m : une baie voit UNE tuile ou moins. Densité : 4 096 texels/m pour ~240 px/m à l'écran.",
+    "confidence": "decided",
+    "rationale": "DÉCIDÉE : les baies n'existent pas encore (LOT 1). 0,25 m pour qu'un élément mécanique de 2 à 4 cm fasse 5 à 10 px au zoom du bestiaire — comptable — et que la répétition ne se voie pas dans une baie qui n'en montre qu'une. ⚠️ À REMESURER sur le .glb livré."
+  },
+  "composition": {
+    "main_elements": [
+      "un bâti de nervures et de lisses croisées, 8 à 15 mm de large, qui structure toute la tuile — la charpente",
+      "entre les nervures : des blocs mécaniques de 2 à 4 cm (boîtiers, raccords, tambours), de hauteurs variées",
+      "deux ou trois faisceaux de conduits ronds de 5 à 10 mm, gainés, qui suivent les nervures puis les traversent",
+      "quelques têtes de vis et colliers de serrage, en relief net",
+      "un ou deux vérins courts (deux cylindres emboîtés) posés en biais"
+    ],
+    "density": "high",
+    "distribution": "structured",
+    "edge_behavior": "Nervures et conduits traversent les quatre bords et s'y raccordent. Aucun élément entier centré.",
+    "empty_space": "Peu, mais il en faut : 20 à 30 % de l'aire au FOND de baie, entre les blocs — c'est ce qui donne la profondeur. Une baie pleine à ras bord lit comme une plaque."
+  },
+  "visual": {
+    "subject": "Fond de baie technique d'un chasseur vu de dessus : charpente de nervures, blocs mécaniques, faisceaux de conduits, vérin.",
+    "materials": [
+      "alliage usiné",
+      "conduits gainés",
+      "boîtiers embossés"
+    ],
+    "details": [
+      "nervures à arêtes vives",
+      "boîtiers à coins chanfreinés",
+      "conduits ronds avec colliers",
+      "têtes de vis",
+      "vérin à deux cylindres"
+    ],
+    "style": "mécanique aéronautique dense, ordonnée, lisible — chaque chose à sa place, rien de bricolé",
+    "color_palette": {
+      "dominant": [
+        "gris moyen"
+      ],
+      "secondary": [
+        "gris clair sur les arêtes saillantes",
+        "gris sombre au fond"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "rouille",
+        "texte",
+        "lettres",
+        "chiffres",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "couleur",
+        "teinte",
+        "émissif",
+        "noir absolu",
+        "magenta",
+        "violet",
+        "câble qui pend",
+        "fil détaché",
+        "organique",
+        "tuyau mou"
+      ]
+    },
+    "surface_character": "Usiné et MAT. Le relief est RÉEL ici — une baie a de la profondeur — et c'est la seule des trois cartes autorisée à une plage dynamique large.",
+    "age_and_damage": "Aucune. Cellule-témoin : propre, neuve, graissée mais sans coulure."
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosité, AO et carte de multiplication DÉRIVÉES par tools/derive-maps.py — aucune carte de normale n'est demandée (règle 2 du contrat).",
+    "black": "⚠️ ÉVITÉ mais toléré ponctuellement : le fond de baie vaut ~50/255. Pas de zéro franc, qui lirait comme un trou dans le vaisseau.",
+    "gray": "nervures et blocs, 120 à 190/255 selon leur hauteur",
+    "white": "têtes de vis, sommets de vérin, arêtes de boîtier — 220-255"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit : la baie s'ouvre sous une lumière qui bouge (l'aérofrein se lève, le vaisseau tourne au bestiaire).",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "une charpente de nervures LISIBLE qui ordonne la tuile — c'est elle qui dit « bâti », pas « bruit »",
+      "une plage dynamique LARGE : fond ~50/255, sommets 255",
+      "20 à 30 % de l'aire au fond de baie",
+      "des éléments de 2 à 4 cm — comptables au zoom, pas un grain"
+    ],
+    "must_not_have": [
+      "grille uniforme",
+      "caillebotis",
+      "damier",
+      "bruit uniforme sans structure",
+      "câble qui pend",
+      "fil détaché",
+      "tuyau mou",
+      "organique",
+      "fuite",
+      "coulure",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais à l'œil",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles"
+    ],
+    "readability_requirements": [
+      "au zoom du bestiaire (~240 px/m) un bloc de 3 cm fait 7 px et une nervure de 1 cm fait 2-3 px : les blocs doivent se COMPTER, les nervures se lire par leur ombre dérivée",
+      "en CONTRASTE : la plage large garantit qu'après postérisation à 20 niveaux, fond et sommets sont séparés d'au moins 12 marches — la baie lit comme une baie",
+      "à l'accueil (~120 px/m) : la charpente doit encore se lire, les blocs peuvent fondre"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Jeu dédié du Specter-9 Talvern (`ADR-0044` §4) : `HullDetailSet.greeble_*` posé par `scripts/fx/hull_detail.gd` sur `AA_Greeble` de la COQUE de `specter_9_c.glb` — pas sur les nœuds `Nozzle_*`/`Petal_*`, qui reçoivent TEX-0019.",
+    "shader_usage": "StandardMaterial3D. Normale, rugosité et AO DÉRIVÉES. Carte de multiplication en `albedo_texture` sur l'anthracite `#24252B` de palette : les fonds s'assombrissent, la teinte reste. `normal_scale` plus fort que la peau (~1,0) : ici le relief est réel.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/specter/specter_bay_height_1024.png --out assets/imported/textures/specter --name specter_bay --mul --check-tiling --preview /tmp/specter_bay.png",
+    "additional_notes": "⚠️ IMPORT AVEC MIPMAPS. ⚠️ Sur l'anthracite, le `lift` de 1,25 du post-traitement relève les noirs : un fond à 50/255 multiplié ressort plus clair qu'attendu — juger en jeu."
+  },
+  "x_delivery": {
+    "status": "à commander — LOT 3 du plan, TROISIÈME des trois par ordre d'intérêt",
+    "priority": "souhaitable ; sans elle les baies reçoivent la feuille de peau (faux mais pas cassé)",
+    "source_path": "assets/source/textures/specter/specter_bay_height_1024.png",
+    "derived_dir": "assets/imported/textures/specter",
+    "derived_files": [
+      "specter_bay_nrm.png",
+      "specter_bay_rough.png",
+      "specter_bay_ao.png",
+      "specter_bay_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD : les quatre coins portent de la MATIÈRE — pas de vignettage",
+      "mesurer la part de l'aire sous 70/255 : entre 20 et 30 % (le fond de baie) ; et le maximum à 255",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles ; la charpente doit se raccorder",
+      "⚠️ puis EN JEU, bestiaire, un aérofrein OUVERT (ADR-0006) : la baie doit lire comme une machine, pas comme un aplat ni comme du bruit"
+    ],
+    "provenance_csv_line": "specter_bay_height,assets/source/textures/specter/specter_bay_height_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,<date>,docs/forge/textures/TEX-0018-specter-mecanique-de-baie.json,,\"Hauteur de la mecanique interne du Specter-9 Talvern (specter_9_c.glb, ADR-0044) : fond des baies d'aerofrein, logements de grappin, gorge d'entree d'air, bati du cockpit. Tuile repetable 1024 px pour 0,25 m x 0,25 m — echelle DECIDEE. Materiau AA_Greeble de la coque, hors tuyeres.\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\nCarte de hauteur en niveaux de gris du fond d'une baie technique de chasseur spatial — la mécanique qu'on découvre quand une trappe s'ouvre. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun reflet spéculaire. Image strictement monochrome : c'est une carte de HAUTEUR, pas une carte de relief colorée.\n\nMotif répétable sans couture sur les quatre bords : nervures et conduits traversent naturellement les bords et s'y raccordent, et aucun élément ne doit trahir la taille de la tuile.\n\nÉchelle réelle : la tuile couvre 25 centimètres sur 25 centimètres. Une charpente de nervures et de lisses croisées, de 8 à 15 mm de large, ordonne toute la tuile. Entre les nervures : des blocs mécaniques de 2 à 4 cm — boîtiers à coins chanfreinés, raccords, tambours — de hauteurs variées. Deux ou trois faisceaux de conduits ronds de 5 à 10 mm, gainés et tenus par des colliers, suivent les nervures puis les traversent. Quelques têtes de vis en relief net. Un ou deux vérins courts, deux cylindres emboîtés, posés en biais.\n\nMécanique aéronautique DENSE mais ORDONNÉE : chaque chose à sa place, rien de bricolé, aucun câble qui pend, aucun fil détaché, aucun tuyau mou, rien d'organique. Entre les blocs, 20 à 30 % de l'aire reste au fond de baie : c'est ce vide qui donne la profondeur.\n\nL'appareil est NEUF et propre : aucune rouille, aucune fuite, aucune coulure, aucune usure.\n\nLe gris code la HAUTEUR et rien d'autre : le fond de baie vaut environ 50/255 (jamais un noir absolu, qui lirait comme un trou), les nervures et les blocs vont de 120 à 190/255 selon leur hauteur, et seuls les têtes de vis, sommets de vérin et arêtes de boîtier montent à 220-255. Aucune couleur, aucune teinte, aucun texte, aucun chiffre, aucun logo, aucune signature."
+  }
+}

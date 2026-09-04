@@ -166,6 +166,9 @@ elle sert telle quelle. Les dérivées sont produites par l'outil, jamais géné
 | [`TEX-0006-trainee-de-flamme.json`](TEX-0006-trainee-de-flamme.json) | son sillage filamenté | ✅ livrée, intégrée |
 | [`TEX-0007-bouffee-de-poussiere.json`](TEX-0007-bouffee-de-poussiere.json) | **un élément** de particule pour l'onde d'impact | **à commander** |
 | [`TEX-0008-champ-du-porteur.json`](TEX-0008-champ-du-porteur.json) | le champ du Shield Carrier | **à commander** |
+| [`TEX-0017-specter-borde-composite.json`](TEX-0017-specter-borde-composite.json) | la peau composite du Specter-9 Talvern (`ADR-0044`) — 80 % de la surface | **à commander** |
+| [`TEX-0018-specter-mecanique-de-baie.json`](TEX-0018-specter-mecanique-de-baie.json) | le fond des baies qu'ouvrent ses mécanismes | **à commander** |
+| [`TEX-0019-specter-metal-de-tuyere.json`](TEX-0019-specter-metal-de-tuyere.json) | le métal de ses tuyères, déplié cylindriquement, posé **par nœud** | **à commander** |
 
 ## ⚠️ Une surface se texture. Un VOLUME se peuple.
 

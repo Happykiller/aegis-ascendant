@@ -1,0 +1,207 @@
+{
+  "id": "TEX-0017",
+  "slug": "specter-borde-composite",
+  "schema_version": "1.0",
+  "date": "2026-09-04",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du bordé du Specter-9 Talvern (`specter_9_c.glb`, BRIEF-0098) — la peau composite d'un microchasseur de 2,46 m, vue en GROS PLAN à l'écran d'accueil et au bestiaire. Matériaux `AA_Hull`, `AA_Panel`, `AA_Trim`, `AA_Marking_Red`.",
+    "game_context": "La troisième coque du joueur (`ADR-0044`), la plus détaillée. En combat elle fait ~48 px et la carte ne s'y voit pas (mipmaps) ; à l'accueil et au bestiaire elle occupe ~600 px pour 2,46 m, soit ~240 px/m après le post-process rétro. C'est POUR CES DEUX ÉCRANS que la carte existe. Les cassures de panneau principales sont DANS LA GÉOMÉTRIE (rainures creusées, biseaux) : la carte n'apporte que la matière entre elles — la peau fine d'un appareil de précision, pas les plaques d'un ouvrage.",
+    "priority": "⚠️ C'EST LA MATIÈRE DE 80 % DE LA SURFACE, ET ELLE DOIT RESTER DISCRÈTE. Un chasseur est lisse ; la carte ne doit pas le rendre bruyant. Elle remplace la feuille partagée `hull_panels` (calée pour un rendu à 14 cm de plaque) par une matière pensée pour le gros plan. Le plancher de modulation du contrat s'applique : ce qui module moins de ~6 niveaux de gris après postérisation à 20 niveaux n'existe pas — donc PEU d'éléments, mais francs."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 0.4,
+    "texture_height_m": 0.4,
+    "reference_element": "Le brief impose `box_project_uv()` à 2,5 tuiles/m sur la coque : une tuile couvre 0,40 m x 0,40 m, soit ~6 tuiles en longueur et ~4 en envergure. Densité : 1024 px / 0,40 m = 2 560 texels/m, pour ~240 px/m à l'écran en gros plan (rapport 10:1, la carte ne floute jamais). Rien de plus fin que ~1 cm de monde ne survit (2-3 px à l'écran).",
+    "confidence": "decided",
+    "rationale": "DÉCIDÉE : la coque n'existe pas encore (LOT 1 du plan). 0,40 m est choisi pour qu'un panneau de peau de 8 à 15 cm fasse 20 à 36 px à l'écran en gros plan — lisible, sans moirer — et pour que la tuile se répète assez peu (6 x 4) pour ne pas trahir sa période. ⚠️ À REMESURER sur le .glb livré : le rapport de forge donne la densité réelle par zone."
+  },
+  "composition": {
+    "main_elements": [
+      "8 à 14 panneaux de peau composite par tuile, de 8 à 15 cm de côté, en appareillage irrégulier, jamais en damier",
+      "des joints de panneau FINS (3 à 6 mm) et PEU PROFONDS, interrompus et décalés",
+      "des rangs de fixations affleurantes de 6 à 9 mm le long de quelques bords de panneau seulement — pas partout",
+      "deux ou trois trappes d'accès de 5 à 8 cm, affleurantes, à coins arrondis",
+      "une ou deux bandes de recouvrement plates traversant la tuile en biais léger",
+      "un grain de tissage composite TRÈS fin et TRÈS faible dans les aplats — à peine perceptible"
+    ],
+    "density": "low",
+    "distribution": "structured",
+    "edge_behavior": "Panneaux, joints et bandes traversent les quatre bords et s'y raccordent exactement. Aucun panneau entier centré : il trahirait la période de la tuile, qui se répète 24 fois sur la coque.",
+    "empty_space": "⚠️ LA MAJORITÉ DE L'AIRE EST DE LA PEAU NUE. Vise 60 à 75 % de l'aire au niveau de référence. C'est ce vide qui dit « précision » : une peau chargée dit « cargo »."
+  },
+  "visual": {
+    "subject": "Peau composite d'un chasseur spatial de précision vue de dessus : panneaux fins, joints serrés, quelques fixations, trappes affleurantes.",
+    "materials": [
+      "composite stratifié",
+      "céramique ablative en bandes",
+      "fixations affleurantes"
+    ],
+    "details": [
+      "bords de panneau à peine chanfreinés",
+      "rangs de fixations courts",
+      "trappes à coins arrondis",
+      "bandes de recouvrement plates",
+      "micro-tissage dans les aplats"
+    ],
+    "style": "aéronautique de précision, propre, tendu — un appareil entretenu par des gens qui le mesurent",
+    "color_palette": {
+      "dominant": [
+        "gris moyen"
+      ],
+      "secondary": [
+        "gris clair sur les seules arêtes saillantes"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portée",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isolé au centre",
+        "reflet spéculaire",
+        "éclairage directionnel",
+        "rouille",
+        "texte",
+        "lettres",
+        "chiffres",
+        "numéro de coque",
+        "pictogramme",
+        "flèche",
+        "insigne",
+        "emblème",
+        "symbole",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "nom d'artiste",
+        "couleur",
+        "teinte",
+        "émissif",
+        "noir absolu",
+        "magenta",
+        "violet"
+      ]
+    },
+    "surface_character": "Lisse et tendue, MATE. L'épaisseur des panneaux est de l'ordre du millimètre : elle se lit au joint, pas au relief. Ce n'est pas une tôle, c'est une peau.",
+    "age_and_damage": "⚠️ AUCUNE. C'est une cellule-témoin : neuve, mesurée, jamais rayée. Ni éraflure, ni cabossage, ni salissure, ni panneau remplacé."
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosité, AO et carte de multiplication en sont DÉRIVÉES par tools/derive-maps.py — aucune carte de normale n'est demandée (règle 2 du contrat).",
+    "black": "⚠️ INTERDIT. Le fond de joint s'arrête vers 100/255 : un joint plus sombre creuserait une tranchée dans une peau de chasseur.",
+    "gray": "face de référence de la peau, ~150/255 — c'est 60 à 75 % de l'image",
+    "white": "têtes de fixation, arêtes de trappe, bandes de recouvrement — les seuls éléments à 220-255"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun éclairage cuit : le moteur éclaire, et la coque TOURNE au bestiaire. Une ombre peinte contredirait la lumière à chaque angle.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ une lecture immédiate « peau de précision » — fine, propre, tendue",
+      "une plage dynamique RESSERRÉE : le creux le plus profond reste ~100/255, le saillant le plus haut 255",
+      "des joints interrompus et décalés, jamais un sillon d'un bord à l'autre",
+      "60 à 75 % de l'aire au niveau de référence"
+    ],
+    "must_not_have": [
+      "grille",
+      "caillebotis",
+      "fente",
+      "hublot",
+      "perforation",
+      "trou traversant",
+      "damier régulier",
+      "panneaux tous identiques",
+      "longue ligne sombre continue traversant l'image",
+      "rivets sur tous les bords",
+      "usure",
+      "rayure",
+      "salissure",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portée",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isolé au centre",
+      "reflet spéculaire",
+      "éclairage directionnel",
+      "rouille",
+      "texte",
+      "lettres",
+      "chiffres",
+      "numéro de coque",
+      "pictogramme",
+      "flèche",
+      "insigne",
+      "emblème",
+      "symbole",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "nom d'artiste"
+    ],
+    "seamless_requirements": [
+      "continuité parfaite sur les quatre bords",
+      "vérifié par tools/derive-maps.py --check-tiling, jamais à l'œil — et sur une matière à grain fin, comparer aussi deux colonnes ADJACENTES à l'intérieur (le seuil absolu est aveugle au grain)",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles, la couture s'y voit"
+    ],
+    "readability_requirements": [
+      "à ~240 px/m en gros plan, un panneau de 8-15 cm fait 20-36 px et un joint de 4 mm fait 1 px : le joint se lit par son OMBRE (normale dérivée), pas par sa largeur — d'où la plage resserrée mais franche",
+      "⚠️ en CONTRASTE : après postérisation à 20 niveaux, un joint doit encore franchir une marche (≥ 6 niveaux de gris de modulation une fois éclairé). Trop fin, il disparaît ; c'est le cas de TEX-0015 documenté au contrat",
+      "en combat (48 px), la carte doit DISPARAÎTRE dans les mipmaps sans scintiller — pas de haute fréquence contrastée"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Jeu de textures dédié du Specter-9 Talvern (`ADR-0044` §4) : `HullDetailSet` posé par `scripts/fx/hull_detail.gd` sur `AA_Hull`, `AA_Panel`, `AA_Trim`, `AA_Marking_Red` de `specter_9_c.glb` — jamais sur `AA_Glass` ni `AA_Emissive_Engine`, ni sur les nœuds `Nozzle_*`/`Petal_*` (TEX-0019).",
+    "shader_usage": "StandardMaterial3D. Normale, rugosité et AO DÉRIVÉES de cette hauteur. La carte de multiplication (--mul) sert d'`albedo_texture` par-dessus l'`albedo_color` de palette importée du .glb : la teinte reste, seuls les joints s'assombrissent (ADR-0011). `normal_scale` bas (~0,5) : une peau, pas une tôle.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/specter/specter_skin_height_1024.png --out assets/imported/textures/specter --name specter_skin --mul --check-tiling --preview /tmp/specter_skin.png",
+    "additional_notes": "⚠️ IMPORT AVEC MIPMAPS (`mipmaps/generate=true`) — 29 cartes sur 50 du dépôt en sont privées, c'est le défaut de Godot, et sans elles la coque SCINTILLE en combat. ⚠️ Juger APRÈS le post-traitement rétro (lift 1,25, postérisation 20 niveaux), jamais en studio. ⚠️ Les deux coques existantes gardent la feuille partagée : ce jeu est propre à `specter_9_c`."
+  },
+  "x_delivery": {
+    "status": "à commander — LOT 3 du plan, PREMIÈRE des trois par ordre d'intérêt (80 % de la surface)",
+    "priority": "obligatoire pour le LOT 3 ; le LOT 1 (forge) et le LOT 2 (code) se font sans elle",
+    "source_path": "assets/source/textures/specter/specter_skin_height_1024.png",
+    "derived_dir": "assets/imported/textures/specter",
+    "derived_files": [
+      "specter_skin_nrm.png",
+      "specter_skin_rough.png",
+      "specter_skin_ao.png",
+      "specter_skin_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE CADRE D'ABORD : la tuile est pleine cadre, ses quatre coins portent de la MATIÈRE. Un coin plus sombre que la moyenne = vignettage ajouté par le générateur — le renvoyer plutôt que de le rattraper.",
+      "mesurer le point le plus sombre : au-dessus de ~100/255, jamais 0 ; et la part de l'aire au niveau de référence (±10) : entre 60 et 75 %",
+      "la ligne « tuilage » de tools/derive-maps.py --check-tiling doit dire OK — et l'écart entre deux colonnes adjacentes internes sert de témoin sur le grain",
+      "ouvrir la preview : le quart haut-gauche montre 2x2 tuiles",
+      "⚠️ puis EN JEU, bestiaire et accueil, post-process actif (ADR-0006) : les joints doivent se voir au zoom et disparaître au combat sans scintiller"
+    ],
+    "provenance_csv_line": "specter_skin_height,assets/source/textures/specter/specter_skin_height_1024.png,raster_texture,\"<generateur>\",,tiers (genere IA),proprietary-internal,<date>,docs/forge/textures/TEX-0017-specter-borde-composite.json,,\"Hauteur de la peau composite du Specter-9 Talvern (specter_9_c.glb, ADR-0044). Tuile repetable 1024 px pour 0,40 m x 0,40 m — echelle DECIDEE, a remesurer sur le .glb livre (BRIEF-0098-report). Jeu dedie, materiaux AA_Hull/Panel/Trim/Marking_Red hors tuyeres.\""
+  },
+  "x_prompt_fr": {
+    "derived_from": "les champs ci-dessus — régénérable, ne pas éditer à la main",
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matière remplit le cadre entièrement, d'un bord à l'autre et jusque dans les quatre coins. Pas de dégradé, pas de vignettage, pas de coin assombri, pas de halo, pas d'étoiles, pas de nébuleuse, pas d'atmosphère, pas de sol, pas de décor, pas de cadre, pas de bordure, pas d'objet isolé au centre, pas de mise en scène — RIEN que la surface elle-même, vue à plat et de dessus.\n\nCarte de hauteur en niveaux de gris de la peau composite d'un petit chasseur spatial de précision. Vue orthogonale strictement de dessus, éclairage neutre et parfaitement plat, aucune ombre portée, aucune perspective, aucun reflet spéculaire. Image strictement monochrome : c'est une carte de HAUTEUR, pas une carte de relief colorée.\n\nMotif répétable sans couture sur les quatre bords : chaque élément traverse naturellement les bords et s'y raccorde, et aucun élément ne doit trahir la taille de la tuile.\n\nÉchelle réelle : la tuile couvre 40 centimètres sur 40 centimètres de coque. Huit à quatorze panneaux de peau composite de 8 à 15 cm de côté, en appareillage irrégulier, jamais alignés en damier. Entre eux, un joint FIN de 3 à 6 mm, PEU PROFOND, interrompu et décalé — jamais un sillon d'un bord à l'autre. Le long de quelques bords de panneau seulement, pas partout : de courts rangs de fixations affleurantes de 6 à 9 mm. Deux ou trois trappes d'accès de 5 à 8 cm, affleurantes, à coins arrondis. Une ou deux bandes de recouvrement plates traversent la tuile en biais léger. Dans les aplats, un grain de tissage composite très fin et à peine perceptible.\n\n⚠️ LA MAJORITÉ DE L'AIRE EST DE LA PEAU NUE : 60 à 75 % de l'image reste au niveau de référence. C'est ce vide qui dit « appareil de précision ». Une peau chargée dirait « cargo ». Rien de plus fin qu'un centimètre.\n\nL'appareil est NEUF : aucune usure, aucune rayure, aucun cabossage, aucune salissure, aucun panneau remplacé, aucune rouille.\n\nLe gris code la HAUTEUR et rien d'autre : gris moyen ~150/255 pour la face de la peau, blanc 220-255 pour les têtes de fixation, les arêtes de trappe et les bandes de recouvrement uniquement, et le fond de joint ne descend JAMAIS plus bas que 100/255 — un joint plus sombre creuserait une tranchée dans une peau de chasseur. Aucune couleur, aucune teinte, aucun texte, aucun chiffre, aucun logo, aucune signature."
+  }
+}
