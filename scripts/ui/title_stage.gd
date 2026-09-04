@@ -51,6 +51,7 @@ func _ready() -> void:
 	_hero_rest = _hero.position
 	_audio.set_music_state(MusicDirector.State.TITLE)
 	_tune_backdrop()
+	_swap_hero_hull()
 	_detail_hulls()
 	_animate_citadel()
 	_attach_engine_plumes()
@@ -111,6 +112,39 @@ const HERO_PLUME_MAX := 0.78
 
 const CitadelTurretScene := preload("res://scenes/fortress/citadel_turret.tscn")
 const CitadelBeaconScene := preload("res://scenes/fortress/citadel_beacon.tscn")
+
+## Le heros de l'accueil porte LA COQUE CHOISIE au bestiaire (ADR-0044).
+##
+## `boot.tscn` cable `specter_9.glb` en dur sur le heros et les trois escortes. Les
+## escortes restent la coque en service — c'est l'escadrille — mais le heros est le
+## vaisseau du joueur, et le joueur qui vient d'emmener une carrosserie au bestiaire
+## doit la retrouver en gros plan sur l'ecran suivant. Meme mecanique, memes replis
+## que `PlayerFighter._swap_hull_if_chosen` : jamais bloquant, toujours au journal.
+##
+## ⚠️ AVANT `_detail_hulls()`, `_attach_engine_plumes()` et `_bind_flight()`, qui
+## lisent tous trois le noeud `Hull` du heros.
+func _swap_hero_hull() -> void:
+	var settings := get_node_or_null("/root/SettingsManager")
+	if settings == null:
+		return
+	var chemin: String = settings.get_loadout().hull
+	if chemin.is_empty():
+		return
+	if not ResourceLoader.exists(chemin):
+		push_warning("[TitleStage] coque introuvable (%s) — le heros garde celle de la scene" % chemin)
+		return
+	var paquet: PackedScene = load(chemin) as PackedScene
+	var neuve: Node3D = paquet.instantiate() as Node3D if paquet != null else null
+	if neuve == null:
+		push_warning("[TitleStage] %s ne monte pas un Node3D — le heros garde celle de la scene" % chemin)
+		return
+	var ancienne := _hero.get_node_or_null("Hull")
+	if ancienne != null:
+		_hero.remove_child(ancienne)
+		ancienne.queue_free()
+	neuve.name = "Hull"
+	_hero.add_child(neuve)
+	print("[TitleStage] coque du heros : %s" % chemin.get_file())
 
 ## Feuille de detail sur toutes les coques de la scene (accueil = gros plan, c'est
 ## la que ca compte le plus). Le joueur en combat sera traite separement, une fois

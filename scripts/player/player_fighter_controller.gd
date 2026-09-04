@@ -94,6 +94,8 @@ var _demo_time: float = 0.0
 ## target on the plane; firing is suspended. Emits `autopilot_reached` on arrival.
 var _autopilot: bool = false
 var _autopilot_target: Vector2 = Vector2.ZERO
+## L'approche d'appontage est engagee : les mecanismes d'appontage sortent (ADR-0044).
+var _docking: bool = false
 signal autopilot_reached
 
 var _shield: PlayerShield = PlayerShield.new()
@@ -368,6 +370,14 @@ func begin_autopilot(target: Vector2) -> void:
 	_autopilot_target = target
 	_visual_root.visible = true
 
+## L'approche d'appontage : l'autopilote, PLUS les mecanismes d'appontage (grappins,
+## puis verriere — ADR-0044) sur une coque qui en a. Distinct de `begin_autopilot`,
+## que la plongee dans le noyau du boss emploie aussi : des grappins qui sortent au
+## milieu d'un combat raconteraient une autre scene.
+func begin_docking(target: Vector2) -> void:
+	_docking = true
+	begin_autopilot(target)
+
 ## Rend la main au joueur avant l'arrivée. L'autopilote d'appontage s'arrête tout seul
 ## au contact de sa cible ; la plongée dans le noyau du boss (ADR-0021), elle, doit la
 ## rendre à un instant PRÉCIS — celui où le tir s'ouvre. Sans ça le chasseur resterait
@@ -590,3 +600,7 @@ func _apply_visual_bank(delta: float) -> void:
 		# tuyeres en virage a l'arret.
 		_flight.set_bank(lateral)
 		_flight.set_thrust(speed_ratio())
+		# Le freinage subi, une seconde fois sur la coque (ADR-0044) : la plume
+		# s'etrangle, ET les aerofreins se levent — pour une coque qui en a.
+		_flight.set_brake(_shown_drag)
+		_flight.set_docking(1.0 if _docking else 0.0)

@@ -580,7 +580,7 @@ func _start_docking() -> void:
 func _on_citadel_arrived() -> void:
 	if _player != null:
 		_player.autopilot_reached.connect(_on_player_docked, CONNECT_ONE_SHOT)
-		_player.begin_autopilot(Vector2(0.0, 6.3))
+		_player.begin_docking(Vector2(0.0, 6.3))
 
 func _on_player_docked() -> void:
 	_boom(GameplayPlane.to_world(Vector2(0.0, 6.6)), VfxExplosion.Category.MEDIUM, 0.5)
