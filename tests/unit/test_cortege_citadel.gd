@@ -667,3 +667,50 @@ func test_a_distant_spine_node_leaves_the_lock_alone() -> void:
 	for t in citadel.turrets():
 		assert_false(t.is_weakened(),
 			"un noeud qui eteint un autre troncon ne touche pas aux tourelles du verrou")
+
+
+# =============================================================================
+# 10. CE QUE LA PARTIE DU 2026-09-04 A MESURE
+# =============================================================================
+
+## ⚠️ LE FACTEUR DE PROJECTION EST UN NOMBRE MESURE POSE DANS UN REGLAGE, ET RIEN DANS
+## `validate()` NE PEUT LE VERIFIER : elle tourne sans scene. Il vaut 0,8235 pour la camera de
+## `cortege.tscn` ; une camera reculee le rendrait faux, l'estimation du freinage mentirait, et
+## le budget de 45 s serait borde contre une duree qui n'existe pas. Ce test relit la camera du
+## niveau et MESURE le rapport au lieu de le recopier.
+func test_the_projection_factor_still_matches_the_camera_of_the_level() -> void:
+	var eye := _camera_eye()
+	# Mesure empirique : de combien le mur descend dans le plan quand la coque avance d'une unite.
+	var a := _wall_plane_y(200.0, eye)
+	var b := _wall_plane_y(201.0, eye)
+	var mesure := a - b
+	assert_almost_eq(mesure, TuningScript.PLANE_SPEED_RATIO, 0.005,
+		"un metre de coque parcouru fait %.4f unite de plan, et le reglage en declare %.4f — une camera deplacee sans toucher ce nombre fait mentir le freinage"
+			% [mesure, TuningScript.PLANE_SPEED_RATIO])
+	# Et le freinage predit doit valoir ce que le journal a chronometre : 5,0 s.
+	assert_almost_eq(TUNING.citadel_brake_time(), 5.0, 0.15,
+		"le freinage predit (%.2f s) vaut les 5,0 s chronometres en jeu le 2026-09-04"
+			% TUNING.citadel_brake_time())
+
+## ⚠️ ET LES POINTS DE VIE D'ORIGINE DOIVENT MAINTENANT ETRE REFUSES. C'est tout ce que la mesure
+## a change : 3 800 PV tenaient sous une occupation de 0,45 CHOISIE AU JUGE, et la partie a
+## montre 0,19. Sous l'hypothese honnete, ces memes 3 800 PV donnent un verrou de 61 s pour un
+## budget de 45 — et c'est le journal horodate qui l'a dit, pas un raisonnement.
+func test_the_health_that_played_at_55_seconds_is_now_refused() -> void:
+	var avant := TUNING.duplicate() as CortegeTuning
+	avant.citadel_relay_health = 1200.0
+	avant.citadel_core_health = 1900.0
+	assert_true(avant.citadel_lock_time() > 45.0,
+		"les PV d'origine donnent un verrou de %.0f s sous l'occupation mesuree"
+			% avant.citadel_lock_time())
+	assert_true(avant.validate().size() > 0, "et ils doivent donc etre refuses")
+
+## Le reglage livre, lui, tient le budget du brief.
+func test_the_shipped_lock_fits_the_brief() -> void:
+	var verrou := TUNING.citadel_lock_time()
+	assert_true(verrou >= 30.0 and verrou <= 45.0,
+		"le verrou livre dure %.1f s, dans la fourchette 30-45 du brief" % verrou)
+	# ⚠️ ET LE COMBAT RESTE LE GROS DE LA SEQUENCE. Un verrou dont le freinage et l'ouverture
+	# pesent plus que le tir serait une cinematique, pas un combat.
+	assert_true(TUNING.citadel_fight_time() > verrou * 0.6,
+		"et le tir en est le gros : %.1f s sur %.1f" % [TUNING.citadel_fight_time(), verrou])

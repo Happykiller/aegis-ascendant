@@ -68,9 +68,35 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) DÉBLOQUÉ** — la partie jouée qu'il attendait a eu lieu le 2026-09-03 |
-| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. Reste les lots 2 a 5 — et **une partie jouee a la main**, dans les DEUX ordres de relais. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
+| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. **Joue a la main le 2026-09-04** : la boucle tient, la regle se lit sans HUD, et le chronometre a refuse le dimensionnement — 55,1 s pour un budget de 45. Recale sur la mesure (occupation 0,45 → **0,19**, PV 3800 → **2700**), le verrou dure **41,1 s**. Reste les lots 2 a 5, le second ordre de relais et le chemin du nœud d'epine. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
+
+### La partie du 2026-09-04 a refuse le dimensionnement du verrou
+
+- ⚠️ **L'HYPOTHESE ETAIT OPTIMISTE D'UN FACTEUR 2,4 — LE MEME QU'`ADR-0024`, AU MEME CHIFFRE.**
+  3 800 PV tombes en **47,9 s** quand le reglage en promettait 22,8 : l'occupation reelle du
+  verrou est **0,19**, pas les 0,45 declares. Et `cortege_tuning.gd` SAVAIT — il ecrit, deux
+  lignes au-dessus, que se dimensionner sur l'occupation de la coque ouverte « reviendrait a se
+  donner raison », puis choisissait 0,45 sans mesurer. **Un commentaire qui enonce la regle
+  n'empeche pas de la violer deux lignes plus bas.**
+- ⚠️ **Un nombre invente a ete retire.** L'invariant bornait le temps de tir a « 30 s » — un
+  chiffre qui ne venait de nulle part, et qui **refusait le bon reglage** des que l'occupation est
+  devenue honnete. Ce que le brief specifie est la duree de la SEQUENCE (30-45 s) : le combat n'a
+  plus qu'un plancher, son plafond se DEDUIT. ⚠️ **Une borne qu'on ne sait pas rattacher a une
+  source est une borne a supprimer, pas a ajuster.**
+- ⚠️ **Le freinage mentait de 20 pct**, et seul le chronometre l'a dit : l'estimation employait la
+  vitesse de DEFILEMENT la ou le mur descend a celle du PLAN, et la camera projette (18 pct
+  d'ecart). Predit 4,17 s, corrige 5,06, chronometre 5,0. La premiere ecriture assumait l'ecart en
+  le declarant « optimiste, donc sur » — vrai, et quand meme une seconde d'erreur sur 45.
+- ✅ **La regle se lit SANS HUD, et deja en boites grises** : « gauche + droite → centre » compris
+  sans un mot. C'est le critere d'acceptation du LOT 3, a moitie acquis avant que le LOT 3
+  n'existe.
+- ⚠️ **Le second relais coute le DOUBLE du premier** (21,5 s contre 11,0). Pas de l'apprentissage
+  — celui-la rendrait le second plus rapide. C'est la traversee de l'arene sous le feu, et c'est
+  la que vit la difficulte. A regarder au LOT 3 avant d'y toucher.
+- **Deux chemins restent non joues** : le second ordre de relais (tribord d'abord), et
+  l'affaiblissement des quatre tourelles du verrou par le nœud d'epine du troncon 2.
 
 ### Textures de la Citadelle — une acceptee, une a regenerer (2026-09-04)
 

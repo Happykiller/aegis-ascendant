@@ -111,17 +111,20 @@ func test_the_promised_duration_counts_the_time_spent_stopped() -> void:
 ## VERROU, l'invariant 1 borne le NIVEAU, et ils ne se parlent pas. Le pire verrou que le 9
 ## accepte doit rester dans la promesse du 1 — sinon il existe un reglage vert partout qui rompt
 ## la promesse faite au joueur, et c'est exactement le defaut qu'ADR-0024 a paye.
-func test_the_worst_lock_the_fight_bound_allows_still_fits_the_promise() -> void:
+func test_the_worst_lock_the_bound_allows_still_fits_the_promise() -> void:
 	var pire := (load(SHIPPED) as CortegeTuning).duplicate() as CortegeTuning
-	# Le plafond de l'invariant 9 : 30 s de tir.
-	pire.citadel_core_health = 30.0 * pire.reference_dps * pire.occupancy_citadel \
-		- 2.0 * pire.citadel_relay_health
-	assert_true(pire.citadel_fight_time() <= 30.01,
-		"ce verrou est pile au plafond de l'invariant 9 (%.1f s)" % pire.citadel_fight_time())
+	# Le plafond de l'invariant 9 : 45 s CHRONOMETREES, freinage et ouverture retires.
+	var combat := 45.0 - pire.citadel_brake_time() - pire.citadel_open_time
+	var pv := combat * pire.reference_dps * pire.occupancy_citadel
+	pire.citadel_core_health = pv - 2.0 * pire.citadel_relay_health
+	assert_true(pire.citadel_core_health > pire.citadel_relay_health,
+		"ce pire cas garde un noyau plus cher qu'un relais (%.0f contre %.0f)"
+			% [pire.citadel_core_health, pire.citadel_relay_health])
+	assert_almost_eq(pire.citadel_lock_time(), 45.0, 0.05,
+		"il est pile au plafond du brief (%.2f s)" % pire.citadel_lock_time())
 	assert_eq(pire.validate().size(), 0,
 		"et il reste dans la promesse du niveau (%.0f s) : %s"
 			% [pire.level_duration(), str(pire.validate())])
-
 func test_a_survey_that_drags_beyond_the_promise_is_refused() -> void:
 	var tuning := _sound()
 	tuning.scroll_speed = 0.6

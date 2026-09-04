@@ -229,18 +229,28 @@ enum TurretScale { HEAVY, LIGHT }
 
 ## Part du temps où le joueur peut réellement placer ses tirs PENDANT LE VERROU.
 ##
-## ⚠️ PLUS BASSE QUE SUR LA COQUE OUVERTE, ET C'EST UNE CONSÉQUENCE, PAS UN RÉGLAGE DE
-## DIFFICULTÉ. L'arène fait une dizaine d'unités de haut au lieu de seize, la fortification tient
-## le haut de l'écran, et ses tourelles tirent depuis un point fixe : le joueur esquive plus qu'il
-## ne tire. Se dimensionner sur `occupancy_hull` reviendrait à se donner raison — c'est le défaut
-## qu'`ADR-0024` a payé sur le flux du Léviathan.
-@export var occupancy_citadel: float = 0.45
+## ⚠️ MESURÉE EN JEU LE 2026-09-04, ET ELLE VALAIT 0,45 AU JUGÉ — LE MÊME DÉFAUT QU'`ADR-0024`,
+## AU MÊME FACTEUR. Ce fichier écrivait, deux lignes plus haut, que se dimensionner sur
+## l'occupation de la coque ouverte « reviendrait à se donner raison ». Puis il choisissait 0,45
+## sans mesurer, c'est-à-dire qu'il se donnait raison quand même : l'invariant se comparait à
+## lui-même.
+##
+## La partie de l'opérateur a tranché : **3 800 PV tombés en 47,9 s**, soit 79 dps effectifs sur
+## les 420 de référence — **0,19**, pas 0,45. Facteur 2,4, exactement celui que le flux du
+## Léviathan avait coûté. Et le temps était du VRAI combat : « j'ai compris tout de suite »
+## (opérateur), donc rien de ces 47,9 s n'est passé à chercher quoi tirer.
+##
+## ⚠️ ELLE EST PLUS BASSE QUE TOUT LE RESTE DU NIVEAU, ET C'EST COHÉRENT. L'arène fait une
+## douzaine d'unités au lieu de seize, la fortification tient le haut de l'écran, ses tourelles
+## tirent d'un point FIXE et les ponts d'envol continuent de produire pendant l'arrêt — sept
+## coques écrasées dans la partie mesurée. Le joueur esquive plus qu'il ne tire.
+@export var occupancy_citadel: float = 0.19
 
 ## Les deux relais, dans n'importe quel ordre. Tant qu'UN SEUL vit, le noyau est intouchable.
-@export var citadel_relay_health: float = 1200.0
+@export var citadel_relay_health: float = 800.0
 ## Le noyau. ⚠️ PLUS CHER QU'UN RELAIS, et l'invariant 10 le tient : un noyau qui tomberait plus
 ## vite que ce qui le protège inverserait la lecture « GAUCHE + DROITE → CENTRE ».
-@export var citadel_core_health: float = 1900.0
+@export var citadel_core_health: float = 1100.0
 @export var citadel_relay_score: int = 2200
 @export var citadel_core_score: int = 6000
 
@@ -351,19 +361,45 @@ func citadel_fight_time() -> float:
 		return 0.0
 	return (2.0 * citadel_relay_health + citadel_core_health) / dps
 
+## Le rapport entre la vitesse de DÉFILEMENT et celle du mur DANS LE PLAN.
+##
+## ⚠️ MESURÉ, PAS DÉDUIT, ET IL FAISAIT MENTIR LE FREINAGE DE 20 %. La caméra plonge et
+## PROJETTE : un mètre de coque parcouru ne fait pas un mètre de plan. Le freinage prédit avec
+## la vitesse de défilement donnait 4,17 s ; avec ce facteur il donne 5,06 s — et le journal
+## horodaté de la partie du 2026-09-04 en a chronométré **5,0**. La première écriture assumait
+## l'écart en le déclarant « optimiste, donc sûr pour un plafond » : c'était vrai, et c'était
+## quand même une seconde d'erreur sur un budget de quarante-cinq.
+##
+## ⚠️ IL DÉPEND DE LA CAMÉRA DE `cortege.tscn`, et rien ici ne peut le vérifier —
+## `validate()` tourne sans scène. C'est `test_cortege_citadel.gd` qui le garde : il relit la
+## caméra du niveau et refait le calcul. Une caméra reculée sans toucher ce nombre y échoue.
+const PLANE_SPEED_RATIO := 0.8235
+
+## Ce que dure le FREINAGE, à décélération constante.
+func citadel_brake_time() -> float:
+	var plan := scroll_speed * PLANE_SPEED_RATIO
+	if plan <= 0.001:
+		return 0.0
+	return 2.0 * citadel_brake_span / plan
+
+## Ce que le critère d'acceptation CHRONOMÈTRE : du premier mètre de freinage à la route
+## praticable.
+##
+## ⚠️ LA REPRISE N'Y EST PAS, ET C'EST CE QUE LE JOURNAL A MONTRÉ. La partie mesurée donne
+## « freinage » à +0,0 s et « route praticable » à +55,1 s : le chronomètre s'arrête à `CLEARED`,
+## la rampe de reprise court après. Border la séquence ENTIÈRE contre le budget du brief aurait
+## refusé trois secondes qui ne sont pas comptées, et laissé passer trois secondes qui le sont.
+func citadel_lock_time() -> float:
+	return citadel_brake_time() + citadel_fight_time() + citadel_open_time
+
 ## Ce que dure la séquence ENTIÈRE : le freinage, le combat, l'ouverture, la reprise.
 ##
-## ⚠️ LE FREINAGE COMPTE DANS LE BUDGET, ET IL A FAILLI ÊTRE OUBLIÉ. À décélération constante,
-## un survol qui s'arrête sur `span` unités y passe `2 x span / vitesse` — cinq secondes ici,
-## soit un sixième de la séquence. Le mesurer à part reviendrait à promettre 30 s et à en jouer
-## 35. ⚠️ La vitesse employée est celle du DÉFILEMENT et non celle du plan : la projection de
-## la caméra les sépare d'environ 18 %, dans le sens qui allonge le freinage réel. L'estimation
-## est donc OPTIMISTE, et c'est le sens sûr pour un plafond.
+## ⚠️ LE FREINAGE ET LA REPRISE COMPTENT, ET ILS ONT FAILLI ÊTRE OUBLIÉS. Huit des quarante-quatre
+## secondes de la séquence se jouent hors combat : les mesurer à part reviendrait à promettre
+## trente secondes et à en jouer quarante. C'est cette fonction que `level_duration()` lit —
+## le niveau paie la reprise, même si le chronomètre du critère s'arrête avant.
 func citadel_sequence_time() -> float:
-	var freinage := 0.0
-	if scroll_speed > 0.001:
-		freinage = 2.0 * citadel_brake_span / scroll_speed
-	return freinage + citadel_fight_time() + citadel_open_time + citadel_resume_time
+	return citadel_lock_time() + citadel_resume_time
 
 ## La hauteur d'arène que le mur laisse au joueur, du plancher du plan à la face avant.
 func citadel_arena_height() -> float:
@@ -588,10 +624,15 @@ func validate() -> PackedStringArray:
 	# fortification de 500 m sans savoir ce qu'il vient de faire, et les deux relais n'ont servi
 	# à rien. Au-dessus du plafond, ce n'est plus un verrou de level design, c'est un troisième
 	# boss — et le brief l'interdit en une phrase (« ce n'est pas un boss »).
+	# ⚠️ LE PLAFOND DU COMBAT A DISPARU, ET C'EST UN NOMBRE INVENTÉ QU'ON RETIRE. La première
+	# écriture bornait le temps de tir à « 30 s » — un chiffre qui ne venait de nulle part, et
+	# qui a refusé le bon réglage dès que l'occupation a été MESURÉE. Ce que le brief spécifie,
+	# lui, est la durée de la SÉQUENCE : 30 à 45 s. Le combat n'a donc plus qu'un plancher — un
+	# verrou qui tombe en quatre secondes n'est pas un verrou — et son plafond se DÉDUIT du
+	# budget, freinage et ouverture retirés.
 	const CITADEL_FIGHT_FLOOR := 12.0
-	const CITADEL_FIGHT_CEILING := 30.0
-	const CITADEL_SEQUENCE_FLOOR := 25.0
-	const CITADEL_SEQUENCE_CEILING := 45.0
+	const CITADEL_LOCK_FLOOR := 30.0
+	const CITADEL_LOCK_CEILING := 45.0
 	if occupancy_citadel <= 0.0 or occupancy_citadel > 1.0:
 		errors.append("occupancy_citadel est une part de temps, dans (0, 1]")
 	elif occupancy_citadel > occupancy_hull:
@@ -601,18 +642,18 @@ func validate() -> PackedStringArray:
 		errors.append("les points de vie de la citadelle doivent être > 0")
 	elif occupancy_citadel > 0.0 and reference_dps > 0.0:
 		var combat := citadel_fight_time()
-		if combat > CITADEL_FIGHT_CEILING:
-			errors.append("le verrou tient %.0f s de tir pour %.0f au plus : au-delà ce n'est plus un verrou de level design, c'est un troisième boss"
-				% [combat, CITADEL_FIGHT_CEILING])
-		elif combat < CITADEL_FIGHT_FLOOR:
+		if combat < CITADEL_FIGHT_FLOOR:
 			errors.append("le verrou tient %.0f s de tir pour %.0f au moins : il tomberait avant d'avoir été compris, et les deux relais n'auraient servi à rien"
 				% [combat, CITADEL_FIGHT_FLOOR])
-		var sequence := citadel_sequence_time()
-		if sequence > CITADEL_SEQUENCE_CEILING or sequence < CITADEL_SEQUENCE_FLOOR:
-			errors.append("la séquence entière dure %.0f s, hors de la fourchette %.0f–%.0f du brief — freinage %.1f s, combat %.1f s, ouverture %.1f s, reprise %.1f s"
-				% [sequence, CITADEL_SEQUENCE_FLOOR, CITADEL_SEQUENCE_CEILING,
-					2.0 * citadel_brake_span / maxf(scroll_speed, 0.001), citadel_fight_time(),
-					citadel_open_time, citadel_resume_time])
+		# ⚠️ CE QUE LE CRITÈRE CHRONOMÈTRE, ET RIEN D'AUTRE : du premier mètre de freinage à la
+		# route praticable. La partie du 2026-09-04 a mesuré 55,1 s là où ce réglage en
+		# promettait 29 — c'est cette borne, une fois l'occupation honnête, qui a refusé les
+		# 3 800 PV d'origine.
+		var verrou := citadel_lock_time()
+		if verrou > CITADEL_LOCK_CEILING or verrou < CITADEL_LOCK_FLOOR:
+			errors.append("le verrou dure %.0f s, hors de la fourchette %.0f–%.0f du brief — freinage %.1f s, combat %.1f s, ouverture %.1f s"
+				% [verrou, CITADEL_LOCK_FLOOR, CITADEL_LOCK_CEILING,
+					citadel_brake_time(), combat, citadel_open_time])
 	if citadel_open_time <= 0.0 or citadel_resume_time <= 0.0 or citadel_brake_span <= 0.0:
 		errors.append("freinage, ouverture et reprise de la citadelle doivent être > 0 — un verrou qui s'arrête et repart d'un coup n'a pas de séquence")
 

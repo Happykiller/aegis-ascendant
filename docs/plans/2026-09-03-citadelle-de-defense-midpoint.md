@@ -319,7 +319,7 @@ de la porte et des couronnes. C'est ce qui le désigne comme le centre **sans un
 | `scripts/gameplay/citadel_part.gd` | une pièce destructible **qui sait refuser** — le noyau rend les tirs sans perdre un point |
 | `resources/data/cortege_tuning.gd` | dix réglages et **quatre invariants** (9 à 12) |
 | `scripts/vfx/cortege_flyby.gd` | `travelled()` — voir « ce qui a coûté » |
-| `tests/unit/test_cortege_citadel.gd` | 32 méthodes |
+| `tests/unit/test_cortege_citadel.gd` | 35 méthodes |
 
 **La pose, mesurée :** face avant à `s = 240,0`, emprise `239,6 → 246,0`. Garde de la fosse de
 `s = 228` finie à 236,2 (**3,4 m** de marge) ; socle de `Turret_07` commencé à 255,25 (**9,25 m**).
@@ -394,6 +394,76 @@ n'auraient pas été vus en jouant. Tous sont fermés, chacun avec son garde.
    à la limite du repérable sans zoom. Relais, noyau et bouclier claquent ; elles, non. À traiter
    au LOT 2 (silhouette) plutôt qu'à coup de teinte.
 
+### ⚠️ La partie de l'opérateur, 2026-09-04 — et elle a refusé le dimensionnement
+
+Première partie jouée à la main sur le verrou. Le journal **horodaté** (ajouté au LOT 1) a servi
+immédiatement :
+
+| | | |
+|---|---|---|
+| +0,0 s | route fermée droit devant — freinage | |
+| +5,0 s | **VERROU** — survol à l'arrêt | freinage **5,0 s** |
+| +16,0 s | premier relais tombé | **11,0 s** |
+| +37,5 s | second relais tombé | **21,5 s** — le double du premier |
+| +52,9 s | noyau détruit | **15,4 s** |
+| +55,1 s | route praticable | |
+
+Zéro `SCRIPT ERROR`, zéro `ERROR`. Pools alloués **une seule fois** (14 + 209), musique 0→1→2→3
+sans trou, **sept coques écrasées** pendant la séquence : les ponts d'envol produisent bien
+pendant l'arrêt.
+
+**Ce que l'opérateur a répondu, et qui décide du remède** : « **j'ai compris tout de suite** » —
+donc aucune de ces 47,9 s n'est passée à chercher quoi tirer. Et l'arène de 12 unités : « **juste,
+ça va** » — `citadel_wall_plane_y` ne bouge pas.
+
+#### ⚠️ L'hypothèse était optimiste d'un facteur 2,4 — le même qu'`ADR-0024`, au même chiffre
+
+3 800 PV tombés en **47,9 s** de combat quand `citadel_fight_time()` en promettait 22,8. Soit
+**79 dps effectifs** sur les 420 de référence : l'occupation réelle du verrou est de **0,19**, pas
+les **0,45** déclarés.
+
+Et le fichier savait : il écrit, deux lignes au-dessus du réglage, que se dimensionner sur
+l'occupation de la coque ouverte « reviendrait à se donner raison ». Puis il choisissait 0,45
+**sans mesurer** — c'est-à-dire qu'il se donnait raison quand même. L'invariant se comparait à
+lui-même, exactement comme le flux du Léviathan.
+
+#### Ce que la mesure a changé
+
+| | Avant | Après |
+|---|---|---|
+| `occupancy_citadel` | 0,45 (au jugé) | **0,19** (mesuré) |
+| `citadel_relay_health` | 1200 | **800** |
+| `citadel_core_health` | 1900 | **1100** |
+| *durée du verrou* | 29 s promis / **55,1 s joués** | **41,1 s** |
+| *durée du niveau* | 240 s | **252 s** |
+
+⚠️ **Et un nombre inventé a été retiré.** L'invariant 9 bornait le temps de tir à « 30 s » — un
+chiffre qui ne venait de nulle part, et qui **refusait le bon réglage** dès que l'occupation est
+devenue honnête. Ce que le brief spécifie, lui, est la durée de la **séquence** : 30 à 45 s. Le
+combat n'a donc plus qu'un **plancher** (un verrou qui tombe en quatre secondes n'est pas un
+verrou) et son plafond se **déduit** du budget, freinage et ouverture retirés.
+
+⚠️ **Le freinage mentait de 20 %, et le chronomètre l'a dit.** L'estimation employait la vitesse
+de **défilement** là où le mur descend à la vitesse du **plan** : la caméra projette, et les deux
+diffèrent de 18 %. Prédit 4,17 s, corrigé 5,06 s, **chronométré 5,0**. La première écriture
+assumait l'écart en le déclarant « optimiste, donc sûr » — c'était vrai, et c'était quand même une
+seconde d'erreur sur un budget de quarante-cinq. `PLANE_SPEED_RATIO` porte désormais le nombre, et
+`test_the_projection_factor_still_matches_the_camera_of_the_level` le **mesure** contre la caméra
+de la scène : une caméra reculée sans toucher ce réglage échoue.
+
+#### Trois choses que cette partie apprend et qui ne sont pas des réglages
+
+1. ✅ **La règle se lit SANS HUD, et déjà en boîtes grises.** « Gauche + droite → centre » a été
+   compris sans un mot. C'est le critère d'acceptation du **LOT 3**, à moitié acquis avant que le
+   LOT 3 n'existe — la symétrie de `T1` a fait ce qu'elle promettait.
+2. ⚠️ **Le second relais a coûté le DOUBLE du premier** (21,5 s contre 11,0). Ce n'est pas de
+   l'apprentissage — l'apprentissage rendrait le second plus rapide. C'est la traversée de l'arène
+   sous le feu qui coûte, et c'est **là** que vit la difficulté de la séquence. À regarder au
+   LOT 3 avant d'y toucher.
+3. ⚠️ **Deux chemins restent non joués** : le **second ordre de relais** (tribord d'abord), et
+   l'**affaiblissement par le nœud d'épine** du tronçon 2 — aucune ligne `nœud d'épine abattu`
+   dans cette partie, donc les quatre tourelles du verrou n'ont jamais été vues diminuées.
+
 ### Ce que le lot laisse ouvert, et qui n'est pas un oubli
 
 - ⚠️ **Le pilote automatique reste bloqué au verrou.** `--demo` tire droit devant : il n'abat pas
@@ -409,9 +479,13 @@ n'auraient pas été vus en jouant. Tous sont fermés, chacun avec son garde.
 ### Ce qui prouve le lot
 
 Vérifié en headless (`--goto-level=long_cortege --cortege-from=3 --demo`) : le verrou s'arme, freine
-en **5,0 s**, s'immobilise, et le journal est **horodaté**. 844 tests verts, dont 32 sur ce lot.
+en **5,0 s**, s'immobilise, et le journal est **horodaté**. 847 tests verts, dont 35 sur ce lot.
 
-⚠️ **Ce qui reste dû, et qui n'appartient qu'à l'opérateur** (`ADR-0006`, `ADR-0019`) : une partie
+✅ **Et il a été joué** — voir « La partie de l'opérateur » ci-dessus : la boucle se joue de bout
+en bout, la règle se lit sans HUD, et le dimensionnement a été refusé par le chronomètre puis
+recalé. Restent le **second ordre de relais** et le chemin du **nœud d'épine**.
+
+⚠️ **Ce qui restait dû avant cette partie, et qui n'appartenait qu'à l'opérateur** (`ADR-0006`, `ADR-0019`) : une partie
 jouée à la main, **dans les deux ordres de relais**, où le chasseur franchit le passage sans
 téléportation — et une partie où l'animation d'ouverture est volontairement coupée doit rester
 jouable (§11). La route ne dépend jamais d'un visuel : `test_the_route_opens_only_after_the_opening_has_run`
