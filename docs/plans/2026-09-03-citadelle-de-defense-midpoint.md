@@ -9,6 +9,97 @@
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
+# ▶ POINT DE REPRISE — 2026-09-04, fin de session
+
+> ⚠️ **Un point de reprise faux coûte plus qu'un point de reprise absent** : il envoie la session
+> suivante dans le mur sans qu'elle le questionne. Tout ce qui suit est mesuré ou cité, jamais
+> supposé.
+
+## En une phrase
+
+**Le verrou se joue de bout en bout, il a sa forme, ses quatre états se voient, et sa porte
+s'ouvre.** Les LOTS 0 à 4 sont livrés, vérifiés en jeu et commités. Il reste **le seul LOT 5**.
+
+## Où en est le code
+
+| | |
+|---|---|
+| Tests | **864 méthodes, 6 693 assertions, 0 échec** |
+| Coût GPU du verrou | **3,93 ms/image** sur Quadro T1000 — 23,5 % du budget 60 Hz |
+| Kit | `citadel_kit.glb`, **neuf pièces, 1 348 triangles** (plafond 2 300), déterministe `c81944e2` |
+| Coque | `long_cortege.glb`, **47 526 triangles**, déterministe `9f4e0715` |
+| Coque calme | **50,8 %** — voir l'avertissement plus bas |
+
+**Pour retrouver le verrou en jeu, en une commande :**
+
+```bash
+./scripts/play.sh -- --goto-level=long_cortege --cortege-from=3
+```
+
+Le verrou s'immobilise vers **26 s**. Et pour capturer un état précis sans joueur :
+`--citadel-state=<0..3>` (0 intact · 1 un relais tombé · 2 bouclier à terre · 3 noyau mort), qui
+tire **pour de vrai** au moment du verrouillage.
+
+## Ce qui reste à faire, par ordre d'intérêt
+
+1. ⚠️ **JOUER LE SECOND ORDRE DE RELAIS.** La partie du 2026-09-04 n'a joué que bâbord d'abord.
+   Le chemin inverse est couvert par un test, pas par un humain.
+2. ⚠️ **JOUER LE CHEMIN DU NŒUD D'ÉPINE.** Aucun nœud abattu dans la partie mesurée, donc les
+   quatre tourelles du verrou n'ont **jamais été vues diminuées** — alors que c'est le seul endroit
+   du niveau où la récompense du nœud se sent vraiment.
+3. ⚠️ **LE SENS DE DÉFILEMENT DES CONDUITS NE SE VÉRIFIE QU'EN JOUANT.** Une capture ne montre pas
+   un mouvement, et c'est précisément le signe qui s'était fait **lire à l'envers** sur le porteur
+   de bouclier. Les points doivent aller **du relais vers le noyau**.
+4. **LOT 5 — la respiration** : quelques secondes sans grosse tourelle après le verrou, citadelle
+   visible derrière, retour progressif de la musique (§18). ⚠️ **La « seconde moitié plus
+   machinique » du §18 n'en fait PAS partie** — c'est le LOT 6 de la refonte, déjà au backlog. Les
+   mélanger ferait un chantier qu'on ne saurait plus finir.
+
+## Les trois choses qui décideront du LOT 5, et qui sont déjà mesurées
+
+- ⛔ **L'ouverture de la porte NE SE LIT PAS**, et c'est un problème de **ton** : vantaux
+  rétractés, poutre fixe et coque vue au travers partagent le même gris. Ce qui manque a un nom —
+  `TEX-0016` (signalétique ambre, **refusée**) demande « quelques doubles points marquant **un
+  seuil** ». **Régénérer cette carte est devenu le meilleur investissement du chantier** : elle
+  sert le balisage du Cortège *et* le seuil de la passe. Cabochons **trois fois plus gros** ; le
+  budget d'aire en laisse dix fois.
+- ⚠️ **TOUT CE QUI EST À BÂBORD OU À TRIBORD PERD SON RASANT, SELON LA FACE.** Une seule
+  directionnelle vient du haut-gauche. Le défaut s'est payé **trois fois** : socle de bastion
+  tribord, vantail bâbord, et les petites tourelles. **Une lumière de remplissage réglerait les
+  trois d'un coup**, et c'est un chantier de niveau, pas de citadelle.
+- ⚠️ **LA COQUE CALME EST À 50,8 %.** Le lot C1 de l'enrichissement a **refusé** trois bastions
+  parce qu'ils passaient sous les **50,3 %** d'où le lot B4 était parti. Il reste **0,5 point**.
+  **Toute dépense de bordé future doit être pesée contre ce chiffre.**
+
+## Ce qui a été appris cette session et qui vaut au-delà du verrou
+
+- **Quand deux sources décrivent la même position, il faut un test sur leur COMPOSITION**, pas un
+  test par source. Les deux relais étaient à des dizaines de mètres de leur place avec 850 tests
+  verts, dont un écrit *précisément* pour les défauts de miroir.
+- **Un détail dont la modulation est sous ~6 niveaux de gris n'existe pas dans ce jeu**
+  (`retro_post` postérise à 20 niveaux). Remonté au contrat de texture.
+- **29 des 50 cartes 3D du dépôt sont importées sans mipmaps.** Corrigé pour une seule ; les 28
+  autres sont au backlog, à juger une famille à la fois.
+- **Une borne qu'on ne sait pas rattacher à une source est une borne à supprimer, pas à ajuster** —
+  le plafond de 30 s que j'avais inventé refusait le bon réglage dès que la mesure est arrivée.
+- **Le premier lancement après un déploiement lit 0,2 à 0,8 ms trop haut** (cache de shaders
+  froid). Médiane, jamais un tir.
+
+## Les commits de la session
+
+```
+d860cb8  feat(cortege): la porte s'ouvre — et une denture qui se recouvre etait impossible
+8716cfc  feat(cortege): les quatre etats du verrou se voient
+79f0fbc  feat(cortege): le bastion retrouve son pied — deux tranchees
+b84ba06  feat(cortege): le verrou porte sa forme — et la capture a trouve deux relais perdus
+1035b82  feat(forge): la Citadelle prend sa forme — quatre silhouettes
+b0560e4  fix(cortege): le chronometre a refuse le verrou — facteur 2,4
+27ea81b  feat(cortege): le vaisseau ferme la route a mi-parcours
+964bf3f  feat(forge): deux textures livrees, une acceptee et une refusee
+```
+
+---
+
 ## Ce que la séquence doit être, en une phrase
 
 > « Ce gigantesque vaisseau m'a fermé la route ; j'ai saboté son verrou défensif pour continuer. »
