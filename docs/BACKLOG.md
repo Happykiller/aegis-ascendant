@@ -109,12 +109,22 @@ plan plus récent, **le plan gagne**.
   partir la premiere** et enregistrer l'ecran-titre sous le nom du niveau. Une capture qui montre
   la mauvaise scene sous le bon nom de fichier est exactement le genre de preuve qu'on ne
   questionne pas.
-- **Le pied des bastions n'a pas d'embase** : enfonces de 1,5 m dans une coque plate, leur jupe
-  est tranchee net par le pont, sans socle ni assombrissement de contact. Deux issues, et les deux
-  se valent — un **collier** (rupture de valeur, un seul element, soignerait aussi le bord franc
-  des relais) ou la **tranchee** (seule a rendre 1,55 m de jupe visible, donc seule a tenir la
-  promesse « 2,85 m de hauteur lue » du LOT 0). Aucune ne bloque : le test noir et blanc est tenu
-  sans elles. **A trancher en regardant, au LOT 3.**
+- [x] ~~Le pied des bastions n'a pas d'embase~~ — **CORRIGE** le 2026-09-04 : l'operateur a
+  tranche pour la **tranchee** contre le collier. Deux tranchees laterales sur le pont median
+  (x 7,35 a 10,30, fond -6,50), **+272 triangles**, **zero point de profil**, deterministe. Socle
+  lu en capture : gorge, chanfrein eclaire, ombre de contact, pont — contraste 2,5:1.
+- ⚠️ **LA COQUE CALME EST A 50,8 PCT, ET C'EST LA MARGE LA PLUS MINCE QU'ELLE AIT EUE.** Le lot C1
+  a REFUSE trois bastions parce qu'ils passaient **sous les 50,3 pct** d'ou le lot B4 etait parti ;
+  la tranchee coute 1,4 point et laisse **0,5 point** au-dessus de ce plancher. **Toute depense de
+  borde future doit etre pesee contre ce chiffre.** Une part de la baisse est un gain de justesse :
+  le compte voit desormais le verrou (la tranchee recouvre son emprise), la ou il surestimait de
+  six metres le borde le plus charge du vaisseau.
+- ⚠️ **TOUT CE QUI EST A TRIBORD EST MOINS LISIBLE QUE SON JUMEAU DE BABORD, SUR LES 500 M.** La
+  lumiere-cle est une seule directionnelle venant du haut-gauche : le bord droit ne recoit aucun
+  rasant. Mesure sur les socles de bastion — a babord le chanfrein monte a 104 contre 68 pour le
+  pont (2,5:1), a tribord il plafonne a 68 contre 56, et seule l'ombre de contact (38) porte la
+  lecture. Ce n'est pas un defaut de la citadelle : c'est l'eclairage du niveau, et il vaut pour
+  chaque piece du bord droit.
 - **La denture de la porte se lit comme un creneau de rempart**, pas comme un joint de battants :
   dents vers le haut, sans machoire en vis-a-vis, sans ligne de refend. Le LOT 4 l'ouvrira, mais
   la lecture manque deja.

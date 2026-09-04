@@ -612,39 +612,77 @@ C'est très exactement ce que `ADR-0006` existe pour dire.
 2. **Le portique a des jambes, et elles sont dans le noir.** Deux piliers descendent bien dans la
    tranchée centrale, mais dans un noir quasi pur : la poutre paraît flotter quand même, et ses
    deux bouts dépassent la silhouette de la coque d'environ 250 px de chaque côté.
-3. **Le pied des bastions n'a plus d'embase**, et c'est la conséquence directe de l'enfoncement de
-   1,5 m sans tranchée : la jupe arrondie est **tranchée net par le plan du pont**, sans socle,
-   sans congé, et surtout **sans aucun assombrissement de contact**. Aucun artefact — ni
-   z-fighting, ni flottement : ça ne se lit pas comme faux, ça se lit comme une pièce qui a perdu
-   sa base.
+3. ~~**Le pied des bastions n'a plus d'embase**~~ — ✅ **corrigé le 2026-09-04 par la tranchée**,
+   que l'opérateur a tranchée contre le collier. Voir « La tranchée est creusée » plus bas.
 
-#### ⚠️ Le collier ou la tranchée — la question est ouverte, et les deux lectures se valent
+### ✅ La tranchée est creusée (2026-09-04), et c'est l'opérateur qui a tranché
 
-**Pour le collier** (verdict du vérificateur) : ce que l'œil manque à la jonction est une
-**rupture de valeur**, pas de la profondeur. Un collier plat débordant l'empreinte, chanfrein
-sombre sur la tranche, la donne — et se lit comme une bride de fixation. Un seul élément, et le
-même traitement soignerait les relais, qui souffrent du même bord franc.
+Deux tranchées **latérales**, une par bastion : pont médian, `x` 7,35 → 10,30, fond à **−6,50**,
+`s` 239,2 → 246,4 — 40 cm de jeu à chaque bout, sans quoi la jupe toucherait les parois et le
+creux disparaîtrait.
 
-**Pour la tranchée** : elle rend 1,55 m de jupe **visible**, donc elle est le seul des deux qui
-tienne réellement la promesse du LOT 0 (« 2,85 m de hauteur lue »). L'argument d'occultation du
-vérificateur — à 55-60° la paroi de tranchée serait masquée par le bastion — porte sur la lecture
-de la tranchée **comme creux**, pas sur la hauteur qu'elle dégage.
+| | |
+|---|---|
+| **Triangles** | **+272** sur toute la coque (47 254 → 47 526). Section 3 à **52,9 %** de son budget |
+| **Points de profil** | **zéro** — `7,35` et `10,30` sont déjà les points 9 et 10 de `PROFILE_BASE` |
+| **Déterminisme** | OK (`9f4e0715`) |
+| **Coque calme** | 52,2 % → **50,8 %** |
+| **Coût GPU** | 3,93 ms/image sur Quadro T1000, **23,5 %** du budget |
 
-⚠️ **Aucune des deux ne bloque le lot** : le test noir et blanc est tenu sans elles. À trancher en
-regardant, au LOT 3.
+⚠️ **LES 50,8 % SONT LA MARGE LA PLUS MINCE QUE CE VAISSEAU AIT EUE.** Le lot C1 de
+l'enrichissement a *refusé* trois bastions parce qu'ils ramenaient le calme **sous les 50,3 %**
+d'où le lot B4 était parti. La tranchée coûte 1,4 point et nous laisse **0,5 point** au-dessus de
+ce plancher. Toute dépense de bordé future doit être pesée contre ce chiffre.
 
-### ⚠️ La tranchée n'est PAS creusée, et le test d'acceptation a été tenu sans elle
+Et une partie de cette dépense est un **gain de justesse** : le compte de calme **voit désormais
+le verrou**. Les pièces de la citadelle sont un kit, donc invisibles au fichier de coque — mais la
+tranchée qui l'assied (239,2 → 246,4) recouvre son emprise (239,6 → 246,0). La compter, c'est le
+compter. Sans ça, le chiffre surestimait de six mètres le bordé le plus chargé du vaisseau, ce
+qui est exactement le défaut que le commentaire de cette fonction décrit.
 
-Le LOT 0 la décrivait « sous l'emprise de la citadelle », ce qui la faisait **traverser l'artère**
-— donc couper le canal, ses rebords, ses conduits et ses travées. C'était une mauvaise lecture :
-les bastions sont sur le **pont médian**, et `7,35` et `10,30` sont **déjà deux points du profil**
-(indices 9 et 10 de `PROFILE_BASE`). Deux tranchées **latérales** y coûteraient zéro point neuf,
-exactement comme les quatre fosses du lot B3, et l'artère ne serait pas touchée du tout.
+#### Un mécanisme, pas deux
 
-**Mais la planche de recette a passé le noir et blanc sur une coque PLATE.** La tranchée affine
-donc le **pied** des bastions — leur base et leur ombre —, elle ne décide plus de la lecture. Elle
-sort du chemin critique : `CortegeCitadel.MOAT_DEPTH` porte la cote pour le jour où on la creuse,
-et l'assise du bastion (−6,50) est déjà celle qu'elle attend.
+Six endroits du fichier interrogent les creux — la peau qui saute ses cellules, les modules qui
+les évitent, les stations qui pavent leur emprise, le tracé, et deux harnais. Les six passent
+désormais par un seul générateur `_hollows()` : **un creux sans son saut de peau est un plancher
+sous une peau intacte**, invisible et définitif. Les quatre fosses restent byte-identiques.
+
+La différence entre les deux familles est écrite dans le code : une **fosse** se creuse *sous la
+peau* (profondeur relative, le fond suit le bord) ; une **tranchée** porte un *fond absolu*, parce
+que le moteur y assied une pièce de kit à une cote écrite. Faire dériver le fond ferait flotter le
+bastion sans un mot.
+
+#### ⚠️ Trois fichiers écrivent la même cote, et aucun ne peut lire les deux autres
+
+`CortegeCitadel.BASTION_BASE_Y` dit où le moteur **pose**. `MOAT_FLOOR_Y` dit où la coque
+**creuse**. Entre les deux il y a un `.glb` qui seul fait foi. Le harnais Blender ne lit pas le
+GDScript ; le moteur ne relit pas le Python. Si les deux nombres divergent, le bastion flotte ou
+s'enterre — sans erreur, sans test rouge, et sans que la capture le montre franchement puisque la
+jupe est arrondie.
+
+`test_the_bastion_sits_exactly_on_the_trench_the_hull_digs` ferme la boucle par le **seul élément
+commun** : il scanne les sommets de `Section_03` dans l'emprise de la tranchée et exige que leur
+point le plus bas soit exactement l'assise du bastion. Plus `_assert_moats_are_hollow()`, qui
+refuse une tranchée creusant moins de 1,40 m si la peau bougeait.
+
+#### Ce que la capture montre
+
+Le défaut est **corrigé**. Profil de luminance au travers du bord aval du socle gauche :
+`68 → 42` (gorge) `→ 79 · 80 · 91 · 104` (chanfrein éclairé) `→ 42` (ombre de contact) `→ 68`
+(pont) — contraste adjacent 2,5:1. C'est la lecture qu'on attend d'un socle, et la jupe se lit
+maintenant en silhouette sur toute la hauteur du bastion.
+
+⚠️ **Mais le socle TRIBORD est moins crédible que le bâbord**, et ce n'est pas la géométrie : la
+lumière-clé vient du haut-gauche, donc le bord droit ne reçoit **aucun rasant**. Son chanfrein ne
+se détache presque plus du pont (68 contre 56) et seule l'ombre de contact (38) porte la lecture.
+Ça tient, mais par l'ombre seule. ⚠️ Et le constat vaut pour **tout ce qui est à tribord sur les
+500 m** du vaisseau, pas seulement ici : c'est la conséquence d'une seule directionnelle.
+
+**La bande non tranchée passe.** Le bastion va de 6,90 à 11,40 et la tranchée de 7,35 à 10,30 :
+les 1,10 m au large se lisent comme un **tablier d'appui** à faible contraste, les 45 cm en dedans
+sont noyés dans la fente d'ombre de l'axe. **Aucun artefact de bord** — ni raie d'ombre à la
+limite `x = 10,30`, ni extrémité de tranchée ouverte : la silhouette du socle se referme sur
+elle-même.
 
 ## LOT 3 — Les quatre états se voient
 

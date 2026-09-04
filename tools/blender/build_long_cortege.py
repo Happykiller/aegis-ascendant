@@ -671,6 +671,74 @@ PIT_DEPTH = 1.55
 PIT_KEEPOUT = 2.20
 
 # --------------------------------------------------------------------------
+# LES TRANCHEES DE BASTION — le creux qui rend au bastion son PIED
+# --------------------------------------------------------------------------
+# ⚠️ ELLES EXISTENT PARCE QU'UNE CAPTURE A MONTRE UNE PIECE SANS EMBASE. Le kit
+# de la Citadelle (BRIEF-0096) taille son bastion pour une assise a -6,50, soit
+# 1,51 m SOUS le pont median. Pose sur une coque plate, il s'y enfonce d'autant :
+# sa jupe arrondie est tranchee net par le plan du pont, sans socle, sans conge
+# et sans aucun assombrissement de contact. Aucun artefact — ni z-fighting, ni
+# flottement : ca ne se lit pas comme faux, ca se lit comme une piece qui a perdu
+# sa base. C'est ce creux, et lui seul, qui rend les 1,51 m de jupe VISIBLES et
+# qui tient la promesse du LOT 0 (« 2,85 m de hauteur lue pour 1,99 m batie »).
+#
+# ⚠️ ELLES SONT SUR LE PONT MEDIAN, ET C'EST CE QUI LES REND GRATUITES EN
+# TOPOLOGIE. La premiere ecriture du plan les voulait « sous l'emprise de la
+# citadelle », donc TRAVERSANTES : il aurait fallu couper l'artere, ses rebords,
+# ses conduits et ses travees. Or les bastions ne sont pas sur l'axe, ils sont sur
+# le pont median — et `7,35` et `10,30` sont DEJA les points 9 et 10 de
+# `PROFILE_BASE`. Comme les fosses avec `2,20` et `6,80`, une tranchee posee sur
+# deux points existants ne coute aucun point de profil : un point neuf aurait
+# coute deux segments d'anneau sur toute la longueur du vaisseau, a chaque
+# station des cinq troncons.
+#
+# ⚠️ LE BASTION DEBORDE LA TRANCHEE, ET C'EST ASSUME. Il va de 6,90 a 11,40, la
+# tranchee de 7,35 a 10,30 : restent 45 cm en dedans et 1,10 m au large ou sa
+# jupe reste enterree. Les elargir demanderait deux points de profil neufs, et
+# celui de 6,90 tomberait au milieu de la CONTREMARCHE DE CHINE — une rampe, pas
+# une bande plate. Le bastion se lit donc comme plante dans un puits, ce qui est
+# la lecture voulue.
+#: Les deux abscisses NOMINALES, points 9 et 10 du profil.
+MOAT_X = (7.35, 10.30)
+#: ⚠️ UN FOND ABSOLU, ET NON UNE PROFONDEUR — C'EST L'INVERSE DES FOSSES, POUR UNE
+#: RAISON. Une fosse est un creux decoratif : sa profondeur se compte sous la peau,
+#: et le fond suit le bord. Ici c'est le MOTEUR qui a besoin d'un nombre — il pose
+#: `citadel_bastion` a cette cote exacte (`CortegeCitadel.BASTION_BASE_Y`). Deriver
+#: le fond de la peau ferait deriver l'assise du bastion avec elle, et la piece
+#: flotterait ou s'enterrerait sans qu'aucune erreur ne le dise.
+MOAT_FLOOR_Y = -6.50
+#: Ce que la tranchee doit creuser AU MOINS, sous le point le plus bas de son
+#: emprise. Le harnais le verifie : si la peau descendait, le fond fixe cesserait
+#: d'etre un creux.
+MOAT_MIN_DEPTH = 1.40
+#: (s du centre, demi-longueur, bord) — une par bastion, donc une par bord.
+#: L'emprise deborde celle du bastion (s 239,6 a 246,0) de 40 cm a chaque bout :
+#: sans ce jeu, la jupe toucherait les parois et le creux disparaitrait.
+MOATS: tuple[tuple[float, float, float], ...] = (
+    (242.8, 3.60, 1.0),
+    (242.8, 3.60, -1.0),
+)
+
+
+def _hollows():
+    """Tous les CREUX du borde : les quatre fosses, puis les deux tranchees.
+
+    Rend `(s centre, demi-longueur, bord, abscisses, fond absolu ou None)`.
+
+    ⚠️ UN SEUL GENERATEUR ET NON DEUX MECANISMES PARALLELES. Six endroits de ce
+    fichier interrogent les creux — la peau qui saute ses cellules, les modules
+    qui les evitent, les stations qui pavent leur emprise, le trace, et deux
+    harnais. Une seconde famille recopiee a cote aurait ete oubliee par l'un des
+    six, et un creux sans son saut de peau est un plancher SOUS une peau
+    intacte : invisible, et definitif.
+    """
+    for sc, hs, side in PITS:
+        yield sc, hs, side, PIT_X, None
+    for sc, hs, side in MOATS:
+        yield sc, hs, side, MOAT_X, MOAT_FLOOR_Y
+
+
+# --------------------------------------------------------------------------
 # LES BASTIONS — ce qui donne une FONCTION a un troncon
 # --------------------------------------------------------------------------
 # ⚠️ LA HAUTEUR NE PEUT PAS DIFFERENCIER, ET C'EST LA CONTRAINTE QUI DECIDE DE
@@ -1089,9 +1157,9 @@ def _assert_bastions_are_clear() -> None:
                     and (x_lo - BAY_HALF_X <= bx <= x_hi + BAY_HALF_X):
                 problems.append(
                     f"le bastion a s = {sc:.0f} recouvre Bay_{number:02d}")
-        for pc, ph, pside in PITS:
-            px_lo = min(PIT_X[0] * pside, PIT_X[1] * pside)
-            px_hi = max(PIT_X[0] * pside, PIT_X[1] * pside)
+        for pc, ph, pside, pxs, _pfloor in _hollows():
+            px_lo = min(pxs[0] * pside, pxs[1] * pside)
+            px_hi = max(pxs[0] * pside, pxs[1] * pside)
             if not (s1 < pc - ph or s0 > pc + ph
                     or x_hi < px_lo or x_lo > px_hi):
                 problems.append(
@@ -1100,6 +1168,41 @@ def _assert_bastions_are_clear() -> None:
             problems.append(f"le bastion a s = {sc:.0f} est sous Ambry")
     if problems:
         raise SystemExit("[long_cortege] BASTIONS MAL POSES\n"
+                         + "\n".join(f"  - {p}" for p in problems))
+
+
+def _assert_moats_are_hollow() -> None:
+    """La tranchee de bastion creuse VRAIMENT, et son fond est celui que le moteur ecrit.
+
+    ⚠️ ELLE PORTE UN FOND ABSOLU, ET C'EST CE QUI LA REND FRAGILE. Les fosses se
+    creusent sous la peau : elles suivent le bord quoi qu'il arrive. Celle-ci est
+    posee a `MOAT_FLOOR_Y` parce que le moteur y assied `citadel_bastion`
+    (`CortegeCitadel.BASTION_BASE_Y`) — les deux nombres doivent etre le meme, et
+    rien dans ce fichier ne peut lire l'autre.
+
+    Deux choses peuvent donc casser en silence : la peau qui DESCEND sous le fond
+    (la tranchee cesse d'etre un creux et devient une bosse), ou la peau qui monte
+    tant que le creux devient un puits. Aucune ne produirait d'erreur : le `.glb`
+    resterait valide, le build vert, et le bastion se poserait dans une coque qui
+    ne l'attend plus.
+    """
+    problems: list[str] = []
+    for sc, hs, side, xs, fond in _hollows():
+        if fond is None:
+            continue
+        stations = [v for v in (sc - hs, sc, sc + hs)]
+        for v in stations:
+            for k in (0, 1):
+                peau = _surface_y(v, xs[k] * side)
+                creux = peau - fond
+                if creux < MOAT_MIN_DEPTH:
+                    problems.append(
+                        f"la tranchee a s = {sc:.0f} (bord {side:+.0f}) ne creuse "
+                        f"que {creux:.2f} m a s = {v:.1f}, x = {xs[k] * side:+.2f} "
+                        f"(peau {peau:.2f}, fond {fond:.2f}) : moins que les "
+                        f"{MOAT_MIN_DEPTH:.2f} m attendus")
+    if problems:
+        raise SystemExit("[long_cortege] TRANCHEES TROP PLATES\n"
                          + "\n".join(f"  - {p}" for p in problems))
 
 
@@ -1115,10 +1218,10 @@ def _assert_pits_are_clear() -> None:
     justement la.
     """
     problems: list[str] = []
-    for sc, hs, side in PITS:
+    for sc, hs, side, xs, _floor in _hollows():
         lo, hi = sc - hs - PIT_KEEPOUT, sc + hs + PIT_KEEPOUT
-        x_lo = min(PIT_X[0] * side, PIT_X[1] * side) - PIT_KEEPOUT
-        x_hi = max(PIT_X[0] * side, PIT_X[1] * side) + PIT_KEEPOUT
+        x_lo = min(xs[0] * side, xs[1] * side) - PIT_KEEPOUT
+        x_hi = max(xs[0] * side, xs[1] * side) + PIT_KEEPOUT
         def touches(ps: float, px: float, radius: float) -> bool:
             return (lo - radius <= ps <= hi + radius
                     and x_lo - radius <= px <= x_hi + radius)
@@ -1264,9 +1367,9 @@ def _pit_cell(i: int, s0: float, s1: float) -> tuple[float, float, float] | None
         return None
     lo = min(RING_X[i], RING_X[(i + 1) % RING_SIZE])
     hi = max(RING_X[i], RING_X[(i + 1) % RING_SIZE])
-    for sc, hs, side in PITS:
-        x0 = PIT_X[0] * side
-        x1 = PIT_X[1] * side
+    for sc, hs, side, xs, _floor in _hollows():
+        x0 = xs[0] * side
+        x1 = xs[1] * side
         if (lo >= min(x0, x1) - 1e-6 and hi <= max(x0, x1) + 1e-6
                 and s0 >= sc - hs - 1e-6 and s1 <= sc + hs + 1e-6):
             return sc, hs, side
@@ -1280,9 +1383,9 @@ def _pit_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
     plaque qui enjambe une fosse ne flotte que de 1,55 m : assez pour se voir en
     capture, pas assez pour qu'on la cherche.
     """
-    for sc, hs, side in PITS:
-        xc = (PIT_X[0] + PIT_X[1]) * 0.5 * side
-        half_x = (PIT_X[1] - PIT_X[0]) * 0.5 + PIT_KEEPOUT
+    for sc, hs, side, xs, _floor in _hollows():
+        xc = (xs[0] + xs[1]) * 0.5 * side
+        half_x = (xs[1] - xs[0]) * 0.5 + PIT_KEEPOUT
         if not (s1 < sc - hs - PIT_KEEPOUT or s0 > sc + hs + PIT_KEEPOUT
                 or x1 < xc - half_x or x0 > xc + half_x):
             return True
@@ -1911,7 +2014,7 @@ def _stations(index: int) -> list[float]:
     # `sc +/- hs`, l'emprise n'est pas pavee par des cellules entieres et « ne pas
     # emettre les faces » rend un creux aux cotes approchees — plus large ou plus
     # court que ses parois, avec un jour tout autour.
-    for sc, hs, _ in PITS:
+    for sc, hs, _side, _xs, _floor in _hollows():
         if s0 <= sc < s1:
             values += [sc - hs, sc + hs]
     return sorted({round(v, 6) for v in values})
@@ -1967,7 +2070,7 @@ def build_pits(bm: bmesh.types.BMesh, index: int) -> int:
     """
     origin = index * SECTION_LENGTH
     quads = 0
-    for sc, hs, side in PITS:
+    for sc, hs, side, PIT_X, fond in _hollows():
         if not (origin <= sc < origin + SECTION_LENGTH):
             continue
         s_lo, s_hi = sc - hs, sc + hs
@@ -1976,8 +2079,13 @@ def build_pits(bm: bmesh.types.BMesh, index: int) -> int:
             continue
         # Le fond : sous le point le PLUS BAS de l'emprise, pour qu'il soit
         # partout au moins a `PIT_DEPTH` de la peau.
-        floor = min(_surface_y(v, PIT_X[k] * side)
-                    for v in stations for k in (0, 1)) - PIT_DEPTH
+        # ⚠️ UN FOND ABSOLU QUAND LE MOTEUR EN DEPEND, DERIVE SINON. Les fosses
+        # se creusent SOUS la peau (leur fond suit le bord) ; les tranchees de
+        # bastion, elles, portent l'assise d'une piece de kit posee a une cote
+        # ECRITE — la faire deriver ferait flotter le bastion sans un mot.
+        floor = fond if fond is not None else min(
+            _surface_y(v, PIT_X[k] * side)
+            for v in stations for k in (0, 1)) - PIT_DEPTH
 
         def edge(v: float, k: int) -> float:
             return PIT_X[k] * side * _side_scale(v, side)
@@ -3176,7 +3284,14 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     # chiffre annonce SURESTIMAIT le calme. Un indicateur qui ne voit pas ce qu'on
     # vient d'ajouter ne mesure plus rien — c'est la meme classe de defaut que la
     # liste blanche du tableau des modules.
-    for pc, ph, _side in PITS:
+    # ⚠️ ET LES TRANCHEES DE BASTION COMPTENT AVEC LES FOSSES — d'ou `_hollows()`.
+    # Elles portent en plus, GRATUITEMENT, l'emprise de la Citadelle : le verrou
+    # occupe s 239,6 a 246,0 en pieces de KIT, que ce fichier ne voit pas, et la
+    # tranchee qui l'assied va de 239,2 a 246,4. La compter, c'est compter le
+    # verrou. Sans quoi le chiffre de calme surestimerait de six metres de borde
+    # le plus charge du vaisseau — exactement le defaut que la ligne du dessus
+    # decrit, reproduit sur ce qu'on vient d'ajouter.
+    for pc, ph, _side, _xs, _floor in _hollows():
         occupied.append((pc - ph, pc + ph))
     for bc, bh, _xi, _xo, _h in BASTIONS:
         occupied.append((bc - bh, bc + bh))
@@ -4051,6 +4166,7 @@ def build() -> dict:
     _assert_canal()
     _assert_taper_spares_the_bays()
     _assert_pits_are_clear()
+    _assert_moats_are_hollow()
     _assert_bastions_are_clear()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)

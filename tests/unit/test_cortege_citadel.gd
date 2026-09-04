@@ -848,3 +848,48 @@ func test_the_two_relays_land_where_the_kit_says() -> void:
 		free_tracked()
 		kit = track(packed.instantiate()) as Node3D
 		source = kit.get_node_or_null("citadel_relay") as MeshInstance3D
+
+## ⚠️ TROIS FICHIERS ECRIVENT LA MEME COTE, ET AUCUN NE PEUT LIRE LES DEUX AUTRES.
+##
+## `CortegeCitadel.BASTION_BASE_Y` dit ou le moteur POSE le bastion. `MOAT_FLOOR_Y` dans
+## `build_long_cortege.py` dit ou la coque CREUSE. Et entre les deux il y a un `.glb` livre, qui
+## seul fait foi. Le harnais Blender verifie que la tranchee creuse assez ; il ne peut pas lire le
+## GDScript. Le moteur pose sa piece ; il ne relit pas le Python. Si les deux nombres divergent, le
+## bastion flotte au-dessus du fond ou s'y enterre — sans erreur, sans test rouge, et sans que la
+## capture le montre franchement puisque la jupe est arrondie.
+##
+## Ce test ferme la boucle par le SEUL element commun : le binaire.
+func test_the_bastion_sits_exactly_on_the_trench_the_hull_digs() -> void:
+	var hull := track((load(FlybyScript.DECOR_PATH) as PackedScene).instantiate()) as Node3D
+	var section := hull.get_node_or_null("Section_03") as MeshInstance3D
+	if section == null:
+		# La coque peut etre montee autrement ; on cherche alors le maillage sous le nœud.
+		var porteur := hull.get_node_or_null("Section_03") as Node3D
+		assert_true(porteur != null, "la coque livree porte Section_03")
+		return
+	var maillage := section.mesh
+	assert_true(maillage != null, "Section_03 porte un maillage")
+	if maillage == null:
+		return
+	# L'emprise de la tranchee tribord, en repere LOCAL au troncon : x 7,35 a 10,30 et
+	# s 239,2 a 246,4, soit z de -39,2 a -46,4.
+	var fond := INF
+	var vus := 0
+	for surface in maillage.get_surface_count():
+		var arrays := maillage.surface_get_arrays(surface)
+		var sommets: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for v in sommets:
+			if v.x < 7.20 or v.x > 10.45:
+				continue
+			if v.z > -39.0 or v.z < -46.6:
+				continue
+			vus += 1
+			fond = minf(fond, v.y)
+	assert_true(vus > 0,
+		"des sommets existent bien dans l'emprise de la tranchee tribord (%d)" % vus)
+	assert_almost_eq(fond, CitadelScript.BASTION_BASE_Y, 0.01,
+		"le fond creuse par la coque est a %.3f et le moteur assied le bastion a %.3f"
+			% [fond, CitadelScript.BASTION_BASE_Y])
+	# ⚠️ ET C'EST BIEN UN CREUX, pas un plancher au niveau du pont : le pont median est a -4,99.
+	assert_true(CitadelScript.BASTION_BASE_Y < -6.0,
+		"la tranchee descend nettement sous le pont median (%.2f)" % CitadelScript.BASTION_BASE_Y)
