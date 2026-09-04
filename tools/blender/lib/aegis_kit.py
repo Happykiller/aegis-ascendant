@@ -73,7 +73,7 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-VERSION = "1.1.0"   # 1.1.0 : inset_panel() corrige (BRIEF-0084)
+VERSION = "1.2.0"   # 1.2.0 : tubes, verins, profil d'aile, UV cylindriques/par materiau, lecture .glb (BRIEF-0098)
 
 # --------------------------------------------------------------------------
 # Repere d'auteur
@@ -1341,3 +1341,367 @@ def _validate_glb(
             + "\n".join(f"  - {p}" for p in problems)
         )
     return report
+
+
+# --------------------------------------------------------------------------
+# Ajouts 1.2.0 — BRIEF-0098 (Specter-9 Talvern). NOUVELLES fonctions seulement :
+# quinze scripts dependent des precedentes, aucune n'est modifiee.
+# --------------------------------------------------------------------------
+
+
+def _orthonormal_frame(axis: Vector) -> tuple[Vector, Vector, Vector]:
+    """Base (u, v, w) orthonormee dont `w` est `axis` normalise. Deterministe."""
+    w = Vector(axis).normalized()
+    helper = Vector((0.0, 0.0, 1.0)) if abs(w.z) < 0.9 else Vector((1.0, 0.0, 0.0))
+    u = helper.cross(w).normalized()
+    v = w.cross(u)
+    return u, v, w
+
+
+def add_tube(
+    bm: bmesh.types.BMesh,
+    start: tuple[float, float, float],
+    end: tuple[float, float, float],
+    radius: float,
+    segments: int,
+    material: str,
+    radius_end: float | None = None,
+) -> list[bmesh.types.BMFace]:
+    """Cylindre (ou tronc de cone) ferme entre deux points QUELCONQUES.
+
+    `add_lathe` ne tourne qu'autour d'un axe du monde ; un verin d'aerofrein
+    couche en diagonale dans sa baie, un axe de charniere incline, un montant de
+    verriere n'en ont aucun. Retourne toutes les faces creees.
+    """
+    if segments < 3:
+        raise ContractError("add_tube : segments >= 3")
+    p0, p1 = Vector(start), Vector(end)
+    axis = p1 - p0
+    if axis.length < 1e-9:
+        raise ContractError("add_tube : start et end confondus")
+    u, v, _ = _orthonormal_frame(axis)
+    r1 = radius if radius_end is None else radius_end
+    idx = mat_index(material)
+    ring0, ring1 = [], []
+    for s in range(segments):
+        a = 2.0 * math.pi * s / segments
+        d = u * math.cos(a) + v * math.sin(a)
+        ring0.append(bm.verts.new(p0 + d * radius))
+        ring1.append(bm.verts.new(p1 + d * r1))
+    faces = [f for f in bridge_rings(bm, ring0, ring1, material) if f is not None]
+    for ring, flip in ((ring0, True), (ring1, False)):
+        cap = cap_ring(bm, list(reversed(ring)) if flip else ring, material)
+        if cap is not None:
+            faces.append(cap)
+    for face in faces:
+        face.material_index = idx
+    return faces
+
+
+def add_actuator(
+    bm: bmesh.types.BMesh,
+    anchor: tuple[float, float, float],
+    tip: tuple[float, float, float],
+    barrel_radius: float,
+    rod_radius: float,
+    barrel_fraction: float = 0.6,
+    segments: int = 10,
+    barrel_material: str = "AA_Greeble",
+    rod_material: str = "AA_Trim",
+) -> list[bmesh.types.BMFace]:
+    """Verin : deux cylindres emboites, le fut depuis `anchor`, la tige jusqu'a `tip`.
+
+    `barrel_fraction` : part de la course occupee par le fut. La tige part du
+    fond du fut (elle est donc DANS le fut sur toute sa longueur, comme une vraie
+    tige), ce qui evite un raccord visible a la sortie. Deux embases plus larges
+    aux deux bouts font les chapes.
+    """
+    a, t = Vector(anchor), Vector(tip)
+    axis = t - a
+    length = axis.length
+    if length < 1e-9:
+        raise ContractError("add_actuator : anchor et tip confondus")
+    d = axis / length
+    faces = add_tube(bm, a, a + d * (length * barrel_fraction), barrel_radius,
+                     segments, barrel_material)
+    faces += add_tube(bm, a + d * (length * 0.12), t, rod_radius, segments,
+                      rod_material)
+    knuckle = barrel_radius * 1.25
+    faces += add_tube(bm, a - d * knuckle * 0.6, a + d * knuckle * 0.6, knuckle,
+                      segments, barrel_material)
+    faces += add_tube(bm, t - d * knuckle * 0.6, t + d * knuckle * 0.6,
+                      rod_radius * 1.6, segments, barrel_material)
+    return faces
+
+
+def airfoil_half_thickness(
+    t: float, max_half_thickness: float, peak: float = 0.32, floor: float = 0.0042
+) -> float:
+    """Demi-epaisseur d'un profil de voilure a la fraction de corde `t`.
+
+    Bord d'attaque ROND (montee en racine carree jusqu'au maitre-couple `peak`),
+    bord de fuite FIN (decroissance presque lineaire) — c'est ce qui distingue une
+    lame d'aile d'une lentille symetrique. `floor` borne l'epaisseur des bords :
+    un bord d'epaisseur nulle degenere au chanfrein.
+    """
+    t = min(max(t, 0.0), 1.0)
+    if t <= peak:
+        shape = math.sqrt(t / peak) if peak > 1e-9 else 1.0
+    else:
+        shape = ((1.0 - t) / (1.0 - peak)) ** 0.85
+    return max(max_half_thickness * shape, floor)
+
+
+def box_project_uv_by_material(
+    obj: bpy.types.Object,
+    densities: dict[str, float],
+    default_texels_per_meter: float,
+) -> None:
+    """Projection en boite, avec une densite PAR MATERIAU (ADR-0028, BRIEF-0098).
+
+    Le brief demande « une zone, une feuille, une densite » — et de deplier chaque
+    zone avant de joindre. Une coque jointe en un seul maillage se deplie donc ici
+    face par face selon son slot de materiau : la peau a une densite, les fonds
+    de baie (`AA_Greeble`) en ont une autre. Meme methode que `box_project_uv`
+    (triangulation d'abord, plan par normale dominante), meme determinisme.
+    """
+    triangulate(obj)
+    mesh = obj.data
+    scale_by_index: dict[int, float] = {}
+    for name, density in densities.items():
+        scale_by_index[mat_index(name)] = density
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    uv_layer = bm.loops.layers.uv.verify()
+    for face in bm.faces:
+        density = scale_by_index.get(face.material_index, default_texels_per_meter)
+        n = face.normal
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for loop in face.loops:
+            co = loop.vert.co
+            if ax >= ay and ax >= az:
+                u, v = co.y, co.z
+            elif ay >= az:
+                u, v = co.x, co.z
+            else:
+                u, v = co.x, co.y
+            loop[uv_layer].uv = (u * density, v * density)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+
+def cylinder_project_uv(
+    obj: bpy.types.Object,
+    center: tuple[float, float, float],
+    axis: tuple[float, float, float],
+    tiles_around: float,
+    tiles_per_meter_along: float | None = None,
+    reference_radius: float | None = None,
+) -> None:
+    """Depliage CYLINDRIQUE autour d'un axe (BRIEF-0098, TEX-0019).
+
+    `u` fait le tour de l'axe (`tiles_around` tuiles par tour), `v` court le long
+    de l'axe. Si `tiles_per_meter_along` n'est pas donne, il est deduit pour que
+    la densite soit HOMOGENE au rayon `reference_radius` (defaut : rayon moyen des
+    sommets) : `tiles_around / (2 pi R)`.
+
+    Trois familles de faces, choisies par la normale de chaque face :
+
+      * faces de PEAU (normale radiale) : (angle, position axiale) — le cylindre ;
+      * faces de TRANCHE (normale tangentielle : flancs des petales, joues des
+        anneaux) : (rayon, position axiale) — sans quoi leur `u` serait constant,
+        leur UV d'aire nulle et leur tangente indefinie ;
+      * faces de FOND (normale axiale : fond de chambre, culots) : plan polaire
+        (x, y) locaux, a la meme densite.
+
+    La couture du tour est traitee face par face : une face qui chevauche l'angle
+    zero voit ses `u` bas remontes d'un tour, elle ne s'etire jamais sur toute la
+    largeur de la feuille.
+    """
+    triangulate(obj)
+    mesh = obj.data
+    c = Vector(center)
+    u_dir, v_dir, w_dir = _orthonormal_frame(Vector(axis))
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    uv_layer = bm.loops.layers.uv.verify()
+
+    if reference_radius is None:
+        radii = []
+        for vert in bm.verts:
+            rel = vert.co - c
+            radii.append(math.hypot(rel.dot(u_dir), rel.dot(v_dir)))
+        reference_radius = sum(radii) / max(len(radii), 1)
+    if tiles_per_meter_along is None:
+        tiles_per_meter_along = tiles_around / (2.0 * math.pi * max(reference_radius, 1e-6))
+    dens = tiles_per_meter_along
+
+    for face in bm.faces:
+        n = face.normal
+        centroid = face.calc_center_median() - c
+        radial = centroid - w_dir * centroid.dot(w_dir)
+        radial_len = radial.length
+        radial_dir = radial / radial_len if radial_len > 1e-9 else u_dir
+        tangent_dir = w_dir.cross(radial_dir)
+        n_axial = abs(n.dot(w_dir))
+        n_radial = abs(n.dot(radial_dir))
+        n_tangent = abs(n.dot(tangent_dir))
+        uvs = []
+        for loop in face.loops:
+            rel = loop.vert.co - c
+            along = rel.dot(w_dir)
+            px, py = rel.dot(u_dir), rel.dot(v_dir)
+            if n_axial >= n_radial and n_axial >= n_tangent:
+                uvs.append((px * dens, py * dens))
+            elif n_tangent > n_radial:
+                uvs.append((math.hypot(px, py) * dens, along * dens))
+            else:
+                angle = math.atan2(py, px)
+                if angle < 0.0:
+                    angle += 2.0 * math.pi
+                uvs.append((angle / (2.0 * math.pi) * tiles_around, along * dens))
+        if n_radial >= n_axial and n_radial >= n_tangent:
+            us = [uv[0] for uv in uvs]
+            if max(us) - min(us) > tiles_around * 0.5:
+                uvs = [
+                    (u + tiles_around if u < tiles_around * 0.5 else u, v)
+                    for u, v in uvs
+                ]
+        for loop, uv in zip(face.loops, uvs):
+            loop[uv_layer].uv = uv
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+
+def texel_density(
+    points: list, uvs: list, tris: list[tuple[int, int, int]]
+) -> dict[str, float]:
+    """Densite de texels par VALEURS SINGULIERES, triangle par triangle (BRIEF-0089).
+
+    Une moyenne d'aires ne verrait aucun etirement : un triangle deux fois trop
+    long dans un sens et deux fois trop court dans l'autre a la bonne aire. On
+    mesure les deux valeurs singulieres de l'application plan-du-triangle -> UV :
+    leur inverse donne les metres par tuile dans les deux directions principales,
+    leur rapport l'anisotropie. Retourne un dict vide si rien n'est mesurable.
+    """
+    lo, hi, total, weight = math.inf, 0.0, 0.0, 0.0
+    aniso = 1.0
+    for ia, ib, ic in tris:
+        pa, pb, pc = (Vector(points[i]) for i in (ia, ib, ic))
+        ua, ub, uc = (Vector(uvs[i][:2]) for i in (ia, ib, ic))
+        e1, e2 = pb - pa, pc - pa
+        area = e1.cross(e2).length * 0.5
+        if area < 1e-9:
+            continue
+        bx = e1.normalized()
+        bz = e1.cross(e2).normalized()
+        by = bz.cross(bx)
+        a11, a21 = e1.dot(bx), e1.dot(by)
+        a12, a22 = e2.dot(bx), e2.dot(by)
+        det = a11 * a22 - a12 * a21
+        if abs(det) < 1e-12:
+            continue
+        j11, j21 = ub.x - ua.x, ub.y - ua.y
+        j12, j22 = uc.x - ua.x, uc.y - ua.y
+        i11, i12 = a22 / det, -a12 / det
+        i21, i22 = -a21 / det, a11 / det
+        m11 = j11 * i11 + j12 * i21
+        m12 = j11 * i12 + j12 * i22
+        m21 = j21 * i11 + j22 * i21
+        m22 = j21 * i12 + j22 * i22
+        e = (m11 + m22) * 0.5
+        f = (m11 - m22) * 0.5
+        g = (m21 + m12) * 0.5
+        h = (m21 - m12) * 0.5
+        q = math.hypot(e, h)
+        r = math.hypot(f, g)
+        s1, s2 = q + r, abs(q - r)
+        if s2 < 1e-9:
+            continue
+        lo = min(lo, s2)
+        hi = max(hi, s1)
+        aniso = max(aniso, s1 / s2)
+        total += (s1 + s2) * 0.5 * area
+        weight += area
+    if weight == 0.0:
+        return {}
+    mean = total / weight
+    return {
+        "tiles_per_m_min": lo, "tiles_per_m_max": hi, "tiles_per_m_mean": mean,
+        "m_per_tile_mean": 1.0 / mean, "anisotropy_max": aniso,
+        "area": weight,
+    }
+
+
+_ACCESSOR_FMT = {5120: "b", 5121: "B", 5122: "h", 5123: "H", 5125: "I", 5126: "f"}
+_ACCESSOR_N = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}
+
+
+def glb_accessor(gltf: dict, blob: bytes, index: int) -> list[tuple]:
+    """Decode un accesseur du `.glb` (buffer unique, chunk BIN) en tuples."""
+    acc = gltf["accessors"][index]
+    view = gltf["bufferViews"][acc["bufferView"]]
+    fmt = _ACCESSOR_FMT[acc["componentType"]]
+    n = _ACCESSOR_N[acc["type"]]
+    size = struct.calcsize(fmt)
+    stride = view.get("byteStride", size * n)
+    base = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+    return [
+        struct.unpack_from("<" + fmt * n, blob, base + i * stride)
+        for i in range(acc["count"])
+    ]
+
+
+def glb_primitives(path: str) -> list[dict]:
+    """Relit un `.glb` LIVRE et rend ses primitives, nœud par nœud, en espace MONDE.
+
+    Chaque entree : `node`, `parent`, `translation` (locale), `world` (translation
+    cumulee), `material`, `positions` (locales), `uvs` (ou None), `indices`.
+    C'est la matiere premiere d'un audit : compter `TEXCOORD_0`, mesurer l'aire
+    par materiau, la densite de texels, ou tourner une piece autour de son pivot
+    pour lire le signe qui l'ouvre — sur le fichier, jamais sur la scene.
+    """
+    gltf, blob = _read_glb(path)
+    nodes = gltf.get("nodes", [])
+    parent_of: dict[int, int | None] = {i: None for i in range(len(nodes))}
+    for i, node in enumerate(nodes):
+        for child in node.get("children", []):
+            parent_of[child] = i
+    world: dict[int, tuple[float, float, float]] = {}
+
+    def _world(i: int) -> tuple[float, float, float]:
+        if i in world:
+            return world[i]
+        t = nodes[i].get("translation", [0.0, 0.0, 0.0])
+        p = parent_of[i]
+        base = _world(p) if p is not None else (0.0, 0.0, 0.0)
+        world[i] = (base[0] + t[0], base[1] + t[1], base[2] + t[2])
+        return world[i]
+
+    mats = [m.get("name", f"#{k}") for k, m in enumerate(gltf.get("materials", []))]
+    out: list[dict] = []
+    for i, node in enumerate(nodes):
+        if "mesh" not in node:
+            continue
+        for prim in gltf["meshes"][node["mesh"]]["primitives"]:
+            attrs = prim["attributes"]
+            positions = glb_accessor(gltf, blob, attrs["POSITION"])
+            uvs = glb_accessor(gltf, blob, attrs["TEXCOORD_0"]) if "TEXCOORD_0" in attrs else None
+            if "indices" in prim:
+                flat = [t[0] for t in glb_accessor(gltf, blob, prim["indices"])]
+            else:
+                flat = list(range(len(positions)))
+            tris = [tuple(flat[k:k + 3]) for k in range(0, len(flat) - 2, 3)]
+            out.append({
+                "node": node.get("name", f"node{i}"),
+                "parent": nodes[parent_of[i]].get("name") if parent_of[i] is not None else None,
+                "translation": tuple(node.get("translation", [0.0, 0.0, 0.0])),
+                "world": _world(i),
+                "material": mats[prim["material"]] if "material" in prim else "<none>",
+                "positions": positions,
+                "uvs": uvs,
+                "indices": tris,
+            })
+    return out
