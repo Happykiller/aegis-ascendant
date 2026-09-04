@@ -68,9 +68,60 @@ plan plus récent, **le plan gagne**.
 | [`2026-08-27-playtest-operateur.md`](plans/2026-08-27-playtest-operateur.md) | Retours de playtest : montée en puissance trop rapide, regen invisible, phase du noyau au minuteur, **trajectoires sur rails** | **tout livré** (R1→R10) |
 | [`2026-08-27-reactor-chamber.md`](plans/2026-08-27-reactor-chamber.md) | La phase du noyau devient une **machine** : anneaux rotatifs à fenêtre de vulnérabilité, rails, lasers balayants, nodes | **4 points bloquants**, rien d'engagé |
 | [`2026-08-29-niveau-2-refonte-geometrie.md`](plans/2026-08-29-niveau-2-refonte-geometrie.md) | ⚠️ **La géométrie ne porte pas les fonctions de gameplay** : la tourelle lit comme un jeton, le hangar comme un bouton, l'artère comme un laser. Kit modulaire, cavités réelles, palette 80/15/5 | **lots 1-5 livrés** et vérifiés en capture ; **LOT 6 (décoration) DÉBLOQUÉ** — la partie jouée qu'il attendait a eu lieu le 2026-09-03 |
-| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. **Joue a la main le 2026-09-04** : la boucle tient, la regle se lit sans HUD, et le chronometre a refuse le dimensionnement — 55,1 s pour un budget de 45. Recale sur la mesure (occupation 0,45 → **0,19**, PV 3800 → **2700**), le verrou dure **41,1 s**. Reste les lots 2 a 5, le second ordre de relais et le chemin du nœud d'epine. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
+| [`2026-09-03-citadelle-de-defense-midpoint.md`](plans/2026-09-03-citadelle-de-defense-midpoint.md) | **Un verrou de level design a mi-parcours** : une fortification transversale ferme la route, deux relais alimentent un bouclier, le noyau tombe et le passage s'ouvre. **Pas un boss.** ⚠️ Deux chiffres decident : le budget vertical est de **1,30 m** quand le brief demande 2,50, et la mi-parcours n'offre que **18 m** de coque libre | **LOT 0 clos, LOT 1 livre** (2026-09-04) — la boucle se joue de bout en bout en boites grises : sept etats, deux relais dans n'importe quel ordre, noyau protege, mur solide retire a `CLEARED`, survol freine puis arrete. C1 tranche par la voie **(b)** : une **douve de 1,55 m** (celle des fosses du lot B3) donne **2,85 m** de hauteur lue pour 1,99 m batie, sans amender `ADR-0041`. **Joue a la main le 2026-09-04** : la boucle tient, la regle se lit sans HUD, et le chronometre a refuse le dimensionnement — 55,1 s pour un budget de 45. Recale sur la mesure (occupation 0,45 → **0,19**, PV 3800 → **2700**), le verrou dure **41,1 s**. **LOT 2 livre** : `citadel_kit.glb` (BRIEF-0096), huit pieces, 1 304 triangles, et le test noir et blanc tenu — bastion, relais, noyau et passage se distinguent sans couleur. Reste les lots 3 a 5, le second ordre de relais et le chemin du nœud d'epine. Verifie sur Windows : verdict visuel vert, **3,90 ms/image** sur Quadro T1000 dont **≈ 0,2 ms** pour la citadelle. Relecture `godot-reviewer` : 8 defauts, 0 bloquant, **tous fermes**. Textures : `TEX-0015` acceptee apres rattrapage de tuilage, `TEX-0016` refusee (diodes a 0,8 px) |
 | [`2026-08-29-niveau-2-execution.md`](plans/2026-08-29-niveau-2-execution.md) | **Le niveau 2 de bout en bout** : campagne, coque de 6,8 km, trois mécaniques de coque, voix, dialogues, briefings, demandes de texture, équilibrage | **lots A à G livrés** ; les cinq textures `TEX-0010` à `TEX-0014` sont **livrées et intégrées** (journal : « coque habillée — 21 surfaces »). Reste la **mesure GPU sur la Quadro T1000** |
 | [`2026-08-27-chambre-du-reacteur-jouable.md`](plans/2026-08-27-chambre-du-reacteur-jouable.md) | La chambre a été taillée pour un chasseur-**disque** ; il est une **capsule**. ⚠️ Le chiffre qui a justifié d'agrandir l'arène — 4,22 × 1,76 — était **faux** : la capsule s'allongeait de son propre rayon aux deux bouts. Le corps réel fait **2,46 × 1,76** (`ADR-0034`, 2026-08-28). L'agrandissement tient (la chambre est jouable, le banc est vert), mais il a été décidé sur un chasseur 71 % trop long | **lots 1-4 livrés**, reste la plongée jouée |
+
+### Ouvert par le LOT 2 de la Citadelle (2026-09-04)
+
+- ⚠️ **TROIS PLANCHES DE RECETTE ONT ETE VALIDEES SUR DES IMAGES INCOMPLETES.** L'importateur
+  glTF de Blender pose `rotation_mode = 'QUATERNION'` : `obj.rotation_euler` y est ecrit mais
+  **jamais lu**, sans un mot. `build_spine_kit._place()`, `build_turret_kit._place()` et
+  `build_bay_kit._import()` ecrivent tous les trois cette ligne — **l'azimut des affuts et le
+  miroir des entretoises d'epine n'ont donc jamais ete rendus** dans leurs planches. Le JEU n'est
+  pas touche : il construit ses propres nœuds Godot et n'importe rien. Corrige dans
+  `build_citadel_kit.py` (une ligne : passer par `rotation_mode = 'XYZ'` ou ecrire le quaternion).
+  ⚠️ **A corriger dans les trois autres avant la prochaine planche**, sinon on continuera de
+  juger des recettes sur des pieces qui ne sont pas orientees comme en jeu.
+- **Les deux tranchees de bastion ne sont pas creusees.** Le LOT 0 les decrivait « sous l'emprise
+  de la citadelle », ce qui les faisait traverser l'artere — mauvaise lecture : les bastions sont
+  sur le pont MEDIAN, et `7,35` / `10,30` sont deja deux points de `PROFILE_BASE` (indices 9 et
+  10). Deux tranchees laterales y couteraient **zero point de profil**, comme les quatre fosses du
+  lot B3, et l'artere ne serait pas touchee. ⚠️ Mais la planche de recette du kit a passe le test
+  noir et blanc **sur une coque plate** : la tranchee affine le PIED des bastions, elle ne decide
+  plus de la lecture. `CortegeCitadel.MOAT_DEPTH` porte la cote, l'assise du bastion (−6,50) est
+  deja celle qu'elle attend. **Cout estime** : une table, une paire d'abscisses, une profondeur,
+  plus le saut de peau et les gardes — le mecanisme des fosses generalise sur huit sites.
+- ⚠️ **UN DEFAUT DE POSE QUE 850 TESTS VERTS N'ONT PAS VU, ET LA LECON EST GENERALE.** Les deux
+  relais du verrou etaient a des dizaines de metres de leur place — tribord au large du bastion
+  au-dessus du vide, babord sur l'axe derriere le noyau. La forge cuit le X DE COQUE dans la
+  geometrie et miroite par un yaw de π ; le nœud de la piece se placait AUSSI a ±6,20 pour sa
+  hitbox, et les deux ecarts s'additionnaient. ⚠️ **Aucune moitie prise separement n'etait
+  fausse** : position du nœud juste, boite du maillage juste, centrage en z juste. Trois tests
+  gardaient le kit, dont un ecrit precisement pour les defauts de miroir, et il passait — il
+  gardait UNE moitie. **Quand deux sources decrivent la meme position, il faut un test sur leur
+  COMPOSITION, pas un test par source.** Corrige, garde par
+  `test_the_two_relays_land_where_the_kit_says`, re-verifie en capture (1 px du miroir exact).
+- ⚠️ **`ScreenCapture` est monte dans CINQ scenes, dont `boot.tscn`** — d'ou le
+  `[ScreenCapture] armed:` imprime **deux fois** sur un `--goto-level`. Inoffensif aujourd'hui
+  (la scene d'accueil meurt avant que son minuteur ne parte, et `saved` n'apparait qu'une fois),
+  mais le piege est reel : **avec un `--capture-at` court, c'est la capture de BOOT qui pourrait
+  partir la premiere** et enregistrer l'ecran-titre sous le nom du niveau. Une capture qui montre
+  la mauvaise scene sous le bon nom de fichier est exactement le genre de preuve qu'on ne
+  questionne pas.
+- **Le pied des bastions n'a pas d'embase** : enfonces de 1,5 m dans une coque plate, leur jupe
+  est tranchee net par le pont, sans socle ni assombrissement de contact. Deux issues, et les deux
+  se valent — un **collier** (rupture de valeur, un seul element, soignerait aussi le bord franc
+  des relais) ou la **tranchee** (seule a rendre 1,55 m de jupe visible, donc seule a tenir la
+  promesse « 2,85 m de hauteur lue » du LOT 0). Aucune ne bloque : le test noir et blanc est tenu
+  sans elles. **A trancher en regardant, au LOT 3.**
+- **La denture de la porte se lit comme un creneau de rempart**, pas comme un joint de battants :
+  dents vers le haut, sans machoire en vis-a-vis, sans ligne de refend. Le LOT 4 l'ouvrira, mais
+  la lecture manque deja.
+- ⚠️ **Le bouclier sera MAGENTA au LOT 3** (`TEX-0015`), alors qu'il est bleu `#4DB8FF`
+  aujourd'hui. Bouclier et noyau seront donc de la meme famille de teinte, et c'est la
+  **structure** — une maille fixe contre un point net qui bouge — qui devra les separer. La
+  demande de texture l'argumente ; ca ne s'est encore vu sur **aucune capture**.
 
 ### La partie du 2026-09-04 a refuse le dimensionnement du verrou
 

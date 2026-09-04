@@ -28,9 +28,10 @@ signal destroyed(part: CitadelPart)
 ## hitbox absente, donc comme un bug.
 signal deflected(part: CitadelPart, world: Vector3)
 
-## Le magenta de FONCTION, celui du reste du niveau (`d93d9c`). ⚠️ PAS L'AMBRE D'`ADR-0043` :
-## l'ambre est un repère technique et « ne signale jamais une cible ». Ce qui se tire reste
-## magenta, partout, ou le joueur apprend deux grammaires pour une seule règle.
+## Le magenta de FONCTION, celui du reste du niveau (`d93d9c`) — la teinte de l'explosion et de
+## l'impact refusé. ⚠️ PAS L'AMBRE D'`ADR-0043` : l'ambre est un repère technique et « ne signale
+## jamais une cible ». Ce qui se tire reste magenta, partout, ou le joueur apprend deux
+## grammaires pour une seule règle. La FORME, elle, vient du kit (`BRIEF-0096`).
 const TARGET_TINT := Color("d93d9c")
 
 ## De combien la pièce reste tirable au-delà du plan de vol. ⚠️ ELLE DÉBORDE PARCE QUE LA CAMÉRA
@@ -59,10 +60,13 @@ var _vfx: VFXManager = null
 var _world: Vector3 = Vector3.ZERO
 var _registered: bool = false
 var _mesh: MeshInstance3D = null
-var _size: Vector3 = Vector3.ONE
+## Les copies de matériau qui n'appartiennent qu'à CETTE pièce, et l'énergie que la forge y a
+## calibrée. Le battement l'entoure, il ne la remplace pas.
+var _glow: Array[StandardMaterial3D] = []
+var _glow_base: float = 1.0
 
 
-static func make(p_role: Role, p_health: float, p_size: Vector3, p_radius: float,
+static func make(p_role: Role, p_health: float, p_radius: float,
 		p_lift: float, p_score: int) -> CitadelPart:
 	var part := CitadelPart.new()
 	part.role = p_role
@@ -70,36 +74,60 @@ static func make(p_role: Role, p_health: float, p_size: Vector3, p_radius: float
 	part.lift = p_lift
 	part._health = p_health
 	part._health_max = p_health
-	part._size = p_size
 	# La cible naît avec la pièce — même contrat que la tourelle et le nœud d'épine : il n'y a
 	# qu'une porte pour les dégâts, et les tests passent par elle.
 	part._target = BulletTarget.make(BulletManager.Team.ENEMY, p_radius, part._take_damage)
 	part._target.enabled = false
 	return part
 
+## Prend sa forme dans le kit de la Citadelle (`BRIEF-0096`).
+##
+## ⚠️ ELLE S'APPROPRIE SA LUEUR, ET SANS ÇA ABATTRE UN RELAIS ÉTEINDRAIT LES DEUX. Les deux
+## relais sont deux instances de la MÊME pièce du `.glb` : ils partagent donc le matériau
+## `AA_Emissive_Engine` que la forge y a posé. Éteindre le partagé, c'est éteindre l'autre bord —
+## exactement le piège que les cinq bulbes d'épine cuits dans la coque rendaient inévitable, et
+## qui a déjà été payé sur les puits et sur les tourelles. Un état par pièce demande un matériau
+## par pièce.
+##
+## ⚠️ ET LE MONTAGE EST FACULTATIF. Un banc de test monte la pièce sans arbre et sans kit : elle
+## doit rester pilotable, parce que c'est la RÈGLE qu'on y vérifie, pas la silhouette.
+## ⚠️ `side` ET `inset` NE SONT PAS DE LA CÉRÉMONIE : SANS EUX LA PIÈCE PART AILLEURS, ET LE
+## JOURNAL NE DIT RIEN. La forge cuit le **X de coque dans la géométrie** — le relais tribord est
+## modelé à `x` 5,40 → 7,00, et le miroir se fait par un yaw de π, pas par un signe. Or ce nœud-ci
+## se place, lui, au CENTRE DE MASSE de la pièce (`±6,20`), parce que c'est de là que se déduit
+## la hitbox. Composer les deux sans rien retrancher additionne deux fois le même écart :
+## la pièce de tribord s'en va à `x` 11,60 — au large du bastion, au-dessus du vide — et celle de
+## bâbord, faute de yaw, revient se poser SUR L'AXE, derrière le noyau.
+##
+## ⚠️ ET C'EST LA CAPTURE QUI L'A VU, PAS LES TESTS. Le build était vert, les 850 tests aussi, et
+## les deux relais étaient à des dizaines de mètres de leur place. `test_the_two_relays_land_where
+## _the_kit_says` garde désormais la COMPOSITION — position du nœud plus boîte du maillage — au
+## lieu de garder chaque moitié séparément.
+func mount(source: MeshInstance3D, side: float = 1.0, inset: float = 0.0) -> void:
+	if source == null or source.mesh == null:
+		return
+	_mesh = MeshInstance3D.new()
+	_mesh.name = "Shape"
+	_mesh.position.x = -side * inset
+	_mesh.rotation.y = 0.0 if side > 0.0 else PI
+	_mesh.mesh = source.mesh
+	_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for i in source.mesh.get_surface_count():
+		var base := source.mesh.surface_get_material(i) as StandardMaterial3D
+		if base == null:
+			continue
+		if not base.emission_enabled:
+			_mesh.set_surface_override_material(i, base)
+			continue
+		var mine: StandardMaterial3D = base.duplicate()
+		_mesh.set_surface_override_material(i, mine)
+		_glow_base = mine.emission_energy_multiplier
+		_glow.append(mine)
+	add_child(_mesh)
+
 func setup(bullet_manager: BulletManager, vfx: VFXManager) -> void:
 	_bullets = bullet_manager
 	_vfx = vfx
-
-func _ready() -> void:
-	_mesh = MeshInstance3D.new()
-	_mesh.name = "Box"
-	var box := BoxMesh.new()
-	box.size = _size
-	_mesh.mesh = box
-	_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = TARGET_TINT.darkened(0.55)
-	mat.emission_enabled = true
-	mat.emission = TARGET_TINT
-	# ⚠️ UNE BÉQUILLE DE LOT 1, PAS UNE INTENTION. Le lot 2 doit rendre bastion, relais, noyau
-	# et passage identifiables SANS émissif (consigne 19, et c'est le test d'acceptation). La
-	# teinte est ici pour qu'on puisse JOUER la boucle avant que la silhouette existe.
-	mat.emission_energy_multiplier = 1.4
-	_mesh.material_override = mat
-	# La boîte est posée sur son assise : son centre monte d'une demi-hauteur.
-	_mesh.position.y = _size.y * 0.5
-	add_child(_mesh)
 
 # --- Ce que la citadelle lit ---------------------------------------------------
 
@@ -174,6 +202,11 @@ func _take_damage(damage: float) -> void:
 		_vfx.spawn_explosion(_world,
 			VfxExplosion.Category.HEAVY if role == Role.CORE else VfxExplosion.Category.MEDIUM,
 			TARGET_TINT)
+	# ⚠️ LA LUEUR S'ÉTEINT AVANT QUE LA FORME NE PARTE, et l'ordre importe pour la trame où les
+	# deux arrivent : un matériau encore allumé sur un maillage déjà libéré n'éteint rien.
+	for material in _glow:
+		material.emission_energy_multiplier = 0.0
+	_glow.clear()
 	if _mesh != null:
 		_mesh.queue_free()
 		_mesh = null

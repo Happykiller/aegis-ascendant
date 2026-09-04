@@ -34,8 +34,13 @@ extends Node3D
 enum State { APPROACH, LOCKED, ONE_RELAY, SHIELD_DOWN, CORE_DEAD, OPENING, CLEARED }
 
 # --------------------------------------------------------------------------
-# LA GÉOMÉTRIE — en boîtes, et POSÉE SUR DES COTES RELEVÉES
+# LA GÉOMÉTRIE — LE KIT DE LA FORGE, POSÉ SUR DES COTES RELEVÉES
 # --------------------------------------------------------------------------
+#
+# ⚠️ LES BOÎTES ONT DISPARU, ET LE LOT 1 A EU RAISON DE LES ÉCRIRE. « Ne pas passer de temps sur
+# les greebles tant que la boucle n'est pas jouable de bout en bout » : la boucle a été jouée en
+# boîtes, la règle s'est lue sans un mot de HUD, et le chronomètre a refusé le dimensionnement.
+# Tout ça a été acquis AVANT que la forme existe. Ce fichier ne porte plus que la POSE.
 #
 # Toutes les cotes sont LOCALES au nœud, dont l'origine est posée à la station
 # `tuning.citadel_station` sur le repère du tronçon. Deux conventions, et les confondre a déjà
@@ -51,17 +56,22 @@ enum State { APPROACH, LOCKED, ONE_RELAY, SHIELD_DOWN, CORE_DEAD, OPENING, CLEAR
 # le NOYAU est le point le plus haut de la citadelle et les bastions sa masse : le seul volume
 # autorisé à culminer est celui qu'on peut tirer.
 
+## Le kit livré par `BRIEF-0096`. ⚠️ CHARGÉ AU RUNTIME ET NON `preload` : le niveau doit rester
+## jouable et mesurable si le binaire manque, comme la coque elle-même. Sans lui, le verrou garde
+## sa boucle — le mur ferme toujours la route — et le journal dit qu'il est NU.
+const KIT_PATH := "res://assets/imported/models/backgrounds/citadel_kit.glb"
+
 ## Le budget vertical, tranché (`C1` du plan, voie « la hauteur par le creux »).
 ##
 ## ⚠️ LE BRIEF DEMANDAIT DES BASTIONS DE 1,5 À 2,5 m ET IL N'Y AVAIT QUE 1,30. Trois issues
 ## étaient ouvertes : réécrire les cotes dans le budget réel, obtenir la hauteur par le CREUX,
 ## ou amender `ADR-0041`. La deuxième est retenue — c'est celle que le lot B3 a déjà démontrée
-## sur cette coque (quatre fosses de 1,55 m, 384 triangles, aucun plafond touché). Une douve
-## creusée sous l'emprise donne au bastion 2,85 m de hauteur LUE pour 1,99 m de hauteur bâtie,
-## et elle ne coûte aucun amendement.
+## sur cette coque (quatre fosses de 1,55 m, 384 triangles, aucun plafond touché).
 ##
-## ⚠️ LA DOUVE EST DU LOT 2 : elle se creuse dans `build_long_cortege.py`, pas ici. Cette
-## constante existe pour que le lot 2 n'ait pas à re-trancher, et pour que le test le vérifie.
+## ⚠️ LA TRANCHÉE ELLE-MÊME N'EST PAS ENCORE CREUSÉE, et le test d'acceptation a été tenu SANS
+## elle : la planche de recette du kit passe le noir et blanc sur une coque plate. Elle affine
+## donc la BASE des bastions — leur pied et leur ombre —, elle ne décide plus de la lecture.
+## Cette constante existe pour que le jour où on la creuse, l'assise du bastion soit déjà juste.
 const MOAT_DEPTH := 1.55
 
 ## Le plafond du décor inerte et celui du gameplay (`ADR-0041`), recopiés depuis `CortegeFlyby`
@@ -75,38 +85,50 @@ const GAMEPLAY_CEILING_Y := CortegeFlyby.GAMEPLAY_CEILING_Y
 ## fait 28 m de large ; le plan de vol, une fois la parallaxe appliquée, en couvre davantage.
 ## Une barrière arrêtée au bordé laisserait le joueur la CONTOURNER par le vide — et la séquence
 ## deviendrait facultative, ce qui la vide de son sens (« il ferme physiquement la route »).
-## ⚠️ CONSÉQUENCE DUE AU LOT 2 : la partie qui déborde la coque doit recevoir un PORTEUR VISIBLE
-## (portique, rideau de bouclier). Un mur invisible est la même injustice qu'une tourelle qu'on
+## ⚠️ ET LE SURPLOMB A SON PORTEUR DEPUIS `BRIEF-0096` : `citadel_pylon` descend du bout de la
+## poutre jusqu'à la lisse d'épaule. Un mur invisible est la même injustice qu'une tourelle qu'on
 ## croit pouvoir raser et qui traverse.
 const GATE_HALF_X := 17.2
 const GATE_HALF_S := 0.60
-## ⚠️ L'ASSISE PLONGE DANS LA COQUE, ELLE NE SE POSE PAS DESSUS. Le bordé n'est pas plat : pont
-## intérieur à −4,30, pont médian à −4,99, facette qui descend au-delà de |x| = 10,30, et la douve
-## du LOT 0 creusera à −5,85. Une boîte assise sur la cote la plus haute FLOTTERAIT partout
-## ailleurs — au-dessus du vide, en silence, et personne ne le verrait avant une capture. C'est
-## exactement le défaut que la contremarche de chine a déjà fait payer aux batteries légères. On
-## enterre donc l'assise sous le plus bas des quatre : ce qui dépasse est ce qu'on voulait voir.
+## ⚠️ L'ASSISE PLONGE DANS LA COQUE, ELLE NE SE POSE PAS DESSUS. Le bordé n'est pas plat : quatre
+## plans différents sous une seule pièce de 34 m. Une poutre assise sur la cote la plus haute
+## flotterait partout ailleurs — au-dessus du vide, en silence.
 const GATE_BASE_Y := -6.60
 const GATE_TOP_Y := DECOR_CEILING_Y
 
 ## LES BASTIONS — la masse, sur le pont médian. Deux, en miroir : `T1` autorise la symétrie POUR
 ## UN ÉVÉNEMENT, parce qu'elle est ce qui fait lire « gauche + droite → centre » en une seconde.
-## La FONCTION est en miroir, la finition ne l'est pas (lot 2).
 const BASTION_X := Vector2(6.90, 11.40)
 const BASTION_S := Vector2(-0.40, 6.00)
-const BASTION_BASE_Y := GATE_BASE_Y
+## ⚠️ −6,50 ET NON −6,60 : c'est le fond de la tranchée, la cote pour laquelle la forge a taillé
+## la pièce. Le bastion mesure 2,90 m et culmine donc à −3,60, sous le plafond du décor.
+const BASTION_BASE_Y := -6.50
 const BASTION_TOP_Y := -3.60
 
 ## LA COURONNE — ce qui monte jusqu'au plafond du décor et fait la silhouette.
 const CROWN_X := Vector2(7.40, 10.00)
 const CROWN_S := Vector2(1.60, 5.40)
 
+## LE PORTIQUE — le porteur du surplomb. ⚠️ IL VA À x 13,58 ET NON 15,60, et c'est la forge qui a
+## corrigé le brief : la lisse d'épaule est à 13,88, donc EN DEDANS de l'emprise demandée. Arrêté
+## plus au large, le portique flotterait — le défaut qu'il existe pour corriger.
+const PYLON_BASE_Y := -7.65
+
 ## LES RELAIS — sur le pont intérieur, contre le flanc interne des bastions.
 const RELAY_X := 6.20
 const RELAY_S := 1.40
 const RELAY_BASE_Y := -4.30
-const RELAY_SIZE := Vector3(1.50, 1.90, 1.50)
+## L'enveloppe MESURÉE de la pièce du kit (x 5,40 à 7,00 · y 0 à 1,90 · s +0,60 à +2,20).
+const RELAY_SIZE := Vector3(1.60, 1.90, 1.60)
+## ⚠️ PLUS GÉNÉREUX QUE SA GÉOMÉTRIE, comme la tourelle légère. Le relais est ce qu'on doit
+## trouver, pas ce qu'on doit viser au millimètre : une hitbox fidèle en ferait une corvée de
+## précision là où la séquence demande de comprendre une règle.
 const RELAY_RADIUS := 1.10
+
+## LE CONDUIT — ce qui court du relais vers l'axe. ⚠️ C'EST LA PIÈCE QUI DIT LA RÈGLE SANS
+## ÉMISSIF : « ceci alimente cela », en géométrie, donc au test noir et blanc. Il partage
+## l'origine du relais, à son pied.
+const CONDUIT_TOP := 0.62
 
 ## LE NOYAU — sur l'axe, assis au fond de l'artère, et le point le plus haut de la citadelle.
 ## ⚠️ IL PREND SON ASSISE 28 cm PLUS BAS QUE LES RELAIS et culmine 1,20 m plus haut : il sort de
@@ -116,34 +138,42 @@ const CORE_BASE_Y := -4.58
 const CORE_SIZE := Vector3(2.40, 2.18, 2.40)
 const CORE_RADIUS := 1.50
 
-## LE BOUCLIER — la boîte qui refuse les tirs tant que les deux relais vivent.
-const SHIELD_MARGIN := Vector3(1.20, 0.60, 1.20)
+## LE BOUCLIER — le panneau qui refuse les tirs tant que les deux relais vivent.
+##
+## ⚠️ SON ARÊTE HAUTE EST EXACTEMENT AU SOMMET DU NOYAU, et il se range au plafond du GAMEPLAY et
+## non à celui du décor. La règle d'`ADR-0041` protège « ce qui masquerait le combat SANS JAMAIS
+## POUVOIR ÊTRE TOUCHÉ » : le bouclier, lui, se touche — c'est même toute sa fonction, et chaque
+## impact doit se voir sur lui. La seconde moitié de la règle ne s'applique donc pas à lui, comme
+## elle ne s'applique pas à une tourelle.
+const SHIELD_BASE_Y := -3.90
+const SHIELD_S := 2.10
 const SHIELD_TINT := Color(0.30, 0.72, 1.00, 0.28)
 
-## LES TOURELLES LÉGÈRES DU VERROU — quatre, sur le pont des bastions.
+## LES TOURELLES LÉGÈRES DU VERROU — quatre, deux par bord, SUR DEUX PONTS.
 ##
-## ⚠️ ELLES SONT VERS L'AVANT, ET CE N'EST PAS UNE COMPOSITION. Une pièce posée à `s + 5,8`
-## s'immobiliserait à y ≈ 8,7 dans le plan — hors du plan de vol ET hors de sa propre fenêtre de
-## 14 unités : elle ne s'engagerait JAMAIS, sans une ligne au journal. C'est le défaut muet que
+## ⚠️ ELLES ÉTAIENT QUATRE SUR LE SEUL PONT DU BASTION, ET LA COURONNE LES EN A CHASSÉES. La
+## pièce livrée occupe `s +1,60 à +5,40` sur ce pont : le socle léger fait 1,04 m de rayon, donc
+## les DEUX ne peuvent pas tenir en avant d'elle (il faudrait `s ≤ 0,56`), et le bastion est trop
+## court pour en loger une derrière. La seconde descend donc sur le pont intérieur — deux ponts
+## au lieu d'un empilement, ce qui vaut mieux en composition.
+##
+## ⚠️ ET ELLES SONT VERS L'AVANT, CE QUI N'EST PAS UNE COMPOSITION. Une pièce posée trop en
+## arrière s'immobilise hors du plan de vol ET hors de sa propre fenêtre de 14 unités : elle ne
+## s'engagerait JAMAIS, sans une ligne au journal. C'est le défaut muet que
 ## `test_cortege_citadel.gd` garde.
 ##
-## ⚠️ ET ELLES SIÈGENT SUR LE BASTION À −3,60, PAS SUR LA COURONNE À −3,00. À −3,00, l'affût
-## léger culminerait à −2,15 et franchirait le plafond du gameplay ; à −3,60 il finit à −2,75,
-## avec 35 cm de marge. La couronne est donc bâtie AILLEURS que sous les tourelles — le même
-## arbitrage que `build_long_cortege.py` fait pour les bastions et les socles d'affût.
-const TURRET_X := 9.20
-const TURRET_Y := BASTION_TOP_Y
-const TURRET_S: Array[float] = [0.40, 2.20]
+## ⚠️ CELLE DU PONT INTÉRIEUR EST DERRIÈRE LE CONDUIT, à 0,42 m de sa dernière station : posée
+## devant, son socle se serait couché sur le caisson.
+## Format : [x, ds, assise].
+const GUARDS: Array = [
+	[9.20, 0.40, BASTION_TOP_Y],
+	[4.60, 3.30, RELAY_BASE_Y],
+]
 
 ## Part de l'ouverture passée sur la MORT DU NOYAU avant que les mécanismes ne bougent.
 ## ⚠️ UN SEUL RÉGLAGE POUR DEUX TEMPS : `citadel_open_time` dit ce que coûte l'ouverture entière.
 ## En faire deux réglages laisserait dériver la somme sans que l'invariant 9 ne la voie.
 const CORE_BEAT_SHARE := 0.4
-
-## L'anthracite de l'Unisson, bien plus sombre que la valeur de charte : le post-traitement
-## rétro remonte les tons moyens d'un `lift` de 1,25 (`ADR-0016`). Ce qu'on règle ici est ce qui
-## SORT du shader, pas ce qui entre — une première doublure à 0,10 est ressortie beige.
-const HULL_GREY := Color(0.045, 0.046, 0.055)
 
 signal state_changed(state: State)
 ## Le mur a ATTEINT sa station et le survol est à l'arrêt.
@@ -218,21 +248,21 @@ static func make(p_tuning: CortegeTuning) -> CortegeCitadel:
 	for side in [-1.0, 1.0]:
 		var nom := "Star" if side > 0.0 else "Port"
 		var relay := CitadelPart.make(CitadelPart.Role.RELAY, p_tuning.citadel_relay_health,
-			RELAY_SIZE, RELAY_RADIUS, RELAY_SIZE.y * 0.5, p_tuning.citadel_relay_score)
+			RELAY_RADIUS, RELAY_SIZE.y * 0.5, p_tuning.citadel_relay_score)
 		relay.name = "Relay%s" % nom
 		relay.position = relay_local(side)
 		citadel.add_child(relay)
 		citadel._relays.append(relay)
-		for index in TURRET_S.size():
+		for index in GUARDS.size():
 			var turret := CortegeTurret.make(p_tuning, citadel.section,
 				CortegeTuning.TurretScale.LIGHT)
 			turret.serial = citadel._turrets.size()
 			turret.name = "GuardTurret%02d" % citadel._turrets.size()
-			turret.position = turret_local(side, index)
+			turret.position = guard_local(side, index)
 			citadel.add_child(turret)
 			citadel._turrets.append(turret)
 	citadel._core = CitadelPart.make(CitadelPart.Role.CORE, p_tuning.citadel_core_health,
-		CORE_SIZE, CORE_RADIUS, CORE_SIZE.y * 0.5, p_tuning.citadel_core_score)
+		CORE_RADIUS, CORE_SIZE.y * 0.5, p_tuning.citadel_core_score)
 	citadel._core.name = "Core"
 	citadel._core.position = core_local()
 	citadel.add_child(citadel._core)
@@ -257,8 +287,12 @@ static func relay_local(side: float) -> Vector3:
 static func core_local() -> Vector3:
 	return Vector3(0.0, CORE_BASE_Y, -CORE_S)
 
-static func turret_local(side: float, index: int) -> Vector3:
-	return Vector3(side * TURRET_X, TURRET_Y, -TURRET_S[index])
+## Où siège une tourelle de garde. ⚠️ CHAQUE ENTRÉE PORTE SON PROPRE PONT : les deux ne sont pas
+## à la même hauteur, et prendre l'assise de l'une pour l'autre poserait la seconde 70 cm au-dessus
+## du vide — le défaut de la contremarche de chine, réintroduit par la bande.
+static func guard_local(side: float, index: int) -> Vector3:
+	var entry: Array = GUARDS[index]
+	return Vector3(side * float(entry[0]), float(entry[2]), -float(entry[1]))
 
 ## Où une pièce de la citadelle se trouve DANS LE MONDE après `travelled` unités de survol.
 ##
@@ -309,65 +343,113 @@ func setup(bullet_manager: BulletManager, player: PlayerFighterController,
 
 func _ready() -> void:
 	_build_mass()
-	_build_shield()
 
 # ==========================================================================
 # LE MONTAGE — des boîtes, et rien d'autre (lot 1)
 # ==========================================================================
 
+## Va chercher les formes dans le kit et les pose.
+##
+## ⚠️ LA TABLE VIENT DU RAPPORT DE FORGE, MESURÉE SUR LE BINAIRE — pas des constantes du script
+## qui l'a produit. Chaque pièce est centrée en Z sur son origine au micron, et son X de coque
+## est CUIT dans la géométrie : bâbord et tribord reçoivent donc **exactement la même
+## translation**, pour seule différence un yaw de π. Il n'y a aucune arithmétique de côté ici, et
+## c'est ce qui rend l'assemblage indésynchronisable.
+##
+## ⚠️ ET LE YAW DE π ENVOIE `(x, z)` SUR `(−x, −z)`. Une pièce dont la boîte ne serait pas centrée
+## en Z se retrouverait à bâbord DÉCALÉE LE LONG DU VAISSEAU de deux fois son excentricité — un
+## bastion à `s + 6` d'un bord et à `s − 6` de l'autre. Aucune boîte englobante, aucun compte de
+## triangles ne le verrait : il faudrait jouer la séquence et regarder les deux bords en même
+## temps. La forge l'a vérifié sur les huit ; ce commentaire est là pour que personne ne le
+## défasse.
+##
+## Format : [nom dans le kit, assise Y, décalage `ds`, en miroir ?].
+const PIECES: Array = [
+	["citadel_gate", GATE_BASE_Y, 0.00, false],
+	["citadel_pylon", PYLON_BASE_Y, 0.00, true],
+	["citadel_bastion", BASTION_BASE_Y, 2.80, true],
+	["citadel_crown", BASTION_TOP_Y, 3.50, true],
+	["citadel_conduit", RELAY_BASE_Y, RELAY_S, true],
+]
+
 func _build_mass() -> void:
-	_gate = _box("Gate", Vector3(GATE_HALF_X * 2.0, GATE_TOP_Y - GATE_BASE_Y, GATE_HALF_S * 2.0),
-		Vector3(0.0, (GATE_TOP_Y + GATE_BASE_Y) * 0.5, 0.0), HULL_GREY.lightened(0.10))
-	for side in [-1.0, 1.0]:
-		var nom := "Star" if side > 0.0 else "Port"
-		_box("Bastion%s" % nom,
-			Vector3(BASTION_X.y - BASTION_X.x, BASTION_TOP_Y - BASTION_BASE_Y,
-				BASTION_S.y - BASTION_S.x),
-			Vector3(side * (BASTION_X.x + BASTION_X.y) * 0.5,
-				(BASTION_TOP_Y + BASTION_BASE_Y) * 0.5,
-				-(BASTION_S.x + BASTION_S.y) * 0.5),
-			HULL_GREY)
-		_box("Crown%s" % nom,
-			Vector3(CROWN_X.y - CROWN_X.x, GATE_TOP_Y - BASTION_TOP_Y,
-				CROWN_S.y - CROWN_S.x),
-			Vector3(side * (CROWN_X.x + CROWN_X.y) * 0.5,
-				(GATE_TOP_Y + BASTION_TOP_Y) * 0.5,
-				-(CROWN_S.x + CROWN_S.y) * 0.5),
-			HULL_GREY.lightened(0.06))
+	var kit := _open_kit()
+	if kit == null:
+		return
+	for entry in PIECES:
+		var nom := String(entry[0])
+		var source := kit.get_node_or_null(nom) as MeshInstance3D
+		if source == null:
+			push_error("[Citadel] pièce de kit manquante : %s" % nom)
+			continue
+		for side in ([-1.0, 1.0] if bool(entry[3]) else [1.0]):
+			var piece := MeshInstance3D.new()
+			piece.name = "%s%s" % [nom, "Port" if side < 0.0 else ""]
+			piece.mesh = source.mesh
+			piece.position = Vector3(0.0, float(entry[1]), -float(entry[2]))
+			piece.rotation.y = 0.0 if side > 0.0 else PI
+			piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(piece)
+			if nom == "citadel_gate":
+				_gate = piece
+	# ⚠️ LES DEUX PIÈCES QUI MEURENT PRENNENT LEUR FORME ICI, ET CHACUNE S'APPROPRIE SA LUEUR.
+	# Deux relais qui partageraient le matériau du `.glb` s'éteindraient ensemble — le piège que
+	# les cinq bulbes d'épine cuits dans la coque rendaient inévitable.
+	var relay_mesh := kit.get_node_or_null("citadel_relay") as MeshInstance3D
+	for i in _relays.size():
+		# `_relays[0]` est BÂBORD — voir `_build_parts` : l'ordre de la boucle EST le côté.
+		_relays[i].mount(relay_mesh, -1.0 if i == 0 else 1.0, RELAY_X)
+	# ⚠️ LE NOYAU EST SUR L'AXE : sa géométrie est déjà centrée en x, il n'a rien à retrancher.
+	_core.mount(kit.get_node_or_null("citadel_core") as MeshInstance3D)
+	_build_shield(kit)
+	kit.queue_free()
+
+## Ouvre le kit. ⚠️ SON ABSENCE NE CASSE PAS LE NIVEAU, ET ELLE SE DIT. Le binaire vient de la
+## forge ; sans lui le verrou garde sa boucle entière — le mur ferme toujours la route, les
+## relais tombent, le noyau s'ouvre — et seule la forme manque. Un `preload` sur un fichier
+## absent est une erreur de COMPILATION en GDScript : le niveau entier cesserait de se monter
+## pour une silhouette.
+func _open_kit() -> Node:
+	if not ResourceLoader.exists(KIT_PATH):
+		print("[Citadel] verrou NU — %s absent" % KIT_PATH.get_file())
+		return null
+	var packed: PackedScene = load(KIT_PATH) as PackedScene
+	if packed == null:
+		push_error("[Citadel] kit illisible : %s" % KIT_PATH)
+		return null
+	return packed.instantiate()
 
 ## Le bouclier. ⚠️ C'EST UN VOLUME, PAS UNE LUEUR. Le joueur doit voir que son tir s'arrête
 ## QUELQUE PART, sur une surface qui a une place : un halo posé sur le noyau se lirait comme une
 ## propriété du noyau — donc comme « il encaisse » —, et non comme « quelque chose le protège ».
-## Sa forme définitive est du lot 3 ; sa PLACE est déjà la bonne.
-func _build_shield() -> void:
-	_shield = _box("Shield", CORE_SIZE + SHIELD_MARGIN,
-		Vector3(0.0, CORE_BASE_Y + CORE_SIZE.y * 0.5, -CORE_S), SHIELD_TINT)
-	var mat := _shield.material_override as StandardMaterial3D
+##
+## ⚠️ SA TEINTE EST PROVISOIRE, ET SA REMPLAÇANTE EST DÉJÀ AU DÉPÔT. `TEX-0015` est livrée et
+## acceptée : elle rendra le panneau MAGENTA au LOT 3, de la même famille que le noyau qu'il
+## protège. C'est alors la STRUCTURE — une maille fixe contre un point net qui bouge — qui devra
+## les séparer, et ça ne s'est encore vu sur aucune capture.
+func _build_shield(kit: Node) -> void:
+	var source := kit.get_node_or_null("citadel_shield") as MeshInstance3D
+	if source == null:
+		push_error("[Citadel] pièce de kit manquante : citadel_shield")
+		return
+	_shield = MeshInstance3D.new()
+	_shield.name = "Shield"
+	_shield.mesh = source.mesh
+	_shield.position = Vector3(0.0, SHIELD_BASE_Y, -SHIELD_S)
+	_shield.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = SHIELD_TINT
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.emission_enabled = true
 	mat.emission = Color(SHIELD_TINT.r, SHIELD_TINT.g, SHIELD_TINT.b)
 	mat.emission_energy_multiplier = 0.9
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_shield.material_override = mat
+	add_child(_shield)
 	# ⚠️ IL SUIT L'ÉTAT ET NON L'ORDRE DE MONTAGE. Le bouclier peut naître APRÈS que les deux
 	# relais soient tombés — un `--cortege-from` posé au mauvais endroit, un banc de mesure — et
-	# un rideau bleu devant un noyau touchable apprendrait au joueur l'inverse de la règle.
+	# un rideau devant un noyau touchable apprendrait au joueur l'inverse de la règle.
 	_shield.visible = _core != null and not _core.is_vulnerable()
-
-func _box(nom: String, size: Vector3, centre: Vector3, teinte: Color) -> MeshInstance3D:
-	var piece := MeshInstance3D.new()
-	piece.name = nom
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	piece.mesh = mesh
-	piece.position = centre
-	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = teinte
-	mat.roughness = 0.74
-	mat.metallic = 0.12
-	piece.material_override = mat
-	add_child(piece)
-	return piece
 
 # ==========================================================================
 # LA BOUCLE

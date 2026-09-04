@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | ✅ **LOT 0 clos et LOT 1 livré** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 2 (silhouette), 3 (les quatre états), 4 (l'ouverture), 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
+| **État** | ✅ **LOT 0 clos, LOT 1 et LOT 2 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le LOT 3 (les quatre états), 4 (l'ouverture), 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -491,12 +491,160 @@ téléportation — et une partie où l'animation d'ouverture est volontairement
 jouable (§11). La route ne dépend jamais d'un visuel : `test_the_route_opens_only_after_the_opening_has_run`
 le garde, mais seul un humain dit si l'arène de 12 unités se **joue**.
 
-## LOT 2 — La silhouette
+## LOT 2 — La silhouette — ✅ **LIVRÉ (2026-09-04)**
 
-La géométrie dans `build_long_cortege.py` : bastions, porte, noyau, aux cotes du lot 0. Volumes
-simples, extrusions, modules répétés — le kit avant le mesh dédié. **Ce qui prouve le lot** : le
-test noir et blanc, émissifs coupés — on identifie bastion ≠ relais ≠ noyau ≠ passage **sans
-couleur** (§19 : « identifiable par sa géométrie même sans emissif »).
+La géométrie **dans un kit**, pas dans `build_long_cortege.py` — voir « le kit et non la coque »
+ci-dessous. Volumes simples, extrusions, modules répétés. **Ce qui prouve le lot** : le test noir
+et blanc, émissifs coupés — on identifie bastion ≠ relais ≠ noyau ≠ passage **sans couleur**
+(§19 : « identifiable par sa géométrie même sans emissif »).
+
+### ⚠️ Le kit et non la coque, et c'est la QUATRIÈME fois que cette raison se vérifie
+
+Le plan écrivait « la géométrie dans `build_long_cortege.py` ». C'est faux, pour deux raisons dont
+une est un chiffre :
+
+1. **Mécanique.** Deux relais et un noyau sont **destructibles**, et la porte **s'ouvre** au
+   LOT 4. Une pièce cuite dans le tronçon ne meurt pas sans emporter ses voisines — les cinq
+   tronçons partagent un maillage et un jeu de matériaux. C'est mot pour mot la raison qui a sorti
+   les hangars (`BRIEF-0091`), les affûts (`BRIEF-0093`) puis les nœuds d'épine (`BRIEF-0094`).
+2. **Le plafond de construction.** `BUILD_CEILING_Y = −3,20` borne la coque, et
+   `_assert_build_ceiling` a déjà **refusé la passerelle à −3,15**. Les cotes du LOT 0 montent à
+   −3,00 et −2,40 : ce sont les deux plafonds d'`ADR-0041`, qui valent pour les pièces de kit et
+   **non** pour le maillage de coque. Le kit rend les 20 cm que la coque interdirait.
+
+### Ce qui est livré
+
+`BRIEF-0096` → `citadel_kit.glb` : **huit pièces, 1 304 triangles** pour un budget de 3 000,
+déterministe, UV et tangentes sur 8/8. Vérifié indépendamment du rapport de forge :
+`AA_Emissive_Engine` est sur `citadel_relay` et `citadel_core` **et sur aucune autre pièce**,
+`AA_Trim` à 0,7 % de l'aire, huit nœuds à la racine sans transformation ni enfant.
+
+Comparaison qui a servi à fixer le budget : `turret_kit` 2 240 tris **instancié 38 fois**,
+`bay_kit` 1 140 (**7 fois**), `spine_kit` 280 (**5 fois**). La citadelle est instanciée **une
+seule fois** : elle peut être la pièce la plus riche du vaisseau.
+
+### Les quatre signatures, et pourquoi aucun autre axe n'était libre
+
+Trois familles occupaient déjà l'espace des formes sur cette coque — le hangar **creuse**
+(négatif, horizontal, rectangulaire), l'affût **dépasse** (positif, horizontal, trapu), le nœud
+d'épine est **vertical, effilé, oblique**. Une quatrième famille ne peut pas se poser sur leurs
+axes sans tomber du côté de l'une d'elles. D'où :
+
+| Pièce | Signature | Mesuré |
+|---|---|---|
+| la porte | **la LONGUEUR** — rien d'autre ne traverse le cadre | 34,40 m pour 1,20 d'épaisseur, **28,7 : 1**, denture de 4,80 m au centre |
+| le bastion | **la MASSE ÉTAGÉE** — le seul volume à deux niveaux | 4,50 large pour 2,90 haut, plus une couronne. Refusé par harnais s'il s'inverse |
+| le relais | **le BRANCHEMENT** — un fût, un collier, un caisson vers l'axe | rapport 1,19, collier débordant de 0,18 |
+| le noyau | **la RÉVOLUTION** — le seul tambour, et le point le plus haut | constance de rayon 1,0000 contre 1,2939 pour le relais |
+
+⚠️ **Le conduit est la pièce la plus importante du lot**, et ce n'est pas le plus gros volume :
+c'est lui qui dit « ceci alimente cela » **en géométrie**, donc sans émissif, donc au test noir et
+blanc. Le couple relais/noyau est **le plus serré des quatre**, et il a fallu une correction
+*après avoir regardé* : le capot du relais portait `AA_Trim` comme celui du noyau, et les deux se
+présentaient alors comme « un volume sombre coiffé d'une tache claire ». Capot passé en sombre.
+
+### ⚠️ La forge a corrigé deux de mes chiffres, et elle avait raison
+
+- **Le portique va à `x` 13,58 et non 15,60.** Le tableau du brief et sa propre page
+  « porte-à-faux » se contredisaient : la lisse d'épaule (13,88) est **en dedans** de l'emprise
+  que j'avais donnée. Arrêté à 15,60, le portique **flotte** — le défaut qu'il existe pour
+  corriger. Morsure mesurée contre le profil réel, taper compris : 0,19 à 0,56 m.
+- **Le conduit culmine à +0,62 et non +0,35.** La peau monte de 0,28 m entre le pied du relais et
+  le rebord de l'artère : un caisson de 0,35 m y serait enterré aux quatre cinquièmes, là
+  précisément où il doit se lire.
+
+### ⚠️ Un défaut latent trouvé en chemin, qui touche les TROIS kits précédents
+
+L'importateur glTF pose `rotation_mode = 'QUATERNION'` : `obj.rotation_euler` y est rangé mais
+**jamais lu**, sans un mot. `build_spine_kit._place()`, `build_turret_kit._place()` et
+`build_bay_kit._import()` écrivent la même ligne — **l'azimut des affûts et le miroir des
+entretoises d'épine n'ont donc jamais été rendus dans leurs planches de recette**. Trois recettes
+ont été validées sur des images incomplètes. Le jeu, lui, n'est pas touché : il construit ses
+propres nœuds Godot. Corrigé dans `build_citadel_kit.py`, au backlog pour les trois autres.
+
+### La couronne a chassé une tourelle, et c'est une bonne chose
+
+`citadel_crown` occupe `s +1,60 → +5,40` sur le pont du bastion, où siégeaient mes deux tourelles
+de garde. Le socle léger fait **1,04 m de rayon** : les deux ne peuvent pas tenir en avant d'elle
+(il faudrait `s ≤ 0,56`) et le bastion est trop court pour en loger une derrière. La seconde
+descend donc sur le **pont intérieur**, à `x ±4,60 · s +3,30`, **0,42 m derrière le conduit** —
+posée devant, son socle se serait couché sur le caisson. Deux ponts au lieu d'un empilement, ce
+qui vaut mieux en composition, et `test_a_guard_turret_seated_on_the_bastion...` vérifie désormais
+**les deux assises** : n'en garder qu'une laisserait l'autre franchir le plafond en silence.
+
+### ⚠️ Vérifié en jeu — et la capture a trouvé ce que 850 tests verts ne voyaient pas
+
+| | |
+|---|---|
+| **Verdict visuel** | **vert** après un correctif. Le verrou lit beaucoup mieux qu'en boîtes : la poutre traverse tout le cadre avec sa denture au centre, les bastions nervurés sont la pièce la plus lisible du kit, le noyau et son bouclier tiennent l'axe, et les deux tourelles hautes se détachent sur le noir de l'ouverture |
+| **Coût GPU** | **3,79 ms/image** sur Quadro T1000 (22,7 % du budget 60 Hz) contre **3,90 ms** en boîtes grises. Les 1 304 triangles du kit sont **gratuits**, sous le bruit de mesure |
+| **Anomalies** | aucune — zéro `ERROR`, zéro `pièce de kit manquante` |
+
+#### ⛔ Les deux relais étaient à des dizaines de mètres de leur place
+
+En cherchant les deux relais sur la capture je n'en ai trouvé **qu'un**, au bord droit du cadre,
+posé au-dessus du vide.
+
+La forge cuit le **X de coque dans la géométrie** — le relais est modelé à `x` 5,40 → 7,00 — et le
+miroir se fait par un **yaw de π**, pas par un signe. Or le nœud de la pièce se plaçait *lui aussi*
+à ±6,20, parce que c'est de là que se déduit sa hitbox. Les deux écarts s'additionnaient :
+
+- tribord partait à `x ≈ 11,60` — au large du bastion, en l'air ;
+- bâbord, faute de yaw, revenait se poser **sur l'axe**, derrière le noyau.
+
+⚠️ **ET AUCUNE MOITIÉ PRISE SÉPARÉMENT N'ÉTAIT FAUSSE.** La position du nœud était juste, la boîte
+du maillage était juste, le centrage en Z était juste — c'est leur **composition** qui ne l'était
+pas. Trois tests gardaient le kit, dont un sur le centrage en Z **écrit précisément pour attraper
+les défauts de miroir**, et il passait : il gardait *une* moitié.
+`test_the_two_relays_land_where_the_kit_says` refait désormais la chaîne complète — nœud × forme ×
+boîte — exactement comme le moteur, et vérifie que chaque relais atterrit sur l'emprise mesurée
+par la forge. Corrigé et **re-vérifié en capture** : les deux boîtes de lampe tombent à **1 pixel**
+du miroir exact l'une de l'autre.
+
+C'est très exactement ce que `ADR-0006` existe pour dire.
+
+#### Trois réserves, laissées aux lots suivants
+
+1. **La denture se lit comme un créneau de rempart, pas comme un joint de battants.** Elle est
+   posée sur le dessus de la poutre, dents vers le haut, **sans mâchoire en vis-à-vis** : l'œil y
+   voit un peigne. Il manque le vantail — pas de tableau, pas de ligne de refend, pas deux
+   moitiés. Le LOT 4 l'ouvrira, mais **la lecture manque déjà**.
+2. **Le portique a des jambes, et elles sont dans le noir.** Deux piliers descendent bien dans la
+   tranchée centrale, mais dans un noir quasi pur : la poutre paraît flotter quand même, et ses
+   deux bouts dépassent la silhouette de la coque d'environ 250 px de chaque côté.
+3. **Le pied des bastions n'a plus d'embase**, et c'est la conséquence directe de l'enfoncement de
+   1,5 m sans tranchée : la jupe arrondie est **tranchée net par le plan du pont**, sans socle,
+   sans congé, et surtout **sans aucun assombrissement de contact**. Aucun artefact — ni
+   z-fighting, ni flottement : ça ne se lit pas comme faux, ça se lit comme une pièce qui a perdu
+   sa base.
+
+#### ⚠️ Le collier ou la tranchée — la question est ouverte, et les deux lectures se valent
+
+**Pour le collier** (verdict du vérificateur) : ce que l'œil manque à la jonction est une
+**rupture de valeur**, pas de la profondeur. Un collier plat débordant l'empreinte, chanfrein
+sombre sur la tranche, la donne — et se lit comme une bride de fixation. Un seul élément, et le
+même traitement soignerait les relais, qui souffrent du même bord franc.
+
+**Pour la tranchée** : elle rend 1,55 m de jupe **visible**, donc elle est le seul des deux qui
+tienne réellement la promesse du LOT 0 (« 2,85 m de hauteur lue »). L'argument d'occultation du
+vérificateur — à 55-60° la paroi de tranchée serait masquée par le bastion — porte sur la lecture
+de la tranchée **comme creux**, pas sur la hauteur qu'elle dégage.
+
+⚠️ **Aucune des deux ne bloque le lot** : le test noir et blanc est tenu sans elles. À trancher en
+regardant, au LOT 3.
+
+### ⚠️ La tranchée n'est PAS creusée, et le test d'acceptation a été tenu sans elle
+
+Le LOT 0 la décrivait « sous l'emprise de la citadelle », ce qui la faisait **traverser l'artère**
+— donc couper le canal, ses rebords, ses conduits et ses travées. C'était une mauvaise lecture :
+les bastions sont sur le **pont médian**, et `7,35` et `10,30` sont **déjà deux points du profil**
+(indices 9 et 10 de `PROFILE_BASE`). Deux tranchées **latérales** y coûteraient zéro point neuf,
+exactement comme les quatre fosses du lot B3, et l'artère ne serait pas touchée du tout.
+
+**Mais la planche de recette a passé le noir et blanc sur une coque PLATE.** La tranchée affine
+donc le **pied** des bastions — leur base et leur ombre —, elle ne décide plus de la lecture. Elle
+sort du chemin critique : `CortegeCitadel.MOAT_DEPTH` porte la cote pour le jour où on la creuse,
+et l'assise du bastion (−6,50) est déjà celle qu'elle attend.
 
 ## LOT 3 — Les quatre états se voient
 

@@ -317,10 +317,15 @@ func test_a_guard_turret_seated_on_the_bastion_stays_under_the_gameplay_ceiling(
 			continue
 		tallest = maxf(tallest, float(offsets[piece.name]) + piece.get_aabb().end.y)
 	assert_true(tallest > 1.0, "l'affut a une hauteur mesurable (%.2f m)" % tallest)
-	var sommet: float = CitadelScript.TURRET_Y + tallest * TurretScript.LIGHT_GEOM_SCALE
-	assert_true(sommet <= FlybyScript.GAMEPLAY_CEILING_Y,
-		"une tourelle du verrou culmine a %.2f pour un plafond a %.2f — la couronne ne doit pas la porter"
-			% [sommet, FlybyScript.GAMEPLAY_CEILING_Y])
+	# ⚠️ CHAQUE GARDE A SON PROPRE PONT, et c'est ce qui rend ce test necessaire deux fois : la
+	# couronne a chasse la seconde tourelle du pont du bastion vers le pont interieur, 70 cm plus
+	# bas. Ne verifier qu'une assise laisserait l'autre franchir le plafond en silence.
+	for entry in CitadelScript.GUARDS:
+		var assise: float = float(entry[2])
+		var sommet: float = assise + tallest * TurretScript.LIGHT_GEOM_SCALE
+		assert_true(sommet <= FlybyScript.GAMEPLAY_CEILING_Y,
+			"une tourelle du verrou assise a %.2f culmine a %.2f pour un plafond a %.2f"
+				% [assise, sommet, FlybyScript.GAMEPLAY_CEILING_Y])
 
 
 # =============================================================================
@@ -349,8 +354,8 @@ func test_every_guard_turret_of_the_lock_is_inside_its_own_firing_window() -> vo
 	var eye := _camera_eye()
 	var half: float = TUNING.light_turret_visible_span * 0.5
 	for side in [-1.0, 1.0]:
-		for index in CitadelScript.TURRET_S.size():
-			var here := _plane_at_lock(CitadelScript.turret_local(side, index),
+		for index in CitadelScript.GUARDS.size():
+			var here := _plane_at_lock(CitadelScript.guard_local(side, index),
 				TurretScript.LIGHT_HIT_LIFT, eye)
 			assert_true(absf(here.y) <= half,
 				"une tourelle du verrou s'immobilise a y = %.2f pour une fenetre de +/- %.1f : elle ne s'engagerait jamais"
@@ -608,7 +613,7 @@ func test_the_flyby_slows_before_it_stops() -> void:
 ## pas une ligne au journal. La camera bouge (secousses, recadrages) : la frontiere est franchie
 ## dans les deux sens pour de vrai.
 func test_a_part_that_leaves_the_plane_and_returns_is_shootable_again() -> void:
-	var part := track(PartScript.make(PartScript.Role.RELAY, 100.0, Vector3.ONE, 1.0, 0.5, 10)) \
+	var part := track(PartScript.make(PartScript.Role.RELAY, 100.0, 1.0, 0.5, 10)) \
 		as CitadelPart
 	part.setup(null, null)
 	var dedans := Vector2(0.0, 2.0)
@@ -628,7 +633,7 @@ func test_a_part_that_leaves_the_plane_and_returns_is_shootable_again() -> void:
 ## ne peut plus jamais toucher. C'est la passe monotone que la tourelle et le noeud d'epine
 ## tiennent deja.
 func test_a_living_part_that_passes_below_the_plane_gives_its_target_back() -> void:
-	var part := track(PartScript.make(PartScript.Role.CORE, 100.0, Vector3.ONE, 1.0, 0.5, 10)) \
+	var part := track(PartScript.make(PartScript.Role.CORE, 100.0, 1.0, 0.5, 10)) \
 		as CitadelPart
 	part.setup(null, null)
 	part.tick(Vector3.ZERO, Vector2(0.0, 2.0))
@@ -714,3 +719,132 @@ func test_the_shipped_lock_fits_the_brief() -> void:
 	# pesent plus que le tir serait une cinematique, pas un combat.
 	assert_true(TUNING.citadel_fight_time() > verrou * 0.6,
 		"et le tir en est le gros : %.1f s sur %.1f" % [TUNING.citadel_fight_time(), verrou])
+
+
+# =============================================================================
+# 11. LE KIT — CE QUE LE MOTEUR VA Y CHERCHER PAR SON NOM
+# =============================================================================
+
+## ⚠️ UNE LETTRE DE TRAVERS ET LA PIECE NE SE MONTE JAMAIS. Le moteur resout chaque forme par son
+## nom exact dans le `.glb` ; un renommage cote forge, ou une faute cote moteur, laisse le verrou
+## se jouer EXACTEMENT comme avant — la boucle est complete sans les formes — et seule une capture
+## le dirait. C'est le meme defaut que les batteries legeres gardent depuis le lot A.
+func test_every_piece_the_engine_looks_for_exists_in_the_kit() -> void:
+	var packed: PackedScene = load(CitadelScript.KIT_PATH)
+	assert_true(packed != null, "le kit de la citadelle se charge (%s)" % CitadelScript.KIT_PATH)
+	if packed == null:
+		return
+	var kit := track(packed.instantiate()) as Node3D
+	var noms := {}
+	for child in kit.get_children():
+		var piece := child as MeshInstance3D
+		if piece != null:
+			noms[String(piece.name)] = piece
+	for entry in CitadelScript.PIECES:
+		assert_true(noms.has(String(entry[0])),
+			"la piece %s que le moteur pose doit exister dans le kit" % String(entry[0]))
+	for nom in ["citadel_relay", "citadel_core", "citadel_shield"]:
+		assert_true(noms.has(nom), "la piece %s doit exister dans le kit" % nom)
+
+## ⚠️ SANS EMISSIF SUR LES DEUX PIECES QUI MEURENT, LEUR MORT NE SE VOIT PAS. C'est la regle dure
+## du kit, celle que BRIEF-0094 avait ecrite pour l'epine : le moteur detruit `citadel_relay` et
+## `citadel_core` separement, et `CitadelPart.mount()` s'approprie une COPIE du materiau pour que
+## l'un ne s'eteigne pas avec l'autre. S'il n'y avait rien a copier, la copie ne dirait rien.
+func test_the_two_pieces_that_die_are_the_only_ones_that_glow() -> void:
+	var packed: PackedScene = load(CitadelScript.KIT_PATH)
+	if packed == null:
+		return
+	var kit := track(packed.instantiate()) as Node3D
+	var qui_brille := []
+	for child in kit.get_children():
+		var piece := child as MeshInstance3D
+		if piece == null or piece.mesh == null:
+			continue
+		for i in piece.mesh.get_surface_count():
+			var mat := piece.mesh.surface_get_material(i) as StandardMaterial3D
+			if mat != null and mat.emission_enabled:
+				if not qui_brille.has(String(piece.name)):
+					qui_brille.append(String(piece.name))
+	qui_brille.sort()
+	assert_eq(qui_brille, ["citadel_core", "citadel_relay"],
+		"seules les deux pieces destructibles portent de l'emissif — sinon leur mort ne se voit pas : %s"
+			% str(qui_brille))
+
+## ⚠️ ET LE MIROIR N'A DE SENS QUE SI LA PIECE EST CENTREE EN Z. Le yaw de π envoie (x, z) sur
+## (−x, −z) : une piece excentree se retrouverait a babord DECALEE LE LONG DU VAISSEAU de deux
+## fois son excentricite — un bastion a s + 6 d'un bord et a s − 6 de l'autre. Aucune boite
+## englobante, aucun compte de triangles ne le verrait ; il faudrait jouer la sequence et regarder
+## les deux bords en meme temps.
+func test_every_mirrored_piece_is_centred_on_its_own_z() -> void:
+	var packed: PackedScene = load(CitadelScript.KIT_PATH)
+	if packed == null:
+		return
+	var kit := track(packed.instantiate()) as Node3D
+	for entry in CitadelScript.PIECES:
+		if not bool(entry[3]):
+			continue
+		var piece := kit.get_node_or_null(String(entry[0])) as MeshInstance3D
+		if piece == null or piece.mesh == null:
+			continue
+		var boite := piece.mesh.get_aabb()
+		var centre := boite.position.z + boite.size.z * 0.5
+		assert_true(absf(centre) < 0.001,
+			"%s est excentree de %.4f en z : son miroir se poserait %.4f m plus loin le long du vaisseau"
+				% [String(entry[0]), centre, 2.0 * absf(centre)])
+
+## ⚠️ CE TEST EXISTE PARCE QUE LES 850 AUTRES ETAIENT VERTS PENDANT QUE LES DEUX RELAIS ETAIENT A
+## DES DIZAINES DE METRES DE LEUR PLACE. Seule la capture l'a vu (ADR-0006).
+##
+## La forge cuit le X DE COQUE dans la geometrie — le relais tribord est modele a x 5,40 → 7,00 —
+## et le miroir se fait par un yaw de π. Le nœud de la piece, lui, se place au CENTRE DE MASSE
+## (±6,20) parce que c'est de la que se deduit la hitbox. Composer les deux sans rien retrancher
+## additionne deux fois le meme ecart : tribord s'en va a x 11,60, au large du bastion et au-dessus
+## du vide, et babord — faute de yaw — revient se poser SUR L'AXE, derriere le noyau.
+##
+## ⚠️ ET AUCUNE MOITIE PRISE SEPAREMENT N'EST FAUSSE. La position du nœud est juste, la boite du
+## maillage est juste, le centrage en z est juste : c'est leur COMPOSITION qui ne l'etait pas.
+## D'ou ce test, qui la refait exactement comme le moteur.
+func test_the_two_relays_land_where_the_kit_says() -> void:
+	var packed: PackedScene = load(CitadelScript.KIT_PATH)
+	if packed == null:
+		return
+	var kit := track(packed.instantiate()) as Node3D
+	var source := kit.get_node_or_null("citadel_relay") as MeshInstance3D
+	assert_true(source != null and source.mesh != null, "le kit porte citadel_relay")
+	if source == null or source.mesh == null:
+		return
+	var boite := source.mesh.get_aabb()
+	# L'emprise que la forge a MESUREE sur le binaire, cote tribord.
+	assert_almost_eq(boite.position.x, 5.40, 0.02,
+		"le relais du kit commence a x = %.2f" % boite.position.x)
+	assert_almost_eq(boite.end.x, 7.00, 0.02,
+		"et finit a x = %.2f" % boite.end.x)
+	for side in [-1.0, 1.0]:
+		var part := track(PartScript.make(PartScript.Role.RELAY, 100.0, 1.0, 0.5, 10)) \
+			as CitadelPart
+		part.position = CitadelScript.relay_local(side)
+		part.mount(source, side, CitadelScript.RELAY_X)
+		var shape := part.get_node_or_null("Shape") as MeshInstance3D
+		assert_true(shape != null, "la forme est montee")
+		if shape == null:
+			continue
+		# La composition, refaite comme le moteur : nœud x forme x boite.
+		var chaine := part.transform * shape.transform
+		var lo := INF
+		var hi := -INF
+		for i in 8:
+			var coin := boite.position + Vector3(
+				boite.size.x * float(i & 1), boite.size.y * float((i >> 1) & 1),
+				boite.size.z * float((i >> 2) & 1))
+			var monde := chaine * coin
+			lo = minf(lo, monde.x)
+			hi = maxf(hi, monde.x)
+		var attendu_lo: float = 5.40 if side > 0.0 else -7.00
+		var attendu_hi: float = 7.00 if side > 0.0 else -5.40
+		assert_almost_eq(lo, attendu_lo, 0.05,
+			"le relais du bord %+.0f commence a x = %.2f pour %.2f attendu" % [side, lo, attendu_lo])
+		assert_almost_eq(hi, attendu_hi, 0.05,
+			"et finit a x = %.2f pour %.2f attendu" % [hi, attendu_hi])
+		free_tracked()
+		kit = track(packed.instantiate()) as Node3D
+		source = kit.get_node_or_null("citadel_relay") as MeshInstance3D
