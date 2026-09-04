@@ -450,3 +450,22 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
   investigation complète : `pont d'envol détruit — tronçon 03` s'imprime deux fois parce que le
   tronçon 03 **porte deux ponts** — une ligne de journal qui ne nomme pas sa pièce se lit comme un
   bug. Les deux constats sont versés dans le skill `/jouer`, qui rend cette chronologie.
+- **La Citadelle de Défense — un verrou de level design à mi-parcours du niveau 2** (2026-09-04,
+  LOTS 0 à 4). Le survol freine, s'immobilise, et ne repart que quand deux relais puis un noyau
+  sont tombés. Livré en cinq temps : la boucle en boîtes grises, puis la silhouette
+  (`BRIEF-0096`), les quatre états visibles, l'ouverture par deux vantaux (`BRIEF-0097`), et deux
+  tranchées de bastion dans la coque. **Trois choses valent au-delà du chantier** :
+  - ⚠️ **le chronomètre a refusé le dimensionnement.** La partie de l'opérateur a mesuré 55,1 s
+    pour un budget de 45 : l'occupation du verrou valait **0,19** et non les 0,45 choisies au
+    jugé — facteur **2,4**, le même qu'`ADR-0024`. Et le fichier écrivait, deux lignes plus haut,
+    que se dimensionner ainsi « reviendrait à se donner raison ». **Un commentaire qui énonce la
+    règle n'empêche pas de la violer deux lignes plus bas** ;
+  - ⚠️ **deux relais étaient à des dizaines de mètres de leur place sous 850 tests verts**, dont
+    un écrit *précisément* pour les défauts de miroir : il gardait une moitié. Seule la capture
+    l'a vu. Capitalisé dans
+    [`pratique-tester-la-composition-pas-les-moities`](../../.claude/resources/pratique-tester-la-composition-pas-les-moities.md) ;
+  - ⚠️ **un détail dont la modulation est sous ~6 niveaux de gris n'existe pas dans ce jeu** —
+    `retro_post` postérise à 20 niveaux, soit un pas de 12,75, et la maille de `TEX-0015` n'en
+    module que 0,83. Sa chaîne de texture était pourtant juste **à 1 % près**. Remonté au contrat
+    de texture : `readability_requirements` doit raisonner en **contraste**, pas en pixels.
+    Au passage, **29 des 50 cartes 3D du dépôt sont importées sans mipmaps**.

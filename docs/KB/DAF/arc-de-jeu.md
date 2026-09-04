@@ -57,7 +57,17 @@ Il ne ressemble à rien de ce qui précède, et c'est ce qu'il faut savoir avant
 - **trois mécaniques de coque** : tourelles (télégraphe obligatoire), ponts d'envol (ils
   produisent tant qu'ils vivent), nœuds d'épine (abattre l'un éteint les tourelles du tronçon
   SUIVANT) ;
+- **un VERROU à mi-parcours** depuis le 2026-09-04 : la **Citadelle de Défense**, à `s = 240`
+  sur le tronçon 3. Elle **ferme physiquement la route** — le survol freine, s'immobilise, et ne
+  repart que quand deux relais puis un noyau sont tombés. ⚠️ **Ce n'est pas un boss**, et ça se
+  mesure : la séquence entière est bornée à 30-45 s par `CortegeTuning.citadel_lock_time()`.
+  L'arrêt du défilement n'est pas une mise en scène — à 2,4 u/s, 40 s de combat vaudraient 96 m
+  de coque quand la fenêtre libre en fait 19 ;
 - **le Cortège ne se détruit pas.** Le niveau se traverse ; il continue sa route.
+
+⚠️ **Et le niveau dure 240 s, pas 208.** `level_duration()` compte le défilement **plus** la
+séquence du verrou : les lire séparément faisait comparer 208 s à la promesse pendant qu'on en
+jouait 240.
 
 ⚠️ **Un survol ne revient jamais en arrière.** Chaque cible n'est tirable que pendant la fenêtre
 où elle est à l'écran, et c'est ce qui dimensionne tous ses points de vie

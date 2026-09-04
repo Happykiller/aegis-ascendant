@@ -165,6 +165,28 @@ identique. Une différence de cet ordre n'y signifie **rien**. À noter : les 5�
 les plus hauts — sur un portable, la dérive va plutôt vers le **réchauffement** que vers le cache froid,
 donc une longue série de mesures monte au lieu de descendre.
 
+⚠️ **ET LE 04/09/2026, LA MÊME T1000 A MONTRÉ L'INVERSE — À CHARGE PLUS FAIBLE.** Le paragraphe
+ci-dessus dit « pas de cache froid » et « une longue série monte au lieu de descendre ». Sur le
+verrou de la Citadelle, trois séries successives ont **décru** de façon monotone, et le premier
+relevé après déploiement était **haut de 0,2 à 0,8 ms** :
+
+| Série | Relevés |
+|---|---|
+| état 0 | **4,676** (froid) · 3,837 · 3,950 |
+| état 1 | **5,159** (froid) · 3,943 |
+| finale | **4,004** · 3,919 · 3,802 |
+
+⚠️ **Les deux relevés ne se contredisent pas forcément : ils ne sont pas à la même charge.** La
+série de juillet tournait à **11–13 ms**, celle-ci à **3,7–4,0 ms** — un tiers. À 4 ms le châssis
+Max-Q n'est pas saturé thermiquement, donc le cache froid domine ; à 12 ms c'est l'inverse.
+**Hypothèse, pas conclusion** : elle n'a pas été vérifiée en faisant varier la charge exprès.
+
+**Ce qui ne change pas, et qui suffit à décider** : sur cette machine, **prendre une médiane sur
+plusieurs tirs, jamais un point**. La recette « jeter le premier » vaut quand la série descend,
+« retenir la plage » quand elle ne descend pas — et on ne sait laquelle avant d'avoir tiré trois
+fois. Coût de l'oubli le 04/09 : un +0,8 ms lu comme le coût d'une modification qui ne coûtait
+rien.
+
 ## Un budget GPU n'existe pas sans sa machine
 
 Un chiffre de perf n'est comparable qu'à un chiffre **du même poste**. Le même build, inchangé, rend :
