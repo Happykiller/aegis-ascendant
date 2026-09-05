@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # Bootstrap the Aegis Ascendant dev environment inside WSL.
-# Installs Godot 4.7-stable (Linux x86_64) and the Windows export templates,
+# Installs Godot 4.7.2-stable (Linux x86_64) and the Windows export templates,
 # with SHA512 verification against the official release sums.
 # Idempotent: safe to re-run; skips anything already installed.
 set -euo pipefail
 
-GODOT_VERSION="4.7-stable"
-GODOT_TEMPLATE_DIR_NAME="4.7.stable" # VERSION_NUMBER.VERSION_STATUS (patch 0 omitted)
+GODOT_VERSION="4.7.2-stable"
+GODOT_TEMPLATE_DIR_NAME="4.7.2.stable" # VERSION_NUMBER.VERSION_STATUS (patch 0 omitted)
 BASE_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}"
 BIN_ZIP="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
 BIN_NAME="Godot_v${GODOT_VERSION}_linux.x86_64"
 TPZ="Godot_v${GODOT_VERSION}_export_templates.tpz"
 SUMS="SHA512-SUMS.txt"
 
-CACHE_DIR="${HOME}/.cache/aegis-bootstrap"
+CACHE_DIR="${HOME}/.cache/aegis-bootstrap/${GODOT_VERSION}"
 INSTALL_DIR="${HOME}/.local/opt/godot-${GODOT_VERSION}"
 BIN_LINK="${HOME}/.local/bin/godot4"
 TEMPLATES_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/${GODOT_TEMPLATE_DIR_NAME}"
@@ -43,10 +43,20 @@ fetch "$SUMS"
 fetch "$BIN_ZIP"
 fetch "$TPZ"
 
+# ⚠️ LE GARDE QUI MANQUAIT (2026-09-05). Le cache etait indexe par NOM DE FICHIER, et
+# `SHA512-SUMS.txt` ne porte pas la version : au premier changement de version, l'ancien
+# fichier de sommes etait reutilise en silence. Symptome obtenu : « no properly formatted
+# SHA512 checksum lines found » — un message qui accuse le format alors que le vrai defaut
+# est qu'on verifie 4.7.2 contre les sommes de 4.7. Le cache est desormais range PAR
+# VERSION, et on refuse explicitement un fichier de sommes qui ne parle pas de nos deux
+# archives, plutot que de laisser `sha512sum -c` recevoir une entree vide.
 log "verifying SHA512 checksums"
 (
   cd "$CACHE_DIR"
-  grep -E "(${BIN_ZIP}|${TPZ})\$" "$SUMS" | sha512sum -c - \
+  expected="$(grep -E "(${BIN_ZIP}|${TPZ})\$" "$SUMS" || true)"
+  [[ "$(printf '%s\n' "$expected" | grep -c .)" -eq 2 ]] \
+    || fail "${SUMS} ne contient pas les sommes de ${BIN_ZIP} et ${TPZ} — mauvaise version en cache ?"
+  printf '%s\n' "$expected" | sha512sum -c - \
     || fail "checksum verification failed"
 )
 
@@ -79,8 +89,8 @@ fi
 
 # --- Final checks ----------------------------------------------------------
 VERSION_OUTPUT="$("$BIN_LINK" --version 2>/dev/null | tail -n 1)"
-[[ "$VERSION_OUTPUT" == 4.7.stable* ]] \
-  || fail "unexpected godot version: '${VERSION_OUTPUT}' (want 4.7.stable*)"
+[[ "$VERSION_OUTPUT" == 4.7.2.stable* ]] \
+  || fail "unexpected godot version: '${VERSION_OUTPUT}' (want 4.7.2.stable*)"
 for tpl in windows_release_x86_64.exe windows_debug_x86_64.exe; do
   [[ -f "${TEMPLATES_DIR}/${tpl}" ]] || fail "missing template: ${tpl}"
 done

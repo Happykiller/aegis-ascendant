@@ -1,5 +1,16 @@
 # ADR-0001 — Godot 4.7-stable au lieu de 4.6
 
+> **Correctif de version appliqué le 2026-09-05 : le projet tourne désormais sur
+> `4.7.2-stable`** (`ed1daf0bf`). Même mineure, donc aucune décision n'est rouverte — seuls
+> `scripts/bootstrap.sh` et les chemins de templates changent. Porte de qualité verte au
+> premier essai, sans une seule modification de source.
+>
+> ⚠️ Le passage a révélé un défaut du bootstrap : le cache était indexé par NOM DE FICHIER, et
+> `SHA512-SUMS.txt` ne porte pas la version — l'ancien fichier de sommes était donc réutilisé en
+> silence, et la vérification échouait en accusant le *format*. Le cache est maintenant rangé
+> par version, et un fichier de sommes qui ne parle pas de nos deux archives est refusé
+> explicitement.
+
 - **Date** : 2026-07-11
 - **Statut** : accepté (décision utilisateur)
 

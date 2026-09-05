@@ -1,6 +1,6 @@
 # CLAUDE.md — Aegis Ascendant
 
-Prototype de vertical shooter 2.5D/3D sous **Godot 4.7-stable** (Forward+, GDScript typé), export `.exe` Windows x64.
+Prototype de vertical shooter 2.5D/3D sous **Godot 4.7.2-stable** (Forward+, GDScript typé), export `.exe` Windows x64.
 
 ## Source de vérité
 
@@ -48,7 +48,7 @@ jamais ici : ce fichier se charge en entier à chaque session.
 ## Commandes canoniques (voir ADR-0003)
 
 ```bash
-./scripts/bootstrap.sh    # installe Godot 4.7 + export templates (idempotent, SHA512)
+./scripts/bootstrap.sh    # installe Godot 4.7.2 + export templates (idempotent, SHA512)
 ./scripts/check.sh        # porte de qualité : import headless + parse + tests — DOIT être vert
 ./scripts/export-win.sh [debug|release]   # export Windows (check d'abord)
 ./scripts/deploy-win.sh [-- args_jeu]     # copie vers C:\tmp\aegis-ascendant + lance sur Windows
