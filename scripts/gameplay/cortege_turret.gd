@@ -70,14 +70,6 @@ const SEEK_SPAN_FACTOR := 2.0
 ## et une boule rose) ne faisait pas.
 const KIT_PATH := "res://assets/imported/models/backgrounds/turret_kit.glb"
 
-## ⚠️ BANC D'ESSAI, PAS UN ASSET DE JEU — `--turret-proto`. Monte à la place de l'affût du kit
-## le modèle de tourelle lourde poussé par l'opérateur le 2026-09-05, POUR LE REGARDER DANS
-## NOTRE CHAÎNE. Le rendu studio d'un tiers ne dit rien de ce que notre moteur en fait : c'est
-## exactement la leçon d'`ADR-0045`, où une planche Cycles propre sortait en blocs postérisés.
-##
-## Ce chemin est TEMPORAIRE et se retire d'un bloc : ce commentaire, `PROTO_PATH`,
-## `_build_proto_head()` et le fichier `.glb`. Rien d'autre ne le connaît.
-const PROTO_PATH := "res://assets/imported/models/backgrounds/proto_tourelle_lourde.glb"
 
 ## Positions d'assemblage, mesurées sur le binaire livré (BRIEF-0093) — pas recopiées d'un brief.
 const RING_LIFT := 0.04
@@ -385,8 +377,6 @@ func _ready() -> void:
 ## répartition différente à chaque lancement, donc une capture qu'on ne peut pas comparer à la
 ## précédente — et l'équilibrage d'un survol se lit en comparant deux passages.
 func _build_head() -> void:
-	if not is_light() and "--turret-proto" in OS.get_cmdline_user_args() and _build_proto_head():
-		return
 	var packed: PackedScene = load(KIT_PATH) as PackedScene
 	if packed == null:
 		push_error("[Cortege] kit de tourelle introuvable : %s" % KIT_PATH)
@@ -417,56 +407,6 @@ func _build_head() -> void:
 		_place(kit, String(family[1]),
 			Vector3(side * gauge * 0.5, BARREL_LIFT, BARREL_SEAT_Z), 0.0, _barrel)
 	kit.queue_free()
-
-## BANC D'ESSAI (`--turret-proto`) : monte le modèle poussé au lieu de l'affût du kit.
-##
-## ⚠️ SON GRÉEMENT EST BRANCHÉ, PAS SON CLIP. Le `.glb` porte une animation de démonstration de
-## 240 images — une chorégraphie scriptée, inutilisable pour une tourelle qui vise un joueur.
-## Mais elle n'anime que QUATRE nœuds (`CTRL | Yaw 360`, `CTRL | Elevation`, `CTRL | L/R
-## recoil`) : le gréement est donc pilotable directement, et c'est `CTRL | Yaw 360` qu'on donne
-## à `_barrel`. La visée existante s'y applique sans une ligne de plus.
-##
-## Rend `false` si le modèle n'est pas là — on retombe alors sur le kit plutôt que de laisser
-## une tourelle invisible sur la coque.
-func _build_proto_head() -> bool:
-	var packed: PackedScene = load(PROTO_PATH) as PackedScene
-	if packed == null:
-		push_warning("[Cortege] prototype introuvable (%s) — on garde le kit" % PROTO_PATH)
-		return false
-	var model := packed.instantiate() as Node3D
-	if model == null:
-		push_warning("[Cortege] le prototype n'est pas un Node3D — on garde le kit")
-		return false
-	model.name = "Proto"
-	add_child(model)
-	# Le clip de démonstration ne doit PAS tourner : il rejouerait sa chorégraphie sous la visée.
-	for player in model.find_children("*", "AnimationPlayer", true, false):
-		(player as AnimationPlayer).active = false
-	_barrel = model.get_node_or_null(NodePath("CTRL | Yaw 360")) as Node3D
-	if _barrel == null:
-		# Godot assainit les noms de nœuds glTF : si le nôtre ne répond pas, on cherche.
-		for node in model.find_children("*Yaw*", "Node3D", true, false):
-			_barrel = node as Node3D
-			break
-	if _barrel == null:
-		push_warning("[Cortege] prototype sans nœud de lacet — la tourelle ne pivotera pas")
-	var eyes := 0
-	for node in model.find_children("*", "MeshInstance3D", true, false):
-		var piece := node as MeshInstance3D
-		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		if piece.mesh == null:
-			continue
-		# Même règle que `_claim_glow()` : un état par pièce demande un matériau par pièce.
-		for i in piece.mesh.get_surface_count():
-			var base := piece.mesh.surface_get_material(i) as StandardMaterial3D
-			if base == null or not base.emission_enabled:
-				continue
-			var mine: StandardMaterial3D = base.duplicate()
-			piece.set_surface_override_material(i, mine)
-			_glow.append(mine)
-			eyes += 1
-	print("[Cortege] PROTOTYPE monté sur Turret_%02d — %d surfaces émissives" % [serial, eyes])
-	return true
 
 ## Assemble la tourelle légère : quatre pièces, un seul tube, rien d'ancré autour.
 ##
