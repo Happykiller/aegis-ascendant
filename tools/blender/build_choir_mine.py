@@ -1,6 +1,6 @@
 """build_choir_mine.py — coque 3D de la Choir Mine, mine stationnaire (BRIEF-0042).
 
-    blender45 -b -P tools/blender/build_choir_mine.py
+    blender-aegis -b -P tools/blender/build_choir_mine.py
     ./scripts/build-hull.sh --check choir_mine        # + controle de determinisme
 
 Produit `assets/imported/models/ships/choir_mine.glb`.

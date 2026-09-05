@@ -35,7 +35,7 @@ vrai **ce jour-là**, silencieusement — aucun test ne le vérifiait.
 ./scripts/build-hull.sh --all                   # toute la flotte
 ```
 
-Le script force `blender45 **-t 1**`. Mesuré : multi-thread → 6-12 octets divergents ;
+Le script force `blender-aegis **-t 1**`. Mesuré : multi-thread → 6-12 octets divergents ;
 mono-thread → **0**.
 
 ⚠️ **Ne jamais lancer un `build_*.py` à la main sans `-t 1`.** Le `.glb` produit sera valide et

@@ -1,6 +1,6 @@
 """build_shield_carrier.py — coque 3D du Shield Carrier, emetteur de bulle (BRIEF-0046).
 
-    blender45 -b -P tools/blender/build_shield_carrier.py
+    blender-aegis -b -P tools/blender/build_shield_carrier.py
     ./scripts/build-hull.sh --check shield_carrier      # + controle de determinisme
 
 Produit `assets/imported/models/ships/shield_carrier.glb`.

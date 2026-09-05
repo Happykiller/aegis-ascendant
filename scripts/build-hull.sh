@@ -10,9 +10,9 @@
 # des tangentes (mikktspace, activé par ADR-0011) somme en virgule flottante dans un
 # ordre qui dépend du nombre de workers. Mesuré le 2026-07-21 sur l'Aegis Citadel :
 #
-#   blender45 -b     -> 6 à 12 octets divergents entre deux exécutions,
+#   blender-aegis -b     -> 6 à 12 octets divergents entre deux exécutions,
 #                       TOUS dans des accesseurs TANGENT
-#   blender45 -t 1 -b -> 0 octet divergent
+#   blender-aegis -t 1 -b -> 0 octet divergent
 #
 # Le défaut est silencieux et trompeur : le Specter-9, qui a proportionnellement
 # PLUS d'UV dégénérées (2,97 % contre 0,58 %), reste stable — assez pour faire
@@ -24,7 +24,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-BLENDER="${BLENDER:-blender45}"
+BLENDER="${BLENDER:-blender-aegis}"
 BUILD_DIR="tools/blender"
 
 usage() {

@@ -1,7 +1,7 @@
 """build_citadel_kit.py — le kit de la Citadelle de Defense (BRIEF-0096/0097).
 
-    blender45 -b -t 1 -P tools/blender/build_citadel_kit.py
-    blender45 -b -t 1 -P tools/blender/build_citadel_kit.py -- --plate
+    blender-aegis -b -t 1 -P tools/blender/build_citadel_kit.py
+    blender-aegis -b -t 1 -P tools/blender/build_citadel_kit.py -- --plate
     ./scripts/build-hull.sh citadel_kit
     ./scripts/build-hull.sh --check citadel_kit      # + controle de determinisme
 

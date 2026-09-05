@@ -1,6 +1,6 @@
 """Test du kit — depliage en ATLAS (`ak.atlas_unwrap`, `ADR-0046`/`ADR-0047`).
 
-    blender45 -t 1 -b -P tools/blender/test_atlas_unwrap.py
+    blender-aegis -t 1 -b -P tools/blender/test_atlas_unwrap.py
 
 Sort en code 0 si tout passe, 1 sinon. Aucun asset n'est publie.
 
@@ -12,7 +12,8 @@ dans une coque, il a deja trouve un defaut que la relecture n'avait pas vu — v
 ⚠️ CE QUE CE TEST GARDE VRAIMENT, c'est le DETERMINISME du depliage. `atlas_unwrap()`
 enveloppe `bpy.ops.uv.smart_project`, que le kit refusait par principe (docstring de
 `box_project_uv`). Le principe a ete remplace par une mesure — mais cette mesure vaut
-pour Blender 4.5.11 avec `-t 1`. Le jour ou l'une des deux conditions change, c'est ce
+pour Blender 5.2.1 avec `-t 1` (elle valait deja pour 4.5.11, et a survecu a la
+montee de version sans une modification). Le jour ou l'une des deux conditions change, c'est ce
 test qui doit rougir en premier, pas une coque livree six semaines plus tard.
 """
 from __future__ import annotations

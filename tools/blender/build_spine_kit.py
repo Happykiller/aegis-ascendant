@@ -1,7 +1,7 @@
 """build_spine_kit.py — le kit de nœud d'epine du Long Cortege (BRIEF-0094).
 
-    blender45 -b -P tools/blender/build_spine_kit.py
-    blender45 -b -P tools/blender/build_spine_kit.py -- --plate
+    blender-aegis -b -P tools/blender/build_spine_kit.py
+    blender-aegis -b -P tools/blender/build_spine_kit.py -- --plate
     ./scripts/build-hull.sh --check spine_kit        # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/spine_kit.glb` et, avec `--plate`, la

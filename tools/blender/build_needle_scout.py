@@ -1,6 +1,6 @@
 """build_needle_scout.py — coque 3D du Needle Scout, ennemi leger (BRIEF-0022).
 
-    blender45 -b -P tools/blender/build_needle_scout.py
+    blender-aegis -b -P tools/blender/build_needle_scout.py
 
 Produit `assets/imported/models/ships/needle_scout.glb`.
 

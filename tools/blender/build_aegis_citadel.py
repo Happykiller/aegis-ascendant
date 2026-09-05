@@ -1,6 +1,6 @@
 """build_aegis_citadel.py — coque 3D de l'Aegis Citadel, forteresse alliee.
 
-    blender45 -b -P tools/blender/build_aegis_citadel.py
+    blender-aegis -b -P tools/blender/build_aegis_citadel.py
 
 Produit `assets/imported/models/structures/aegis_citadel.glb`.
 

@@ -1,6 +1,6 @@
 """build_pale_leviathan.py — coque 3D du Pale Leviathan, boss final (BRIEF-0040).
 
-    ./scripts/build-hull.sh pale_leviathan        # JAMAIS un `blender45` nu : -t 1
+    ./scripts/build-hull.sh pale_leviathan        # JAMAIS un `blender-aegis` nu : -t 1
 
 Produit `assets/imported/models/bosses/pale_leviathan.glb`.
 

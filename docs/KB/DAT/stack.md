@@ -14,7 +14,7 @@ cette page. La colonne « épinglé où » existe pour qu'on aille corriger à l
 |---|---|---|
 | Moteur | **Godot 4.7-stable**, renderer **Forward+** | `scripts/bootstrap.sh` (`GODOT_VERSION`), `project.godot` (`config/features`) |
 | Langage | **GDScript typé** — le typage est une règle dure, pas un style | `docs/SPEC_AEGIS_ASCENDANT.md` §31 |
-| Blender (chaîne 3D) | **4.5.11**, invoqué `blender45` | `scripts/bootstrap-blender.sh` |
+| Blender (chaîne 3D) | **5.2.1 LTS**, invoqué `blender-aegis` | `scripts/bootstrap-blender.sh` |
 | Outils d'assets | Python 3 (`tools/*.py`) | `tools/` |
 | Binaire de jeu | Export **Windows Desktop x64** → `build/windows/AegisAscendant.exe` | `export_presets.cfg` |
 | Binaires versionnés | **Git LFS** (`*.png`, `*.wav`, `*.ogg`, `*.glb`, `*.blend`) | `.gitattributes` |

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap Blender 4.5 LTS (Linux x64) inside WSL, for the scripted 3D asset
+# Bootstrap Blender 5.2 LTS (Linux x64) inside WSL, for the scripted 3D asset
 # pipeline (ADR-0008). Verified against the official SHA256 sums.
 # Idempotent: safe to re-run; skips anything already installed.
 #
@@ -15,7 +15,12 @@ SUMS="blender-${BLENDER_VERSION}.sha256"
 
 CACHE_DIR="${HOME}/.cache/aegis-bootstrap"
 INSTALL_DIR="${HOME}/.local/opt/blender-${BLENDER_VERSION}"
-BIN_LINK="${HOME}/.local/bin/blender45"
+# ⚠️ NOM NEUTRE, ET C'EST DELIBERE (2026-09-05). L'alias s'appelait `blender-aegis`, colle a
+# la serie 4.5 : apres la montee en 5.2.1 il pointait sur un binaire dont il annoncait la
+# mauvaise version — le meme genre de mensonge silencieux que le cache de sommes du
+# bootstrap Godot. Un alias d'outillage ne porte pas de numero de version : c'est le
+# script qui l'epingle, et lui seul.
+BIN_LINK="${HOME}/.local/bin/blender-aegis"
 
 log()  { printf '[bootstrap-blender] %s\n' "$*"; }
 fail() { printf '[bootstrap-blender] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -72,4 +77,4 @@ if ! "${BIN_LINK}" -b --version >/dev/null 2>&1; then
 fi
 
 log "OK: $("${BIN_LINK}" -b --version | head -n1)"
-log "usage: blender45 -b -P tools/blender/build_<unit>.py"
+log "usage: blender-aegis -b -P tools/blender/build_<unit>.py"

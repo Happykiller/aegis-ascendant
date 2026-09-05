@@ -1,7 +1,7 @@
 """build_impact_debris.py — le bolide et son eclat (BRIEF-0086).
 
-    blender45 -b -P tools/blender/build_impact_debris.py
-    blender45 -b -P tools/blender/build_impact_debris.py -- --plate
+    blender-aegis -b -P tools/blender/build_impact_debris.py
+    blender-aegis -b -P tools/blender/build_impact_debris.py -- --plate
     ./scripts/build-hull.sh --check impact_debris     # + controle de determinisme
 
 Produit `assets/imported/models/vfx/bolide.glb` et `assets/imported/models/vfx/impact_shard.glb`

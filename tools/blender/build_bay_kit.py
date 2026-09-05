@@ -1,8 +1,8 @@
 """build_bay_kit.py — le kit de pont d'envol du Long Cortege (BRIEF-0091).
 
-    blender45 -b -P tools/blender/build_bay_kit.py
-    blender45 -b -P tools/blender/build_bay_kit.py -- --plate
-    blender45 -b -P tools/blender/build_bay_kit.py -- --doors-plate
+    blender-aegis -b -P tools/blender/build_bay_kit.py
+    blender-aegis -b -P tools/blender/build_bay_kit.py -- --plate
+    blender-aegis -b -P tools/blender/build_bay_kit.py -- --doors-plate
     ./scripts/build-hull.sh --check bay_kit          # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/bay_kit.glb`, avec `--plate` la

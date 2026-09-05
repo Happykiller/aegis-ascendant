@@ -1,6 +1,6 @@
 """build_choir_harvester.py — coque 3D du Choir Harvester, mini-boss (BRIEF-0039).
 
-    ./scripts/build-hull.sh choir_harvester        # JAMAIS un `blender45` nu : -t 1
+    ./scripts/build-hull.sh choir_harvester        # JAMAIS un `blender-aegis` nu : -t 1
 
 Produit `assets/imported/models/bosses/choir_harvester.glb`.
 

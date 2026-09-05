@@ -1,6 +1,6 @@
 """Test du kit — pieces mobiles exportees en nœuds separes (`ak.moving_part`).
 
-    blender45 -t 1 -b -P tools/blender/test_moving_parts.py
+    blender-aegis -t 1 -b -P tools/blender/test_moving_parts.py
 
 Sort en code 0 si tout passe, 1 sinon. Aucun asset n'est publie : le `.glb`
 part dans /tmp.

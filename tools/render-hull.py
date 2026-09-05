@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Rend une coque .glb en planche 4 vues, pour qu'on la REGARDE avant de l'intégrer.
 
-    blender45 -b -P tools/render-hull.py -- assets/imported/models/ships/needle_scout.glb
-    blender45 -b -P tools/render-hull.py -- .../specter_9.glb --out /tmp/specter.png
+    blender-aegis -b -P tools/render-hull.py -- assets/imported/models/ships/needle_scout.glb
+    blender-aegis -b -P tools/render-hull.py -- .../specter_9.glb --out /tmp/specter.png
 
 Pendant du tools/preview-svg.py, côté 3D. Le 2D avait son garde-fou depuis
 ADR-0006 (« un livrable de la forge n'est pas un asset validé tant qu'il n'a pas

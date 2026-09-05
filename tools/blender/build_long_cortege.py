@@ -1,7 +1,7 @@
 """build_long_cortege.py — la coque du Long Cortege, en cinq troncons (BRIEF-0089).
 
-    blender45 -b -P tools/blender/build_long_cortege.py
-    blender45 -b -P tools/blender/build_long_cortege.py -- --plate
+    blender-aegis -b -P tools/blender/build_long_cortege.py
+    blender-aegis -b -P tools/blender/build_long_cortege.py -- --plate
     ./scripts/build-hull.sh --check long_cortege      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/long_cortege.glb` et, avec `--plate`,

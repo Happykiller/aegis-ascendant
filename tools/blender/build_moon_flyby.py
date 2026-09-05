@@ -1,7 +1,7 @@
 """build_moon_flyby.py — le decor du survol de lune (BRIEF-0085).
 
-    blender45 -b -P tools/blender/build_moon_flyby.py
-    blender45 -b -P tools/blender/build_moon_flyby.py -- --plate
+    blender-aegis -b -P tools/blender/build_moon_flyby.py
+    blender-aegis -b -P tools/blender/build_moon_flyby.py -- --plate
     ./scripts/build-hull.sh --check moon_flyby      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/moon_flyby.glb` et, avec `--plate`, les

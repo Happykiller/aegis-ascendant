@@ -1,7 +1,7 @@
 """build_turret_kit.py — le kit d'affut de tourelle du Long Cortege (BRIEF-0093).
 
-    blender45 -b -P tools/blender/build_turret_kit.py
-    blender45 -b -P tools/blender/build_turret_kit.py -- --plate
+    blender-aegis -b -P tools/blender/build_turret_kit.py
+    blender-aegis -b -P tools/blender/build_turret_kit.py -- --plate
     ./scripts/build-hull.sh --check turret_kit       # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/turret_kit.glb` et, avec `--plate`,
@@ -1763,7 +1763,8 @@ def _print_report(report: dict) -> None:
     print("  piece. Repere local du marqueur `Turret_NN` (X lateral, Y haut, "
           "Z survol, +Z = proue).")
     # ⚠️ L'apostrophe sort de la f-string : une expression de f-string ne peut pas
-    # contenir d'antislash avant Python 3.12, et Blender 4.5 embarque 3.11.
+    # contenir d'antislash avant Python 3.12 ; Blender 4.5 embarquait 3.11, la 5.2
+    # embarque 3.13 — la contrainte est levee, la formulation reste valable.
     entete = "position d'assemblage"
     print(f"    {'piece':<22} {'parent':<10} {entete:<28} {'copies'}")
     plan = (

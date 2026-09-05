@@ -1,7 +1,7 @@
 """build_core_interior.py — l'interieur du noyau ouvert du Pale Leviathan (BRIEF-0082).
 
-    blender45 -b -P tools/blender/build_core_interior.py
-    blender45 -b -P tools/blender/build_core_interior.py -- --plate
+    blender-aegis -b -P tools/blender/build_core_interior.py
+    blender-aegis -b -P tools/blender/build_core_interior.py -- --plate
 
 Produit `assets/imported/models/bosses/core_interior.glb`, et — avec `--plate` —
 la planche de recette `docs/forge/output/BRIEF-0082-planche-quatre-vues.png`.

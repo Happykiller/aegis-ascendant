@@ -1,6 +1,6 @@
 """build_specter_9.py — coque 3D du Specter-9, chasseur du joueur.
 
-    ./scripts/build-hull.sh specter_9          (JAMAIS `blender45 -b -P` a la main :
+    ./scripts/build-hull.sh specter_9          (JAMAIS `blender-aegis -b -P` a la main :
     ./scripts/build-hull.sh --check specter_9   le script force `-t 1`, sans quoi les
                                                 tangentes divergent d'un run a l'autre)
 

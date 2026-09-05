@@ -1,6 +1,6 @@
 """build_null_maw.py — coque 3D du Null Maw, ennemi leger du Choeur Nul (BRIEF-0043).
 
-    blender45 -b -P tools/blender/build_null_maw.py
+    blender-aegis -b -P tools/blender/build_null_maw.py
 
 Produit `assets/imported/models/ships/null_maw.glb`.
 

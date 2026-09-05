@@ -6,7 +6,7 @@ Elle n'implemente **aucune** geometrie specifique a une coque : uniquement des
 outils generiques, la palette normative, les materiaux normalises, l'export
 glTF conforme a l'ADR-0008 et la validation de contrat.
 
-Blender 4.5 LTS, headless uniquement (`blender45 -b -P <script>`).
+Blender 5.2 LTS, headless uniquement (`blender-aegis -b -P <script>`).
 
 
 REPERE D'AUTEUR (ADR-0008)
@@ -90,7 +90,7 @@ STARBOARD = -1.0
 _AXIS_FIX = Matrix.Rotation(math.pi, 4, "Z")
 
 #: Conversion Z-up -> Y-up appliquee par l'exporteur glTF de Blender.
-#: (x, y, z) -> (x, z, -y). Constatee empiriquement sur Blender 4.5.11, pas
+#: (x, y, z) -> (x, z, -y). Constatee empiriquement sur Blender 4.5.11 puis 5.2.1, pas
 #: supposee : c'est elle qui invalide la phrase d'orientation de l'ADR-0008.
 _YUP = Matrix(
     ((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1))
@@ -1767,7 +1767,7 @@ def atlas_unwrap(
     (faces obliques, n-gons, tailles melangees) : idem.
 
     Ce qui rend cela vrai ici, et qui ne l'etait peut-etre pas quand la regle a ete
-    ecrite : la version de Blender est **epinglee** (4.5.11 LTS) et `-t 1` est **force**
+    ecrite : la version de Blender est **epinglee** (5.2.1 LTS) et `-t 1` est **force**
     par `scripts/build-hull.sh`. Le jour ou l'une des deux conditions tombe, la mesure
     est a refaire — pas la peine de rediscuter, il suffit de relancer `--check`.
 

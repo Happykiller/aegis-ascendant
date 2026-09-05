@@ -1,6 +1,6 @@
 """build_crescent_interceptor.py — coque 3D du Crescent Interceptor (BRIEF-0029).
 
-    blender45 -b -P tools/blender/build_crescent_interceptor.py
+    blender-aegis -b -P tools/blender/build_crescent_interceptor.py
 
 Produit `assets/imported/models/ships/crescent_interceptor.glb`.
 

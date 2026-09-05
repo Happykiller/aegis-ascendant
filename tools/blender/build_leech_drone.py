@@ -1,6 +1,6 @@
 """build_leech_drone.py — coque 3D du Leech Drone, chasseur d'accrochage (BRIEF-0044).
 
-    blender45 -b -P tools/blender/build_leech_drone.py
+    blender-aegis -b -P tools/blender/build_leech_drone.py
     ./scripts/build-hull.sh --check leech_drone       # + controle de determinisme
 
 Produit `assets/imported/models/ships/leech_drone.glb`.

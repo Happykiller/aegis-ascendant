@@ -1,6 +1,6 @@
 """build_citadel_beacon.py — balise flottante de l'Aegis Citadel (BRIEF-0032).
 
-    blender45 -b -P tools/blender/build_citadel_beacon.py
+    blender-aegis -b -P tools/blender/build_citadel_beacon.py
 
 Produit `assets/imported/models/structures/citadel_beacon.glb`.
 

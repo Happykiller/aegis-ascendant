@@ -1,6 +1,6 @@
 """build_citadel_turret.py — tourelle secondaire de l'Aegis Citadel (BRIEF-0032).
 
-    blender45 -b -P tools/blender/build_citadel_turret.py
+    blender-aegis -b -P tools/blender/build_citadel_turret.py
 
 Produit `assets/imported/models/structures/citadel_turret.glb`.
 
