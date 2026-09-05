@@ -1,0 +1,14 @@
+{
+  "glb_reimport": "OK",
+  "blender_version": "5.2.1 LTS",
+  "editable_speed_drivers": 44,
+  "sweep_degrees": 30,
+  "wingtip_span_low_m": 8.9,
+  "wingtip_span_high_m": 5.651,
+  "nozzle_exit_diameter_low_m": 1.4,
+  "nozzle_exit_diameter_high_m": 0.792,
+  "pylons_remain_forward": true,
+  "manual_speed_slider": "OK",
+  "exported_animation_clips": 1,
+  "max_transform_error": 4.76837158203125e-07
+}
