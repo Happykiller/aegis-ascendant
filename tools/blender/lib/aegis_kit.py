@@ -67,13 +67,15 @@ import random
 import shutil
 import struct
 import tempfile
+import time as _time
 from dataclasses import dataclass, field
 
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-VERSION = "1.2.0"   # 1.2.0 : tubes, verins, profil d'aile, UV cylindriques/par materiau, lecture .glb (BRIEF-0098)
+VERSION = "1.3.0"   # 1.3.0 : depliage en ATLAS (ilots disjoints, packes, recouvrement mesure) — ADR-0046/0047
+#                    1.2.0 : tubes, verins, profil d'aile, UV cylindriques/par materiau, lecture .glb (BRIEF-0098)
 
 # --------------------------------------------------------------------------
 # Repere d'auteur
@@ -1705,3 +1707,211 @@ def glb_primitives(path: str) -> list[dict]:
                 "indices": tris,
             })
     return out
+
+
+# ---------------------------------------------------------------------------
+# Depliage en ATLAS (ADR-0046, ADR-0047) — pour les cartes PEINTES
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AtlasReport:
+    """Ce qu'un depliage en atlas a produit. Mesure, jamais suppose."""
+
+    loops: int = 0
+    triangles: int = 0
+    #: Fraction du carre UV reellement occupee. Ce qui n'est pas occupe est du
+    #: texel paye et jamais lu — c'est le rendement du packing.
+    fill: float = 0.0
+    #: Texels couverts DEUX FOIS ou plus, sur la grille de sondage. Doit valoir 0 :
+    #: un atlas peint dont deux faces partagent un texel est impeignable.
+    overlap_texels: int = 0
+    #: Boucles UV tombees hors du carre [0, 1]. Doit valoir 0.
+    outside: int = 0
+    probe: int = 0
+    seconds: float = 0.0
+
+    def render(self) -> str:
+        return (
+            "atlas : %d boucles, %d triangles, remplissage %.1f %%, "
+            "recouvrement %d texels (sonde %d x %d), hors carre %d, %.1f s"
+            % (self.loops, self.triangles, self.fill * 100.0, self.overlap_texels,
+               self.probe, self.probe, self.outside, self.seconds)
+        )
+
+
+def atlas_unwrap(
+    objects: bpy.types.Object | list[bpy.types.Object],
+    *,
+    angle_limit_deg: float = 66.0,
+    margin: float = 0.0015,
+    probe: int = 1024,
+    min_fill: float = 0.30,
+) -> AtlasReport:
+    """Deplie en ATLAS : des ilots DISJOINTS, packes dans [0, 1], sur place.
+
+    ⚠️ CE N'EST PAS `box_project_uv()`, ET LES DEUX NE SERVENT PAS LA MEME CHOSE.
+    La projection en boite produit volontairement des ilots QUI SE RECOUVRENT :
+    c'est sans consequence pour une feuille repetable en niveaux de gris, ou seule
+    l'echelle compte. Une carte PEINTE, elle, donne un sens a chaque texel — un
+    matricule, une bande, une ligne de panneau ont une adresse. Deux faces qui
+    partagent un texel rendent la peinture impossible. D'ou cette fonction.
+
+    ⚠️ ELLE UTILISE `bpy.ops.uv.smart_project`, QUE LE KIT REFUSAIT PAR PRINCIPE.
+    La docstring de `box_project_uv()` disait : « son resultat bouge d'une version de
+    Blender a l'autre ». C'etait un argument de prudence, jamais mesure. Il l'a ete
+    le 2026-09-05, sur la coque reelle (`specter_9_c.glb`, 102 738 triangles,
+    308 214 boucles UV, 40 objets) : **deux executions rendent le meme sha256 des UV,
+    au bit pres**, en 0,3 seconde. Trois executions sur un maillage de test penible
+    (faces obliques, n-gons, tailles melangees) : idem.
+
+    Ce qui rend cela vrai ici, et qui ne l'etait peut-etre pas quand la regle a ete
+    ecrite : la version de Blender est **epinglee** (4.5.11 LTS) et `-t 1` est **force**
+    par `scripts/build-hull.sh`. Le jour ou l'une des deux conditions tombe, la mesure
+    est a refaire — pas la peine de rediscuter, il suffit de relancer `--check`.
+
+    `angle_limit_deg` : au-dela de cet angle entre deux faces, une couture est posee.
+    `margin` : marge entre ilots, en fraction du carre UV. A 2048 px, 0,002 fait 4 px —
+    de quoi encaisser le filtrage bilineaire et les mipmaps sans que deux ilots bavent
+    l'un sur l'autre.
+    `probe` : cote de la grille de sondage du recouvrement. 0 desactive la mesure.
+    `min_fill` : plancher de rendement. En dessous, on paie un atlas qu'on ne lit pas.
+
+    Les defauts viennent d'un balayage sur la coque reelle (2026-09-05, 102 738
+    triangles) — ce sont des mesures, pas des gouts :
+
+    | angle | marge  | remplissage | recouvrement |
+    |-------|--------|-------------|--------------|
+    | 45°   | 0,0015 | 39,0 %      | 0            |
+    | 66°   | 0,0015 | **54,2 %**  | 0            |
+    | 66°   | 0,0008 | 54,2 %      | 0            |
+    | 82°   | 0,0015 | —           | **2 texels** |
+
+    A 82°, `smart_project` produit des ilots assez etires pour se recouvrir vraiment :
+    le garde n'est donc pas decoratif, il a deja refuse une configuration. Descendre
+    la marge sous 0,0015 ne rapporte rien et rapproche les ilots pour rien.
+
+    Leve `ContractError` si un UV sort du carre, si deux faces se recouvrent, ou si le
+    remplissage passe sous le plancher — un atlas casse ne doit jamais partir en
+    silence, c'est la lecon des trois coques livrees sans aucun UV.
+    """
+    started = _time.time()
+    meshes = [objects] if isinstance(objects, bpy.types.Object) else list(objects)
+    meshes = [o for o in meshes if o.type == "MESH"]
+    if not meshes:
+        raise ContractError("atlas_unwrap : aucun objet maillage")
+
+    # Meme raison que dans box_project_uv : un quad gauche n'a pas de normale, donc
+    # pas de couture reproductible. On triangule d'abord.
+    for obj in meshes:
+        triangulate(obj)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in meshes:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    # ⚠️ `island_margin=0` : la marge se pose UNE FOIS, au packing. La passer aux deux
+    # etages la applique deux fois et fait chuter le rendement — mesure le 2026-09-05 :
+    # 17,4 %% de remplissage avec la marge en double, contre le chiffre du rapport ci-dessous
+    # avec une seule. Les defauts de `pack_islands` sont deja les bons (ilots concaves,
+    # rotation libre, mise a l'echelle) : on ne les surcharge pas.
+    bpy.ops.uv.smart_project(angle_limit=math.radians(angle_limit_deg), island_margin=0.0)
+    bpy.ops.uv.pack_islands(margin=margin)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    report = AtlasReport(probe=probe)
+    tris: list[tuple[tuple[float, float], ...]] = []
+    for obj in meshes:
+        layer = obj.data.uv_layers.active
+        if layer is None:
+            raise ContractError(f"atlas_unwrap : '{obj.name}' n'a pas de calque UV apres depliage")
+        uvs = [tuple(loop.vector) for loop in layer.uv]
+        report.loops += len(uvs)
+        for u, v in uvs:
+            if u < -1e-4 or u > 1.0 + 1e-4 or v < -1e-4 or v > 1.0 + 1e-4:
+                report.outside += 1
+        for poly in obj.data.polygons:
+            loops = list(poly.loop_indices)
+            for i in range(1, len(loops) - 1):
+                tris.append((uvs[loops[0]], uvs[loops[i]], uvs[loops[i + 1]]))
+    report.triangles = len(tris)
+    report.fill = sum(
+        abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) * 0.5
+        for a, b, c in tris
+    )
+    if probe > 0:
+        report.overlap_texels = _uv_overlap_texels(tris, probe)
+    report.seconds = _time.time() - started
+
+    if report.outside:
+        raise ContractError(
+            f"atlas_unwrap : {report.outside} boucles UV hors du carre [0, 1] — "
+            "le packing a deborde, la carte ne serait pas adressable"
+        )
+    if report.overlap_texels:
+        raise ContractError(
+            f"atlas_unwrap : {report.overlap_texels} texels couverts deux fois "
+            f"(sonde {probe}x{probe}) — deux faces partagent de la peinture"
+        )
+    if report.fill < min_fill:
+        raise ContractError(
+            f"atlas_unwrap : remplissage {report.fill * 100.0:.1f} % sous le plancher "
+            f"de {min_fill * 100.0:.0f} % — on paierait un atlas qu'on ne lit pas"
+        )
+    return report
+
+
+def _uv_overlap_texels(tris: list, side: int) -> int:
+    """Compte les texels couverts par DEUX triangles ou plus.
+
+    Rasterise chaque triangle dans sa boite englobante, par coordonnees
+    barycentriques. ⚠️ La leçon de `pratique-revue-asset` s'applique : un rastériseur
+    recopie ment. Celui-ci calcule de VRAIES barycentriques (le defaut mesure le
+    2026-08-25 rejetait le centre de gravite d'un triangle sur deux et amputait 40 %
+    des pixels d'une piece).
+
+    ⚠️ ET IL A MENTI A SON PREMIER ESSAI, DANS L'AUTRE SENS (2026-09-05). Version
+    naive, il rapportait 1 a 4 texels doubles sur 1 048 576 — sur un packing pourtant
+    sain. Cause : deux triangles ADJACENTS partagent une arete, et un centre de texel
+    tombant exactement dessus satisfait `w >= 0` des deux cotes. C'etait un departage
+    d'egalite, pas un recouvrement. Chaque triangle est donc RETRACTE d'un quart de
+    texel vers son centroide avant rasterisation : les contacts d'arete disparaissent,
+    les vrais recouvrements — qui sont des recouvrements d'AIRE — restent.
+    """
+    import numpy as np
+
+    shrink = 0.25 / side
+    counts = np.zeros((side, side), dtype=np.uint16)
+    for a, b, c in tris:
+        cx = (a[0] + b[0] + c[0]) / 3.0
+        cy = (a[1] + b[1] + c[1]) / 3.0
+        pulled = []
+        for px_, py_ in (a, b, c):
+            dx, dy = cx - px_, cy - py_
+            norm = math.hypot(dx, dy)
+            if norm <= shrink * 2.0:
+                pulled = []
+                break
+            pulled.append((px_ + dx * shrink / norm, py_ + dy * shrink / norm))
+        if not pulled:
+            continue  # triangle plus petit qu'un demi-texel : impeignable, donc ignore
+        a, b, c = pulled
+        x0 = max(int(math.floor(min(a[0], b[0], c[0]) * side)), 0)
+        x1 = min(int(math.ceil(max(a[0], b[0], c[0]) * side)) + 1, side)
+        y0 = max(int(math.floor(min(a[1], b[1], c[1]) * side)), 0)
+        y1 = min(int(math.ceil(max(a[1], b[1], c[1]) * side)) + 1, side)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        xs = (np.arange(x0, x1) + 0.5) / side
+        ys = (np.arange(y0, y1) + 0.5) / side
+        px, py = np.meshgrid(xs, ys)
+        d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1])
+        if abs(d) < 1e-12:
+            continue
+        w0 = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (py - c[1])) / d
+        w1 = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (py - c[1])) / d
+        inside = (w0 >= 0.0) & (w1 >= 0.0) & (w0 + w1 <= 1.0)
+        counts[y0:y1, x0:x1] += inside.astype(np.uint16)
+    return int(np.count_nonzero(counts > 1))
