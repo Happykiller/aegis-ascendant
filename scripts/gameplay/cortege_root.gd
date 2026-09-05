@@ -40,6 +40,11 @@ const REPORT_DELAY := 7.5
 ## monte SOUS UN TRONÇON de la coque livrée, donc après `reveal()`, comme les points d'ancrage.
 ## Un nœud posé dans le `.tscn` resterait immobile pendant que le vaisseau défile sous lui.
 var _citadel: CortegeCitadel = null
+## La progression musicale due au TRONÇON seul, et la montée que le verrou y ajoute.
+var _section_progress: float = 0.0
+var _music_lift: float = 0.0
+## Dernière valeur réellement poussée ; -1 tant que rien ne l'a été.
+var _music_pushed: float = -1.0
 
 ## L'œil de la caméra de jeu. ⚠️ TENU PAR LE NIVEAU PARCE QUE LUI EST DANS L'ARBRE : les pièces
 ## posées hors du plan de jeu se touchent là où elles se PROJETTENT (`aim_point_of`), et ce
@@ -269,6 +274,9 @@ func _tick_citadel(delta: float) -> void:
 	var eye := _eye.global_position if is_instance_valid(_eye) else Vector3.ZERO
 	_citadel.tick(delta, _flyby.travelled(), eye)
 	_flyby.scroll_speed = TUNING.scroll_speed * _citadel.scroll_factor()
+	# LOT 5 — la respiration (§18). Le verrou dit ce qu'il veut, le niveau l'écrit.
+	_music_lift = _citadel.music_lift()
+	_apply_music()
 
 ## Refait les obstacles du plan et les donne au chasseur.
 ##
@@ -372,9 +380,28 @@ func _on_game_over() -> void:
 ## déjà réglée du niveau 1 (Launch → Skirmish → Fleet Battle) sans ajouter un état à
 ## `MusicContext.LevelPhase` — dont `test_music_director.gd` garde les valeurs une par une.
 func _push_music(section: int) -> void:
+	var derniere := maxi(TUNING.section_count - 1, 1)
+	_section_progress = clampf(float(section) / float(derniere), 0.0, 1.0)
+	_apply_music()
+
+## Compose la progression SPATIALE du survol et la montée que le verrou demande.
+##
+## ⚠️ LA COMPOSITION EST MONOTONE, ET C'EST CE QUI LA REND SÛRE : à `lift = 0` on retrouve
+## exactement la valeur du tronçon, à `lift = 1` on atteint 1,0. La musique ne peut donc jamais
+## DESCENDRE sous ce que la position dans le vaisseau justifie — un verrou qui apaiserait la
+## bande-son serait pire que pas de verrou.
+##
+## ⚠️ ET ON NE POUSSE QUE SI ÇA BOUGE. `_apply_music()` est appelée à chaque image ; le
+## `MusicDirector` fait des fondus de plusieurs secondes et ne demande pas d'être réveillé
+## soixante fois par seconde. Le seuil est plus fin que le plus serré des deux paliers de
+## `MusicContext` (0,25 et 0,70), donc aucune transition ne peut être manquée.
+func _apply_music() -> void:
 	if _runtime == null:
 		return
-	var derniere := maxi(TUNING.section_count - 1, 1)
+	var cible := _section_progress + (1.0 - _section_progress) * _music_lift
+	if _music_pushed >= 0.0 and absf(cible - _music_pushed) < 0.01:
+		return
+	_music_pushed = cible
 	_runtime.music.level_phase = MusicContext.LevelPhase.FIGHTER_WAVES
-	_runtime.music.wave_progress = clampf(float(section) / float(derniere), 0.0, 1.0)
+	_runtime.music.wave_progress = cible
 	_runtime.push_music()

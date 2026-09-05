@@ -1047,6 +1047,27 @@ func scroll_factor() -> float:
 	return CortegeTuning.brake_factor(_wall_y - tuning.citadel_wall_plane_y,
 		tuning.citadel_brake_span)
 
+## La montée musicale que le verrou DEMANDE, de 0 (croisière) à 1 (verrou tenu).
+##
+## ⚠️ IL LA DEMANDE, IL NE L'ÉCRIT PAS — même raison que `scroll_factor()` juste au-dessus :
+## deux écrivains sur la même valeur, et le jour où l'un se tait, la musique reste là où
+## l'autre l'a laissée.
+##
+## ⚠️ ET C'EST EXACTEMENT L'INVERSE DE LA VITESSE, PAS UNE COURBE DE PLUS. Le survol fait
+## monter sa musique par TRONÇON — sa seule progression est spatiale (`cortege_root._push_music`).
+## Or le verrou arrête le défilement : pendant ses quarante secondes, le tronçon ne change pas,
+## et le sabotage se jouait donc sur le lit sonore de la croisière. Le §18 demande le contraire —
+## une tension qui monte, puis « un retour progressif de la musique ».
+##
+## Le facteur de vitesse porte déjà cette forme, et il est déjà mesuré et testé : il descend
+## pendant le freinage, vaut zéro sous verrou, et remonte sur `citadel_resume_time` après
+## l'ouverture. En prendre le complément donne la montée ET la redescente sans ajouter un seul
+## réglage, un seul chronomètre, ni un seul état à tenir en cohérence. Le vaisseau ralentit, la
+## musique monte ; il repart, elle redescend.
+func music_lift() -> float:
+	return 1.0 - scroll_factor()
+
+
 ## Verse la forme qui FERME LA ROUTE. ⚠️ ELLE EXISTE DANS TOUS LES ÉTATS SAUF `CLEARED`, et pas
 ## seulement pendant le combat : un mur qui n'apparaîtrait qu'à l'arrêt laisserait le joueur se
 ## poster derrière lui pendant le freinage, puis se retrouver du mauvais côté sans avoir rien

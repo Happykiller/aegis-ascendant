@@ -1126,3 +1126,55 @@ func test_the_retraction_chain_holds_at_both_ends() -> void:
 	assert_true(bout - ouvert < 0.20,
 		"et il n'en reste pas loin : %.2f m de marge, sinon la passe serait plus etroite qu'elle ne peut"
 			% (bout - ouvert))
+
+# --- LOT 5 : la respiration (§18) ----------------------------------------------
+
+## ⚠️ LE VERROU ARRETE LE DEFILEMENT, ET LA MUSIQUE DU SURVOL MONTE PAR TRONCON. Pendant les
+## quarante secondes du sabotage le troncon ne change donc pas : le combat se jouait sur le lit
+## sonore de la croisiere. `music_lift()` est ce qui manque, et il vaut exactement le complement
+## du facteur de vitesse — le vaisseau ralentit, la musique monte.
+func test_the_music_lift_is_exactly_the_inverse_of_the_scroll() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	# En approche lointaine : plein defilement, aucune montee.
+	citadel.tick(0.016, lock - 400.0, eye)
+	assert_almost_eq(citadel.scroll_factor(), 1.0, 1e-4, "au large, le survol file")
+	assert_almost_eq(citadel.music_lift(), 0.0, 1e-4, "et la musique ne monte pas")
+	# Sous verrou : arret complet, montee pleine.
+	citadel.tick(0.016, lock, eye)
+	assert_almost_eq(citadel.scroll_factor(), 0.0, 1e-4, "sous verrou, le survol est arrete")
+	assert_almost_eq(citadel.music_lift(), 1.0, 1e-4, "et la musique est au plus haut")
+
+## Le §18 demande « un retour PROGRESSIF de la musique ». Il ne se code pas : il est deja dans la
+## reprise du defilement, et le complement le rend gratuitement.
+func test_the_music_comes_back_down_while_the_flyby_resumes() -> void:
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	var citadel := _mounted()
+	citadel.tick(0.016, lock, eye)
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	citadel.tick(10.0, lock, eye)
+	citadel.tick(10.0, lock, eye)
+	assert_eq(citadel.state_name(), "CLEARED", "la route est praticable")
+	var moitie := TUNING.citadel_resume_time * 0.5
+	citadel.tick(moitie, lock, eye)
+	var mi_chemin := citadel.music_lift()
+	assert_true(mi_chemin > 0.05 and mi_chemin < 0.95,
+		"a mi-reprise la musique est en train de redescendre (%.2f)" % mi_chemin)
+	citadel.tick(TUNING.citadel_resume_time, lock, eye)
+	assert_almost_eq(citadel.music_lift(), 0.0, 1e-4, "reprise finie, la musique est revenue")
+
+## ⚠️ ET ELLE NE DESCEND JAMAIS SOUS CE QUE LA POSITION JUSTIFIE. La composition du niveau est
+## `troncon + (1 - troncon) x montee` : monotone, donc un verrou ne peut pas APAISER la
+## bande-son. C'est la propriete qui rend la composition sure, et elle se verifie ici plutot que
+## de se lire dans un commentaire.
+func test_the_composition_never_lowers_the_section_progress() -> void:
+	for troncon: float in [0.0, 0.25, 0.5, 0.75, 1.0]:
+		for montee: float in [0.0, 0.3, 1.0]:
+			var compose: float = troncon + (1.0 - troncon) * montee
+			assert_true(compose >= troncon - 1e-6,
+				"troncon %.2f + montee %.2f = %.2f, jamais moins" % [troncon, montee, compose])
+			assert_true(compose <= 1.0 + 1e-6, "et jamais plus de 1")
