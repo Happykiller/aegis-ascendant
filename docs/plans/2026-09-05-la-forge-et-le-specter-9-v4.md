@@ -44,6 +44,18 @@ Facteur d'échelle : **2,46 / 12,6 = 0,19524 m par mètre-planche**.
 **La silhouette de la planche tient dans le contrat de gameplay sans le toucher.** Il n'existe donc
 aucun argument technique pour s'en écarter — c'était le dernier prétexte.
 
+## Ce qui a été mesuré, et ce que ça a coûté
+
+| Lot | Résultat |
+|---|---|
+| **Retrait du filtre** | ✅ **Gain majeur.** Niveaux distincts par canal ×5 à ×7, luminance de coque +7,2 % (bestiaire) et +14 % (combat), écrêtage 3,6 % → 0,1 %, GPU bestiaire −68 % sur la borne basse. Lisibilité des tirs : empreinte chromatique +11 % (cyan) et +24 % (corail) — aucune régression. |
+| **Réflexions d'environnement** | ❌ **Négatif, écarté.** Deux passes, effet monotone dans les deux sens : le ciel aplatit la coque (variance −0,76 %) sans produire une seule haute lumière (p99 immobile sur trois builds). Un dégradé procédural lisse ne fabrique pas de modelé. Détail dans `ADR-0045`. |
+
+**La leçon d'ordonnancement** : les deux lots les moins chers ont donné l'un tout, l'autre rien. Le
+« plastique » ne venait pas de l'éclairage — il vient de ce qu'il n'y a **rien à voir** sur la
+surface : pas de ligne de panneau peinte, pas d'usure, pas de livrée. C'est le lot d'atlas qui
+porte le sujet, et il n'est plus contournable.
+
 ## Ordre des lots
 
 Le v4 est le **test** de la nouvelle forge, pas son point de départ. Le construire avant les

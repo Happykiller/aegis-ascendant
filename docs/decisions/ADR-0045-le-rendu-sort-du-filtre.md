@@ -135,6 +135,44 @@ rendu en jeu ») et §13 (les planches sont « des références d'intention, non
 reproduire ») sont amendés : les planches redeviennent **une cible de fidélité de silhouette et de
 finition**, dans la limite de l'originalité et de la lisibilité.
 
+## Une piste explorée, mesurée, et écartée : les réflexions d'environnement
+
+Les deux `Environment` ont `ambient_light_source = COLOR` et **aucun ciel**. En Forward+, un
+matériau métallique réfléchit son environnement ; sans environnement, il ne réfléchit rien. Le kit
+donne `metallic 0,85` à `AA_Trim` et `0,75` à `AA_Greeble` : l'hypothèse — sérieuse — était que ces
+deux matériaux rendaient en aplat gris faute d'avoir quoi que ce soit à réfléchir, et que c'était
+une cause du « plastique ».
+
+Testée en deux passes, avec un ciel de réflexion non affiché (`background_mode` laissé sur couleur
+unie, `reflected_light_source = SKY`), à énergie croissante. **Le fond n'a pas bougé d'un
+millième** aux deux passes : le câblage était juste, ce n'est pas un raté d'implémentation.
+
+| Ciel (canal max) | Variance locale σ7×7 sur la coque | p99 de luminance | Luminance moyenne |
+|---|---|---|---|
+| aucun | 20,922 | 244,0 | référence |
+| 0,235 | 20,896 (**−0,12 %**) | 244,0 | +0,23 % |
+| 0,706 | 20,764 (**−0,76 %**) | 244,0 | +1,26 % |
+
+Plancher de bruit mesuré sur deux captures du **même** build : ±0,13 % sur la variance, p99
+strictement immobile.
+
+**Résultat : négatif, et monotone dans les deux sens.** Tripler l'énergie du ciel triple le voile
+**et** aggrave l'aplatissement. Le 99e percentile n'a pas bougé d'un niveau sur trois builds, alors
+que la coque avait de la marge (0,12 % de pixels à 254+) : le ciel avait la place de produire une
+haute lumière, il n'en a produit aucune. La stratification par tranche le dit franchement — le gain
+culmine entre 80 et 140 de luminance et s'**inverse** au-dessus de 180. C'est un relèvement
+d'ombres, pas un spéculaire.
+
+**La cause, et c'est elle qu'il faut retenir** : un `ProceduralSkyMaterial` est un dégradé **lisse**.
+Il n'a aucune fréquence spatiale haute. Il ne peut donc pas produire de détail de réflexion, quelle
+que soit son énergie et quelle que soit la rugosité du matériau — monter son énergie ne crée pas de
+structure, ça verse de la lumière ambiante par un chemin détourné. Et ce +1 % s'obtient
+gratuitement avec `ambient_light_energy`, sans ressource, sans cubemap de radiance.
+
+Le ciel et `reflected_light_source` sont donc **retirés**. Si le modelé spéculaire redevient un
+objectif, il faudra changer de levier : une lumière au spéculaire marqué accordée à la rugosité du
+kit, ou un vrai panorama à haute fréquence — pas un dégradé procédural.
+
 ## Ce qui ne change pas
 
 - **La lisibilité prime toujours** (`SPEC §0.1`, `DA §3.1`). Une coque magnifique qui noie un
