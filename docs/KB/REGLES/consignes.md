@@ -2,7 +2,7 @@
 titre: Consignes de l'opérateur — nées d'une correction
 type: regle
 statut: actif
-maj: 2026-08-28
+maj: 2026-09-05
 ---
 
 # Consignes
@@ -75,6 +75,26 @@ Les identifiants de code et les termes techniques gardent leur forme d'origine.
 > d'hôte) vivent dans la mémoire auto-rappelée, aujourd'hui **vide** pour ce projet — voir la
 > question ouverte de [`../MOTEUR.md`](../MOTEUR.md) sur les trois mémoires restées à l'ancien
 > chemin `-home-admin-sandbox-macross`.
+
+## Poser une question dans SES mots, jamais dans les miens (2026-09-05)
+
+Deux questions posées d'affilée en fin de partie, et **aucune des deux comprise** :
+
+> « Les trois lourdes font-elles un **événement** ? » → « *je ne sais pas ce que tu veux dire,
+> je ne comprends pas* »
+> « Le violet est-il **tenable** ? » → « *je ne sais pas ce que c'est que le violet qui est
+> tenable* »
+
+Les deux mots venaient de mon vocabulaire de conception, pas du sien. Le coût n'est pas
+l'incompréhension — c'est que **le retour attendu n'est jamais arrivé** : l'opérateur a répondu à
+côté sur les deux points, et il a fallu reposer les questions en clair au tour suivant.
+
+- Une question sur un rendu se pose avec ce qu'on VOIT : « est-ce qu'on voit arriver une grosse
+  tourelle et qu'on se dit qu'il faut s'en occuper ? », pas « fait-elle un événement ».
+- Un jugement esthétique se demande sur la chose, pas sur son critère : « les plaques violettes
+  sont-elles trop voyantes ? », pas « le violet est-il tenable ».
+- Et quand une réponse dit « je ne comprends pas », **la reformuler tout de suite** : c'est un
+  retour perdu, pas un malentendu bénin.
 
 ## Débogage et diagnostic (2026-08-28)
 

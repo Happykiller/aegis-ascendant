@@ -45,6 +45,12 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   l'écran — et le biais gonfle l'écart dans le sens qu'on veut voir. Mesurer à **60 Hz** quand on
   compare des configurations.
   ⛔ **Un témoin se PROUVE** : `md5sum build/windows/*.pck` avant/après, ils doivent DIFFÉRER. `export-win.sh` passe par `check.sh` — un témoin qui casse la porte n'est jamais construit, et `deploy-win.sh` rejoue l'exe précédent **sans un mot**. Deux relevés identiques au dixième sur une démo déterministe, c'est le même binaire, pas une absence d'effet (vécu le 28/08).
+- [Décider quoi faire d'un modèle 3D poussé](howto-integrer-un-modele-tiers.md) — les livraisons
+  de `resources/gpt_models/` ont toutes le même habillage et recouvrent **deux régimes opposés** :
+  un vrai générateur (qui reproduit sa livraison **au bit près** sur notre Blender) ou un simple
+  diff (qui ouvre un `.blend` absent). Une commande tranche, et elle change tout le plan : porter
+  la RECETTE dans notre kit, ou versionner la source (`ADR-0048`). ⚠️ Le rejeu ne dit rien de ce
+  qui compte ensuite — si ça tient dans la coque, et si ça se lit dans NOTRE moteur.
 - [Garder les coques 3D déterministes](howto-determinisme-des-coques.md) — l'invariant « deux
   exécutions, un `.glb` byte-identique » (ADR-0008) **était faux** depuis qu'ADR-0011 exporte les
   tangentes : mikktspace somme dans un ordre dépendant du **nombre de threads**. Passer par
@@ -149,6 +155,13 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   quand deux sources décrivent la même position, **aucun test par source ne suffit** : deux relais
   se sont retrouvés à des dizaines de mètres de leur place sous 850 tests verts, dont un écrit
   *précisément* pour les défauts de miroir. Il gardait une moitié.
+- [Une cote se lit sur l'asset livré](pratique-la-cote-vient-de-l-asset.md) — trois frontières où
+  un nombre juste devient faux **sans une erreur** : la table de forge donne l'INTENTION quand le
+  marqueur donne la POSITION (jusqu'à 2,30 m d'écart, quatre emplacements hors pont) ; une reforge
+  périme les constantes d'assemblage du moteur (onze d'un coup) ; et un harnais qui compose des
+  cotes **sans appliquer le facteur d'échelle** mesure toujours la même pièce — il est resté vert
+  pendant qu'une tourelle passait 0,75 m au-dessus du plan de vol. Ce sont des RECOPIES, pas des
+  appels : aucune ne lève d'erreur.
 - [Un test vert peut être mort](pratique-un-test-vert-peut-etre-mort.md) — **GDScript n'a pas
   d'exception** : sur un appel invalide il journalise `SCRIPT ERROR` et **abandonne la méthode**.
   Le tableau des échecs reste vide, et le harnais annonce `[PASS]`. Deux gardes de

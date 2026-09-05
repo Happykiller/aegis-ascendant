@@ -469,3 +469,25 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
     module que 0,83. Sa chaîne de texture était pourtant juste **à 1 % près**. Remonté au contrat
     de texture : `readability_requirements` doit raisonner en **contraste**, pas en pixels.
     Au passage, **29 des 50 cartes 3D du dépôt sont importées sans mipmaps**.
+
+## 2026-09-05 — les tourelles du Long Cortège, et trois frontières où une cote devient fausse
+
+- **Un modèle tiers a été REJOUÉ avant d'être intégré**, et ça a changé tout le plan : son
+  générateur reproduit sa livraison **au bit près** sur notre Blender épinglé. Ce n'était donc ni
+  une boîte noire ni un diff — on a porté ses RECETTES dans notre kit (`BRIEF-0100`) plutôt que
+  de copier son `.glb`, qui débordait de la coque et lisait comme une autre faction.
+  Procédure : [`howto-integrer-un-modele-tiers`](../../.claude/resources/howto-integrer-un-modele-tiers.md).
+- **Le jeu n'avait pas de tourelle lourde** : la plus grosse faisait 5,2 × 1,9 m contre les
+  10,0 × 4,2 m de la planche. Ce qu'on appelait `HEAVY` était la STANDARD. Trois classes désormais,
+  et l'échelle de la lourde est bornée par le **plafond de vol**, pas par l'emprise au sol.
+- ⚠️ **Trois frontières où un nombre juste devient faux sans une erreur** — la table de forge
+  contre le marqueur posé (2,30 m d'écart), les onze constantes d'assemblage périmées par une
+  reforge, et un harnais qui compose des cotes sans appliquer le facteur d'échelle. Aucune n'est
+  un appel de fonction : ce sont des recopies.
+  [`pratique-la-cote-vient-de-l-asset`](../../.claude/resources/pratique-la-cote-vient-de-l-asset.md).
+- **Une règle de niveau a été renversée par l'opérateur** : la défense légère passe de sept
+  grappes compactes à un semis de 19 pièces sur 12 installations. La règle précédente était née
+  d'une capture et avait raison contre le défaut de son époque ; le socle a grossi et la grappe
+  est devenue un tas. Remplacée avec sa trace, son pourquoi et son test inverse.
+- **Deux questions posées en jargon n'ont rien rapporté** : le retour attendu n'est pas arrivé et
+  il a fallu les reposer en clair. Consigne dans [`REGLES/consignes.md`](REGLES/consignes.md).
