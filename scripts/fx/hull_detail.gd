@@ -41,9 +41,7 @@ const DEFAULT_SET: HullDetailSet = preload("res://resources/player/hull_detail_d
 ## instancie). Une coque absente d'ici recoit le jeu partage. ⚠️ La cle est le nom
 ## de fichier, pas le chemin complet : une coque montee via une scene d'ajustement
 ## (`specter_9_b.tscn`) garde son .glb comme racine et c'est lui qu'on lit.
-const SETS: Dictionary = {
-	"specter_9_c.glb": preload("res://resources/player/hull_detail_specter_9_c.tres"),
-}
+const SETS: Dictionary = {}
 
 ## Materiaux qui recoivent le detail. Le verre (fenetre lisse) et l'emissif
 ## (lueur de tuyere) en sont EXCLUS : une carte de plaques n'a aucun sens sur eux,

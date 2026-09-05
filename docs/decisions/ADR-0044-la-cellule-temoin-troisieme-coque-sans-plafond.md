@@ -1,6 +1,34 @@
 # ADR-0044 — La cellule-témoin : une troisième coque du Specter-9, **sans plafond de triangles**
 
-- **Statut** : accepté
+> ## ⛔ ANNULÉ PAR L'OPÉRATEUR — 2026-09-05
+>
+> « *c'est très moche. Autant sur la forme que sur les textures* […] *on va annuler cette
+> version. C'est un échec. Donc, on ne garde que les deux premières versions du vaisseau.* »
+>
+> **La coque `specter_9_c` (Specter-9 Talvern) est retirée du jeu et du dépôt** : le `.glb`,
+> son script de forge, sa fiche de bestiaire, son jeu de textures et son atlas. Le jeu revient
+> à deux coques, `specter_9` et `specter_9_b`.
+>
+> Le verdict porte sur **les deux axes à la fois** — la silhouette et la matière. Ce n'est donc
+> pas un défaut d'exécution à corriger : c'est le résultat qui est refusé.
+>
+> **Ce qui survit, et pourquoi.** L'outillage bâti autour d'elle n'est pas annulé, parce qu'il
+> ne lui appartenait pas :
+> - `atlas_unwrap()` et la cuisson d'atlas (`ADR-0046`, `ADR-0047`) — c'est la seule voie vers
+>   une livrée peinte, et elle reste demandée ;
+> - les familles de pièces mobiles de `ShipFlight` — optionnelles par nom, elles ne coûtent rien
+>   aux deux coques restantes et serviront la suivante ;
+> - la levée du filtre rétro (`ADR-0045`), sans rapport avec cette coque.
+>
+> **Ce qui redevient sans objet** : la levée de plafond de triangles n'a plus de bénéficiaire ;
+> le seuil des 12 ms sur Quadro T1000 était déjà remplacé par `ADR-0045`. Les demandes de
+> texture `TEX-0017` à `TEX-0019` sont caduques et n'ont jamais été commandées.
+>
+> L'ADR reste au dépôt : il porte le *pourquoi* d'une tentative et son verdict, ce qui vaut
+> mieux qu'un silence. `docs/forge/briefs/BRIEF-0098-*` et son rapport restent également, sans
+> leurs planches — elles rendaient la coque retirée.
+
+- **Statut** : annulé (2026-09-05) — accepté le 2026-09-04
 - **Date** : 2026-09-04
 - **Décision** : opérateur — « *je veux le plus beau que tu puisses réaliser, sans aucune
   restriction* »

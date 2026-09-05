@@ -44,11 +44,23 @@ Facteur d'échelle : **2,46 / 12,6 = 0,19524 m par mètre-planche**.
 **La silhouette de la planche tient dans le contrat de gameplay sans le toucher.** Il n'existe donc
 aucun argument technique pour s'en écarter — c'était le dernier prétexte.
 
+## ⛔ La v3 est annulée (2026-09-05)
+
+L'opérateur, après avoir vu la coque peinte en jeu : « *c'est très moche. Autant sur la forme
+que sur les textures* […] *c'est un échec* ». `specter_9_c` est retirée du dépôt ; le jeu
+revient à deux coques. Voir `ADR-0044`, annulé en tête.
+
+Le verdict porte sur **la forme ET la matière**. Il tranche donc aussi une question que ce
+plan laissait ouverte : le micro-contraste que l'atlas devait apporter ne s'est pas mesuré
+(σ 7×7 inchangée face à l'état d'avant atlas), et l'œil confirme la mesure. **L'atlas seul ne
+suffit pas à faire un beau vaisseau** — il rend la livrée possible, il ne dessine pas la coque.
+
 ## Ce qui a été mesuré, et ce que ça a coûté
 
 | Lot | Résultat |
 |---|---|
 | **Retrait du filtre** | ✅ **Gain majeur.** Niveaux distincts par canal ×5 à ×7, luminance de coque +7,2 % (bestiaire) et +14 % (combat), écrêtage 3,6 % → 0,1 %, GPU bestiaire −68 % sur la borne basse. Lisibilité des tirs : empreinte chromatique +11 % (cyan) et +24 % (corail) — aucune régression. |
+| **Atlas peint** | ⚠️ **Mécanisme acquis, résultat refusé.** La chaîne fonctionne de bout en bout et deux vrais défauts ont été trouvés et corrigés (espace de couleur linéaire→sRGB, rainure comptée deux fois). Mais la variance locale n'a jamais monté, et l'opérateur a refusé le rendu. L'outillage survit, la coque non. |
 | **Réflexions d'environnement** | ❌ **Négatif, écarté.** Deux passes, effet monotone dans les deux sens : le ciel aplatit la coque (variance −0,76 %) sans produire une seule haute lumière (p99 immobile sur trois builds). Un dégradé procédural lisse ne fabrique pas de modelé. Détail dans `ADR-0045`. |
 
 **La leçon d'ordonnancement** : les deux lots les moins chers ont donné l'un tout, l'autre rien. Le
