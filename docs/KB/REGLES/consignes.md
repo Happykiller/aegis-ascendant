@@ -12,6 +12,14 @@ tant que personne ne la lève.
 
 ## Sur la conduite du travail
 
+- **Une planche fournie par l'opérateur s'ARCHIVE dans le dépôt, tout de suite.** Consigne donnée
+  le 2026-09-05 : « quand je te donne des planches, des concepts art, il faut systématiquement que
+  tu les sauvegardes dans le dossier qui va bien ». Un chemin `~/Downloads` n'existe que sur une
+  machine et disparaît ; une planche non versionnée ne peut pas servir de **cible de fidélité**, ni
+  être comparée à un rendu six mois plus tard. Destination : `assets/reference/concepts/` (nos
+  planches) — jamais `inspiration/`, réservé aux planches tierces, la frontière existe pour rendre
+  une purge IP possible. Nommer avec la date, ajouter la ligne de provenance, LFS.
+
 - **Demander une texture doit être un RÉFLEXE, pas une option.** L'opérateur a dû le dire :
   « si tu as besoin de texture pour les murs demande, rappelle-toi que cela doit être un
   réflexe » (2026-08-27). Un volume neuf qui rend un aplat de couleur n'est pas fini — il lui
