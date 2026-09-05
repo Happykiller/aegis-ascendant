@@ -200,3 +200,35 @@ Un chiffre de perf n'est comparable qu'à un chiffre **du même poste**. Le mêm
 prochain relevé se lit comme un effondrement, et on part chasser une régression matérielle.
 Corollaire : le budget 60 Hz (16,7 ms) est tenu sur le portable avec ~28 % de marge, mais le
 **144 Hz (6,9 ms) y est hors d'atteinte** — ne pas y valider une cible de framerate haute.
+
+## ⛔ Le `settings.cfg` de la machine de test décide de ce que tu mesures (2026-09-05)
+
+Le chantier `ADR-0045` devait prouver qu'un filtre de pixelisation écrasait l'image. La mesure de
+taille de bloc est sortie **indécidable** : ~1,00 des deux côtés, sur quatre régions, avec un
+détecteur pourtant validé sur témoin synthétique (grille dure 2 px → 0,000 ; image nette → 0,995).
+
+Cause : `%APPDATA%/Godot/app_userdata/Aegis Ascendant/settings.cfg` portait `pixelation=false`
+**depuis le 30/08**. La ligne de base a donc été relevée grille déjà éteinte. Les 2 px attendus
+n'ont jamais été dans les images — ni dans celles-là, ni dans aucune capture prise sur cette
+machine depuis cinq jours.
+
+**La règle** : avant toute mesure comparative, **lire le fichier de réglages de la machine de
+test** et l'énoncer avec le chiffre, au même titre que le modèle de GPU. Un réglage persisté est
+un état caché du système sous test : il ne se voit ni dans le dépôt, ni dans le journal, ni dans
+la capture.
+
+Et le corollaire qui fait mal : **toute comparaison « avec/sans » d'un réglage que le joueur peut
+persister est fausse tant qu'on n'a pas vérifié dans quel état il était.** Ici, cinq jours de
+captures ont été jugées « avec la grille » alors qu'elles étaient sans.
+
+## Deux impressions visuelles réfutées par la mesure, le même jour
+
+À la même occasion, deux verdicts portés à l'œil sur une capture 1:1 se sont révélés **faux** :
+
+| Impression | Mesure |
+|---|---|
+| « le blanc du fuselage est trop chaud, proche de l'écrêtage » | l'écrêtage à 255 est **tombé** de 3,6 % à 0,1 % — le tonemap récupérait ce que l'ancienne chaîne brûlait |
+| « les projectiles ont pâli » | ils sont **plus clairs et plus saturés**, empreinte chromatique +11 % (cyan) et +24 % (corail) ; c'est le FOND qui monte plus vite, pas le tir qui baisse |
+
+Les deux impressions étaient plausibles, argumentées, et fausses. C'est exactement ce que
+`pratique-juger-une-image-en-la-mesurant.md` dit — et il a fallu se faire prendre pour le croire.

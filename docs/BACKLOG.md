@@ -36,6 +36,23 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Ouvert par le retrait du filtre (ADR-0045, 2026-09-05)
+
+- [ ] **La rotation de la coque au bestiaire suit le TEMPS RÉEL** — `codex_screen.gd` fait
+      `_yaw_angle += AUTO_YAW_RATE * delta` : la pose à l'image N dépend de la cadence de la
+      machine. Les six captures du chantier se sont superposées, donc le défaut ne s'est pas
+      manifesté, mais **tout différentiel avant/après pris au bestiaire est un piège latent** :
+      deux poses différentes se compareraient comme deux rendus différents. Un compteur d'images
+      plutôt qu'un `delta` réglerait la question pour toutes les mesures futures.
+
+- [x] **Un réglage joueur persisté faussait les mesures depuis le 30/08.** Le `settings.cfg`
+      du profil Windows portait `pixelation=false`. Or le nœud retiré n'éteignait pas la couche :
+      il portait la grille à la taille réelle du viewport. **Toute la ligne de base du 2026-09-05
+      a donc été relevée grille déjà désactivée** — postérisation, tramage et scanlines actifs,
+      mais aucun accrochage 960×540 — et la mesure de taille de bloc est sortie indécidable
+      (~1,00 des deux côtés). Sans objet depuis qu'`ADR-0045` a supprimé le réglage, mais la
+      leçon est portée dans `.claude/resources/howto-mesurer-la-perf.md`.
+
 ## ⚠️ Ouvert par la cellule-témoin (ADR-0044, 2026-09-04)
 
 - [ ] **`./scripts/build-hull.sh specter_9` ne reproduit plus le `.glb` committé** — `3fb521b9…`
