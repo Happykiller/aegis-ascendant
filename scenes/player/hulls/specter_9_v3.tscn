@@ -25,8 +25,17 @@
 ; (convention de `specter_9_b.tscn`). Les étiquettes ci-dessous sont celles de NOTRE
 ; repère, pas celles du fichier — les recopier telles quelles aurait inversé les tuyères.
 ;
-; DÉCALAGE VERTICAL. Le centre de la coque est à y = +0,1064 une fois mise à l'échelle ;
-; on le ramène à zéro pour que le pivot soit au centre, comme sur toute coque du kit.
+; DÉCALAGE VERTICAL — ET IL EST SUR LA RACINE, PAS SUR LA COQUE. Le centre du maillage
+; est à y = +0,1064 une fois mis à l'échelle ; on le ramène à zéro pour que le pivot soit
+; au centre, comme sur toute coque du kit.
+;
+; ⚠️ CORRIGÉ APRÈS AVOIR VU LE JEU (2026-09-05). Le recentrage était d'abord porté par le
+; nœud `Hull`. Les points d'accroche, eux, sont ses FRÈRES : ils ne le subissaient donc
+; pas, et les plumes sortaient **0,106 unité au-dessus** des tuyères — 17 % de la hauteur
+; du vaisseau. C'est la même famille de défaut que le double facteur d'échelle plus bas :
+; une transformation posée sur une branche que tout le monde ne partage pas. Porté sur la
+; racine, coque et accroches le subissent ensemble, et rien ne peut plus diverger.
+; Aucune erreur au journal — il a fallu que l'opérateur le voie.
 ;
 ; POINTS D'ACCROCHE. Le contrôleur cherche les bouches (`Muzzle_*`) et les réacteurs
 ; (`Engine_*`) PAR LEUR NOM. Positions mesurées sur le maillage lui-même : sortie de
@@ -51,9 +60,10 @@
 ; recentrage vertical.
 
 [node name="Specter9V3" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1064, 0)
 
 [node name="Hull" parent="." instance=ExtResource("1_glb")]
-transform = Transform3D(-0.19415, 0, 0, 0, 0.19415, 0, 0, 0, -0.19415, 0, -0.1064, 0)
+transform = Transform3D(-0.19415, 0, 0, 0, 0.19415, 0, 0, 0, -0.19415, 0, 0, 0)
 
 [node name="Muzzle_C" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0103, -1.2231)
