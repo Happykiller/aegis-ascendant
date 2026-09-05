@@ -81,14 +81,19 @@
 
 ## ⚠️ Ouvert par la cellule-témoin (ADR-0044, 2026-09-04)
 
-- [ ] **`./scripts/build-hull.sh specter_9` ne reproduit plus le `.glb` committé** — `3fb521b9…`
-  (2 336 564 o) contre `14aba06d…` (2 325 476 o), **avec ou sans** les ajouts 1.2.0 du kit (testé
-  par `git stash` par la forge, BRIEF-0098-report §9.5). La source de la coque en service ne
-  reproduit plus son binaire : version de Blender, ou kit d'alors ? À élucider avant toute
-  retouche de `build_specter_9.py`, sinon la première reforge embarque un diff qu'on n'a pas
-  voulu. ⚠️ Et le rapport signale que les insets de la coque loftée partaient **vers l'extérieur**
-  avant un `recalc_face_normals` ajouté sur la Talvern — le code de la coque en service est
-  identique sur ce point.
+- [x] **✅ FERMÉ le 2026-09-05 — le binaire était périmé, pas la source.** `specter_9` ne
+      reproduisait plus son `.glb` committé. Bissection sur les quatre commits du kit depuis la
+      dernière régénération : celui de `f21b23a` rend **exactement** `14aba06d…`, le suivant
+      (`fc1d18f`) ne le rend plus. Ce commit a fait en sorte que `box_project_uv()` **triangule
+      d'elle-même** — correction délibérée de BRIEF-0092 (un quad gauche était projeté selon une
+      normale moyenne qui n'appartenait à aucun de ses deux triangles). Les binaires committés
+      dataient d'avant, et la correction n'avait jamais été suivie d'une régénération.
+      **Dix coques sur vingt étaient périmées** ; toutes régénérées. Vérifié : nœuds, primitives
+      et **triangles identiques au chiffre près** sur les dix — seul le nombre de sommets monte,
+      c'est-à-dire le dédoublement aux coutures d'UV, exactement ce que la correction visait.
+      Aucune géométrie n'a bougé. `--check` est de nouveau un instrument.
+      ⚠️ La leçon : `fc1d18f` a changé le comportement du kit **sans bouger sa `VERSION`**, et
+      sans régénérer. Un correctif de kit qui change une sortie doit faire les deux.
 - [ ] **28 cartes 3D sur 50 importées sans mipmaps** (relevé Citadelle) — les textures de la
   Talvern (`TEX-0017` à `0019`) devront être importées avec, et c'est l'occasion de traiter une
   famille.
