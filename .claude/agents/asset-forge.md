@@ -18,12 +18,21 @@ livrables propres et traçables.
    tranche entre deux issues : soit l'asset dépend de demandes `docs/forge/textures/TEX-NNNN-*.json`
    nommées, soit il n'en faut aucune **et le brief écrit pourquoi**. **Si la section manque, ne pas
    deviner** : le dire dans le compte-rendu et livrer avec des UV de toute façon.
-4. Produire les livrables **exactement aux chemins prescrits par le brief**, dans le respect
+4. ⚠️ **Vérifier que le brief porte sa section `## Animation`** (`ADR-0046` §6). Elle est
+   obligatoire au même titre que `## Texture`, et pour la même raison : une permission qu'on peut
+   oublier n'est pas un process. Deux issues, jamais de silence — soit le brief nomme les familles
+   mobiles et ce qui les pilote, soit il déclare la pièce figée **et écrit pourquoi**. Si elle
+   manque, le dire et demander l'arbitrage plutôt que de livrer une coque figée par défaut.
+   ⚠️ Et si la pièce bouge : **un glTF n'exécute pas les pilotes de Blender**. Tout pilote se cuit
+   en images clés, sinon le `.glb` sort avec une animation vide, **sans une erreur ni une ligne de
+   journal**.
+
+5. Produire les livrables **exactement aux chemins prescrits par le brief**, dans le respect
    des critères d'acceptation.
-5. Ajouter une ligne dans `assets/licenses/ASSET_PROVENANCE.csv` pour **chaque fichier d'asset
+6. Ajouter une ligne dans `assets/licenses/ASSET_PROVENANCE.csv` pour **chaque fichier d'asset
    livré** (format en en-tête du CSV ; `source_tool` = `asset-forge (Claude)` pour une création
    interne ; le champ `prompt_file` pointe vers le brief).
-6. Rendre un compte-rendu final : liste des livrables (chemins), choix créatifs et leur
+7. Rendre un compte-rendu final : liste des livrables (chemins), choix créatifs et leur
    justification, limites connues, suggestions éventuelles.
 
 ## Interdictions absolues

@@ -40,6 +40,29 @@ Trancher, explicitement :
 | Pièce vue de loin, sans carte de détail | `ak.box_project_uv()`, en donnant les tuiles/m |
 | Surface qui portera une carte de détail | dépliage **continu**, densité de texels **homogène**, coutures **hors champ** — et une planche de contrôle au damier UV |
 
+## Animation (ADR-0046 §6 — OBLIGATOIRE, deux issues, jamais de silence)
+
+⚠️ **Cette section ne peut pas être omise**, au même titre que `## Texture`. Même précédent, même
+raison : une permission qu'on peut oublier n'est pas un process. Une coque livrée figée parce que
+personne n'a posé la question se regréera plus tard, à la main, sur une géométrie qui n'a pas été
+pensée pour bouger — c'est ce qui s'est payé onze constantes recopiées dans `ship_flight.gd`.
+
+Trancher, explicitement :
+
+- **soit** la pièce porte des familles mobiles — les **nommer**, dire ce qui les pilote (vitesse,
+  poussée, visée, dégâts) et sur quel axe ;
+- **soit** elle est **figée** — et **écrire pourquoi**.
+
+Si elle bouge, le brief doit aussi dire :
+
+| Point | Ce qu'il faut écrire |
+|---|---|
+| Vocabulaire des nœuds | les noms exacts, figés ici et non inventés à la livraison |
+| Origine de chaque pivot | **sur l'axe de rotation**, jamais au centre de la pièce |
+| Points d'attache | **parentés à la pièce mobile qui les porte** — une bouche sur une aile suit l'aile |
+| Plafonds mécaniques | **mesurés au build** sur le maillage livré, et **exportés** — jamais recopiés dans un script de jeu |
+| Cuisson | ⚠️ un glTF **n'exécute pas les pilotes de Blender** : tout pilote se cuit en images clés, sinon la coque sort figée **sans une erreur** |
+
 ## Livrables (chemins exacts)
 
 | Fichier | Description |
