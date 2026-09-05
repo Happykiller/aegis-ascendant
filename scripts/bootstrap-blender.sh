@@ -7,8 +7,8 @@
 # repository and is only ever invoked headless (`blender -b -P <script>`).
 set -euo pipefail
 
-BLENDER_VERSION="4.5.11"
-BLENDER_SERIES="4.5" # download.blender.org groups releases by series
+BLENDER_VERSION="5.2.1"
+BLENDER_SERIES="5.2" # download.blender.org groups releases by series
 BASE_URL="https://download.blender.org/release/Blender${BLENDER_SERIES}"
 TARBALL="blender-${BLENDER_VERSION}-linux-x64.tar.xz"
 SUMS="blender-${BLENDER_VERSION}.sha256"
