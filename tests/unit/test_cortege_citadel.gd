@@ -1178,3 +1178,34 @@ func test_the_composition_never_lowers_the_section_progress() -> void:
 			assert_true(compose >= troncon - 1e-6,
 				"troncon %.2f + montee %.2f = %.2f, jamais moins" % [troncon, montee, compose])
 			assert_true(compose <= 1.0 + 1e-6, "et jamais plus de 1")
+
+## ⚠️ LA RESPIRATION DU §18 EST UNE FENETRE DE COQUE, ET ELLE N'ETAIT GARDEE PAR RIEN. Le plan
+## note qu'a s ~ 240 la citadelle MANGE la respiration voulue de `cortege_hardpoints` (« RIEN AU
+## DEBUT DU TRONCON 3, s 214 a 246 ») et que la respiration doit alors etre rendue APRES. Elle
+## l'est : douze metres entierement libres entre la poupe du verrou et `Turret_07`. Mais rien ne
+## l'empechait d'etre reprise par le prochain point d'ancrage pose la — et l'auteur de ce
+## point d'ancrage n'aurait eu aucune raison de savoir qu'il detruisait une intention de rythme.
+##
+## Douze metres valent ~6,5 s : le defilement repart de zero sur `citadel_resume_time`, donc la
+## premiere moitie de la fenetre se traverse a vitesse reduite.
+func test_the_hull_stays_clear_behind_the_lock_and_that_is_the_respiration() -> void:
+	var hull := track((load(FlybyScript.DECOR_PATH) as PackedScene).instantiate()) as Node3D
+	# L'emprise mesuree au LOT 1 : face avant a `citadel_station`, poupe 6,0 m derriere.
+	var poupe: float = TUNING.citadel_station + 6.0
+	var plus_proche := INF
+	var nom := "<aucun>"
+	for section in hull.get_children():
+		var noeud := section as Node3D
+		if noeud == null:
+			continue
+		for child in noeud.get_children():
+			var marker := child as Node3D
+			if marker == null:
+				continue
+			# `s` croit vers la poupe, `z` decroit : la station d'un marqueur est -z global.
+			var s: float = -(noeud.position.z + marker.position.z)
+			if s > poupe and s - poupe < plus_proche:
+				plus_proche = s - poupe
+				nom = String(marker.name)
+	assert_true(plus_proche >= 10.0,
+		"au moins dix metres libres derriere le verrou — %s est a %.2f m" % [nom, plus_proche])

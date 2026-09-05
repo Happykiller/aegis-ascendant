@@ -5,7 +5,7 @@
 | **Date** | **2026-09-03** |
 | **Auteur** | session Claude, sur le brief d'implémentation et la planche de l'opérateur |
 | **Périmètre** | une séquence de 30 à 45 s au milieu du Long Cortège : une fortification transversale qui **ferme physiquement la route**, s'ouvre en sabotant deux relais puis un noyau, et rend le passage praticable |
-| **État** | ✅ **LOT 0 clos, LOTS 1 à 4 livrés** (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le seul LOT 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
+| **État** | ✅ **LOT 0 clos, LOTS 1 à 5 livrés** (LOT 5 le 2026-09-05) — le chantier est complet côté code ; ce qui reste appartient à l'opérateur (les deux chemins non joués, le sens des conduits, le nouveau verdict de `TEX-0016`). Ancien libellé : « LOTS 1 à 4 livrés » (2026-09-04) — la boucle se joue de bout en bout, en boîtes grises. Reste le seul LOT 5 (la respiration), et **une partie jouée à la main** dont dépend tout le reste. Des deux textures livrées le 2026-09-04, `TEX-0015` (bouclier) est **acceptée** après rattrapage de tuilage et `TEX-0016` (ambre) **refusée** : ses diodes font 0,8 px à l'écran pour 3 à 5 exigés |
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
@@ -45,6 +45,9 @@ est certain ; ce que l'œil en fait ne l'est pas.
 
 **Le verrou se joue de bout en bout, il a sa forme, ses quatre états se voient, et sa porte
 s'ouvre.** Les LOTS 0 à 4 sont livrés, vérifiés en jeu et commités. Il reste **le seul LOT 5**.
+
+> ✅ **Et le LOT 5 a été livré le 2026-09-05** — voir sa section. Ce paragraphe est celui de la
+> session précédente, gardé tel quel : un point de reprise se date, il ne se réécrit pas.
 
 ## Où en est le code
 
@@ -1024,10 +1027,49 @@ refusée, demande « quelques doubles points marquant **un seuil** ». Un marqua
 passe dirait « voici par où » là où la valeur ne le dit pas. La carte est à régénérer — elle a
 maintenant un emploi précis qui l'attend.
 
-## LOT 5 — La respiration, et la seconde moitié
+## LOT 5 — La respiration, et la seconde moitié — ✅ **LIVRÉ (2026-09-05)**
 
 §18 : quelques secondes sans grosse tourelle, citadelle visible derrière, retour progressif de la
-musique. ⚠️ **La « seconde moitié plus machinique » du §18 n'est PAS dans ce plan** — c'est le
+musique.
+
+### Ce qui est livré
+
+**Le retour de la musique ne s'écrit pas, il se déduit.** `CortegeCitadel.music_lift()` vaut
+exactement `1 - scroll_factor()` — le vaisseau ralentit, la musique monte ; il repart, elle
+redescend. Le facteur de vitesse portait déjà la bonne forme, mesurée et testée : il descend
+pendant le freinage, vaut zéro sous verrou, remonte sur `citadel_resume_time`. En prendre le
+complément donne la montée **et** la redescente sans un réglage, un chronomètre ni un état de
+plus à tenir en cohérence.
+
+⚠️ **Le défaut qu'il corrige ne s'entendait pas comme un manque.** Le survol fait monter sa
+musique par **tronçon** — sa seule progression est spatiale — et le verrou arrête le défilement.
+Pendant les quarante secondes du sabotage, le tronçon ne changeait donc pas : le combat le plus
+tendu du niveau se jouait sur le lit sonore de la croisière.
+
+Le verrou **demande**, le niveau **écrit** (`cortege_root._apply_music`) — même partage que pour
+`scroll_speed`, et pour la même raison. La composition est `tronçon + (1 − tronçon) × montée` :
+**monotone**, donc la musique ne peut jamais descendre sous ce que la position justifie. Un verrou
+qui apaiserait la bande-son serait pire que pas de verrou.
+
+**La respiration de coque existait déjà, et rien ne la gardait.** Mesuré sur le `.glb` :
+**12,00 m entièrement libres** entre la poupe du verrou (s = 246,0) et `Turret_07` (s = 258,0) —
+soit ~6,5 s, la première moitié à vitesse réduite puisque le défilement repart de zéro. Le plan
+notait que la citadelle **mange** la respiration voulue « s 214 à 246 » et qu'il faudrait la
+rendre après ; elle l'était par accident de géométrie, pas par intention gardée. Un futur point
+d'ancrage posé là l'aurait reprise en silence, et son auteur n'aurait eu aucune raison de savoir
+qu'il détruisait une intention de rythme.
+`test_the_hull_stays_clear_behind_the_lock_and_that_is_the_respiration` l'exige désormais.
+
+### Ce qui reste, et n'appartient qu'à l'opérateur
+
+- **Jouer le second ordre de relais** (tribord d'abord) — couvert par un test, jamais par un humain.
+- **Jouer le chemin du nœud d'épine** : les quatre tourelles du verrou n'ont jamais été vues
+  diminuées, alors que c'est le seul endroit du niveau où la récompense du nœud se sent.
+- **Vérifier le sens de défilement des conduits** — une capture ne montre pas un mouvement, et ce
+  signe s'est déjà fait lire à l'envers sur le porteur de bouclier.
+- **Rejuger `TEX-0016`** à la lumière du doublement de résolution (voir l'avertissement en tête).
+
+⚠️ **La « seconde moitié plus machinique » du §18 n'est PAS dans ce plan** — c'est le
 LOT 6 (décoration) de la refonte, déjà au backlog. Les deux se rejoindront ; les mélanger ferait
 un chantier qu'on ne saurait plus finir.
 
