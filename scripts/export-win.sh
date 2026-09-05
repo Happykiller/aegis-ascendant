@@ -36,6 +36,24 @@ if grep -E '^(ERROR|SCRIPT ERROR):' "$EXPORT_LOG" >/dev/null; then
   fail "export produced errors"
 fi
 
+# ⚠️ ANGLE MORT COMBLE (2026-09-05, montee 4.7 -> 4.7.2). La sortie de l'exporteur part
+# dans un log temporaire et n'etait affichee QUE sur erreur : un WARNING d'export ne
+# remontait jamais a l'ecran. Or c'est exactement la que se voit une migration de moteur
+# ou de templates — une ressource depreciee, un format d'import qui change, une option
+# de preset qui n'existe plus. Il a fallu relancer l'exporteur a la main pour lire le
+# log entier et pouvoir affirmer « zero avertissement ».
+#
+# Les avertissements ne font PAS echouer l'export : ils s'affichent, comptes, et c'est au
+# lecteur de trancher. Un garde qui ferait rougir la porte sur un warning benin finirait
+# contourne, ce qui coute plus que la regle ne rapporte.
+WARN_COUNT="$(grep -cE '^(WARNING|USER WARNING):' "$EXPORT_LOG" || true)"
+if [[ "$WARN_COUNT" -gt 0 ]]; then
+  log "⚠️ ${WARN_COUNT} avertissement(s) d'export — a lire, ils ne bloquent pas :"
+  grep -E '^(WARNING|USER WARNING):' "$EXPORT_LOG" | sort | uniq -c | sed 's/^/    /' >&2
+else
+  log "export sans avertissement"
+fi
+
 # Sanity: files exist with plausible sizes (exe embeds the engine: tens of MB).
 [[ -f "$OUT_EXE" ]] || fail "missing ${OUT_EXE}"
 [[ -f "${OUT_DIR}/AegisAscendant.pck" ]] || fail "missing AegisAscendant.pck"

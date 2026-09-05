@@ -311,3 +311,44 @@ changement de code signifient que le binaire n'a pas changé, pas que la correct
 ⚠️ L'inverse n'est pas vrai : une fiche de chasseur est **animée**, ses pixels diffèrent à chaque
 capture — un MD5 différent ne prouve rien du tout. On compare les MD5 pour détecter l'IDENTIQUE,
 jamais pour valider une différence.
+
+## ⛔ Deux captures prises à des INSTANTS différents ne se comparent pas (2026-09-05)
+
+Constaté deux fois le même jour, dans deux écrans différents, et la seconde fois ça a failli
+produire un faux rapport de régression.
+
+**Le bestiaire.** `codex_screen.gd` fait tourner la coque sur le TEMPS RÉEL
+(`_yaw_angle += AUTO_YAW_RATE * delta`) et l'anime en continu (`set_bank`, `set_thrust`). La pose
+à l'image N dépend donc de la cadence de la machine, pas du numéro d'image. Deux campagnes de
+mesure séparées de quelques heures comparaient des attitudes différentes — masque de coque de
+88 000 px contre 150 000, vue de face contre trois quarts. Une part inconnue de chaque écart
+mesuré venait de là, et rien ne le signalait.
+
+**Le combat.** Pire, parce que l'écart était énorme et plausible. Une série de référence avait
+été prise à **t ≈ 2 s** (score 0, aucun ennemi, bulle de dialogue à l'écran) et la nouvelle à
+`--capture-at=20` (score 2500, six ennemis, tirs, explosions). Comparées telles quelles : luminance
+−8,5 %, **population corail −54 %**. Les deux chiffres sont FAUX — le « corail » de la référence,
+c'étaient **les cheveux du portrait de Lyra**, absent de la vue de combat. Un rapport de régression
+grave, entièrement fabriqué par un décalage de deux secondes.
+
+**La règle** : avant de comparer deux captures, **vérifier qu'elles montrent la même situation** —
+même écran, même instant de jeu, même contenu à l'écran. Le prouver, pas le supposer : compter les
+ennemis, lire le score, mesurer l'aire du sujet. Si les deux séries ne coïncident pas, **produire
+le témoin manquant** plutôt que d'interpréter l'écart.
+
+**Et le corollaire qui sauve** : chercher dans l'image un élément **strictement invariant** et le
+mesurer. Ici c'est la barre de bouclier, un aplat 2D opaque : `(28.99, 159.76, 180.33)` avant,
+`(29.02, 159.74, 180.34)` après une double migration de moteur — **0,03 sur 255**. Un tel témoin
+prouve en une ligne que la chaîne de rendu est intacte, là où toutes les mesures de scène animée
+se noient dans leur propre bruit.
+
+⚠️ Corollaire matériel : un fond qui défile en continu n'est **jamais** un indicateur exploitable
+entre deux lancements non synchronisés à l'image près.
+
+## L'export cachait ses avertissements (2026-09-05, corrigé)
+
+`scripts/export-win.sh` envoyait la sortie de l'exporteur dans un log temporaire et ne l'affichait
+**que sur erreur**. Un `WARNING` d'export ne remontait donc jamais — or c'est exactement là qu'une
+migration de moteur ou de templates se voit en premier : ressource dépréciée, format d'import qui
+change, option de preset disparue. Le script les compte et les affiche désormais, **sans faire
+échouer l'export** : un garde qui rougit sur un avertissement bénin finit contourné.
