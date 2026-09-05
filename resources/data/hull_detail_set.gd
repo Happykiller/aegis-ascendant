@@ -15,9 +15,24 @@ extends Resource
 ## leurs `Petal_*`). `HullDetail` choisit donc le jeu par le nom du nœud, pas par le
 ## matériau. Le jeu de tuyère est optionnel — tout ou rien.
 
+@export_group("Atlas peint (ADR-0047)")
+## Albédo PEINT en espace atlas, cuit par `tools/bake-atlas.py`.
+##
+## ⚠️ QUAND IL EST POSÉ, IL RENVERSE LA LOGIQUE DE CE JEU. Les cartes ci-dessous
+## MULTIPLIENT la couleur de palette du `.glb` : elles creusent une rainure, elles ne
+## peuvent jamais éclaircir — donc jamais peindre une bande, un filet ou un matricule.
+## Un atlas, lui, REMPLACE la couleur : `albedo_color` passe au blanc et le tuilage à 1,
+## parce que chaque texel a une adresse sur la coque et qu'un tuilage le déplacerait.
+##
+## La palette ne se perd pas pour autant : `bake-atlas.py` lit les couleurs DANS le
+## `.glb`, qui les tient du kit. Une seule source de vérité, elle transite juste par
+## l'image au lieu d'être appliquée à la volée.
+@export var albedo: Texture2D
+
 @export_group("Coque")
 ## Carte de MULTIPLICATION : les plaques valent ~1,0 (neutre), les rainures moins.
 ## Posée en `albedo_texture` par-dessus la couleur de palette importée du `.glb`.
+## Ignorée quand `albedo` est posé.
 @export var mul: Texture2D
 @export var normal: Texture2D
 @export var roughness: Texture2D
@@ -52,11 +67,23 @@ func has_nozzle_set() -> bool:
 	return nozzle_mul != null and nozzle_normal != null \
 		and nozzle_roughness != null and nozzle_ao != null
 
+## Ce jeu est-il un ATLAS ? Un seul champ le décide, et il change tout le reste de la
+## pose : la couleur est remplacée au lieu d'être multipliée, et le tuilage vaut 1.
+func is_atlas() -> bool:
+	return albedo != null
+
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
 	for pair: Array in [["mul", mul], ["normal", normal], ["roughness", roughness], ["ao", ao]]:
 		if pair[1] == null:
 			errors.append("%s map is required" % pair[0])
+	if is_atlas():
+		# ⚠️ Un atlas à tuilage != 1 est un bug SILENCIEUX : chaque texel a une adresse
+		# sur la coque, et un tuilage la déplace. Le matricule finirait sur une aile.
+		if not is_equal_approx(tiling, 1.0):
+			errors.append("an atlas set needs tiling = 1 (got %.3f)" % tiling)
+		if has_nozzle_set():
+			errors.append("an atlas set covers the whole hull: no separate nozzle set")
 	if normal_scale < 0.0:
 		errors.append("normal_scale must be >= 0")
 	if tiling <= 0.0:

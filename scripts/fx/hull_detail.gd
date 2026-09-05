@@ -1,5 +1,14 @@
 class_name HullDetail
-## Plaque un jeu de cartes de detail sur une coque .glb, SANS toucher a sa palette.
+## Plaque un jeu de cartes de detail sur une coque .glb.
+##
+## DEUX REGIMES, ET ILS S'OPPOSENT — depuis `ADR-0047`, un jeu est soit une FEUILLE
+## repetable, soit un ATLAS peint, et `HullDetailSet.is_atlas()` tranche :
+##   feuille : la carte MULTIPLIE la palette du .glb. Elle creuse, elle n'eclaircit
+##             jamais. Repetable, partageable entre coques, legere.
+##   atlas   : la carte REMPLACE la palette. Chaque texel a une adresse sur la coque,
+##             donc bandes, filets et matricules deviennent possibles — et le tuilage
+##             doit valoir 1, sans quoi le dessin glisse.
+## Le reste de ce commentaire decrit le regime FEUILLE, qui reste le defaut.
 ##
 ## Les coques sont du hard-surface PBR sans texture (ADR-0008), et lisaient
 ## « jouet » : de grandes surfaces lisses entre quelques panneaux. ADR-0011
@@ -58,7 +67,9 @@ static func apply(hull: Node, detail: HullDetailSet = null) -> void:
 	if detail == null:
 		detail = set_for(hull.scene_file_path)
 	for mesh in _meshes(hull):
-		var on_nozzle := detail.has_nozzle_set() and _under_nozzle(mesh, hull)
+		# Un atlas couvre toute la coque : la notion de "matiere de tuyere" n'a plus
+		# de sens, la tuyere a deja ses texels dans l'image.
+		var on_nozzle := not detail.is_atlas() and detail.has_nozzle_set() and _under_nozzle(mesh, hull)
 		for i in mesh.get_surface_override_material_count():
 			var base := mesh.get_active_material(i) as StandardMaterial3D
 			if base == null:
@@ -73,7 +84,15 @@ static func apply(hull: Node, detail: HullDetailSet = null) -> void:
 			# muter en place les changerait tous — et surtout, on ne veut pas
 			# ecrire dans la ressource importee.
 			var tuned: StandardMaterial3D = base.duplicate()
-			if on_nozzle:
+			if detail.is_atlas():
+				_dress(tuned, detail.albedo, detail.normal, detail.roughness, detail.ao,
+					detail.normal_scale, 1.0)
+				# ⚠️ LE POINT QUI RENVERSE LA POSE. Sans cette ligne, l'atlas serait
+				# MULTIPLIE par la couleur de palette du .glb et ressortirait deux fois
+				# teinté — un bordé blanc cassé peint en blanc cassé donne du beige.
+				# L'atlas porte déjà la palette : la couleur doit passer au neutre.
+				tuned.albedo_color = Color(1.0, 1.0, 1.0, base.albedo_color.a)
+			elif on_nozzle:
 				_dress(tuned, detail.nozzle_mul, detail.nozzle_normal, detail.nozzle_roughness,
 					detail.nozzle_ao, detail.nozzle_normal_scale, detail.nozzle_tiling)
 			else:
@@ -107,8 +126,10 @@ static func _dress(tuned: StandardMaterial3D, mul: Texture2D, normal: Texture2D,
 	# directe et la coque vire au gris sale sous la cle.
 	tuned.ao_light_affect = 0.0
 	# Les UV du .glb sont metriques (box_project_uv). Le facteur elargit ou resserre
-	# les plaques pour qu'elles survivent au post-process retro (960x540 + scanlines) :
-	# a 4 tuiles/m sur une petite coque, 0,25 fait une plaque de 14 cm.
+	# les plaques : a 4 tuiles/m sur une petite coque, 0,25 fait une plaque de 14 cm.
+	# ⚠️ Ce reglage avait ete cale CONTRE le post-process retro, qu'ADR-0045 a retire :
+	# il n'est plus justifie par rien et reste a re-juger sur capture. En regime atlas
+	# il vaut 1 et n'a pas de sens a bouger.
 	tuned.uv1_scale = Vector3(tiling, tiling, tiling)
 
 ## Un maillage est « de tuyere » si lui ou l'un de ses ancetres sous la coque porte un

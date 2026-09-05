@@ -140,3 +140,55 @@ func test_the_imported_material_is_never_mutated() -> void:
 	HullDetail.apply(hull, DefaultSet)
 	assert_true(imported.albedo_texture == null, "le materiau importe n'a pas ete touche")
 	assert_true(body.get_surface_override_material(0) != imported, "la pose est une copie")
+
+# --- Le regime ATLAS (ADR-0047) ------------------------------------------------
+
+func _atlas_set() -> HullDetailSet:
+	var detail: HullDetailSet = DefaultSet.duplicate()
+	detail.albedo = DefaultSet.ao   # n'importe quelle texture fait l'affaire ici
+	detail.tiling = 1.0
+	return detail
+
+func test_an_atlas_set_replaces_the_palette_instead_of_multiplying_it() -> void:
+	# ⚠️ LE POINT QUI RENVERSE LA POSE. Une feuille MULTIPLIE la couleur du .glb ; un
+	# atlas la porte deja. Sans la mise au blanc, un borde blanc casse peint en blanc
+	# casse ressortirait deux fois teinte — du beige, et personne ne saurait pourquoi.
+	var hull := _hull()
+	var detail := _atlas_set()
+	HullDetail.apply(hull, detail)
+	var body := (hull.get_node("Body") as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+	assert_true(body.albedo_texture == detail.albedo, "l'atlas est pose en albedo")
+	assert_almost_eq(body.albedo_color.r, 1.0, 1e-6, "et la couleur passe au neutre")
+	assert_almost_eq(body.albedo_color.g, 1.0, 1e-6, "sur les trois canaux")
+	assert_almost_eq(body.albedo_color.b, 1.0, 1e-6, "sans exception")
+	assert_almost_eq(body.uv1_scale.x, 1.0, 1e-6, "et le tuilage vaut 1 : chaque texel a une adresse")
+
+func test_an_atlas_covers_the_nozzles_too() -> void:
+	# Un atlas couvre TOUTE la coque : la matiere de tuyere separee n'a plus de sens,
+	# la tuyere a deja ses texels dans l'image.
+	var hull := _hull()
+	var detail := _atlas_set()
+	detail.nozzle_mul = DefaultSet.mul
+	detail.nozzle_normal = DefaultSet.normal
+	detail.nozzle_roughness = DefaultSet.roughness
+	detail.nozzle_ao = DefaultSet.ao
+	HullDetail.apply(hull, detail)
+	var cone := (hull.get_node("Nozzle_L/Cone") as MeshInstance3D).get_surface_override_material(0) as StandardMaterial3D
+	assert_true(cone.albedo_texture == detail.albedo, "la tuyere porte l'atlas, pas une matiere a part")
+
+func test_an_atlas_with_a_tiling_other_than_one_is_refused() -> void:
+	# Le defaut serait SILENCIEUX : le dessin glisserait, le matricule finirait sur une
+	# aile, et rien dans le journal ne le dirait.
+	var detail := _atlas_set()
+	assert_true(detail.validate().is_empty(), "un atlas a tuilage 1 est valide")
+	detail.tiling = 0.25
+	assert_false(detail.validate().is_empty(), "a tuilage 0,25 il est refuse")
+	detail.tiling = 1.0
+	detail.nozzle_mul = DefaultSet.mul
+	detail.nozzle_normal = DefaultSet.normal
+	detail.nozzle_roughness = DefaultSet.roughness
+	detail.nozzle_ao = DefaultSet.ao
+	assert_false(detail.validate().is_empty(), "et un atlas AVEC matiere de tuyere aussi")
+
+func test_the_shared_set_is_not_an_atlas() -> void:
+	assert_false(DefaultSet.is_atlas(), "le jeu partage reste une feuille repetable")
