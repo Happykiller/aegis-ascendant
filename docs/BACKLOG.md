@@ -62,6 +62,24 @@
       Bénéfice réel à attendre : un packing d'îlots potentiellement meilleur (le nôtre plafonne à
       54,2 % de remplissage), et l'outillage plus récent. Ce n'est pas un chantier bloquant.
 
+## ⚠️ Ouvert par la mesure de densité (2026-09-05)
+
+- [ ] **La porte de qualité est verte mais BRUYANTE** : 18 lignes
+      `ERROR: [Leviathan] coque sans 'Shutter_0X' (contrat BRIEF-0083)`
+      (`scripts/bosses/leviathan_combat.gd:1278`) s'impriment pendant les tests, plus des fuites
+      de RID en sortie. Aucun test n'échoue. ⚠️ **C'est précisément ce qui rend la chose
+      dangereuse** : une porte verte qui crie dix-huit erreurs habitue à ne plus lire ses erreurs,
+      et la dix-neuvième — celle qui compte — passera inaperçue. Soit la coque du Léviathan porte
+      ses volets et le contrat est satisfait, soit le contrat ne s'applique pas à la doublure et
+      il doit se taire.
+
+- [ ] **`citadel_gate` n'existe plus, et deux documents le nomment encore.** `BRIEF-0097` l'a
+      remplacé par deux `citadel_leaf` miroités et deux `citadel_housing`. L'empan de 34,40 m est
+      intact, mais la pièce nommée a disparu. De même, le plan de la citadelle porte encore
+      « denture de 4,80 m au centre », hérité du peigne de `BRIEF-0096` : la denture actuelle est
+      un tenon-mortaise de 2 × 1,25 m dans un tableau de 4,80. Deux choses différentes sous un
+      seul chiffre.
+
 ## ⚠️ Ouvert par le retrait du filtre (ADR-0045, 2026-09-05)
 
 - [ ] **La rotation de la coque au bestiaire suit le TEMPS RÉEL** — `codex_screen.gd` fait

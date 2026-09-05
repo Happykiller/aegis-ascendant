@@ -429,6 +429,14 @@ REVEAL_IN = 0.05
 #: dent tombe donc toujours en face d'une mortaise. Avec quatre dents (huit
 #: bandes) la meme regle donnerait {0,2,4,6} -> {7,5,3,1} : cela marcherait aussi,
 #: mais 0,15 m de dent ne portent plus d'ombre a 23 px/m. Trois, donc.
+#:
+#: ⚠️ CET ARGUMENT EST PERIME (2026-09-05). Les 23 px/m etaient ceux de la chaine
+#: retro, en pixels LOGIQUES ; `ADR-0045` a retire le filtre et la densite MESUREE au
+#: verrou est de 46 px/m. A cette densite, 0,15 m font 6,9 px — trois fois le seuil de
+#: presence (2 px) et au-dessus du seuil de forme (3 px). Quatre dents seraient donc
+#: lisibles aujourd'hui. Le choix de trois n'est PAS revenu sur pour autant : changer
+#: la denture demanderait une reforge du kit et une recette, et rien ne prouve que
+#: quatre valent mieux que trois. C'est la JUSTIFICATION qui est fausse, pas la piece.
 TOOTH_BANDS = 6
 TOOTH_MINE = (0, 2, 4)
 TOOTH_LEN = 1.25            # la dent avance de x = 0 a x = 1,25

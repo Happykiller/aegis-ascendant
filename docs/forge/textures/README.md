@@ -102,7 +102,34 @@ damier a malgré tout été peint, `--mode sat` est le rattrapage (moins propre,
 > plus**. La section reste ici parce qu'elle documente une méthode de diagnostic qui, elle, garde
 > toute sa valeur : quand un détail est invisible alors que la chaîne est juste, **mesurer l'aval**
 > avant d'accuser la texture. Les chiffres, eux, sont ceux d'une chaîne qui n'existe plus.
-> La résolution de source est à rouvrir en même temps (règle 1 « jamais 2048 » — voir `ADR-0046`).
+> **Son remplaçant est mesuré, et il est juste en dessous.**
+
+## ✅ Ce qui borne un détail AUJOURD'HUI — mesuré sur capture le 2026-09-05
+
+Relevé au verrou de mi-parcours, porte fermée, capture 1920×1080 native, contre trois cotes
+connues du monde qui s'accordent à **0,8 %** : la porte (34,40 m), le pied de rampe du tableau
+(5,20 m), les pointes de dents (2,50 m).
+
+| Ce qui borne | Valeur mesurée |
+|---|---|
+| **Densité, en travers du vaisseau** | **45,8 px/m** — arrondi 46. Exactement le double des 23 px/m de la chaîne rétro, qui étaient des pixels LOGIQUES |
+| **Densité, dans l'axe du vaisseau** | **40,0 px/m** — rapport **0,87**. ⚠️ **La densité n'est pas isotrope : un cabochon carré n'est pas carré à l'écran** |
+| Densité sur le pont de coque | ≈ 41 px/m, et **elle varie de +14 %** du haut vers le bas du cadre (perspective) |
+| **Seuil de PRÉSENCE** | **~2 px.** En dessous, un détail ne disparaît plus comme avant — il devient **intermittent** : sans TAA, une ligne d'1 px oblique s'échantillonne en pointillés |
+| **Seuil de FORME** | **~3 px, soit ≈ 6,5 cm de monde.** C'est à partir de là qu'on voit l'*orientation* d'un détail, et pas seulement sa présence |
+| **Plancher de CONTRASTE** | **~10 niveaux d'écart au fond local.** Sous ce seuil, un détail est là sans se voir |
+
+⚠️ **ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE — c'est le fait qui surprend.** Sur la même capture,
+un contour de trappe de **27 px** de large se lit **moins bien** qu'une gorge de refend de **5,9 px** :
+la trappe ne module que 4 niveaux, la gorge tranche en noir franc. Une carte peut donc être à la
+bonne échelle et rester invisible.
+
+Le plancher de quantification a disparu avec la postérisation ; **le plancher du regard, lui, est du
+même ordre**. C'est pourquoi la règle change de nature sans changer de chiffre : ce n'est plus la
+chaîne de rendu qui efface le détail, c'est l'œil qui ne l'attrape pas.
+
+**Traduction de la cible héritée** : « 3 à 5 px » devient **6,5 à 10,9 cm de monde**. La cible
+survit au changement de chaîne — ce qui était faux, c'étaient les 23 px/m, pas elle.
 
 Relevé le 2026-09-04, en mesurant pourquoi la maille hexagonale de `TEX-0015` était **invisible**
 sur le panneau de bouclier de la Citadelle alors que toute la chaîne était juste.

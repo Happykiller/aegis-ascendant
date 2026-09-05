@@ -23,17 +23,32 @@
 | « 864 méthodes, 6 693 assertions » | **887 méthodes, 6 766 assertions** (le retrait de `specter_9_c` en a soustrait 15) |
 | Blender 4.5.11, Godot 4.7 | **Blender 5.2.1 LTS, Godot 4.7.2** — les 21 coques reconstruites, aucune topologie changée |
 
-## Ce que ça change pour la suite, concrètement
+## ✅ `TEX-0016` a été REMESURÉE sur capture (2026-09-05) — et elle passe, sur une voie
 
-**`TEX-0016` mérite d'être rejugée avant d'être régénérée.** Le refus tenait à un seul chiffre :
-0,8 px à l'écran pour 3 à 5 exigés, soit un facteur 3,75 à 6,25 manquant. À résolution doublée le
-cabochon fait **~1,6 px**, et le facteur manquant tombe à **1,9 à 3,1**. Surtout, la « seconde
-voie » déjà identifiée dans ce plan — la carte sur le **sol de la passe** à 12 m/tuile, qui donnait
-**3,1 px** — en donne maintenant **~6,2**, c'est-à-dire **au-dessus** de la cible. La contrainte
-s'est peut-être inversée : il faudrait vérifier qu'elle n'est pas devenue trop grosse.
+⚠️ **Et ma première lecture de ce matin était FAUSSE, elle est corrigée ici.** J'avais écrit que le
+retrait du filtre doublait la taille à l'écran et que la carte devenait « peut-être trop grosse ».
+C'était une confusion entre pixels **logiques** et **physiques** : les 23 px/m du refus de
+septembre étaient logiques (grille 960×540), donc **46 px/m physiques — avant comme après**. Le
+retrait du filtre ne change pas la TAILLE d'un détail, il change sa **survie** : sous un pixel
+logique, il était moyenné dans son bloc puis postérisé ; il ne devenait pas petit, il disparaissait.
 
-⚠️ **À mesurer sur capture, pas à déduire de cette règle de trois.** Le doublement de résolution
-est certain ; ce que l'œil en fait ne l'est pas.
+**Densité mesurée au verrou, contre trois cotes connues qui s'accordent à 0,8 % : 45,8 px/m.**
+Exactement le double des 23. Et la cible héritée « 3 à 5 px » se traduit en **6,5 à 10,9 cm de
+monde** : elle survit au changement de chaîne, ce qui était faux c'étaient les 23 px/m.
+
+| Emploi de la carte | Cabochon | À l'écran | Verdict |
+|---|---|---|---|
+| bordé, 5 m/tuile — signalisation générale | 4,9 cm | **2,24 px** | ⛔ sous le seuil de forme (3 px) : se lira comme un point, pas comme un cabochon |
+| **sol de la passe, 12 m/tuile — voie dédiée** | 11,7 cm | **5,36 px** | ✅ **passe, sans réserve** |
+
+**Le refus de septembre reposait sur un chiffre faux, et sa conclusion tenait quand même** pour le
+bordé. Deux erreurs qui se compensaient — d'où l'intérêt d'avoir vérifié.
+
+La carte régénérée est déposée en `assets/source/textures/cortege/cortege_signal_amber_1024.png`,
+**non câblée**. Ce qu'il reste à faire pour la poser sur le sol de la passe : dériver ses cartes,
+importer avec mipmaps, et un matériau à 12 m/tuile sur cette seule surface. ⚠️ Ce que 12 m/tuile
+interdit reste vrai : l'emploi comme signalisation du **bordé**, qui est à 5 m/tuile — deux densités
+de détail côte à côte se voient.
 
 # ▶ POINT DE REPRISE — 2026-09-04, fin de session
 
