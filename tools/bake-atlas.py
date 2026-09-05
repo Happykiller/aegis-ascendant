@@ -238,6 +238,18 @@ def dilate(rgb: np.ndarray, mask: np.ndarray, passes: int) -> None:
         mask[...] = grown
 
 
+def _to_srgb(linear: np.ndarray) -> np.ndarray:
+    """Encode du lineaire vers sRGB (courbe standard, pas une gamma 2,2 approchee).
+
+    On travaille en LINEAIRE tant qu'on calcule — remplissage, usure, dilatation — parce
+    que multiplier des couleurs n'a de sens que la. L'encodage se fait une seule fois, a
+    l'ecriture.
+    """
+    low = linear * 12.92
+    high = 1.055 * np.power(np.clip(linear, 1e-8, None), 1.0 / 2.4) - 0.055
+    return np.where(linear <= 0.0031308, low, high)
+
+
 def bake(glb: Path, side: int, angle_deg: float, line_px: float,
          groove: float, wear: float) -> tuple[Image.Image, Image.Image, dict]:
     gltf, blob = read_glb(glb)
@@ -258,13 +270,37 @@ def bake(glb: Path, side: int, angle_deg: float, line_px: float,
             edges += 1
 
     # L'usure suit la rainure : là où la surface casse, la peinture s'use.
+    #
+    # ⚠️ DISCRÈTE, ET C'EST MESURÉ. À 0,35 la coque ressortait presque noire là où la
+    # palette est sombre — parce que la rainure est comptée DEUX FOIS : peinte ici dans
+    # l'albédo, puis dérivée en occlusion et en normale par `tools/derive-maps.py`, qui
+    # l'assombrit une seconde fois à l'éclairage. Le bleu de charte `#1C2B5E` n'a que
+    # **2,8 % de luminance relative** contre 82,4 % pour le blanc cassé : à ce niveau,
+    # un facteur 0,8 de plus le fait basculer dans le noir.
+    #
+    # ⚠️ ET LA PALETTE N'Y EST POUR RIEN — vérifié le 2026-09-05 en mesurant la planche
+    # de référence elle-même : son bleu médian (#113051) est à **2,8 %** lui aussi, la
+    # même valeur exactement. Ce qui fait lire « bleu » sur la planche et « noir » chez
+    # nous, ce n'est pas la teinte, c'est ce qu'on lui ajoute par-dessus.
+    #
+    # La rainure appartient donc au RELIEF, pas à la peinture.
     worn = 1.0 - (1.0 - height) * wear
     rgb *= worn[..., None]
 
     dilate(rgb, mask, passes=max(4, int(side / 256)))
     dilate_height(height, mask, passes=max(4, int(side / 256)))
 
-    albedo = Image.fromarray(np.clip(rgb * 255.0 + 0.5, 0, 255).astype(np.uint8))
+    # ⚠️ LINEAIRE -> sRGB, ET CE N'EST PAS UNE FINITION. Mesure du 2026-09-05 : sans
+    # cette conversion, la coque perdait **29 % de luminance** en jeu et le bleu marine
+    # de la livree sortait a 1,7/255 — noir. Le `baseColorFactor` d'un glTF est LINEAIRE
+    # par specification ; un PNG d'albedo est relu en sRGB par Godot. Ecrire l'un dans
+    # l'autre sans encoder, c'est appliquer une gamma 2,2 de trop.
+    #
+    # La correspondance etait exacte a l'entier sur les sept materiaux, ce qui a permis
+    # d'identifier la cause sans tatonner : AA_Hull cuisait a (216, 210, 196) la ou la
+    # charte dit (237, 234, 227). C'est la signature d'un espace de couleur, pas d'un
+    # reglage.
+    albedo = Image.fromarray(np.clip(_to_srgb(rgb) * 255.0 + 0.5, 0, 255).astype(np.uint8))
     relief = Image.fromarray(np.clip(height * 255.0 + 0.5, 0, 255).astype(np.uint8))
     stats = {
         "primitives": len(prims),
@@ -305,7 +341,7 @@ def main() -> int:
     parser.add_argument("--line-px", type=float, default=1.6, help="demi-largeur du trait")
     parser.add_argument("--groove", type=float, default=0.45,
                         help="fond de rainure, 0 = noir, 1 = plat")
-    parser.add_argument("--wear", type=float, default=0.35,
+    parser.add_argument("--wear", type=float, default=0.12,
                         help="part de la rainure reportée sur l'albédo")
     parser.add_argument("--check", action="store_true",
                         help="cuit deux fois et compare — l'invariant d'ADR-0008")

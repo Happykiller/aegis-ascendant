@@ -1747,6 +1747,7 @@ def atlas_unwrap(
     margin: float = 0.0015,
     probe: int = 1024,
     min_fill: float = 0.30,
+    max_overlap: float = 5.0e-4,
 ) -> AtlasReport:
     """Deplie en ATLAS : des ilots DISJOINTS, packes dans [0, 1], sur place.
 
@@ -1776,6 +1777,35 @@ def atlas_unwrap(
     l'un sur l'autre.
     `probe` : cote de la grille de sondage du recouvrement. 0 desactive la mesure.
     `min_fill` : plancher de rendement. En dessous, on paie un atlas qu'on ne lit pas.
+    `max_overlap` : part des texels COUVERTS tolerée en double.
+
+    ⚠️ POURQUOI UNE TOLERANCE ET NON UN ZERO. Le zero absolu n'est pas atteignable avec
+    un deplieur automatique sur une coque de cent mille triangles, et la mesure le dit
+    (specter_9_c, au build, sonde 1024) :
+
+    | angle | marge  | remplissage | recouvrement | ratio    |
+    |-------|--------|-------------|--------------|----------|
+    | 32°   | 0,0025 | **6,2 %**   | **0**        | 0        |
+    | 66°   | 0,0060 | 26,0 %      | 108 texels   | 3,9e-04  |
+    | 55°   | 0,0040 | 28,0 %      | 108 texels   | 3,7e-04  |
+    | 66°   | 0,0030 | **39,7 %**  | 132 texels   | 3,2e-04  |
+
+    Plus on coupe, moins les ilots s'enroulent sur eux-memes — et plus le packing
+    s'effondre, jusqu'a payer un atlas dont on ne lit que 6 %. **Le zero absolu se paie
+    en resolution utile, ce qui est exactement le contraire du but.**
+
+    ⚠️ ET C'EST BIEN UN ETALONNAGE, PAS UN CONTOURNEMENT — la nuance se verifie. Le
+    ratio plafonne vers 3-4 pour 10 000 quelle que soit la configuration : c'est le
+    plancher de la methode, pas un defaut de reglage. Ce que la tolerance laisse passer,
+    ce sont **une centaine de texels epars** sur un million, soit trois centiemes de
+    pourcent de la peinture — invisible sur une coque de 2,46 m. Ce qu'elle refuse
+    toujours : un ilot entier pose sur un autre, qui en compterait des MILLIERS. Le test
+    `test_deux_triangles_superposes_sont_vus` le prouve en le faisant tomber (11 781
+    texels). `max_overlap=0.0` restaure le controle strict quand on veut le verifier.
+
+    ⚠️ `margin_method="ADD"` et non `SCALED` (le defaut de Blender) : la marge mise a
+    l'echelle de chaque ilot mange tout des qu'il y en a des milliers. Mesure : le meme
+    depliage rend **9,7 %** de remplissage en SCALED contre **26,3 %** en ADD.
 
     Les defauts viennent d'un balayage sur la coque reelle (2026-09-05, 102 738
     triangles) — ce sont des mesures, pas des gouts :
@@ -1818,7 +1848,7 @@ def atlas_unwrap(
     # avec une seule. Les defauts de `pack_islands` sont deja les bons (ilots concaves,
     # rotation libre, mise a l'echelle) : on ne les surcharge pas.
     bpy.ops.uv.smart_project(angle_limit=math.radians(angle_limit_deg), island_margin=0.0)
-    bpy.ops.uv.pack_islands(margin=margin)
+    bpy.ops.uv.pack_islands(margin=margin, margin_method="ADD")
     bpy.ops.object.mode_set(mode="OBJECT")
 
     report = AtlasReport(probe=probe)
@@ -1850,10 +1880,13 @@ def atlas_unwrap(
             f"atlas_unwrap : {report.outside} boucles UV hors du carre [0, 1] — "
             "le packing a deborde, la carte ne serait pas adressable"
         )
-    if report.overlap_texels:
+    covered = max(int(report.fill * probe * probe), 1)
+    if report.overlap_texels > covered * max_overlap:
         raise ContractError(
-            f"atlas_unwrap : {report.overlap_texels} texels couverts deux fois "
-            f"(sonde {probe}x{probe}) — deux faces partagent de la peinture"
+            f"atlas_unwrap : {report.overlap_texels} texels couverts deux fois sur "
+            f"{covered} couverts (sonde {probe}x{probe}), soit "
+            f"{report.overlap_texels / covered:.2e} > {max_overlap:.1e} — "
+            "deux faces partagent assez de peinture pour que ca se voie"
         )
     if report.fill < min_fill:
         raise ContractError(

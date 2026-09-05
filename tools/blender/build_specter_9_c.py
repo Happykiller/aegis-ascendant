@@ -148,11 +148,14 @@ OUTPUT = os.path.join(_REPO, "assets/imported/models/ships/specter_9_c.glb")
 
 SEED = 90211  # graine unique de la cellule-temoin (la coque en service a 90210)
 
-#: Densites de depliage (BRIEF-0098 §Texture). Une tuile = 0,40 m sur la peau,
-#: 0,25 m dans les baies, et DEUX tuiles au tour de chaque tuyere.
-HULL_TILES_PER_M = 2.5
-GREEBLE_TILES_PER_M = 4.0
-NOZZLE_TILES_AROUND = 2.0
+#: ⛔ PERIMEES depuis ADR-0047 (2026-09-05) — gardees comme trace, plus lues nulle part.
+#: Elles calaient le depliage par zones de BRIEF-0098 §Texture (une tuile = 0,40 m sur
+#: la peau, 0,25 m dans les baies, deux tuiles au tour de chaque tuyere) pour accueillir
+#: trois feuilles REPETABLES, TEX-0017 a TEX-0019, jamais commandees. La coque est
+#: desormais depliee en ATLAS : un seul carre UV, des ilots disjoints, un albedo peint.
+_PERIMEES_HULL_TILES_PER_M = 2.5
+_PERIMEES_GREEBLE_TILES_PER_M = 4.0
+_PERIMEES_NOZZLE_TILES_AROUND = 2.0
 
 #: Jeu minimal admis entre une piece mobile et sa voisine, a toute pose de la
 #: plage cible. En deca, le build ECHOUE.
@@ -2251,15 +2254,6 @@ def _finish(obj, bevel: float, segments: int) -> None:
     ak.shade_smooth_by_angle(obj, angle_deg=34.0)
 
 
-def _unwrap_hull_zone(obj) -> None:
-    ak.box_project_uv_by_material(obj, {"AA_Greeble": GREEBLE_TILES_PER_M}, HULL_TILES_PER_M)
-
-
-def _unwrap_nozzle_zone(obj, side: float) -> None:
-    ak.cylinder_project_uv(obj, (side * NACELLE_X, 0.0, NACELLE_Z), (0.0, 1.0, 0.0),
-                           NOZZLE_TILES_AROUND, reference_radius=NACELLE_R)
-
-
 # ==========================================================================
 # Mesures polaires heritees (BRIEF-0035/0036)
 # ==========================================================================
@@ -2894,7 +2888,6 @@ def main() -> None:
     dbm.free()
     ship = ak.join_objects([build_hull(), details], "Specter9C")
     _finish(ship, bevel=0.0030, segments=2)
-    _unwrap_hull_zone(ship)
     if ship.data.validate(verbose=True):
         print("  ⚠️ validate() a CORRIGE le maillage principal (voir les lignes ci-dessus)")
 
@@ -2904,24 +2897,37 @@ def main() -> None:
                         build_rudder, build_grapple):
             part = builder(side)
             _finish(part.obj, bevel=0.0022, segments=2)
-            _unwrap_hull_zone(part.obj)
             parts[part.obj.name] = part
         nozzle = build_nozzle(side)
         _finish(nozzle.obj, bevel=0.0020, segments=3)
-        _unwrap_nozzle_zone(nozzle.obj, side)
         parts[nozzle.obj.name] = nozzle
         for p in range(NOZZLE_PETALS):
             petal = build_petal(side, p)
             _finish(petal.obj, bevel=0.0016, segments=3)
-            _unwrap_nozzle_zone(petal.obj, side)
             parts[petal.obj.name] = petal
     canopy = build_canopy()
     _finish(canopy.obj, bevel=0.0020, segments=3)
-    _unwrap_hull_zone(canopy.obj)
     parts[canopy.obj.name] = canopy
 
     if len(parts) != EXPECTED_MOVING_NODES:
         raise ak.ContractError(f"{len(parts)} pieces mobiles, {EXPECTED_MOVING_NODES} attendues")
+
+    # --- depliage en ATLAS (ADR-0047) ---------------------------------------
+    #
+    # ⚠️ REMPLACE LE DEPLIAGE PAR ZONES, ET CE N'EST PAS UN REGLAGE. Le plan d'origine
+    # projetait en boite par materiau (coque 2,5 t/m, greeble 4 t/m) et en cylindre sur
+    # les tuyeres, pour accueillir trois feuilles REPETABLES — TEX-0017 a TEX-0019.
+    # Ces trois demandes n'ont jamais ete commandees, et elles sont desormais caduques :
+    # une feuille repetable MULTIPLIE la palette, elle ne peut donc jamais peindre une
+    # bande, un filet ni un matricule. La livree demandee par l'operateur exige un
+    # albedo, donc un atlas, donc des ilots DISJOINTS — ce que la projection en boite
+    # ne produit pas, par construction (elle les fait se recouvrir, volontairement).
+    #
+    # Le depliage se fait EN UNE FOIS sur la coque et ses 39 pieces mobiles : un seul
+    # carre UV, une seule image. Faire autrement donnerait 40 atlas.
+    atlas = ak.atlas_unwrap([ship] + [p.obj for p in parts.values()],
+                            angle_limit_deg=66.0, margin=0.003)
+    print("  " + atlas.render())
 
     # --- mesures heritees (polaires) ---------------------------------------
     travel = min(_flap_travel_limit(parts["Flap_L"]), _flap_travel_limit(parts["Flap_R"]))

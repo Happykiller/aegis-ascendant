@@ -74,7 +74,12 @@ func is_atlas() -> bool:
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
-	for pair: Array in [["mul", mul], ["normal", normal], ["roughness", roughness], ["ao", ao]]:
+	# `mul` n'est requise qu'en regime FEUILLE : un atlas remplace la palette, il n'a
+	# rien a multiplier. Exiger les deux forcerait a poser l'atlas en double.
+	var required: Array = [["normal", normal], ["roughness", roughness], ["ao", ao]]
+	if not is_atlas():
+		required.append(["mul", mul])
+	for pair: Array in required:
 		if pair[1] == null:
 			errors.append("%s map is required" % pair[0])
 	if is_atlas():
