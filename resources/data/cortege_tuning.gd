@@ -17,10 +17,23 @@ extends Resource
 ## cette Resource qui RÈGLE les deux, et faire dépendre le réglage de la pièce créerait un cycle
 ## là où il n'y a qu'une table de nombres. La pièce, elle, se contente de dire laquelle elle est.
 ##
-## ⚠️ UNE TROISIÈME ÉCHELLE NE S'AJOUTE PAS ICI SANS TOUCHER `validate()`. Les invariants
-## bouclent sur `TurretScale.values()` — une valeur de plus est une famille de plus à borner, et
-## c'est voulu : une échelle non bornée est exactement ce qui rend un survol injouable en silence.
-enum TurretScale { HEAVY, LIGHT }
+## ⚠️ UNE ÉCHELLE DE PLUS EST UNE FAMILLE DE PLUS À BORNER. Les invariants bouclent sur
+## `TurretScale.values()`, et c'est voulu : une échelle non bornée est exactement ce qui rend un
+## survol injouable en silence. La troisième est arrivée le 2026-09-05, avec la planche des trois
+## classes — et l'avertissement ci-dessus a été tenu : `validate()` a changé avec elle.
+##
+## ⚠️ L'ORDRE EST CELUI DE LA MASSE, ET IL PORTE UN INVARIANT. `LIGHT < STANDARD < HEAVY` permet
+## à l'invariant 3 bis de boucler sur les couples CONSÉCUTIFS au lieu de comparer les familles
+## deux à deux à la main. Trois familles font trois comparaisons manuelles, quatre en font six :
+## la version écrite à la main aurait cessé d'être exhaustive à la première échelle suivante,
+## sans que rien ne le dise. ⚠️ Ne pas réordonner : l'ordre EST la hiérarchie.
+##
+## ⚠️ ET « STANDARD » EST LA RÉFÉRENCE, d'où ses champs SANS PRÉFIXE (`turret_health`…), comme
+## `reference_dps` est la cadence de référence. Ce n'est pas un oubli de nommage : ces valeurs
+## sont celles que les dix-sept tourelles du niveau portaient déjà avant que la classe lourde
+## n'existe. Les renommer aurait déplacé un réglage joué et testé pendant qu'on en ajoutait un
+## autre — deux changements dans un seul diff, dont un invisible.
+enum TurretScale { LIGHT, STANDARD, HEAVY }
 
 # ==========================================================================
 # Hypothèses de dimensionnement — PAS des réglages
@@ -155,6 +168,36 @@ enum TurretScale { HEAVY, LIGHT }
 ## batterie, un score généreux ferait des batteries la meilleure source de points du niveau, et
 ## le joueur cesserait de viser ce qui compte.
 @export var light_turret_score: int = 240
+
+@export_group("Tourelles lourdes")
+## ⚠️ ELLE EST UN ÉVÉNEMENT, ET C'EST TOUT CE QUI LA DISTINGUE. La planche du 2026-09-05 la
+## définit par « puissance, dissuasion, contrôle » et par « PEU D'EXEMPLAIRES ». Une tourelle
+## lourde qu'on croiserait dix-sept fois ne serait pas une tourelle lourde : ce serait la
+## nouvelle tourelle standard, et la hiérarchie à trois classes serait retombée à deux.
+##
+## Le niveau en pose TROIS, toutes à l'arrière (`cortege_hardpoints.gd`) : c'est la coque qui
+## devient « de plus en plus massive » vers la poupe, pas une difficulté qui monte par palier.
+
+## Sa fenêtre est plus longue que celle de la standard : une pièce deux fois plus grande se
+## distingue de plus loin. Même raisonnement que pour la légère, pris par l'autre bout.
+@export var heavy_turret_visible_span: float = 26.0
+## ⚠️ ELLE NE TOMBE PAS EN PASSANT, ET C'EST SA DÉFINITION. À 520 PV elle coûte 21 % de ce qu'un
+## joueur de référence peut placer dans sa fenêtre — contre 9 % pour la standard et 4 % pour la
+## légère. S'en occuper est une DÉCISION, comme un pont d'envol. L'invariant 2 borne toujours le
+## haut à 35 % : au-delà, le survol devient une file d'attente.
+@export var heavy_turret_health: float = 520.0
+## ⚠️ ELLE PIVOTE PLUS LENTEMENT QUE LA STANDARD, ET C'EST CE QUI LA REND JOUABLE. Elle frappe
+## plus fort et vit plus longtemps : si elle suivait aussi vite, elle n'aurait aucun défaut à
+## exploiter. La lenteur est la contrepartie de la masse — c'est la même règle que l'invariant 3
+## tient pour tout le monde, ici prise dans le sens du poids.
+@export var heavy_turret_turn_rate_deg: float = 30.0
+## Une cadence PLUS DENSE que la standard. ⚠️ ELLE EST SEULE, LÀ OÙ LES LÉGÈRES VIENNENT PAR
+## QUATRE : c'est ce qui permet de la faire tirer plus souvent sans que la somme d'un groupe
+## dépasse la pièce au-dessus. Le raisonnement de `light_turret_burn_interval`, retourné.
+@export var heavy_turret_burn_interval: float = 0.30
+## Ce que rapporte une tourelle lourde abattue. Le double de la standard : c'est le prix du
+## temps qu'on lui consacre, et il n'y en a que trois dans le niveau.
+@export var heavy_turret_score: int = 1800
 
 @export_group("Ponts d'envol")
 ## ⚠️ ILS COÛTENT CHER À FAIRE TOMBER, C'EST LEUR RAISON D'ÊTRE. Un pont laissé debout produit
@@ -296,27 +339,45 @@ func turret_reachable() -> float:
 # lecture de champ derrière un `match` ne coûte rien et n'alloue pas (spec §31).
 
 func turret_span_of(scale: TurretScale) -> float:
-	return light_turret_visible_span if scale == TurretScale.LIGHT else turret_visible_span
+	match scale:
+		TurretScale.LIGHT: return light_turret_visible_span
+		TurretScale.HEAVY: return heavy_turret_visible_span
+	return turret_visible_span
 
 func turret_health_of(scale: TurretScale) -> float:
-	return light_turret_health if scale == TurretScale.LIGHT else turret_health
+	match scale:
+		TurretScale.LIGHT: return light_turret_health
+		TurretScale.HEAVY: return heavy_turret_health
+	return turret_health
 
 func turret_turn_rate_of(scale: TurretScale) -> float:
-	return light_turret_turn_rate_deg if scale == TurretScale.LIGHT else turret_turn_rate_deg
+	match scale:
+		TurretScale.LIGHT: return light_turret_turn_rate_deg
+		TurretScale.HEAVY: return heavy_turret_turn_rate_deg
+	return turret_turn_rate_deg
 
 func turret_burn_interval_of(scale: TurretScale) -> float:
-	return light_turret_burn_interval if scale == TurretScale.LIGHT else turret_burn_interval
+	match scale:
+		TurretScale.LIGHT: return light_turret_burn_interval
+		TurretScale.HEAVY: return heavy_turret_burn_interval
+	return turret_burn_interval
 
 func turret_score_of(scale: TurretScale) -> int:
-	return light_turret_score if scale == TurretScale.LIGHT else turret_score
+	match scale:
+		TurretScale.LIGHT: return light_turret_score
+		TurretScale.HEAVY: return heavy_turret_score
+	return turret_score
 
 ## Ce qu'un joueur de référence peut placer dans la fenêtre de CETTE échelle.
 func turret_reachable_of(scale: TurretScale) -> float:
 	return reachable_damage(turret_span_of(scale), reference_dps, occupancy_hull)
 
-## Le nom de l'échelle, pour que le message d'un invariant dise LAQUELLE des deux il refuse.
+## Le nom de l'échelle, pour que le message d'un invariant dise LAQUELLE des trois il refuse.
 static func turret_scale_name(scale: TurretScale) -> String:
-	return "une tourelle légère" if scale == TurretScale.LIGHT else "une tourelle"
+	match scale:
+		TurretScale.LIGHT: return "une tourelle légère"
+		TurretScale.HEAVY: return "une tourelle lourde"
+	return "une tourelle standard"
 
 func bay_reachable() -> float:
 	return reachable_damage(bay_visible_span, reference_dps, occupancy_hull)
@@ -533,15 +594,36 @@ func validate() -> PackedStringArray:
 	# qu'une lourde redevient la « forêt uniforme de tourelles identiques » que ce lot existe
 	# pour éviter — et rien, ni test ni capture, ne le signalerait. Les trois écarts qui
 	# PORTENT la hiérarchie sont donc déclarés, pas espérés.
-	if light_turret_health >= turret_health:
-		errors.append("une tourelle légère a %.0f PV pour %.0f à la lourde : elle ne tombe plus en passant, et la hiérarchie des échelles disparaît"
-			% [light_turret_health, turret_health])
-	if light_turret_burn_interval <= turret_burn_interval:
-		errors.append("une tourelle légère tire toutes les %.2f s pour %.2f s à la lourde : elles viennent par quatre, et une batterie plus dense qu'une pièce lourde inverse la hiérarchie"
-			% [light_turret_burn_interval, turret_burn_interval])
-	if light_turret_visible_span >= turret_visible_span:
-		errors.append("une tourelle légère se voit sur %.1f pour %.1f à la lourde : une pièce trois fois plus petite ne se distingue pas d'aussi loin"
-			% [light_turret_visible_span, turret_visible_span])
+	# ⚠️ IL BOUCLE SUR LES COUPLES CONSÉCUTIFS, IL NE COMPARE PLUS DEUX FAMILLES À LA MAIN.
+	# Avec deux échelles, trois `if` écrits à la main suffisaient. Avec trois, il en faudrait six
+	# pour rester exhaustif, et avec quatre, dix — la version manuelle aurait cessé de tout
+	# couvrir à la première échelle suivante, en silence. L'ordre de l'enum EST la hiérarchie
+	# (`LIGHT < STANDARD < HEAVY`) : il suffit donc de vérifier chaque marche.
+	var echelles: Array = TurretScale.values()
+	for i in echelles.size() - 1:
+		var petite: TurretScale = echelles[i]
+		var grande: TurretScale = echelles[i + 1]
+		var np := turret_scale_name(petite)
+		var ng := turret_scale_name(grande)
+		if turret_health_of(petite) >= turret_health_of(grande):
+			errors.append("%s a %.0f PV pour %.0f à %s : elle ne tombe plus en passant, et la hiérarchie des échelles disparaît"
+				% [np, turret_health_of(petite), turret_health_of(grande), ng])
+		if turret_span_of(petite) >= turret_span_of(grande):
+			errors.append("%s se voit sur %.1f pour %.1f à %s : une pièce plus petite ne se distingue pas d'aussi loin"
+				% [np, turret_span_of(petite), turret_span_of(grande), ng])
+		# ⚠️ LA CADENCE VA DANS L'AUTRE SENS, et ce n'est pas une inversion de signe distraite :
+		# une petite tourelle tire MOINS souvent, parce qu'elle vient en groupe. La somme d'une
+		# batterie doit rester sous la pièce du dessus, sinon le joueur apprend à craindre les
+		# petites et la hiérarchie s'inverse sans qu'aucun nombre n'ait l'air faux.
+		if turret_burn_interval_of(petite) <= turret_burn_interval_of(grande):
+			errors.append("%s tire toutes les %.2f s pour %.2f s à %s : elles viennent en groupe, et un groupe plus dense que la pièce au-dessus inverse la hiérarchie"
+				% [np, turret_burn_interval_of(petite), turret_burn_interval_of(grande), ng])
+		# ⚠️ LA ROTATION AUSSI : « plus petite donc plus vive » est la contrepartie de la masse.
+		# Une lourde qui suivrait aussi vite qu'une légère n'aurait aucun défaut à exploiter, et
+		# ses 520 PV deviendraient une taxe au lieu d'une décision.
+		if turret_turn_rate_of(petite) <= turret_turn_rate_of(grande):
+			errors.append("%s pivote à %.0f °/s pour %.0f °/s à %s : la masse doit se payer en lenteur, sinon la grosse pièce n'a aucun défaut à exploiter"
+				% [np, turret_turn_rate_of(petite), turret_turn_rate_of(grande), ng])
 
 	# --- INVARIANT 4 : un pont laissé debout PRODUIT ---------------------
 	# Sans quoi l'abattre ne serait pas une décision : c'est la pression qu'il exerce qui

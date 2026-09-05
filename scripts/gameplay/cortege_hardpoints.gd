@@ -66,6 +66,32 @@ extends Node3D
 # Format : [nom de l'hôte, [[dx, ds], ...]] — `dx` en latéral (+ = tribord), `ds` le long de la
 # coque depuis la proue. La conversion en Z local est faite au montage : `s` croît vers la poupe,
 # `z` décroît.
+## LES TROIS TOURELLES LOURDES — nommées, jamais tirées d'une règle
+##
+## ⚠️ TROIS, PARCE QUE LA PLANCHE DIT « PEU D'EXEMPLAIRES ». La classe lourde
+## (`assets/reference/concepts/tourelles_lourdes_concept_sheet_2026-09-05.png`, colonne 3) est
+## définie par « puissance, dissuasion, contrôle ». Une pièce qu'on croiserait dix-sept fois ne
+## serait pas une pièce lourde : ce serait la nouvelle standard, et la hiérarchie à trois classes
+## serait retombée à deux le jour de sa naissance.
+##
+## ⚠️ ET LEUR CHOIX EST GÉOMÉTRIQUE AVANT D'ÊTRE DRAMATIQUE. Une lourde pose une emprise de
+## 3,20 m de rayon là où une standard en pose 2,08 (`HEAVY_GEOM_SCALE`). Les trois retenues sont
+## celles dont l'écart à l'axe est le plus FAIBLE de la poupe — 5,6, 6,2 et 6,0 m — parce qu'une
+## pièce posée près du bord déborderait dans le vide. C'est exactement ce qu'on a vu en jeu le
+## 2026-09-05 sur le modèle de référence, à 3,62 m d'emprise : il dépassait de la coque.
+##
+##   `Turret_08`  station 263,0, x = −5,6  — la première, juste APRÈS le verrou de mi-parcours
+##   `Turret_12`  station 380,0, x = −6,2  — tronçon 4
+##   `Turret_15`  station 463,3, x = −6,0  — tronçon 5, la dernière avant Ambry
+##
+## Aucune n'est à moins de 20 m d'un pont d'envol sur le même flanc : une emprise deux fois plus
+## large que la standard aurait sinon mordu un coaming, et `_pad_bay_clearances()` ne le verrait
+## pas — il est calculé côté forge, sur l'emprise de la STANDARD.
+##
+## ⚠️ À REVOIR quand `BRIEF-0100` aura MESURÉ l'emprise réellement posable contre la peau. Ces
+## trois-là sont les plus sûres qu'on puisse choisir sans cette mesure, pas les plus belles.
+const HEAVY_TURRETS: PackedStringArray = ["Turret_08", "Turret_12", "Turret_15"]
+
 const BATTERIES: Array = [
 	# Révélation : deux pièces devant une lourde, même bord, tronçon 1. Pont intérieur.
 	["Turret_01", [[1.8, 3.4], [3.2, 4.8]]],
@@ -146,13 +172,19 @@ func build(sections: Array[Node3D], p_tuning: CortegeTuning, bullet_manager: Bul
 			# ⚠️ APRÈS la pièce lourde et non à sa place : une batterie garde une installation,
 			# elle ne la remplace pas. Un hôte sans entrée dans la table n'en a simplement pas.
 			_add_battery(marker, index, bullet_manager, player, vfx)
-	print("[Cortege] armement — %d tourelles (+%d légères), %d ponts, %d nœuds, %d coques en réserve"
-		% [_turrets.size(), _light_turrets.size(), _bays.size(), _nodes.size(),
+	var lourdes := 0
+	for piece in _turrets:
+		if piece.is_heavy():
+			lourdes += 1
+	print("[Cortege] armement — %d tourelles dont %d lourdes (+%d légères), %d ponts, %d nœuds, %d coques en réserve"
+		% [_turrets.size(), lourdes, _light_turrets.size(), _bays.size(), _nodes.size(),
 			_released.get_child_count()])
 
 func _add_turret(marker: Node3D, section: int, bullet_manager: BulletManager,
 		player: PlayerFighterController, vfx: VFXManager) -> void:
-	var turret := CortegeTurret.make(tuning, section)
+	var echelle := CortegeTuning.TurretScale.HEAVY if marker.name in HEAVY_TURRETS \
+		else CortegeTuning.TurretScale.STANDARD
+	var turret := CortegeTurret.make(tuning, section, echelle)
 	turret.serial = _turrets.size()
 	turret.name = "Turret"
 	turret.setup(bullet_manager, player, vfx)

@@ -70,6 +70,15 @@ const SEEK_SPAN_FACTOR := 2.0
 ## et une boule rose) ne faisait pas.
 const KIT_PATH := "res://assets/imported/models/backgrounds/turret_kit.glb"
 
+## ⚠️ BANC D'ESSAI, PAS UN ASSET DE JEU — `--turret-proto`. Monte à la place de l'affût du kit
+## le modèle de tourelle lourde poussé par l'opérateur le 2026-09-05, POUR LE REGARDER DANS
+## NOTRE CHAÎNE. Le rendu studio d'un tiers ne dit rien de ce que notre moteur en fait : c'est
+## exactement la leçon d'`ADR-0045`, où une planche Cycles propre sortait en blocs postérisés.
+##
+## Ce chemin est TEMPORAIRE et se retire d'un bloc : ce commentaire, `PROTO_PATH`,
+## `_build_proto_head()` et le fichier `.glb`. Rien d'autre ne le connaît.
+const PROTO_PATH := "res://assets/imported/models/backgrounds/proto_tourelle_lourde.glb"
+
 ## Positions d'assemblage, mesurées sur le binaire livré (BRIEF-0093) — pas recopiées d'un brief.
 const RING_LIFT := 0.02
 const BODY_LIFT := 0.37
@@ -103,6 +112,29 @@ const FAMILIES: Array = [
 ## décide. Deux tubes écartés sur un tambour large contre un tube unique sur une embase : la
 ## différence tient à la silhouette, pas à une teinte ni à une taille seule.
 const LIGHT_GEOM_SCALE := 0.5
+
+# --- L'échelle lourde : le MÊME assemblage, en plus grand ---------------------
+#
+## ⚠️ ET C'EST CE QUI LA SÉPARE DE LA LÉGÈRE, qui n'est PAS un simple facteur. La légère est un
+## assemblage DIFFÉRENT — quatre pièces au lieu de huit, un tube au lieu de deux : ses cotes de
+## masse et d'allonge sont donc des mesures indépendantes, et c'est ce que dit l'avertissement
+## sous `LIGHT_HIT_LIFT`. La lourde, elle, est la même tourelle en plus grand : ses cotes se
+## déduisent bel et bien de son facteur, et les recopier à la main serait le seul moyen de les
+## faire diverger.
+##
+## ⚠️ 1,538 N'EST PAS LA PLANCHE, ET L'ÉCART EST ASSUMÉ. La planche demande une lourde de 10,0 m
+## là où la standard fait 6,5 — soit exactement ce rapport. Mais notre kit assemble une standard
+## de 5,2 m : à 1,538 la lourde fait **8,0 m**, soit 80 % de la planche. Monter à 1,92 pour
+## atteindre les 10 m porterait l'emprise au sol à 4,00 m de rayon, quand la plus large
+## plateforme que la coque déclare (`PAD_RADIUS`, tronçon 5) en fait **3,20** — et 3,20 / 2,08
+## redonne précisément 1,538. La coque borne donc la pièce avant la planche.
+##
+## Vu en jeu le 2026-09-05 : le modèle de référence, à 3,62 m d'emprise, DÉBORDAIT déjà de la
+## coque. Ce n'est pas une prudence de principe, c'est une capture.
+##
+## ⚠️ À REMESURER quand `BRIEF-0100` livrera le kit reforgé : les trois classes y seront
+## modelées ensemble, et c'est cette livraison-là qui fixera les rapports pour de bon.
+const HEAVY_GEOM_SCALE := 1.538
 
 ## Le canon unique, décalé du rang de montage. ⚠️ ELLES VIENNENT PAR QUATRE : quatre pièces
 ## rigoureusement identiques, posées côte à côte, se lisent comme un motif imprimé — exactement
@@ -187,7 +219,11 @@ var section: int = 0
 ## ⚠️ `turret_scale` ET NON `scale` : `Node3D` a déjà un membre `scale`, et le redéfinir est une
 ## erreur de compilation — pas un avertissement. Le nom long dit d'ailleurs mieux ce qu'il est :
 ## une échelle de DÉFENSE, pas un facteur de taille.
-var turret_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.HEAVY
+## ⚠️ LE DÉFAUT EST `STANDARD` ET NON `HEAVY` DEPUIS LA TROISIÈME ÉCHELLE (2026-09-05). Les
+## dix-sept tourelles du niveau sont des standards ; la lourde est posée EXPLICITEMENT, sur
+## trois emplacements nommés. Laisser `HEAVY` par défaut aurait donné dix-sept pièces à 520 PV
+## au lieu de 180 — un niveau trois fois plus dur, sans qu'une seule ligne ne le dise.
+var turret_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.STANDARD
 
 var _bullet_manager: BulletManager
 var _player: PlayerFighterController
@@ -226,7 +262,7 @@ var _wreck: float = -1.0
 var _wreck_from: Vector3 = Vector3.ZERO
 
 static func make(p_tuning: CortegeTuning, p_section: int,
-		p_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.HEAVY) -> CortegeTurret:
+		p_scale: CortegeTuning.TurretScale = CortegeTuning.TurretScale.STANDARD) -> CortegeTurret:
 	var turret := CortegeTurret.new()
 	turret.tuning = p_tuning
 	turret.section = p_section
@@ -239,7 +275,7 @@ static func make(p_tuning: CortegeTuning, p_section: int,
 	# une tourelle : elle a des points de vie et une facon de les perdre. Les creer dans `setup`
 	# rendait la piece intestable sans gestionnaire de balles — et donc intestee.
 	turret._target = BulletTarget.make(BulletManager.Team.ENEMY,
-		LIGHT_TARGET_RADIUS if p_scale == CortegeTuning.TurretScale.LIGHT else 1.05,
+		target_radius_of(p_scale),
 		turret._take_damage)
 	turret._target.enabled = false
 	return turret
@@ -253,7 +289,29 @@ func is_light() -> bool:
 ## échelles n'ont pas la même hauteur, et le gestionnaire ne peut pas le deviner depuis le
 ## marqueur, qui est le même dans les deux cas.
 func hit_lift() -> float:
-	return LIGHT_HIT_LIFT if is_light() else HIT_LIFT
+	match turret_scale:
+		CortegeTuning.TurretScale.LIGHT: return LIGHT_HIT_LIFT
+		CortegeTuning.TurretScale.HEAVY: return HIT_LIFT * HEAVY_GEOM_SCALE
+	return HIT_LIFT
+
+## D'où la balle sort, par échelle — le bout des tubes.
+func muzzle_reach() -> float:
+	match turret_scale:
+		CortegeTuning.TurretScale.LIGHT: return LIGHT_MUZZLE_REACH
+		CortegeTuning.TurretScale.HEAVY: return MUZZLE_REACH * HEAVY_GEOM_SCALE
+	return MUZZLE_REACH
+
+## Le rayon de la cible, par échelle. ⚠️ STATIQUE : `make()` la lit AVANT que la pièce n'ait son
+## échelle en champ — la cible naît avec la pièce, et pas avec son câblage.
+static func target_radius_of(scale: CortegeTuning.TurretScale) -> float:
+	match scale:
+		CortegeTuning.TurretScale.LIGHT: return LIGHT_TARGET_RADIUS
+		CortegeTuning.TurretScale.HEAVY: return 1.05 * HEAVY_GEOM_SCALE
+	return 1.05
+
+## Lourde, lu de l'extérieur — le pendant de `is_light()`.
+func is_heavy() -> bool:
+	return turret_scale == CortegeTuning.TurretScale.HEAVY
 
 ## Ce que rapporte CETTE pièce. Lu par le niveau, qui ne connaît pas les échelles.
 func score() -> int:
@@ -275,6 +333,8 @@ func _ready() -> void:
 ## répartition différente à chaque lancement, donc une capture qu'on ne peut pas comparer à la
 ## précédente — et l'équilibrage d'un survol se lit en comparant deux passages.
 func _build_head() -> void:
+	if not is_light() and "--turret-proto" in OS.get_cmdline_user_args() and _build_proto_head():
+		return
 	var packed: PackedScene = load(KIT_PATH) as PackedScene
 	if packed == null:
 		push_error("[Cortege] kit de tourelle introuvable : %s" % KIT_PATH)
@@ -306,6 +366,56 @@ func _build_head() -> void:
 			Vector3(side * gauge * 0.5, BARREL_LIFT, BARREL_SEAT_Z), 0.0, _barrel)
 	kit.queue_free()
 
+## BANC D'ESSAI (`--turret-proto`) : monte le modèle poussé au lieu de l'affût du kit.
+##
+## ⚠️ SON GRÉEMENT EST BRANCHÉ, PAS SON CLIP. Le `.glb` porte une animation de démonstration de
+## 240 images — une chorégraphie scriptée, inutilisable pour une tourelle qui vise un joueur.
+## Mais elle n'anime que QUATRE nœuds (`CTRL | Yaw 360`, `CTRL | Elevation`, `CTRL | L/R
+## recoil`) : le gréement est donc pilotable directement, et c'est `CTRL | Yaw 360` qu'on donne
+## à `_barrel`. La visée existante s'y applique sans une ligne de plus.
+##
+## Rend `false` si le modèle n'est pas là — on retombe alors sur le kit plutôt que de laisser
+## une tourelle invisible sur la coque.
+func _build_proto_head() -> bool:
+	var packed: PackedScene = load(PROTO_PATH) as PackedScene
+	if packed == null:
+		push_warning("[Cortege] prototype introuvable (%s) — on garde le kit" % PROTO_PATH)
+		return false
+	var model := packed.instantiate() as Node3D
+	if model == null:
+		push_warning("[Cortege] le prototype n'est pas un Node3D — on garde le kit")
+		return false
+	model.name = "Proto"
+	add_child(model)
+	# Le clip de démonstration ne doit PAS tourner : il rejouerait sa chorégraphie sous la visée.
+	for player in model.find_children("*", "AnimationPlayer", true, false):
+		(player as AnimationPlayer).active = false
+	_barrel = model.get_node_or_null(NodePath("CTRL | Yaw 360")) as Node3D
+	if _barrel == null:
+		# Godot assainit les noms de nœuds glTF : si le nôtre ne répond pas, on cherche.
+		for node in model.find_children("*Yaw*", "Node3D", true, false):
+			_barrel = node as Node3D
+			break
+	if _barrel == null:
+		push_warning("[Cortege] prototype sans nœud de lacet — la tourelle ne pivotera pas")
+	var eyes := 0
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var piece := node as MeshInstance3D
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if piece.mesh == null:
+			continue
+		# Même règle que `_claim_glow()` : un état par pièce demande un matériau par pièce.
+		for i in piece.mesh.get_surface_count():
+			var base := piece.mesh.surface_get_material(i) as StandardMaterial3D
+			if base == null or not base.emission_enabled:
+				continue
+			var mine: StandardMaterial3D = base.duplicate()
+			piece.set_surface_override_material(i, mine)
+			_glow.append(mine)
+			eyes += 1
+	print("[Cortege] PROTOTYPE monté sur Turret_%02d — %d surfaces émissives" % [serial, eyes])
+	return true
+
 ## Assemble la tourelle légère : quatre pièces, un seul tube, rien d'ancré autour.
 ##
 ## ⚠️ CE QU'ON RETIRE EST CE QUI FAIT LIRE « INSTALLATION ». Les coffrets, la conduite et la jupe
@@ -332,7 +442,10 @@ func _build_light_head(kit: Node) -> void:
 
 ## Le facteur d'échelle de la géométrie assemblée.
 func _geom_scale() -> float:
-	return LIGHT_GEOM_SCALE if is_light() else 1.0
+	match turret_scale:
+		CortegeTuning.TurretScale.LIGHT: return LIGHT_GEOM_SCALE
+		CortegeTuning.TurretScale.HEAVY: return HEAVY_GEOM_SCALE
+	return 1.0
 
 func _place(kit: Node, part: String, offset: Vector3, yaw: float, parent: Node) -> void:
 	var source := kit.get_node_or_null(part) as MeshInstance3D
@@ -499,7 +612,7 @@ func _run_fire(delta: float, here: Vector2) -> void:
 	# ⚠️ LA BALLE PART DE LA BOUCHE, pas du centre de la coupole : sinon elle naît dans le socle
 	# et le joueur voit un tir sortir du décor.
 	_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
-		here + _aim * (LIGHT_MUZZLE_REACH if is_light() else MUZZLE_REACH), _aim,
+		here + _aim * muzzle_reach(), _aim,
 		LIGHT_SHOT if is_light() else SHOT)
 	_set_eye(EYE_SHOT)
 
