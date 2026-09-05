@@ -18,7 +18,9 @@ Une tâche n'est **terminée** que si les quatre sont vraies :
    à l'impératif, petit, un seul objectif.
 
 « Ça compile » n'est pas une preuve de comportement. « J'ai regardé le rendu studio » non plus :
-le rendu studio flatte, le post-traitement rétro écrase — juger **en jeu**.
+le studio n'a ni l'éclairage, ni le fond, ni l'échelle réelle du sujet à l'écran — juger **en jeu**,
+sur une capture regardée à l'échelle 1:1. *(Cette ligne disait « le post-traitement rétro écrase » ;
+`ADR-0045` a retiré ce filtre — le réflexe reste, sa raison a changé.)*
 
 ## Décider : un ADR, pas un commentaire
 

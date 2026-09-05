@@ -94,7 +94,15 @@ Pour ceux-là, la recette du dépôt est meilleure : fond noir + `bg-key-alpha.p
 reconstruit un alpha **doux** dérivé de la luminance et préserve le dégradé de disparition. Si un
 damier a malgré tout été peint, `--mode sat` est le rattrapage (moins propre, résidu possible).
 
-## ⚠️ Le plancher de MODULATION — ce que le rendu rétro détruit, quoi qu'on demande
+## ⚠️ Le plancher de MODULATION — ce que le rendu rétro détruisait, quoi qu'on demande
+
+> ⛔ **PÉRIMÉ DEPUIS `ADR-0045` (2026-09-05).** Le post-process rétro a été **retiré du dépôt** :
+> plus de grille 960×540, plus de postérisation à 20 niveaux, plus de scanlines. Les deux maillons
+> qui fabriquaient ce plancher n'existent plus, et **la règle des ~6 niveaux de gris ne s'applique
+> plus**. La section reste ici parce qu'elle documente une méthode de diagnostic qui, elle, garde
+> toute sa valeur : quand un détail est invisible alors que la chaîne est juste, **mesurer l'aval**
+> avant d'accuser la texture. Les chiffres, eux, sont ceux d'une chaîne qui n'existe plus.
+> La résolution de source est à rouvrir en même temps (règle 1 « jamais 2048 » — voir `ADR-0046`).
 
 Relevé le 2026-09-04, en mesurant pourquoi la maille hexagonale de `TEX-0015` était **invisible**
 sur le panneau de bouclier de la Citadelle alors que toute la chaîne était juste.
