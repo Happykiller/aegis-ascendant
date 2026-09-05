@@ -1,0 +1,71 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9_v3.glb" id="1_glb"]
+
+; ⚠️ SCÈNE D'AJUSTEMENT D'UNE COQUE ÉTRANGÈRE — même rôle que `specter_9_b.tscn`, et pour
+; la même raison : le `.glb` reste EXACTEMENT ce que son auteur a livré. Tout ce que le
+; jeu attend en plus — l'échelle, l'orientation, les points d'accroche — vit ici.
+;
+; ÉCHELLE. Le modèle est livré à l'échelle du monde réel : 8,928 × 3,196 × 12,671 m,
+; c'est-à-dire la planche de concept du 2026-09-05 (8,9 × 3,4 × 12,6 m) modélisée. Le
+; facteur **0,19415** égalise la LONGUEUR sur la cellule en service (2,46 m), qui est
+; l'axe de vol. L'envergure suit à **1,7334 m** contre 1,75 au contrat d'`ADR-0008`,
+; soit **−0,95 %** — dans la tolérance de ±3 %, sans rien négocier. Hauteur 0,6205 m,
+; sous le plafond.
+;
+; ⚠️ LACET DE 180°, ET IL N'EST PAS DÉCORATIF. Mesuré sur le `.glb` : les pétales de
+; tuyère sont à Z = −6,37 et le nez du fuselage à Z = +6,30 — le modèle a donc le **nez
+; vers +Z**, quand tout le jeu vole nez vers **−Z** (`ADR-0008`). Sans cette rotation, le
+; chasseur volerait en marche arrière, les tirs partiraient de la poupe, et rien ne le
+; signalerait : aucune erreur, aucun journal. C'est le défaut le plus silencieux qu'un
+; modèle importé puisse porter.
+;
+; ⚠️ CONSÉQUENCE À NE PAS PERDRE : le lacet inverse aussi X. Les pièces que le modèle
+; nomme « L » atterrissent donc à **tribord** dans notre repère, où L vaut x négatif
+; (convention de `specter_9_b.tscn`). Les étiquettes ci-dessous sont celles de NOTRE
+; repère, pas celles du fichier — les recopier telles quelles aurait inversé les tuyères.
+;
+; DÉCALAGE VERTICAL. Le centre de la coque est à y = +0,1064 une fois mise à l'échelle ;
+; on le ramène à zéro pour que le pivot soit au centre, comme sur toute coque du kit.
+;
+; POINTS D'ACCROCHE. Le contrôleur cherche les bouches (`Muzzle_*`) et les réacteurs
+; (`Engine_*`) PAR LEUR NOM. Positions mesurées sur le maillage lui-même : sortie de
+; tuyère = extrémité arrière des vingt pétales de chaque côté, bouche = extrémité avant
+; des tubes de canon.
+;
+; ⚠️ LES CANONS D'AILE SONT FIXES ALORS QUE LES AILES BOUGENT. La flèche variable
+; déplace leur position réelle de ~7 cm en unités de jeu (pivot à 0,73 m du canon, 30°
+; de débattement). C'est la limite connue d'`ADR-0046` §3, ici bornée et acceptée :
+; elle vaut 4 % de la demi-envergure. Sur la cellule-témoin elle valait bien davantage.
+;
+; ⚠️ La hitbox NE CHANGE PAS : elle vient des Resources de gameplay, jamais du maillage
+; (`ADR-0034`). Les trois coques se jouent exactement pareil — on compare des
+; carrosseries, pas des statistiques.
+
+; ⚠️ L'ÉCHELLE EST SUR LA COQUE, PAS SUR LA RACINE — et c'est délibéré, contrairement à
+; `specter_9_b.tscn`. Les points d'accroche ci-dessous sont mesurés en UNITÉS DE JEU
+; FINALES, sur le maillage. Posés sous une racine mise à l'échelle, ils seraient divisés
+; une seconde fois par 0,19415 : les tuyères tomberaient à 24 cm du centre au lieu de
+; 1,24, et le vaisseau tirerait depuis son propre nombril. Le défaut serait invisible au
+; journal. La racine reste donc neutre, et seule la coque porte échelle, lacet et
+; recentrage vertical.
+
+[node name="Specter9V3" type="Node3D"]
+
+[node name="Hull" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-0.19415, 0, 0, 0, 0.19415, 0, 0, 0, -0.19415, 0, -0.1064, 0)
+
+[node name="Muzzle_C" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0103, -1.2231)
+
+[node name="Muzzle_Wing_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5281, -0.0582, -0.0349)
+
+[node name="Muzzle_Wing_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5281, -0.0582, -0.0349)
+
+[node name="Engine_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2407, 0.0155, 1.2369)
+
+[node name="Engine_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2407, 0.0155, 1.2369)

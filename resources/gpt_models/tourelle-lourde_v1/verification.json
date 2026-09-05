@@ -1,0 +1,16 @@
+{
+  "glb_reimport": "OK",
+  "dimensions_xyz_m": [
+    7.307,
+    10.118,
+    4.166
+  ],
+  "triangles": 45412,
+  "recoil_travel_m": 0.56,
+  "independent_alternating_recoil": true,
+  "synchronized_salvo": true,
+  "no_recoil_scaling": true,
+  "embedded_pbr_images": 3,
+  "animation_clips": 1,
+  "max_transform_error": 1.3113021850585938e-06
+}

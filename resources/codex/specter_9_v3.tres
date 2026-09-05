@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://scenes/player/hulls/specter_9_v3.tscn" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="3_stats"]
+[ext_resource type="PackedScene" path="res://scenes/player/hulls/specter_9_v3.tscn" id="4_playable"]
+
+;                  LA CELLULE DE SÉRIE — la coque du dossier technique
+;
+; ⚠️ LA FICHE MONTRE LA SCÈNE D'AJUSTEMENT, PAS LE `.glb`. Les deux autres coques
+; exposent leur `.glb` brut au présentoir. Celle-ci ne le peut pas : son modèle est livré
+; à l'échelle du monde réel, nez vers +Z, et le présentoir cadre sur la boîte englobante
+; sans jamais corriger une orientation. Montré brut, ce chasseur se présenterait de dos.
+; C'est donc `specter_9_v3.tscn` — échelle, lacet, recentrage — qui sert aux deux champs.
+;
+; ⚠️ ET ELLE EST ANIMÉE, ce qu'aucune fiche n'avait encore été. `ShipFlight` la reconnaît
+; non par ses noms de nœuds — elle en a 517, appelés `CTRL | L wing sweep` — mais par le
+; CLIP glTF que son auteur a réglé. La poussée cherche une image dans ce clip au lieu de
+; tourner des pièces une à une.
+;
+; Les valeurs de jeu affichées sont celles du Specter-9 (`specter9_stats.tres`) : c'est la
+; même cellule sous une autre carrosserie, et la hitbox ne bouge pas (`ADR-0034`). On
+; compare des FORMES, pas des chiffres.
+;
+; Mesuré sur le fichier : 93 648 triangles, 517 nœuds, 412 primitives, 9 matériaux et
+; 3 textures embarquées. Mise à l'échelle par 0,19415 elle fait 1,7334 × 0,6205 × 2,4600 m
+; — l'envergure tombe à 0,95 % du contrat d'`ADR-0008`, sans dérogation.
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Specter-9 Série"
+camp = 0
+designation = "HV-09/S"
+hull_class = "MICROCHASSEUR - CELLULE DE SERIE, GEOMETRIE VARIABLE"
+builder = "ARSENAL ORBITAL TALVERN"
+status = "AU DOSSIER TECHNIQUE"
+notice = "La cellule telle que le dossier technique la décrit, et telle qu'aucune n'est jamais sortie des cales: ailes à flèche variable commandées par la vitesse, tuyères à vingt pétales qui se resserrent en accélérant, verrière blindée sur un poste modelé jusqu'aux touches de console. L'Arsenal la publie, la flotte reçoit autre chose. Entre le plan et la coque, il y a toujours eu un budget."
+mass_t = 8.2
+crew = 1
+hull_scene = ExtResource("2_hull")
+playable_hull = ExtResource("4_playable")
+frame_distance = 0.0
+player_stats = ExtResource("3_stats")

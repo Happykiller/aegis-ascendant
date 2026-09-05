@@ -114,18 +114,56 @@ var _thrust: float = 0.0
 var _brake: float = 0.0
 var _dock: float = 0.0
 
-## `hull` : le Node3D instancié du `.glb`. Retourne `null` si la coque n'a aucune
-## pièce mobile — une coque d'avant BRIEF-0033 continue de fonctionner, immobile.
+## Le clip d'une coque étrangère, et l'instant de sa pleine vitesse.
+var _clip: AnimationPlayer = null
+var _clip_peak: float = 0.0
+
+## Fraction du clip importé à laquelle la pleine vitesse est atteinte.
+##
+## ⚠️ MESURÉE, PAS LUE. Le `README` du modèle v3 annonce le sommet à l'image 84 sur 180,
+## soit 46 %. Le clip exporté, lui, place la flèche maximale (30°) à **1,800 s sur 6,00**,
+## soit **30 %** — l'export a rééchantillonné. Suivre le README aurait donné une coque
+## qui n'atteint jamais sa pleine flèche, sans que rien ne le signale.
+##
+## ⚠️ ET ELLE EST PROPRE À CE CLIP. Un autre modèle animé aura la sienne, à mesurer de la
+## même façon : chercher l'instant où le canal de flèche atteint son extrême.
+const CLIP_PEAK_RATIO := 0.30
+
+## `hull` : le Node3D instancié du `.glb`. Retourne `null` si la coque n'a aucune pièce
+## mobile — une coque d'avant BRIEF-0033 continue de fonctionner, immobile.
+##
+## ⚠️ DEUX RÉGIMES DEPUIS LA COQUE v3, ET ILS S'EXCLUENT. Une coque du kit expose ses
+## pièces par NOM (`Wing_L`, `Petal_*`…) et se pilote nœud par nœud. Une coque étrangère
+## livrée avec son propre CLIP glTF n'a aucun de ces noms — la sienne compte 517 nœuds
+## appelés `CTRL | L wing sweep` — mais elle porte une animation que son auteur a réglée.
+## On la pilote alors en cherchant la bonne image du clip, ce qui revient au même pour
+## l'appelant : `set_thrust()` dans les deux cas.
 static func apply(hull: Node3D) -> ShipFlight:
-	if hull == null or hull.get_node_or_null("Wing_L") == null:
+	if hull == null:
+		return null
+	if hull.get_node_or_null("Wing_L") == null and _find_player(hull) == null:
 		return null
 	var flight := ShipFlight.new()
 	flight.name = "ShipFlight"
 	hull.add_child(flight)
 	return flight
 
+## Le premier `AnimationPlayer` de la coque qui porte au moins un clip. Récursif : le
+## lecteur d'un `.glb` importé vit sous le nœud d'instance, pas à la racine de la scène
+## d'ajustement.
+static func _find_player(node: Node) -> AnimationPlayer:
+	var player := node as AnimationPlayer
+	if player != null and player.get_animation_list().size() > 0:
+		return player
+	for child in node.get_children():
+		var found := _find_player(child)
+		if found != null:
+			return found
+	return null
+
 func _ready() -> void:
 	var hull := get_parent() as Node3D
+	_bind_clip(hull)
 	_wing_l = hull.get_node_or_null("Wing_L") as Node3D
 	_wing_r = hull.get_node_or_null("Wing_R") as Node3D
 	# Les volets sont des ENFANTS des ailes (le kit sait imbriquer depuis BRIEF-0035) :
@@ -207,6 +245,12 @@ func _process(delta: float) -> void:
 	_brake = lerpf(_brake, _brake_target, minf(1.0, delta * BRAKE_RESPONSE))
 	_dock = lerpf(_dock, _dock_target, minf(1.0, delta * DOCK_RESPONSE))
 
+	# ⚠️ ON CHERCHE UNE IMAGE, ON NE JOUE PAS. Laisser le clip tourner rendrait une coque
+	# qui bat des ailes à l'arrêt : l'animation est une TABLE de poses indexée par la
+	# poussée, pas une boucle. Le lecteur reste donc en pause et on l'y déplace.
+	if _clip != null:
+		_clip.seek(_thrust * _clip_peak, true)
+
 	var deflection := deg_to_rad(FLAP_DEG * _bank)
 	if _flap_l != null:
 		_flap_l.rotation.x = deflection
@@ -263,3 +307,23 @@ func _process(delta: float) -> void:
 		hook.rotation.x = grapple
 	if _canopy != null:
 		_canopy.rotation.x = CANOPY_OPEN_SIGN * deg_to_rad(CANOPY_DEG * clampf(_dock * 2.0 - 1.0, 0.0, 1.0))
+
+
+## Accroche le clip d'une coque étrangère, s'il y en a un, et le met en pause sur sa
+## première image. Sans la pause, `seek()` serait écrasé par la lecture à l'image suivante.
+func _bind_clip(hull: Node3D) -> void:
+	_clip = _find_player(hull)
+	if _clip == null:
+		return
+	var noms := _clip.get_animation_list()
+	if noms.is_empty():
+		_clip = null
+		return
+	var clip: Animation = _clip.get_animation(noms[0])
+	if clip == null or clip.length <= 0.0:
+		_clip = null
+		return
+	_clip_peak = clip.length * CLIP_PEAK_RATIO
+	_clip.play(noms[0])
+	_clip.pause()
+	_clip.seek(0.0, true)
