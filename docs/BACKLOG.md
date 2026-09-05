@@ -36,6 +36,32 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Demandé par l'opérateur — migrer Blender (2026-09-05)
+
+- [ ] **Passer de Blender 4.5.11 LTS à la LTS courante.** L'opérateur signale une 5.2.1 sur le
+      site officiel ; **à vérifier avant d'agir**, la version n'a pas été contrôlée ici. Il attend
+      « un environnement de travail plus confortable et des résultats plus satisfaisants ».
+
+      ⚠️ **Ce n'est plus une simple mise à jour d'outil depuis le 2026-09-05.** `atlas_unwrap()`
+      enveloppe `smart_project` + `pack_islands`, que le kit refusait par principe. Le principe a
+      été remplacé par une **mesure** — deux exécutions rendent le même sha256 des UV — et cette
+      mesure est **conditionnée à la version épinglée** et à `-t 1`. Changer de version invalide
+      la garantie ; c'est écrit dans la docstring de la fonction et gardé par
+      `tools/blender/test_atlas_unwrap.py`, qui doit rougir en premier.
+
+      **Ordre imposé, et il n'est pas négociable** :
+      1. **Fermer d'abord** le défaut de reproductibilité de `specter_9` (item ci-dessous). Migrer
+         avant, c'est se retrouver avec deux causes possibles pour un même symptôme et aucun moyen
+         de les départager.
+      2. Migrer, puis lancer `./scripts/build-hull.sh --check --all` : **les 19 coques** sont à
+         reconstruire et à comparer. Un `.glb` dont le sha bouge n'est pas forcément cassé — il
+         faut **regarder la planche**, pas seulement le chiffre.
+      3. Re-jouer `tools/blender/test_atlas_unwrap.py` et `test_moving_parts.py`.
+      4. Les binaires sont en LFS : chaque coque qui bouge se paie en poids d'historique.
+
+      Bénéfice réel à attendre : un packing d'îlots potentiellement meilleur (le nôtre plafonne à
+      54,2 % de remplissage), et l'outillage plus récent. Ce n'est pas un chantier bloquant.
+
 ## ⚠️ Ouvert par le retrait du filtre (ADR-0045, 2026-09-05)
 
 - [ ] **La rotation de la coque au bestiaire suit le TEMPS RÉEL** — `codex_screen.gd` fait
