@@ -9,6 +9,32 @@
 | **Supersède** | rien. Il **complète** `2026-08-29-niveau-2-execution.md` (le niveau de bout en bout) et vit sous les contraintes de `2026-08-29-niveau-2-refonte-geometrie.md`, dont il reprend le test d'acceptation |
 | **Source** | brief d'implémentation « MIDPOINT CITADELLE DE DÉFENSE » (opérateur, 2026-09-03) + planche `assets/reference/concepts/citadelle_de_defense_midpoint.png` |
 
+# ⚠️ CE QUI A CHANGÉ SOUS CE PLAN — 2026-09-05
+
+> Le point de reprise ci-dessous est **exact tel qu'il a été écrit**, et plusieurs de ses chiffres
+> sont **devenus faux** depuis, sans que rien dans ce fichier ne bouge. Les lire sans cet
+> avertissement enverrait la session dans le mur — ce que ce plan interdit lui-même en tête.
+
+| Ce que le plan dit | Ce qui est vrai le 2026-09-05 |
+|---|---|
+| « `retro_post` postérise à 20 niveaux », « un détail sous ~6 niveaux de gris n'existe pas » | ⛔ **Le post-process rétro a été RETIRÉ du dépôt** (`ADR-0045`). Ni grille 960×540, ni postérisation, ni scanlines. Le plancher de modulation n'existe plus |
+| « À **23 px/m**, un cabochon fait 0,8 px » (refus de `TEX-0016`) | ⚠️ **Les 23 px/m venaient de la grille 960×540.** Le jeu rend désormais en 1920×1080 : c'est **~46 px/m**, donc **le double de pixels sur le même objet**. Le verdict de refus est à **recalculer**, pas à reconduire |
+| Coût GPU « 3,79 à 3,93 ms sur **Quadro T1000**, 23 % du budget » | ⚠️ Le T1000 **n'est plus la machine de référence** (`ADR-0045`, décision de l'opérateur). La cible est RTX 4080 en 1440p/120 et RTX 2060 en 1080p/60. Ces chiffres restent valides comme mesures, plus comme critères |
+| « 864 méthodes, 6 693 assertions » | **887 méthodes, 6 766 assertions** (le retrait de `specter_9_c` en a soustrait 15) |
+| Blender 4.5.11, Godot 4.7 | **Blender 5.2.1 LTS, Godot 4.7.2** — les 21 coques reconstruites, aucune topologie changée |
+
+## Ce que ça change pour la suite, concrètement
+
+**`TEX-0016` mérite d'être rejugée avant d'être régénérée.** Le refus tenait à un seul chiffre :
+0,8 px à l'écran pour 3 à 5 exigés, soit un facteur 3,75 à 6,25 manquant. À résolution doublée le
+cabochon fait **~1,6 px**, et le facteur manquant tombe à **1,9 à 3,1**. Surtout, la « seconde
+voie » déjà identifiée dans ce plan — la carte sur le **sol de la passe** à 12 m/tuile, qui donnait
+**3,1 px** — en donne maintenant **~6,2**, c'est-à-dire **au-dessus** de la cible. La contrainte
+s'est peut-être inversée : il faudrait vérifier qu'elle n'est pas devenue trop grosse.
+
+⚠️ **À mesurer sur capture, pas à déduire de cette règle de trois.** Le doublement de résolution
+est certain ; ce que l'œil en fait ne l'est pas.
+
 # ▶ POINT DE REPRISE — 2026-09-04, fin de session
 
 > ⚠️ **Un point de reprise faux coûte plus qu'un point de reprise absent** : il envoie la session
