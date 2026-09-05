@@ -2,7 +2,11 @@
 
 - **Ouvert le** : 2026-09-05
 - **Décisions** : `ADR-0045` (le rendu sort du filtre), `ADR-0046` (une coque naît animée),
-  `ADR-0047` (l'atlas cuit par la forge, à écrire), `ADR-0048` (la livrée, à écrire)
+  `ADR-0047` (la forge cuit son atlas), `ADR-0048` (un modèle tiers entre avec sa source)
+- ⚠️ **`ADR-0048` n'est PAS celui que ce plan annonçait.** Il prévoyait « la livrée » ; la
+  question de la livrée ne s'est jamais posée, parce que la coque qui devait la porter a été
+  annulée et que celle qui l'a remplacée arrive **avec** sa livrée peinte. Le numéro a servi
+  à la décision qui s'est réellement présentée.
 - **Planche cible** : `assets/reference/concepts/specter_9_concept_sheet_2026-09-05.png`
 
 ## Pourquoi ce chantier
