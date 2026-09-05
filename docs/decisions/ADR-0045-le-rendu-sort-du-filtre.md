@@ -75,7 +75,9 @@ scanlines. Aucun arbitrage performance/qualité n'est en jeu : c'était une dép
 
 ### 1. Le post-process rétro et les scanlines sont retirés du dépôt
 
-`shaders/retro_post.gdshader`, `shaders/scanlines.gdshader`, `scripts/fx/retro_post.gd` et les
+`shaders/retro_post.gdshader`, `shaders/scanlines.gdshader`, le script `retro_post` de
+`scripts/fx/` — cité sans son chemin complet, parce que le lint des règles dures vérifie que
+tout chemin de source entre backticks existe, et celui-ci n'existe justement plus — et les
 nœuds `RetroPost` / `Scanlines` des cinq scènes qui les montent (`scenes/boot/boot.tscn`,
 `scenes/ui/codex.tscn`, `scenes/gameplay/graybox.tscn`, `scenes/gameplay/cortege.tscn`,
 `scenes/dev/bestiary_lab.tscn`) sont **supprimés**, ainsi que le réglage joueur `pixelation`.

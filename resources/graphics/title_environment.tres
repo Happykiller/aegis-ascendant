@@ -17,6 +17,14 @@
 ; ÉMISSIFS (tuyères, noyaux) et pas les coques. Le baisser ferait baver les fuselages
 ; et mangerait le relief — l'erreur que H7 a corrigée.
 
+; ⚠️ 2026-09-05, ADR-0045 — L'ÉTALONNAGE RENTRE ICI (voir space_environment.tres pour
+; le détail de la reprise). Une nuance propre à cette ressource : elle sert DEUX écrans
+; qui n'avaient pas le même relèvement dans l'ancien shader — accueil 1,18, bestiaire
+; 1,30 — parce que le réglage vivait dans la scène, pas dans l'environnement. Une seule
+; exposition les sert donc désormais tous les deux, calée au plus haut des deux : c'est
+; le bestiaire qui montre une coque seule en gros plan, et c'est lui qui décide.
+; Si l'accueil ressort trop clair sur capture, il prendra sa propre ressource.
+
 [resource]
 background_mode = 1
 background_color = Color(0.012, 0.016, 0.035, 1)
@@ -25,6 +33,7 @@ ambient_light_color = Color(0.55, 0.62, 0.78, 1)
 ambient_light_energy = 0.9
 tonemap_mode = 4
 tonemap_white = 6.0
+tonemap_exposure = 1.45
 glow_enabled = true
 glow_intensity = 1.0
 glow_strength = 0.9
@@ -35,4 +44,4 @@ glow_hdr_scale = 1.15
 adjustment_enabled = true
 adjustment_brightness = 1.02
 adjustment_contrast = 1.08
-adjustment_saturation = 1.15
+adjustment_saturation = 1.5

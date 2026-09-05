@@ -20,6 +20,23 @@
 ; REMONTÉ à cette valeur (tâche H7) pour passer au-dessus de la luminance des coques,
 ; afin que le bloom serve les ÉMISSIFS et pas les fuselages. Le baisser ferait baver
 ; les coques et mangerait le relief qu'on vient de récupérer.
+;
+; ⚠️ 2026-09-05, ADR-0045 — L'ÉTALONNAGE RENTRE ICI. Il vivait dans retro_post.gdshader,
+; qui a été retiré. Ce shader appliquait, après le rendu : un relèvement gamma
+; (`lift` = 1,25 en combat), un contraste 1,18, un réchauffement ±0,055 et une
+; saturation 1,30 — le tout PAR-DESSUS les `adjustment_*` ci-dessous.
+;
+; Ce qui a été repris, et comment :
+;   - le relèvement gamma  -> `tonemap_exposure`. Ce n'est pas la même courbe : le gamma
+;     relevait les noirs bien plus que les tons moyens (×1,74 à 0,05 contre ×1,38 à 0,20),
+;     l'exposition multiplie uniformément avant AgX, qui écrête le haut. Sur une image
+;     de vide spatial c'est PRÉFÉRABLE : les noirs restent noirs au lieu de virer au gris.
+;   - la saturation 1,30 -> composée dans `adjustment_saturation` (1,12 × 1,30 ≈ 1,46).
+;   - le contraste 1,18 -> **PAS repris.** ADR-0016 l'a mesuré : sur une image dont les
+;     tons vivent sous 0,25, un contraste qui pivote à 0,5 ne fabrique rien, il SOUSTRAIT.
+;     Il était là pour compenser l'aplatissement de la postérisation, qui n'existe plus.
+;   - le réchauffement ±0,055 -> pas repris tel quel ; à re-juger sur capture, et s'il
+;     manque, il se corrige à la couleur des lumières, pas par une passe plein écran.
 
 [resource]
 background_mode = 1
@@ -29,6 +46,7 @@ ambient_light_color = Color(0.55, 0.62, 0.78, 1)
 ambient_light_energy = 0.8
 tonemap_mode = 4
 tonemap_white = 6.0
+tonemap_exposure = 1.4
 glow_enabled = true
 glow_intensity = 0.82
 glow_strength = 0.9
@@ -39,4 +57,4 @@ glow_hdr_scale = 1.15
 adjustment_enabled = true
 adjustment_brightness = 1.02
 adjustment_contrast = 1.08
-adjustment_saturation = 1.12
+adjustment_saturation = 1.46

@@ -50,35 +50,34 @@ func test_unknown_bus_is_refused() -> void:
 
 # --- Graphismes ---------------------------------------------------------------
 
-## La pixelisation est l'IDENTITÉ du jeu : elle doit être vraie par défaut. Une option
-## de confort qui s'installe éteinte change le rendu de tout le monde sauf de ceux qui
-## sont allés la chercher.
-func test_pixelation_is_on_by_default() -> void:
-	var data := SettingsData.new()
-	assert_true(data.pixelation, "the retro grid ships enabled")
-
 func test_graphics_round_trip_through_dict() -> void:
 	var data := SettingsData.new()
-	data.pixelation = false
+	data.shake = 0.4
 	var restored := SettingsData.new()
 	restored.graphics_from_dict(data.graphics_to_dict())
-	assert_false(restored.pixelation, "the choice survives a save/load cycle")
+	assert_almost_eq(restored.shake, 0.4, 0.001, "the choice survives a save/load cycle")
 
 ## Même tolérance que pour l'audio : un `settings.cfg` écrit par une version qui ne
 ## connaissait pas cette section, ou trituré à la main, ne doit rien casser.
 func test_a_settings_file_without_graphics_keeps_the_default() -> void:
 	var data := SettingsData.new()
-	data.pixelation = false
+	data.shake = 0.0
 	data.graphics_from_dict({})
-	assert_true(data.pixelation, "an absent key falls back to the default")
+	assert_almost_eq(data.shake, 1.0, 0.001, "an absent key falls back to the default")
+
+## ⚠️ `ADR-0045` a retiré le post-process rétro, et avec lui la clé `pixelation`. Un
+## `settings.cfg` écrit par une version d'avant en porte encore une : la relecture doit
+## l'IGNORER sans broncher. Un joueur ne supprime pas son fichier de réglages.
+func test_a_legacy_pixelation_key_is_ignored() -> void:
+	var data := SettingsData.new()
+	data.graphics_from_dict({&"pixelation": true, &"shake": 0.25})
+	assert_almost_eq(data.shake, 0.25, 0.001, "la clé morte ne mange pas celles qui vivent")
+	assert_false(data.graphics_to_dict().has(&"pixelation"), "et elle n'est pas réécrite")
 
 func test_a_garbled_graphics_value_does_not_brick_the_game() -> void:
 	var data := SettingsData.new()
-	data.graphics_from_dict({&"pixelation": "oui"})
-	assert_true(data.pixelation, "a string is refused, the default stands")
-	# ConfigFile relit parfois un booléen sauvegardé comme entier.
-	data.graphics_from_dict({&"pixelation": 0})
-	assert_false(data.pixelation, "an integer zero reads as off")
+	data.graphics_from_dict({&"shake": "oui"})
+	assert_almost_eq(data.shake, 1.0, 0.001, "a string is refused, the default stands")
 
 func test_shake_is_full_by_default() -> void:
 	var data: SettingsData = SettingsDataScript.new()

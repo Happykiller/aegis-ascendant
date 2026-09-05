@@ -35,3 +35,22 @@ window/size/viewport_height=1080
 [rendering]
 
 renderer/rendering_method="forward_plus"
+
+; ADR-0045 — cette section ne contenait QUE la ligne ci-dessus. Le jeu tournait donc
+; sans le moindre antialiasing, sans debanding, et avec le filtrage anisotrope au
+; défaut. Ça ne se voyait pas : la grille 960x540 du post-process rétro écrasait de
+; toute façon les bords. Elle est partie, les escaliers sont apparus.
+;
+; Trois postes ouverts ici, PAS DIX. Chacun se juge sur capture 1:1 et se mesure en
+; temps GPU ; ceux qui manquent (TAA, ombres, mise à l'échelle) attendent leur mesure.
+;
+; msaa_3d = 2  -> 4x. Le multisampling et pas le TAA : sur un shmup vertical à
+;   défilement rapide, un antialiasing temporel traîne derrière les projectiles, et
+;   les projectiles sont le Pilier B. Le TAA reste à essayer, mesuré, séparément.
+; use_debanding -> quasi gratuit, et c'est lui qui répond au banding de la nébuleuse,
+;   que la postérisation masquait sous ses propres marches.
+; anisotropic_filtering_level = 4 -> 16x. Les coques sont vues en rasance à
+;   l'accueil ; au défaut (4x) leurs cartes de détail se brouillent de trois quarts.
+anti_aliasing/quality/msaa_3d=2
+anti_aliasing/quality/use_debanding=true
+textures/default_filters/anisotropic_filtering_level=4

@@ -60,16 +60,8 @@ func set_hull(scene_path: String) -> void:
 	_data.hull = scene_path
 	save_settings()
 
-func set_pixelation(enabled: bool) -> void:
-	if _data.pixelation == enabled:
-		return
-	_data.pixelation = enabled
-	graphics_changed.emit(_data)
-	_schedule_save()
-
-## Secousse d'écran, de 0 (éteinte) à 1 (pleine). Même chemin que la pixelisation :
-## la valeur vit dans la donnée pure, le signal prévient les nœuds de scène, et
-## l'écriture disque est différée.
+## Secousse d'écran, de 0 (éteinte) à 1 (pleine) : la valeur vit dans la donnée
+## pure, le signal prévient les nœuds de scène, et l'écriture disque est différée.
 func set_shake(value: float) -> void:
 	var clamped := clampf(value, 0.0, 1.0)
 	if is_equal_approx(_data.shake, clamped):
@@ -119,7 +111,6 @@ func save_settings() -> void:
 	for bus in SettingsData.BUSES:
 		config.set_value(_SECTION, String(bus), _data.get_linear(bus))
 	config.set_value(_SECTION_LOADOUT, "hull", _data.hull)
-	config.set_value(_SECTION_GRAPHICS, "pixelation", _data.pixelation)
 	config.set_value(_SECTION_GRAPHICS, "shake", _data.shake)
 	for layer in SettingsData.DEBUG_LAYERS:
 		config.set_value(_SECTION_DEBUG, String(layer), _data.get_debug_layer(layer))

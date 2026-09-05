@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=6 format=3]
 
 ; Écran de pause — reforgé dans le langage de l'accueil (scenes/boot/boot.tscn).
 ;
@@ -16,16 +16,7 @@
 [ext_resource type="Theme" path="res://resources/ui/aegis_theme.tres" id="2_theme"]
 [ext_resource type="Texture2D" path="res://assets/imported/ui/helios_vanguard_emblem.svg" id="3_emblem"]
 [ext_resource type="Script" path="res://scripts/ui/comms_trace.gd" id="4_trace"]
-[ext_resource type="Shader" path="res://shaders/scanlines.gdshader" id="5_scan"]
 
-; La pause vit au-dessus des scanlines globales (layer 5) : sans cette passe locale,
-; elle serait le SEUL élément de l'écran à échapper au grain CRT et lirait comme une
-; capture d'écran collée sur le jeu. Même période, même phase que la passe globale —
-; les deux trames se superposent exactement, aucun moiré.
-[sub_resource type="ShaderMaterial" id="mat_scan"]
-shader = ExtResource("5_scan")
-shader_parameter/line_alpha = 0.18
-shader_parameter/period = 4.0
 
 ; Filet périphérique, recette de boot.tscn : 2 px, cyan à 30 %, angles vifs.
 [sub_resource type="StyleBoxFlat" id="frame"]
@@ -278,12 +269,6 @@ theme_override_font_sizes/font_size = 10
 ; équivalente de l'accueil, « DÉPLACEMENT »).
 text = "REPRENDRE  ECHAP     ·     OPTIONS  O"
 horizontal_alignment = 1
-mouse_filter = 2
-
-[node name="Scanlines" type="ColorRect" parent="."]
-material = SubResource("mat_scan")
-anchor_right = 1.0
-anchor_bottom = 1.0
 mouse_filter = 2
 
 ; Fondu de sortie vers le titre. SceneRouter fait une coupe sèche : sans lui, on

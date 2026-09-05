@@ -17,7 +17,6 @@ signal closed
 @onready var _debug: VBoxContainer = %Debug
 
 var _sliders: Dictionary = {}
-var _pixelation: CheckButton
 var _shake: HSlider
 var _shake_value: Label
 ## Nom de rangee -> couche de `SettingsData`. Chaque interrupteur porte sa phrase
@@ -33,9 +32,6 @@ func _ready() -> void:
 			continue
 		_sliders[bus] = slider
 		slider.value_changed.connect(_on_slider_changed.bind(bus, value_label))
-	_pixelation = _graphics.get_node_or_null("Pixelation/Toggle") as CheckButton
-	if _pixelation != null:
-		_pixelation.toggled.connect(_on_pixelation_toggled)
 	_shake = _graphics.get_node_or_null("Shake/Slider") as HSlider
 	_shake_value = _graphics.get_node_or_null("Shake/Value") as Label
 	if _shake != null:
@@ -58,10 +54,6 @@ func open() -> void:
 		var value_label := _rows.get_node_or_null("%s/Value" % bus) as Label
 		if value_label != null:
 			value_label.text = "%d" % roundi(slider.value)
-	if _pixelation != null and _settings != null:
-		# `set_pressed_no_signal` : sans lui, ouvrir l'écran rejouerait le réglage —
-		# et son clic de confirmation — comme si le joueur venait de le basculer.
-		_pixelation.set_pressed_no_signal(_settings.get_graphics().pixelation)
 	if _shake != null and _settings != null:
 		_shake.set_value_no_signal(_settings.get_graphics().shake * 100.0)
 		if _shake_value != null:
@@ -86,16 +78,7 @@ func _on_slider_changed(value: float, bus: StringName, value_label: Label) -> vo
 	if _audio != null and bus != &"Music":
 		_audio.play(&"ui_select")
 
-## L'effet est IMMÉDIAT : la couche de post-process est derrière l'écran d'options, le
-## joueur voit donc son réglage sur l'image qu'il est en train de regarder. C'est ce qui
-## rend l'option jugeable sans quitter le menu.
-func _on_pixelation_toggled(enabled: bool) -> void:
-	if _settings != null:
-		_settings.set_pixelation(enabled)
-	if _audio != null:
-		_audio.play(&"ui_select")
-
-## Comme la pixelisation, le réglage s'applique TOUT DE SUITE — et il se sent : le
+## Le réglage s'applique TOUT DE SUITE — et il se sent : le
 ## `CameraDirector` répond au signal par une brève secousse à la nouvelle intensité.
 ## Sans cet aperçu, le curseur serait le seul réglage du menu dont on ne peut rien
 ## juger sans quitter l'écran.
