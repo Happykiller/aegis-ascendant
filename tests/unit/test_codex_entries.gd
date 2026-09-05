@@ -61,7 +61,7 @@ func test_a_fortress_carries_no_stats_source() -> void:
 func test_a_fighter_without_a_stats_source_is_rejected() -> void:
 	var entry := CodexEntry.new()
 	entry.display_name = "Test"
-	entry.hull_scene = _named("Specter-9").hull_scene
+	entry.hull_scene = _named("Specter-9 A").hull_scene
 	assert_true(not entry.validate().is_empty(), "a fighter with no stats source is rejected")
 
 ## Retrouve une fiche DANS la liste embarquée. La charger par son chemin la
@@ -138,7 +138,7 @@ func test_every_entry_has_a_mass() -> void:
 func test_validate_rejects_two_stats_sources() -> void:
 	var entry := CodexEntry.new()
 	entry.display_name = "Test"
-	entry.hull_scene = _named("Specter-9").hull_scene
+	entry.hull_scene = _named("Specter-9 A").hull_scene
 	entry.player_stats = load("res://resources/player/specter9_stats.tres") as PlayerStats
 	entry.enemy_data = load("res://resources/enemies/needle_scout.tres") as EnemyData
 	var errors := entry.validate()

@@ -6,9 +6,9 @@
 
 [resource]
 script = ExtResource("1_entry")
-display_name = "Specter-9"
+display_name = "Specter-9 A"
 camp = 0
-designation = "HV-09"
+designation = "HV-09/A"
 hull_class = "MICROCHASSEUR MONOPLACE D'ASSAUT"
 builder = "ARSENAL ORBITAL TALVERN"
 status = "EN SERVICE ACTIF"

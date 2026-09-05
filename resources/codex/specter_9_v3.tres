@@ -28,9 +28,9 @@
 
 [resource]
 script = ExtResource("1_entry")
-display_name = "Specter-9 Série"
+display_name = "Specter-9 C"
 camp = 0
-designation = "HV-09/S"
+designation = "HV-09/C"
 hull_class = "MICROCHASSEUR - CELLULE DE SERIE, GEOMETRIE VARIABLE"
 builder = "ARSENAL ORBITAL TALVERN"
 status = "AU DOSSIER TECHNIQUE"
