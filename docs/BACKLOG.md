@@ -36,6 +36,34 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Ouvert par les parties du 2026-09-05 (niveau 2)
+
+- **Une tourelle abattue n'écrit RIEN au journal.** Les ponts d'envol et les nœuds d'épine
+  parlent, les tourelles non (`cortege_turret.gd` ne journalise que le prototype du banc
+  d'essai). Conséquence immédiate : le recul des tubes et leur casse à la mort, livrés le
+  2026-09-05, sont les deux seules choses de la journée dont **aucune preuve n'existe** qu'elles
+  se soient produites à l'écran. Trois lignes à écrire, et une partie redevient relisible.
+- **Le verrou de la citadelle a tué l'opérateur** (première défaite de la session) : `all
+  fighters lost — DEFEAT, score 11480`, sur **26 écrasements consécutifs** de 8 à 10 de bouclier,
+  masse montant de 1,0 à 1,3 t, sans qu'un seul relais ne tombe. Le survol est à l'ARRÊT pendant
+  le verrou, donc le joueur est tenu dans un espace fermé pendant que les patrouilles continuent.
+  ⚠️ **À observer, pas à corriger tout de suite** : le journal n'a aucun horodatage, on ne sait
+  donc pas si ces 26 chocs ont pris dix ou quarante secondes, ni ce que l'opérateur cherchait à
+  faire. Repère utile : le survol ENTIER de la partie précédente avait coûté 32 collisions.
+- **La séquence de citadelle dure 26,4 s** chronométrée sur un joueur réel, contre les 30 à 45 s
+  visées par son brief. La mesure automatisée donnait 19,5 s : le plancher est plus près qu'il
+  n'y paraissait, mais toujours pas atteint.
+- **Ambry ne se lit pas comme une arrivée.** « *il y a un truc à droite sans texture blanc, je ne
+  sais pas ce que c'est* » (opérateur, en jouant). Son blanc cassé est pourtant délibéré — la
+  palette Helios Vanguard, pour trancher avec l'anthracite de l'Unisson — mais c'est la seule
+  grande surface claire du niveau et elle est plate, faute de toute texture au niveau 2. La
+  destination du niveau se lit comme un asset non fini.
+- **Trois tourelles balaient au-delà d'un coaming voisin** (Turret_05/06/10, de 1,2 à 1,8 m) :
+  le garde de `BRIEF-0092` arbitre sur des socles, pas sur des tubes. Signalé par la forge.
+- **La lisibilité de l'ÉTAT d'une tourelle est à revérifier** : après `BRIEF-0100`, l'émissif ne
+  pèse plus que 0,2 % de l'aire vue. Si le télégraphe ne se lit plus en jouant, la réponse est de
+  monter les `GLOW_*` côté moteur, pas d'agrandir la fente (règle 4 de la planche).
+
 ## ⚠️ Les points d'accroche ne suivent pas la pièce qui les porte (2026-09-05)
 
 Trouvé **en jeu**, pas par un test : la `specter_9_v3` était entrée avec **trois** bouches sur
