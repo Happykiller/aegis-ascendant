@@ -36,6 +36,37 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Les points d'accroche ne suivent pas la pièce qui les porte (2026-09-05)
+
+Trouvé **en jeu**, pas par un test : la `specter_9_v3` était entrée avec **trois** bouches sur
+les sept que `PlayerFighterController.MUZZLE_NAMES` lit. Corrigé, et le trou fermé par
+`tests/unit/test_player_hulls.gd` — il balaie le codex et exige les neuf points sur toute coque
+jouable, présente ou future.
+
+**Ce qui reste ouvert est plus profond, et c'est `ADR-0046` §3 qui n'est pas tenu.** Les points
+portés par une pièce mobile devraient être **parentés à cette pièce**. Ils ne le sont pas, et
+sur cette coque l'écart n'est plus négligeable — mesuré au dépliage de 70°, pivot à 0,3864 :
+
+| Point | Arc | Décalage à pleine poussée | Rapporté à la hauteur du vaisseau |
+|---|---|---|---|
+| `Muzzle_Wing_*` | 0,1417 | (−0,093 ; +0,133) | **21 %** |
+| `Muzzle_Tip_*` | 0,4776 | (−0,314 ; +0,449) | **72 %** |
+
+⚠️ **Ce n'est pas réparable dans la scène de coque**, et c'est pour cela que ça monte ici. Deux
+verrous dans `player_fighter_controller.gd` :
+
+- `_attach_point()` fait un `get_node_or_null()` sur la coque et lit la `position` **locale** :
+  un point rangé sous `Hull/CTRL | R wing sweep` serait introuvable, et sa position serait
+  exprimée dans le repère de l'aile ;
+- `_build_muzzle_flashes()` **recopie** cette position une fois pour toutes dans un quad enfant
+  de `VisualRoot` — même un point qui suivrait l'aile laisserait l'éclair sur place.
+
+Le `.glb` expose pourtant bien les nœuds qu'il faudrait (`CTRL | L/R wing sweep`, avec le pylône
+et le marqueur de bout d'aile dessous) : c'est le contrôleur qui manque, pas l'asset.
+
+En attendant, les points sont **justes ailes dépliées**, c'est-à-dire à poussée nulle — et le
+défaut ne se voit qu'à pleine poussée, cinquante millisecondes par salve.
+
 ## ⚠️ Demandé par l'opérateur — migrer Blender (2026-09-05)
 
 - [ ] **Passer de Blender 4.5.11 LTS à la LTS courante.** L'opérateur signale une 5.2.1 sur le

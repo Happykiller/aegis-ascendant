@@ -42,10 +42,32 @@
 ; tuyère = extrémité arrière des vingt pétales de chaque côté, bouche = extrémité avant
 ; des tubes de canon.
 ;
-; ⚠️ LES CANONS D'AILE SONT FIXES ALORS QUE LES AILES BOUGENT. La flèche variable
-; déplace leur position réelle de ~7 cm en unités de jeu (pivot à 0,73 m du canon, 30°
-; de débattement). C'est la limite connue d'`ADR-0046` §3, ici bornée et acceptée :
-; elle vaut 4 % de la demi-envergure. Sur la cellule-témoin elle valait bien davantage.
+; ⚠️ CETTE COQUE N'A PAS DE CANON DE NEZ, ET LE JEU EN RÉCLAME UN. Son armement réel,
+; mesuré : QUATRE tubes laser sur les deux pylônes d'aile (|x| = 0,5126 et 0,5436), plus
+; un rack de missiles par côté. Rien sur l'axe. Or `_fire_pattern()` tire `Muzzle_L/R`
+; **dès le niveau 1** : les poser sur les pylônes ferait partir le tir de base à 59 % de
+; la demi-envergure, et la coque C ne se jouerait plus comme les A et B — ce que le
+; contrat de cette famille interdit (`ADR-0034`, et le paragraphe hitbox ci-dessous).
+; Ils sont donc posés sur le NEZ DU FUSELAGE, à sa demi-largeur mesurée à la station
+; Z = −1,05 (0,0694). Rapporté à la demi-envergure cela vaut 8 %, contre 7 % sur la
+; coque B : les trois coques tirent bien du même endroit.
+;
+; ⚠️ LES POINTS PORTÉS PAR L'AILE NE SUIVENT PAS L'AILE, et l'écart n'est plus petit.
+; Le tableau, au dépliage de 70° (`tools/blender/adapt_specter_9_v3.py`), pivot à 0,3864 :
+;
+;   `Muzzle_Wing_*`  arc 0,1417  ->  décalage (−0,093 ; +0,133) = 21 % de la hauteur
+;   `Muzzle_Tip_*`   arc 0,4776  ->  décalage (−0,314 ; +0,449) = 72 % de la hauteur
+;
+; L'ancienne rédaction annonçait « ~7 cm, 4 % de la demi-envergure » : elle était calée
+; sur le BALAYAGE À PLAT d'origine et n'a pas été refaite quand le balayage est devenu un
+; dépliage. Elle est fausse depuis, et c'est corrigé ici.
+;
+; C'est la limite d'`ADR-0046` §3, et elle n'est PAS réparable dans cette scène :
+; `_attach_point()` lit la `position` d'un enfant DIRECT de la coque, et
+; `_build_muzzle_flashes()` recopie cette position une fois pour toutes sous `VisualRoot`.
+; Parenter le point sous `Hull/CTRL | R wing sweep` — le `.glb` expose bien ce nœud — ne
+; servirait donc à rien sans changer le contrôleur. Porté au backlog. En attendant, les
+; points sont justes AILES DÉPLIÉES, c'est-à-dire à poussée nulle.
 ;
 ; ⚠️ La hitbox NE CHANGE PAS : elle vient des Resources de gameplay, jamais du maillage
 ; (`ADR-0034`). Les trois coques se jouent exactement pareil — on compare des
@@ -68,11 +90,30 @@ transform = Transform3D(-0.19415, 0, 0, 0, 0.19415, 0, 0, 0, -0.19415, 0, 0, 0)
 [node name="Muzzle_C" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0103, -1.2231)
 
+; Le doublet d'axe : sur le nez, faute de canon de nez (voir l'encadré plus haut).
+[node name="Muzzle_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0694, 0.0097, -1.05)
+
+[node name="Muzzle_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0694, 0.0097, -1.05)
+
+; ⚠️ X au MILIEU des deux tubes du pylône (0,5126 et 0,5436) : un seul éclair pour un
+; affût double. Y et Z sont ceux de la bouche réelle, relevés au sommet du maillage —
+; l'ancien Y de −0,0582 venait d'une boîte englobante et posait l'éclair 3,7 cm au-dessus
+; du tube, soit 6 % de la hauteur du vaisseau.
 [node name="Muzzle_Wing_L" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5281, -0.0582, -0.0349)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5281, -0.0951, -0.0187)
 
 [node name="Muzzle_Wing_R" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5281, -0.0582, -0.0349)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5281, -0.0951, -0.0187)
+
+; Les nacelles de bout d'aile : `MARKER | L/R wingtip` du modèle, c'est-à-dire les
+; repères posés par son auteur. Ils sont en retrait (Z positif) — l'aile est en flèche.
+[node name="Muzzle_Tip_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.864, 0.0388, 0.7281)
+
+[node name="Muzzle_Tip_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.864, 0.0388, 0.7281)
 
 [node name="Engine_L" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2407, 0.0155, 1.2369)
