@@ -1,6 +1,6 @@
 # BRIEF-0100 — Le kit de tourelles reforgé : trois classes, et du détail qui tient
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-05

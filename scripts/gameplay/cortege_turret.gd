@@ -80,24 +80,24 @@ const KIT_PATH := "res://assets/imported/models/backgrounds/turret_kit.glb"
 const PROTO_PATH := "res://assets/imported/models/backgrounds/proto_tourelle_lourde.glb"
 
 ## Positions d'assemblage, mesurées sur le binaire livré (BRIEF-0093) — pas recopiées d'un brief.
-const RING_LIFT := 0.02
-const BODY_LIFT := 0.37
-const BARREL_LIFT := 0.90
+const RING_LIFT := 0.04
+const BODY_LIFT := 0.40
+const BARREL_LIFT := 0.98
 ## ⚠️ LA CULASSE EST AU FOND DU MASQUE, PAS SUR LA FACE AVANT. C'est la différence entre un tube
 ## « logé » et un tube « collé devant » — 12 cm qui font toute la lecture du blindage.
-const BARREL_SEAT_Z := 0.60
+const BARREL_SEAT_Z := 0.70
 ## Où l'appareillage se pose autour du socle.
-const SERVICE_RADIUS := 1.46
-const SERVICE_LIFT := 0.14
+const SERVICE_RADIUS := 1.66
+const SERVICE_LIFT := 0.20
 
 ## Les trois familles du kit, telles que la forge les a réglées. ⚠️ LA VARIÉTÉ EST UN LIVRABLE :
 ## dix-sept tourelles identiques se liraient comme dix-sept fois la même. Aucune géométrie neuve
 ## n'est nécessaire — jupe ou non, tube long ou court, écartement, angles de l'appareillage.
 const FAMILIES: Array = [
 	# jupe, tube,                  écartement, coffrets,        conduite
-	[false, "turret_barrel_short", 0.72, [128.0],          -1.0],
-	[true,  "turret_barrel",       0.86, [118.0, -118.0],  180.0],
-	[true,  "turret_barrel",       0.98, [96.0, -142.0],   205.0],
+	[false, "turret_barrel_short", 0.80, [128.0],          -1.0],
+	[true,  "turret_barrel",       0.92, [118.0, -118.0],  180.0],
+	[true,  "turret_barrel",       1.00, [96.0, -142.0],   205.0],
 ]
 
 # --- L'échelle légère : le MÊME kit, en plus petit et en plus court -----------
@@ -111,7 +111,7 @@ const FAMILIES: Array = [
 ## ⚠️ ET C'EST CE QUI LA REND DISTINGUABLE EN NOIR ET BLANC, émissifs coupés — le test qui
 ## décide. Deux tubes écartés sur un tambour large contre un tube unique sur une embase : la
 ## différence tient à la silhouette, pas à une teinte ni à une taille seule.
-const LIGHT_GEOM_SCALE := 0.5
+const LIGHT_GEOM_SCALE := 0.538
 
 # --- L'échelle lourde : le MÊME assemblage, en plus grand ---------------------
 #
@@ -122,19 +122,21 @@ const LIGHT_GEOM_SCALE := 0.5
 ## déduisent bel et bien de son facteur, et les recopier à la main serait le seul moyen de les
 ## faire diverger.
 ##
-## ⚠️ 1,538 N'EST PAS LA PLANCHE, ET L'ÉCART EST ASSUMÉ. La planche demande une lourde de 10,0 m
-## là où la standard fait 6,5 — soit exactement ce rapport. Mais notre kit assemble une standard
-## de 5,2 m : à 1,538 la lourde fait **8,0 m**, soit 80 % de la planche. Monter à 1,92 pour
-## atteindre les 10 m porterait l'emprise au sol à 4,00 m de rayon, quand la plus large
-## plateforme que la coque déclare (`PAD_RADIUS`, tronçon 5) en fait **3,20** — et 3,20 / 2,08
-## redonne précisément 1,538. La coque borne donc la pièce avant la planche.
+## ⚠️ 1,200 N'EST NI LA PLANCHE NI L'EMPRISE : C'EST LE PLAFOND DE VOL, ET JE M'ÉTAIS TROMPÉ
+## DE BORNE. Ce facteur valait 1,538 le matin du 2026-09-05, calé sur la plus large plateforme
+## que le décor déclare (3,20 / 2,08). La borne qui mord n'est pas au sol, elle est en l'air :
+## l'assise la plus haute est à −4,270 (`Turret_08`) et le plafond des pièces de gameplay à
+## −2,40 — il reste **1,870 m**. À 1,538 la tourelle dépassait de 0,73 à 0,75 m sur les trois
+## emplacements lourds, c'est-à-dire qu'elle traversait le plan de vol du joueur.
 ##
-## Vu en jeu le 2026-09-05 : le modèle de référence, à 3,62 m d'emprise, DÉBORDAIT déjà de la
-## coque. Ce n'est pas une prudence de principe, c'est une capture.
+## ⚠️ ET LE DÉFAUT ÉTAIT MUET DANS LES DEUX HARNAIS. Celui du kit ignorait les échelles ;
+## `test_no_turret_ever_reaches_the_flight_plane` composait les boîtes englobantes **sans jamais
+## appeler `_geom_scale()`** — il mesurait donc toujours la standard, quelle que soit l'échelle
+## posée. Trouvé par la mesure de `BRIEF-0100`, pas par un test rouge. Les deux sont refermés.
 ##
-## ⚠️ À REMESURER quand `BRIEF-0100` livrera le kit reforgé : les trois classes y seront
-## modelées ensemble, et c'est cette livraison-là qui fixera les rapports pour de bon.
-const HEAVY_GEOM_SCALE := 1.538
+## À 1,200 la lourde fait 7,80 m contre les 10,0 de la planche (−22 %) et culmine à 1,82 m sous
+## les 1,870 disponibles. La classe standard, elle, tient la planche exactement (6,50 m).
+const HEAVY_GEOM_SCALE := 1.200
 
 ## Le canon unique, décalé du rang de montage. ⚠️ ELLES VIENNENT PAR QUATRE : quatre pièces
 ## rigoureusement identiques, posées côte à côte, se lisent comme un motif imprimé — exactement
@@ -153,8 +155,8 @@ const LIGHT_REST_SPREAD_DEG := 26.0
 ## la première dit où la pièce se PROJETTE sur le plan de jeu sous une caméra qui plonge à 70°,
 ## la seconde d'où la balle SORT. Les lier à un facteur d'échelle marcherait aujourd'hui et
 ## deviendrait faux le jour où le kit change de proportions.
-const LIGHT_HIT_LIFT := 0.45
-const LIGHT_MUZZLE_REACH := 1.60
+const LIGHT_HIT_LIFT := 0.53
+const LIGHT_MUZZLE_REACH := 1.88
 ## Le rayon de la cible. ⚠️ PLUS GÉNÉREUX QUE SA GÉOMÉTRIE (0,70 pour une pièce deux fois plus
 ## petite que la lourde et son 1,05). Une tourelle légère est une cible d'OPPORTUNITÉ, balayée en
 ## passant : une hitbox fidèle au millimètre en ferait une corvée de précision, ce qui est
@@ -173,9 +175,9 @@ const LIGHT_TARGET_RADIUS := 0.70
 ## qu'on voit — le tambour à +0,37..+1,70 et les tubes à +0,90 — se projette sur le plan de jeu
 ## à une vingtaine de centimètres de son assise. La zone de touche se cale donc sur les tubes,
 ## pas sur le socle. Voir le même constant sur `CortegeSpineNode`, où l'écart coûtait plus cher.
-const HIT_LIFT := 0.90
+const HIT_LIFT := 0.98
 
-const MUZZLE_REACH := 3.50
+const MUZZLE_REACH := 4.42
 
 ## L'énergie de l'œil selon l'état. ⚠️ AFFAIBLIE N'EST PAS MORTE, ET ÇA DOIT SE VOIR : une pièce
 ## abîmée garde une braise, une pièce abattue est noire. Sans cet écart, le joueur n'a aucun

@@ -143,13 +143,41 @@ func test_the_three_scales_have_three_different_sizes() -> void:
 		"les rayons de cible montent avec l'echelle : %.2f < %.2f < %.2f"
 			% [petite, moyenne, grande])
 
-## ⚠️ L'EMPRISE DE LA LOURDE EST BORNEE PAR LA COQUE, PAS PAR LA PLANCHE. La plus large
-## plateforme que le decor declare fait 3,20 m de rayon (`PAD_RADIUS`, troncon 5) pour une
-## emprise de standard de 2,08. Depasser ce rapport ferait deborder la piece dans le vide — vu
-## en jeu le 2026-09-05 sur le modele de reference, a 3,62 m d'emprise.
-func test_the_heavy_never_outgrows_the_widest_platform_the_hull_declares() -> void:
-	const FOOTPRINT_STANDARD := 2.08
-	const PAD_RADIUS_MAX := 3.20
-	var emprise := FOOTPRINT_STANDARD * TurretScript.HEAVY_GEOM_SCALE
-	assert_true(emprise <= PAD_RADIUS_MAX + 0.001,
-		"la lourde pose %.2f m de rayon pour %.2f m de plateforme" % [emprise, PAD_RADIUS_MAX])
+## ⚠️ CE QUI BORNE LA LOURDE EST LE PLAFOND DE VOL, PAS L'EMPRISE AU SOL — ET JE M'ETAIS
+## TROMPE DE BORNE. Ce test affirmait, le matin du 2026-09-05, que l'echelle lourde tenait parce
+## que son emprise (2,08 x 1,538 = 3,20 m) egalait la plus large plateforme declaree par le
+## decor. C'etait vrai, et sans rapport : la contrainte qui mord est EN HAUT.
+##
+## Mesure de `BRIEF-0100` : l'assise la plus haute est a -4,270 (`Turret_08`) et le plafond des
+## pieces de gameplay a -2,40, soit 1,870 m disponibles. A 1,538 la tourelle culminait 0,73 a
+## 0,75 m AU-DESSUS du plan de vol du joueur, sur les trois emplacements lourds.
+##
+## La mesure vivante est faite par `test_no_turret_ever_reaches_the_flight_plane`, sur le `.glb`
+## et la coque livres. Ce test-ci garde la LECON : le rapport de la planche (10,0 / 6,5 = 1,538)
+## ne peut pas etre tenu, et la raison n'est pas au sol.
+func test_the_heavy_is_bounded_by_the_flight_ceiling_and_not_by_the_platform() -> void:
+	## Cotes mesurees par BRIEF-0100 sur le binaire livre.
+	const HAUTEUR_STANDARD := 1.52       # affut assemble, echelle native
+	const ASSISE_LA_PLUS_HAUTE := -4.270 # Turret_08
+	const PLAFOND := -2.40               # FlybyScript.GAMEPLAY_CEILING_Y
+	const EMPRISE_STANDARD := 2.08
+	const EMPRISE_POSABLE_PARTOUT := 2.60
+
+	var disponible := PLAFOND - ASSISE_LA_PLUS_HAUTE
+	var sommet := HAUTEUR_STANDARD * TurretScript.HEAVY_GEOM_SCALE
+	assert_true(sommet <= disponible,
+		"la lourde culmine a %.3f m pour %.3f m sous le plafond" % [sommet, disponible])
+
+	## ⚠️ ET LE RAPPORT DE LA PLANCHE NE PASSE PAS. C'est le fait a retenir : viser les 10,0 m
+	## demanderait 1,538, qui depasse. Si ce test devient vert un jour pour 1,538, c'est que
+	## quelqu'un aura descendu le plafond ou creuse la coque — et ce sera une decision, pas un
+	## reglage.
+	var rapport_planche := 10.0 / 6.5
+	assert_true(HAUTEUR_STANDARD * rapport_planche > disponible,
+		"le rapport de la planche (%.3f) ne tient PAS sous le plafond : %.3f m pour %.3f"
+			% [rapport_planche, HAUTEUR_STANDARD * rapport_planche, disponible])
+
+	## L'emprise, elle, n'a jamais ete la contrainte : elle reste sous ce que le terrain accepte.
+	var emprise := EMPRISE_STANDARD * TurretScript.HEAVY_GEOM_SCALE
+	assert_true(emprise <= EMPRISE_POSABLE_PARTOUT,
+		"la lourde pose %.2f m de rayon pour %.2f m posables partout" % [emprise, EMPRISE_POSABLE_PARTOUT])

@@ -525,6 +525,7 @@ func test_no_turret_ever_reaches_the_flight_plane() -> void:
 	# Et le pire marqueur de la coque livree : c'est lui qui decide.
 	var hull := track((load(FlybyScript.DECOR_PATH) as PackedScene).instantiate()) as Node3D
 	var worst := -100.0
+	var seats: Dictionary[String, float] = {}
 	for section in hull.get_children():
 		var s := section as Node3D
 		if s == null or not s.name.begins_with("Section_"):
@@ -533,15 +534,32 @@ func test_no_turret_ever_reaches_the_flight_plane() -> void:
 			var marker := child as Node3D
 			if marker != null and marker.name.begins_with("Turret_"):
 				worst = maxf(worst, s.position.y + marker.position.y)
+				seats[marker.name] = s.position.y + marker.position.y
 	assert_true(worst > -10.0, "des marqueurs de tourelle ont bien ete trouves")
-	var summit := worst + tallest
-	assert_true(summit <= FlybyScript.GAMEPLAY_CEILING_Y,
-		"la tourelle la plus haute culmine a %.3f, au-dessus du plafond de gameplay %.2f"
-			% [summit, FlybyScript.GAMEPLAY_CEILING_Y])
-	# ⚠️ ET ELLE RESTE LOIN DU PLAN DE VOL. C'est la moitie de l'arbitrage : 2,40 unites de
-	# degagement, soit une fois et demie la hauteur de la tourelle elle-meme.
-	assert_true(summit < -1.5,
-		"elle reste tres en dessous du plan de vol (%.2f) — sinon elle masquerait le combat" % summit)
+	assert_true(seats.size() >= 17, "les dix-sept emplacements sont lus (%d)" % seats.size())
+
+	# ⚠️ CHAQUE EMPLACEMENT A SON ECHELLE, ET C'EST LE TROU QUE CE TEST AVAIT.
+	# Jusqu'au 2026-09-05 il composait les boites englobantes SANS JAMAIS appeler `_geom_scale()`
+	# : il mesurait donc toujours la standard, quelle que soit l'echelle reellement posee. Le
+	# jour ou la classe lourde est arrivee, il est reste vert pendant qu'une tourelle passait
+	# 0,75 m AU-DESSUS du plafond — c'est la mesure de BRIEF-0100 qui l'a trouve, pas lui.
+	# Une hauteur qui ne connait pas son facteur d'echelle ne mesure rien.
+	for nom in seats:
+		var facteur := TurretScript.HEAVY_GEOM_SCALE if nom in HardpointsScript.HEAVY_TURRETS \
+			else 1.0
+		var sommet: float = float(seats[nom]) + tallest * facteur
+		assert_true(sommet <= FlybyScript.GAMEPLAY_CEILING_Y,
+			"%s culmine a %.3f (echelle %.3f), au-dessus du plafond de gameplay %.2f"
+				% [nom, sommet, facteur, FlybyScript.GAMEPLAY_CEILING_Y])
+		# ⚠️ ET ELLE RESTE LOIN DU PLAN DE VOL. C'est la moitie de l'arbitrage : une tourelle
+		# qui frole le plan masquerait le combat, meme sans le toucher.
+		assert_true(sommet < -1.5,
+			"%s reste tres en dessous du plan de vol (%.2f)" % [nom, sommet])
+
+	# Les legeres se posent sur les memes marqueurs, en batterie : leur sommet est majore par
+	# celui de la standard, puisqu'elles sont plus petites ET amputees de trois pieces.
+	assert_true(TurretScript.LIGHT_GEOM_SCALE < 1.0,
+		"la legere est bien une reduction (%.3f)" % TurretScript.LIGHT_GEOM_SCALE)
 
 # --- Le kit d'epine ----------------------------------------------------------
 
