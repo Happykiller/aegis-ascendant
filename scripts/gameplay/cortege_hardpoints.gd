@@ -80,9 +80,15 @@ extends Node3D
 ## pièce posée près du bord déborderait dans le vide. C'est exactement ce qu'on a vu en jeu le
 ## 2026-09-05 sur le modèle de référence, à 3,62 m d'emprise : il dépassait de la coque.
 ##
-##   `Turret_08`  station 263,0, x = −5,6  — la première, juste APRÈS le verrou de mi-parcours
-##   `Turret_12`  station 380,0, x = −6,2  — tronçon 4
-##   `Turret_15`  station 463,3, x = −6,0  — tronçon 5, la dernière avant Ambry
+##   `Turret_08`  station 263,0, x = −6,74  — la première, juste APRÈS le verrou de mi-parcours
+##   `Turret_12`  station 380,0, x = −7,66  — tronçon 4
+##   `Turret_15`  station 463,3, x = −6,00  — tronçon 5, la dernière avant Ambry
+##
+## ⚠️ CES X SONT CEUX DES MARQUEURS LIVRÉS, RELUS SUR LE `.glb` — pas ceux de la table
+## `TURRETS` de `build_long_cortege.py`, qui donne la station VOULUE et non la position posée.
+## Les deux diffèrent jusqu'à 2,6 m (`Turret_07` : 9,8 annoncé, 12,05 réel), et quatre
+## emplacements tombent même hors des deux paliers de pont. Une position d'asset se lit sur
+## l'asset.
 ##
 ## Aucune n'est à moins de 20 m d'un pont d'envol sur le même flanc : une emprise deux fois plus
 ## large que la standard aurait sinon mordu un coaming, et `_pad_bay_clearances()` ne le verrait
@@ -92,41 +98,49 @@ extends Node3D
 ## trois-là sont les plus sûres qu'on puisse choisir sans cette mesure, pas les plus belles.
 const HEAVY_TURRETS: PackedStringArray = ["Turret_08", "Turret_12", "Turret_15"]
 
-## ⚠️ LA TABLE A ÉTÉ RÉÉCARTÉE LE 2026-09-05, ET CE N'EST PAS UN GOÛT. `BRIEF-0100` a élargi le
-## socle du kit de 1,70 à 1,86 m de rayon natif, et l'échelle légère est passée de 0,500 à 0,538
-## (le rapport de la planche, 3,5 / 6,5). Deux socles légers cumulent donc **2,00 m** là où ils
-## en cumulaient 1,70 : les sept grappes se recouvraient toutes, y compris celles que personne
-## n'avait touchées. `test_two_pieces_of_a_battery_never_overlap` les a toutes attrapées.
-##
-## L'écartement est le plus PETIT qui dégage : de 0 à 20 % en travers, de 4 à 30 % le long de la
-## coque. ⚠️ Et la fenêtre de compacité de 4,0 m n'a PAS été touchée — la plus large grappe
-## s'étale sur 3,0 m. Il aurait été facile de relâcher la règle pour faire passer l'arithmétique ;
-## elle est née d'une capture (`ADR-0006`), elle ne se négocie pas contre un solveur.
-
 const BATTERIES: Array = [
-	# Révélation : deux pièces devant une lourde, même bord, tronçon 1. Pont intérieur.
-	["Turret_01", [[1.8, 3.3], [3.2, 4.9]]],
-	# Garde de hangar, bâbord, tronçon 2. L'emprise de l'ouverture interdit 4,30 m de part et
-	# d'autre : la grappe se pose DEVANT le puits, pas à son flanc.
-	["Bay_02", [[-0.1, 5.3], [1.8, 6.1], [0.8, 9.0]]],
-	["Turret_05", [[-1.3, -3.5], [-3.0, -4.7]]],
-	# ⚠️ RIEN AU DÉBUT DU TRONÇON 3 (s 214 à 246) : c'est la respiration, et elle est voulue.
-	["Bay_05", [[-1.6, 5.4], [0.4, 5.9], [-0.9, 7.5], [1.0, 8.4]]],
-	# ⚠️ VERS LA PROUE, ET NON VERS LA POUPE — corrigé après observation en jeu (2026-09-03).
-	# `Bay_06` est à s = 344,3, soit 8,3 m derrière cet hôte, dont le socle de tronçon 4 fait
-	# 3,00 m de rayon : il n'y a pas quatre mètres libres entre les deux. La grappe posée en
-	# aval tombait DANS l'ouverture — deux pièces le centre au-dessus du vide, une en surplomb.
-	# Le signe de `ds` est tout ce qui la ramène sur du plein ; les `dx` ne bougent pas, ils
-	# tiennent la grappe sur le pont médian, du bon côté de la contremarche.
-	["Turret_10", [[1.0, -3.5], [2.4, -5.4], [0.5, -6.2]]],
-	# ⚠️ ET RIEN ENTRE 348 ET 410 : la seconde respiration, avant que le tronçon 5 ne se ferme.
-	["Turret_13", [[-1.1, -3.9], [0.8, -4.7], [-0.4, -6.5]]],
-	# ⚠️ TROIS PIÈCES ET NON QUATRE DEPUIS `BRIEF-0100`, et c'est la géométrie qui tranche.
-	# L'hôte est à x = −10,2, donc sur le pont médian, large de 2,95 m ; le socle d'une légère
-	# fait maintenant 2,00 m. Quatre disques de 1,00 m de rayon dans une bande de 2,95 sur 4,00
-	# demandent 12,57 m² pour 11,80 disponibles : la grappe de quatre est IMPOSSIBLE ici, pas
-	# serrée. Un solveur l'a cherchée sur les quatre retraits possibles avant de le conclure.
-	["Turret_16", [[0.5, 4.2], [2.5, 4.7], [1.0, 6.2]]],
+	# ⚠️ LES PIÈCES SONT DISPERSÉES, PLUS GROUPÉES — ET C'EST UN RENVERSEMENT ASSUMÉ.
+	# La règle d'avant disait : « une batterie est une GRAPPE, pas une file », étalement borné à
+	# 4 m, 2 à 4 pièces par hôte. Elle était née d'une capture, et elle avait raison contre le
+	# défaut de son époque : des pièces semées sur douze mètres arrivaient une par une et le
+	# groupe ne se lisait jamais.
+	#
+	# Le socle du kit a grossi (`BRIEF-0100`), et la grappe est devenue un TAS : « *il y a des
+	# endroits où les petites tours sont tout agglutinées les unes sur les autres. Il faudrait
+	# les mettre par-ci par-là un peu de partout* » (opérateur, en jouant le 2026-09-05). La
+	# lecture qu'on protégeait s'est retournée contre nous : à 2,00 m de socle, quatre pièces
+	# dans 4 m de coque ne forment plus un groupe, elles se chevauchent.
+	#
+	# Le remède n'est pas d'écarter les grappes — c'est d'en avoir MOINS PAR HÔTE et PLUS
+	# D'HÔTES : 19 pièces sur 12 installations au lieu de 20 sur 7, une ou deux chacune, une en
+	# avant et une en arrière quand il y en a deux. La défense légère devient un semis sur toute
+	# la coque, ce qui est ce qui a été demandé.
+	#
+	# ⚠️ CE QUI N'A PAS BOUGÉ, ET NE DOIT PAS : une pièce reste ENFANT d'une installation. Elle
+	# en hérite l'assise (`turret_seat_y`) et le palier de pont ; une légère posée sur un
+	# marqueur à elle flotterait ou s'enterrerait. C'est la raison structurelle de cette table,
+	# et elle survit au changement de doctrine.
+	#
+	# ⚠️ DOUZE HÔTES SUR VINGT-QUATRE, ET PAS UN DE PLUS. La règle « le survol garde de longues
+	# zones calmes » n'est pas touchée par le renversement : elle borne la MOITIÉ des
+	# installations, et c'est elle qui empêche le semis de devenir un tapis. Disperser n'est pas
+	# saturer — trois hôtes ont été retirés de la table pour tenir cette borne.
+	#
+	# ⚠️ AUCUN TIRAGE. Distances et côtés viennent du rang de l'hôte et du rang de la pièce :
+	# deux survols doivent se comparer. Les positions sont vérifiées contre TOUS les socles du
+	# niveau (lourds compris, à 2,50 m d'emprise) et contre l'ouverture des sept ponts d'envol.
+	["Turret_01", [[1.2, -3.6], [2.0, 5.1]]],
+	["Bay_01", [[-0.6, 6.6], [0.4, -5.6]]],
+	["Turret_03", [[-1.5, -4.8]]],
+	["Bay_02", [[1.7, 5.6], [1.2, -6.2]]],
+	["Turret_05", [[-2.4, -3.9], [-1.5, 5.6]]],
+	["Turret_06", [[-1.5, -4.4]]],
+	["Bay_04", [[1.7, 6.2]]],
+	["Bay_05", [[-0.6, -5.6]]],
+	["Bay_06", [[1.7, -5.6], [1.7, 6.6]]],
+	["Turret_13", [[1.2, 5.6]]],
+	["Bay_07", [[1.2, -6.2], [0.4, 5.6]]],
+	["Turret_16", [[2.0, 6.2], [0.4, -3.9]]],
 ]
 
 signal turret_destroyed(turret: CortegeTurret)

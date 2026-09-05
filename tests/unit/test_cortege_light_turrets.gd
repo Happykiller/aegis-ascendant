@@ -296,31 +296,58 @@ func test_two_pieces_of_a_battery_never_overlap() -> void:
 					"deux pieces de %s sont a %.2f m pour %.2f m de socles cumules"
 						% [host, gap, light_pad * 2.0])
 
-## ⚠️ UNE BATTERIE EST UNE GRAPPE, ET CE TEST EST NE D'UNE CAPTURE. La premiere table etalait ses
-## pieces sur douze a seize metres de coque : chacune arrivait seule a l'ecran, et le groupe ne se
-## lisait jamais. Rien ne l'aurait dit — les positions etaient valides, les distances respectees,
-## les tests verts. Seul le fait de REGARDER l'a montre (ADR-0006).
+## ⚠️ LA REGLE PRECEDENTE DISAIT L'INVERSE, ET ELLE EST REMPLACEE — PAS CONTOURNEE.
 ##
-## La cause est mesurable et vaut d'etre connue : le pont median fait 2,95 m de large et le pont
-## interieur 4,60 m, quand il faut ~4,05 m entre une petite et le socle de sa lourde. AUCUNE
-## grappe transversale n'est possible sur cette coque — la seule grappe qui tienne se pose DEVANT
-## l'hote, et c'est cette borne-la qui la garde compacte.
-func test_a_battery_reads_as_one_group_not_a_file() -> void:
+## Elle exigeait qu'une batterie soit une GRAPPE : etalement borne a 4 m, sous peine que « ses
+## pieces arrivent une par une et que le groupe ne se lise jamais ». Elle etait nee d'une
+## capture, et elle avait raison contre le defaut de son epoque — une premiere table etalait
+## ses pieces sur douze a seize metres et aucun groupe ne se lisait.
+##
+## `BRIEF-0100` a fait grossir le socle de 1,70 a 2,00 m. La grappe est alors devenue un TAS :
+## « *il y a des endroits ou les petites tours sont tout agglutinees les unes sur les autres.
+## Il faudrait les mettre par-ci par-la un peu de partout* » (operateur, en jouant le
+## 2026-09-05). A ce diametre, quatre pieces dans quatre metres ne forment plus un groupe :
+## elles se chevauchent.
+##
+## La doctrine est donc renversee, et c'est une decision du proprietaire du projet : la defense
+## legere est un SEMIS sur toute la coque, une ou deux pieces par installation, sur beaucoup
+## d'installations. Ce test garde la nouvelle intention pour qu'elle ne derive pas a son tour.
+func test_the_light_defence_is_sown_across_the_hull_not_piled_on_a_few_hosts() -> void:
+	var hotes := HardpointsScript.BATTERIES.size()
+	var pieces := 0
 	for entry in HardpointsScript.BATTERIES:
-		var host := String(entry[0])
-		var lowest := 1000.0
-		var highest := -1000.0
-		for offset in entry[1]:
-			lowest = minf(lowest, float(offset[1]))
-			highest = maxf(highest, float(offset[1]))
-		var spread := highest - lowest
-		assert_true(spread <= 4.0,
-			"la batterie de %s s'etale sur %.1f m de coque : ses pieces arriveront une par une, et le groupe ne se lira jamais"
-				% [host, spread])
+		pieces += (entry[1] as Array).size()
+	assert_true(hotes >= 12,
+		"la defense legere est repartie sur au moins douze installations (%d)" % hotes)
+	assert_true(float(pieces) / float(hotes) <= 2.0,
+		"deux pieces par hote au plus, en moyenne : %d pieces pour %d hotes" % [pieces, hotes])
 
-## ⚠️ « 2 A 4 PIECES », ET AUCUN PAS REGULIER. Une batterie de cinq n'est plus une batterie,
-## c'est une installation ; et des pieces posees a intervalle constant se lisent comme un motif
-## imprime — la « repetition procedurale visible » que la consigne 15 interdit.
+## ⚠️ ET IL COUVRE LES CINQ TRONCONS, pas seulement le debut. Un semis concentre sur deux
+## troncons redonnerait des zones nues et des zones saturees — le defaut par l'autre bout.
+##
+## ⚠️ LA STATION D'UN MARQUEUR EST LOCALE A SON TRONCON (0 a 100) : deux pieces distantes de
+## quatre cents metres y ont le meme z. C'est le TRONCON qu'il faut lire, et il faut donc
+## remonter au parent — `_hull_markers()` ne le garde pas.
+func test_the_light_defence_covers_every_section() -> void:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	var hull := track(packed.instantiate()) as Node3D
+	var hosts := {}
+	for entry in HardpointsScript.BATTERIES:
+		hosts[String(entry[0])] = true
+	var covered := {}
+	for section in hull.get_children():
+		var s := section as Node3D
+		if s == null or not s.name.begins_with("Section_"):
+			continue
+		for child in s.get_children():
+			if hosts.has(String(child.name)):
+				covered[String(s.name)] = true
+	assert_eq(covered.size(), 5,
+		"les cinq troncons portent de la defense legere (%s)" % str(covered.keys()))
+
+## ⚠️ « UNE OU DEUX PIECES », depuis le semis du 2026-09-05. C'etait « 2 a 4 » du temps des
+## grappes ; au diametre actuel, trois pieces sur un meme hote se chevauchent. Un hote n'est
+## plus un groupe, c'est un point du semis.
 func test_batteries_are_clusters_and_never_a_regular_pitch() -> void:
 	assert_true(HardpointsScript.BATTERIES.size() >= 5,
 		"assez de batteries pour que la piece existe vraiment dans le niveau")
@@ -330,8 +357,8 @@ func test_batteries_are_clusters_and_never_a_regular_pitch() -> void:
 		assert_false(hosts.has(host), "%s ne porte qu'une batterie" % host)
 		hosts[host] = true
 		var count: int = (entry[1] as Array).size()
-		assert_true(count >= 2 and count <= 4,
-			"%s porte %d pieces — une batterie fait 2 a 4" % [host, count])
+		assert_true(count >= 1 and count <= 2,
+			"%s porte %d pieces — un hote en porte une ou deux" % [host, count])
 		if count < 3:
 			continue
 		# Le pas le long de la coque ne doit pas etre constant : trois pieces regulierement

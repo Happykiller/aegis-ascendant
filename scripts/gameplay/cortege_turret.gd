@@ -138,6 +138,46 @@ const LIGHT_GEOM_SCALE := 0.538
 ## les 1,870 disponibles. La classe standard, elle, tient la planche exactement (6,50 m).
 const HEAVY_GEOM_SCALE := 1.200
 
+# --- LE RECUL — les tubes se contractent au tir, puis se rétendent ------------
+#
+## ⚠️ AUCUNE GÉOMÉTRIE NEUVE, ET AUCUN CLIP. Le kit livre chaque tube comme une PIÈCE, que le
+## moteur pose lui-même sous le rotateur (`_place`) : le recul est donc une translation de ces
+## nœuds-là, pas une animation à cuire dans le `.glb`. C'est ce qui permet de le donner aux
+## trois classes d'un coup, sans reforge — et c'est exactement pourquoi `BRIEF-0093` a fait un
+## kit de pièces plutôt qu'une tourelle cuite.
+##
+## Demandé en jouant (2026-09-05) : « *j'aurais aimé qu'ils se contractent quand elles tirent
+## et qu'elles s'étendent tout de suite après, avec une cadence en accord avec les bullets* ».
+## D'où les deux règles ci-dessous : le coup part À FOND et d'un seul coup, le retour prend une
+## FRACTION de l'intervalle de tir de la classe.
+##
+## ⚠️ LA COURSE EST À L'ÉCHELLE DE LA PIÈCE. Une légère et une lourde reculent du même nombre
+## de centimètres seulement si l'on oublie que l'une fait 2,88 m et l'autre 7,80 : le recul
+## serait invisible sur la grosse et grotesque sur la petite.
+const RECOIL_TRAVEL := 0.30
+
+## ⚠️ UNE FRACTION DE LA CADENCE, PAS UNE DURÉE FIXE. Les trois classes tirent toutes les 0,62
+## (légère), 0,40 (standard) et 0,30 s (lourde) : une durée fixe rendrait le tube encore sorti
+## au coup suivant sur la lourde, et immobile la moitié du temps sur la légère. À 0,70 le tube
+## est toujours revenu avant le coup d'après, quelle que soit la classe.
+const RECOIL_RETURN_RATIO := 0.70
+
+# --- LA CASSE — les tubes se plient, ils ne basculent pas en bloc -------------
+#
+## Demandé en jouant : « *j'ai l'impression que c'est l'objet total qui bouge pour illustrer
+## qu'il a été détruit, alors qu'on pourrait faire une animation particulière — les canons qui
+## se plient, qui se cassent* ». C'était juste : `_advance_wreck()` ne faisait tourner que le
+## ROTATEUR, donc la tête entière basculait d'une pièce, tubes parfaitement parallèles.
+##
+## ⚠️ ET LES DEUX TUBES NE SE PLIENT PAS PAREIL. Deux tubes qui plongeraient du même angle
+## resteraient parallèles — l'œil lirait encore une pièce rigide qui penche. C'est leur
+## DÉSACCORD qui dit « cassé ». Les angles se tirent du rang du tube et du rang de la tourelle,
+## jamais d'un tirage : deux captures du même survol doivent se comparer.
+const BREAK_DROOP_DEG := 34.0
+const BREAK_SPLAY_DEG := 17.0
+## Le tube casse à la culasse : il recule ET s'affaisse, comme un membre déboîté.
+const BREAK_SLIDE := 0.22
+
 ## Le canon unique, décalé du rang de montage. ⚠️ ELLES VIENNENT PAR QUATRE : quatre pièces
 ## rigoureusement identiques, posées côte à côte, se lisent comme un motif imprimé — exactement
 ## la « répétition procédurale visible » que la consigne 15 interdit. Trois décalages suffisent à
@@ -244,6 +284,16 @@ var _pass: Pass = Pass.AHEAD
 ## parce qu'un contrôle de type d'affectation ne se voit pas à l'analyse syntaxique. Une pièce
 ## invisible dont le comportement fonctionne est le pire des deux mondes.
 var _barrel: Node3D
+## Les tubes, à part du rotateur : ce sont EUX qui reculent et qui cassent.
+## ⚠️ TABLEAUX TYPÉS ET PRÉALLOUÉS À LA CONSTRUCTION : ils sont parcourus à chaque image de
+## chaque tourelle vivante, dix-sept fois plus vingt (spec §31, zéro allocation en boucle).
+var _tubes: Array[MeshInstance3D] = []
+var _tube_rest: PackedVector3Array = PackedVector3Array()
+## L'enfoncement de CHAQUE tube, de 1 (au fond) à 0 (au repos) — un par tube, parce qu'ils
+## tirent l'un après l'autre et non ensemble.
+var _tube_recoil: PackedFloat32Array = PackedFloat32Array()
+## Le tube qui tirera le prochain coup. ⚠️ ALTERNÉ ET NON SIMULTANÉ : voir `_run_fire`.
+var _next_tube: int = 0
 ## Le temps qui reste avant la prochaine morsure du faisceau.
 var _burn_timer: float = 0.0
 var _health: float = 0.0
@@ -468,6 +518,13 @@ func _place(kit: Node, part: String, offset: Vector3, yaw: float, parent: Node) 
 	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_claim_glow(piece, source)
 	parent.add_child(piece)
+	# ⚠️ RETENU ICI ET NULLE PART AILLEURS. Chercher les tubes après coup par `find_children`
+	# marcherait, et redeviendrait faux le jour où une pièce s'appellerait autrement — c'est
+	# l'assemblage qui SAIT ce qu'il vient de poser.
+	if part.begins_with("turret_barrel"):
+		_tubes.append(piece)
+		_tube_rest.append(piece.position)
+		_tube_recoil.append(0.0)
 
 ## Pose une pièce d'appareillage autour du socle, à l'angle voulu.
 func _place_around(kit: Node, part: String, degrees: float, parent: Node) -> void:
@@ -569,6 +626,10 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	# l'effondrement attendait la logique de fenêtre, il ne commencerait jamais.
 	if _wreck >= 0.0 and _wreck < 1.0:
 		_advance_wreck(delta)
+	# ⚠️ APRÈS l'effondrement et AVANT la sortie sur `PASSED` : une tourelle qui meurt le tube
+	# encore rentré garderait un canon télescopé dans son épave.
+	elif _recoiling():
+		_advance_recoil(delta)
 	if _pass == Pass.PASSED:
 		return
 	_world = world
@@ -614,9 +675,14 @@ func _run_fire(delta: float, here: Vector2) -> void:
 	# ⚠️ LA BALLE PART DE LA BOUCHE, pas du centre de la coupole : sinon elle naît dans le socle
 	# et le joueur voit un tir sortir du décor.
 	_bullet_manager.spawn_from_data(BulletManager.Team.ENEMY,
-		here + _aim * muzzle_reach(), _aim,
+		_muzzle_point(here), _aim,
 		LIGHT_SHOT if is_light() else SHOT)
 	_set_eye(EYE_SHOT)
+	# Le coup part À FOND, d'un seul coup : c'est le départ sec qui se lit, pas le retour.
+	if not _tubes.is_empty():
+		_tube_recoil[_next_tube] = 1.0
+		_next_tube = (_next_tube + 1) % _tubes.size()
+	_apply_recoil()
 
 
 ## Fait pivoter le canon vers le joueur, sans jamais dépasser sa vitesse de rotation.
@@ -690,6 +756,11 @@ func _begin_wreck() -> void:
 	_wreck = 0.0
 	if _barrel != null:
 		_wreck_from = _barrel.rotation
+	# ⚠️ LE TUBE RENTRE CHEZ LUI AVANT DE CASSER. Une tourelle abattue pile entre deux coups
+	# aurait un canon à mi-recul, et la casse partirait d'une pose que rien n'explique.
+	for i in _tube_recoil.size():
+		_tube_recoil[i] = 0.0
+	_apply_recoil()
 
 ## Un pas de l'effondrement. ⚠️ APPELÉ MÊME QUAND LA PIÈCE EST `PASSED` : elle meurt souvent au
 ## bord de sa fenêtre, et une épave qui se figerait à mi-chute serait pire que pas d'épave du
@@ -707,6 +778,89 @@ func _advance_wreck(delta: float) -> void:
 		_wreck_from.y + yaw * k,
 		_wreck_from.z + deg_to_rad(WRECK_ROLL_DEG) * k * (1.0 if serial % 2 == 0 else -1.0))
 	_barrel.position.y = -WRECK_SINK * k
+	_break_tubes(k)
+
+## Plie les tubes pendant que la tête s'affaisse.
+##
+## ⚠️ C'EST CE QUI SÉPARE UNE ÉPAVE D'UNE PIÈCE QUI PENCHE. Avant le 2026-09-05, seul le
+## ROTATEUR tournait : la tête basculait d'un bloc, tubes rigoureusement parallèles, et l'œil
+## y lisait une tourelle inclinée plutôt qu'une tourelle détruite. « *j'ai l'impression que
+## c'est l'objet total qui bouge* » (opérateur, en jouant) — c'était exactement ça.
+##
+## ⚠️ LEUR DÉSACCORD FAIT LE TRAVAIL, PAS LEUR ANGLE. Deux tubes plongeant du même angle
+## restent parallèles, donc rigides. On les fait donc plonger INÉGALEMENT (un tube sur deux
+## garde 55 % de l'angle) et s'écarter en sens opposés. Les signes viennent du rang du tube et
+## de celui de la tourelle : aucun tirage, deux survols se comparent.
+func _break_tubes(k: float) -> void:
+	for i in _tubes.size():
+		var cote := 1.0 if (i + serial) % 2 == 0 else -1.0
+		var part := 1.0 if i % 2 == 0 else 0.55
+		var repos := _tube_rest[i]
+		_tubes[i].rotation = Vector3(
+			deg_to_rad(BREAK_DROOP_DEG) * part * k,
+			deg_to_rad(BREAK_SPLAY_DEG) * cote * k,
+			0.0)
+		# Il casse À LA CULASSE : il recule dans son masque en même temps qu'il pique.
+		_tubes[i].position = Vector3(repos.x, repos.y, repos.z - BREAK_SLIDE * _geom_scale() * k)
+
+## Ramène les tubes vers leur logement, un peu plus à chaque image.
+##
+## ⚠️ LA DURÉE SE LIT DANS LA CADENCE DE LA CLASSE. Écrire une durée en dur ici découplerait
+## le geste du tir : le jour où l'on resserre la cadence d'une classe, son tube serait encore
+## sorti quand le coup suivant part, et le recul cesserait de vouloir dire quoi que ce soit.
+func _advance_recoil(delta: float) -> void:
+	var retour := tuning.turret_burn_interval_of(turret_scale) * RECOIL_RETURN_RATIO
+	for i in _tube_recoil.size():
+		if _tube_recoil[i] <= 0.0:
+			continue
+		_tube_recoil[i] = 0.0 if retour <= 0.001 else maxf(_tube_recoil[i] - delta / retour, 0.0)
+	_apply_recoil()
+
+## Reste-t-il un tube sorti ? Évite de repasser sur les tubes d'une tourelle au repos.
+func _recoiling() -> bool:
+	for r in _tube_recoil:
+		if r > 0.0:
+			return true
+	return false
+
+## D'OÙ LA BALLE SORT, DANS LE PLAN DE JEU — et c'est le tube QUI TIRE, pas l'axe de la pièce.
+##
+## ⚠️ LE DÉFAUT QUE ÇA CORRIGE. La balle naissait sur l'AXE de la tourelle, à la bonne distance :
+## elle apparaissait donc dans le VIDE entre les deux tubes, à un demi-mètre de chaque bouche.
+## « *les bullets ont l'air de partir d'assez loin des canons, pas du bout de l'obus* »
+## (opérateur, en jouant le 2026-09-05). La distance était juste, l'écart latéral manquait.
+##
+## L'écart n'est pas recopié d'une table : il est lu sur le tube RÉELLEMENT POSÉ (`_tube_rest`,
+## échelle comprise). Le jour où une famille change d'écartement, la balle suit sans qu'on y
+## pense — c'était la moitié du défaut.
+##
+## Le calcul : le tube pointe vers son `+z` local, et `barrel_yaw` pose le rotateur à
+## `θ = atan2(aim.x, −aim.y)`. Le `+x` local part donc, dans le plan, sur `(−aim.y, aim.x)`.
+func _muzzle_point(here: Vector2) -> Vector2:
+	var lateral := 0.0 if _tubes.is_empty() else _tube_rest[_next_tube].x
+	return muzzle_point_of(here, _aim, muzzle_reach(), lateral)
+
+## Le calcul seul, sans arbre de scène. ⚠️ STATIQUE ET PURE parce que c'est là qu'était le
+## défaut : une balle née au bon endroit sur le mauvais axe se voit, et ne se teste pas depuis
+## un niveau monté. Trois nombres suffisent à la vérifier.
+static func muzzle_point_of(here: Vector2, aim: Vector2, reach: float, lateral: float) -> Vector2:
+	return here + aim * reach + Vector2(-aim.y, aim.x) * lateral
+
+## Pose les tubes à leur enfoncement courant.
+##
+## ⚠️ LE TUBE POINTE VERS SON `+z` LOCAL (`barrel_yaw` le dit) : reculer, c'est donc aller vers
+## `−z`. Le signe inverse produirait un canon qui SORT au tir — un télescope, pas une arme.
+func _apply_recoil() -> void:
+	# Un retour en S : le tube s'arrache lentement du fond, file, puis se pose. C'est ce qui
+	# donne la sensation de pompe hydraulique plutôt que celle d'un ressort.
+	var pleine := RECOIL_TRAVEL * _geom_scale()
+	for i in _tubes.size():
+		var r := _tube_recoil[i]
+		# Un retour en S : le tube s'arrache lentement du fond, file, puis se pose. C'est ce qui
+		# donne la sensation de pompe hydraulique plutôt que celle d'un ressort.
+		var k := r * r * (3.0 - 2.0 * r)
+		var repos := _tube_rest[i]
+		_tubes[i].position = Vector3(repos.x, repos.y, repos.z - pleine * k)
 
 ## Rend la cible et cesse de compter. ⚠️ `unregister_target` est SÛRE depuis un rappel de
 ## dégâts — le gestionnaire diffère la suppression jusqu'à la fin de la passe.

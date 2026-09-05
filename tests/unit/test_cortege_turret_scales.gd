@@ -181,3 +181,47 @@ func test_the_heavy_is_bounded_by_the_flight_ceiling_and_not_by_the_platform() -
 	var emprise := EMPRISE_STANDARD * TurretScript.HEAVY_GEOM_SCALE
 	assert_true(emprise <= EMPRISE_POSABLE_PARTOUT,
 		"la lourde pose %.2f m de rayon pour %.2f m posables partout" % [emprise, EMPRISE_POSABLE_PARTOUT])
+
+# --- D'ou la balle sort, et le recul qui l'accompagne -------------------------
+
+## ⚠️ LE DEFAUT QUE CE TEST GARDE. La balle naissait sur l'AXE de la tourelle, a la bonne
+## distance : elle apparaissait donc dans le VIDE entre les deux tubes, a un demi-metre de
+## chaque bouche. « *les bullets ont l'air de partir d'assez loin des canons, pas du bout de
+## l'obus* » (operateur, 2026-09-05). La distance etait juste, l'ecart lateral manquait — et
+## aucun test ne pouvait le voir, parce que le calcul vivait dans une methode d'instance.
+func test_a_bolt_leaves_the_tube_that_fired_not_the_axis_between_them() -> void:
+	var ici := Vector2(3.0, -2.0)
+	var vise := Vector2.DOWN
+	var gauche := TurretScript.muzzle_point_of(ici, vise, 4.42, -0.46)
+	var droite := TurretScript.muzzle_point_of(ici, vise, 4.42, 0.46)
+	assert_true(gauche.distance_to(droite) > 0.9,
+		"les deux tubes tirent de deux points distincts (%.2f)" % gauche.distance_to(droite))
+	var axe := TurretScript.muzzle_point_of(ici, vise, 4.42, 0.0)
+	assert_true(absf(gauche.distance_to(axe) - 0.46) < 0.001,
+		"et chacun est a son ecartement de l'axe")
+
+## ⚠️ L'ECART SUIT LA VISEE. Un ecart pose en X monde marcherait tourelle vers le bas et
+## enverrait les balles de travers des qu'elle pivote — le genre de defaut qui ne se voit qu'a
+## un angle particulier, donc jamais sur la capture qu'on prend.
+func test_the_lateral_offset_turns_with_the_turret() -> void:
+	var ici := Vector2.ZERO
+	for vise in [Vector2.DOWN, Vector2.RIGHT, Vector2(0.6, 0.8).normalized()]:
+		var p := TurretScript.muzzle_point_of(ici, vise, 4.0, 0.5)
+		var le_long := p.dot(vise)
+		var en_travers := p.dot(Vector2(-vise.y, vise.x))
+		assert_true(absf(le_long - 4.0) < 0.001,
+			"vise %s : la balle est bien a 4,00 devant (%.3f)" % [vise, le_long])
+		assert_true(absf(en_travers - 0.5) < 0.001,
+			"vise %s : et a 0,50 sur le cote (%.3f)" % [vise, en_travers])
+
+## ⚠️ LE RETOUR DU TUBE TIENT DANS LA CADENCE DE SA CLASSE. Une duree fixe laisserait la lourde
+## (0,30 s entre deux coups) tirer avec un tube encore sorti, et le recul cesserait de vouloir
+## dire quoi que ce soit.
+func test_a_tube_is_always_home_before_the_next_shot() -> void:
+	var tuning: CortegeTuning = load(SHIPPED)
+	for scale in CortegeTuning.TurretScale.values():
+		var cadence := tuning.turret_burn_interval_of(scale)
+		var retour := cadence * TurretScript.RECOIL_RETURN_RATIO
+		assert_true(retour < cadence,
+			"%s : le tube rentre en %.2f s pour %.2f s de cadence"
+				% [CortegeTuning.turret_scale_name(scale), retour, cadence])
