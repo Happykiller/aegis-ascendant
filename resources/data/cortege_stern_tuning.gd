@@ -59,6 +59,15 @@ extends Resource
 @export var anchor_radius: float = 1.10
 @export var anchor_score: int = 1400
 
+## En dessous de cette part de vie, l'ancrage passe en ENDOMMAGÉ : plaques ouvertes, cœur à nu,
+## étincelles. ⚠️ IL BRILLE ALORS PLUS FORT QU'INTACT, ce qui est contre-intuitif et voulu : la
+## planche le dessine ouvert, et un état qui s'assombrit se lirait comme un état qui s'éteint —
+## c'est-à-dire comme un verrou déjà rompu.
+@export var anchor_damaged_at: float = 0.45
+## Entre deux gerbes d'un ancrage endommagé. ⚠️ C'EST LE SEUL SIGNAL QUI PORTE À DISTANCE : le
+## battement se voit quand on regarde la pièce, l'étincelle se voit du coin de l'œil.
+@export var anchor_spark_interval: float = 0.55
+
 ## Où l'ancrage se pose sur son berceau, en Z local du groupe.
 ##
 ## ⚠️ CETTE COTE DÉCIDE S'IL EST ATTEIGNABLE, ET LA PREMIÈRE VALEUR NE L'ÉTAIT PAS. Le berceau
@@ -214,10 +223,26 @@ func validate() -> PackedStringArray:
 	if central_anchors < lateral_anchors:
 		errors.append("le moteur central porte %d ancrages contre %d au latéral — il doit clore la séquence, pas l'alléger"
 			% [central_anchors, lateral_anchors])
+	# ⚠️ UN SEUIL A ZERO OU A UN SUPPRIME UN ÉTAT ENTIER, SANS RIEN CASSER. À 0, l'ancrage passe
+	# d'intact à rompu sans jamais s'ouvrir ; à 1, il naît endommagé et le joueur ne sait plus
+	# lesquels il a déjà travaillés. Ni l'un ni l'autre ne produit d'erreur — seulement une
+	# phase où l'on ne lit plus sa propre progression.
+	if anchor_damaged_at <= 0.05 or anchor_damaged_at >= 0.95:
+		errors.append("le seuil d'endommagement vaut %.2f : l'état ENDOMMAGÉ n'existerait plus, et le joueur perdrait la trace des verrous qu'il a déjà travaillés"
+			% anchor_damaged_at)
+	if anchor_spark_interval <= 0.0:
+		errors.append("anchor_spark_interval doit être > 0")
 	if anchor_health <= 0.0:
 		errors.append("anchor_health doit être > 0")
 	if anchor_radius <= 0.0:
 		errors.append("anchor_radius doit être > 0")
+	# ⚠️ LA ZONE DE TOUCHE VIENT DE LA RESOURCE, JAMAIS DU MAILLAGE (`ADR-0034`) — mais elle ne
+	# doit pas pour autant être plus PETITE que ce qu'on dessine. Une hitbox en retrait de la
+	# silhouette produit le pire retour possible sur la seule cible de la phase : le joueur voit
+	# son tir passer sur la pièce et rien ne se passe. Il conclut qu'elle est invulnérable.
+	elif anchor_radius < anchor_size.x * scale_of(false) * 0.5:
+		errors.append("la zone de touche fait %.2f m de rayon pour un ancrage large de %.2f — un tir sur ses bords passerait à travers"
+			% [anchor_radius, anchor_size.x * scale_of(false)])
 
 	# --- INVARIANT 6 : LE SILENCE TIENT L'AVEU (décision D3) -------------
 	#

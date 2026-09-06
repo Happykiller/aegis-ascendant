@@ -152,8 +152,11 @@ func _cut_one() -> void:
 			if not (anchor.is_alive() and anchor.is_vulnerable()):
 				continue
 			var cible := anchor.target()
+			# ⚠️ IL ENTAME, IL NE TUE PAS — 55 % de la vie par coup. Un banc qui tuerait d'un
+			# seul appel ne traverserait JAMAIS l'état ENDOMMAGÉ, donc ne prouverait rien de la
+			# moitié visuelle du lot, et aucune capture ne pourrait le montrer.
 			if cible != null and cible.hit_callback.is_valid():
-				cible.hit_callback.call(tuning.anchor_health)
+				cible.hit_callback.call(tuning.anchor_health * 0.55)
 			return
 
 ## Les deux latéraux s'ouvrent ensemble : le joueur choisit son ordre (spec §12).

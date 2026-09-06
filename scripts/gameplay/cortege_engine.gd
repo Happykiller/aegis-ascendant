@@ -121,6 +121,8 @@ func build_greybox() -> void:
 			tuning.anchor_score)
 		anchor.name = "Anchor_%02d" % (i + 1)
 		anchor.serial = i
+		anchor.damaged_at = tuning.anchor_damaged_at
+		anchor.spark_interval = tuning.anchor_spark_interval
 		anchor.build_greybox(tuning.anchor_size * k)
 		# ⚠️ SUR LE BERCEAU, PAS DEDANS, ET DU CÔTÉ DU JOUEUR. La première pose les enfonçait à
 		# 72 % de la hauteur du berceau et au tiers ARRIÈRE de sa profondeur : ils étaient
@@ -185,7 +187,7 @@ func tick(delta: float, world_origin: Vector3, eye: Vector3) -> void:
 	for anchor in _anchors:
 		var w := anchor.global_position if anchor.is_inside_tree() \
 			else world_origin + anchor.position
-		anchor.tick(w, GameplayPlane.aim_point_of(w, eye))
+		anchor.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
 	if _detach_clock < 0.0:
 		return
 	_detach_clock += delta

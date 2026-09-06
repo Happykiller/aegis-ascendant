@@ -190,3 +190,93 @@ func test_an_engine_is_not_a_target_at_all() -> void:
 		"un moteur n'expose pas de cible : il n'est pas tirable, il est PORTE")
 	assert_eq(engine.lost_anchors(), 0, "et il nait intact")
 	assert_eq(engine.state(), EngineScript.State.ACTIVE, "et actif")
+
+# --- Les quatre etats d'un ancrage ----------------------------------------------
+#
+## ⚠️ LE QUATRIEME N'EST PAS DANS LA PLANCHE, ET C'EST LE PLUS IMPORTANT. `asset3` dessine
+## *Intact*, *Endommage* et *Ouvert/rompu* : trois etats de la PIECE. Le quatrieme —
+## **verrouille** — appartient a la SEQUENCE : les verrous du moteur central se voient bien
+## avant d'etre attaquables (spec §14). Sans etat visuel propre, le joueur les prendrait pour
+## des cibles qui n'encaissent rien, c'est-a-dire pour un bug.
+const AnchorScript := preload("res://scripts/gameplay/cortege_anchor.gd")
+
+func test_an_anchor_reads_its_four_states() -> void:
+	var seuil := TUNING.anchor_damaged_at
+	assert_eq(AnchorScript.look_for(true, true, 1.0, seuil), AnchorScript.Look.INTACT,
+		"vivant, ouvert, entier")
+	assert_eq(AnchorScript.look_for(true, true, seuil - 0.01, seuil), AnchorScript.Look.DAMAGED,
+		"sous le seuil, ses plaques s'ouvrent")
+	assert_eq(AnchorScript.look_for(false, false, 0.0, seuil), AnchorScript.Look.BROKEN,
+		"mort : la carcasse reste, et c'est la preuve")
+	# ⚠️ L'ORDRE DES TESTS COMPTE, et ces deux lignes le gardent.
+	assert_eq(AnchorScript.look_for(true, false, 1.0, seuil), AnchorScript.Look.LOCKED,
+		"a pleine vie mais verrouille : ce qu'il faut savoir de lui n'est pas sa sante")
+	assert_eq(AnchorScript.look_for(false, true, 0.5, seuil), AnchorScript.Look.BROKEN,
+		"mort dans la trame ou il etait encore ouvert : il reste rompu")
+
+## ⚠️ LE VERROUILLE CHANGE DE TEINTE, PAS SEULEMENT D'INTENSITE. Un magenta assombri se lirait
+## comme « un ancrage deja travaille » — donc comme une cible qu'on a entamee, alors qu'elle
+## n'a jamais encaisse. Meme regle que l'ambre de signalisation (`ADR-0043`).
+func test_a_locked_anchor_is_not_a_dim_magenta() -> void:
+	var froid: Color = AnchorScript.LOCKED_TINT
+	var chaud: Color = AnchorScript.TINT
+	assert_true(froid.b > froid.r,
+		"le verrouille tire vers le bleu (%.2f de bleu pour %.2f de rouge)" % [froid.b, froid.r])
+	assert_true(chaud.r > chaud.b,
+		"l'actif tire vers le magenta (%.2f de rouge pour %.2f de bleu)" % [chaud.r, chaud.b])
+	assert_true(absf(froid.h - chaud.h) > 0.2,
+		"et les deux teintes se distinguent d'un coup d'oeil, pas seulement a la mesure")
+
+## ⚠️ L'ENDOMMAGE BRILLE PLUS FORT QUE L'INTACT, ET C'EST CONTRE-INTUITIF. La planche le dessine
+## OUVERT, coeur a nu : un etat qui s'assombrirait a mesure qu'on le travaille se lirait comme
+## un verrou en train de s'eteindre, c'est-a-dire deja rompu.
+func test_a_damaged_anchor_burns_brighter_than_an_intact_one() -> void:
+	assert_true(AnchorScript.DAMAGED_GLOW > AnchorScript.INTACT_GLOW,
+		"%.2f contre %.2f" % [AnchorScript.DAMAGED_GLOW, AnchorScript.INTACT_GLOW])
+	assert_true(AnchorScript.BROKEN_GLOW < AnchorScript.LOCKED_GLOW,
+		"et le rompu est le plus sombre des quatre — plus sombre meme qu'un verrou ferme")
+
+## ⚠️ SANS FLASH, LE JOUEUR NE SAIT PAS QU'IL TOUCHE. L'ancrage est la SEULE cible de la phase :
+## deux secondes de tir sans retour se lisent comme « cette piece est invulnerable », et le
+## joueur va chercher ailleurs — sur le moteur, qui n'encaisse rien.
+func test_a_hit_is_acknowledged() -> void:
+	var anchor := track(AnchorScript.make(TUNING.anchor_health, TUNING.anchor_radius, 0)) as CortegeAnchor
+	anchor.damaged_at = TUNING.anchor_damaged_at
+	anchor.set_vulnerable(true)
+	assert_eq(anchor.look(), AnchorScript.Look.INTACT, "il nait intact une fois ouvert")
+	anchor.target().hit_callback.call(TUNING.anchor_health * 0.6)
+	assert_eq(anchor.look(), AnchorScript.Look.DAMAGED,
+		"un coup qui passe le seuil ouvre ses plaques")
+	assert_true(anchor.health_ratio() < TUNING.anchor_damaged_at, "et sa vie a baisse")
+
+## ⚠️ UN VERROU FERME ENCAISSE ZERO. Pas « peu » : zero. C'est ce qui tient la sequence du
+## central, et une balle deja resolue dans la trame courante trouverait encore la cible si l'on
+## se contentait de la desinscrire.
+func test_a_locked_anchor_takes_nothing() -> void:
+	var anchor := track(AnchorScript.make(TUNING.anchor_health, TUNING.anchor_radius, 0)) as CortegeAnchor
+	anchor.set_vulnerable(false)
+	anchor.target().hit_callback.call(TUNING.anchor_health * 10.0)
+	assert_true(anchor.is_alive(), "il est toujours la")
+	assert_almost_eq(anchor.health_ratio(), 1.0, 0.001, "et il n'a rien perdu")
+	assert_eq(anchor.look(), AnchorScript.Look.LOCKED, "et il le dit")
+
+func test_a_threshold_that_erases_a_state_is_refused() -> void:
+	for valeur in [0.0, 1.0]:
+		var tuning: CortegeSternTuning = TUNING.duplicate()
+		tuning.anchor_damaged_at = valeur
+		assert_true(_says(tuning, "ENDOMMAG"),
+			"un seuil a %.2f supprimerait un etat entier, sans rien casser" % valeur)
+
+## ⚠️ LA ZONE DE TOUCHE NE DOIT PAS ETRE PLUS PETITE QUE LA PIECE. Elle vient de la Resource
+## (`ADR-0034`), ce qui est juste — mais une hitbox en retrait de la silhouette donne le pire
+## retour possible sur la SEULE cible de la phase : le tir passe visiblement sur le verrou, et
+## rien ne se produit. Le joueur en conclut qu'il ne faut pas tirer la, et il va chercher sur le
+## moteur, qui n'encaisse rien non plus.
+func test_the_hitbox_is_never_smaller_than_what_is_drawn() -> void:
+	var demi := TUNING.anchor_size.x * TUNING.scale_of(false) * 0.5
+	assert_true(TUNING.anchor_radius >= demi,
+		"rayon %.2f pour une demi-largeur de %.2f" % [TUNING.anchor_radius, demi])
+	var maigre: CortegeSternTuning = TUNING.duplicate()
+	maigre.anchor_radius = 0.2
+	assert_true(_says(maigre, "passerait à travers"),
+		"et une hitbox rabougrie est REFUSEE, pas seulement regrettee")
