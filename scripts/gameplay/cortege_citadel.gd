@@ -255,9 +255,34 @@ const EMBER_SPREAD := 2.4
 ## ⚠️ CELLE DU PONT INTÉRIEUR EST DERRIÈRE LE CONDUIT, à 0,42 m de sa dernière station : posée
 ## devant, son socle se serait couché sur le caisson.
 ## Format : [x, ds, assise].
+## ⚠️ LES DEUX GARDES SONT SUR LE PONT DES RELAIS DEPUIS LE 2026-09-06 — la première était sur
+## le SOMMET DU BASTION, et elle était DANS LE MUR.
+##
+## Trouvé en jouant : « *il y a des petites tourelles qui se superposent avec le mur* ». Mesuré :
+## le vantail fermé occupe x 0→12,90, z ±0,60, jusqu'à y −3,00 ; le sommet du bastion est à
+## −3,60. Une garde posée là chevauchait donc le vantail sur **0,60 m de hauteur**, et depuis
+## toujours — le socle de `BRIEF-0100` (1,00 m de rayon contre 0,93) n'a fait qu'aggraver un
+## défaut déjà présent.
+##
+## ⚠️ ET IL N'Y AVAIT AUCUNE PLACE SUR CE SOMMET. Pour sortir du vantail il faut z ≤ −1,60 ; la
+## couronne y occupe z −5,40→−1,60 sur x 7,40→10,00 ; il resterait donc un centre à x ≤ 6,40 ou
+## x ≥ 11,00, dans un bastion qui n'accepte que 7,90 à 10,40. **Intervalle vide.** Et le dessus
+## de la couronne est à −3,00, c'est-à-dire au plafond du décor (`ADR-0041`) : rien ne peut s'y
+## poser. Ce n'était donc pas un décalage à corriger, mais un emplacement à abandonner.
+##
+## Les deux gardes vivent maintenant sur le **pont des relais**, dégagé, et leurs emprises sont
+## vérifiées contre les huit pièces de la citadelle. Elles ne sont ni alignées ni à la même
+## station : deux pièces posées en miroir exact se lisent comme un motif imprimé.
+##
+##   `[4,60 ; 3,30]` — devant le relais, inchangée
+##   `[2,60 ; 4,20]` — en retrait vers l'axe, à 2,19 m de la première (2,00 exigés)
+##
+## ⚠️ ET PAS PLUS EN ARRIÈRE. Posée à s = 5,40 elle s'immobilisait à y = 7,86 dans le plan de
+## jeu, pour une fenêtre de tir de ±7,0 : elle ne se serait **jamais engagée**. L'invariant du
+## verrou l'a refusée avant le jeu.
 const GUARDS: Array = [
-	[9.20, 0.40, BASTION_TOP_Y],
 	[4.60, 3.30, RELAY_BASE_Y],
+	[2.60, 4.20, RELAY_BASE_Y],
 ]
 
 ## Part de l'ouverture passée sur la MORT DU NOYAU avant que les mécanismes ne bougent.

@@ -1262,3 +1262,44 @@ func test_the_two_leaf_MESHES_really_move_apart_and_not_together() -> void:
 	assert_true(droite > 0.001, "le vantail tribord part a TRIBORD (%.3f)" % droite)
 	assert_almost_eq(droite - gauche, 2.0 * CitadelScript.LEAF_TRAVEL, 0.01,
 		"et l'ecart des deux maillages vaut deux fois la course")
+
+## ⚠️ UNE GARDE DU VERROU NE DOIT PAS ETRE DANS LE MUR — trouve en jouant le 2026-09-06 :
+## « il y a des petites tourelles qui se superposent avec le mur ». La premiere entree de
+## `GUARDS` etait sur le SOMMET DU BASTION (y -3,60) quand le vantail ferme monte jusqu'a
+## -3,00 : elle le chevauchait sur 0,60 m de hauteur, et depuis toujours.
+##
+## L'axe qui decide est le Z : le vantail traverse toute la largeur (x 0 -> 12,90) et n'est
+## mince qu'en profondeur (±0,60 mesure sur `citadel_kit.glb`). Une garde en est donc dehors si,
+## et seulement si, son socle ne mord pas cette bande.
+func test_no_guard_turret_stands_inside_the_closed_gate() -> void:
+	var kit: PackedScene = load(CortegeTurret.KIT_PATH)
+	assert_true(kit != null, "le kit de tourelle se charge")
+	var monte := track(kit.instantiate()) as Node3D
+	var socle := (monte.get_node("turret_pad") as MeshInstance3D).get_aabb()
+	var rayon: float = maxf(socle.size.x, socle.size.z) * 0.5 * TurretScript.LIGHT_GEOM_SCALE
+	assert_true(rayon > 0.5, "le socle d'une legere a un rayon mesurable (%.2f m)" % rayon)
+
+	## Demi-epaisseur du vantail, mesuree sur le kit de citadelle.
+	const VANTAIL_DEMI_Z := 0.60
+	for side in [-1.0, 1.0]:
+		for index in CitadelScript.GUARDS.size():
+			var pose := CitadelScript.guard_local(side, index)
+			assert_true(absf(pose.z) > VANTAIL_DEMI_Z + rayon,
+				"la garde %d (cote %.0f) est a z = %.2f : son socle de %.2f m doit degager la bande du vantail (±%.2f)"
+					% [index, side, pose.z, rayon, VANTAIL_DEMI_Z])
+
+## ⚠️ ET LES DEUX GARDES D'UN MEME COTE NE SE RECOUVRENT PAS. Meme regle que les batteries de
+## coque : deux socles cumules, sinon on retrouve le tas que le semis du 2026-09-05 a defait.
+func test_two_guards_on_the_same_side_never_overlap() -> void:
+	var kit: PackedScene = load(CortegeTurret.KIT_PATH)
+	var monte := track(kit.instantiate()) as Node3D
+	var socle := (monte.get_node("turret_pad") as MeshInstance3D).get_aabb()
+	var rayon: float = maxf(socle.size.x, socle.size.z) * 0.5 * TurretScript.LIGHT_GEOM_SCALE
+	for i in CitadelScript.GUARDS.size():
+		for j in range(i + 1, CitadelScript.GUARDS.size()):
+			var a := CitadelScript.guard_local(1.0, i)
+			var b := CitadelScript.guard_local(1.0, j)
+			var ecart := Vector2(a.x - b.x, a.z - b.z).length()
+			assert_true(ecart >= rayon * 2.0,
+				"les gardes %d et %d sont a %.2f m pour %.2f m de socles cumules"
+					% [i, j, ecart, rayon * 2.0])
