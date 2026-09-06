@@ -1,0 +1,204 @@
+class_name CortegeStern
+extends Node3D
+## La phase finale du niveau 2 : la poupe du Long Cortège et ses trois groupes propulsifs.
+##
+## ⚠️ CE N'EST PAS UN BOSS, ET LE CODE DOIT LE RENDRE VISIBLE. Aucune barre de vie, aucune vague,
+## aucun moteur à arroser. Trois moteurs, neuf ou dix verrous, et une seule question posée au
+## joueur : *lesquels tiennent encore ?* Le spectacle vient de ce qui part, pas de ce qui résiste.
+##
+## ⚠️ ET LE CORTÈGE N'EST PAS COULÉ, IL EST ÉCHOUÉ (décision D1 du plan, 2026-09-06). Le lore le
+## dit depuis toujours — « il n'y a pas de bataille à gagner contre lui » — et cette phase ne le
+## contredit pas : on lui prend sa propulsion, pas sa vie. Il ralentit, il dérive, il continue.
+## Ce qu'on gagne ici est du TEMPS, pas une victoire.
+##
+## ⚠️ LES DEUX LATÉRAUX DANS N'IMPORTE QUEL ORDRE, LE CENTRAL EN DERNIER (spec §12 et §14). Ce
+## n'est pas une contrainte de difficulté, c'est ce qui raconte la perte progressive de poussée :
+## le central ne devient attaquable que lorsque l'énergie des deux autres converge vers lui.
+
+## Les trois moteurs sont partis : le niveau peut se taire.
+signal finished()
+## Un moteur vient de quitter son berceau — le niveau le raconte (spec §13).
+signal engine_lost(remaining: int)
+## Les verrous du central viennent de s'ouvrir.
+signal core_exposed()
+
+enum Phase { ARRIVAL, FIGHT, DONE }
+
+var tuning: CortegeSternTuning = null
+
+var _engines: Array[CortegeEngine] = []
+var _phase: Phase = Phase.ARRIVAL
+var _clock: float = 0.0
+var _bullets: BulletManager = null
+var _vfx: VFXManager = null
+var _core_open: bool = false
+var _down: int = 0
+## Le banc de vérification : un verrou tombe toutes les `n` secondes, tout seul.
+##
+## ⚠️ IL EXISTE PARCE QUE LA FIN DE LA PHASE EST AUTREMENT INVÉRIFIABLE. Elle demande dix
+## verrous abattus à la main, répartis sur trente mètres, dans un ordre imposé ; le pilote de
+## démonstration tire droit devant et n'atteint que la colonne centrale. Sans ce drapeau, la
+## seule preuve que le niveau SE TERMINE serait une partie jouée par un humain — et c'est
+## exactement le genre de preuve qu'on cesse de refaire. Même motif que `--citadel-state=` et
+## `--spine-down=`. Les dégâts partent par le VRAI chemin : le `hit_callback` des balles.
+var _auto_cut: float = -1.0
+var _cut_clock: float = 0.0
+
+static func make(p_tuning: CortegeSternTuning) -> CortegeStern:
+	var stern := CortegeStern.new()
+	stern.tuning = p_tuning
+	return stern
+
+# --- La règle, pure et testable sans arbre -------------------------------------
+
+## Où la poupe se trouve pendant son entrée, en `y` de plan, à `t` secondes.
+##
+## ⚠️ ELLE ENTRE, ELLE N'APPARAÎT PAS. C'est la règle qu'on vient de poser sur les vagues
+## d'ennemis le même jour, et elle vaut d'autant plus pour une masse qui remplit l'écran :
+## une poupe qui éclot au milieu du cadre se lit comme un défaut d'affichage.
+static func arrival_y(t: float, rest: float, rise: float, duration: float) -> float:
+	if duration <= 0.0:
+		return rest
+	var k := clampf(t / duration, 0.0, 1.0)
+	# Une décélération, pas une interpolation linéaire : le vaisseau ARRIVE et s'arrête, il ne
+	# se pose pas à vitesse constante. Même famille de courbe que le freinage de la Citadelle.
+	return rest + rise * (1.0 - k) * (1.0 - k)
+
+## Le central s'ouvre-t-il ? ⚠️ IL FAUT LES DEUX LATÉRAUX PARTIS, pas seulement abîmés : c'est
+## la redirection d'énergie de la spec §14 qui l'expose, et elle n'a lieu qu'une fois les deux
+## groupes détachés.
+static func core_is_exposed(laterals_gone: int) -> bool:
+	return laterals_gone >= 2
+
+# --- La pièce ------------------------------------------------------------------
+
+func setup(bullets: BulletManager, vfx: VFXManager) -> void:
+	_bullets = bullets
+	_vfx = vfx
+	for engine in _engines:
+		engine.setup(bullets, vfx)
+
+func build_greybox() -> void:
+	# ⚠️ LE PONT DE POUPE EST BIEN PLUS BAS QUE LE CORRIDOR, et c'est ce qui rend la phase
+	# possible : un berceau et un moteur empilés font près de huit mètres, quand le corridor
+	# n'en offre que deux et demi sous le plan de vol. La carène descend à −12,60 ; on s'y pose.
+	var pont := MeshInstance3D.new()
+	pont.name = "SternDeck"
+	var box := BoxMesh.new()
+	box.size = Vector3(tuning.half_span() * 2.0 + 4.0, 1.60, tuning.cradle_size.z * 1.6)
+	pont.mesh = box
+	pont.position = Vector3(0.0, tuning.deck_y - 0.80, 0.0)
+	pont.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.09, 0.09, 0.11)
+	mat.metallic = 0.4
+	mat.roughness = 0.6
+	pont.material_override = mat
+	add_child(pont)
+
+	for side in [-1.0, 0.0, 1.0]:
+		var engine := CortegeEngine.make(tuning, side)
+		engine.name = "Engine_%s" % ("Center" if is_zero_approx(side) else
+			("Right" if side > 0.0 else "Left"))
+		engine.position = Vector3(tuning.slot_x(side), tuning.deck_y, 0.0)
+		engine.build_greybox()
+		engine.weakened.connect(_on_engine_weakened)
+		engine.detaching.connect(_on_engine_detaching)
+		engine.detached.connect(_on_engine_detached)
+		add_child(engine)
+		_engines.append(engine)
+
+func engines() -> Array[CortegeEngine]:
+	return _engines
+
+func phase() -> Phase:
+	return _phase
+
+func engines_down() -> int:
+	return _down
+
+func is_core_exposed() -> bool:
+	return _core_open
+
+## ⚠️ APPELÉ PAR LE NIVEAU, PAS PAR L'ARBRE. Même contrat que les autres pièces du Cortège : la
+## poupe est pilotable sans scène, donc vérifiable sans jouer quatre minutes de survol.
+func tick(delta: float, eye: Vector3) -> void:
+	if _phase == Phase.DONE:
+		return
+	_clock += delta
+	if _phase == Phase.ARRIVAL:
+		position.z = -arrival_y(_clock, tuning.hold_plane_y, tuning.arrival_rise,
+			tuning.arrival_time)
+		if _clock >= tuning.arrival_time:
+			_phase = Phase.FIGHT
+			_open_laterals()
+			print("[Poupe] trois groupes propulsifs en place — les verrous sont ouverts")
+	for engine in _engines:
+		engine.tick(delta, global_position + engine.position, eye)
+	if _auto_cut > 0.0 and _phase == Phase.FIGHT:
+		_cut_clock -= delta
+		if _cut_clock <= 0.0:
+			_cut_clock = _auto_cut
+			_cut_one()
+
+## Ouvre `--stern-cut=<secondes>` : un verrou par intervalle, dans l'ordre où le jeu les ouvre.
+func force_cut(interval: float) -> void:
+	_auto_cut = maxf(interval, 0.05)
+	_cut_clock = _auto_cut
+
+func _cut_one() -> void:
+	for engine in _engines:
+		for anchor in engine.anchors():
+			if not (anchor.is_alive() and anchor.is_vulnerable()):
+				continue
+			var cible := anchor.target()
+			if cible != null and cible.hit_callback.is_valid():
+				cible.hit_callback.call(tuning.anchor_health)
+			return
+
+## Les deux latéraux s'ouvrent ensemble : le joueur choisit son ordre (spec §12).
+func _open_laterals() -> void:
+	for engine in _engines:
+		engine.set_locked(engine.is_central)
+
+func _on_engine_weakened(engine: CortegeEngine, lost: int) -> void:
+	print("[Poupe] moteur %s affaibli — %d ancrage(s) perdu(s)"
+		% [engine.name, lost])
+
+## ⚠️ LYRA PARLE ICI, PAS QUATRE SECONDES PLUS TARD. « Un groupe décroché » se dit au moment où
+## le verrou cède — c'est là que le joueur l'a mérité, et c'est là qu'il regarde. Câblée sur
+## `detached`, elle attendait que le moteur ait FINI de dériver : au banc, les deux répliques
+## des latéraux se suivaient à une seconde d'intervalle, alors qu'elles racontent deux moments
+## distincts du niveau.
+func _on_engine_detaching(engine: CortegeEngine) -> void:
+	_down += 1
+	print("[Poupe] arrachement du moteur %s" % engine.name)
+	engine_lost.emit(3 - _down)
+
+## ⚠️ ET LE CENTRAL S'OUVRE ICI, SUR LE DÉPART ACHEVÉ — pas sur l'arrachement. La redirection
+## d'énergie de la spec §14 suppose que les deux groupes ont VRAIMENT quitté le vaisseau ;
+## l'avancer de quatre secondes ferait converger la poussée vers un moteur encore accroché.
+func _on_engine_detached(_engine: CortegeEngine) -> void:
+	# ⚠️ LE CENTRAL S'OUVRE ICI ET NULLE PART AILLEURS. Le compter sur « deux moteurs abîmés »
+	# l'ouvrirait pendant que les latéraux tirent encore ; le compter sur un minuteur le
+	# rendrait dépendant de la vitesse du joueur. Il s'ouvre quand les deux sont PARTIS.
+	var lateraux := 0
+	for engine in _engines:
+		if not engine.is_central and engine.is_gone():
+			lateraux += 1
+	if not _core_open and core_is_exposed(lateraux):
+		_core_open = true
+		for engine in _engines:
+			if engine.is_central:
+				engine.set_locked(false)
+		print("[Poupe] l'énergie converge vers le moteur central — ses verrous s'ouvrent")
+		core_exposed.emit()
+	var partis := 0
+	for engine in _engines:
+		if engine.is_gone():
+			partis += 1
+	if partis < _engines.size():
+		return
+	_phase = Phase.DONE
+	print("[Poupe] les trois groupes ont quitté leurs berceaux — propulsion coupée")
+	finished.emit()

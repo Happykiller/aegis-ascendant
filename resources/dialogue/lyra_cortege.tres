@@ -128,6 +128,50 @@ mood = 1
 voice_cue = &"lyra_survey_end"
 hold = 6.5
 
+[sub_resource type="Resource" id="line_stern_0"]
+script = ExtResource("2_line")
+key = &"stern_seen"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Les propulseurs, Halyard. Trois groupes.
+Ne tirez pas sur les moteurs : coupez leurs ancrages."
+mood = 1
+voice_cue = &"lyra_stern_seen"
+hold = 6.6
+
+[sub_resource type="Resource" id="line_stern_1"]
+script = ExtResource("2_line")
+key = &"engine_down"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Un groupe décroché. Il ne se rattachera pas.
+Continuez."
+mood = 0
+voice_cue = &"lyra_engine_down"
+hold = 4.3
+
+[sub_resource type="Resource" id="line_stern_2"]
+script = ExtResource("2_line")
+key = &"engine_transfer"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Il transfère toute sa poussée au moteur central.
+Il va brûler plus fort avant de céder."
+mood = 1
+voice_cue = &"lyra_engine_transfer"
+hold = 6.0
+
+[sub_resource type="Resource" id="line_stern_3"]
+script = ExtResource("2_line")
+key = &"propulsion_dead"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Propulsion coupée. Le Long Cortège ralentit.
+Il n'ira pas où il allait."
+mood = 0
+voice_cue = &"lyra_propulsion_dead"
+hold = 5.0
+
 [resource]
 script = ExtResource("1_script")
-lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8")]
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_stern_0"), SubResource("line_stern_1"), SubResource("line_stern_2"), SubResource("line_stern_3")]

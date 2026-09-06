@@ -114,6 +114,16 @@ func skip_to_section(index: int) -> void:
 	_finished = false
 	_place_sections()
 
+## Saute directement à la fin du survol — la poupe. ⚠️ IL S'ARRÊTE JUSTE AVANT LA FRONTIÈRE et
+## non dessus : `_process` doit encore franchir le seuil pour émettre `survey_finished`, qui est
+## ce qui monte la poupe. Poser `_travelled` sur la valeur finale sauterait l'émission, et le
+## drapeau ouvrirait un niveau sans fin — silencieusement.
+func skip_to_end() -> void:
+	_travelled = section_length * float(section_count) + LEAD_IN - 0.5
+	_entered = section_count - 1
+	_finished = false
+	_place_sections()
+
 ## Les tronçons, dans l'ordre de la proue vers l'arrière. ⚠️ C'EST LE SEUL ACCÈS À LA COQUE
 ## DEPUIS L'EXTÉRIEUR, et il est délibérément étroit : les mécaniques ont besoin des marqueurs
 ## que porte chaque tronçon, elles n'ont besoin de rien d'autre. Ouvrir le décor entier

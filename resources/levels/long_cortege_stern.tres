@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="CortegeSternTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/data/cortege_stern_tuning.gd" id="1_stern"]
+
+; L'arrachement des moteurs — phase finale du niveau 2.
+;
+; ⚠️ CES COTES NE SONT PAS UN GOUT, C'EST UNE SOLUTION. Elles sortent d'une recherche sous
+; quatre contraintes simultanees, toutes mesurees : rien ne creve le plafond de vol (-2,40),
+; le pont de poupe ne passe pas sous la quille (-12,60), les ancrages exterieurs restent a
+; portee du joueur (|x| <= 14) et les trois berceaux ne se chevauchent pas.
+;
+; ⚠️ ET « COLLER LES TROIS GROUPES » N'AURAIT PAS SUFFI. A pleine echelle, trois berceaux
+; JOINTIFS font deja 33,6 m pour un joueur qui n'en couvre que 28. La reduction n'etait pas
+; une option de confort, c'etait la seule issue — l'entraxe de 9,30 ne laisse d'ailleurs que
+; 0,25 m entre deux berceaux.
+;
+; ⚠️ ECHELLE PROVISOIRE. `asset_scale` se fixera au LOT 5, sur les reperes d'ancrage releves
+; dans le binaire livre : ce sont les ancrages qui doivent tenir dans les 28 m, pas le berceau,
+; et ils sont en retrait de ses bords. Le facteur peut donc remonter.
+
+[resource]
+script = ExtResource("1_stern")
+deck_y = -11.13
+asset_scale = 0.785
+central_scale = 1.06
+engine_spacing = 9.3
+hold_plane_y = 10.5
+arrival_time = 3.2
+arrival_rise = 22.0
+lateral_anchors = 3
+central_anchors = 4
+anchor_health = 260.0
+anchor_radius = 1.1
+anchor_score = 1400
+anchor_offset_z = 5.2
+anchor_row_gap = 2.2
+detach_shake_at = 0.2
+detach_burst_at = 0.5
+detach_tilt_at = 0.8
+detach_leave_at = 1.2
+detach_gone_at = 4.0
+detach_tilt_degrees = 8.0
+drift_speed = 7.5
+silence_time = 7.0
+engine_score = 5200

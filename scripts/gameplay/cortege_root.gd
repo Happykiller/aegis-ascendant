@@ -40,6 +40,14 @@ const REPORT_DELAY := 7.5
 ## monte SOUS UN TRONÇON de la coque livrée, donc après `reveal()`, comme les points d'ancrage.
 ## Un nœud posé dans le `.tscn` resterait immobile pendant que le vaisseau défile sous lui.
 var _citadel: CortegeCitadel = null
+
+## La poupe. ⚠️ ELLE NE VIT PAS DANS LA SCÈNE NON PLUS, et pour une raison de plus que la
+## Citadelle : elle n'existe qu'APRÈS le survol. La monter au démarrage ferait payer trois
+## moteurs et dix verrous pendant quatre minutes où personne ne les voit.
+var _stern: CortegeStern = null
+## Voir `--stern-cut=` : -1 en jeu normal.
+var _stern_cut: float = -1.0
+const STERN_TUNING: CortegeSternTuning = preload("res://resources/levels/long_cortege_stern.tres")
 ## La progression musicale due au TRONÇON seul, et la montée que le verrou y ajoute.
 var _section_progress: float = 0.0
 var _music_lift: float = 0.0
@@ -144,6 +152,15 @@ func _ready() -> void:
 			_forced_node_down = maxi(arg.substr(13).to_int() - 1, 0)
 			print("[Cortege] nœud du tronçon %d : abattu à son entrée en fenêtre"
 				% (_forced_node_down + 1))
+		# ⚠️ SANS LUI, JUGER LA POUPE COÛTE QUATRE MINUTES DE DÉFILEMENT. Même motif que
+		# `--cortege-from=` et `--citadel-state=` : un état qu'on ne peut atteindre qu'en jouant
+		# tout ce qui le précède est un état qu'on finit par ne plus vérifier.
+		if arg.begins_with("--stern-cut="):
+			_stern_cut = maxf(arg.substr(12).to_float(), 0.05)
+			print("[Cortege] poupe : un verrou toutes les %.2f s (banc)" % _stern_cut)
+		if arg == "--goto-stern":
+			_flyby.skip_to_end()
+			print("[Cortege] saut direct à la poupe")
 		if arg.begins_with("--cortege-from="):
 			var section := maxi(arg.substr(15).to_int() - 1, 0)
 			_flyby.skip_to_section(section)
@@ -264,6 +281,8 @@ func _process(_delta: float) -> void:
 		_runtime.crush()
 	if not (_finished or _defeated):
 		_tick_citadel(_delta)
+		if _stern != null:
+			_stern.tick(_delta, _eye.global_position if is_instance_valid(_eye) else Vector3.ZERO)
 	if _hud != null and not (_finished or _defeated):
 		_hud.set_survey(_flyby.progress(), _flyby.current_section())
 	_draw_debug_zones()
@@ -383,13 +402,62 @@ func _on_pause_toggled(is_paused: bool) -> void:
 		_pause.show_briefing(BRIEFINGS.find(StringName(phase_label())))
 
 
-## ⚠️ LE CORTÈGE N'EST PAS ABATTU, IL CONTINUE SA ROUTE. C'est le premier adversaire du jeu que
-## le joueur ne peut pas détruire, et c'est ce qui doit rester de lui (`docs/lore/NULL_CHOIR.md`).
-## Ce qui se termine ici, c'est la traversée — pas lui.
+## ⚠️ LE SURVOL NE TERMINE PLUS LE NIVEAU, IL LE PASSE À LA POUPE. Jusqu'au 2026-09-06 cette
+## fonction basculait droit en `VICTORY` : la traversée s'arrêtait, et c'était tout. Elle monte
+## désormais la phase finale — les trois groupes propulsifs et leurs verrous.
+##
+## ⚠️ ET LE CORTÈGE N'EST TOUJOURS PAS ABATTU : IL EST ÉCHOUÉ. Le lore le dit depuis toujours —
+## « il n'y a pas de bataille à gagner contre lui » (`docs/lore/NULL_CHOIR.md`) — et arracher ses
+## moteurs ne le contredit pas. On lui prend sa propulsion, pas sa vie ; il ralentit, il dérive,
+## il continue. Ce qu'on gagne est du TEMPS avant les zones sensibles, pas une victoire.
 func _on_survey_finished() -> void:
 	if _finished or _defeated:
 		return
+	_mount_stern()
+
+## Monte la poupe et lui passe la main.
+func _mount_stern() -> void:
+	_stern = CortegeStern.make(STERN_TUNING)
+	_stern.name = "Stern"
+	_stern.build_greybox()
+	_stern.setup(_bullets, _vfx)
+	_stern.finished.connect(_on_stern_finished)
+	_stern.engine_lost.connect(_on_engine_lost)
+	_stern.core_exposed.connect(_on_core_exposed)
+	add_child(_stern)
+	if _stern_cut > 0.0:
+		_stern.force_cut(_stern_cut)
+	say(&"stern_seen")
+	print("[Poupe] section terminale — trois groupes propulsifs, %d verrous"
+		% (2 * STERN_TUNING.lateral_anchors + STERN_TUNING.central_anchors))
+
+func _on_engine_lost(remaining: int) -> void:
+	_game_state.add_score(STERN_TUNING.engine_score)
+	# ⚠️ DEUX RÉPLIQUES, DEUX MOMENTS DIFFÉRENTS (spec §18). La première dit « continuez », la
+	# seconde annonce la redirection d'énergie : les intervertir ferait promettre le transfert
+	# avant qu'il n'ait lieu.
+	if remaining == 2:
+		say(&"engine_down")
+	elif remaining == 1:
+		say(&"engine_transfer")
+
+func _on_core_exposed() -> void:
+	print("[Poupe] verrous centraux ouverts")
+
+## ⚠️ ICI LE NIVEAU SE TAIT, ET C'EST UN LIVRABLE. La spec demande cinq à huit secondes sans une
+## vague, sur trois berceaux vides — et depuis la décision D3 du plan, c'est ce silence qui porte
+## l'aveu de Lyra. La réplique la plus importante du niveau se joue donc SUR le vide, pas
+## par-dessus une explosion : `silence_time` est borné par `validate()` à la durée de la prise.
+func _on_stern_finished() -> void:
+	if _finished or _defeated:
+		return
 	_finished = true
+	say(&"propulsion_dead")
+	get_tree().create_timer(STERN_TUNING.silence_time).timeout.connect(_on_silence_over)
+
+func _on_silence_over() -> void:
+	if _defeated:
+		return
 	# ⚠️ LA MUSIQUE DE VICTOIRE ATTEND QUE L'ÉCRAN SE VIDE, comme au niveau 1 : une résolution
 	# qui tomberait par-dessus des tirs encore en vol se lirait comme une erreur de montage.
 	if _runtime != null:
