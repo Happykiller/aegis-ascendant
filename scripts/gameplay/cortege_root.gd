@@ -214,10 +214,17 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 ## personne — et il faudrait tenir un état par tronçon à chaque image pour rien.
 func _on_section_weakened(section: int, turrets: int) -> void:
 	var sections := _flyby.sections()
+	var eteints := 0
 	if section >= 0 and section < sections.size():
 		for mat in CortegeSkin.emissives_of(sections[section]):
 			CortegeSkin.extinguish(mat)
-	print("[Cortege] tronçon %02d affaibli — %d tourelles, conduit éteint" % [section + 1, turrets])
+			eteints += 1
+	# ⚠️ LE COMPTE EST DANS LE JOURNAL, ET IL Y RESTE. « Conduit éteint » ne prouvait rien :
+	# la ligne s'imprimait aussi bien avec zéro matériau trouvé, et c'est exactement le doute
+	# qu'il a fallu lever le 2026-09-06 quand l'opérateur a dit « je ne vois pas les chemins
+	# s'éteindre ». Un compte transforme une affirmation en mesure.
+	print("[Cortege] tronçon %02d affaibli — %d tourelles, %d conduit(s) éteint(s)"
+		% [section + 1, turrets, eteints])
 	if turrets <= 0:
 		return
 	if _hud != null and _hud.has_method("show_banner"):

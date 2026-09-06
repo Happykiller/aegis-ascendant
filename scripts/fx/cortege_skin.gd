@@ -175,7 +175,12 @@ const EMISSIVE_ENERGY := 0.45
 ## sa peinture fluo.
 ##
 ## Un conduit mort perd les deux : il ne rayonne plus, et sa couleur retombe vers le bordé.
-const DEAD_ALBEDO := 0.30
+##
+## ⚠️ VALEURS DURCIES LE 2026-09-06 APRÈS UN VERDICT EN JEU : « quand je détruis un nœud, pas
+## de changement, je ne vois pas les chemins lumineux s'éteindre ». La première tentative
+## gardait 30 % de couleur et 0,06 d'émission — assez pour que la mesure bouge, pas assez pour
+## que l'œil le voie sous le bloom du niveau. On descend à 12 % et 0,015.
+const DEAD_ALBEDO := 0.12
 
 ## Ce qu'il reste d'un conduit dont le nœud d'épine est tombé.
 ##
@@ -183,7 +188,7 @@ const DEAD_ALBEDO := 0.30
 ## l'anthracite du bordé, et le joueur ne lit plus « ce circuit est mort » mais « il n'y a
 ## rien ici ». À 0,06 le conduit reste une VEINE SOMBRE : on voit qu'il existe et qu'il ne
 ## porte plus rien. C'est la même règle que l'œil d'une tourelle abattue.
-const EMISSIVE_DEAD := 0.06
+const EMISSIVE_DEAD := 0.015
 
 ## Les matériaux ÉMISSIFS d'un tronçon, pour pouvoir l'éteindre seul.
 ##
