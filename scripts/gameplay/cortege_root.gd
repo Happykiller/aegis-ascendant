@@ -201,8 +201,23 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 ## d'un nœud arrive quarante secondes plus tard, sur un tronçon que le joueur n'a pas encore vu :
 ## rien à l'écran ne relie la cause à l'effet. Le niveau doit donc DIRE ce qui vient de se passer,
 ## au moment où ça se passe, et nommer sa conséquence.
+## ⚠️ ET LE TRONÇON S'ÉTEINT, PARCE QUE LA MÉCANIQUE ÉTAIT INVISIBLE. Abattre un nœud d'épine
+## fait déjà tomber les tourelles du tronçon suivant à 45 % de rotation et 2,6 fois plus lentes
+## à tirer — mesurable, testé, et **rien à l'écran ne le disait**. « On ne voit toujours pas
+## visuellement un rapport entre les trois » (opérateur, en jouant le 2026-09-06).
+##
+## Le conduit du tronçon passe donc en veine sombre à l'instant où son nœud tombe. Le joueur
+## lit alors sa propre action : la ligne qui alimentait ce qui arrive vient de mourir.
+##
+## ⚠️ L'EXTINCTION EST FRANCHE, PAS FONDUE, et c'est le bon choix ici : le nœud EXPLOSE au même
+## instant. Un fondu d'une demi-seconde se jouerait derrière la boule de feu, donc pour
+## personne — et il faudrait tenir un état par tronçon à chaque image pour rien.
 func _on_section_weakened(section: int, turrets: int) -> void:
-	print("[Cortege] tronçon %02d affaibli — %d tourelles" % [section + 1, turrets])
+	var sections := _flyby.sections()
+	if section >= 0 and section < sections.size():
+		for mat in CortegeSkin.emissives_of(sections[section]):
+			mat.emission_energy_multiplier = CortegeSkin.EMISSIVE_DEAD
+	print("[Cortege] tronçon %02d affaibli — %d tourelles, conduit éteint" % [section + 1, turrets])
 	if turrets <= 0:
 		return
 	if _hud != null and _hud.has_method("show_banner"):

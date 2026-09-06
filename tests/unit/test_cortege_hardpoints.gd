@@ -726,3 +726,48 @@ func test_the_bay_kit_carries_two_doors_that_close_on_the_opening() -> void:
 		"une course de %.2f m ne sort pas un battant de %.2f m de la bouche"
 			% [BayScript.DOOR_SLIDE, BayScript.OPENING_HALF_X])
 
+
+## ⚠️ LE CONDUIT D'UN TRONCON S'ETEINT SEUL, ET C'EST TOUTE LA QUESTION. Abattre un nœud
+## d'epine fait tomber les tourelles du troncon suivant a 45 % de rotation depuis des
+## semaines — et rien a l'ecran ne le disait : « on ne voit toujours pas visuellement un
+## rapport entre les trois » (operateur, 2026-09-06).
+##
+## Ce test garde la propriete qui rend l'extinction possible : `CortegeSkin.apply()` duplique
+## le materiau emissif PAR MAILLAGE, donc par troncon. Le jour ou quelqu'un remonterait cette
+## duplication d'un cran — au-dessus de la boucle `for mesh` — les cinq troncons partageraient
+## un seul materiau et le premier nœud abattu eteindrait TOUT LE VAISSEAU. Aucune erreur,
+## aucun test rouge : juste un survol dans le noir.
+func test_each_section_owns_its_emissive_so_one_can_die_alone() -> void:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	var hull := track(packed.instantiate()) as Node3D
+	CortegeSkin.apply(hull)
+	var sections: Array[Node3D] = []
+	for child in hull.get_children():
+		var s := child as Node3D
+		if s != null and s.name.begins_with("Section_"):
+			sections.append(s)
+	assert_true(sections.size() >= 2, "au moins deux troncons a comparer (%d)" % sections.size())
+
+	var par_troncon: Array = []
+	for s in sections:
+		var mats := CortegeSkin.emissives_of(s)
+		assert_true(mats.size() > 0, "%s porte au moins un materiau emissif" % s.name)
+		par_troncon.append(mats)
+
+	# ⚠️ AUCUNE INSTANCE PARTAGEE ENTRE DEUX TRONCONS. C'est la propriete, et elle se verifie
+	# sur l'IDENTITE des objets, pas sur leurs valeurs : deux copies identiques sont justes,
+	# une seule copie partagee est le defaut.
+	for i in par_troncon.size():
+		for j in range(i + 1, par_troncon.size()):
+			for a in (par_troncon[i] as Array):
+				for b in (par_troncon[j] as Array):
+					assert_false(a == b,
+						"les troncons %d et %d partagent un materiau emissif" % [i + 1, j + 1])
+
+	# Et eteindre le premier laisse les autres allumes.
+	for mat in (par_troncon[0] as Array):
+		(mat as StandardMaterial3D).emission_energy_multiplier = CortegeSkin.EMISSIVE_DEAD
+	for mat in (par_troncon[1] as Array):
+		assert_almost_eq((mat as StandardMaterial3D).emission_energy_multiplier,
+			CortegeSkin.EMISSIVE_ENERGY, 0.001,
+			"le troncon voisin garde sa lumiere")

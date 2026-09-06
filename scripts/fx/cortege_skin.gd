@@ -166,6 +166,30 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 ## n'a plus à le porter, et l'énergie n'a plus à compenser un fond sombre qui n'existe plus.
 const EMISSIVE_ENERGY := 0.45
 
+## Ce qu'il reste d'un conduit dont le nœud d'épine est tombé.
+##
+## ⚠️ IL NE VA PAS À ZÉRO, ET C'EST DÉLIBÉRÉ. Une ligne éteinte pour de bon disparaît dans
+## l'anthracite du bordé, et le joueur ne lit plus « ce circuit est mort » mais « il n'y a
+## rien ici ». À 0,06 le conduit reste une VEINE SOMBRE : on voit qu'il existe et qu'il ne
+## porte plus rien. C'est la même règle que l'œil d'une tourelle abattue.
+const EMISSIVE_DEAD := 0.06
+
+## Les matériaux ÉMISSIFS d'un tronçon, pour pouvoir l'éteindre seul.
+##
+## ⚠️ ILS SONT DÉJÀ PROPRES À CHAQUE TRONÇON, et c'est ce qui rend l'extinction possible sans
+## toucher à la géométrie. `apply()` duplique le matériau importé **par maillage** — la boucle
+## est dans le `for mesh`, pas au-dessus. Les cinq tronçons portent donc cinq copies, et
+## baisser l'une n'éteint pas les autres. Sans cette propriété il aurait fallu un kit de
+## conduits, comme il a fallu un kit d'épine pour que les bulbes meurent un par un.
+static func emissives_of(section: Node) -> Array[StandardMaterial3D]:
+	var out: Array[StandardMaterial3D] = []
+	for mesh in _meshes(section):
+		for i in mesh.get_surface_override_material_count():
+			var mat := mesh.get_surface_override_material(i) as StandardMaterial3D
+			if mat != null and StringName(mat.resource_name) == EMISSIVE_MATERIAL:
+				out.append(mat)
+	return out
+
 static func _skin_emissive(base: StandardMaterial3D) -> StandardMaterial3D:
 	var map := _map(EMISSIVE_MAP, "")
 	if map == null:
