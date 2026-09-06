@@ -155,28 +155,50 @@ def main() -> int:
 
     stem = Path(args.stem)
     albedo = np.asarray(Image.open(f"{stem}_albedo.png").convert("RGB")).astype(np.float32)
-    ao = np.asarray(Image.open(f"{stem}_ao.png").convert("L")).astype(np.float32) / 255.0
-    hauteur = np.asarray(Image.open(f"{stem}_height.png").convert("L")).astype(np.float32) / 255.0
     plein = albedo.sum(2) >= 12.0          # les texels reellement occupes
 
-    # ⚠️ ON DILATE D'ABORD, SINON ON MESURE LA DECOUPE ET NON LA COQUE. Voir `dilater()`.
-    ao = dilater(ao, plein)
-    hauteur = dilater(hauteur, plein)
+    # ⚠️ ON DEMANDE AU MAILLAGE, PAS A L'IMAGE. Les champs cuits par
+    # `bake-surface-fields.py` disent, pour chaque texel, OU IL REGARDE et S'IL EST EN
+    # SAILLIE. Deduire ces deux choses du relief cuit ne mesurait que la decoupe des
+    # pieces — refuse sur mesure le 2026-09-06, 43 % de la coque marquee « arete ».
+    champs = Path(f"{stem}_curv.png")
+    if not champs.exists():
+        raise SystemExit(
+            f"{champs} manquant — lance d'abord :\n"
+            f"  python3 tools/bake-surface-fields.py <coque>.glb --out {stem.parent} "
+            f"--name {stem.name}")
+    wnrm = np.asarray(Image.open(f"{stem}_wnrm.png").convert("RGB")).astype(np.float32) / 255.0
+    curv = np.asarray(Image.open(f"{stem}_curv.png").convert("L")).astype(np.float32) / 255.0
+    cover = np.asarray(Image.open(f"{stem}_cover.png").convert("L")) > 127
+    wnrm = dilater(wnrm, cover)
+    curv = dilater(curv, cover)
 
-    # --- LA CRASSE : la ou la lumiere n'entre pas --------------------------------
-    crasse = np.clip((1.0 - ao) * 1.9, 0.0, 1.0)
-    crasse = np.clip(_flou(crasse, plein, 3) * 1.15, 0.0, 1.0)
+    # --- LA POUSSIERE SE DEPOSE SUR CE QUI REGARDE VERS LE HAUT -------------------
+    # C'est le repere le plus fort d'une coque sale, et le seul qui ne demande que la
+    # normale. Le seuil est doux : une surface a 45 deg en prend deja la moitie.
+    haut = np.clip((wnrm[..., 1] - 0.5) * 2.6, 0.0, 1.0)
 
-    # --- L'ECAILLAGE : la ou la tole casse ---------------------------------------
-    gy, gx = np.gradient(hauteur)
-    arete = np.clip(np.hypot(gx, gy) * 26.0, 0.0, 1.0)
-    arete = np.clip(_flou(arete, plein, 1) * 1.4, 0.0, 1.0)
+    # --- LA CRASSE S'ACCUMULE DANS LE CONCAVE, LA PEINTURE S'ECAILLE SUR LE CONVEXE --
+    rentrant = np.clip((0.5 - curv) * 5.0, 0.0, 1.0)
+    saillant = np.clip((curv - 0.5) * 5.0, 0.0, 1.0)
 
-    # --- LA MARBRURE : une peinture n'est jamais unie ----------------------------
+    # --- ET RIEN DE TOUT CA N'EST UNIFORME -------------------------------------
+    # ⚠️ UNE PEINTURE NE S'ECAILLE PAS PARTOUT PAREIL. Sans cette modulation, l'ecaillage
+    # souligne CHAQUE arete du vaisseau au meme degre : on lit un surpiquage, pas une
+    # usure. Deux echelles de bruit, l'une large (des zones plus abimees que d'autres),
+    # l'autre fine (le grain de l'ecaillage).
     rng = np.random.default_rng(args.seed)
-    petit = rng.random((32, 32)).astype(np.float32)
-    marbre = np.asarray(Image.fromarray((petit * 255).astype(np.uint8))
-                        .resize(albedo.shape[:2][::-1], Image.BICUBIC)).astype(np.float32) / 255.0
+    def bruit(cellules: int) -> np.ndarray:
+        petit = rng.random((cellules, cellules)).astype(np.float32)
+        return np.asarray(Image.fromarray((petit * 255).astype(np.uint8))
+                          .resize(albedo.shape[:2][::-1], Image.BICUBIC)).astype(np.float32) / 255.0
+    zones = bruit(12)
+    grain = bruit(96)
+    marbre = zones
+
+    crasse = np.clip((0.62 * haut + 0.85 * rentrant) * (0.45 + 0.85 * zones), 0.0, 1.0)
+    crasse = np.clip(_flou(crasse, plein, 2) * 1.1, 0.0, 1.0)
+    arete = np.clip(saillant * (0.25 + 1.15 * zones) * (0.55 + 0.75 * grain), 0.0, 1.0)
 
     gris = albedo.mean(axis=2, keepdims=True)
     sorti = albedo.copy()

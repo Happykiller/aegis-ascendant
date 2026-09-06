@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="HullDetailSet" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://resources/data/hull_detail_set.gd" id="1_set"]
-[ext_resource type="Texture2D" path="res://assets/imported/textures/hull/specter_9_d_albedo.png" id="2_albedo"]
+[ext_resource type="Texture2D" path="res://assets/imported/textures/hull/specter_9_d_albedo_worn.png" id="2_albedo"]
 [ext_resource type="Texture2D" path="res://assets/imported/textures/hull/specter_9_d_nrm.png" id="3_nrm"]
 [ext_resource type="Texture2D" path="res://assets/imported/textures/hull/specter_9_d_rough.png" id="4_rough"]
 [ext_resource type="Texture2D" path="res://assets/imported/textures/hull/specter_9_d_ao.png" id="5_ao"]
@@ -20,6 +20,14 @@
 ; ⚠️ `MAT | fixed smoked canopy`, `MAT | ion cyan` et `MAT | ion core` en sont ABSENTS
 ; deliberement : une carte de plaques n'a aucun sens sur une vitre ni sur un feu de tuyere,
 ; et y creuserait des rainures. Meme raison qui exclut `AA_Glass` et l'emissif du kit.
+;
+; ⚠️ C'EST L'ATLAS USE QUI EST POSE, PAS LE BRUT. `weather-atlas.py` depose la poussiere sur
+; ce qui regarde vers le haut et ecaille la peinture sur les aretes saillantes, en lisant les
+; champs cuits par `bake-surface-fields.py` — la normale monde et la courbure du MAILLAGE, pas
+; le relief deduit de l'image, qui ne mesurait que la decoupe des 406 pieces.
+;
+; L'atlas brut reste a cote, intact : une recuisson ne detruit rien, et la chaine est explicite
+; (cuisson -> champs -> usure).
 ;
 ; Densite mesuree : 78,1 texels/m sur la peau (BRIEF-0102), contre 425 pour la feuille tuilee
 ; qu'il remplace. C'est 5,4 fois plus grossier — et c'est le prix de l'ADRESSABILITE : une
