@@ -1281,12 +1281,20 @@ func test_no_guard_turret_stands_inside_the_closed_gate() -> void:
 
 	## Demi-epaisseur du vantail, mesuree sur le kit de citadelle.
 	const VANTAIL_DEMI_Z := 0.60
+	var lourd: float = maxf(socle.size.x, socle.size.z) * 0.5 * TurretScript.HEAVY_GEOM_SCALE
 	for side in [-1.0, 1.0]:
 		for index in CitadelScript.GUARDS.size():
 			var pose := CitadelScript.guard_local(side, index)
 			assert_true(absf(pose.z) > VANTAIL_DEMI_Z + rayon,
 				"la garde %d (cote %.0f) est a z = %.2f : son socle de %.2f m doit degager la bande du vantail (±%.2f)"
 					% [index, side, pose.z, rayon, VANTAIL_DEMI_Z])
+		# ⚠️ ET LES CANONS LOURDS AUSSI, avec une emprise DEUX FOIS ET DEMIE plus large : c'est
+		# eux qui mordraient le mur en premier si quelqu'un les rapprochait pour la photo.
+		for index in CitadelScript.HEAVY_GUARDS.size():
+			var pose := CitadelScript.heavy_guard_local(side, index)
+			assert_true(absf(pose.z) > VANTAIL_DEMI_Z + lourd,
+				"le canon lourd %d (cote %.0f) est a z = %.2f : son socle de %.2f m doit degager la bande du vantail (±%.2f)"
+					% [index, side, pose.z, lourd, VANTAIL_DEMI_Z])
 
 ## ⚠️ ET LES DEUX GARDES D'UN MEME COTE NE SE RECOUVRENT PAS. Meme regle que les batteries de
 ## coque : deux socles cumules, sinon on retrouve le tas que le semis du 2026-09-05 a defait.
@@ -1295,6 +1303,7 @@ func test_two_guards_on_the_same_side_never_overlap() -> void:
 	var monte := track(kit.instantiate()) as Node3D
 	var socle := (monte.get_node("turret_pad") as MeshInstance3D).get_aabb()
 	var rayon: float = maxf(socle.size.x, socle.size.z) * 0.5 * TurretScript.LIGHT_GEOM_SCALE
+	var lourd: float = maxf(socle.size.x, socle.size.z) * 0.5 * TurretScript.HEAVY_GEOM_SCALE
 	for i in CitadelScript.GUARDS.size():
 		for j in range(i + 1, CitadelScript.GUARDS.size()):
 			var a := CitadelScript.guard_local(1.0, i)
@@ -1303,3 +1312,13 @@ func test_two_guards_on_the_same_side_never_overlap() -> void:
 			assert_true(ecart >= rayon * 2.0,
 				"les gardes %d et %d sont a %.2f m pour %.2f m de socles cumules"
 					% [i, j, ecart, rayon * 2.0])
+	# ⚠️ ET CHAQUE LOURD CONTRE CHAQUE LEGERE. C'est le couple qui a failli passer : a s = 7,20
+	# il ne restait que 2 cm de jeu avec la seconde garde.
+	for i in CitadelScript.HEAVY_GUARDS.size():
+		var h := CitadelScript.heavy_guard_local(1.0, i)
+		for j in CitadelScript.GUARDS.size():
+			var g := CitadelScript.guard_local(1.0, j)
+			var ecart := Vector2(h.x - g.x, h.z - g.z).length()
+			assert_true(ecart >= lourd + rayon,
+				"le canon lourd %d et la garde %d sont a %.2f m pour %.2f m de socles cumules"
+					% [i, j, ecart, lourd + rayon])

@@ -285,6 +285,23 @@ const GUARDS: Array = [
 	[2.60, 4.20, RELAY_BASE_Y],
 ]
 
+## LES DEUX CANONS LOURDS DU VERROU — demandés le 2026-09-06 : « *je mettrais deux gros canons,
+## deux tourelles lourdes, en amont du mur, pour compléter la photographie de la citadelle* ».
+##
+## ⚠️ EN AMONT VEUT DIRE DU CÔTÉ DU JOUEUR, donc `s` positif : c'est la convention de
+## `guard_local()`, où le `s` de la table devient un `z` NÉGATIF. Les relais (s 1,40) et le noyau
+## (s 3,40) sont déjà de ce côté — sinon on ne pourrait pas leur tirer dessus.
+##
+## ⚠️ ET LEUR PLACE EST LA SEULE QUI RESTE. Une lourde pose une emprise de 2,50 m de rayon
+## (2,08 × 1,200) contre 1,00 pour une légère : sur un verrou qui porte déjà huit pièces, deux
+## gardes et un noyau, un balayage de tout le pont ne rend qu'une bande étroite. `s = 7,40` est
+## la station la plus proche du mur qui dégage à la fois le bastion (z −6,00→+0,40), le noyau
+## (x ±1,20) et les deux gardes légères AVEC DE LA MARGE (3,62 m pour 3,50 exigés ; à 7,20 il n'en
+## restait que 2 cm). Plus près, ça mord ; plus loin, la fenêtre de tir finit par la refuser.
+const HEAVY_GUARDS: Array = [
+	[4.30, 7.40, RELAY_BASE_Y],
+]
+
 ## Part de l'ouverture passée sur la MORT DU NOYAU avant que les mécanismes ne bougent.
 ## ⚠️ UN SEUL RÉGLAGE POUR DEUX TEMPS : `citadel_open_time` dit ce que coûte l'ouverture entière.
 ## En faire deux réglages laisserait dériver la somme sans que l'invariant 9 ne la voie.
@@ -411,6 +428,18 @@ static func make(p_tuning: CortegeTuning) -> CortegeCitadel:
 			turret.position = guard_local(side, index)
 			citadel.add_child(turret)
 			citadel._turrets.append(turret)
+		# ⚠️ LES LOURDES APRÈS LES LÉGÈRES, ET DANS LA MÊME LISTE. Elles meurent de la même
+		# façon, se retirent de la même façon et sont affaiblies par un nœud d'épine de la même
+		# façon : une seconde liste dupliquerait cinq mécaniques pour n'en changer aucune. Ce qui
+		# les sépare tient dans `CortegeTuning` et dans une table de positions.
+		for index in HEAVY_GUARDS.size():
+			var lourde := CortegeTurret.make(p_tuning, citadel.section,
+				CortegeTuning.TurretScale.HEAVY)
+			lourde.serial = citadel._turrets.size()
+			lourde.name = "GuardHeavy%02d" % citadel._turrets.size()
+			lourde.position = heavy_guard_local(side, index)
+			citadel.add_child(lourde)
+			citadel._turrets.append(lourde)
 	citadel._core = CitadelPart.make(CitadelPart.Role.CORE, p_tuning.citadel_core_health,
 		CORE_RADIUS, CORE_SIZE.y * 0.5, p_tuning.citadel_core_score)
 	citadel._core.name = "Core"
@@ -448,6 +477,13 @@ static func core_local() -> Vector3:
 ## du vide — le défaut de la contremarche de chine, réintroduit par la bande.
 static func guard_local(side: float, index: int) -> Vector3:
 	var entry: Array = GUARDS[index]
+	return Vector3(side * float(entry[0]), float(entry[2]), -float(entry[1]))
+
+## Où siège un CANON LOURD du verrou. Même convention que `guard_local()`, table à part : les
+## deux familles n'ont ni la même emprise ni la même fenêtre, et les mélanger dans une seule
+## table ferait passer l'une pour l'autre au premier ajout.
+static func heavy_guard_local(side: float, index: int) -> Vector3:
+	var entry: Array = HEAVY_GUARDS[index]
 	return Vector3(side * float(entry[0]), float(entry[2]), -float(entry[1]))
 
 ## Où une pièce de la citadelle se trouve DANS LE MONDE après `travelled` unités de survol.
