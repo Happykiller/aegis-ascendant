@@ -332,10 +332,25 @@ func _retire() -> void:
 
 # --- Fonction pure, testable sans arbre de scène ------------------------------
 
-## Quel tronçon un nœud éteint. ⚠️ LE SUIVANT, PAS LE SIEN : éteindre son propre tronçon
-## récompenserait après coup un joueur qui a déjà traversé le danger, et ne changerait donc
-## rien à sa partie. Renvoie -1 quand il n'y a plus de suivant — le dernier nœud du survol ne
-## soulage rien, et c'est une information de conception, pas un cas d'erreur.
+## Quel tronçon un nœud éteint : **LE SIEN**.
+##
+## ⚠️ CETTE RÈGLE A ÉTÉ RETOURNÉE LE 2026-09-06, ET L'ANCIENNE N'ÉTAIT PAS ABSURDE. Elle
+## renvoyait le tronçon SUIVANT, avec ce motif : « éteindre son propre tronçon récompenserait
+## après coup un joueur qui a déjà traversé le danger ». C'est juste — **tant que le nœud est
+## au milieu de son tronçon**, ce qu'il était : mesuré, les cinq nœuds sont à 38 à 60 % du
+## début du leur.
+##
+## Mais la conséquence, elle, était fatale à la lecture : ce qui s'éteignait se trouvait
+## **hors de l'écran**, à quarante mètres devant. « Quand je détruis un nœud, pas de
+## changement » (opérateur, en jouant) — il ne pouvait structurellement rien voir, et aucun
+## réglage d'intensité n'y aurait rien changé.
+##
+## Le modèle qui remplace celui-là vient de lui : **un nœud au début de son tronçon, qui
+## alimente tout ce qui suit dedans**. On l'abat, et le couloir devant soi s'éteint. La
+## récompense arrive alors dans la seconde, au lieu de quarante secondes plus tard.
+##
+## ⚠️ ET LES CINQ NŒUDS COMPTENT DÉSORMAIS, y compris le dernier. L'ancienne règle rendait -1
+## pour lui : abattre le nœud du tronçon 5 ne soulageait rien, et c'était une pièce de gameplay
+## posée pour rien.
 static func weakened_section(section_index: int, section_count: int) -> int:
-	var next := section_index + 1
-	return next if next < section_count else -1
+	return section_index if section_index >= 0 and section_index < section_count else -1

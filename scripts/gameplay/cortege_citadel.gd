@@ -1071,7 +1071,9 @@ func _on_turret_destroyed(turret: CortegeTurret) -> void:
 ## Un nœud d'épine vient d'éteindre un tronçon : les tourelles du verrou en font partie.
 ##
 ## ⚠️ SANS ELLE, LA RÉCOMPENSE A UN TROU EXACTEMENT LÀ OÙ ELLE SE REMARQUE. Le verrou est sur le
-## tronçon 3, et c'est le nœud du tronçon 2 qui l'éteint (`weakened_section(1, 5) = 2`). Les
+## tronçon 3, et c'est le nœud de CE tronçon qui l'éteint (`weakened_section(2, 5) = 2`, règle
+## retournée le 2026-09-06 : un nœud éteint le sien). Le joueur abat donc le nœud à l'entrée du
+## tronçon, et rencontre le mur déjà mal alimenté au milieu — la chaîne se lit d'un bout. Les
 ## vingt-et-une batteries de coque faiblissent, annoncées au bandeau — et les quatre seules
 ## tourelles qui canardent le joueur pendant qu'il est IMMOBILE devant le mur gardaient toute
 ## leur vigueur. C'est le défaut que `CortegeHardpoints._on_node_destroyed` dit vouloir éviter

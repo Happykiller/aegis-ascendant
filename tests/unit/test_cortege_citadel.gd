@@ -661,10 +661,14 @@ func test_a_spine_node_weakens_the_guard_turrets_of_the_lock() -> void:
 	assert_true(gardes.size() >= 4, "le verrou porte bien ses tourelles (%d)" % gardes.size())
 	for t in gardes:
 		assert_false(t.is_weakened(), "elles naissent intactes")
+	# ⚠️ LE NŒUD DU TRONCON DU VERROU, pas celui d'avant — la regle a ete retournee le
+	# 2026-09-06 : un nœud eteint desormais SON troncon. Le verrou et son nœud sont donc sur
+	# le meme, ce qui rend d'ailleurs la scene plus lisible : on abat le nœud a l'entree du
+	# troncon, et le mur qu'on rencontre au milieu est deja mal alimente.
 	var cible := CortegeSpineNode.weakened_section(
-		CitadelScript.section_of(TUNING) - 1, TUNING.section_count)
+		CitadelScript.section_of(TUNING), TUNING.section_count)
 	assert_eq(cible, CitadelScript.section_of(TUNING),
-		"le noeud du troncon precedent vise bien celui du verrou")
+		"le noeud du troncon du verrou vise bien celui du verrou")
 	citadel.weaken_section(cible)
 	for t in gardes:
 		assert_true(t.is_weakened(), "et elles faiblissent avec lui")

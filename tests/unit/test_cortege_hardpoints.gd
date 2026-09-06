@@ -161,21 +161,33 @@ func test_a_bay_releases_enough_times_to_be_worth_killing() -> void:
 	assert_true(releases >= 2,
 		"un pont lache %d fois au-dessus du terrain — moins de deux ne pese pas sur la decision de l'abattre" % releases)
 
-# --- 3. Le noeud eteint le troncon SUIVANT ------------------------------------
+# --- 3. Le noeud eteint SON PROPRE troncon ------------------------------------
 
-func test_a_node_silences_the_next_section_not_its_own() -> void:
-	assert_eq(NodeScript.weakened_section(0, 5), 1,
-		"le noeud du troncon 1 eteint le troncon 2")
-	assert_eq(NodeScript.weakened_section(2, 5), 3, "et ainsi de suite")
-	# ⚠️ Eteindre son propre troncon recompenserait apres coup un joueur qui a deja traverse le
-	# danger : la mecanique n'aurait aucun effet sur sa partie.
-	assert_true(NodeScript.weakened_section(1, 5) != 1, "jamais le sien")
+## ⚠️ CETTE REGLE A ETE RETOURNEE LE 2026-09-06, ET CE TEST AVEC ELLE. Il affirmait « jamais le
+## sien », avec un motif juste : eteindre son propre troncon recompenserait apres coup un joueur
+## qui a deja traverse le danger.
+##
+## Le motif tenait TANT QUE LE NŒUD ETAIT AU MILIEU de son troncon — ce qu'il est encore
+## aujourd'hui, entre 38 et 60 % du debut. Mais la consequence etait fatale : ce qui s'eteignait
+## se trouvait HORS DE L'ECRAN, quarante metres devant. « Quand je detruis un nœud, pas de
+## changement » (operateur, en jouant) — il ne pouvait rien voir, et aucun reglage d'intensite
+## n'y aurait rien change.
+##
+## Un nœud eteint donc SON troncon, et la geometrie doit suivre : les nœuds remontent au DEBUT
+## du leur (BRIEF a venir). Le couloir devant le joueur s'eteint alors dans la seconde.
+func test_a_node_silences_its_own_section() -> void:
+	assert_eq(NodeScript.weakened_section(0, 5), 0,
+		"le noeud du troncon 1 eteint le troncon 1")
+	assert_eq(NodeScript.weakened_section(2, 5), 2, "et ainsi de suite")
 
-func test_the_last_node_of_the_survey_relieves_nothing() -> void:
-	# Ce n'est pas une erreur : le vaisseau continue, le niveau s'arrete. Le dernier noeud n'a
-	# pas de troncon d'apres DANS CE NIVEAU.
-	assert_eq(NodeScript.weakened_section(4, 5), -1,
-		"le dernier noeud ne designe aucun troncon — le code appelant doit le lire, pas planter")
+## ⚠️ ET LE DERNIER NŒUD COMPTE ENFIN. L'ancienne regle lui rendait -1 : abattre le nœud du
+## troncon 5 ne soulageait RIEN, et c'etait une piece de gameplay posee pour rien — un cinquieme
+## des nœuds du niveau sans effet, ce que personne n'avait releve.
+func test_the_last_node_now_relieves_its_own_section() -> void:
+	assert_eq(NodeScript.weakened_section(4, 5), 4,
+		"le dernier noeud eteint le cinquieme troncon, au lieu de ne rien faire")
+	assert_eq(NodeScript.weakened_section(9, 5), -1,
+		"un rang hors des troncons ne designe rien — le code appelant doit le lire, pas planter")
 
 func test_a_node_only_becomes_a_target_inside_its_window() -> void:
 	var node := track(NodeScript.make(TUNING, 0)) as CortegeSpineNode
@@ -209,6 +221,7 @@ func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
 # de 208 s en a detruit UNE. La seule verification possible est ici.
 
 const HardpointsScript := preload("res://scripts/gameplay/cortege_hardpoints.gd")
+const SkinScript := preload("res://scripts/fx/cortege_skin.gd")
 
 ## Deux troncons montes a la main, avec les noms de marqueurs du contrat de forge.
 func _two_sections() -> Array[Node3D]:
@@ -226,7 +239,10 @@ func _two_sections() -> Array[Node3D]:
 		sections.append(section)
 	return sections
 
-func test_killing_a_node_weakens_the_next_sections_turrets() -> void:
+## ⚠️ « SON PROPRE TRONCON » DEPUIS LE 2026-09-06 — voir `weakened_section()`. Ce test
+## affirmait l'inverse, avec un motif juste tant que le nœud etait au milieu du sien. La
+## consequence, elle, etait fatale : ce qui s'eteignait etait hors de l'ecran.
+func test_killing_a_node_weakens_its_own_sections_turrets() -> void:
 	var manager := track(HardpointsScript.new()) as CortegeHardpoints
 	manager.build(_two_sections(), TUNING, null, null, null)
 	assert_eq(manager.turret_count(), 4, "quatre tourelles montees")
@@ -240,42 +256,36 @@ func test_killing_a_node_weakens_the_next_sections_turrets() -> void:
 	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)
 	assert_false(node.is_alive(), "le noeud est tombe")
-	assert_eq(manager.turrets_intact_in(1), 0,
-		"les deux tourelles du troncon SUIVANT sont abimees")
-	assert_eq(manager.turrets_intact_in(0), 2,
-		"celles de son propre troncon ne le sont pas — la recompense serait arrivee apres le danger")
+	assert_eq(manager.turrets_intact_in(0), 0,
+		"les deux tourelles de SON PROPRE troncon sont abimees — celles que le joueur a devant")
+	assert_eq(manager.turrets_intact_in(1), 2,
+		"celles du troncon suivant gardent leur vigueur : chaque nœud repond du sien")
 	# ⚠️ ABIMEES, PAS SUPPRIMEES. Le compte des intactes tombe a zero ; celui des vivantes ne
 	# bouge pas. Confondre les deux est exactement ce qui a vide le niveau.
 	for turret in manager.turrets():
-		if turret.section == 1:
+		if turret.section == 0:
 			assert_true(turret.is_alive(), "une tourelle abimee reste debout et reste une cible")
-	# ⚠️ ET ELLE EST ANNONCEE. Rien a l'ecran ne relie une cause a un effet separes de quarante
-	# secondes : sans le signal, la troisieme mecanique n'existe pas pour le joueur.
-	assert_eq(announced[0], 1, "le troncon eteint est annonce")
+	# ⚠️ ET ELLE EST ANNONCEE. Le signal porte l'extinction du conduit ; sans lui la troisieme
+	# mecanique n'existe pas pour le joueur.
+	assert_eq(announced[0], 0, "le troncon eteint est annonce")
 	assert_eq(announced[1], 2, "avec le nombre de tourelles qu'il vient de perdre")
 
-func test_the_last_node_weakens_nothing_and_says_nothing() -> void:
+func test_the_last_node_now_weakens_its_own_section_too() -> void:
 	var manager := track(HardpointsScript.new()) as CortegeHardpoints
 	manager.build(_two_sections(), TUNING, null, null, null)
-	var heard := [0]
-	manager.section_weakened.connect(func(_s: int, _c: int) -> void: heard[0] += 1)
-	# ⚠️ Le reglage livre declare CINQ troncons ; le banc n'en monte que deux. Le dernier noeud
-	# du BANC (rang 1) designe donc le troncon 2, qui n'existe pas ici — et le gestionnaire ne
-	# doit ni planter ni annoncer un affaiblissement vide.
+	var announced := [-1, -1]
+	manager.section_weakened.connect(func(section: int, count: int) -> void:
+		announced[0] = section
+		announced[1] = count)
+	# ⚠️ LE DERNIER NŒUD NE FAISAIT RIEN, ET PERSONNE NE L'AVAIT RELEVE. L'ancienne regle lui
+	# rendait -1 : un cinquieme des nœuds du niveau etait une piece de gameplay posee pour rien.
 	var node := manager.nodes()[1]
 	node.tick(0.02, Vector3.ZERO, GameplayPlane.to_plane(Vector3.ZERO))
 	node.target().hit_callback.call(TUNING.node_health)
-	assert_false(node.is_alive(), "le second noeud est tombe")
-	assert_eq(heard[0], 0, "aucune extinction annoncee — il n'y a rien a eteindre")
+	assert_false(node.is_alive(), "le dernier noeud est tombe")
+	assert_eq(announced[0], 1, "il eteint SON troncon, au lieu de ne rien annoncer")
+	assert_eq(manager.turrets_intact_in(1), 0, "et ses tourelles faiblissent")
 
-# --- L'habillage de la coque : facultatif, jamais fatal ------------------------
-
-const SkinScript := preload("res://scripts/fx/cortege_skin.gd")
-
-## ⚠️ CE TEST EN REMPLACE UN AUTRE, ET LE PREMIER A FAIT SON TRAVAIL EN TOMBANT. Il verifiait
-## que sans cartes rien ne casse — l'etat du depot tant que l'operateur n'avait pas livre ses
-## images (ADR-0028). Elles sont arrivees le 2026-08-29 : la propriete gardee change, et c'est
-## normal. Ce qui peut mal tourner desormais n'est plus l'absence, c'est le NOM.
 func test_the_skin_dresses_the_hull_now_that_the_maps_are_there() -> void:
 	var mesh := track(MeshInstance3D.new()) as MeshInstance3D
 	mesh.mesh = BoxMesh.new()
