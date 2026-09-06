@@ -296,6 +296,9 @@ var _vfx: VFXManager = null
 ## Les deux vantaux, et leur course. ⚠️ TENUS À PART DES AUTRES PIÈCES parce qu'ils sont les
 ## seuls à BOUGER : tout le reste du kit est posé une fois pour toutes.
 var _leaves: Array[MeshInstance3D] = []
+## Le côté de chaque vantail, dans l'ordre de `_leaves`. ⚠️ RETENU À LA CONSTRUCTION : le déduire
+## du nom ou du signe du yaw remarcherait, et redeviendrait faux au premier renommage.
+var _leaf_sides: PackedFloat32Array = PackedFloat32Array()
 ## De 0 (fermé) à `LEAF_TRAVEL` (ouvert).
 var _course: float = 0.0
 var _shield: MeshInstance3D = null
@@ -582,10 +585,8 @@ func _build_shield(kit: Node) -> void:
 	# un rideau devant un noyau touchable apprendrait au joueur l'inverse de la règle.
 	_shield.visible = _core != null and not _core.is_vulnerable()
 
-## Monte les deux vantaux. ⚠️ MIROITÉS PAR UN YAW DE π COMME LES CINQ AUTRES, et c'est ce qui rend
-## la course indésynchronisable : les deux reçoivent **exactement la même translation locale**, et
-## le yaw fait le reste. Écrire `side * course` sur deux nœuds serait deux écritures pour une
-## seule vérité.
+## Monte les deux vantaux. ⚠️ MIROITÉS PAR UN YAW DE π COMME LES CINQ AUTRES — mais le yaw
+## miroite le MAILLAGE, pas la course : voir `_place_leaves()`.
 func _build_leaves(kit: Node) -> void:
 	var source := kit.get_node_or_null("citadel_leaf") as MeshInstance3D
 	if source == null:
@@ -599,17 +600,27 @@ func _build_leaves(kit: Node) -> void:
 		leaf.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(leaf)
 		_leaves.append(leaf)
+		_leaf_sides.append(side)
 	_place_leaves()
 
 ## Pose les deux vantaux à la course courante.
 ##
-## ⚠️ LE `x` LOCAL EST LE MÊME POUR LES DEUX, ET LE YAW LE RETOURNE. C'est la propriété que le
-## `BRIEF-0097` a fait porter par la géométrie : l'origine du vantail est son bout INTÉRIEUR, donc
-## la course est une translation pure. Le jour où l'un des deux prendrait un signe, il s'ouvrirait
-## du mauvais côté — et personne ne le verrait sans regarder les deux bords en même temps.
+## ⚠️ LE YAW MIROITE LE MAILLAGE, PAS LA COURSE — ET C'EST UN DÉFAUT PAYÉ EN JEU (2026-09-06).
+## Ce bloc écrivait `Vector3(_course, …)` sur LES DEUX vantaux, avec ce commentaire : « les deux
+## reçoivent exactement la même translation locale, et le yaw fait le reste ». C'est faux en
+## Godot : `position` s'exprime dans le repère du PARENT et ne subit pas la rotation du nœud
+## lui-même. Les deux moitiés glissaient donc **ensemble vers tribord**, et la porte ne s'ouvrait
+## pas — elle se décalait. « *le mur, au lieu de s'ouvrir en deux, se décale sur la droite* »
+## (opérateur, en jouant).
+##
+## ⚠️ ET AUCUN TEST NE POUVAIT LE VOIR. `leaf_inner_local(side, course)` porte bien le `side` et
+## reste juste ; c'est elle que la suite vérifie, et c'est elle qui sert aux points de visée —
+## donc les cibles s'écartaient correctement pendant que les maillages partaient du même côté.
+## La pose passe désormais par la MÊME fonction : une seule vérité, et elle est déjà testée.
 func _place_leaves() -> void:
-	for leaf in _leaves:
-		leaf.position = Vector3(_course, GATE_BASE_Y, 0.0)
+	for i in _leaves.size():
+		var inner := leaf_inner_local(_leaf_sides[i], _course)
+		_leaves[i].position = Vector3(inner.x, GATE_BASE_Y, 0.0)
 
 ## L'avancement de l'ouverture, de 0 (fermé) à 1 (ouvert).
 ##

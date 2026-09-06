@@ -1209,3 +1209,56 @@ func test_the_hull_stays_clear_behind_the_lock_and_that_is_the_respiration() -> 
 				nom = String(marker.name)
 	assert_true(plus_proche >= 10.0,
 		"au moins dix metres libres derriere le verrou — %s est a %.2f m" % [nom, plus_proche])
+
+## ⚠️ CE TEST REGARDE LES MAILLAGES POSES, PAS LA FONCTION QUI DIT OU LES POSER — et c'est toute
+## la difference. `test_both_leaves_retract_away_from_the_axis` verifie `leaf_inner_local()`, qui
+## a TOUJOURS ete juste ; la pose, elle, l'ignorait et ecrivait la meme translation sur les deux
+## vantaux. Les deux moities glissaient donc ensemble vers tribord — la porte ne s'ouvrait pas,
+## elle se decalait — pendant que les points de visee, eux, s'ecartaient correctement.
+##
+## Trouve par l'operateur en jouant le 2026-09-06 : « le mur, au lieu de s'ouvrir en deux, se
+## decale sur la droite ». Aucun test ne pouvait le voir : le calcul etait juste, la suite verte,
+## et les cibles au bon endroit.
+func test_the_two_leaf_MESHES_really_move_apart_and_not_together() -> void:
+	var citadel := _mounted()
+	# ⚠️ LA GEOMETRIE NAIT DANS `_ready()`, QUI NE PART PAS EN MODE `--script` : il n'y a pas
+	# d'arbre de scene. Tous les autres tests de ce fichier pilotent la MECANIQUE, qui n'en a pas
+	# besoin ; celui-ci regarde les maillages, donc il doit demander leur montage.
+	citadel._ready()
+	var portes: Array[MeshInstance3D] = []
+	for enfant in citadel.get_children():
+		var maillage := enfant as MeshInstance3D
+		if maillage != null and String(maillage.name).begins_with("Leaf"):
+			portes.append(maillage)
+	assert_eq(portes.size(), 2, "les deux vantaux sont bien montes")
+
+	# Fermes : les deux bouts interieurs se touchent sur l'axe.
+	for porte in portes:
+		assert_almost_eq(porte.position.x, 0.0, 0.001,
+			"%s ferme est sur l'axe (%.3f)" % [porte.name, porte.position.x])
+
+	# Ouverts : ils partent chacun de SON cote, et jamais du meme. On y va par le VRAI chemin —
+	# les relais, puis le noyau, puis le temps — parce que c'est lui que le joueur emprunte.
+	var eye := _camera_eye()
+	var lock := _lock_travelled(eye)
+	citadel.tick(0.016, lock, eye)
+	for relay in citadel.relays():
+		relay.target().hit_callback.call(TUNING.citadel_relay_health)
+	citadel.core().target().hit_callback.call(TUNING.citadel_core_health)
+	var tours := 0
+	while citadel.state() != CitadelScript.State.CLEARED and tours < 2000:
+		citadel.tick(0.05, lock, eye)
+		tours += 1
+	assert_true(citadel.state() == CitadelScript.State.CLEARED,
+		"le verrou finit par s'ouvrir (%d tours)" % tours)
+	var gauche := 0.0
+	var droite := 0.0
+	for porte in portes:
+		if String(porte.name).contains("Port"):
+			gauche = porte.position.x
+		else:
+			droite = porte.position.x
+	assert_true(gauche < -0.001, "le vantail babord part a BABORD (%.3f)" % gauche)
+	assert_true(droite > 0.001, "le vantail tribord part a TRIBORD (%.3f)" % droite)
+	assert_almost_eq(droite - gauche, 2.0 * CitadelScript.LEAF_TRAVEL, 0.01,
+		"et l'ecart des deux maillages vaut deux fois la course")
