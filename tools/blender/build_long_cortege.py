@@ -2,6 +2,7 @@
 
     blender-aegis -b -P tools/blender/build_long_cortege.py
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --plate
+    blender-aegis -b -P tools/blender/build_long_cortege.py -- --branches
     ./scripts/build-hull.sh --check long_cortege      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/long_cortege.glb` et, avec `--plate`,
@@ -2570,6 +2571,13 @@ def _plate_place(origin: float, side: float, a: float, b: float, s: float,
         if _turret_clash(ps, ps + length, min(x0 + inset, x1 - inset),
                          max(x0 + inset, x1 - inset), top):
             continue
+        # ⚠️ ET LA GARDE DE BRANCHE (BRIEF-0103), au meme endroit et pour la
+        # meme raison : une tôle de 0,16 m posee a la station d'un affut
+        # recouvrirait la veine de 0,15 qui l'alimente. La plaque se DEPLACE
+        # (c'est la boucle des replis), elle n'est pas perdue.
+        if _branch_clash(ps, ps + length, min(x0 + inset, x1 - inset),
+                         max(x0 + inset, x1 - inset)):
+            continue
         return ps, x0, x1
     return None
 
@@ -2646,6 +2654,7 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                         _turret_clash(
                             cs, cs + width, lane[0], lane[1],
                             _box_top(lane[0], lane[1], cs, cs + width, rise))
+                        or _branch_clash(cs, cs + width, lane[0], lane[1])
                         for a, b in near for side in sides
                         for lane in (_clip_lane(cs, min(side * a, side * b),
                                                 max(side * a, side * b)),)
@@ -2879,7 +2888,8 @@ def _graft_place(origin: float, s: float, length: float, side: float,
     if drawn is None:
         return s, (0.0, 0.0), False, False
     lane, (px0, px1, ps0, ps1) = drawn
-    if not _turret_clash(ps0, ps1, px0, px1):
+    if not _turret_clash(ps0, ps1, px0, px1) \
+            and not _branch_clash(ps0, ps1, px0, px1):
         return s, lane, False, False
 
     for dx, ds in GRAFT_NUDGES[1:]:
@@ -2896,6 +2906,7 @@ def _graft_place(origin: float, s: float, length: float, side: float,
         lane_here, (qx0, qx1, qs0, qs1) = found
         centre_s = ps + length * 0.5
         if _turret_clash(qs0, qs1, qx0, qx1) \
+                or _branch_clash(qs0, qs1, qx0, qx1) \
                 or qx0 < -(_half_width(centre_s, -1.0) - 0.45) \
                 or qx1 > _half_width(centre_s, 1.0) - 0.45 \
                 or _bay_clash(qs0, qs1, qx0, qx1) \
@@ -3069,6 +3080,14 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
             keepout["pastilles_perdues"] = \
                 keepout.get("pastilles_perdues", 0) + 1
             continue
+        # ⚠️ ET IL NE SE POSE PAS SUR UNE BRANCHE (BRIEF-0103). Un feu magenta
+        # a cheval sur une veine magenta ne se lit plus comme une machine qui
+        # tourne : il se lit comme un renflement de la conduite. Il n'a pas de
+        # station de repli, ici non plus — le suivant tombera ailleurs.
+        if _branch_clash(s - half_s, s + half_s, x - half_x, x + half_x):
+            keepout["pastilles_perdues"] = \
+                keepout.get("pastilles_perdues", 0) + 1
+            continue
         _surface_box(bm, x - half_x, x + half_x, s - half_s, s + half_s,
                      0.05, 0.35, "AA_Greeble", "AA_Emissive_Engine")
         busy.append((s - half_s, s + half_s))
@@ -3174,6 +3193,281 @@ def build_canal_braces(bm: bmesh.types.BMesh, index: int,
             count += 1
         s += rng.uniform(*BRACE_SPACING)
     return count
+
+
+# ==========================================================================
+# LES BRANCHES — le courant sort du canal et va jusqu'aux affuts (BRIEF-0103)
+# ==========================================================================
+# ⚠️ CE LOT NE LIVRE QUE DE LA GEOMETRIE, ET LA MECANIQUE EXISTE DEJA EN ENTIER.
+# Abattre un nœud d'epine fait deja tomber les tourelles du troncon suivant a
+# 45 pct de vitesse de rotation et 2,6 fois plus lentes a tirer, et `CortegeSkin`
+# eteint deja la veine du troncon concerne. Ce qui manquait, c'est l'IMAGE : le
+# canal brillait, les tourelles tiraient, et rien ne disait que les deux etaient
+# branches.
+#
+# ⚠️ ELLES SONT LE PROLONGEMENT DES CONDUITS DU CANAL, PAS UNE FAMILLE ETRANGERE.
+# Meme partage exactement que `build_conduits()` : une gaine sombre en
+# `AA_Greeble` et, sertie dedans, une VEINE en `AA_Emissive_Engine` — et rien
+# d'autre dans ce slot-la. C'est ce nom, et lui seul, que `CortegeSkin` reconnait
+# pour donner a chaque troncon SA copie du materiau ; une veine peinte ailleurs
+# resterait allumee sur un vaisseau mort, sans erreur ni test rouge. Le harnais
+# `_audit()` compte donc les triangles emissifs DANS le couloir de chaque branche,
+# sur le binaire, et echoue le build s'il en manque une.
+#
+# ⚠️ ET UNE BRANCHE SE JUGE A LA CAMERA DU JEU, PAS SUR UNE VUE DE DESSUS. Le
+# cadre fait 41,60 m de large au plan du pont : a 1920 px, 46,2 px/m en lateral
+# et 43,4 px/m en profondeur (le regard plonge de 70 deg, donc sin 70 = 0,940 de
+# raccourci). La veine d'une branche court en LATERAL : sa largeur se lit dans la
+# profondeur, a 43,4 px/m. D'ou les cotes ci-dessous, choisies contre l'ecran :
+#
+#     veine standard  0,22 m ->  9,5 px      gaine standard  0,52 m -> 22,6 px
+#     veine lourde    0,40 m -> 17,4 px      gaine lourde    0,86 m -> 37,3 px
+#
+# Un trait d'un pixel n'existe pas ; 9,5 px est la plus fine chose du decor qui
+# reste une LIGNE et non un pointille. Les trois emplacements lourds
+# (`Turret_08`, `Turret_12`, `Turret_15` — la meme table que
+# `cortege_hardpoints.gd`, recopiee ici parce que la forge ne lit pas le moteur)
+# recoivent presque le double : c'est ce qui fait lire une hierarchie
+# d'alimentation, et c'est le « au moins les grosses tours » de la demande.
+
+#: Depart de la branche : l'ARETE INTERNE DU REBORD, pas son bord externe.
+#: ⚠️ 1,12 et non 1,70 : a 1,70 la veine commencerait sur le bandeau dorsal, a
+#: 58 cm de la tranchee, et l'on ne lirait pas qu'elle en SORT. A 1,12 elle
+#: demarre sur la levre meme du canal, au contact de la lumiere du fond. C'est le
+#: point 3 de `PROFILE_BASE`, et il est verifie par `_assert_canal()`.
+BRANCH_ROOT_X = 1.12
+#: Ou la branche S'ARRETE : au bord du disque de degagement de l'affut, plus
+#: 10 cm de garde. ⚠️ C'est la garde de `BRIEF-0101` (`_turret_clash`), et ce
+#: n'est pas une contrainte subie : le courant arrive A LA PLATEFORME, il ne
+#: passe pas sous la tourelle. Une branche qui entrerait dans le disque
+#: disparaitrait sous le socle du kit sans qu'aucune erreur ne le dise.
+BRANCH_STOP = TURRET_KEEPOUT_R + 0.10
+#: Largeurs, en metres. Voir le calcul en pixels ci-dessus.
+BRANCH_TROUGH_W = 0.52
+BRANCH_TROUGH_W_HEAVY = 0.86
+BRANCH_VEIN_W = 0.22
+BRANCH_VEIN_W_HEAVY = 0.40
+#: La gaine affleure (9 cm), la veine est sertie dedans et depasse de 6 cm : ce
+#: sont ces 6 cm de joue sombre qui empechent la veine de se lire comme un
+#: autocollant pose a plat. Meme parti que le conduit du canal, qui est SERTI.
+BRANCH_TROUGH_RISE = 0.09
+BRANCH_VEIN_RISE = 0.15
+BRANCH_TROUGH_SINK = 0.45
+BRANCH_VEIN_SINK = 0.06
+#: En deca, la branche n'est plus une conduite mais un bouton : on la declare
+#: non desservie plutot que d'en poser un moignon.
+BRANCH_MIN_LENGTH = 1.20
+#: Les trois emplacements LOURDS. ⚠️ Recopie de `cortege_hardpoints.gd`
+#: (`HEAVY_TURRETS`), et c'est assume : faire lire le moteur par la forge
+#: creerait une dependance a l'envers (meme argument que `TURRET_KEEPOUT_R`).
+#: Si la table du jeu change, celle-ci doit changer avec elle — la seule chose
+#: qu'on y perdrait est la hierarchie visuelle, jamais une collision.
+BRANCH_HEAVY = (8, 12, 15)
+
+
+def _branch_routes() -> list[dict]:
+    """Le trace des dix-sept branches, ou la raison pour laquelle il n'y en a pas.
+
+    ⚠️ LES COTES SE LISENT SUR LE MARQUEUR, JAMAIS SUR LA TABLE `TURRETS`. Les
+    deux different jusqu'a 2,30 m — `Turret_11` est ecrit a 10,10 et pose a
+    12,40 — parce que `_marker_x()` rapporte le X de la table a la largeur LOCALE
+    de la coque, qui respire (`TAPER`, `ASYMMETRY`). Une branche tiree sur la
+    table arriverait a cote de son affut, et sur quatre emplacements elle
+    finirait meme hors du palier de pont ou la tourelle est posee.
+
+    Rend, par tourelle : le bord, les deux abscisses, la station, les largeurs,
+    et — si elle n'a pas pu etre tiree — la raison, en clair, pour le rapport.
+    """
+    routes: list[dict] = []
+    for number, (ts, tx) in enumerate(TURRETS, start=1):
+        name = f"Turret_{number:02d}"
+        mx = _marker_x(ts, tx)
+        side = 1.0 if mx >= 0.0 else -1.0
+        heavy = number in BRANCH_HEAVY
+        trough = BRANCH_TROUGH_W_HEAVY if heavy else BRANCH_TROUGH_W
+        vein = BRANCH_VEIN_W_HEAVY if heavy else BRANCH_VEIN_W
+        # Le rebord suit la largeur locale comme tout le profil : la racine
+        # est donc a 1,12 x l'echelle du bord, pas a 1,12 tout court.
+        x_in = BRANCH_ROOT_X * _side_scale(ts, side)
+        x_out = abs(mx) - BRANCH_STOP
+        half_s = trough * 0.5
+        route = {
+            "name": name, "number": number, "station": ts, "side": side,
+            "marker_x": mx, "table_x": tx, "heavy": heavy,
+            "x_in": x_in, "x_out": x_out, "length": x_out - x_in,
+            "trough": trough, "vein": vein,
+            "s0": ts - half_s, "s1": ts + half_s,
+            "reason": None,
+        }
+        lo, hi = min(side * x_in, side * x_out), max(side * x_in, side * x_out)
+        # ⚠️ ON TESTE LES QUATRE GARDES DU FICHIER, PAS UNE SEULE. Un couloir de
+        # 8 m traverse tout le pont : il croise potentiellement une ouverture de
+        # hangar, une fosse, une tranchee de bastion, le radeau d'Ambry et le
+        # disque d'un AUTRE affut. Un emplacement non desservi est un RESULTAT ;
+        # une branche posee au travers d'une ouverture est un defaut muet.
+        if route["length"] < BRANCH_MIN_LENGTH:
+            route["reason"] = (
+                f"l'affut est a {abs(mx):.2f} m de l'axe : entre le rebord du "
+                f"canal ({x_in:.2f}) et le disque de degagement ({x_out:.2f}) il "
+                f"ne reste que {route['length']:.2f} m, moins que les "
+                f"{BRANCH_MIN_LENGTH:.2f} m qu'il faut pour lire une conduite")
+        elif _bay_clash(route["s0"], route["s1"], lo, hi):
+            route["reason"] = "le couloir traverse l'emprise d'un pont d'envol"
+        elif _pit_clash(route["s0"], route["s1"], lo, hi):
+            route["reason"] = "le couloir traverse une fosse ou une tranchee"
+        elif _ambry_clash(route["s0"], route["s1"], lo, hi):
+            route["reason"] = "le couloir passe sous le radeau d'Ambry"
+        elif _turret_clash(route["s0"], route["s1"], lo, hi):
+            route["reason"] = "le couloir entre dans le disque d'un autre affut"
+        routes.append(route)
+    return routes
+
+
+#: Calcule une fois : `_branch_clash()` est interroge des milliers de fois par
+#: troncon par les familles seedees. Pur produit des constantes, donc deterministe.
+_BRANCH_ROUTES: list[dict] = []
+
+
+def branch_routes() -> list[dict]:
+    if not _BRANCH_ROUTES:
+        _BRANCH_ROUTES.extend(_branch_routes())
+    return _BRANCH_ROUTES
+
+
+#: Garde autour d'une branche : 12 cm de tole nue de chaque cote. Sans elle, une
+#: plaque de 0,16 m posee au contact recouvrirait la joue de la veine.
+BRANCH_KEEPOUT = 0.12
+
+
+def _branch_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
+    """Le module (s0..s1, x0..x1) recouvre-t-il une branche ?
+
+    ⚠️ LE CINQUIEME GARDE, ET IL EST DU MEME METIER QUE LES QUATRE AUTRES. Une
+    plaque monte de 0,16 a 0,34 m, la veine de 0,15 : une tôle posee a la station
+    d'un affut noierait la conduite qu'on vient de poser, et le defaut serait
+    exactement aussi muet que celui de `BRIEF-0101` — aucune erreur d'import,
+    aucun test rouge, une veine qui disparait sous une plaque.
+
+    Il est interroge APRES le tirage, comme les quatre autres (« on tire, puis on
+    decide d'emettre ») : le flux `rng` ne bouge pas d'un cran.
+    """
+    for route in branch_routes():
+        if route["reason"] is not None:
+            continue
+        side = route["side"]
+        lo = min(side * route["x_in"], side * route["x_out"]) - BRANCH_KEEPOUT
+        hi = max(side * route["x_in"], side * route["x_out"]) + BRANCH_KEEPOUT
+        if not (s1 < route["s0"] - BRANCH_KEEPOUT
+                or s0 > route["s1"] + BRANCH_KEEPOUT
+                or x1 < lo or x0 > hi):
+            return True
+    return False
+
+
+def _drape_samples(s: float, side: float, x_in: float, x_out: float) -> list[float]:
+    """Les abscisses ou le ruban doit porter un sommet, du canal vers le bord.
+
+    ⚠️ UNE BOITE PLATE S'ENTERRERAIT, ET C'EST LA SEULE DIFFICULTE DE CE LOT.
+    `_surface_box()` pose ses quatre coins au point le PLUS BAS de l'empreinte :
+    c'est ce qu'il faut pour une plaque de 3 m sur une bande plate, et c'est faux
+    pour un ruban de 8 m qui part du rebord du canal (-4,02), franchit le talus
+    (-4,26), descend le pont interieur (-4,30) puis TOMBE de 60 cm dans la
+    contremarche de chine (-4,94). D'un bout a l'autre la denivelee atteint
+    0,92 m : la branche disparaitrait sous la coque sur les trois quarts de sa
+    longueur, sans une erreur ni une ligne de journal.
+
+    Le ruban est donc DRAPE : chaque sommet prend sa propre hauteur. Et comme
+    `_surface_y()` est lineaire par morceaux en x, il suffit d'echantillonner aux
+    points de rupture du profil — la peau est alors suivie EXACTEMENT, sans un
+    triangle de plus qu'il n'en faut.
+    """
+    k = _side_scale(s, side)
+    xs = [x_in]
+    for px, _py, _m in PROFILE[: DECK_LAST + 1]:
+        sx = px * k
+        if x_in + 1e-4 < sx < x_out - 1e-4:
+            xs.append(sx)
+    xs.append(x_out)
+    return xs
+
+
+def _drape_ribbon(bm: bmesh.types.BMesh, xs: list[float], side: float,
+                  s0: float, s1: float, rise: float, sink: float,
+                  side_material: str, top_material: str) -> float:
+    """Un ruban pose SUR la peau, sommet par sommet. Rend le Y le plus haut.
+
+    ⚠️ AUCUNE FACE INTERIEURE, et ce n'est pas de l'economie : une suite de
+    boites accolees poserait a chaque couture deux faces coplanaires en sens
+    contraire. Le ruban est un SEUL solide — dessus, dessous, deux joues, deux
+    bouchons — et son bobinage est DECLARE (`_face_towards`) plutot qu'ecrit :
+    l'ordre des sommets s'inverse quand le ruban passe a babord, et une face
+    retournee ne produit aucune erreur, elle DISPARAIT (voir `_face_towards`).
+    """
+    signed = [side * x for x in xs]
+    top0 = [bm.verts.new(Vector((x, _surface_y(s0, x) + rise, _z(s0))))
+            for x in signed]
+    top1 = [bm.verts.new(Vector((x, _surface_y(s1, x) + rise, _z(s1))))
+            for x in signed]
+    bot0 = [bm.verts.new(Vector((x, _surface_y(s0, x) - sink, _z(s0))))
+            for x in signed]
+    bot1 = [bm.verts.new(Vector((x, _surface_y(s1, x) - sink, _z(s1))))
+            for x in signed]
+    up = Vector((0.0, 1.0, 0.0))
+    down = Vector((0.0, -1.0, 0.0))
+    fore = Vector((0.0, 0.0, 1.0))
+    aft = Vector((0.0, 0.0, -1.0))
+    for i in range(len(signed) - 1):
+        _face_towards(bm, [top0[i], top0[i + 1], top1[i + 1], top1[i]],
+                      top_material, up)
+        _face_towards(bm, [bot0[i], bot0[i + 1], bot1[i + 1], bot1[i]],
+                      side_material, down)
+        _face_towards(bm, [bot0[i], bot0[i + 1], top0[i + 1], top0[i]],
+                      side_material, fore)
+        _face_towards(bm, [bot1[i], bot1[i + 1], top1[i + 1], top1[i]],
+                      side_material, aft)
+    inward = Vector((-side, 0.0, 0.0))
+    outward = Vector((side, 0.0, 0.0))
+    _face_towards(bm, [bot0[0], top0[0], top1[0], bot1[0]],
+                  side_material, inward)
+    _face_towards(bm, [bot0[-1], top0[-1], top1[-1], bot1[-1]],
+                  side_material, outward)
+    return max(v.co.y for v in top0 + top1)
+
+
+def build_branches(bm: bmesh.types.BMesh, index: int) -> tuple[int, float, float]:
+    """Une branche par affut : la gaine sombre, puis la VEINE emissive dedans.
+
+    Rend (nombre de branches, longueur cumulee, aire de veine).
+
+    ⚠️ AUCUN TIRAGE. Une branche relie deux points de gameplay poses a la main ;
+    elle n'a rien a decider. Elle ne touche donc pas au flux `rng` du troncon, et
+    les cinq familles semees restent au bit pres celles d'avant ce lot — a ceci
+    pres qu'elles ecartent desormais les couloirs (`_branch_clash`).
+    """
+    origin = index * SECTION_LENGTH
+    count = 0
+    length = 0.0
+    area = 0.0
+    for route in branch_routes():
+        ts = route["station"]
+        if not (origin <= ts < origin + SECTION_LENGTH):
+            continue
+        if route["reason"] is not None:
+            continue
+        side = route["side"]
+        xs = _drape_samples(ts, side, route["x_in"], route["x_out"])
+        half = route["trough"] * 0.5
+        _drape_ribbon(bm, xs, side, ts - half, ts + half,
+                      BRANCH_TROUGH_RISE, BRANCH_TROUGH_SINK,
+                      "AA_Greeble", "AA_Greeble")
+        half = route["vein"] * 0.5
+        _drape_ribbon(bm, xs, side, ts - half, ts + half,
+                      BRANCH_VEIN_RISE, BRANCH_VEIN_SINK,
+                      "AA_Greeble", "AA_Emissive_Engine")
+        count += 1
+        length += route["length"]
+        area += route["length"] * route["vein"]
+    return count, length, area
 
 
 # ⚠️ `build_turret_pad()` A DISPARU (BRIEF-0093), ET AVEC ELLE 17 x 260
@@ -3601,6 +3895,14 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     conduits, lit = build_conduits(bm, index, rng)
     counts["conduits"] = conduits
     counts["travees"] = build_canal_braces(bm, index, rng)
+    # ⚠️ APRES LES DEUX FAMILLES SEEDEES DU CANAL, ET SANS TOUCHER AU FLUX. Une
+    # branche ne tire rien (voir `build_branches`) : la poser ici ou ailleurs ne
+    # change pas un sommet des autres familles. Elle vient en dernier parce que
+    # c'est l'ordre de LECTURE du decor — le canal, puis ce qui en sort.
+    branches, branch_length, branch_area = build_branches(bm, index)
+    counts["branches"] = branches
+    counts["branches_longueur"] = branch_length
+    counts["branches_veine_m2"] = branch_area
 
     # --- LES ZONES CALMES, MESUREES ICI ET RENDUES AU RAPPORT --------------
     # ⚠️ « Les zones calmes sont un livrable, pas un manque — a mesurer et a
@@ -4043,6 +4345,20 @@ def _audit(path: str) -> dict:
         f"Turret_{n:02d}": [-math.inf, -math.inf, 0]
         for n in range(1, len(TURRETS) + 1)}
 
+    # --- LA VEINE DE CHAQUE BRANCHE, COMPTEE SUR LE BINAIRE (BRIEF-0103) ----
+    # ⚠️ C'EST LE SEUL CONTROLE QUI RENDE L'EXTINCTION SURE, ET IL NE PEUT PAS SE
+    # FAIRE AUTREMENT QUE SUR LE FICHIER. `CortegeSkin` reconnait le slot
+    # `AA_Emissive_Engine` PAR SON NOM et donne a chaque troncon SA copie du
+    # materiau ; c'est cette copie que le moteur baisse quand le nœud tombe. Une
+    # veine posee dans un autre slot resterait allumee sur un vaisseau mort — et
+    # rien ne le dirait : ni erreur d'import, ni test rouge, ni compte de
+    # triangles. On compte donc, par branche et par troncon, les triangles
+    # REELLEMENT emissifs dans le couloir de la branche, et l'on compare leur
+    # aire a celle que le trace annonce.
+    branch_vein: dict[str, list] = {
+        r["name"]: [0, 0.0, ""] for r in branch_routes()}
+    emissive_by_section: dict[str, list] = {}
+
     for index in roots:
         node = nodes[index]
         name = node.get("name", "?")
@@ -4292,6 +4608,25 @@ def _audit(path: str) -> dict:
                     area_by_material.get(material, 0.0) + area * 0.5
                 if material == "AA_Emissive_Engine":
                     emissive_area += area * 0.5
+                    tally = emissive_by_section.setdefault(name, [0, 0.0])
+                    tally[0] += 1
+                    tally[1] += area * 0.5
+                    here = section_origin - cz
+                    for route in branch_routes():
+                        if route["reason"] is not None:
+                            continue
+                        if abs(here - route["station"]) > route["vein"] * 0.5:
+                            continue
+                        side = route["side"]
+                        lo = min(side * route["x_in"], side * route["x_out"])
+                        hi = max(side * route["x_in"], side * route["x_out"])
+                        if not (lo - 0.02 <= cx <= hi + 0.02):
+                            continue
+                        seen_vein = branch_vein[route["name"]]
+                        seen_vein[0] += 1
+                        seen_vein[1] += area * 0.5
+                        seen_vein[2] = name
+                        break
                 # ⚠️ L'AIRE VUE, ET ELLE EST LA SEULE QUI PARLE DE L'ECRAN.
                 # La repartition 80/15/5 du brief decrit des PIXELS ; l'aire
                 # totale d'une coque de 500 m est aux deux tiers son VENTRE, que
@@ -4357,6 +4692,32 @@ def _audit(path: str) -> dict:
                 "enfoncerait d'autant. C'est le defaut de BRIEF-0101 : une "
                 "famille de relief a repris le droit de se poser sur une emprise "
                 "de tourelle (voir `_turret_clash`)")
+    # ⚠️ LE VERDICT DE LA VEINE, ET IL EST BLOQUANT (BRIEF-0103). Zero triangle
+    # emissif dans le couloir d'une branche, c'est une branche qui ne s'eteindra
+    # jamais ; une aire trop courte, c'est une veine mangee par un module qui a
+    # repris le droit de se poser dessus (`_branch_clash`).
+    for route in branch_routes():
+        if route["reason"] is not None:
+            continue
+        tris, vein_area, owner = branch_vein[route["name"]]
+        wanted = route["length"] * route["vein"]
+        if tris == 0:
+            problems.append(
+                f"{route['name']} : AUCUN triangle '{'AA_Emissive_Engine'}' dans "
+                "le couloir de sa branche — la veine a change de slot, et une "
+                "veine hors de ce slot reste ALLUMEE sur un vaisseau mort "
+                "(CortegeSkin la reconnait par ce nom, BRIEF-0103)")
+        elif vein_area < wanted * 0.98:
+            problems.append(
+                f"{route['name']} : la veine ne fait que {vein_area:.2f} m2 pour "
+                f"{wanted:.2f} m2 traces — un module s'est repose dessus "
+                "(voir `_branch_clash`)")
+        elif vein_area > wanted * 1.35:
+            problems.append(
+                f"{route['name']} : la veine fait {vein_area:.2f} m2 pour "
+                f"{wanted:.2f} m2 traces — le couloir compte de l'emissif qui "
+                "n'est pas le sien")
+
     if bay_intruders:
         problems.append(
             f"{bay_intruders} triangle(s) DANS l'emprise d'un pont d'envol — "
@@ -4491,6 +4852,9 @@ def _audit(path: str) -> dict:
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
         "pad_clearances": _pad_bay_clearances(),
         "turret_clearances": turret_clearances,
+        "branch_routes": branch_routes(),
+        "branch_vein": branch_vein,
+        "emissive_by_section": emissive_by_section,
         "spine_seats": spine_seats,
         "top": top_of_decor,
         "width": 2 * widest,
@@ -4594,7 +4958,8 @@ def _print_report(report: dict) -> None:
     # fosses ont ete construites un build entier sans qu'aucune ligne ne les
     # mentionne, et l'on a cherche dans le rendu ce qu'il fallait chercher ici.
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
-                  "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
+                  "conduits", "travees", "branches",
+                  "marqueurs_tourelle", "baies", "nœuds",
                   "fosses", "passerelle", "bastions", "cellules_percees",
                   "collerettes",
                   # BRIEF-0101 — la garde d'affut, ecartees puis perdues.
@@ -4654,6 +5019,60 @@ def _print_report(report: dict) -> None:
     print(f"    {sum(c['travees'] for c in report['counts'])} travees sombres "
           f"({BRACE_WIDTH:.2f} m, enterrees de {BRACE_SINK:.2f} m) barrent la "
           "tranchee")
+
+    # --- LES BRANCHES (BRIEF-0103) -----------------------------------------
+    # ⚠️ TROIS COLONNES ET PAS UNE : le trace (ce que la forge a voulu), la
+    # veine relevee sur le BINAIRE (ce que Godot chargera) et le troncon qui la
+    # porte (ce que `CortegeSkin` eteindra). Les trois doivent dire la meme
+    # chose ; c'est quand elles divergent qu'une branche reste allumee sur un
+    # vaisseau mort.
+    served = [r for r in report["branch_routes"] if r["reason"] is None]
+    px_lat = 1920.0 / _frame_coverage(-4.30)["frame_width"]
+    px_depth = px_lat * 0.940                 # sin(70 deg) : le regard plonge
+    print(f"\n  BRANCHES (BRIEF-0103) — {len(served)} affuts desservis sur "
+          f"{len(TURRETS)} ; la veine est en 'AA_Emissive_Engine' et RIEN "
+          "d'autre ne l'est\n"
+          f"  a la camera du jeu : {px_lat:.1f} px/m en lateral, "
+          f"{px_depth:.1f} px/m en profondeur (1920 px pour "
+          f"{_frame_coverage(-4.30)['frame_width']:.2f} m de cadre)\n"
+          f"    veine standard {BRANCH_VEIN_W:.2f} m -> "
+          f"{BRANCH_VEIN_W * px_depth:.1f} px | "
+          f"veine lourde {BRANCH_VEIN_W_HEAVY:.2f} m -> "
+          f"{BRANCH_VEIN_W_HEAVY * px_depth:.1f} px | "
+          f"gaine {BRANCH_TROUGH_W:.2f}/{BRANCH_TROUGH_W_HEAVY:.2f} m -> "
+          f"{BRANCH_TROUGH_W * px_depth:.1f}/"
+          f"{BRANCH_TROUGH_W_HEAVY * px_depth:.1f} px")
+    print(f"    {'affut':<10} {'classe':>8} {'x table':>8} {'x .glb':>8} "
+          f"{'du x':>6} {'au x':>6} {'long':>6} {'veine':>6} "
+          f"{'tri':>5} {'m2 releve':>10}  troncon")
+    for route in report["branch_routes"]:
+        tris, area, owner = report["branch_vein"][route["name"]]
+        if route["reason"] is not None:
+            print(f"    {route['name']:<10} {'—':>8} "
+                  f"{route['table_x']:8.2f} {route['marker_x']:8.2f} "
+                  f"{'NON DESSERVI':>44}  {route['reason']}")
+            continue
+        print(f"    {route['name']:<10} "
+              f"{'LOURDE' if route['heavy'] else 'standard':>8} "
+              f"{route['table_x']:8.2f} {route['marker_x']:8.2f} "
+              f"{route['side'] * route['x_in']:6.2f} "
+              f"{route['side'] * route['x_out']:6.2f} "
+              f"{route['length']:6.2f} {route['vein']:6.2f} "
+              f"{tris:5d} {area:10.3f}  {owner}")
+    print(f"    {'':<10} par troncon (releve sur le .glb) : " + " ".join(
+        f"S{n}={sum(1 for r in served if int(r['station'] // SECTION_LENGTH) == n - 1)}"
+        for n in range(1, SECTION_COUNT + 1)))
+    print("    emissif TOTAL par troncon (tous usages : conduits, pastilles, "
+          "veines de branche)")
+    for n in range(1, SECTION_COUNT + 1):
+        name = f"Section_{n:02d}"
+        tris, area = report["emissive_by_section"].get(name, (0, 0.0))
+        vein_tris = sum(report["branch_vein"][r["name"]][0] for r in served
+                        if int(r["station"] // SECTION_LENGTH) == n - 1)
+        vein_area = sum(report["branch_vein"][r["name"]][1] for r in served
+                        if int(r["station"] // SECTION_LENGTH) == n - 1)
+        print(f"      {name}  {tris:5d} triangles / {area:8.2f} m2  dont "
+              f"branches {vein_tris:4d} / {vein_area:6.2f} m2")
 
     print("\n  densite de texels (valeurs singulieres, triangle par triangle)")
     for name in sorted(report["density"]):
@@ -4791,6 +5210,8 @@ def main() -> None:
     _print_report(report)
     if "--plate" in sys.argv:
         render_plate(report)
+    if "--branches" in sys.argv:
+        render_branch_plate(report)
 
 
 # ==========================================================================
@@ -5188,31 +5609,32 @@ def _tile_ambry(path: str, report: dict) -> None:
     _render(path, TILE_W, SCENE_H)
 
 
-def _compose(tiles: list[tuple[str, int]], out: str) -> None:
+def _compose(tiles: list[tuple[str, int]], out: str,
+             width: int = TILE_W) -> None:
     """Empile les vignettes. Pas de PIL dans le Python de Blender : numpy."""
     import numpy as np
 
     height = sum(h for _, h in tiles)
-    sheet = np.zeros((height, TILE_W, 4), dtype=np.float32)
+    sheet = np.zeros((height, width, 4), dtype=np.float32)
     sheet[..., 3] = 1.0
     cursor = 0
     for path, tile_h in tiles:
         image = bpy.data.images.load(path)
         buffer = np.empty(len(image.pixels), dtype=np.float32)
         image.pixels.foreach_get(buffer)
-        tile = buffer.reshape(tile_h, TILE_W, 4)
+        tile = buffer.reshape(tile_h, width, 4)
         # Les images Blender sont stockees de bas en haut : ligne 0 = bas.
         top = height - cursor - tile_h
         sheet[top:top + tile_h] = tile
         cursor += tile_h
         bpy.data.images.remove(image)
-    result = bpy.data.images.new("sheet", width=TILE_W, height=height)
+    result = bpy.data.images.new("sheet", width=width, height=height)
     result.pixels.foreach_set(sheet.reshape(-1))
     result.filepath_raw = out
     result.file_format = "PNG"
     result.save()
     bpy.data.images.remove(result)
-    print(f"-> {out}  ({TILE_W} x {height})")
+    print(f"-> {out}  ({width} x {height})")
 
 
 def render_plate(report: dict) -> None:
@@ -5237,6 +5659,292 @@ def render_plate(report: dict) -> None:
         tiles.append((path, UV_H))
         os.makedirs(os.path.dirname(PLATE), exist_ok=True)
         _compose(tiles, PLATE)
+    finally:
+        for leftover in os.listdir(staging):
+            os.remove(os.path.join(staging, leftover))
+        os.rmdir(staging)
+
+
+# ==========================================================================
+# Planche des branches — `--branches` (BRIEF-0103)
+# ==========================================================================
+# ⚠️ UNE BRANCHE SE JUGE A LA CAMERA DU JEU, PAS SUR UNE VUE DE DESSUS, ET CE
+# N'EST PAS UN PRINCIPE : c'est une lecon payee deux fois le 2026-09-06. De
+# dessus, en orthographique, un ruban de 22 cm est un ruban de 22 cm ; a l'ecran,
+# c'est neuf pixels et demi, et neuf pixels et demi peuvent tres bien ne pas
+# exister. La planche rend donc a 1920 x 1080 — la resolution du jeu — et non aux
+# 1440 de la planche de sections : ce qu'on regarde est ce que le joueur verra.
+#
+# ⚠️ ET ELLE REND L'ETAT ETEINT, QUE PERSONNE NE PENSE A REGARDER. C'est
+# pourtant celui que le joueur verra apres avoir abattu un nœud, et le lot rate
+# son but si la branche DISPARAIT une fois eteinte : il faut lire « ce circuit
+# est mort », pas « il n'y a rien ici ». Le facteur applique est celui du moteur
+# — `CortegeSkin.EMISSIVE_DEAD / EMISSIVE_ENERGY` = 0,06 / 0,45 — recopie ici
+# avec sa source, parce que la forge ne lit pas le code du jeu.
+BRANCH_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0103-planche-branches.png")
+BRANCH_TILE_W = 1920
+BRANCH_TILE_H = 1080
+#: LES DEUX REGLAGES DU MOTEUR, ET IL FAUT LES DEUX.
+#: ⚠️ LA PREMIERE PLANCHE MENTAIT, ET DANS LE SENS FLATTEUR. Elle rendait le
+#: `.glb` tel quel — l'emissif y sort a 1,735 en force — puis multipliait cette
+#: valeur par le rapport mort/vif. Or le moteur ne multiplie pas : il ECRASE.
+#: `CortegeSkin._skin_emissive()` POSE `emission_energy_multiplier = 0,45`, et
+#: l'extinction POSE 0,06. Le vif du jeu est donc 3,9 fois plus sobre que celui
+#: du `.glb` brut, et l'ecart vif/mort est de 7,5 — pas de 1,1 comme la premiere
+#: mesure le donnait. Rendre le `.glb` brut, c'etait juger une veine que
+#: personne ne verra jamais.
+EMISSIVE_ENERGY_LIT = 0.45
+EMISSIVE_ENERGY_DEAD = 0.06
+
+#: ⚠️ LA CARTE DE L'OPERATEUR, POUR LE SEUL RENDU. Elle n'entre dans aucun
+#: `.glb` (`ADR-0028` : la forge ne livre pas de texture) ; elle est LUE ici
+#: parce que sans elle la planche ment sur l'etat eteint. `CortegeSkin` pose
+#: `cortege_emissive` en ALBEDO *et* en emission ; cette image est sombre
+#: (moyenne 0,22), quand le facteur du `.glb` est un magenta plein a 0,69. Rendre
+#: la couleur unie donnerait une veine quatre fois trop claire ALLUMEE et une
+#: veine encore magenta ETEINTE — c'est-a-dire aucun ecart a regarder, alors que
+#: le jeu en montre un franc. Le fichier absent est un cas normal : on rend a
+#: plat et la legende le dit.
+CORTEGE_EMISSIVE_MAP = os.path.join(
+    _REPO, "assets/imported/textures/cortege/cortege_emissive.png")
+#: `CortegeSkin.HULL_UV_SCALE` — `uv1_scale` MULTIPLIE les UV : 0,5 fait couvrir
+#: deux fois plus de monde a la meme image (0,100 tuile/m au lieu de 0,200).
+CORTEGE_UV_SCALE = 0.5
+
+TURRET_KIT = os.path.join(_REPO, "assets/imported/models/backgrounds/turret_kit.glb")
+SPINE_KIT = os.path.join(_REPO, "assets/imported/models/backgrounds/spine_kit.glb")
+
+#: L'assemblage de `cortege_turret.gd`, recopie ici pour la seule planche.
+#: ⚠️ AUCUNE DE CES COTES NE PART DANS LE `.glb` : elles servent a REGARDER la
+#: branche avec la piece qu'elle alimente, et rien d'autre. Le jour ou le moteur
+#: change son assemblage, la planche vieillit — la coque, elle, ne bouge pas.
+KIT_RING_LIFT = 0.04
+KIT_BODY_LIFT = 0.40
+KIT_BARREL_LIFT = 0.98
+KIT_BARREL_SEAT_Z = 0.70
+KIT_SERVICE_RADIUS = 1.66
+KIT_SERVICE_LIFT = 0.20
+KIT_HEAVY_SCALE = 1.200
+KIT_FAMILIES = (
+    (False, "turret_barrel_short", 0.80, (128.0,), -1.0),
+    (True, "turret_barrel", 0.92, (118.0, -118.0), 180.0),
+    (True, "turret_barrel", 1.00, (96.0, -142.0), 205.0),
+)
+
+
+def _kit_sources(path: str) -> dict:
+    """Importe un kit UNE fois et rend ses maillages par nom, hors camera."""
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    fresh = [o for o in bpy.context.scene.objects if o not in before]
+    out: dict = {}
+    for obj in fresh:
+        if obj.type == "MESH":
+            out[obj.name.split(".")[0]] = obj
+        obj.hide_render = True
+    return out
+
+
+def _kit_piece(sources: dict, part: str, position: Vector, yaw: float,
+               scale: float) -> None:
+    """Une copie d'une piece de kit, posee en coordonnees GODOT."""
+    source = sources.get(part)
+    if source is None:
+        print(f"  ⚠️ piece de kit absente : {part}")
+        return
+    piece = bpy.data.objects.new(part, source.data)
+    piece.location = _to_blender(position)
+    piece.rotation_euler = Euler((0.0, 0.0, yaw), "XYZ")
+    piece.scale = Vector((scale, scale, scale))
+    piece.visible_shadow = False
+    bpy.context.collection.objects.link(piece)
+
+
+def _mount_turret(sources: dict, number: int, base: Vector, heavy: bool) -> None:
+    """L'affut complet sur son marqueur — socle, appareillage, couronne, tubes.
+
+    ⚠️ LA FAMILLE EST APPROCHEE, ET C'EST DECLARE. Le moteur la tire de
+    `(serial + section) % 3` ; la forge n'a ni l'un ni l'autre. On prend
+    `(numero + troncon) % 3`, qui donne la meme VARIETE sans pretendre a la meme
+    repartition — une planche sert a juger une branche sous un affut, pas a
+    valider l'assemblage du moteur, qui a son propre harnais.
+    """
+    section = int(base.z // -SECTION_LENGTH) + 1
+    family = KIT_FAMILIES[(number + section) % len(KIT_FAMILIES)]
+    k = KIT_HEAVY_SCALE if heavy else 1.0
+    _kit_piece(sources, "turret_pad", base, 0.0, k)
+    if family[0]:
+        _kit_piece(sources, "turret_anchor_skirt", base, 0.0, k)
+    angles = list(family[3]) + ([family[4]] if family[4] >= 0.0 else [])
+    parts = ["turret_service_box"] * len(family[3])
+    parts += ["turret_pipe"] if family[4] >= 0.0 else []
+    for part, degrees in zip(parts, angles):
+        a = math.radians(degrees)
+        _kit_piece(sources, part,
+                   base + Vector((math.cos(a) * KIT_SERVICE_RADIUS * k,
+                                  KIT_SERVICE_LIFT * k,
+                                  math.sin(a) * KIT_SERVICE_RADIUS * k)),
+                   -a, k)
+    _kit_piece(sources, "turret_ring",
+               base + Vector((0.0, KIT_RING_LIFT * k, 0.0)), 0.0, k)
+    _kit_piece(sources, "turret_body",
+               base + Vector((0.0, KIT_BODY_LIFT * k, 0.0)), 0.0, k)
+    for side in (-1.0, 1.0):
+        _kit_piece(sources, str(family[1]),
+                   base + Vector((side * family[2] * 0.5 * k,
+                                  KIT_BARREL_LIFT * k,
+                                  KIT_BARREL_SEAT_Z * k)), 0.0, k)
+
+
+def _set_emissive_energy(objects: list, energy: float) -> int:
+    """Pose l'energie d'emission du slot `AA_Emissive_Engine` — et de lui SEUL.
+
+    ⚠️ C'EST EXACTEMENT CE QUE FAIT LE MOTEUR, ET C'EST LA TOUT L'ENJEU DU LOT.
+    `CortegeSkin` reconnait ce nom, duplique le materiau PAR MAILLAGE et pose
+    l'energie de la copie du troncon dont le nœud est tombe. Si une veine etait
+    peinte ailleurs, cette fonction ne la trouverait pas — et la planche eteinte
+    montrerait une branche encore allumee. C'est le controle le plus direct qu'on
+    puisse faire de la promesse du brief : on le fait EN REGARDANT.
+
+    ⚠️ ON POSE, ON NE MULTIPLIE PAS — voir `EMISSIVE_ENERGY_LIT`. Rendre le
+    `.glb` brut donnerait une veine quatre fois plus vive que celle du jeu, donc
+    une planche qui valide ce que personne ne verra.
+
+    ⚠️ ET L'ALBEDO RESTE CELUI DU `.glb`. En jeu, `cortege_emissive` le remplace
+    (la meme image sert d'albedo et d'emission, regle 2 du contrat de texture) :
+    la planche montre donc la veine SANS sa carte, c'est-a-dire dans son etat le
+    plus plat. C'est une approximation, et elle va dans le sens severe.
+    """
+    image = None
+    if os.path.exists(CORTEGE_EMISSIVE_MAP):
+        image = bpy.data.images.load(CORTEGE_EMISSIVE_MAP, check_existing=True)
+    touched = 0
+    seen: set = set()
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        for slot in obj.data.materials:
+            if slot is None or not slot.name.startswith("AA_Emissive_Engine"):
+                continue
+            if slot.name in seen:
+                continue
+            seen.add(slot.name)
+            for node in slot.node_tree.nodes:
+                if "Emission Strength" not in getattr(node, "inputs", {}):
+                    continue
+                node.inputs["Emission Strength"].default_value = energy
+                touched += 1
+                if image is None:
+                    continue
+                tree = slot.node_tree
+                coord = tree.nodes.new("ShaderNodeTexCoord")
+                mapping = tree.nodes.new("ShaderNodeMapping")
+                mapping.inputs["Scale"].default_value = (
+                    CORTEGE_UV_SCALE, CORTEGE_UV_SCALE, 1.0)
+                tex = tree.nodes.new("ShaderNodeTexImage")
+                tex.image = image
+                tree.links.new(coord.outputs["UV"], mapping.inputs["Vector"])
+                tree.links.new(mapping.outputs["Vector"], tex.inputs["Vector"])
+                tree.links.new(tex.outputs["Color"], node.inputs["Base Color"])
+                tree.links.new(tex.outputs["Color"],
+                               node.inputs["Emission Color"])
+    return touched
+
+
+def _tile_branches(path: str, report: dict, centre: float, dead: bool,
+                   caption: str) -> None:
+    """La perspective du jeu sur deux branches, affuts REELS montes dessus."""
+    _plate_reset()
+    decor = _import(OUTPUT, "Decor", Vector((0.0, 0.0, centre)))
+    turret_src = _kit_sources(TURRET_KIT)
+    spine_src = _kit_sources(SPINE_KIT)
+    mounted: list[str] = []
+    for route in report["branch_routes"]:
+        ts = route["station"]
+        if abs(ts - centre) > 22.0:
+            continue
+        seat, _low = turret_seat_y(ts, route["marker_x"])
+        _mount_turret(turret_src, route["number"],
+                      Vector((route["marker_x"], seat, -(ts - centre))),
+                      route["heavy"])
+        mounted.append(f"{route['name']}{' LOURDE' if route['heavy'] else ''}")
+    for number, s in enumerate(SPINES, start=1):
+        if abs(s - centre) > 22.0:
+            continue
+        seat, _low = spine_seat_y(s)
+        base = Vector((0.0, seat, -(s - centre)))
+        for part in ("spine_cradle", "spine_core"):
+            _kit_piece(spine_src, part, base, 0.0, 1.0)
+        for side in (-1.0, 1.0):
+            _kit_piece(spine_src, "spine_brace",
+                       base + Vector((side * 0.52, 0.0, 0.0)),
+                       0.0 if side > 0 else math.pi, 1.0)
+    fighter = _import(FIGHTER, "Player", Vector((0.0, 0.0, 3.4)))
+    # ⚠️ LE DECOR SEUL, DANS LES DEUX ETATS. Un nœud abattu AFFAIBLIT les
+    # tourelles du troncon suivant, il ne les tue pas : leur œil reste allume, et
+    # c'est ce contraste — la conduite morte sous une tourelle vivante — qui dit
+    # au joueur ce que son tir a fait.
+    energy = EMISSIVE_ENERGY_DEAD if dead else EMISSIVE_ENERGY_LIT
+    touched = _set_emissive_energy(decor, energy)
+    print(f"  [branches] {'ETEINT' if dead else 'ALIMENTE'} : "
+          f"{touched} materiau(x) emissif(s) a {energy:.2f} "
+          f"(reglage de CortegeSkin), carte "
+          f"{'cortege_emissive' if os.path.exists(CORTEGE_EMISSIVE_MAP) else 'ABSENTE'}")
+    _plate_lights()
+    camera = _plate_camera("game", _to_blender(CAM_POS), _to_blender(CAM_FORWARD),
+                           _to_blender(CAM_UP), CAM_FOV_V)
+    px = BRANCH_TILE_W / _frame_coverage(-4.30)["frame_width"]
+    tint = (1.0, 0.62, 0.55) if dead else (1.0, 0.88, 0.55)
+    _label(camera, caption, -0.96, 0.90, 0.026, BRANCH_TILE_W, BRANCH_TILE_H, tint)
+    _label(camera, "  ·  ".join(mounted) + "  —  affuts REELS de turret_kit.glb",
+           -0.96, 0.84, 0.026, BRANCH_TILE_W, BRANCH_TILE_H)
+    _label(camera,
+           f"veine {BRANCH_VEIN_W:.2f} m = {BRANCH_VEIN_W * px * 0.940:.1f} px  ·  "
+           f"veine lourde {BRANCH_VEIN_W_HEAVY:.2f} m = "
+           f"{BRANCH_VEIN_W_HEAVY * px * 0.940:.1f} px  ·  "
+           f"gaine {BRANCH_TROUGH_W:.2f}/{BRANCH_TROUGH_W_HEAVY:.2f} m = "
+           f"{BRANCH_TROUGH_W * px * 0.940:.1f}/"
+           f"{BRANCH_TROUGH_W_HEAVY * px * 0.940:.1f} px "
+           f"({px:.1f} px/m lateral, x sin 70 deg en profondeur)",
+           -0.96, -0.88, 0.024, BRANCH_TILE_W, BRANCH_TILE_H, (0.72, 0.84, 1.0))
+    _label(camera,
+           f"veine en AA_Emissive_Engine a {EMISSIVE_ENERGY_LIT:.2f} "
+           "(CortegeSkin.EMISSIVE_ENERGY) — le seul slot que le moteur eteint"
+           if not dead else
+           f"ETEINTE : AA_Emissive_Engine du troncon a {EMISSIVE_ENERGY_DEAD:.2f} "
+           "(CortegeSkin.EMISSIVE_DEAD) — la veine doit rester LISIBLE",
+           -0.96, -0.94, 0.024, BRANCH_TILE_W, BRANCH_TILE_H,
+           (0.72, 0.84, 1.0) if not dead else (1.0, 0.62, 0.55))
+    _render(path, BRANCH_TILE_W, BRANCH_TILE_H)
+
+
+#: Les deux stations regardees, et pourquoi.
+#: ⚠️ ELLES NE SONT PAS PRISES AU HASARD : chacune met une LOURDE et une
+#: STANDARD dans le meme cadre, ce qui est la seule facon de juger la hierarchie
+#: de largeur que le brief demande. La seconde porte en plus `Spine_03`, donc le
+#: nœud, le canal et deux branches d'un seul regard.
+BRANCH_VIEWS = (
+    (377.5, "CAMERA DU JEU, s 377 — Turret_12 LOURDE (pont interieur, en haut) "
+            "et Turret_11 standard (pont median, en bas)"),
+    (260.8, "CAMERA DU JEU, s 261 — Spine_03 dans le canal, Turret_08 LOURDE "
+            "(en haut) et Turret_07 standard (en bas)"),
+)
+
+
+def render_branch_plate(report: dict) -> None:
+    staging = tempfile.mkdtemp(prefix="aegis-cortege-branches-")
+    tiles: list[tuple[str, int]] = []
+    try:
+        for index, (centre, caption) in enumerate(BRANCH_VIEWS):
+            for dead in (False, True):
+                path = os.path.join(
+                    staging, f"branch{index}{'_dead' if dead else '_lit'}.png")
+                _tile_branches(path, report, centre, dead,
+                               caption + ("  ·  NŒUD ABATTU"
+                                          if dead else "  ·  ALIMENTE"))
+                tiles.append((path, BRANCH_TILE_H))
+        os.makedirs(os.path.dirname(BRANCH_PLATE), exist_ok=True)
+        _compose(tiles, BRANCH_PLATE, width=BRANCH_TILE_W)
     finally:
         for leftover in os.listdir(staging):
             os.remove(os.path.join(staging, leftover))

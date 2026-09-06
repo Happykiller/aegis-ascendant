@@ -1,6 +1,6 @@
 # BRIEF-0103 — Le courant se voit : des conduits du canal jusqu'aux tourelles
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06
