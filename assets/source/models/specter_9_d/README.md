@@ -82,8 +82,11 @@ porte tout ; la normale s'en **dérive** (`ADR-0013`).
 l'usure PLACÉE et les décalcomanies. La `specter_9_b` porte un atlas peint de 2048 où les traînées
 de crasse et les marquages sont posés là où la coque les veut ; une tuile qui se répète ne peut
 que régulariser. La D lit désormais comme un appareil **neuf et propre**, la B comme un appareil
-**usé**. Aller plus loin demande un atlas — l'outillage existe (`tools/bake-atlas.py`, `ADR-0047`)
-mais il faudrait d'abord redéplier les 406 pièces en un atlas unique.
+**usé**. **C'est fait depuis `BRIEF-0102`** : les 406 pièces sont dépliées dans un atlas unique de 2048²,
+cuit et câblé (`resources/player/hull_detail_specter_9_d.tres`). La feuille tuilée décrite plus
+haut ne sert plus ; ses six cartes ont été retirées du `.glb`. Densité obtenue : **78,1 texels/m**
+sur la peau — 5,4 fois plus grossier que la feuille qu'il remplace, et c'est le prix de
+l'ADRESSABILITÉ. Reste à **peindre** dessus : coulures, matricule 09, insignes.
 
 ⚠️ **La géométrie n'a pas bougé** : 413 nœuds, 406 maillages, 49 116 triangles, identiques au
 fichier livré. Seules les cartes changent.

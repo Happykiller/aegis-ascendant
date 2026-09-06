@@ -1,6 +1,6 @@
 # BRIEF-0102 — Déplier la Specter-9 D, pour qu'on puisse enfin la peindre
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06

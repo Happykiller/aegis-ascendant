@@ -41,7 +41,9 @@ const DEFAULT_SET: HullDetailSet = preload("res://resources/player/hull_detail_d
 ## instancie). Une coque absente d'ici recoit le jeu partage. ⚠️ La cle est le nom
 ## de fichier, pas le chemin complet : une coque montee via une scene d'ajustement
 ## (`specter_9_b.tscn`) garde son .glb comme racine et c'est lui qu'on lit.
-const SETS: Dictionary = {}
+const SETS: Dictionary = {
+	"specter_9_d.tscn": preload("res://resources/player/hull_detail_specter_9_d.tres"),
+}
 
 ## Materiaux qui recoivent le detail. Le verre (fenetre lisse) et l'emissif
 ## (lueur de tuyere) en sont EXCLUS : une carte de plaques n'a aucun sens sur eux,
@@ -50,6 +52,12 @@ const _DETAILED := {
 	"AA_Hull": true, "AA_Panel": true, "AA_Trim": true,
 	"AA_Greeble": true, "AA_Marking_Red": true,
 }
+
+## ⚠️ ET UNE COQUE ÉTRANGÈRE PEUT EN NOMMER D'AUTRES, par `HullDetailSet.foreign_materials`.
+## Sans ça, la `specter_9_d` — qui porte `MAT | white`, `MAT | blue`… — traversait cette
+## fonction sans qu'une seule surface ne soit habillée, et lisait en aplats de couleur unie
+## alors que son atlas était cuit et posé. Aucune erreur, aucun test rouge : juste une coque
+## que le jeu refusait poliment de peindre.
 
 ## Le jeu qu'une coque doit recevoir. Statique et pure : c'est ce que le test verifie.
 static func set_for(scene_path: String) -> HullDetailSet:
@@ -75,7 +83,8 @@ static func apply(hull: Node, detail: HullDetailSet = null) -> void:
 			if base.resource_name == "AA_Glass":
 				_tint_glass(mesh, i, base, detail)
 				continue
-			if not _DETAILED.has(base.resource_name):
+			if not _DETAILED.has(base.resource_name) \
+					and not detail.foreign_materials.has(base.resource_name):
 				continue
 			# On DUPLIQUE : le materiau importe est partage entre toutes les
 			# instances du .glb (les 4 vaisseaux de l'accueil, le joueur). Le

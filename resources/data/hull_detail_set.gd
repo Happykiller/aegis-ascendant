@@ -29,6 +29,18 @@ extends Resource
 ## l'image au lieu d'être appliquée à la volée.
 @export var albedo: Texture2D
 
+## Les matériaux ÉTRANGERS que ce jeu habille, en plus des sept slots `AA_*` du kit.
+##
+## ⚠️ IL EXISTE PARCE QU'UNE COQUE TIERCE N'A PAS NOS NOMS. `HullDetail` ne dresse que les
+## `AA_*` — c'est ce qui protège une coque étrangère d'être repeinte par accident (`ADR-0048`).
+## Mais quand on lui cuit un atlas exprès, il faut bien pouvoir le lui poser : la
+## `specter_9_d` porte `MAT | white`, `MAT | blue`, `MAT | red`, `MAT | metal`.
+##
+## ⚠️ ET C'EST LE JEU QUI LES NOMME, PAS LE MOTEUR. Une liste en dur dans `hull_detail.gd`
+## habillerait toutes les coques qui partagent un nom de matériau — y compris celles qu'on
+## veut laisser tranquilles. Ici la permission voyage avec la carte qui la justifie.
+@export var foreign_materials: PackedStringArray = PackedStringArray()
+
 @export_group("Coque")
 ## Carte de MULTIPLICATION : les plaques valent ~1,0 (neutre), les rainures moins.
 ## Posée en `albedo_texture` par-dessus la couleur de palette importée du `.glb`.

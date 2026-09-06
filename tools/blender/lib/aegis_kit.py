@@ -74,7 +74,8 @@ import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-VERSION = "1.3.0"   # 1.3.0 : depliage en ATLAS (ilots disjoints, packes, recouvrement mesure) — ADR-0046/0047
+VERSION = "1.4.0"   # 1.4.0 : l'atlas se deplie par COLLECTION, avec des poids et une densite mesuree par famille (BRIEF-0102)
+#                    1.3.0 : depliage en ATLAS (ilots disjoints, packes, recouvrement mesure) — ADR-0046/0047
 #                    1.2.0 : tubes, verins, profil d'aile, UV cylindriques/par materiau, lecture .glb (BRIEF-0098)
 
 # --------------------------------------------------------------------------
@@ -1715,6 +1716,49 @@ def glb_primitives(path: str) -> list[dict]:
 
 
 @dataclass
+class FamilyStat:
+    """Ce qu'une FAMILLE de pieces a obtenu de l'atlas. Mesure, jamais suppose.
+
+    ⚠️ POURQUOI DES FAMILLES. Sur une coque de quatre cents pieces, elles ne se valent
+    pas : personne ne peindra sur les vingt-quatre petales d'une tuyere ni sur les
+    stabilisateurs d'un missile, alors qu'un bord d'attaque ou une joue de nacelle
+    portera une coulure. Un packing aveugle donne pourtant a chacune la meme densite de
+    texels — c'est-a-dire qu'il paie le meme prix pour ce qu'on regarde et pour ce
+    qu'on ne regarde pas.
+
+    La densite se MESURE ici, famille par famille : une derive fait une coque nette
+    d'un cote et floue de l'autre, et ca ne se voit qu'apres la peinture, donc trop
+    tard.
+    """
+
+    name: str = ""
+    weight: float = 1.0
+    objects: int = 0
+    triangles: int = 0
+    #: Aire monde de la cage de base, en m^2 (matrice objet appliquee).
+    world_area: float = 0.0
+    #: Aire occupee dans le carre UV, en fraction du carre.
+    uv_area: float = 0.0
+    #: Densites par triangle (texels/m), triees — pour lire l'homogeneite et non
+    #: seulement la moyenne, qu'un seul ilot etire suffit a rendre fausse.
+    _densities: list[float] = field(default_factory=list, repr=False)
+
+    def density(self, side: int) -> float:
+        """Densite d'ensemble, en texels par metre de modele, a `side` px d'atlas."""
+        if self.world_area <= 0.0:
+            return 0.0
+        return math.sqrt(self.uv_area * side * side / self.world_area)
+
+    def percentile(self, side: int, fraction: float) -> float:
+        """Densite par triangle au centile demande — l'etirement se lit ici."""
+        if not self._densities:
+            return 0.0
+        ordered = sorted(self._densities)
+        index = min(int(fraction * (len(ordered) - 1)), len(ordered) - 1)
+        return ordered[index] * side
+
+
+@dataclass
 class AtlasReport:
     """Ce qu'un depliage en atlas a produit. Mesure, jamais suppose."""
 
@@ -1730,6 +1774,10 @@ class AtlasReport:
     outside: int = 0
     probe: int = 0
     seconds: float = 0.0
+    #: Cote de l'atlas vise, en pixels — sert a exprimer les densites en texels/m.
+    texel_side: int = 2048
+    #: Par famille, quand `family_of` est fourni. Vide sinon.
+    families: dict = field(default_factory=dict)
 
     def render(self) -> str:
         return (
@@ -1739,15 +1787,35 @@ class AtlasReport:
                self.probe, self.probe, self.outside, self.seconds)
         )
 
+    def render_families(self) -> str:
+        """Le tableau des familles : part de l'atlas, densite, etirement."""
+        if not self.families:
+            return "atlas : aucune famille declaree"
+        total_uv = sum(f.uv_area for f in self.families.values()) or 1.0
+        lines = ["  %-22s %5s %6s %8s %9s %9s  %s"
+                 % ("famille", "poids", "pieces", "aire m2", "part atlas", "texels/m",
+                    "p05 - p95")]
+        for stat in sorted(self.families.values(), key=lambda s: -s.uv_area):
+            lines.append("  %-22s %5.2f %6d %8.2f %8.1f %% %9.1f  %.0f - %.0f"
+                         % (stat.name, stat.weight, stat.objects, stat.world_area,
+                            100.0 * stat.uv_area / total_uv, stat.density(self.texel_side),
+                            stat.percentile(self.texel_side, 0.05),
+                            stat.percentile(self.texel_side, 0.95)))
+        return "\n".join(lines)
+
 
 def atlas_unwrap(
-    objects: bpy.types.Object | list[bpy.types.Object],
+    objects: bpy.types.Object | list[bpy.types.Object] | bpy.types.Collection,
     *,
     angle_limit_deg: float = 66.0,
     margin: float = 0.0015,
     probe: int = 1024,
     min_fill: float = 0.30,
     max_overlap: float = 5.0e-4,
+    triangulate_first: bool = True,
+    weight_of: "Callable[[bpy.types.Object], float] | None" = None,
+    family_of: "Callable[[bpy.types.Object], str] | None" = None,
+    texel_side: int = 2048,
 ) -> AtlasReport:
     """Deplie en ATLAS : des ilots DISJOINTS, packes dans [0, 1], sur place.
 
@@ -1824,17 +1892,62 @@ def atlas_unwrap(
     Leve `ContractError` si un UV sort du carre, si deux faces se recouvrent, ou si le
     remplissage passe sous le plancher — un atlas casse ne doit jamais partir en
     silence, c'est la lecon des trois coques livrees sans aucun UV.
+
+    UNE COLLECTION, ET UN SEUL PACK (BRIEF-0102)
+    --------------------------------------------
+    `objects` accepte desormais une **collection** : ses `all_objects` sont deplies
+    ENSEMBLE, en un seul pack. Ce n'est pas un raccourci d'ecriture — un atlas par
+    objet donnerait quatre cents images, et le regime atlas d'`ADR-0047` exige *une*
+    image pour toute la coque, sans quoi une coulure ne peut pas traverser un joint.
+
+    ⚠️ `weight_of` — LES PIECES NE SE VALENT PAS, ET LE PACKING NE LE SAIT PAS.
+    Rappele par famille : chaque ilot d'une piece est mis a l'echelle de son poids
+    AVANT le pack. Le poids agit lineairement sur la densite de texels, donc en
+    **carre** sur la part d'atlas consommee : une famille a 0,55 occupe 30 % de la
+    surface qu'elle prendrait a 1,0. C'est la seule facon de rendre des texels au
+    fuselage sans rien retirer a la geometrie.
+
+    ⚠️ Le poids se pose entre `smart_project` et `pack_islands`, jamais avant : le
+    depliage normalise ce qu'il projette, et un poids applique en amont serait
+    simplement efface.
+
+    ⚠️ `triangulate_first=False` — QUAND LA CAGE N'EST PAS CE QU'ON EXPORTE. Le kit
+    triangule avant de deplier, pour la raison donnee par `triangulate()`. Sur un modele
+    tiers porte par des modificateurs, la cage de base n'est qu'une entree : la
+    trianguler change ce que le biseau produit aux sommets, donc la geometrie LIVREE
+    (+320 triangles mesures sur la `specter_9_d`). Le depliage n'y perd rien, les
+    modificateurs interpolant les UV de la cage.
+
+    `family_of` etiquette chaque objet ; le rapport rend alors, par famille, l'aire
+    monde, la part d'atlas, la densite de texels et ses centiles p05/p95. La moyenne
+    seule ment : un ilot etire la laisse intacte.
     """
     started = _time.time()
-    meshes = [objects] if isinstance(objects, bpy.types.Object) else list(objects)
+    if isinstance(objects, bpy.types.Collection):
+        meshes = list(objects.all_objects)
+    elif isinstance(objects, bpy.types.Object):
+        meshes = [objects]
+    else:
+        meshes = list(objects)
     meshes = [o for o in meshes if o.type == "MESH"]
     if not meshes:
         raise ContractError("atlas_unwrap : aucun objet maillage")
+    # ⚠️ L'ordre d'iteration fait le determinisme du pack : une collection Blender
+    # rend ses objets dans un ordre qui n'est garanti par rien.
+    meshes.sort(key=lambda o: o.name)
 
     # Meme raison que dans box_project_uv : un quad gauche n'a pas de normale, donc
     # pas de couture reproductible. On triangule d'abord.
-    for obj in meshes:
-        triangulate(obj)
+    #
+    # ⚠️ SAUF QUAND LE MAILLAGE DEPLIE N'EST PAS CELUI QU'ON EXPORTE. Sur une coque
+    # portee par des modificateurs (BEVEL, SOLIDIFY), la cage de base n'est qu'une
+    # entree : trianguler la cage change ce que le biseau produit aux sommets, et donc
+    # la GEOMETRIE LIVREE. Mesure du 2026-09-06 sur la `specter_9_d` : 49 436 triangles
+    # au lieu de 49 116, soit 320 de plus pour un lot qui ne redessine rien. Le
+    # depliage, lui, n'y perd rien — les modificateurs interpolent les UV de la cage.
+    if triangulate_first:
+        for obj in meshes:
+            triangulate(obj)
 
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
@@ -1848,10 +1961,15 @@ def atlas_unwrap(
     # avec une seule. Les defauts de `pack_islands` sont deja les bons (ilots concaves,
     # rotation libre, mise a l'echelle) : on ne les surcharge pas.
     bpy.ops.uv.smart_project(angle_limit=math.radians(angle_limit_deg), island_margin=0.0)
+    if weight_of is not None:
+        bpy.ops.object.mode_set(mode="OBJECT")
+        _scale_uv_by_weight(meshes, weight_of)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
     bpy.ops.uv.pack_islands(margin=margin, margin_method="ADD")
     bpy.ops.object.mode_set(mode="OBJECT")
 
-    report = AtlasReport(probe=probe)
+    report = AtlasReport(probe=probe, texel_side=texel_side)
     tris: list[tuple[tuple[float, float], ...]] = []
     for obj in meshes:
         layer = obj.data.uv_layers.active
@@ -1862,10 +1980,37 @@ def atlas_unwrap(
         for u, v in uvs:
             if u < -1e-4 or u > 1.0 + 1e-4 or v < -1e-4 or v > 1.0 + 1e-4:
                 report.outside += 1
+        stat: FamilyStat | None = None
+        if family_of is not None:
+            key = family_of(obj)
+            stat = report.families.get(key)
+            if stat is None:
+                stat = FamilyStat(name=key,
+                                  weight=1.0 if weight_of is None else float(weight_of(obj)))
+                report.families[key] = stat
+            stat.objects += 1
+        # ⚠️ L'aire MONDE, matrice objet appliquee. Sans elle, deux pieces identiques
+        # a des echelles differentes rendraient la meme densite mesuree et des
+        # densites reelles opposees.
+        world = obj.matrix_world
+        points = [world @ v.co for v in obj.data.vertices]
         for poly in obj.data.polygons:
             loops = list(poly.loop_indices)
+            verts = list(poly.vertices)
             for i in range(1, len(loops) - 1):
-                tris.append((uvs[loops[0]], uvs[loops[i]], uvs[loops[i + 1]]))
+                triangle = (uvs[loops[0]], uvs[loops[i]], uvs[loops[i + 1]])
+                tris.append(triangle)
+                if stat is None:
+                    continue
+                a, b, c = points[verts[0]], points[verts[i]], points[verts[i + 1]]
+                area = (b - a).cross(c - a).length * 0.5
+                (ua, va), (ub, vb), (uc, vc) = triangle
+                uv_area = abs((ub - ua) * (vc - va) - (uc - ua) * (vb - va)) * 0.5
+                stat.triangles += 1
+                stat.world_area += area
+                stat.uv_area += uv_area
+                if area > 1e-12:
+                    stat._densities.append(math.sqrt(uv_area / area))
     report.triangles = len(tris)
     report.fill = sum(
         abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) * 0.5
@@ -1894,6 +2039,35 @@ def atlas_unwrap(
             f"de {min_fill * 100.0:.0f} % — on paierait un atlas qu'on ne lit pas"
         )
     return report
+
+
+def _scale_uv_by_weight(meshes: list, weight_of) -> None:
+    """Met les UV de chaque objet a l'echelle de son poids, avant le pack.
+
+    ⚠️ UNE HOMOTHETIE, PAS UN DEPLACEMENT. Une homothetie de rapport w autour de
+    n'importe quel point multiplie la TAILLE de chaque ilot par w sans changer sa
+    forme ; le pack qui suit les reposera tous. Le centre choisi (l'origine du carre)
+    n'a donc aucune importance, et c'est justement ce qui rend l'operation sure.
+
+    Le poids agit lineairement sur la densite de texels et en CARRE sur la surface
+    d'atlas consommee. Un poids nul ou negatif n'a pas de sens : il est refuse plutot
+    qu'il ne fasse disparaitre une piece en silence.
+    """
+    for obj in meshes:
+        weight = float(weight_of(obj))
+        if not (weight > 0.0):
+            raise ContractError(
+                f"atlas_unwrap : poids {weight} pour '{obj.name}' — un poids doit etre "
+                "strictement positif, sinon la piece s'effondre en un point de l'atlas"
+            )
+        if abs(weight - 1.0) < 1e-9:
+            continue
+        layer = obj.data.uv_layers.active
+        if layer is None:
+            continue
+        flat = [0.0] * (len(layer.uv) * 2)
+        layer.uv.foreach_get("vector", flat)
+        layer.uv.foreach_set("vector", [value * weight for value in flat])
 
 
 def _uv_overlap_texels(tris: list, side: int) -> int:

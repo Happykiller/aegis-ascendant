@@ -98,6 +98,52 @@ def _deplie() -> bpy.types.Object:
     return obj
 
 
+# --- Une collection, des familles, des poids (BRIEF-0102) --------------------
+
+
+def _deux_pieces() -> list[bpy.types.Object]:
+    """Deux cubes IDENTIQUES, donc de meme aire monde : tout ecart de densite
+    mesure entre eux vient du poids, et de rien d'autre."""
+    _fresh()
+    out = []
+    for index, name in enumerate(("piece_lourde", "piece_legere")):
+        bm = bmesh.new()
+        bmesh.ops.create_cube(bm, size=1.0)
+        mesh = bpy.data.meshes.new(name)
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new(name, mesh)
+        obj.location = (3.0 * index, 0.0, 0.0)
+        bpy.context.collection.objects.link(obj)
+        out.append(obj)
+    return out
+
+
+def test_un_poids_change_la_densite_dans_le_rapport_de_ce_poids() -> None:
+    print("\n[familles] un poids de 0,5 rend une piece deux fois moins dense")
+    pieces = _deux_pieces()
+    poids = {"piece_lourde": 1.0, "piece_legere": 0.5}
+    report = ak.atlas_unwrap(
+        pieces, weight_of=lambda o: poids[o.name], family_of=lambda o: o.name,
+        texel_side=1024)
+    lourde = report.families["piece_lourde"].density(1024)
+    legere = report.families["piece_legere"].density(1024)
+    ratio = lourde / max(legere, 1e-9)
+    check(abs(ratio - 2.0) < 0.05, "rapport de densite mesure %.3f pour un rapport de poids de 2" % ratio)
+    check(report.families["piece_lourde"].world_area > 5.9, "l'aire monde est mesuree (6 faces d'un cube unite)")
+    check(report.overlap_texels == 0, "le pack pondere ne recouvre toujours rien")
+
+
+def test_sans_triangulation_les_faces_ne_sont_pas_touchees() -> None:
+    print("\n[familles] triangulate_first=False laisse la cage intacte")
+    obj = _test_hull()
+    avant = len(obj.data.polygons)
+    quads = sum(1 for p in obj.data.polygons if len(p.vertices) > 3)
+    ak.atlas_unwrap(obj, triangulate_first=False, max_overlap=1.0)
+    check(len(obj.data.polygons) == avant and quads > 0,
+          "les %d faces (dont %d n-gons) sont toujours la" % (avant, quads))
+
+
 # --- Le garde-fou, verifie en le faisant TOMBER ------------------------------
 
 
@@ -166,6 +212,8 @@ def main() -> None:
     print("Kit version %s" % ak.VERSION)
     test_le_depliage_produit_un_atlas_propre()
     test_le_depliage_est_deterministe()
+    test_un_poids_change_la_densite_dans_le_rapport_de_ce_poids()
+    test_sans_triangulation_les_faces_ne_sont_pas_touchees()
     test_un_uv_hors_du_carre_est_refuse()
     test_deux_triangles_superposes_sont_vus()
     test_arete_partagee_n_est_pas_un_recouvrement()
