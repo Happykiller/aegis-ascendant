@@ -36,6 +36,48 @@
 > un chemin `~/sandbox/macross` qui n'existe pas. Un point de reprise faux coûte plus qu'un point de
 > reprise absent : il envoie la session suivante dans le mur sans qu'elle le questionne.
 
+## ⚠️ Ouvert par la session du 2026-09-06 (poupe, cadre, rendu)
+
+### Le budget triangles de la poupe est le goulot du chantier
+
+Quatre binaires tiers livrés, cotes justes, géométrie approuvée — et **3,17 millions de triangles**
+aux quantités que la phase demande (3 moteurs, 3 berceaux, 10 ancrages, ~20 bras), contre **49 458
+pour tout le niveau 2** actuel. Plus ~1 Go de binaires et 11 images embarquées par pièce sur un
+niveau à zéro texture.
+
+C'est le **LOT 5** du plan `2026-09-06-arrachement-des-moteurs`, et il conditionne tous les autres :
+aucune décision de contenu ne se prend avant lui. Le détail de l'audit est dans
+[`howto-integrer-un-modele-tiers`](../.claude/resources/howto-integrer-un-modele-tiers.md).
+
+### Les ennemis n'ont aucune patine — règle permanente de l'opérateur
+
+> « Il faut que sur les ennemis aussi on applique toujours une peinture. Je ne veux pas que les
+> textures soient propres, ça ne fait pas naturel. » (2026-09-06)
+
+Pas commencé. ⚠️ **La recette de la Spectre-9 D ne se transpose pas telle quelle** : les coques du
+Chœur ont leurs panneaux **encastrés** dans la surface, pas posés dessus — la courbure et la
+concavité n'y disent pas la même chose.
+
+### Le repli d'aile de la Spectre-9 C ne s'anime toujours pas en jeu
+
+Diagnostiqué comme n'étant **pas** un défaut de câblage (`_longest_clip()` corrigé, la coque D
+s'anime). Cause inconnue. Une revue de bout en bout de la C reste à faire.
+
+### Un ultra-large verrait naître les passes de mitraillage
+
+`GameplayPlane.visible_frame()` est calé sur `REFERENCE_ASPECT` = 16:9. Les bords haut et bas n'en
+dépendent pas (`keep_aspect` = KEEP_HEIGHT), mais les côtés s'écartent : à 21:9 le cadre va jusqu'à
+`|x| = 26,73` alors que les naissances latérales sont posées à 22. Sans conséquence sur les cibles
+déclarées (spec §25.2, 16:9), à rouvrir si le format change.
+
+### La poupe : LOTS 3 à 8 du plan
+
+`docs/plans/2026-09-06-arrachement-des-moteurs.md`. LOTS 1 et 2 livrés. Restent l'arrachement
+(LOT 3), les flammes et la zone de poussée (LOT 4), l'intégration réduite (LOT 5), la géométrie de
+poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
+
+---
+
 ## ⚠️ Ouvert par les parties du 2026-09-05 (niveau 2)
 
 - **Une tourelle abattue n'écrit RIEN au journal.** Les ponts d'envol et les nœuds d'épine

@@ -207,3 +207,51 @@ Mesuré sur quatre textures livrées le même jour, et **le verdict s'inverse da
 ⚠️ **Et le témoin chiffré ne dispense pas de regarder.** La jonction 2×2 de la première texture ne
 montre **aucune ligne** : c'est ça qui a confirmé. Un rapport favorable sur une image jamais ouverte
 n'aurait rien valu de plus que le verdict de l'outil.
+
+## Le cas de la barre blanche (2026-09-06) — la mesure a désigné un autre coupable
+
+Capture de l'opérateur : une barre horizontale de **blanc pur** sur la lèvre d'un coaming de
+hangar. Mesuré : **0,32 % du cadre à (255, 255, 255) d'un seul tenant**. Reproduit au tronçon 2 :
+5 595 pixels écrêtés.
+
+**Le blanc était NEUTRE, et c'est ça qui tranche.** Un émissif du Cortège serait magenta ou cyan ;
+un blanc neutre sur une coque anthracite est un **spéculaire écrêté**, pas une lumière. Et il ne
+paraissait que sous un angle : la même plaque, six secondes plus tard, n'avait rien.
+
+L'opérateur a demandé de corriger « sur la lumière du niveau ». Quatre essais en jeu, même station,
+même instant, `light_specular` clé / rim / remplissage :
+
+| réglage | pixels écrêtés | écart de luminance de la tôle nue |
+|---|---|---|
+| 0,5 / 0,5 / 0,5 *(l'état d'avant)* | 5 595 | 224,6 |
+| 0,5 / 0,0 / 0,0 | 4 365 | 214,3 |
+| 0,25 / 0,0 / 0,0 | 3 655 | 171,3 |
+| 0,0 / 0,0 / 0,0 | **0** | **52,7** |
+
+**La lumière ne pouvait pas porter la correction.** Les deux appoints ne pèsent que 22 % du défaut ;
+la clé le porte, et la descendre assez bas pour l'éteindre **efface le relief de toute la coque** —
+l'écart de la tôle nue s'effondre de 224 à 53, c'est-à-dire exactement le détail que les cartes de
+surface sont là pour donner.
+
+Le coupable était **un matériau, et le seul du niveau que personne n'habillait** : sur huit, sept
+ont un albédo quasi noir (0,018 pour `AA_Hull`) ; `AA_Trim` porte l'ivoire de la charte — **0,723**
+— avec `metallic 0,85` et `roughness 0,28`.
+
+⚠️ **Sur un métal, l'albédo EST la couleur spéculaire.** Ce liseré renvoyait la clé à quarante fois
+la réflectance de la tôle voisine, dans un lobe serré. En rasance sur une arête, ça écrête.
+
+⚠️ **Et baisser `metallic` aurait empiré les choses, contre l'intuition.** Spéculaire entièrement
+coupé, la zone crête encore à 224,6 : le diffus seul frôle l'écrêtage. Un métal n'a presque pas de
+diffus — à 0,25 de metallic, l'ivoire en rayonne cinq fois plus, et on aurait échangé une barre
+brillante contre une barre laiteuse. On garde le métal, on élargit son lobe (0,28 → 0,60, le pic
+divisé par 21) et on amortit sa couleur.
+
+**Résultat mesuré** : 5 781 → 89 pixels de blanc pur (les balles et les explosions, qui doivent
+l'être), et le témoin intact — la tôle nue garde sa moyenne (51,7 → 51,7) et son écart (224,6 →
+225,6).
+
+**Ce que ça apprend, au-delà du cas** : quand un défaut d'image a plusieurs causes possibles,
+**mesurer un TÉMOIN en même temps que le défaut**. Ici le témoin (la tôle nue) a dit que trois des
+quatre réglages guérissaient le symptôme en tuant le patient — et aucun regard à l'œil ne l'aurait
+dit aussi vite.
+

@@ -77,3 +77,43 @@ accepte de ne jamais pouvoir faire de changement paramétrique.
 3. Monter le modèle en jeu derrière un drapeau, capturer contre l'existant, **regarder**.
 4. Écrire le brief à partir de ce que la capture a montré, pas de ce que le rendu studio promettait.
 5. Retirer le drapeau et le `.glb` de banc d'essai — ils gonflent l'export tant qu'ils traînent.
+
+## ⚠️ L'audit de poids passe AVANT tout le reste (2026-09-06)
+
+Quatre livraisons d'un agent tiers sont arrivées le même jour pour la poupe du niveau 2. Mesuré sur
+les binaires, en quatre lignes de Python (chunk JSON du `.glb`) :
+
+| pièce | poids | triangles | images | clips |
+|---|---|---|---|---|
+| groupe moteur | 70,4 Mo | **276 816** | 11 | 3 |
+| berceau | 64,9 Mo | **157 104** | 11 | 4 |
+| ancrage destructible | 59,4 Mo | **54 640** | 11 | 5 |
+| bras d'ancrage | 60,1 Mo | **66 332** | 11 | 6 |
+| *pour mémoire* `long_cortege.glb` — les 500 m, 5 tronçons, 30 marqueurs | — | **49 458** | 0 | — |
+
+Aux quantités que la phase demande (3 moteurs, 3 berceaux, 10 ancrages, ~20 bras) : **≈ 3,17
+millions de triangles et ~1 Go**, soit **soixante-quatre fois tout le niveau**.
+
+**La géométrie et les cotes étaient justes** — l'ancrage fait exactement les 2,40 × 1,40 × 1,20 de
+sa planche, le berceau porte même son contrat de mariage écrit au millimètre. Ce n'est donc pas une
+livraison ratée : c'est une livraison **à un autre budget**, et l'ordre de travail en dépend
+entièrement.
+
+**Ce qu'il faut mesurer avant de se réjouir, dans cet ordre :**
+
+1. **triangles et poids**, comparés à ce que le dépôt embarque déjà — un rapport, pas un chiffre ;
+2. **noms de matériaux** : `01 | Anthracite blinde`, `06 | Energie magenta`… au lieu de `AA_*`.
+   `CortegeSkin` reconnaît son émissif **par son nom** — tel quel, rien n'est habillé et surtout
+   **rien ne peut s'éteindre**, sans qu'aucune erreur ne le dise ;
+3. **images embarquées** : onze par pièce, sur un niveau dont le harnais échoue le build si une
+   texture apparaît ;
+4. **noms de nœuds** : 1 300 nœuds en clair avec suffixes `.001`. Le moteur adresse ses marqueurs
+   par leur nom ; il faut un contrat, pas un inventaire ;
+5. **clips**, qui sont souvent le vrai cadeau — `Ouverture` et `Fermeture` séparés valent mieux
+   qu'un changement de couleur, et `ADR-0046` rappelle qu'un glTF **n'exécute pas les drivers**.
+
+⚠️ **Et l'échelle ne se déduit pas d'un rendu.** Trois berceaux livrés côte à côte font 33,6 m
+quand le joueur n'en couvre que 28 : leurs ancrages extérieurs seraient hors de portée. Les
+« coller » ne suffisait pas — **jointifs, ils font déjà 33,6**. Seule une réduction d'échelle
+passait, et c'est une contrainte de GAMEPLAY qu'aucune revue d'asset ne voit.
+

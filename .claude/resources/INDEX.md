@@ -145,6 +145,28 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   collision sans lui. ⚠️ Un banc qui **recopie** la boucle ment — `tools/dive_bench.gd` pilote le
   vrai `_slide_to()`. ⚠️ `check.sh | grep && git commit` prend le code de retour de **grep** : un
   commit est passé rouge.
+- [Le plan de VOL n'est pas le plan VISIBLE](pratique-le-plan-de-vol-n-est-pas-le-cadre.md) —
+  **quatre défauts en un jour**, tous nés de la même confusion. `BOUNDS` dit où le CHASSEUR va
+  (±8, ±14) ; la caméra montre le plan de **−7,72 à +12,28** et jusqu'à **|x| = 20,37**. Il reste
+  donc 4,28 unités visibles au-dessus de l'arène — le couloir d'entrée, qui existait et que
+  personne n'utilisait. Symptômes payés : des tourelles visibles et intouchables sur 26 % de la
+  hauteur d'écran, les **115** naissances d'ennemis du jeu à l'intérieur du cadre, des balles
+  éteintes 0,72 unité avant le bord, des ancrages hors de portée. ⚠️ **Naître hors cadre était
+  IMPOSSIBLE** : le couperet de despawn tombait SOUS le bord haut, donc une coque posée dehors
+  mourait à sa première trame, sans un mot — une règle de sortie qui interdisait une règle
+  d'entrée. ⚠️ Un seul `DESPAWN_MARGIN` ne peut pas garder trois bords : le bas est une sortie,
+  le haut et les côtés des entrées. La question a désormais une réponse mesurée,
+  `GameplayPlane.visible_frame(camera, fov)` — **qui prend la caméra en paramètre exprès** : un
+  nombre recopié en commentaire meurt au premier déplacement de caméra, en silence.
+- [Un signal déclaré n'est pas un signal branché](pratique-un-signal-declare-n-est-pas-branche.md)
+  — le signal existait, le relais existait, l'abonné existait ; **la connexion manquait**. Aucune
+  erreur, aucun test rouge, et au journal l'absence d'une ligne ressemble à une ligne qu'on n'a pas
+  déclenchée. Coût : `node_seen`, **la seule réplique du jeu qui enseigne une mécanique**, n'a
+  jamais été jouée une seule fois. Trouvée par accident, via un drapeau de debug branché sur le
+  même signal et resté muet. ⚠️ Un signal se teste par sa **chaîne**, pas par ses maillons ; et
+  quand on ajoute une pièce destructible, on connecte TOUS ses signaux dans le même geste — celui
+  qui a une conséquence de jeu visible ET celui qui ne porte qu'une réplique. ⚠️ Cousin : un banc
+  qui **tue d'un coup** ne traverse jamais l'état intermédiaire qu'il prétend prouver.
 - [Retourner une règle retourne la narration](pratique-retourner-une-regle-retourne-la-narration.md)
   — une règle de jeu s'inverse (un nœud éteint SON tronçon, plus le suivant), le code suit, les
   tests sont verts, et **le jeu continue de dire au joueur le contraire** : deux répliques de

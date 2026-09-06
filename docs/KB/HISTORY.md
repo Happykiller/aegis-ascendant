@@ -491,3 +491,31 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
   est devenue un tas. Remplacée avec sa trace, son pourquoi et son test inverse.
 - **Deux questions posées en jargon n'ont rien rapporté** : le retour attendu n'est pas arrivé et
   il a fallu les reposer en clair. Consigne dans [`REGLES/consignes.md`](REGLES/consignes.md).
+
+## 2026-09-06 — le jour où le cadre est devenu mesurable, et la poupe est née
+
+- **Le nœud d'épine a changé de camp.** Il éteignait le tronçon SUIVANT — donc hors de l'écran, à
+  quarante mètres devant : « quand je détruis un nœud, pas de changement » (opérateur, en jouant).
+  Il éteint le sien, et les cinq nœuds remontent en tête de tronçon (`BRIEF-0104`). Le cinquième
+  ne soulageait rien du tout jusque-là.
+- **Le jeu disait encore le contraire au joueur** : deux répliques de Lyra et un objectif de
+  briefing affirmaient l'ancienne règle. Leçon dans
+  [`pratique-retourner-une-regle-retourne-la-narration`](../../.claude/resources/pratique-retourner-une-regle-retourne-la-narration.md).
+- **Le plan de VOL n'est pas le plan VISIBLE**, et la confusion a produit quatre défauts le même
+  jour — tourelles intouchables, 115 naissances d'ennemis dans le cadre, balles éteintes à
+  l'écran, ancrages hors de portée. `GameplayPlane.visible_frame()` rend désormais la réponse.
+  Page :
+  [`pratique-le-plan-de-vol-n-est-pas-le-cadre`](../../.claude/resources/pratique-le-plan-de-vol-n-est-pas-le-cadre.md).
+- **Un signal déclaré n'est pas un signal branché** : `CortegeSpineNode.engaged` n'a jamais été
+  connecté, et `node_seen` — la seule réplique qui enseigne une mécanique — n'a jamais été jouée.
+  Page :
+  [`pratique-un-signal-declare-n-est-pas-branche`](../../.claude/resources/pratique-un-signal-declare-n-est-pas-branche.md).
+- **La barre de blanc pur venait du liseré, pas de la lumière** : `AA_Trim` est le seul matériau du
+  niveau à albédo clair (0,723) ET quasi miroir, et sur un métal l'albédo EST la couleur
+  spéculaire. Quatre essais mesurés ont montré qu'aucun réglage de lumière ne pouvait corriger sans
+  effacer le relief de toute la coque.
+- **La phase finale du niveau 2 existe** : plan `2026-09-06-arrachement-des-moteurs`, LOTS 1 et 2
+  livrés en boîtes grises — trois moteurs, dix verrous à quatre états, l'arrachement, le silence
+  et l'aveu de Lyra. Quatre binaires tiers audités : **3,17 millions de triangles** aux quantités
+  demandées, contre 49 458 pour tout le niveau.
+
