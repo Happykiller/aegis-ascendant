@@ -765,8 +765,14 @@ func test_each_section_owns_its_emissive_so_one_can_die_alone() -> void:
 						"les troncons %d et %d partagent un materiau emissif" % [i + 1, j + 1])
 
 	# Et eteindre le premier laisse les autres allumes.
+	var teinte_avant: Color = (par_troncon[0][0] as StandardMaterial3D).albedo_color
 	for mat in (par_troncon[0] as Array):
-		(mat as StandardMaterial3D).emission_energy_multiplier = CortegeSkin.EMISSIVE_DEAD
+		CortegeSkin.extinguish(mat as StandardMaterial3D)
+	# ⚠️ L'ALBEDO TOMBE AUSSI, ET C'EST CE QUI REND L'EXTINCTION VISIBLE. Baisser la seule
+	# emission ne donnait que 4 a 5 % d'ecart de luminance : `_skin_emissive()` pose la meme
+	# carte en ALBEDO, et sous la cle directionnelle le diffus domine.
+	assert_true((par_troncon[0][0] as StandardMaterial3D).albedo_color.r < teinte_avant.r * 0.5,
+		"un conduit mort perd aussi sa couleur, pas seulement sa lueur")
 	for mat in (par_troncon[1] as Array):
 		assert_almost_eq((mat as StandardMaterial3D).emission_energy_multiplier,
 			CortegeSkin.EMISSIVE_ENERGY, 0.001,

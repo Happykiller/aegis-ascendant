@@ -216,7 +216,7 @@ func _on_section_weakened(section: int, turrets: int) -> void:
 	var sections := _flyby.sections()
 	if section >= 0 and section < sections.size():
 		for mat in CortegeSkin.emissives_of(sections[section]):
-			mat.emission_energy_multiplier = CortegeSkin.EMISSIVE_DEAD
+			CortegeSkin.extinguish(mat)
 	print("[Cortege] tronçon %02d affaibli — %d tourelles, conduit éteint" % [section + 1, turrets])
 	if turrets <= 0:
 		return

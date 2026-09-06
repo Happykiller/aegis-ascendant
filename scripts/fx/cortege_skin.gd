@@ -166,6 +166,17 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 ## n'a plus à le porter, et l'énergie n'a plus à compenser un fond sombre qui n'existe plus.
 const EMISSIVE_ENERGY := 0.45
 
+## Ce que l'albédo d'un conduit mort garde de sa couleur.
+##
+## ⚠️ SANS LUI L'EXTINCTION NE SE VOYAIT PAS, ET LA MESURE LE DIT : 4 à 5 % d'écart de
+## luminance entre un conduit alimenté et un conduit éteint. Le moteur ne baissait que
+## l'ÉMISSION — or `_skin_emissive()` pose la même carte en ALBÉDO, et sous la lumière clé
+## directionnelle c'est le terme diffus qui domine. On éteignait donc une lampe en gardant
+## sa peinture fluo.
+##
+## Un conduit mort perd les deux : il ne rayonne plus, et sa couleur retombe vers le bordé.
+const DEAD_ALBEDO := 0.30
+
 ## Ce qu'il reste d'un conduit dont le nœud d'épine est tombé.
 ##
 ## ⚠️ IL NE VA PAS À ZÉRO, ET C'EST DÉLIBÉRÉ. Une ligne éteinte pour de bon disparaît dans
@@ -181,6 +192,17 @@ const EMISSIVE_DEAD := 0.06
 ## est dans le `for mesh`, pas au-dessus. Les cinq tronçons portent donc cinq copies, et
 ## baisser l'une n'éteint pas les autres. Sans cette propriété il aurait fallu un kit de
 ## conduits, comme il a fallu un kit d'épine pour que les bulbes meurent un par un.
+## Éteint un conduit : l'émission ET l'albédo, dans le même geste.
+##
+## ⚠️ LES DEUX ENSEMBLE, ET C'EST TOUT L'INTÉRÊT D'AVOIR UNE FONCTION. Baisser la seule
+## émission depuis l'appelant marchait « en théorie » et ne se voyait pas : le savoir sur ce
+## qu'est un conduit mort vit ici, avec la fonction qui l'a allumé.
+static func extinguish(mat: StandardMaterial3D) -> void:
+	mat.emission_energy_multiplier = EMISSIVE_DEAD
+	mat.albedo_color = Color(mat.albedo_color.r * DEAD_ALBEDO,
+		mat.albedo_color.g * DEAD_ALBEDO, mat.albedo_color.b * DEAD_ALBEDO,
+		mat.albedo_color.a)
+
 static func emissives_of(section: Node) -> Array[StandardMaterial3D]:
 	var out: Array[StandardMaterial3D] = []
 	for mesh in _meshes(section):
