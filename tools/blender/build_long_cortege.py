@@ -3,6 +3,7 @@
     blender-aegis -b -P tools/blender/build_long_cortege.py
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --plate
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --branches
+    blender-aegis -b -P tools/blender/build_long_cortege.py -- --nodes
     ./scripts/build-hull.sh --check long_cortege      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/long_cortege.glb` et, avec `--plate`,
@@ -5245,6 +5246,8 @@ def main() -> None:
         render_plate(report)
     if "--branches" in sys.argv:
         render_branch_plate(report)
+    if "--nodes" in sys.argv:
+        render_node_plate(report)
 
 
 # ==========================================================================
@@ -5978,6 +5981,207 @@ def render_branch_plate(report: dict) -> None:
                 tiles.append((path, BRANCH_TILE_H))
         os.makedirs(os.path.dirname(BRANCH_PLATE), exist_ok=True)
         _compose(tiles, BRANCH_PLATE, width=BRANCH_TILE_W)
+    finally:
+        for leftover in os.listdir(staging):
+            os.remove(os.path.join(staging, leftover))
+        os.rmdir(staging)
+
+
+# ==========================================================================
+# Planche des nœuds en tete de troncon — `--nodes` (BRIEF-0104)
+# ==========================================================================
+# ⚠️ CE QUE CETTE PLANCHE PROUVE NE SE VOIT SUR AUCUNE VUE DE DESSUS. La question
+# du lot n'est pas « ou est le nœud sur les 500 m » — un plan y repond — c'est
+# « le joueur le voit-il DANS LE CADRE au moment ou il franchit la frontiere du
+# troncon ». Ca ne se lit qu'a la camera du jeu, au FOV du jeu, avec le chasseur
+# pose a sa place : le cadre ne couvre que 26 m de pont, et 26 m sur 500 sont
+# exactement ce qui separe une mecanique lisible d'une mecanique invisible.
+#
+# ⚠️ ET ELLE ETEINT LE TRONCON DU NŒUD, PAS TOUTE LA COQUE. `weakened_section()`
+# rend desormais `section_index` : le nœud abattu eteint LE SIEN. A l'entree d'un
+# troncon, les deux etats sont donc dans le meme cadre — le couloir devant soi
+# mort, le troncon precedent encore vif sous la frontiere. C'est la demande de
+# l'operateur mot pour mot, et une extinction globale l'aurait masquee.
+NODE_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0104-planche-noeuds.png")
+NODE_TILE_W = 1920
+NODE_TILE_H = 1080
+#: Position du chasseur dans le cadre, recopiee de la planche des branches.
+NODE_PLAYER_Z = 3.4
+#: L'assemblage de `cortege_spine_node.gd`, recopie ici pour la seule planche
+#: (comme `KIT_*` pour les affuts). ⚠️ Aucune de ces cotes ne part dans le `.glb`.
+SPINE_CORE_LIFT = 0.21
+SPINE_BRACE_LIFT = 0.30
+SPINE_BRACE_GAUGE = 0.50
+SPINE_BRACE_SPREAD = 0.78
+SPINE_BRACE_COUNT = (2, 4)
+
+#: Les trois vues, et pourquoi celles-la. (troncon, station du chasseur, titre)
+#: ⚠️ LE CHASSEUR EST POSE SUR LA FRONTIERE, PAS « VERS LE DEBUT ». C'est la seule
+#: pose qui reponde a la question : si le nœud n'etait pas dans ce cadre-la, il
+#: serait deja trop tard quand il y entrerait.
+NODE_VIEWS = (
+    (2, 100.0, "ENTREE DU TRONCON 2 — le chasseur est EXACTEMENT sur la "
+               "frontiere s = 100"),
+    (4, 300.0, "ENTREE DU TRONCON 4 — le chasseur est EXACTEMENT sur la "
+               "frontiere s = 300 (nœud repousse a +5 par la fosse de s = 292)"),
+    # ⚠️ LE CHASSEUR EST A s = 36, ET C'EST UNE CORRECTION MESUREE. Pose a 39, sa
+    # silhouette recouvre le pont de s = 38 a 41,5 — donc exactement le debut de
+    # l'artere que cette vue doit montrer. Un cadrage qui cache sa propre preuve
+    # ne prouve rien ; a 36, les 41,1 m sortent de derriere l'aile.
+    # ⚠️ ET LE TITRE TIENT DANS LE CADRE : a 0,024 de hauteur, la legende passe
+    # ~170 caracteres sur 1920 px. Au-dela elle est COUPEE au bord droit, sans
+    # que rien ne le signale — la premiere version de cette vue y a perdu ses
+    # deux derniers chiffres.
+    (1, 36.0, "TRONCON 1 — le fuseau de proue interdit mieux que +46, et la "
+              "voie EXTERNE ne s'allume qu'a s = 41,1 (l'interne des s = 27,3)"),
+)
+
+
+def _visible_deck_span(centre: float, deck_y: float = -4.30) -> tuple[float, float]:
+    """(s le plus proche, s le plus lointain) que la camera du jeu montre du pont.
+
+    Mesure et non estimation : les deux rayons de bord de cadre sont intersectes
+    avec le plan du pont. C'est ce nombre — 26 m sur 500 — qui dit si un
+    marqueur est visible a un instant donne.
+    """
+    out: list[float] = []
+    tan_v = math.tan(CAM_FOV_V * 0.5)
+    for sign in (+1.0, -1.0):
+        ray = (CAM_FORWARD + CAM_UP * (sign * tan_v)).normalized()
+        t = (CAM_POS.y - deck_y) / -ray.y
+        out.append(centre - (CAM_POS.z + ray.z * t))
+    return min(out), max(out)
+
+
+def _screen_v(point: Vector) -> float:
+    """Hauteur d'ecran d'un point, en fraction : -1 = bas du cadre, +1 = haut."""
+    rel = point - CAM_POS
+    forward = rel.dot(CAM_FORWARD)
+    if forward <= 0.0:
+        return math.nan
+    return (rel.dot(CAM_UP) / forward) / math.tan(CAM_FOV_V * 0.5)
+
+
+def _mount_spine(sources: dict, number: int, base: Vector, dead: bool) -> None:
+    """Le nœud complet sur son marqueur — berceau, entretoises, et le cœur.
+
+    ⚠️ LE CŒUR DISPARAIT QUAND LE NŒUD TOMBE, LE BERCEAU RESTE : c'est
+    `_take_damage()` de `cortege_spine_node.gd`, et c'est ce qui distingue a
+    l'ecran un nœud abattu d'un nœud jamais touche. Une planche qui garderait le
+    cœur allume ou eteint mentirait dans les deux sens.
+    """
+    _kit_piece(sources, "spine_cradle", base, 0.0, 1.0)
+    if not dead:
+        _kit_piece(sources, "spine_core",
+                   base + Vector((0.0, SPINE_CORE_LIFT, 0.0)), 0.0, 1.0)
+    braces = SPINE_BRACE_COUNT[number % len(SPINE_BRACE_COUNT)]
+    offsets = (0.0,) if braces == 2 else (-SPINE_BRACE_SPREAD, SPINE_BRACE_SPREAD)
+    for side in (-1.0, 1.0):
+        for offset in offsets:
+            _kit_piece(sources, "spine_brace",
+                       base + Vector((side * SPINE_BRACE_GAUGE,
+                                      SPINE_BRACE_LIFT, offset)),
+                       0.0 if side > 0.0 else math.pi, 1.0)
+
+
+def _extinguish_section(decor: list, section: int) -> int:
+    """Eteint `AA_Emissive_Engine` du SEUL troncon `section`, comme le moteur.
+
+    `CortegeSkin` duplique le materiau par maillage avant de poser l'energie ;
+    sans cette copie, les cinq troncons partagent un slot et l'extinction les
+    emporterait tous — la planche montrerait alors une coque entierement morte,
+    c'est-a-dire l'inverse de ce que le lot veut prouver.
+    """
+    prefix = f"Section_{section:02d}"
+    touched = 0
+    for obj in decor:
+        if obj.type != "MESH" or not obj.name.startswith(prefix):
+            continue
+        for index, slot in enumerate(obj.data.materials):
+            if slot is not None and slot.name.startswith("AA_Emissive_Engine"):
+                obj.data.materials[index] = slot.copy()
+        touched += _set_emissive_energy([obj], EMISSIVE_ENERGY_DEAD)
+    return touched
+
+
+def _tile_nodes(path: str, report: dict, view: tuple, dead: bool) -> None:
+    """Une entree de troncon a la camera du jeu, alimentee ou nœud abattu."""
+    section, player_s, title = view
+    centre = player_s + NODE_PLAYER_Z
+    station = SPINES[section - 1]
+    frontier = (section - 1) * SECTION_LENGTH
+    near, far = _visible_deck_span(centre)
+    _plate_reset()
+    decor = _import(OUTPUT, "Decor", Vector((0.0, 0.0, centre)))
+    turret_src = _kit_sources(TURRET_KIT)
+    spine_src = _kit_sources(SPINE_KIT)
+    seen: list[str] = []
+    for route in report["branch_routes"]:
+        ts = route["station"]
+        if not (near - 2.0 <= ts <= far + 2.0):
+            continue
+        seat, _low = turret_seat_y(ts, route["marker_x"])
+        _mount_turret(turret_src, route["number"],
+                      Vector((route["marker_x"], seat, -(ts - centre))),
+                      route["heavy"])
+        seen.append(f"{route['name']}{' LOURDE' if route['heavy'] else ''}")
+    for number, s in enumerate(SPINES, start=1):
+        if not (near - 2.0 <= s <= far + 2.0):
+            continue
+        seat, _low = spine_seat_y(s)
+        _mount_spine(spine_src, number, Vector((0.0, seat, -(s - centre))),
+                     dead and number == section)
+        seen.append(f"Spine_{number:02d}")
+    _import(FIGHTER, "Player", Vector((0.0, 0.0, NODE_PLAYER_Z)))
+    lit = _set_emissive_energy(decor, EMISSIVE_ENERGY_LIT)
+    killed = _extinguish_section(decor, section) if dead else 0
+    print(f"  [nœuds] troncon {section}, chasseur a s = {player_s:.1f}, "
+          f"cadre s {near:.1f} a {far:.1f} : {lit} materiau(x) a "
+          f"{EMISSIVE_ENERGY_LIT:.2f}"
+          + (f", {killed} eteint(s) a {EMISSIVE_ENERGY_DEAD:.2f} sur "
+             f"Section_{section:02d}" if dead else ""))
+    _plate_lights()
+    seat, _low = spine_seat_y(station)
+    v = _screen_v(Vector((0.0, seat, -(station - centre))))
+    camera = _plate_camera("game", _to_blender(CAM_POS), _to_blender(CAM_FORWARD),
+                           _to_blender(CAM_UP), CAM_FOV_V)
+    tint = (1.0, 0.62, 0.55) if dead else (1.0, 0.88, 0.55)
+    _label(camera, "CAMERA DU JEU  ·  " + title
+           + ("  ·  NŒUD ABATTU" if dead else "  ·  ALIMENTE"),
+           -0.96, 0.90, 0.024, NODE_TILE_W, NODE_TILE_H, tint)
+    _label(camera,
+           f"Spine_{section:02d} a s = {station:.1f} (+{station - frontier:.1f} m "
+           f"du debut du troncon)  ·  cadre sur le pont : s {near:.1f} a "
+           f"{far:.1f} ({far - near:.1f} m)  ·  le nœud est a "
+           f"{50.0 * (v + 1.0):.0f} % de la hauteur d'ecran",
+           -0.96, 0.84, 0.024, NODE_TILE_W, NODE_TILE_H)
+    _label(camera, "  ·  ".join(seen) + "  —  pieces REELLES de spine_kit.glb "
+           "et turret_kit.glb", -0.96, 0.78, 0.022, NODE_TILE_W, NODE_TILE_H,
+           (0.72, 0.84, 1.0))
+    _label(camera,
+           (f"ETEINT : Section_{section:02d} a {EMISSIVE_ENERGY_DEAD:.2f} "
+            "(CortegeSkin.EMISSIVE_DEAD) et cœur retire "
+            "(cortege_spine_node._take_damage) — ce qui reste doit se LIRE"
+            if dead else
+            f"ALIMENTE : AA_Emissive_Engine a {EMISSIVE_ENERGY_LIT:.2f} "
+            "(CortegeSkin.EMISSIVE_ENERGY), le seul slot que le moteur eteint"),
+           -0.96, -0.94, 0.022, NODE_TILE_W, NODE_TILE_H,
+           (1.0, 0.62, 0.55) if dead else (0.72, 0.84, 1.0))
+    _render(path, NODE_TILE_W, NODE_TILE_H)
+
+
+def render_node_plate(report: dict) -> None:
+    staging = tempfile.mkdtemp(prefix="aegis-cortege-nodes-")
+    tiles: list[tuple[str, int]] = []
+    try:
+        for index, view in enumerate(NODE_VIEWS):
+            for dead in (False, True):
+                path = os.path.join(
+                    staging, f"node{index}{'_dead' if dead else '_lit'}.png")
+                _tile_nodes(path, report, view, dead)
+                tiles.append((path, NODE_TILE_H))
+        os.makedirs(os.path.dirname(NODE_PLATE), exist_ok=True)
+        _compose(tiles, NODE_PLATE, width=NODE_TILE_W)
     finally:
         for leftover in os.listdir(staging):
             os.remove(os.path.join(staging, leftover))
