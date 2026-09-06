@@ -210,7 +210,7 @@ static func extinguish(mat: StandardMaterial3D) -> void:
 
 static func emissives_of(section: Node) -> Array[StandardMaterial3D]:
 	var out: Array[StandardMaterial3D] = []
-	for mesh in _meshes(section):
+	for mesh in _hull_meshes(section):
 		for i in mesh.get_surface_override_material_count():
 			var mat := mesh.get_surface_override_material(i) as StandardMaterial3D
 			if mat != null and StringName(mat.resource_name) == EMISSIVE_MATERIAL:
@@ -235,6 +235,31 @@ static func _map(stem: String, suffix: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+## Les maillages de la COQUE d'un tronçon — et pas ce que le moteur y a accroché.
+##
+## ⚠️ CETTE FRONTIÈRE A ÉTÉ TROUVÉE PAR UN COMPTE, ET ELLE COMPTAIT. `emissives_of()` marchait
+## d'abord sur tous les descendants : abattre un nœud d'épine éteignait **36 matériaux** au
+## lieu d'un. Les trente-cinq autres n'étaient pas des conduits — c'étaient les YEUX DES
+## TOURELLES, les feux des ponts et les bulbes d'épine, que le moteur accroche aux marqueurs.
+##
+## Deux dégâts, dont un invisible. Le visible : l'œil d'une tourelle dit « cette pièce est
+## vivante / affaiblie / morte », un signal qui n'a rien à voir avec l'alimentation du tronçon.
+## L'invisible : `CortegeTurret._set_eye()` réécrit cette énergie à CHAQUE TIR, donc
+## l'extinction y était défaite dans la seconde — on éteignait beaucoup, et rien ne restait.
+##
+## La règle est donc : on ne descend pas dans un marqueur. Ce qui pend sous `Turret_NN`,
+## `Bay_NN` ou `Spine_NN` appartient à la pièce, pas au bordé.
+static func _hull_meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
+	var mesh := node as MeshInstance3D
+	if mesh != null:
+		out.append(mesh)
+	for child in node.get_children():
+		var nom := String(child.name)
+		if nom.begins_with("Turret_") or nom.begins_with("Bay_") or nom.begins_with("Spine_"):
+			continue
+		_hull_meshes(child, out)
+	return out
 
 static func _meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
 	var mesh := node as MeshInstance3D

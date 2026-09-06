@@ -777,3 +777,44 @@ func test_each_section_owns_its_emissive_so_one_can_die_alone() -> void:
 		assert_almost_eq((mat as StandardMaterial3D).emission_energy_multiplier,
 			CortegeSkin.EMISSIVE_ENERGY, 0.001,
 			"le troncon voisin garde sa lumiere")
+
+## ⚠️ ETEINDRE UN TRONCON NE DOIT PAS ETEINDRE SES PIECES. Trouve par un COMPTE au journal le
+## 2026-09-06 : abattre un nœud eteignait 36 materiaux au lieu d'un. Les trente-cinq autres
+## etaient les yeux des tourelles, les feux des ponts et les bulbes d'epine, accroches aux
+## marqueurs par le moteur.
+##
+## Le degat invisible etait le pire : `CortegeTurret._set_eye()` reecrit cette energie a chaque
+## tir, donc l'extinction y etait defaite dans la seconde. On eteignait beaucoup, et rien ne
+## restait — un effet nul obtenu en touchant trente-cinq objets de trop.
+func test_extinguishing_a_section_leaves_its_mounted_pieces_alone() -> void:
+	var packed: PackedScene = load(FlybyScript.DECOR_PATH)
+	var hull := track(packed.instantiate()) as Node3D
+	CortegeSkin.apply(hull)
+	var section: Node3D = null
+	for child in hull.get_children():
+		var s := child as Node3D
+		if s != null and s.name.begins_with("Section_"):
+			section = s
+			break
+	assert_true(section != null, "un troncon a ete trouve")
+
+	var avant := CortegeSkin.emissives_of(section).size()
+	# On accroche une piece au marqueur, comme le moteur le fait au montage.
+	var marqueur: Node3D = null
+	for child in section.get_children():
+		var m := child as Node3D
+		if m != null and m.name.begins_with("Turret_"):
+			marqueur = m
+			break
+	assert_true(marqueur != null, "le troncon porte un marqueur de tourelle")
+	var oeil := MeshInstance3D.new()
+	oeil.name = "FauxOeil"
+	var lueur := StandardMaterial3D.new()
+	lueur.resource_name = "AA_Emissive_Engine"
+	lueur.emission_enabled = true
+	oeil.mesh = BoxMesh.new()
+	oeil.set_surface_override_material(0, lueur)
+	marqueur.add_child(oeil)
+
+	assert_eq(CortegeSkin.emissives_of(section).size(), avant,
+		"la piece accrochee au marqueur n'entre PAS dans les conduits du troncon")
