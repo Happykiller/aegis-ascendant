@@ -28,7 +28,7 @@ script Blender versionné**, exportés en glTF binaire et importés par Godot.
 ```
 tools/blender/lib/aegis_kit.py     ← bibliothèque hard-surface partagée (la source de cohérence)
 tools/blender/build_<unit>.py      ← un script par coque, déterministe et rejouable
-        │  blender45 -b -P tools/blender/build_<unit>.py
+        │  blender-aegis -b -P tools/blender/build_<unit>.py
         ▼
 assets/imported/models/<classe>/<unit>.glb   ← LFS
         │  import Godot
@@ -36,9 +36,14 @@ assets/imported/models/<classe>/<unit>.glb   ← LFS
 scenes/<classe>/<unit>.tscn        ← le mesh remplace le Sprite3D
 ```
 
-Blender **4.5.11 LTS** est installé hors dépôt par `./scripts/bootstrap-blender.sh` (tarball
-officiel, SHA256 vérifié, symlink `blender45`), et n'est **jamais** invoqué autrement qu'en
-headless (`blender45 -b -P …`), conformément à l'ADR-0002.
+Blender **5.2.1 LTS** est installé hors dépôt par `./scripts/bootstrap-blender.sh` (tarball
+officiel, SHA256 vérifié, symlink `blender-aegis`), et n'est **jamais** invoqué autrement qu'en
+headless (`blender-aegis -b -P …`), conformément à l'ADR-0002.
+
+> Migré depuis Blender 4.5.11 LTS le 2026-09-05 (voir `docs/BACKLOG.md`) ; l'alias a perdu son
+> numéro de version à la même occasion (il s'appelait `blender45`) — un nom d'outillage ne doit
+> pas mentir sur la version qu'il pointe. Voir ADR-0047 pour la garantie de déterminisme qui a
+> survécu à la migration.
 
 **Le script Python EST la source de l'asset.** Aucun `.blend` n'est versionné : un `.blend` est un
 binaire opaque qu'on ne peut ni relire ni diff-er, et qui n'est pas rejouable en headless. Le
@@ -55,7 +60,7 @@ cohérentes entre elles et avec le gameplay.
 - **Orientation d'auteur** (dans Blender, Z-up) : nez vers **-Y**, dessus vers **+Z**.
 - **Orientation cible** (dans Godot) : nez vers **-Z** (le haut de l'écran), dessus vers **+Y**.
 - Ces deux règles ne s'enchaînent **pas** naïvement, et c'est un piège coûteux. L'exporteur glTF de
-  Blender 4.5 applique `(x, y, z) → (x, z, -y)` : un nez modelé en `-Y` ressort en **`+Z`** côté
+  Blender applique `(x, y, z) → (x, z, -y)` : un nez modelé en `-Y` ressort en **`+Z`** côté
   Godot, c'est-à-dire **à reculons**. La réconciliation (une rotation de 180° autour de Z) est faite
   **une seule fois, dans `export_hull()` du kit**. Un script de coque n'a donc jamais à y penser :
   il modélise nez vers `-Y`, il obtient nez vers `-Z` en jeu.

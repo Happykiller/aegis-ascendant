@@ -55,11 +55,11 @@ Ce sont des rendus du modèle livré.
 
 Le script utilise `../v2/spectre9_v2.blend` et `../v2/geometry.py`.
 La V3 a été produite avec Blender 5.2.1 LTS, actuellement installé derrière l'alias
-local `blender45`.
+local `blender-aegis`.
 
 ```sh
-/home/admin/.local/bin/blender45 -b -noaudio -t 8 --python build_spectre9_v3.py
-/home/admin/.local/bin/blender45 -b -noaudio --python verify_spectre9_v3.py
-/home/admin/.local/bin/blender45 -b -noaudio -t 8 --python render_motion.py
+/home/admin/.local/bin/blender-aegis -b -noaudio -t 8 --python build_spectre9_v3.py
+/home/admin/.local/bin/blender-aegis -b -noaudio --python verify_spectre9_v3.py
+/home/admin/.local/bin/blender-aegis -b -noaudio -t 8 --python render_motion.py
 ffmpeg -v error -y -framerate 5 -i motion_frames/%03d.png -c:v libx264 -crf 20 -pix_fmt yuv420p -r 30 spectre9_v3_motion.mp4
 ```

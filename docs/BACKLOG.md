@@ -97,9 +97,11 @@ défaut ne se voit qu'à pleine poussée, cinquante millisecondes par salve.
 
 ## ⚠️ Demandé par l'opérateur — migrer Blender (2026-09-05)
 
-- [ ] **Passer de Blender 4.5.11 LTS à la LTS courante.** L'opérateur signale une 5.2.1 sur le
-      site officiel ; **à vérifier avant d'agir**, la version n'a pas été contrôlée ici. Il attend
-      « un environnement de travail plus confortable et des résultats plus satisfaisants ».
+- [x] **Passer de Blender 4.5.11 LTS à la LTS courante.** Fait le 2026-09-05 (commits
+      `2202ae6`, `07424e4`) : migration vers 5.2.1, alias renommé `blender45` → `blender-aegis`
+      (un nom d'outillage ne porte plus de numéro de version). Les 19 coques ont été
+      reconstruites et comparées, la garantie `atlas_unwrap()` a tenu (voir ADR-0047) —
+      l'ordre imposé ci-dessous a bien été respecté.
 
       ⚠️ **Ce n'est plus une simple mise à jour d'outil depuis le 2026-09-05.** `atlas_unwrap()`
       enveloppe `smart_project` + `pack_islands`, que le kit refusait par principe. Le principe a

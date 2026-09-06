@@ -50,12 +50,13 @@ de long, 7,307 m de large et 4,166 m de haut.
 
 ## Reconstruction
 
-Blender 5.2.1 LTS. Les fichiers sources et la texture générée sont conservés dans ce dossier.
+Blender 5.2.1 LTS, installé derrière l'alias local `blender-aegis`. Les fichiers sources et la
+texture générée sont conservés dans ce dossier.
 
 ```sh
-/home/admin/.local/bin/blender45 -b -noaudio -t 8 --python build_turret.py
-/home/admin/.local/bin/blender45 -b -noaudio --python verify_turret.py
-/home/admin/.local/bin/blender45 -b -noaudio -t 8 --python render_motion.py
+/home/admin/.local/bin/blender-aegis -b -noaudio -t 8 --python build_turret.py
+/home/admin/.local/bin/blender-aegis -b -noaudio --python verify_turret.py
+/home/admin/.local/bin/blender-aegis -b -noaudio -t 8 --python render_motion.py
 ffmpeg -v error -y -framerate 10 -i motion_frames/%03d.png -c:v libx264 -crf 20 -pix_fmt yuv420p -r 30 tourelle_lourde_motion.mp4
 ```
 
