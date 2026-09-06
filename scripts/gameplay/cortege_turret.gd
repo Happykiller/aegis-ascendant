@@ -573,7 +573,13 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var half := tuning.turret_span_of(turret_scale) * 0.5
+	# ⚠️ LE CIBLAGE ET LE TIR NE SONT PLUS LA MÊME FENÊTRE, ET ILS NE DEVAIENT PAS L'ÊTRE. Une
+	# seule valeur gardait les trois choses : à partir d'où on peut la toucher, à partir d'où
+	# elle tire, et (au double) à partir d'où elle se tourne vers le joueur. Résultat : elle
+	# visait ostensiblement le joueur bien avant d'être touchable — « elle est visible, pourtant
+	# je ne la touche pas ». Le CIBLAGE suit l'écran (`target_span`) ; le TIR garde sa portée,
+	# donc la difficulté ne bouge pas.
+	var half := tuning.target_span * 0.5
 	match _pass:
 		Pass.AHEAD:
 			if here.y <= half:
@@ -662,7 +668,7 @@ func _aim_barrel() -> void:
 
 ## Dans sa fenêtre de TIR — plus étroite que sa fenêtre de recherche.
 func _in_window(here: Vector2) -> bool:
-	return absf(here.y) <= tuning.turret_span_of(turret_scale) * 0.5
+	return absf(here.y) <= tuning.turret_fire_span_of(turret_scale) * 0.5
 
 
 func _direction_to_player(here: Vector2) -> Vector2:

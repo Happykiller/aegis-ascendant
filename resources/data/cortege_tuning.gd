@@ -86,9 +86,38 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 # Les trois mécaniques de coque
 # ==========================================================================
 
+@export_group("Ciblage")
+## SUR QUELLE HAUTEUR DU PLAN DE JEU UNE PIÈCE DE COQUE EST TIRABLE. Une seule valeur pour
+## toutes les familles, et ce n'est pas un réglage d'équilibrage : c'est ce que la caméra
+## montre.
+##
+## ⚠️ IL EXISTE PARCE QUE LE JOUEUR VOYAIT DES TOURELLES QU'IL NE POUVAIT PAS TOUCHER.
+## « J'essaye de tirer dessus, elle est visible, pourtant je ne la touche pas » (opérateur,
+## capture à l'appui, 2026-09-06). Chaque famille avait sa propre fenêtre, choisie sur sa
+## taille apparente — et aucune ne partait de ce que l'écran montre réellement.
+##
+## Mesuré sur la caméra de `cortege.tscn` (origine (0, 14, 5), plongée 70,1°, fov 62° vertical),
+## l'écran couvre le plan de jeu de **y = −7,72 en bas à y = +12,28 en haut**. Une fenêtre
+## symétrique doit donc valoir au moins 2 × 12,28 = 24,56. Ce qui manquait, par famille :
+##
+##   batterie légère   fenêtre ±7,0   -> 5,3 unités visibles et intouchables, 26 % de l'écran
+##   nœud d'épine      fenêtre ±7,0   -> 5,3 unités,                          26 %
+##   tourelle standard fenêtre ±10,0  -> 2,3 unités,                          11 %
+##   pont d'envol      fenêtre ±12,0  -> 0,3 unité,                            1 %
+##   tourelle lourde   fenêtre ±13,0  -> rien : la seule qui couvrait l'écran
+##
+## Et l'injustice était pire qu'un simple trou : une tourelle se TOURNE vers le joueur sur le
+## double de sa portée de tir (`SEEK_SPAN_FACTOR`). Elle le visait donc ostensiblement, à
+## l'écran, bien avant d'être touchable.
+##
+## ⚠️ 26,0 ET NON 24,56 : la caméra bouge (secousses, recadrages), et une fenêtre calée au
+## pixel près rouvrirait le trou au premier tremblement. `test_the_target_window_covers_the_screen`
+## relit la caméra dans la scène et refuse toute valeur qui ne couvre plus.
+@export var target_span: float = 26.0
+
 @export_group("Tourelles")
 ## Distance sur laquelle une tourelle reste tirable — sa taille plus la hauteur de l'écran.
-@export var turret_visible_span: float = 20.0
+@export var turret_fire_span: float = 20.0
 @export var turret_health: float = 180.0
 ## ⚠️ LA TOURELLE NE TÉLÉGRAPHIE PLUS, ELLE TIRE EN CONTINU — ET C'EST UN GAIN DE LISIBILITÉ,
 ## pas une perte. Le modèle précédent était celui du Léviathan : `READY → WINDUP → FIRING →
@@ -136,7 +165,7 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 ## Sa fenêtre est PLUS COURTE que celle de la grosse, et ce n'est pas un réglage de difficulté :
 ## une pièce trois fois plus petite se distingue trois fois moins loin. Lui donner la fenêtre de
 ## la grosse ferait tirer une chose qu'on ne voit pas encore.
-@export var light_turret_visible_span: float = 14.0
+@export var light_turret_fire_span: float = 14.0
 ## ⚠️ ELLE TOMBE EN PASSANT, ET C'EST SA DÉFINITION. À 55 PV elle coûte 4 % de ce qu'un joueur de
 ## référence peut placer dans sa fenêtre : une rafale d'appoint suffit. L'invariant 2 borne le
 ## HAUT (au-delà de 35 %, s'en occuper empêche de faire autre chose) ; c'est le rôle de la pièce
@@ -180,7 +209,7 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 
 ## Sa fenêtre est plus longue que celle de la standard : une pièce deux fois plus grande se
 ## distingue de plus loin. Même raisonnement que pour la légère, pris par l'autre bout.
-@export var heavy_turret_visible_span: float = 26.0
+@export var heavy_turret_fire_span: float = 26.0
 ## ⚠️ ELLE NE TOMBE PAS EN PASSANT, ET C'EST SA DÉFINITION. À 520 PV elle coûte 21 % de ce qu'un
 ## joueur de référence peut placer dans sa fenêtre — contre 9 % pour la standard et 4 % pour la
 ## légère. S'en occuper est une DÉCISION, comme un pont d'envol. L'invariant 2 borne toujours le
@@ -203,7 +232,6 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 ## ⚠️ ILS COÛTENT CHER À FAIRE TOMBER, C'EST LEUR RAISON D'ÊTRE. Un pont laissé debout produit
 ## en continu ; l'abattre est une décision, pas un réflexe. Mais le prix a une borne, et c'est
 ## l'invariant 2 qui la tient.
-@export var bay_visible_span: float = 24.0
 @export var bay_health: float = 900.0
 ## Intervalle entre deux lâchers, tant que le pont vit.
 @export var bay_release_interval: float = 2.2
@@ -217,7 +245,6 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 
 @export_group("Épine dorsale")
 ## Un nœud par tronçon.
-@export var node_visible_span: float = 14.0
 @export var node_health: float = 260.0
 ## Ce qu'un nœud abattu abîme : les tourelles de SON tronçon.
 ##
@@ -329,7 +356,7 @@ func reachable_damage(visible_span: float, dps: float, occupancy: float) -> floa
 	return dps * occupancy * window_for(visible_span)
 
 func turret_reachable() -> float:
-	return reachable_damage(turret_visible_span, reference_dps, occupancy_hull)
+	return reachable_damage(target_span, reference_dps, occupancy_hull)
 
 # --------------------------------------------------------------------------
 # Les réglages, LUS PAR ÉCHELLE
@@ -342,11 +369,11 @@ func turret_reachable() -> float:
 # ⚠️ ELLES NE SONT PAS DANS UNE BOUCLE CRITIQUE. La tourelle les lit à chaque image, mais une
 # lecture de champ derrière un `match` ne coûte rien et n'alloue pas (spec §31).
 
-func turret_span_of(scale: TurretScale) -> float:
+func turret_fire_span_of(scale: TurretScale) -> float:
 	match scale:
-		TurretScale.LIGHT: return light_turret_visible_span
-		TurretScale.HEAVY: return heavy_turret_visible_span
-	return turret_visible_span
+		TurretScale.LIGHT: return light_turret_fire_span
+		TurretScale.HEAVY: return heavy_turret_fire_span
+	return turret_fire_span
 
 func turret_health_of(scale: TurretScale) -> float:
 	match scale:
@@ -374,7 +401,7 @@ func turret_score_of(scale: TurretScale) -> int:
 
 ## Ce qu'un joueur de référence peut placer dans la fenêtre de CETTE échelle.
 func turret_reachable_of(scale: TurretScale) -> float:
-	return reachable_damage(turret_span_of(scale), reference_dps, occupancy_hull)
+	return reachable_damage(turret_fire_span_of(scale), reference_dps, occupancy_hull)
 
 ## Le nom de l'échelle, pour que le message d'un invariant dise LAQUELLE des trois il refuse.
 static func turret_scale_name(scale: TurretScale) -> String:
@@ -384,10 +411,10 @@ static func turret_scale_name(scale: TurretScale) -> String:
 	return "une tourelle standard"
 
 func bay_reachable() -> float:
-	return reachable_damage(bay_visible_span, reference_dps, occupancy_hull)
+	return reachable_damage(target_span, reference_dps, occupancy_hull)
 
 func node_reachable() -> float:
-	return reachable_damage(node_visible_span, node_reference_dps, occupancy_node)
+	return reachable_damage(target_span, node_reference_dps, occupancy_node)
 
 ## Le temps passé à DÉFILER, déduit de la géométrie et de la vitesse — jamais saisi à la main.
 func scroll_duration() -> float:
@@ -512,6 +539,18 @@ func validate() -> PackedStringArray:
 			errors.append("le survol dure %.0f s, hors de la cible %.0f ± %.0f — changez la vitesse ou la longueur des tronçons"
 				% [duree, target_duration, duration_tolerance])
 
+	# --- INVARIANT 1 bis : RIEN NE TIRE DE PLUS LOIN QU'ON NE PEUT LE TOUCHER ----
+	#
+	# ⚠️ C'EST L'INVARIANT QUI MANQUAIT LE 2026-09-06, ET IL AURAIT ATTRAPÉ LE DÉFAUT SEUL.
+	# Chaque famille portait sa propre fenêtre, choisie sur sa taille apparente, et le joueur
+	# tirait sur des pièces qui le visaient sans pouvoir être touchées. Une portée de tir plus
+	# longue que la fenêtre de ciblage, c'est exactement ça — et rien ne le disait.
+	for scale in TurretScale.values():
+		var portee := turret_fire_span_of(scale)
+		if portee > target_span:
+			errors.append("%s tire sur %.1f unités alors qu'on ne peut la toucher que sur %.1f — elle canarderait depuis un endroit où le joueur ne peut pas répondre"
+				% [turret_scale_name(scale), portee, target_span])
+
 	# --- INVARIANT 2 : TOUTE CIBLE TOMBE DANS SA FENÊTRE -----------------
 	# ⚠️ C'EST L'INVARIANT QUI DÉCIDE SI LE NIVEAU EXISTE. Un survol ne revient jamais en
 	# arrière : au-dessus de ce que la fenêtre permet, la cible est indestructible EN PRATIQUE,
@@ -527,8 +566,8 @@ func validate() -> PackedStringArray:
 	#     de la fenêtre, s'occuper d'une seule tourelle empêche de faire quoi que ce soit
 	#     d'autre, et le survol devient une file d'attente.
 	var decisions := [
-		["un pont d'envol", bay_health, bay_reachable(), bay_visible_span],
-		["un nœud d'épine", node_health, node_reachable(), node_visible_span],
+		["un pont d'envol", bay_health, bay_reachable(), target_span],
+		["un nœud d'épine", node_health, node_reachable(), target_span],
 	]
 	for cible in decisions:
 		var nom: String = cible[0]
@@ -551,7 +590,7 @@ func validate() -> PackedStringArray:
 	# est ce qui garantit qu'une échelle future ne naîtra pas hors invariant.
 	for scale in TurretScale.values():
 		var nom_t := turret_scale_name(scale)
-		var portee_t := turret_span_of(scale)
+		var portee_t := turret_fire_span_of(scale)
 		var pv_t := turret_health_of(scale)
 		if portee_t <= 0.0:
 			errors.append("%s : sa fenêtre de tir est nulle" % nom_t)
@@ -612,9 +651,9 @@ func validate() -> PackedStringArray:
 		if turret_health_of(petite) >= turret_health_of(grande):
 			errors.append("%s a %.0f PV pour %.0f à %s : elle ne tombe plus en passant, et la hiérarchie des échelles disparaît"
 				% [np, turret_health_of(petite), turret_health_of(grande), ng])
-		if turret_span_of(petite) >= turret_span_of(grande):
+		if turret_fire_span_of(petite) >= turret_fire_span_of(grande):
 			errors.append("%s se voit sur %.1f pour %.1f à %s : une pièce plus petite ne se distingue pas d'aussi loin"
-				% [np, turret_span_of(petite), turret_span_of(grande), ng])
+				% [np, turret_fire_span_of(petite), turret_fire_span_of(grande), ng])
 		# ⚠️ LA CADENCE VA DANS L'AUTRE SENS, et ce n'est pas une inversion de signe distraite :
 		# une petite tourelle tire MOINS souvent, parce qu'elle vient en groupe. La somme d'une
 		# batterie doit rester sous la pièce du dessus, sinon le joueur apprend à craindre les
@@ -694,7 +733,7 @@ func validate() -> PackedStringArray:
 		# pas comme une récompense.
 		for scale in TurretScale.values():
 			var intervalle := turret_burn_interval_of(scale)
-			var fenetre := turret_span_of(scale)
+			var fenetre := turret_fire_span_of(scale)
 			if intervalle <= 0.0 or fenetre <= 0.0:
 				continue
 			var traversee := fenetre / scroll_speed

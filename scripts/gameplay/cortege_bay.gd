@@ -402,7 +402,8 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var half := tuning.bay_visible_span * 0.5
+	# Le ciblage suit l'écran, comme pour toutes les pièces de coque — voir `target_span`.
+	var half := tuning.target_span * 0.5
 	match _pass:
 		Pass.AHEAD:
 			if here.y <= half:

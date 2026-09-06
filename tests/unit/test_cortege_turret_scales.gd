@@ -44,7 +44,7 @@ func test_each_step_up_is_tougher_slower_and_seen_from_further() -> void:
 			CortegeTuning.turret_scale_name(grande)]
 		assert_true(tuning.turret_health_of(petite) < tuning.turret_health_of(grande),
 			"%s : les PV montent" % nom)
-		assert_true(tuning.turret_span_of(petite) < tuning.turret_span_of(grande),
+		assert_true(tuning.turret_fire_span_of(petite) < tuning.turret_fire_span_of(grande),
 			"%s : la fenetre s'allonge" % nom)
 		assert_true(tuning.turret_burn_interval_of(petite) > tuning.turret_burn_interval_of(grande),
 			"%s : la cadence se resserre" % nom)
@@ -80,7 +80,7 @@ func test_a_heavy_that_turns_as_fast_as_the_standard_is_refused() -> void:
 
 func test_a_heavy_seen_no_further_than_the_standard_is_refused() -> void:
 	var tuning := _sound()
-	tuning.heavy_turret_visible_span = tuning.turret_visible_span
+	tuning.heavy_turret_fire_span = tuning.turret_fire_span
 	assert_true(_says(tuning, "ne se distingue pas d'aussi loin"),
 		"une lourde qui ne se voit pas de plus loin est refusée")
 

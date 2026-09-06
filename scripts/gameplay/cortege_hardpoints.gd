@@ -265,6 +265,13 @@ func _add_node(marker: Node3D, section: int, bullet_manager: BulletManager,
 	node.name = "SpineNode"
 	node.setup(bullet_manager, vfx)
 	node.destroyed.connect(_on_node_destroyed)
+	# ⚠️ CETTE LIGNE MANQUAIT, ET SON ABSENCE ÉTAIT TOTALEMENT MUETTE. Le signal existait, le
+	# relais `_on_node_engaged` existait, `CortegeRoot` s'y abonnait — mais le premier maillon
+	# n'avait jamais été branché. Conséquence : `node_seen`, LA SEULE RÉPLIQUE DU JEU QUI
+	# ENSEIGNE UNE MÉCANIQUE, n'a jamais été jouée une seule fois. Rien ne le disait : pas
+	# d'erreur, pas de test rouge, et au journal l'absence d'une ligne ressemble à une ligne
+	# qu'on n'a pas déclenchée.
+	node.engaged.connect(_on_node_engaged)
 	marker.add_child(node)
 	_nodes.append(node)
 

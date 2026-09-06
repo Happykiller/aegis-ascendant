@@ -68,7 +68,7 @@ func test_a_turret_turns_at_a_constant_rate_never_faster() -> void:
 func test_a_turret_never_burns_outside_its_window() -> void:
 	var turret := _turret()
 	for i in 400:
-		turret.tick(0.02, _world_at(TUNING.turret_visible_span), GameplayPlane.to_plane(_world_at(TUNING.turret_visible_span)))
+		turret.tick(0.02, _world_at(TUNING.turret_fire_span), GameplayPlane.to_plane(_world_at(TUNING.turret_fire_span)))
 	assert_false(turret.is_engaged(),
 		"loin devant, elle n'est pas armee — son faisceau ne peut donc mordre personne")
 
@@ -76,7 +76,7 @@ func test_a_turret_that_has_passed_is_gone_for_good() -> void:
 	var turret := _turret()
 	turret.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_false(turret.has_passed(), "elle est vivante dans sa fenetre")
-	turret.tick(0.02, _world_at(-TUNING.turret_visible_span), GameplayPlane.to_plane(_world_at(-TUNING.turret_visible_span)))
+	turret.tick(0.02, _world_at(-TUNING.turret_fire_span), GameplayPlane.to_plane(_world_at(-TUNING.turret_fire_span)))
 	assert_true(turret.has_passed(), "passee, elle se retire")
 	# ⚠️ Et elle ne revient pas : c'est la loi du survol. Une piece qui se reveillerait en
 	# arriere du joueur tirerait hors du cadre, sans que rien ne le montre.
@@ -192,11 +192,11 @@ func test_the_last_node_now_relieves_its_own_section() -> void:
 func test_a_node_only_becomes_a_target_inside_its_window() -> void:
 	var node := track(NodeScript.make(TUNING, 0)) as CortegeSpineNode
 	node.setup(null, null)
-	node.tick(0.02, _world_at(TUNING.node_visible_span), GameplayPlane.to_plane(_world_at(TUNING.node_visible_span)))
+	node.tick(0.02, _world_at(TUNING.target_span), GameplayPlane.to_plane(_world_at(TUNING.target_span)))
 	assert_false(node.is_engaged(), "loin devant, il n'est pas encore une cible")
 	node.tick(0.02, _world_at(0.0), GameplayPlane.to_plane(_world_at(0.0)))
 	assert_true(node.is_engaged(), "dans sa fenetre, il l'est")
-	node.tick(0.02, _world_at(-TUNING.node_visible_span), GameplayPlane.to_plane(_world_at(-TUNING.node_visible_span)))
+	node.tick(0.02, _world_at(-TUNING.target_span), GameplayPlane.to_plane(_world_at(-TUNING.target_span)))
 	assert_true(node.has_passed(), "derriere, il ne l'est plus jamais")
 
 func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
@@ -252,6 +252,38 @@ func test_the_trim_is_tamed_and_nothing_else_is() -> void:
 	assert_true(SkinScript.tamed(hull) == hull,
 		"la tole n'est pas touchee : son albedo vaut 0,018, elle n'a jamais ecrete")
 	assert_true(SkinScript.tamed(null) == null, "et un materiau absent ne fait pas tomber le montage")
+
+## ⚠️ CE TEST GARDE UN SIGNAL QUI N'A JAMAIS ETE BRANCHE, ET DONT PERSONNE N'A RIEN VU.
+##
+## `CortegeSpineNode.engaged` existait, `CortegeHardpoints._on_node_engaged` existait,
+## `CortegeRoot` s'abonnait a `node_engaged` — et le premier maillon manquait. Aucune erreur,
+## aucun test rouge : au journal, l'absence d'une ligne ressemble a une ligne qu'on n'a pas
+## declenchee.
+##
+## Ce que ca coutait : `node_seen`, LA SEULE REPLIQUE DU JEU QUI ENSEIGNE UNE MECANIQUE
+## (« ce bulbe sur l'axe, c'est un nœud ; abattez-le »), n'a jamais ete jouee une seule fois
+## depuis qu'elle existe. Le nœud est la cible la plus difficile du niveau et la seule dont
+## l'effet demande d'avoir compris le vaisseau.
+func test_the_manager_relays_a_node_entering_its_window() -> void:
+	var manager := track(HardpointsScript.new()) as CortegeHardpoints
+	manager.build(_two_sections(), TUNING, null, null, null)
+	var vus: Array[int] = []
+	manager.node_engaged.connect(func(node: CortegeSpineNode) -> void: vus.append(node.section))
+	var noeuds := manager.nodes()
+	assert_eq(noeuds.size(), 2, "deux noeuds montes")
+	# Encore devant : rien ne doit partir.
+	for node in noeuds:
+		var loin := _world_at(TUNING.target_span)
+		node.tick(0.02, loin, GameplayPlane.to_plane(loin))
+	assert_eq(vus.size(), 0, "hors fenetre, aucun nœud ne s'annonce")
+	# Dans la fenetre : chacun s'annonce, une fois.
+	for node in noeuds:
+		var ici := _world_at(0.0)
+		node.tick(0.02, ici, GameplayPlane.to_plane(ici))
+		node.tick(0.02, ici, GameplayPlane.to_plane(ici))
+	assert_eq(vus.size(), 2,
+		"les deux nœuds ont annonce leur entree en fenetre — et une seule fois chacun")
+	assert_true(vus.has(0) and vus.has(1), "et chacun a annonce SON troncon")
 
 ## Deux troncons montes a la main, avec les noms de marqueurs du contrat de forge.
 func _two_sections() -> Array[Node3D]:
@@ -370,9 +402,9 @@ func _first_hardpoint_second() -> float:
 	assert_true(packed != null, "la coque livree se charge")
 	var hull := track(packed.instantiate()) as Node3D
 	var spans := {
-		"Turret_": TUNING.turret_visible_span,
-		"Bay_": TUNING.bay_visible_span,
-		"Spine_": TUNING.node_visible_span,
+		"Turret_": TUNING.turret_fire_span,
+		"Bay_": TUNING.target_span,
+		"Spine_": TUNING.target_span,
 	}
 	var earliest := INF
 	for section in hull.get_children():

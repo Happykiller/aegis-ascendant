@@ -190,14 +190,17 @@ func _on_node_engaged(_node: CortegeSpineNode) -> void:
 	# renseigné qu'au premier `tick`, donc une mise à mort au démarrage ferait éclore l'explosion
 	# à l'origine du monde. En fenêtre, les dégâts partent par le VRAI chemin — le `hit_callback`
 	# que le gestionnaire de balles appelle — et la pièce meurt exactement comme sous un tir.
+	# ⚠️ LA RÉPLIQUE D'ABORD, LA MISE À MORT ENSUITE. Abattre avant de parler inverse la
+	# chronologie du journal — « nœud abattu » puis « nœud vu » — et donnerait à relire une
+	# partie qui ne s'est pas déroulée comme ça. L'outil de capture doit imiter le jeu, pas
+	# le réécrire.
+	if not _said_node_seen:
+		_said_node_seen = true
+		say(&"node_seen")
 	if _forced_node_down >= 0 and _node != null and _node.section == _forced_node_down:
 		var cible := _node.target()
 		if cible != null and cible.hit_callback.is_valid():
 			cible.hit_callback.call(TUNING.node_health)
-	if _said_node_seen:
-		return
-	_said_node_seen = true
-	say(&"node_seen")
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	_game_state.add_score(TUNING.node_score)

@@ -71,7 +71,7 @@ func test_two_scales_that_converge_are_refused() -> void:
 	var cases := [
 		["light_turret_health", TUNING.turret_health, "des PV egaux a la lourde"],
 		["light_turret_burn_interval", TUNING.turret_burn_interval, "la cadence de la lourde"],
-		["light_turret_visible_span", TUNING.turret_visible_span, "la fenetre de la lourde"],
+		["light_turret_fire_span", TUNING.turret_fire_span, "la fenetre de la lourde"],
 	]
 	for case in cases:
 		var tuning := TUNING.duplicate() as CortegeTuning
@@ -120,12 +120,12 @@ func test_a_light_turret_engages_on_its_own_shorter_window() -> void:
 	var light := track(TurretScript.make(TUNING, 0,
 		TuningScript.TurretScale.LIGHT)) as CortegeTurret
 	light.setup(null, null, null)
-	var heavy_half := TUNING.turret_visible_span * 0.5
-	var light_half := TUNING.light_turret_visible_span * 0.5
+	var heavy_half := TUNING.turret_fire_span * 0.5
+	var light_half := TUNING.light_turret_fire_span * 0.5
 	assert_true(light_half < heavy_half, "la fenetre legere est bien la plus courte")
-	assert_false(TurretScript.engaged_at(heavy_half - 0.1, TUNING.light_turret_visible_span),
+	assert_false(TurretScript.engaged_at(heavy_half - 0.1, TUNING.light_turret_fire_span),
 		"au bord de la fenetre LOURDE, la legere n'est pas encore engagee")
-	assert_true(TurretScript.engaged_at(light_half - 0.1, TUNING.light_turret_visible_span),
+	assert_true(TurretScript.engaged_at(light_half - 0.1, TUNING.light_turret_fire_span),
 		"au bord de la sienne, elle l'est")
 
 

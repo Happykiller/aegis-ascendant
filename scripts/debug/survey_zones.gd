@@ -81,9 +81,8 @@ func draw(tuning: CortegeTuning, on: bool,
 	# Les trois fenêtres de tir, entrée en haut et sortie en bas. ⚠️ Ce sont bien DEUX lignes
 	# par famille : ce que le joueur perd en laissant passer une cible, c'est la distance entre
 	# les deux, et elle se voit ici en une fois.
-	_band(tuning.turret_visible_span * 0.5, TURRET_TINT)
-	_band(tuning.bay_visible_span * 0.5, BAY_TINT)
-	_band(tuning.node_visible_span * 0.5, NODE_TINT)
+	_band(tuning.turret_fire_span * 0.5, TURRET_TINT)
+	_band(tuning.target_span * 0.5, NODE_TINT)
 	# La borne de lâcher d'un pont : la limite HAUTE du plan de vol, et elle seule.
 	_dashed(Vector2(GameplayPlane.bounds.position.x, GameplayPlane.bounds.end.y),
 		Vector2(GameplayPlane.bounds.end.x, GameplayPlane.bounds.end.y), RELEASE_TINT)

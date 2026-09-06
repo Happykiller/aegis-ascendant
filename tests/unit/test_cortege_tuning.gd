@@ -155,7 +155,7 @@ func test_a_turret_can_be_outrun() -> void:
 ## Un pont qui ne produit pas assez pendant sa fenetre ne pese pas sur la decision de l'abattre.
 func test_a_bay_that_barely_releases_anything_is_refused() -> void:
 	var tuning := _sound()
-	tuning.bay_release_interval = tuning.window_for(tuning.bay_visible_span) * 0.9
+	tuning.bay_release_interval = tuning.window_for(tuning.target_span) * 0.9
 	var errors := tuning.validate()
 	assert_true(errors.size() > 0, "un pont qui lache une seule fois est refuse")
 
@@ -196,3 +196,73 @@ func test_a_weakened_turret_is_still_a_turret() -> void:
 	tuning.turret_weakened_interval_factor = 60.0
 	assert_true(_says(tuning, "morsures"),
 		"trop espacee, elle ne tire jamais dans sa fenetre et le joueur la croit morte")
+
+# --- La fenetre de ciblage doit couvrir CE QUE LA CAMERA MONTRE ----------------
+#
+## ⚠️ CE TEST LIT LA CAMERA DE LA SCENE, IL NE RECOPIE PAS SES CHIFFRES. C'est toute sa raison
+## d'etre : `target_span` est justifie par une mesure faite sur `cortege.tscn` le 2026-09-06, et
+## une justification recopiee dans un commentaire meurt au premier deplacement de camera — en
+## silence, en rouvrant exactement le defaut qu'on vient de fermer.
+##
+## Le defaut, mot pour mot : « J'essaye de tirer dessus, elle est visible, pourtant je ne la
+## touche pas » (operateur, capture a l'appui). Mesure de l'epoque : l'ecran couvre le plan de
+## jeu de y = -7,72 a y = +12,28, et la batterie legere n'etait tirable que sur +/-7,0 — plus
+## d'un quart de la hauteur de l'ecran ou la piece se voit, vise le joueur, et ne peut pas etre
+## touchee.
+##
+## ⚠️ ET IL NE MONTE PAS LA SCENE. `instantiate()` demanderait les autoloads, absents en mode
+## `--script` : on lit l'etat du `PackedScene`, ce qui donne les memes chiffres sans arbre.
+const CORTEGE_SCENE := "res://scenes/gameplay/cortege.tscn"
+
+func _scene_property(nom_noeud: String, propriete: String) -> Variant:
+	var packed: PackedScene = load(CORTEGE_SCENE)
+	if packed == null:
+		return null
+	var etat := packed.get_state()
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != nom_noeud:
+			continue
+		for j in etat.get_node_property_count(i):
+			if String(etat.get_node_property_name(i, j)) == propriete:
+				return etat.get_node_property_value(i, j)
+	return null
+
+## Ou le rayon de bord de cadre traverse le plan de jeu, en `y` de plan.
+func _plane_edge(camera: Transform3D, fov_deg: float, edge: float) -> float:
+	# ⚠️ `fov` EST VERTICAL tant que `keep_aspect` reste a son defaut (KEEP_HEIGHT). Le lire
+	# comme un fov horizontal donnerait un cadre plus court et un test complaisant.
+	var demi := tan(deg_to_rad(fov_deg) * 0.5)
+	var avant := -camera.basis.z
+	var haut := camera.basis.y
+	var direction := (avant + haut * demi * edge).normalized()
+	var origine := camera.origin
+	# Le rayon doit redescendre vers le plan : sinon il ne le coupe jamais.
+	if absf(direction.y) < 0.0001:
+		return INF
+	var t := -origine.y / direction.y
+	if t <= 0.0:
+		return INF
+	return -(origine.z + direction.z * t)
+
+func test_the_target_window_covers_what_the_camera_shows() -> void:
+	var brut: Variant = _scene_property("Camera3D", "transform")
+	assert_true(brut is Transform3D, "la camera de %s se lit dans l'etat de la scene" % CORTEGE_SCENE)
+	var fov: Variant = _scene_property("Camera3D", "fov")
+	assert_true(fov is float, "et son fov aussi — sans lui le cadre est une supposition")
+	var camera: Transform3D = brut
+	# La camera est fille de `CameraDirector` ; si ce nœud portait une transformation, elle
+	# compterait. On la compose plutot que de supposer qu'elle est neutre.
+	var directeur: Variant = _scene_property("CameraDirector", "transform")
+	if directeur is Transform3D:
+		camera = (directeur as Transform3D) * camera
+	var haut := _plane_edge(camera, fov, 1.0)
+	var bas := _plane_edge(camera, fov, -1.0)
+	assert_true(haut < INF, "le bord haut du cadre coupe le plan de jeu")
+	assert_true(bas < INF, "le bord bas aussi")
+	var demi_fenetre: float = _sound().target_span * 0.5
+	assert_true(demi_fenetre >= haut,
+		"la fenetre de ciblage vaut +/-%.2f mais l'ecran montre le plan jusqu'a y = %.2f : %.2f unites ou une piece se voit sans pouvoir etre touchee"
+			% [demi_fenetre, haut, haut - demi_fenetre])
+	assert_true(demi_fenetre >= absf(bas),
+		"et jusqu'a y = %.2f vers le bas : une piece cesserait d'etre tirable avant de sortir du cadre"
+			% bas)

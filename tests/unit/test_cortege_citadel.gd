@@ -352,7 +352,7 @@ func test_every_target_of_the_lock_sits_inside_the_flight_plane() -> void:
 ## montee, visible, et muette pour toujours.
 func test_every_guard_turret_of_the_lock_is_inside_its_own_firing_window() -> void:
 	var eye := _camera_eye()
-	var half: float = TUNING.light_turret_visible_span * 0.5
+	var half: float = TUNING.light_turret_fire_span * 0.5
 	for side in [-1.0, 1.0]:
 		for index in CitadelScript.GUARDS.size():
 			var here := _plane_at_lock(CitadelScript.guard_local(side, index),

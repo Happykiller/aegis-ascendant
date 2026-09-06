@@ -269,7 +269,10 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	if _pass == Pass.PASSED:
 		return
 	_world = world
-	var half := tuning.node_visible_span * 0.5
+	# ⚠️ LE NŒUD EST CELUI QUI PERDAIT LE PLUS. Sa fenêtre valait ±7 pour un écran qui monte à
+	# +12,3 : plus d'un quart de la hauteur où il battait, arcs compris, sans être touchable —
+	# sur la cible la plus difficile du niveau. Le ciblage suit l'écran (`target_span`).
+	var half := tuning.target_span * 0.5
 	match _pass:
 		Pass.AHEAD:
 			if here.y <= half:
