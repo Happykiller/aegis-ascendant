@@ -62,6 +62,8 @@ var _said_node_down: bool = false
 ## ⚠️ AU PREMIER NŒUD VU, PAS AU PREMIER ABATTU. C'est la seule cible du jeu qu'il faut avoir
 ## comprise AVANT de tirer : abattue par hasard, elle ne s'explique plus.
 var _said_node_seen: bool = false
+## Le tronçon dont le nœud doit tomber tout seul, ou -1. Voir `--spine-down=`.
+var _forced_node_down: int = -1
 
 ## Les fenêtres de tir, dessinées par-dessus les calques du socle. ⚠️ ELLES SONT PROPRES À CE
 ## NIVEAU : le socle sait montrer une hitbox, il ne peut pas savoir qu'une pièce n'est tirable
@@ -133,6 +135,15 @@ func _ready() -> void:
 			var niveau := arg.substr(16).to_int()
 			_citadel.force_state(niveau)
 			print("[Cortege] citadelle : état %d demandé au verrouillage" % niveau)
+		# ⚠️ MÊME MOTIF QUE `--citadel-state=`, ET MÊME NÉCESSITÉ. L'opérateur a dit « quand je
+		# détruis un nœud, pas de changement » : la réponse ne peut PAS être une planche Cycles,
+		# qui simule l'extinction par l'émission seule (0,45 -> 0,06) là où le moteur divise
+		# l'émission par 30 ET l'albédo par 8,3. L'état « nœud abattu » doit se capturer dans le
+		# jeu, et aucun pilote automatique n'atteint une cible d'axe.
+		if arg.begins_with("--spine-down="):
+			_forced_node_down = maxi(arg.substr(13).to_int() - 1, 0)
+			print("[Cortege] nœud du tronçon %d : abattu à son entrée en fenêtre"
+				% (_forced_node_down + 1))
 		if arg.begins_with("--cortege-from="):
 			var section := maxi(arg.substr(15).to_int() - 1, 0)
 			_flyby.skip_to_section(section)
@@ -175,6 +186,14 @@ func _on_bay_destroyed(bay: CortegeBay) -> void:
 ## Le premier nœud entre dans sa fenêtre. ⚠️ Les éclairs disent « tire ici » ; elle seule peut
 ## dire POURQUOI — et sans le pourquoi, la troisième mécanique du niveau n'existe pas.
 func _on_node_engaged(_node: CortegeSpineNode) -> void:
+	# ⚠️ ON L'ABAT ICI ET NON AU MONTAGE, et ce n'est pas un détail de commodité : `_world` n'est
+	# renseigné qu'au premier `tick`, donc une mise à mort au démarrage ferait éclore l'explosion
+	# à l'origine du monde. En fenêtre, les dégâts partent par le VRAI chemin — le `hit_callback`
+	# que le gestionnaire de balles appelle — et la pièce meurt exactement comme sous un tir.
+	if _forced_node_down >= 0 and _node != null and _node.section == _forced_node_down:
+		var cible := _node.target()
+		if cible != null and cible.hit_callback.is_valid():
+			cible.hit_callback.call(TUNING.node_health)
 	if _said_node_seen:
 		return
 	_said_node_seen = true

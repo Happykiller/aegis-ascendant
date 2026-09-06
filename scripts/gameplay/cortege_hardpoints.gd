@@ -347,8 +347,10 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 		return
 	var target := CortegeSpineNode.weakened_section(node.section, _sections_built)
 	if target < 0:
-		# Le dernier nœud du survol ne soulage rien : il n'y a pas de tronçon d'après DANS CE
-		# NIVEAU. Ce n'est pas une erreur — le vaisseau, lui, continue.
+		# ⚠️ PLUS AUCUN NŒUD MONTÉ NE PASSE PAR ICI DEPUIS LE 2026-09-06. Tant qu'un nœud
+		# éteignait le tronçon SUIVANT, le dernier du survol ne soulageait rien — un cinquième
+		# des nœuds du niveau était posé pour rien. Il éteint le sien ; la garde ne couvre plus
+		# qu'un indice hors bornes, c'est-à-dire un défaut de montage.
 		return
 	var touched := 0
 	for turret in _turrets:
