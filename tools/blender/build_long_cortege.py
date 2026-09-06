@@ -1406,6 +1406,100 @@ def _bay_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
     return False
 
 
+#: ⚠️ RAYON DE DEGAGEMENT D'UN AFFUT — 2,50 m, ET NON `TURRET_FOOTPRINT_R`.
+#: `TURRET_FOOTPRINT_R` (2,08) est l'emprise de la classe NATIVE du kit. Le
+#: moteur en pose trois depuis BRIEF-0100, et la lourde est a l'echelle 1,200 :
+#: son emprise vaut 2,08 x 1,200 = 2,496, arrondi a 2,50.
+#:
+#: ⚠️ ET ON DEGAGE 2,50 PARTOUT, SANS SAVOIR QUELLE CLASSE VA OU. Le choix de la
+#: classe est une decision de gameplay (`cortege_hardpoints.gd`) ; faire lire le
+#: moteur par la forge creerait une dependance a l'envers. Prendre la plus grande
+#: des trois rend aussi le resultat robuste : re-classer une tourelle demain ne
+#: rouvrira pas le defaut.
+TURRET_KEEPOUT_R = 2.50
+
+#: (station, x du marqueur, Y d'assise) des dix-sept affuts. Calcule une fois :
+#: `turret_seat_y()` coute 41 appels a `_surface_y` et le degagement se teste des
+#: milliers de fois par troncon. Pur produit des constantes, donc deterministe.
+_TURRET_SEATS: list[tuple[float, float, float]] = []
+
+
+def _turret_seats() -> list[tuple[float, float, float]]:
+    if not _TURRET_SEATS:
+        for ts, tx in TURRETS:
+            mx = _marker_x(ts, tx)
+            _TURRET_SEATS.append((ts, mx, turret_seat_y(ts, mx)[0]))
+    return _TURRET_SEATS
+
+
+#: Largeur d'un casier de recherche, en metres, pour la mesure de degagement du
+#: `.glb` : elle depasse `TURRET_KEEPOUT_R`, donc un sommet ne peut appartenir
+#: qu'au casier d'un affut ou a l'un de ses deux voisins. Sans ce classement, la
+#: mesure comparerait 140 000 sommets a dix-sept disques, un a un.
+TURRET_BUCKET = 5.0
+
+
+def _turret_lookup() -> dict[int, list[tuple[str, float, float, float]]]:
+    """Les affuts ranges par casier de `TURRET_BUCKET` metres de station."""
+    out: dict[int, list[tuple[str, float, float, float]]] = {}
+    for number, (ts, mx, seat) in enumerate(_turret_seats(), start=1):
+        out.setdefault(int(math.floor(ts / TURRET_BUCKET)), []).append(
+            (f"Turret_{number:02d}", ts, mx, seat))
+    return out
+
+
+def _turret_clash(s0: float, s1: float, x0: float, x1: float,
+                  top_y: float = BUILD_CEILING_Y) -> bool:
+    """Le module (s0..s1, x0..x1), dessus a `top_y`, monte-t-il SOUS un affut ?
+
+    ⚠️ LE QUATRIEME GARDE, ET IL MANQUAIT DEPUIS TOUJOURS. `_ambry_clash`,
+    `_bay_clash` et `_pit_clash` protegent trois choses que la peau porte ;
+    personne ne protegeait la TOURELLE. Le garde existait pourtant, ecrit dans
+    `_assert_bastions_are_clear` — « ⚠️ ET AUCUN SOUS UNE TOURELLE :
+    `turret_seat_y()` echantillonne la peau et non les modules, donc un affut
+    pose sur un bastion s'y enfoncerait » — et il n'avait jamais ete etendu aux
+    familles qui se SEMENT. Resultat mesure sur le binaire du 2026-09-06 : une
+    greffe montait 1,010 m au-dessus de l'assise de `Turret_01`, soit le socle
+    (+0,27), la couronne (+0,40) et les deux tiers du bloc (+1,52) noyes.
+
+    ⚠️ ET LE CRITERE EST LE PLAN D'ASSISE, PAS LA PEAU. Interdire tout relief
+    dans le disque rendrait le borde PLAT autour des dix-sept installations —
+    exactement ce que BRIEF-0094 venait de corriger, et son intention est « une
+    tourelle, et la machinerie autour ». Ce qui enterre un affut, c'est ce qui
+    passe AU-DESSUS du plan sur lequel `turret_kit.glb` est modelise : le kit ne
+    montre rien sous ce plan-la. Un massif pose 0,40 m plus bas sur la peau et
+    haut de 0,34 reste donc sous le socle — il entoure, il n'enterre pas.
+    Le defaut est de toute facon le meme : `top_y` d'un module de ce fichier vaut
+    `min(peau aux coins) + rise`, donc une valeur, pas une surface.
+
+    `top_y` vaut par defaut le PLAFOND DE CONSTRUCTION, c'est-a-dire « plus haut
+    que tout ce que ce fichier sait batir » : l'appeler sans cet argument, c'est
+    interdire l'emprise tout court. C'est ce que font les greffes, qui montent de
+    0,70 a 1,05 m et depassent l'assise dans tous les cas.
+    """
+    r2 = TURRET_KEEPOUT_R * TURRET_KEEPOUT_R
+    for ts, mx, seat in _turret_seats():
+        if top_y <= seat + 1e-6:
+            continue
+        dx = max(x0 - mx, 0.0, mx - x1)
+        ds = max(s0 - ts, 0.0, ts - s1)
+        if dx * dx + ds * ds < r2:
+            return True
+    return False
+
+
+def _box_top(x0: float, x1: float, s0: float, s1: float, rise: float) -> float:
+    """Le Y du dessus qu'aura `_surface_box(x0, x1, s0, s1, rise, ...)`.
+
+    Meme formule exactement — `min(peau aux quatre coins) + rise` —, mais SANS
+    emettre : c'est ce qui permet de decider AVANT de poser. Deux expressions de
+    la meme regle qui derivent en silence, c'est un module dont la garde juge une
+    hauteur que la geometrie n'a pas.
+    """
+    return min(_surface_y(s, x)
+               for x, s in ((x0, s0), (x1, s0), (x1, s1), (x0, s1))) + rise
+
+
 def _bay_free_spans(x0: float, x1: float,
                     s0: float, s1: float) -> list[tuple[float, float]]:
     """Decoupe [s0, s1] en morceaux qui n'entrent dans aucune emprise de baie.
@@ -2345,7 +2439,8 @@ PLATE_LANES = ((2.35, 3.95), (4.05, 5.35), (5.45, 6.55),
 
 def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                  aprons: list[tuple[float, float]],
-                 busy: list[tuple[float, float]]) -> int:
+                 busy: list[tuple[float, float]],
+                 keepout: dict[str, int]) -> int:
     """Les plaques — desormais l'APPAREILLAGE des installations, plus un champ.
 
     ⚠️ CETTE FAMILLE A CHANGE DE METIER AU BRIEF-0094. Elle semait 1 071 plaques
@@ -2406,18 +2501,82 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                 # d'une tourelle ou d'un hangar sans rien ajouter en couleur.
                 heavy = roll > 0.74
                 rise = 0.34 if heavy else 0.16
-                _surface_box(bm, x0 + inset, x1 - inset, s, s + length,
+                # ⚠️ LA GARDE D'AFFUT, ET ELLE EST MESUREE PIECE PAR PIECE. Le
+                # brief demandait d'arbitrer les tôles de 0,16 « sur mesure, pas
+                # d'office » : c'est fait, et par la seule mesure qui compte —
+                # `_turret_clash` compare le DESSUS de cette plaque-ci au plan
+                # d'assise de l'affut. Une tôle posee sur une peau qui plonge de
+                # 0,40 m sous l'assise reste dessous et vit ; un massif de 0,34
+                # pose au point haut du disque passe au-dessus et s'ecarte. La
+                # meme regle sert les deux hauteurs, sans en exempter aucune.
+                seat = _plate_place(origin, side, a, b, s, length, inset,
+                                    rise, aprons)
+                if seat is None:
+                    keepout["plaques_perdues"] = \
+                        keepout.get("plaques_perdues", 0) + 1
+                    s += cell
+                    continue
+                ps, x0, x1 = seat
+                if abs(ps - s) > 1e-9:
+                    keepout["plaques_ecartees"] = \
+                        keepout.get("plaques_ecartees", 0) + 1
+                _surface_box(bm, x0 + inset, x1 - inset, ps, ps + length,
                              rise, 0.55, "AA_Greeble",
                              "AA_Greeble" if heavy else "AA_Hull",
                              draft=0.055 if not heavy else 0.10)
-                busy.append((s, s + length))
+                busy.append((ps, ps + length))
                 count += 1
                 s += cell
     return count
 
 
+#: Les stations de repli d'une plaque, en metres depuis celle qui a ete tiree.
+#: ⚠️ BORNEES A LA MOITIE DE LA MAILLE (`cell` = 3,2). Au-dela, la plaque
+#: deplacee viendrait se poser sur celle de la cellule voisine : deux boites
+#: imbriquees, une arete qui scintille, et un compte qui ment sur ce qu'on voit.
+PLATE_NUDGES = (0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5)
+
+
+def _plate_place(origin: float, side: float, a: float, b: float, s: float,
+                 length: float, inset: float, rise: float,
+                 aprons: list[tuple[float, float]]
+                 ) -> tuple[float, float, float] | None:
+    """Ou poser la plaque : (s retenu, x0, x1 de sa voie), ou None si nulle part.
+
+    ⚠️ LA PREMIERE STATION ESSAYEE EST CELLE QUI A ETE TIREE, et les tests qu'elle
+    subit ici sont EXACTEMENT ceux que l'appelant vient de passer, plus la garde
+    d'affut. Une plaque qui ne genait personne rend donc le meme resultat qu'avant
+    ce brief, au bit pres. Les stations de repli, elles, sont re-clippees sur la
+    largeur locale : deplacer une plaque de 1,5 m sur le fuseau de proue la
+    poserait a cote de la coque.
+    """
+    for ds in PLATE_NUDGES:
+        ps = s + ds
+        if ps < origin + 1.9 or ps + length > origin + SECTION_LENGTH - 1.9:
+            continue
+        lane = _clip_lane(ps, side * b, side * a) if side < 0 else \
+            _clip_lane(ps, side * a, side * b)
+        if lane is None:
+            continue
+        x0, x1 = lane
+        lo, hi = min(x0, x1), max(x0, x1)
+        if _ambry_clash(ps, ps + length, lo, hi) \
+                or _bay_clash(ps, ps + length, lo, hi) \
+                or _pit_clash(ps, ps + length, lo, hi) \
+                or not _in_apron(ps, ps + length, aprons) \
+                or not _inside_zone(ps, ps + length):
+            continue
+        top = _box_top(x0 + inset, x1 - inset, ps, ps + length, rise)
+        if _turret_clash(ps, ps + length, min(x0 + inset, x1 - inset),
+                         max(x0 + inset, x1 - inset), top):
+            continue
+        return ps, x0, x1
+    return None
+
+
 def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
-               busy: list[tuple[float, float]]) -> int:
+               busy: list[tuple[float, float]],
+               keepout: dict[str, int]) -> int:
     """Nervures transversales — desormais L'ANCRAGE d'une installation.
 
     Elles etaient reparties tous les 12 m sur toute la longueur : c'est ce qui
@@ -2469,6 +2628,38 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
             # valeur. L'ivoire ne subsiste plus que sur des pieces de moins de
             # 2 m2 (echines de greffe, sole du berceau d'epine).
             top = "AA_Greeble" if k % 3 == 1 else "AA_Hull"
+            # ⚠️ LA GARDE D'AFFUT DEPLACE LA NERVURE ENTIERE, JAMAIS UNE SEULE
+            # DE SES BANDES. Une nervure est une barre TRANSVERSALE : ecarter la
+            # bande interieure en laissant celle de chine a sa station ferait
+            # deux troncons de barre decales de 1,20 m — l'ancrage cesserait de
+            # se lire comme une piece. On cherche donc UNE station qui degage
+            # tous les disques, en s'eloignant de l'installation dans le sens ou
+            # la nervure a ete tiree (`lead`), et l'on renonce si aucune ne tient.
+            ps = None
+            for step in RIB_NUDGES:
+                cs = s + lead * step
+                if not (origin + JOINT_CLEARANCE < cs
+                        < origin + SECTION_LENGTH - JOINT_CLEARANCE - width) \
+                        or not _inside_zone(cs, cs + width):
+                    continue
+                if not any(
+                        _turret_clash(
+                            cs, cs + width, lane[0], lane[1],
+                            _box_top(lane[0], lane[1], cs, cs + width, rise))
+                        for a, b in near for side in sides
+                        for lane in (_clip_lane(cs, min(side * a, side * b),
+                                                max(side * a, side * b)),)
+                        if lane is not None):
+                    ps = cs
+                    break
+            if ps is None:
+                keepout["nervures_perdues"] = \
+                    keepout.get("nervures_perdues", 0) + 1
+                continue
+            if abs(ps - s) > 1e-9:
+                keepout["nervures_ecartees"] = \
+                    keepout.get("nervures_ecartees", 0) + 1
+            s = ps
             posed = False
             for a, b in near:
                 for side in sides:
@@ -2486,6 +2677,13 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
             if posed:
                 busy.append((s, s + width))
     return count
+
+
+#: L'eloignement d'une nervure, en metres, dans le sens ou elle a ete tiree.
+#: ⚠️ ELLE NE SE RAPPROCHE JAMAIS de son installation : une nervure tiree a 2,0 m
+#: du centre d'un affut est deja dans le disque de 2,50, et l'y enfoncer
+#: davantage ne ferait que l'y enterrer mieux.
+RIB_NUDGES = (0.0, 0.4, 0.8, 1.2, 1.6, 2.0)
 
 
 def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
@@ -2545,7 +2743,8 @@ def build_strakes(bm: bmesh.types.BMesh, index: int) -> int:
 
 def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                  busy: list[tuple[float, float]],
-                 spans: list[tuple[float, float]]) -> int:
+                 spans: list[tuple[float, float]],
+                 keepout: dict[str, int]) -> int:
     """Les greffes : ce que le Cortege EMPORTE, empile sur son borde.
 
     ⚠️ TROIS CHOSES CHANGENT AU BRIEF-0094, ET C'EST LA MEME CORRECTION TROIS
@@ -2596,15 +2795,123 @@ def build_grafts(bm: bmesh.types.BMesh, index: int, rng: random.Random,
             # distinguer par sa hauteur, son orientation et sa silhouette, PAS
             # par sa couleur ». Si le violet les designe toutes, c'est lui qui
             # les designe. Une sur deux, il ne designe plus rien : il accentue.
-            count += _one_graft(bm, index, rng, busy, spans, s, length, side,
-                                base_x, width, yaw, (k + slot) % 2 == 0)
+            count += _one_graft(bm, index, rng, busy, spans, keepout, s, length,
+                                side, base_x, width, yaw, (k + slot) % 2 == 0)
     return count
+
+
+def _graft_nudges() -> tuple[tuple[float, float], ...]:
+    """L'echelle des places de repli d'une greffe, du plus proche au plus loin.
+
+    ⚠️ ELLE COMMENCE PAR (0, 0), ET C'EST TOUT L'INTERET. La premiere place
+    essayee est CELLE QUI A ETE TIREE : une greffe qui ne genait personne ne
+    bouge pas d'un millimetre, et le troncon reste celui d'avant partout ou le
+    defaut n'existait pas. On ne re-seede pas un vaisseau pour dix-sept disques.
+
+    ⚠️ ET LE LATERAL PASSE AVANT LE LONGITUDINAL. Une greffe est HEBERGEE par
+    l'emprise d'un marqueur (8,4 m pour une tourelle seule) et fait jusqu'a
+    11,4 m de long : la reculer de 2,50 m la ferait sortir de son emprise, donc
+    la perdrait. La largeur, elle, offre 28 m. C'est le seul axe ou une masse de
+    9 m peut vraiment s'ecarter d'un affut sans quitter le groupe qu'elle forme
+    avec lui — « une tourelle, et la machinerie autour ».
+    """
+    out = [(0.0, 0.0)]
+    for reach in (0.9, 1.8, 2.7, 3.6, 4.5, 5.4):
+        for dx in (reach, -reach):
+            out.append((dx, 0.0))
+        for ds in (reach, -reach):
+            out.append((0.0, ds))
+        for dx in (reach, -reach):
+            for ds in (reach, -reach):
+                out.append((dx, ds))
+    return tuple(out)
+
+
+GRAFT_NUDGES = _graft_nudges()
+
+#: Bord interieur qu'une greffe DEPLACEE ne franchit pas : celui de la premiere
+#: voie de plaques. Le canal et ses rebords vivent en deca (|x| <= 1,70) et une
+#: masse de 1 m de haut posee dessus ferait un pont par-dessus l'artere. La place
+#: TIREE, elle, n'est pas soumise a cette borne : on ne durcit pas en passant une
+#: regle qui n'a rien a voir avec ce brief.
+GRAFT_INNER_X = 2.35
+
+
+def _graft_place(origin: float, s: float, length: float, side: float,
+                 base_x: float, width: float,
+                 yaw: float) -> tuple[float, tuple[float, float], bool, bool]:
+    """Ou poser la greffe : (s retenu, voie, deplacee ?, barree ?).
+
+    ⚠️ UNE GREFFE REJETEE EST UNE GREFFE PERDUE — ON LA DEPLACE. Vider l'emprise
+    des marqueurs rendrait le borde plat, ce que BRIEF-0094 avait justement
+    corrige en semant les greffes SUR les emprises. La garde d'affut n'est donc
+    pas un rejet mais un ecart : on parcourt `GRAFT_NUDGES` et l'on prend la
+    premiere place qui degage les dix-sept disques.
+
+    « Barree » veut dire : la place tiree tombait sous un affut et aucune place
+    de repli ne tenait. La greffe n'est alors pas emise — exactement comme une
+    greffe qui tombe sur une baie —, mais elle CONSOMME ses tirages : c'est la
+    regle de ce fichier (« on tire, puis on decide d'emettre »), et c'est elle
+    qui empeche dix-sept disques de re-seeder les cinq troncons.
+    """
+    def seat(ps: float, px: float) -> tuple[tuple[float, float], tuple] | None:
+        """La voie et la boite englobante de l'empreinte TOURNEE, ou None."""
+        x0, x1 = px - width * 0.5, px + width * 0.5
+        lane = _clip_lane(ps, min(side * x0, side * x1),
+                          max(side * x0, side * x1))
+        if lane is None or ps < origin + JOINT_CLEARANCE \
+                or ps + length > origin + SECTION_LENGTH - JOINT_CLEARANCE \
+                or _ambry_clash(ps, ps + length, lane[0], lane[1]) \
+                or not _inside_zone(ps, ps + length):
+            return None
+        # L'empreinte tournee deborde de la voie : on la majore par sa boite,
+        # comme la boucle des couches le fait ensuite contre le bord du borde.
+        return lane, _plan_bounds(_yawed_plan(
+            (lane[0] + lane[1]) * 0.5, ps + length * 0.5,
+            (lane[1] - lane[0]) * 0.5, length * 0.5, yaw))
+
+    # ⚠️ LA PLACE TIREE EST JUGEE EXACTEMENT COMME AVANT CE BRIEF, plus la garde
+    # d'affut — et si elle echoue pour une AUTRE raison (hors emprise, hors
+    # coque), on ne cherche pas de repli. Une garde n'a pas le droit de repecher
+    # ce que les regles d'avant refusaient : elle corrigerait un defaut qu'on ne
+    # lui a pas demande de voir, et le compte de greffes mentirait sur sa cause.
+    drawn = seat(s, base_x)
+    if drawn is None:
+        return s, (0.0, 0.0), False, False
+    lane, (px0, px1, ps0, ps1) = drawn
+    if not _turret_clash(ps0, ps1, px0, px1):
+        return s, lane, False, False
+
+    for dx, ds in GRAFT_NUDGES[1:]:
+        ps, px = s + ds, base_x + dx
+        # ⚠️ UNE PLACE DE REPLI EST JUGEE PLUS SEVEREMENT QUE LA PLACE TIREE, et
+        # c'est delibere : deplacer une greffe pour la poser sur une ouverture de
+        # hangar, au-dessus d'une fosse, par-dessus l'artere ou en porte-a-faux
+        # au bord du borde serait remplacer un defaut par un autre.
+        if px < GRAFT_INNER_X + width * 0.5:
+            continue
+        found = seat(ps, px)
+        if found is None:
+            continue
+        lane_here, (qx0, qx1, qs0, qs1) = found
+        centre_s = ps + length * 0.5
+        if _turret_clash(qs0, qs1, qx0, qx1) \
+                or qx0 < -(_half_width(centre_s, -1.0) - 0.45) \
+                or qx1 > _half_width(centre_s, 1.0) - 0.45 \
+                or _bay_clash(qs0, qs1, qx0, qx1) \
+                or _pit_clash(qs0, qs1, qx0, qx1):
+            continue
+        return ps, lane_here, True, False
+
+    # Rien n'a tenu : on rend la place TIREE, marquee barree. Les tirages seront
+    # consommes et rien ne sera emis — comme une greffe qui tombe sur une baie.
+    return s, lane, False, True
 
 
 def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                busy: list[tuple[float, float]], spans: list[tuple[float, float]],
-               s: float, length: float, side: float, base_x: float,
-               width: float, yaw: float, violet: bool) -> int:
+               keepout: dict[str, int], s: float, length: float, side: float,
+               base_x: float, width: float, yaw: float, violet: bool) -> int:
     """Une greffe et sa pile de terrasses. Rend le nombre de boites emises."""
     origin = index * SECTION_LENGTH
     count = 0
@@ -2614,8 +2921,16 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
         return count
     if _ambry_clash(s, s + length, lane[0], lane[1]):
         return count
+    # ⚠️ LA GARDE D'AFFUT SE POSE ICI, avec les trois autres — et elle ECARTE au
+    # lieu de rejeter (voir `_graft_place`).
+    s, lane, moved, barred = _graft_place(origin, s, length, side,
+                                          base_x, width, yaw)
+    if moved:
+        keepout["greffes_ecartees"] = keepout.get("greffes_ecartees", 0) + 1
+    if barred:
+        keepout["greffes_perdues"] = keepout.get("greffes_perdues", 0) + 1
     # Voir `build_plates` : on tire, puis on decide d'emettre.
-    blocked = _bay_clash(s, s + length, lane[0], lane[1]) \
+    blocked = barred or _bay_clash(s, s + length, lane[0], lane[1]) \
         or _pit_clash(s, s + length, lane[0], lane[1])
     # ⚠️ LA REGLE DE RYTHME, ET C'EST ELLE QUI FAIT LE LIVRABLE « ZONES
     # CALMES ». Une greffe est HEBERGEE par une emprise de marqueur : elle
@@ -2705,7 +3020,8 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
 
 def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                aprons: list[tuple[float, float]],
-               busy: list[tuple[float, float]]) -> int:
+               busy: list[tuple[float, float]],
+               keepout: dict[str, int]) -> int:
     """Les petits feux magenta des maquettes : 12 triangles piece.
 
     Ils sont ce qui, sur les trois planches, dit le plus vite « c'est vivant ».
@@ -2738,6 +3054,20 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
             continue
         if not _in_apron(s - half_s, s + half_s, aprons) \
                 or not _inside_zone(s - half_s, s + half_s):
+            continue
+        # ⚠️ UN FEU AUSSI PEUT PASSER SOUS UN AFFUT, ET IL NE SE DEPLACE PAS. Il
+        # ne monte que de 0,05 m : sur une peau qui plonge sous l'assise, il
+        # reste dessous et vit — c'est le cas de la plupart. Pose au point haut
+        # du disque, il repasse au-dessus du plan sur lequel le kit est modelise,
+        # et un feu magenta qui affleure la jupe d'un socle ne se lit plus comme
+        # une machine qui tourne : il se lit comme un defaut d'assise. Il n'a pas
+        # de station de repli parce qu'il n'a pas de groupe a tenir — 0,50 m de
+        # long, tire au hasard dans le troncon, le suivant tombera ailleurs.
+        if _turret_clash(s - half_s, s + half_s, x - half_x, x + half_x,
+                         _box_top(x - half_x, x + half_x,
+                                  s - half_s, s + half_s, 0.05)):
+            keepout["pastilles_perdues"] = \
+                keepout.get("pastilles_perdues", 0) + 1
             continue
         _surface_box(bm, x - half_x, x + half_x, s - half_s, s + half_s,
                      0.05, 0.35, "AA_Greeble", "AA_Emissive_Engine")
@@ -3243,7 +3573,13 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     # deterministe et reproductible au sha256.
     busy: list[tuple[float, float]] = []
     graft_spans: list[tuple[float, float]] = []
-    grafts = build_grafts(bm, index, rng, busy, graft_spans)
+    # ⚠️ LE JOURNAL DE LA GARDE D'AFFUT (BRIEF-0101), et il est rendu au rapport
+    # troncon par troncon. « Une greffe rejetee est une greffe perdue » : sans ces
+    # deux colonnes, la difference entre un borde qui s'ecarte d'un socle et un
+    # borde qui redevient plat autour de dix-sept installations ne se verrait que
+    # dans le total des modules, ou elle se confondrait avec le hasard du tirage.
+    keepout: dict[str, int] = {}
+    grafts = build_grafts(bm, index, rng, busy, graft_spans, keepout)
     aprons = list(MARKER_APRONS) + graft_spans
     counts = {
         "cellules_percees": skipped,
@@ -3252,11 +3588,16 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         "passerelle": build_cross_bridge(bm, index),
         "bastions": build_bastions(bm, index),
         "greffes": grafts,
-        "plaques": build_plates(bm, index, rng, aprons, busy),
-        "nervures": build_ribs(bm, index, rng, busy),
+        "plaques": build_plates(bm, index, rng, aprons, busy, keepout),
+        "nervures": build_ribs(bm, index, rng, busy, keepout),
         "lisses": build_strakes(bm, index),
-        "pastilles": build_pips(bm, index, rng, aprons, busy),
+        "pastilles": build_pips(bm, index, rng, aprons, busy, keepout),
     }
+    for label in ("greffes_ecartees", "greffes_perdues",
+                  "plaques_ecartees", "plaques_perdues",
+                  "nervures_ecartees", "nervures_perdues",
+                  "pastilles_perdues"):
+        counts[label] = keepout.get(label, 0)
     conduits, lit = build_conduits(bm, index, rng)
     counts["conduits"] = conduits
     counts["travees"] = build_canal_braces(bm, index, rng)
@@ -3683,6 +4024,25 @@ def _audit(path: str) -> dict:
     ambry_slot_strays = 0
     ambry_slot_tris = 0
 
+    # --- LE DEGAGEMENT DES AFFUTS, MESURE SUR LE BINAIRE (BRIEF-0101) --------
+    # ⚠️ « LE REJET EST EN PLACE » N'EST PAS UNE REPONSE. C'est exactement ce que
+    # `turret_seat_y()` croyait deja : elle echantillonne la PEAU, se croit juste,
+    # et laissait une greffe de 1,01 m se poser par-dessus son propre disque. Une
+    # garde qui ne se mesure pas sur le fichier livre est une intention. On
+    # echantillonne donc la hauteur du maillage dans le disque de 2,50 m autour
+    # de chacun des dix-sept marqueurs, et on la compare a l'assise.
+    #
+    # ⚠️ ET ON DISTINGUE LA PEAU DES MODULES, sans quoi la mesure serait fausse
+    # dans les deux sens. L'assise est le point le plus haut de l'emprise du KIT
+    # (2,08 m) : au-dela, la peau elle-meme remonte jusqu'a +0,010 m sur le
+    # binaire — elle ne se deplace pas, elle EST le vaisseau. Un sommet compte
+    # donc comme module s'il depasse `_surface_y()` de plus de 2 cm ; la peau,
+    # elle, ne s'en ecarte que du bruit du float32.
+    keepout_lookup = _turret_lookup()
+    keepout_worst: dict[str, list[float]] = {
+        f"Turret_{n:02d}": [-math.inf, -math.inf, 0]
+        for n in range(1, len(TURRETS) + 1)}
+
     for index in roots:
         node = nodes[index]
         name = node.get("name", "?")
@@ -3732,6 +4092,17 @@ def _audit(path: str) -> dict:
                     front.append((round(px, 4), round(py, 4)))
                 if abs(pz + SECTION_LENGTH) < 1e-4:
                     back.append((round(px, 4), round(py, 4)))
+                here = -(pz + translation[2])
+                bucket = int(math.floor(here / TURRET_BUCKET))
+                for probe in (bucket - 1, bucket, bucket + 1):
+                    for tname, ts, mx, seat in keepout_lookup.get(probe, ()):
+                        if (px - mx) ** 2 + (here - ts) ** 2 \
+                                > TURRET_KEEPOUT_R * TURRET_KEEPOUT_R:
+                            continue
+                        worst = keepout_worst[tname]
+                        worst[2] += 1
+                        slot = 0 if py > _surface_y(here, px) + 0.02 else 1
+                        worst[slot] = max(worst[slot], py - seat)
         density_source[name] = per_section
         boundary[name] = {"front": sorted(set(front)), "back": sorted(set(back))}
         triangles_total += triangles
@@ -3967,6 +4338,25 @@ def _audit(path: str) -> dict:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
 
     problems += _marker_clashes()
+
+    # ⚠️ LE VERDICT DU DEGAGEMENT, ET IL EST BLOQUANT. Un module au-dessus de
+    # l'assise, c'est le socle (+0,27), la couronne (+0,40) ou le bloc (+1,52)
+    # du kit qui disparaissent dedans — sans une erreur d'import, sans un test
+    # rouge, et sans que rien ne change dans le code du jeu. La mesure ci-dessous
+    # est la seule chose qui empeche ce defaut de revenir au prochain reglage de
+    # semis, et elle est faite sur le fichier qui part dans Godot.
+    turret_clearances: list[tuple[str, float, float, int]] = []
+    for number in range(1, len(TURRETS) + 1):
+        tname = f"Turret_{number:02d}"
+        module, skin, seen = keepout_worst[tname]
+        turret_clearances.append((tname, module, skin, seen))
+        if module > 1e-3:
+            problems.append(
+                f"{tname} : un module monte {module:.3f} m AU-DESSUS de l'assise "
+                f"dans le disque de {TURRET_KEEPOUT_R:.2f} m — l'affut s'y "
+                "enfoncerait d'autant. C'est le defaut de BRIEF-0101 : une "
+                "famille de relief a repris le droit de se poser sur une emprise "
+                "de tourelle (voir `_turret_clash`)")
     if bay_intruders:
         problems.append(
             f"{bay_intruders} triangle(s) DANS l'emprise d'un pont d'envol — "
@@ -4100,6 +4490,7 @@ def _audit(path: str) -> dict:
         "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
         "pad_clearances": _pad_bay_clearances(),
+        "turret_clearances": turret_clearances,
         "spine_seats": spine_seats,
         "top": top_of_decor,
         "width": 2 * widest,
@@ -4205,7 +4596,12 @@ def _print_report(report: dict) -> None:
     for label in ("plaques", "nervures", "lisses", "greffes", "pastilles",
                   "conduits", "travees", "marqueurs_tourelle", "baies", "nœuds",
                   "fosses", "passerelle", "bastions", "cellules_percees",
-                  "collerettes"):
+                  "collerettes",
+                  # BRIEF-0101 — la garde d'affut, ecartees puis perdues.
+                  "greffes_ecartees", "greffes_perdues",
+                  "plaques_ecartees", "plaques_perdues",
+                  "nervures_ecartees", "nervures_perdues",
+                  "pastilles_perdues"):
         line = " ".join(f"{c.get(label, 0):>5}" for c in report["counts"])
         total = sum(c.get(label, 0) for c in report["counts"])
         print(f"  modules {label:<18} {line}   = {total}")
@@ -4347,6 +4743,23 @@ def _print_report(report: dict) -> None:
             note = "   <- PROXIMITE ACCEPTEE : " + declared[(turret, bay)]
         print(f"    {turret} / {bay} : {mouth_gap:+6.2f} m de l'ouverture, "
               f"{coam_gap:+6.2f} m du coaming{note}")
+
+    # ⚠️ MESURE, PAS INTENTION (BRIEF-0101). Le tableau ci-dessous est releve sur
+    # le `.glb` : hauteur du maillage dans le disque de 2,50 m autour de chaque
+    # marqueur, comparee a l'assise. La colonne « module » doit rester NEGATIVE —
+    # c'est le degagement reel sous le socle. La colonne « peau » peut etre
+    # legerement positive : l'assise est le point haut de l'emprise du KIT
+    # (2,08 m), et au-dela la coque elle-meme remonte un peu ; elle n'est pas un
+    # module, elle ne se deplace pas. La derniere colonne dit que le borde n'est
+    # pas redevenu plat : un disque a zero sommet serait une tourelle sur une
+    # dalle nue.
+    print(f"\n  degagement des affuts — disque de {TURRET_KEEPOUT_R:.2f} m "
+          "(emprise de la classe LOURDE, echelle 1,200), releve sur le .glb")
+    print(f"    {'marqueur':<12} {'module / assise':>16} {'peau / assise':>15} "
+          f"{'sommets dans le disque':>24}")
+    for name, module, skin, seen in report["turret_clearances"]:
+        top = "aucun module" if module == -math.inf else f"{module:+.4f} m"
+        print(f"    {name:<12} {top:>16} {skin:+14.4f} m {seen:>24}")
 
     print("\n  marqueurs (position LOCALE au troncon, repere Godot)")
     for name in _expected_markers():
