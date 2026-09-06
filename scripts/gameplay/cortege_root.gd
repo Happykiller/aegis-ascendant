@@ -59,8 +59,8 @@ var _defeated: bool = false
 ## la réplique de tronçon qui, elle, porte le récit.
 var _said_bay_down: bool = false
 var _said_node_down: bool = false
-## ⚠️ AU PREMIER NŒUD VU, PAS AU PREMIER ABATTU. C'est la seule cible du jeu dont la récompense
-## arrive quarante secondes plus tard : l'expliquer après coup ne sert plus à rien.
+## ⚠️ AU PREMIER NŒUD VU, PAS AU PREMIER ABATTU. C'est la seule cible du jeu qu'il faut avoir
+## comprise AVANT de tirer : abattue par hasard, elle ne s'explique plus.
 var _said_node_seen: bool = false
 
 ## Les fenêtres de tir, dessinées par-dessus les calques du socle. ⚠️ ELLES SONT PROPRES À CE
@@ -197,12 +197,12 @@ func _on_node_destroyed(node: CortegeSpineNode) -> void:
 		_said_node_down = true
 		say(&"node_down")
 
-## ⚠️ C'EST ICI QUE LA TROISIÈME MÉCANIQUE DEVIENT COMPRÉHENSIBLE, ou nulle part. La récompense
-## d'un nœud arrive quarante secondes plus tard, sur un tronçon que le joueur n'a pas encore vu :
-## rien à l'écran ne relie la cause à l'effet. Le niveau doit donc DIRE ce qui vient de se passer,
-## au moment où ça se passe, et nommer sa conséquence.
+## ⚠️ C'EST ICI QUE LA TROISIÈME MÉCANIQUE DEVIENT COMPRÉHENSIBLE, ou nulle part. Le niveau doit
+## DIRE ce qui vient de se passer, au moment où ça se passe, et nommer sa conséquence — même
+## depuis que le nœud éteint SON tronçon et non le suivant : ce qui s'éteint est maintenant à
+## l'écran, mais un conduit qui noircit ne dit pas de lui-même « les canons ralentissent ».
 ## ⚠️ ET LE TRONÇON S'ÉTEINT, PARCE QUE LA MÉCANIQUE ÉTAIT INVISIBLE. Abattre un nœud d'épine
-## fait déjà tomber les tourelles du tronçon suivant à 45 % de rotation et 2,6 fois plus lentes
+## fait déjà tomber les tourelles de son tronçon à 45 % de rotation et 2,6 fois plus lentes
 ## à tirer — mesurable, testé, et **rien à l'écran ne le disait**. « On ne voit toujours pas
 ## visuellement un rapport entre les trois » (opérateur, en jouant le 2026-09-06).
 ##

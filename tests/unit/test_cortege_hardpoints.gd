@@ -213,10 +213,10 @@ func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
 	assert_eq(down[0], 0,
 		"le noeud tombe dans les %.0f degats que les seuls canons de nez placent — se dimensionner contre la cadence d'une cible large reviendrait a se donner raison" % reachable)
 
-# --- La chaine complete : un noeud abattu eteint le troncon suivant -----------
+# --- La chaine complete : un noeud abattu eteint SON troncon ------------------
 #
-# ⚠️ AUCUNE PARTIE NE PROUVE CETTE CHAINE. Sa recompense arrive quarante secondes apres sa
-# cause, sur un troncon que le joueur n'a pas encore vu ; et le pilote de demonstration, qui
+# ⚠️ AUCUNE PARTIE NE PROUVE CETTE CHAINE. Elle est desormais a l'ecran (2026-09-06) ; elle
+# ne l'etait pas, et le pilote de demonstration, qui
 # esquive et tire droit devant, n'abat pratiquement aucune cible de coque — une partie complete
 # de 208 s en a detruit UNE. La seule verification possible est ici.
 
@@ -738,8 +738,8 @@ func test_the_bay_kit_carries_two_doors_that_close_on_the_opening() -> void:
 
 
 ## ⚠️ LE CONDUIT D'UN TRONCON S'ETEINT SEUL, ET C'EST TOUTE LA QUESTION. Abattre un nœud
-## d'epine fait tomber les tourelles du troncon suivant a 45 % de rotation depuis des
-## semaines — et rien a l'ecran ne le disait : « on ne voit toujours pas visuellement un
+## d'epine fait tomber les tourelles de son troncon a 45 % de rotation depuis des
+## semaines (le troncon SUIVANT jusqu'au 2026-09-06) — et rien a l'ecran ne le disait : « on ne voit toujours pas visuellement un
 ## rapport entre les trois » (operateur, 2026-09-06).
 ##
 ## Ce test garde la propriete qui rend l'extinction possible : `CortegeSkin.apply()` duplique

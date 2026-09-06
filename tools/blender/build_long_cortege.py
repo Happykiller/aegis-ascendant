@@ -818,7 +818,40 @@ CROSS_BRIDGE_PIER = 0.90        # largeur des deux piles, aux extremites
 #: autres, puisque les cinq partagent un seul maillage et un seul jeu de
 #: materiaux. La coque porte le MARQUEUR ; `spine_kit.glb` porte le berceau, le
 #: cœur et les entretoises, et le moteur ne detruit que le cœur.
-SPINES: tuple[float, ...] = (54.1, 151.8, 260.2, 338.5, 458.8)
+#:
+#: ⚠️ LES CINQ SIEGENT EN TETE DE TRONCON, PLUS EN SON MILIEU (BRIEF-0104). Ils
+#: etaient a 54, 52, 60, 38 et 59 % du debut du leur — une position defendable
+#: tant que `weakened_section()` eteignait le troncon SUIVANT, et fatale des
+#: qu'elle a ete retournee le 2026-09-06 (commit 5288dd4) pour eteindre le sien :
+#: le joueur abattait le nœud a mi-parcours et n'eteignait qu'une moitie de
+#: couloir DERRIERE lui. « Quand je detruis un nœud, pas de changement » — il ne
+#: pouvait structurellement rien voir. Un nœud en tete alimente donc tout ce que
+#: le joueur a encore a traverser, et son extinction se lit dans le cadre meme
+#: ou elle se produit.
+#:
+#: ⚠️ TROIS DES CINQ NE SONT PAS A +3, ET AUCUN ECART N'EST UN ARRONDI DE
+#: CONFORT. Chacun est une garde de ce module, mesuree en l'appelant :
+#:
+#:   * `Spine_01` a 46,0 (+46 du debut) — LE FUSEAU DE PROUE. Le berceau fait
+#:     1,32 m et le fond plat du canal est contracte par `_scales()` : sous
+#:     s = 44,02 il n'y tient plus et `_audit()` arrete le build. 46,0 laisse
+#:     31 mm, la plus mince des cinq marges, et c'est volontaire — car c'est
+#:     aussi la BONNE station : `_canal_lane()` n'allume la voie externe qu'a
+#:     partir de s = 41,12. L'artere du troncon 1 commence la ; le nœud siege
+#:     4,9 m apres le debut de ce qu'il alimente, et il n'a rien en amont a
+#:     eteindre.
+#:   * `Spine_04` a 305,0 (+5) — LA FOSSE DE MAINTENANCE DE s = 292. Bord
+#:     babord, de |x| = 2,20 a 6,80 : son `PIT_KEEPOUT` porte x_hi a exactement
+#:     0,0, donc elle ATTEINT l'axe. Avec `APRON_SPINE`, elle interdit tout
+#:     l'intervalle 280,0 - 304,0 ; `_assert_pits_are_clear()` refuse 303,0.
+#:   * `Spine_05` a 406,0 (+6) — LA FOSSE DE s = 393, bord tribord, meme
+#:     mecanisme : intervalle interdit 381,0 - 405,0.
+#:
+#: ⚠️ NE PAS DEPLACER UNE FOSSE POUR GAGNER DEUX METRES. Deux d'entre elles ont
+#: deja ete recalees par cette assertion (voir l'en-tete de `PITS`) ; +5 et +6 m
+#: a 2,4 u/s font deux secondes d'entree de troncon, que le jeu ne perd pas et
+#: que la coque paierait en arbitrage.
+SPINES: tuple[float, ...] = (46.0, 103.0, 203.0, 305.0, 406.0)
 
 #: ⚠️ EMPRISE QUE `spine_kit.glb` POSE DANS LE FOND DU CANAL, berceau compris.
 #: Elle vit ICI parce que c'est ici qu'on echantillonne la peau pour calculer

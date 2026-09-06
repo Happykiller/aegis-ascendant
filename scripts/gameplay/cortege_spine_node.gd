@@ -1,16 +1,18 @@
 class_name CortegeSpineNode
 extends Node3D
-## Un nœud de l'épine dorsale : l'abattre éteint les tourelles du tronçon SUIVANT.
+## Un nœud de l'épine dorsale : l'abattre éteint SON tronçon — conduits et tourelles.
 ##
 ## ⚠️ C'EST LA TROISIÈME MÉCANIQUE, ET LA SEULE QUI DEMANDE D'AVOIR COMPRIS LE VAISSEAU. Une
 ## tourelle se voit, un pont se voit ; un nœud ne paie que si le joueur relie ce qu'il vient de
-## casser à ce qui ne lui tire plus dessus cent unités plus loin. C'est aussi ce qui le rend
-## FRAGILE en conception : si le survol devient illisible, c'est le nœud qu'on retire du tronçon,
-## jamais le pont (voir le plan d'exécution du niveau 2).
+## casser à ce qui ne lui tire plus dessus. C'est aussi ce qui le rend FRAGILE en conception :
+## si le survol devient illisible, c'est le nœud qu'on retire du tronçon, jamais le pont
+## (voir le plan d'exécution du niveau 2).
 ##
-## ⚠️ SA RÉCOMPENSE EST DIFFÉRÉE, ET IL FAUT DONC LA DIRE. Rien à l'écran ne relie une cause à
-## un effet séparés de quarante secondes : le nœud émet, le niveau annonce, et Lyra le nomme.
-## Sans cette chaîne, le joueur abat un bulbe lumineux et n'apprend rien.
+## ⚠️ SA RÉCOMPENSE EST À L'ÉCRAN DEPUIS LE 2026-09-06, ET IL FAUT L'ANNONCER QUAND MÊME. Elle
+## arrivait quarante secondes plus tard, sur un tronçon que le joueur n'avait pas encore vu ;
+## elle se joue maintenant devant lui. Mais un conduit qui noircit ne dit pas de lui-même que
+## les canons ralentissent : le nœud émet, le niveau annonce, et Lyra le nomme. Sans cette
+## chaîne, le joueur abat un bulbe lumineux et n'apprend rien.
 ##
 ## ⚠️ IL EST PLUS DUR À ATTEINDRE QU'IL N'EST DUR À TUER. Il siège sur l'axe du vaisseau, là où
 ## convergent les tourelles des deux bords, et il est petit : `CortegeTuning` le dimensionne
@@ -60,8 +62,8 @@ const BRACE_COUNT: Array[int] = [2, 4]
 #
 ## ⚠️ LE NŒUD ÉTAIT « MOCHE », ET C'ÉTAIT UN PROBLÈME DE JEU AVANT D'ÊTRE UN PROBLÈME D'IMAGE.
 ## Une boule violette posée sur un socle ne dit pas « tire ici » : c'est la seule cible du
-## niveau dont la récompense arrive quarante secondes plus tard, donc la seule qui doive
-## s'annoncer d'elle-même. Des arcs qui en jaillissent le disent en une image — « on pourrait
+## niveau qu'il faut avoir COMPRISE avant de tirer, donc la seule qui doive s'annoncer
+## d'elle-même. Des arcs qui en jaillissent le disent en une image — « on pourrait
 ## rajouter comme des éclairs qui en émanent, pour indiquer que c'est un point vital à tirer ? »
 ## (opérateur, 2026-08-29).
 ##

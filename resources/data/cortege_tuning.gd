@@ -219,8 +219,12 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 ## Un nœud par tronçon.
 @export var node_visible_span: float = 14.0
 @export var node_health: float = 260.0
-## Ce qu'un nœud abattu abîme : les tourelles du tronçon SUIVANT.
-@export var node_weakens_next_section: bool = true
+## Ce qu'un nœud abattu abîme : les tourelles de SON tronçon.
+##
+## ⚠️ IL S'APPELAIT `node_weakens_next_section` JUSQU'AU 2026-09-06, et le nom disait vrai à
+## l'époque. La règle a été retournée avec les nœuds, qui remontent en tête de leur tronçon :
+## un drapeau qui garde le nom de la règle d'avant est pire qu'un drapeau sans commentaire.
+@export var node_weakens_its_section: bool = true
 @export var node_score: int = 2600
 
 ## Ce qu'il reste à une tourelle abîmée, en part de son réglage nominal.

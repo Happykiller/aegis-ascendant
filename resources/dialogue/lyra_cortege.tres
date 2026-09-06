@@ -76,10 +76,11 @@ mood = 0
 voice_cue = &"lyra_spine_seen"
 hold = 7.0
 
-; ⚠️ ELLE EXPLIQUE UNE MECANIQUE, ET C'EST LA SEULE DU JEU QUI EN AIT BESOIN. Un nœud d'epine
-; est la seule cible dont la recompense arrive quarante secondes plus tard, sur un troncon que
-; le joueur n'a pas encore vu : rien a l'ecran ne peut relier la cause a l'effet. Les eclairs
-; disent « tire ici » ; elle seule peut dire POURQUOI.
+; ⚠️ ELLE EXPLIQUE UNE MECANIQUE, ET C'EST LA SEULE DU JEU QUI EN AIT BESOIN. Le noeud s'eteint
+; avec tout ce qu'il alimente, sous les yeux du joueur (2026-09-06) — mais un conduit qui
+; noircit ne dit pas de lui-meme que les canons ralentissent. Les eclairs disent « tire ici » ;
+; elle seule peut dire POURQUOI. Le texte a suivi le retournement de la regle : « le troncon
+; devant vous », et non plus « celui d'apres ».
 ;
 ; ⛔ PLAFOND — « ce qui les alimente » et rien de plus. Ni ce que l'Unisson est, ni comment il
 ; se repare : le joueur apprend qu'ils EMPORTENT DES STRUCTURES, un point.
@@ -89,21 +90,21 @@ key = &"node_seen"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
 text = "Ce bulbe sur l’axe, Halyard — c’est un nœud.
-Abattez-le : il alimente les tourelles du tronçon suivant."
+Abattez-le : il alimente tout le tronçon devant vous."
 mood = 1
 voice_cue = &"lyra_node_seen"
-hold = 7.0
+hold = 6.6
 
 [sub_resource type="Resource" id="line_5"]
 script = ExtResource("2_line")
 key = &"node_down"
 speaker = &"LYRA VANTELLA"
 role = "NAVIGATRICE // IA GUIDE"
-text = "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.
+text = "Le tronçon devant vous vient de s’éteindre. Il ne se rallumera pas.
 Ils ne savent pas encore qu’on leur fait la guerre."
 mood = 0
 voice_cue = &"lyra_node_down"
-hold = 6.5
+hold = 6.4
 
 [sub_resource type="Resource" id="line_6"]
 script = ExtResource("2_line")

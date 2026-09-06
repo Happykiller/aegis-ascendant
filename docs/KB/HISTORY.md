@@ -310,7 +310,7 @@ Ce qui en sort :
   marqueurs sont ENFANTS de leur tronçon**, donc déplacer le décor emmène tout, et rien ne peut
   se désynchroniser ;
 - **trois mécaniques** : tourelles à télégraphe, ponts d'envol qui produisent tant qu'ils vivent,
-  nœuds d'épine qui éteignent le tronçon suivant ;
+  nœuds d'épine qui éteignent leur tronçon (le **suivant** jusqu'au 2026-09-06) ;
 - **huit répliques, huit voix, cinq briefings** — qui ne sont pas de l'habillage : un survol ne
   change pas d'écran pendant trois minutes et demie, ils SONT la progression ;
 - **cinq demandes de texture** et l'outil qui les vérifie.

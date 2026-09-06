@@ -145,6 +145,12 @@ def main() -> int:
     ap.add_argument("--ecoute", default=None, help="où déposer les essais de --preview")
     ap.add_argument("--deposer", action="store_true",
                     help="écrit les .ogg BRUTS dans le dépôt et rend les lignes de provenance")
+    # ⚠️ PARCE QU'UNE RESYNTHÈSE COMPLÈTE RÉÉCRIT DES RÉPLIQUES QU'ON N'A PAS TOUCHÉES. Piper
+    # tire du bruit dans son prédicteur de durée : relancer un lot entier pour corriger UNE
+    # phrase rend huit fichiers différents, dont sept que personne n'a demandés et que
+    # personne ne réécoutera. On restreint donc au cue nommé — et le lot reste la demande.
+    ap.add_argument("--cue", action="append", default=None,
+                    help="ne traiter que ce(s) cue(s) de la demande ; répétable")
     args = ap.parse_args()
 
     if not (args.preview or args.deposer):
@@ -152,6 +158,12 @@ def main() -> int:
 
     demande = json.loads(Path(args.demande).read_text(encoding="utf-8"))
     repliques = demande["lines"]
+    if args.cue:
+        voulus = set(args.cue)
+        inconnus = voulus - {r["cue"] for r in repliques}
+        if inconnus:
+            sys.exit("[voix] cue(s) absent(s) de la demande : %s" % ", ".join(sorted(inconnus)))
+        repliques = [r for r in repliques if r["cue"] in voulus]
     cible_depot = RACINE / demande["x_delivery"]["target_dir"]
     ffmpeg = outil("ffmpeg")
     piper = atelier_pret()

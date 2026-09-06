@@ -177,9 +177,9 @@ var _camera: Node3D = null
 ##
 ## ⚠️ IL PREND DES TRONÇONS, PAS LE SURVOL. Il n'a besoin de rien d'autre que d'une liste de
 ## nœuds portant des marqueurs — lui passer `CortegeFlyby` le rendrait dépendant du défilement,
-## donc impossible à monter dans un test, donc la chaîne « un nœud éteint le tronçon suivant »
-## resterait vérifiable nulle part. C'est la seule mécanique du jeu dont la récompense arrive
-## quarante secondes après la cause : c'est précisément celle qu'aucune partie ne prouve.
+## donc impossible à monter dans un test, donc la chaîne « un nœud éteint son tronçon »
+## resterait vérifiable nulle part. C'est la seule mécanique du jeu dont la cause et l'effet
+## sont séparés par de la géométrie : c'est précisément celle qu'aucune partie ne prouve.
 func build(sections: Array[Node3D], p_tuning: CortegeTuning, bullet_manager: BulletManager,
 		player: PlayerFighterController, vfx: VFXManager, camera: Node3D = null) -> void:
 	tuning = p_tuning
@@ -269,9 +269,10 @@ func _add_node(marker: Node3D, section: int, bullet_manager: BulletManager,
 	_nodes.append(node)
 
 ## ⚠️ L'ORDRE COMPTE : les nœuds d'abord. Un nœud abattu dans cette trame doit avoir éteint les
-## tourelles de son tronçon suivant AVANT qu'elles ne tirent — sinon la récompense arrive une
-## image trop tard, ce qui est invisible mais faux, et le jour où le tronçon se raccourcit ça
-## devient visible.
+## tourelles de SON tronçon AVANT qu'elles ne tirent — sinon la récompense arrive une image
+## trop tard. C'était invisible tant que l'effet se jouait cent mètres devant ; depuis que le
+## nœud siège en tête de ce qu'il alimente, les tourelles concernées sont À L'ÉCRAN, et une
+## image de retard se voit.
 func _process(delta: float) -> void:
 	var eye := _camera.global_position if is_instance_valid(_camera) else Vector3.ZERO
 	# ⚠️ LA PIÈCE EST VISÉE PAR SA MASSE, PAS PAR SON ASSISE. `aim_point_of` corrige la parallaxe
@@ -342,7 +343,7 @@ func _on_node_engaged(node: CortegeSpineNode) -> void:
 
 func _on_node_destroyed(node: CortegeSpineNode) -> void:
 	node_destroyed.emit(node)
-	if not tuning.node_weakens_next_section:
+	if not tuning.node_weakens_its_section:
 		return
 	var target := CortegeSpineNode.weakened_section(node.section, _sections_built)
 	if target < 0:

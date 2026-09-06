@@ -68,7 +68,7 @@ title = "L'ARTÈRE"
 description = "L'axe lumineux qui court d'un bout à l'autre alimente les tourelles,
 et il n'est pas blindé. Pas une seule plaque sur six kilomètres.
 Quoi que ce soit, ça n'a jamais imaginé qu'on entre par le dessus."
-objectives = PackedStringArray("Abattre un nœud de l'artère", "Un nœud éteint les tourelles du tronçon suivant", "Traverser l'axe demande de passer sous les canons")
+objectives = PackedStringArray("Abattre un nœud de l'artère", "Un nœud alimente tout le tronçon derrière lui", "Traverser l'axe demande de passer sous les canons")
 
 ; ⛔ CE BRIEFING EST LA REVELATION DU NIVEAU. « Radie » est le mot, et il ne s'explique pas :
 ; radie n'est pas perdu, et c'est au joueur de sentir la difference. Ne rien ajouter sur QUI a

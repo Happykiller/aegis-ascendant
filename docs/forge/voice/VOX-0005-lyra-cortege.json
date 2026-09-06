@@ -85,9 +85,9 @@
     {
       "cue": "lyra_node_down",
       "dialogue_key": "node_down",
-      "text": "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.\nIls ne savent pas encore qu’on leur fait la guerre.",
+      "text": "Le tronçon devant vous vient de s’éteindre. Il ne se rallumera pas.\nIls ne savent pas encore qu’on leur fait la guerre.",
       "text_lines": [
-        "Le tronçon d’après vient de s’éteindre. Il ne se rallumera pas.",
+        "Le tronçon devant vous vient de s’éteindre. Il ne se rallumera pas.",
         "Ils ne savent pas encore qu’on leur fait la guerre."
       ],
       "mood": "CALME",
@@ -118,10 +118,10 @@
     {
       "cue": "lyra_node_seen",
       "dialogue_key": "node_seen",
-      "text": "Ce bulbe sur l’axe, Halyard — c’est un nœud.\nAbattez-le : il alimente les tourelles du tronçon suivant.",
+      "text": "Ce bulbe sur l’axe, Halyard — c’est un nœud.\nAbattez-le : il alimente tout le tronçon devant vous.",
       "text_lines": [
         "Ce bulbe sur l’axe, Halyard — c’est un nœud.",
-        "Abattez-le : il alimente les tourelles du tronçon suivant."
+        "Abattez-le : il alimente tout le tronçon devant vous."
       ],
       "mood": "ALERTE",
       "direction": "⚠️ ELLE EXPLIQUE, ELLE N'AVERTIT PAS. C'est la seule réplique du jeu qui enseigne une mécanique, et le piège est de la jouer comme une alerte : le joueur entendrait un danger et chercherait à fuir, alors qu'on lui demande de VISER. Ton d'ingénieur qui désigne une pièce — « c'est un nœud » se dit comme on nomme un organe, pas comme on signale une menace. Le régime reste ALERTE pour le cadre rouge, qui dit « regarde maintenant » ; c'est le seul endroit où l'image et la voix disent délibérément deux choses différentes."
