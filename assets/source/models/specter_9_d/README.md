@@ -52,6 +52,42 @@ byte-stable*. Le `.blend` reste donc la référence, et une modification se fait
 Palette : blanc cassé, bleu profond, or, rouge — c'est la palette **Helios Vanguard** de la charte,
 que la planche reprend d'elle-même. Aucune retouche n'a été nécessaire.
 
+## Les cartes de surface ont été RÉÉCRITES par le projet (2026-09-06)
+
+L'opérateur, après l'avoir vue en jeu : « *je trouve le D très bien mais il lui manque les
+textures pour être aussi beau que le B* ». Mesuré, il avait raison sur le fond et le remède
+n'était pas celui qu'on croit.
+
+**Les six cartes livrées étaient des aplats.** L'albédo modulait de ±2,3 %, la rugosité de ±5 %,
+et la normale de **±2 sur 255** — branchée de surcroît à une force de 0,22. Trois à dix fois sous
+le seuil auquel un détail existe dans ce jeu.
+
+**Et la réponse n'était pas plus de texels.** Densité UV mesurée sur le maillage : **0,831
+tuile/m**, soit une tuile pour 1,20 m de modèle — 0,235 m en jeu, c'est-à-dire **11 pixels à
+l'écran** à 45,8 px/m. Un damier fin y serait sous-pixel quelle que soit la résolution. La
+résolution reste donc à **512**, où elle est déjà sur-échantillonnée quarante fois.
+
+Ce qui a changé, c'est le **contenu** : une tôle par tuile, sa rainure de joint sur le bord (donc
+raccord automatique), un liseré clair en dedans, une rangée de rivets, un grain brossé. La hauteur
+porte tout ; la normale s'en **dérive** (`ADR-0013`).
+
+| | avant | après |
+|---|---|---|
+| amplitude de l'albédo | 12 niveaux | **73** |
+| amplitude de la normale | 4 niveaux | **245** |
+| force de la normale | 0,22 | **0,85** |
+| largeur de la rainure | 1 % de la tuile (0,11 px) | **4,2 % (0,46 px en jeu, 2 px au bestiaire)** |
+
+⚠️ **Ce qu'une feuille tuilée ne donnera JAMAIS**, et la comparaison au bestiaire le montre :
+l'usure PLACÉE et les décalcomanies. La `specter_9_b` porte un atlas peint de 2048 où les traînées
+de crasse et les marquages sont posés là où la coque les veut ; une tuile qui se répète ne peut
+que régulariser. La D lit désormais comme un appareil **neuf et propre**, la B comme un appareil
+**usé**. Aller plus loin demande un atlas — l'outillage existe (`tools/bake-atlas.py`, `ADR-0047`)
+mais il faudrait d'abord redéplier les 406 pièces en un atlas unique.
+
+⚠️ **La géométrie n'a pas bougé** : 413 nœuds, 406 maillages, 49 116 triangles, identiques au
+fichier livré. Seules les cartes changent.
+
 ## Reconstruire
 
 ```sh
