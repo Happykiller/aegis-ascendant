@@ -59,7 +59,7 @@
 script = ExtResource("2_entry")
 time_offset = 34.0
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-9.0, 9.5)
+spawn_plane_position = Vector2(-9, 15)
 count = 3
 spacing = 1.2
 
@@ -67,7 +67,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 37.1
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(6.0, 9.5)
+spawn_plane_position = Vector2(6, 15)
 count = 3
 spacing = 1.2
 
@@ -75,7 +75,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 41.4
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(-4.0, 9.5)
+spawn_plane_position = Vector2(-4, 15)
 count = 3
 spacing = 1.2
 
@@ -83,7 +83,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 45.1
 enemy_scene = ExtResource("10_strafe")
-spawn_plane_position = Vector2(9.0, 9.5)
+spawn_plane_position = Vector2(9, 15)
 count = 3
 spacing = 1.2
 
@@ -91,7 +91,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 48.2
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-7.0, 9.5)
+spawn_plane_position = Vector2(-7, 15)
 count = 4
 spacing = 1.2
 
@@ -99,7 +99,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 52.5
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(3.0, 9.5)
+spawn_plane_position = Vector2(3, 15)
 count = 3
 spacing = 1.2
 
@@ -107,7 +107,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 56.2
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(-2.0, 9.5)
+spawn_plane_position = Vector2(-2, 15)
 count = 3
 spacing = 1.2
 
@@ -115,7 +115,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 59.3
 enemy_scene = ExtResource("10_strafe")
-spawn_plane_position = Vector2(8.0, 9.5)
+spawn_plane_position = Vector2(8, 15)
 count = 3
 spacing = 1.2
 
@@ -123,7 +123,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 63.6
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-6.0, 9.5)
+spawn_plane_position = Vector2(-6, 15)
 count = 3
 spacing = 1.2
 
@@ -131,7 +131,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 67.3
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(0.0, 9.5)
+spawn_plane_position = Vector2(0, 15)
 count = 4
 spacing = 1.2
 
@@ -139,7 +139,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 70.4
 enemy_scene = ExtResource("3_scout")
-spawn_plane_position = Vector2(5.0, 9.5)
+spawn_plane_position = Vector2(5, 15)
 count = 3
 spacing = 1.2
 
@@ -147,7 +147,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 74.7
 enemy_scene = ExtResource("10_strafe")
-spawn_plane_position = Vector2(-8.0, 9.5)
+spawn_plane_position = Vector2(-8, 15)
 count = 3
 spacing = 1.2
 
@@ -155,7 +155,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 78.4
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(2.0, 9.5)
+spawn_plane_position = Vector2(2, 15)
 count = 3
 spacing = 1.2
 
@@ -163,7 +163,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 81.5
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(7.0, 9.5)
+spawn_plane_position = Vector2(7, 15)
 count = 3
 spacing = 1.2
 
@@ -171,7 +171,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 83.0
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(-3.0, 9.5)
+spawn_plane_position = Vector2(-3, 15)
 count = 4
 spacing = 1.2
 
@@ -179,7 +179,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 85.8
 enemy_scene = ExtResource("9_spiral")
-spawn_plane_position = Vector2(-9.0, 9.5)
+spawn_plane_position = Vector2(-9, 15)
 count = 4
 spacing = 1.2
 
@@ -187,7 +187,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 89.6
 enemy_scene = ExtResource("12_leech")
-spawn_plane_position = Vector2(6.0, 9.5)
+spawn_plane_position = Vector2(6, 15)
 count = 4
 spacing = 1.3
 
@@ -195,7 +195,7 @@ spacing = 1.3
 script = ExtResource("2_entry")
 time_offset = 92.9
 enemy_scene = ExtResource("13_maw")
-spawn_plane_position = Vector2(-4.0, 9.5)
+spawn_plane_position = Vector2(-4, 15)
 count = 4
 spacing = 1.2
 
@@ -203,7 +203,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 95.7
 enemy_scene = ExtResource("10_strafe")
-spawn_plane_position = Vector2(9.0, 9.5)
+spawn_plane_position = Vector2(9, 15)
 count = 5
 spacing = 1.2
 
@@ -211,7 +211,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 99.5
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(-7.0, 9.5)
+spawn_plane_position = Vector2(-7, 15)
 count = 4
 spacing = 1.2
 
@@ -219,7 +219,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 102.8
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(3.0, 9.5)
+spawn_plane_position = Vector2(3, 15)
 count = 4
 spacing = 1.2
 
@@ -227,7 +227,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 105.6
 enemy_scene = ExtResource("9_spiral")
-spawn_plane_position = Vector2(-2.0, 9.5)
+spawn_plane_position = Vector2(-2, 15)
 count = 4
 spacing = 1.2
 
@@ -235,7 +235,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 109.4
 enemy_scene = ExtResource("12_leech")
-spawn_plane_position = Vector2(8.0, 9.5)
+spawn_plane_position = Vector2(8, 15)
 count = 4
 spacing = 1.3
 
@@ -243,7 +243,7 @@ spacing = 1.3
 script = ExtResource("2_entry")
 time_offset = 112.7
 enemy_scene = ExtResource("13_maw")
-spawn_plane_position = Vector2(-6.0, 9.5)
+spawn_plane_position = Vector2(-6, 15)
 count = 5
 spacing = 1.2
 
@@ -251,7 +251,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 115.5
 enemy_scene = ExtResource("10_strafe")
-spawn_plane_position = Vector2(0.0, 9.5)
+spawn_plane_position = Vector2(0, 15)
 count = 4
 spacing = 1.2
 
@@ -259,7 +259,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 119.3
 enemy_scene = ExtResource("4_arc")
-spawn_plane_position = Vector2(5.0, 9.5)
+spawn_plane_position = Vector2(5, 15)
 count = 4
 spacing = 1.2
 
@@ -267,7 +267,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 122.6
 enemy_scene = ExtResource("8_serp")
-spawn_plane_position = Vector2(-8.0, 9.5)
+spawn_plane_position = Vector2(-8, 15)
 count = 4
 spacing = 1.2
 
@@ -275,7 +275,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 125.0
 enemy_scene = ExtResource("11_cres")
-spawn_plane_position = Vector2(2.0, 9.5)
+spawn_plane_position = Vector2(2, 15)
 count = 4
 spacing = 1.5
 
@@ -283,7 +283,7 @@ spacing = 1.5
 script = ExtResource("2_entry")
 time_offset = 127.5
 enemy_scene = ExtResource("12_leech")
-spawn_plane_position = Vector2(7.0, 9.5)
+spawn_plane_position = Vector2(7, 15)
 count = 4
 spacing = 1.3
 
@@ -291,7 +291,7 @@ spacing = 1.3
 script = ExtResource("2_entry")
 time_offset = 131.0
 enemy_scene = ExtResource("7_raider")
-spawn_plane_position = Vector2(-3.0, 9.5)
+spawn_plane_position = Vector2(-3, 15)
 count = 4
 spacing = 1.2
 
@@ -299,7 +299,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 134.0
 enemy_scene = ExtResource("6_lancer")
-spawn_plane_position = Vector2(-9.0, 9.5)
+spawn_plane_position = Vector2(-9, 15)
 count = 4
 spacing = 1.2
 
@@ -307,7 +307,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 136.6
 enemy_scene = ExtResource("9_spiral")
-spawn_plane_position = Vector2(6.0, 9.5)
+spawn_plane_position = Vector2(6, 15)
 count = 5
 spacing = 1.2
 
@@ -315,7 +315,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 140.0
 enemy_scene = ExtResource("14_mine")
-spawn_plane_position = Vector2(-4.0, 9.5)
+spawn_plane_position = Vector2(-4, 15)
 count = 2
 spacing = 2.4
 
@@ -323,7 +323,7 @@ spacing = 2.4
 script = ExtResource("2_entry")
 time_offset = 143.0
 enemy_scene = ExtResource("11_cres")
-spawn_plane_position = Vector2(9.0, 9.5)
+spawn_plane_position = Vector2(9, 15)
 count = 4
 spacing = 1.5
 
@@ -331,7 +331,7 @@ spacing = 1.5
 script = ExtResource("2_entry")
 time_offset = 145.6
 enemy_scene = ExtResource("12_leech")
-spawn_plane_position = Vector2(-7.0, 9.5)
+spawn_plane_position = Vector2(-7, 15)
 count = 4
 spacing = 1.3
 
@@ -339,7 +339,7 @@ spacing = 1.3
 script = ExtResource("2_entry")
 time_offset = 149.0
 enemy_scene = ExtResource("7_raider")
-spawn_plane_position = Vector2(3.0, 9.5)
+spawn_plane_position = Vector2(3, 15)
 count = 4
 spacing = 1.2
 
@@ -347,7 +347,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 152.0
 enemy_scene = ExtResource("6_lancer")
-spawn_plane_position = Vector2(-2.0, 9.5)
+spawn_plane_position = Vector2(-2, 15)
 count = 5
 spacing = 1.2
 
@@ -355,7 +355,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 154.6
 enemy_scene = ExtResource("9_spiral")
-spawn_plane_position = Vector2(8.0, 9.5)
+spawn_plane_position = Vector2(8, 15)
 count = 4
 spacing = 1.2
 
@@ -363,7 +363,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 158.0
 enemy_scene = ExtResource("14_mine")
-spawn_plane_position = Vector2(-6.0, 9.5)
+spawn_plane_position = Vector2(-6, 15)
 count = 2
 spacing = 2.4
 
@@ -371,7 +371,7 @@ spacing = 2.4
 script = ExtResource("2_entry")
 time_offset = 161.0
 enemy_scene = ExtResource("11_cres")
-spawn_plane_position = Vector2(0.0, 9.5)
+spawn_plane_position = Vector2(0, 15)
 count = 4
 spacing = 1.5
 
@@ -379,7 +379,7 @@ spacing = 1.5
 script = ExtResource("2_entry")
 time_offset = 163.6
 enemy_scene = ExtResource("12_leech")
-spawn_plane_position = Vector2(5.0, 9.5)
+spawn_plane_position = Vector2(5, 15)
 count = 4
 spacing = 1.3
 
@@ -387,7 +387,7 @@ spacing = 1.3
 script = ExtResource("2_entry")
 time_offset = 167.0
 enemy_scene = ExtResource("7_raider")
-spawn_plane_position = Vector2(-8.0, 9.5)
+spawn_plane_position = Vector2(-8, 15)
 count = 5
 spacing = 1.2
 
@@ -395,7 +395,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 169.4
 enemy_scene = ExtResource("6_lancer")
-spawn_plane_position = Vector2(2.0, 9.5)
+spawn_plane_position = Vector2(2, 15)
 count = 5
 spacing = 1.2
 
@@ -403,7 +403,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 172.6
 enemy_scene = ExtResource("5_dive")
-spawn_plane_position = Vector2(7.0, 9.5)
+spawn_plane_position = Vector2(7, 15)
 count = 5
 spacing = 1.2
 
@@ -411,7 +411,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 175.4
 enemy_scene = ExtResource("11_cres")
-spawn_plane_position = Vector2(-3.0, 9.5)
+spawn_plane_position = Vector2(-3, 15)
 count = 5
 spacing = 1.5
 
@@ -419,7 +419,7 @@ spacing = 1.5
 script = ExtResource("2_entry")
 time_offset = 177.8
 enemy_scene = ExtResource("15_carrier")
-spawn_plane_position = Vector2(-9.0, 9.5)
+spawn_plane_position = Vector2(-9, 15)
 count = 1
 spacing = 1.0
 
@@ -427,7 +427,7 @@ spacing = 1.0
 script = ExtResource("2_entry")
 time_offset = 181.0
 enemy_scene = ExtResource("14_mine")
-spawn_plane_position = Vector2(6.0, 9.5)
+spawn_plane_position = Vector2(6, 15)
 count = 2
 spacing = 2.4
 
@@ -435,7 +435,7 @@ spacing = 2.4
 script = ExtResource("2_entry")
 time_offset = 183.8
 enemy_scene = ExtResource("7_raider")
-spawn_plane_position = Vector2(-4.0, 9.5)
+spawn_plane_position = Vector2(-4, 15)
 count = 5
 spacing = 1.2
 
@@ -443,7 +443,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 186.2
 enemy_scene = ExtResource("6_lancer")
-spawn_plane_position = Vector2(9.0, 9.5)
+spawn_plane_position = Vector2(9, 15)
 count = 5
 spacing = 1.2
 
@@ -451,7 +451,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 189.4
 enemy_scene = ExtResource("5_dive")
-spawn_plane_position = Vector2(-7.0, 9.5)
+spawn_plane_position = Vector2(-7, 15)
 count = 5
 spacing = 1.2
 
@@ -459,7 +459,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 192.2
 enemy_scene = ExtResource("11_cres")
-spawn_plane_position = Vector2(3.0, 9.5)
+spawn_plane_position = Vector2(3, 15)
 count = 6
 spacing = 1.5
 
@@ -467,7 +467,7 @@ spacing = 1.5
 script = ExtResource("2_entry")
 time_offset = 194.6
 enemy_scene = ExtResource("15_carrier")
-spawn_plane_position = Vector2(-2.0, 9.5)
+spawn_plane_position = Vector2(-2, 15)
 count = 1
 spacing = 1.0
 
@@ -475,7 +475,7 @@ spacing = 1.0
 script = ExtResource("2_entry")
 time_offset = 197.8
 enemy_scene = ExtResource("14_mine")
-spawn_plane_position = Vector2(8.0, 9.5)
+spawn_plane_position = Vector2(8, 15)
 count = 2
 spacing = 2.4
 
@@ -483,7 +483,7 @@ spacing = 2.4
 script = ExtResource("2_entry")
 time_offset = 200.6
 enemy_scene = ExtResource("7_raider")
-spawn_plane_position = Vector2(-6.0, 9.5)
+spawn_plane_position = Vector2(-6, 15)
 count = 5
 spacing = 1.2
 
@@ -491,7 +491,7 @@ spacing = 1.2
 script = ExtResource("2_entry")
 time_offset = 203.0
 enemy_scene = ExtResource("6_lancer")
-spawn_plane_position = Vector2(0.0, 9.5)
+spawn_plane_position = Vector2(0, 15)
 count = 5
 spacing = 1.2
 

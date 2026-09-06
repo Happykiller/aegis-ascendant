@@ -38,7 +38,11 @@ const TEAM_BUDGETS: PackedInt32Array = [150, 450]  # player / enemy sub-budgets
 ##
 ## ⚠️ Ce n'est PAS une histoire de portée : le `ttl` du tir joueur autorise 36 unités de
 ## trajet quand le terrain en fait 16. Rallonger le `ttl` n'aurait rien changé.
-const CULL_MARGIN := 5.0
+## ⚠️ 7,5 ET NON 5,0 DEPUIS LE 2026-09-06. À 5,0 la coupe tombait à y = 13,0 — soit 0,72 unité
+## seulement au-dessus du bord haut de l'écran (+12,28), et SOUS la ligne d'apparition des
+## ennemis une fois celle-ci sortie du cadre. À 7,5 elle est à 15,5 : un bolt franchit le haut
+## du cadre avant de s'éteindre, et il atteint une coque à l'instant où elle devient visible.
+const CULL_MARGIN := 7.5
 
 ## Pas d'échantillonnage du segment parcouru dans l'image, quand on le confronte aux écrans.
 ##
@@ -174,7 +178,7 @@ func spawn_bullet(team: int, pos: Vector2, vel: Vector2, radius: float,
 	_teams[i] = team
 	_alive[i] = 1
 	# ⚠️ UNE BOUCHE PEUT ETRE HORS DU PLAN, ET LA MOITIE DE LA GERBE MOURAIT LA. Le Leviathan
-	# tire depuis ses plaques, `origin + 2,6` : jusqu'a y = 14,5 quand la coupe est a 13,0.
+	# tire depuis ses plaques, `origin + 2,6` : jusqu'a y = 14,5 quand la coupe est a 15,5.
 	# Le premier pas de ces balles les trouvait « dehors » et les recyclait a l'image de leur
 	# creation — sans erreur, sans trace, et avec un compteur de projectiles parfaitement
 	# juste. On ne retire pas ce qui n'est jamais entre ; le `ttl` borne l'attente, donc

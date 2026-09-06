@@ -14,8 +14,37 @@ const WAVES := ["res://resources/encounters/wave_graybox_01.tres",
 	"res://resources/encounters/wave_asteroid_field_01.tres"]
 const PULSE: ProjectileData = preload("res://resources/weapons/pulse_shot.tres")
 
-## Marge exigée AU-DESSUS du plus haut point d'apparition. En dessous, la coupe se voit.
-const SLACK_ABOVE_SPAWNS := 2.5
+## Marge exigée AU-DESSUS du bord haut de l'ÉCRAN. En dessous, la coupe se voit.
+##
+## ⚠️ LA RÈGLE A CHANGÉ DE RÉFÉRENCE LE 2026-09-06, ET ELLE S'EST RAPPROCHÉE DU DÉFAUT. Elle
+## se calait sur la ligne d'APPARITION des ennemis, qui servait de mesure indirecte du haut de
+## l'écran tant que les coques naissaient dans le cadre. Elles n'y naissent plus : la ligne
+## d'apparition est passée à y = 15, au-dessus du bord haut, et exiger 2,5 de plus qu'elle
+## aurait demandé une coupe à 17,5 — pour un défaut qui se juge à 12,28.
+##
+## On mesure donc le cadre. C'est aussi ce que l'opérateur décrivait mot pour mot : « mes tirs
+## ne vont pas jusqu'au bout de l'écran ».
+const SLACK_ABOVE_SCREEN := 2.5
+const CORTEGE_SCENE := "res://scenes/gameplay/graybox.tscn"
+
+## Le haut du cadre, relu dans la scène — jamais recopié.
+func _screen_top() -> float:
+	var packed: PackedScene = load(CORTEGE_SCENE)
+	assert_true(packed != null, "la scene de jeu se charge")
+	var etat := packed.get_state()
+	var camera := Transform3D.IDENTITY
+	var fov := 0.0
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != "Camera3D":
+			continue
+		for j in etat.get_node_property_count(i):
+			var nom := String(etat.get_node_property_name(i, j))
+			if nom == "transform":
+				camera = etat.get_node_property_value(i, j)
+			elif nom == "fov":
+				fov = etat.get_node_property_value(i, j)
+	assert_true(fov > 0.0, "le fov de la camera se lit")
+	return GameplayPlane.visible_frame(camera, fov).end.y
 
 func _highest_spawn() -> float:
 	var highest := -1e9
@@ -25,12 +54,19 @@ func _highest_spawn() -> float:
 			highest = maxf(highest, entry.spawn_plane_position.y)
 	return highest
 
-func test_a_bolt_outlives_the_line_the_enemies_come_from() -> void:
+func test_a_bolt_outlives_the_screen_and_reaches_what_appears_on_it() -> void:
 	var cull := GameplayPlane.BOUNDS.end.y + BulletManager.CULL_MARGIN
+	var haut := _screen_top()
+	assert_true(cull >= haut + SLACK_ABOVE_SCREEN,
+		"coupe à y=%.2f pour un ecran qui monte a y=%.2f — il faut %.1f d'ecart, sinon le bolt s'eteint la ou le joueur regarde encore"
+			% [cull, haut, SLACK_ABOVE_SCREEN])
+	# ⚠️ ET IL DOIT ATTEINDRE CE QUI ENTRE. Une coque nait desormais HORS du cadre : si la coupe
+	# tombait sous sa ligne de naissance, le joueur ne pourrait pas la toucher a l'instant ou
+	# elle devient visible — le defaut des tourelles, repris par les balles.
 	var spawn := _highest_spawn()
-	assert_true(cull >= spawn + SLACK_ABOVE_SPAWNS,
-		"coupe à y=%.1f pour des apparitions à y=%.1f — il faut %.1f d'écart"
-			% [cull, spawn, SLACK_ABOVE_SPAWNS])
+	assert_true(cull >= spawn,
+		"coupe à y=%.2f pour des apparitions a y=%.2f : une coque serait intouchable en entrant"
+			% [cull, spawn])
 
 ## ⚠️ ET CE N'ÉTAIT PAS LA PORTÉE. Le `ttl` autorise bien plus de trajet que le terrain n'en
 ## demande : allonger la durée de vie n'aurait rien corrigé, et cette garde empêche qu'on

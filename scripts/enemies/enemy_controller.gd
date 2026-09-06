@@ -15,9 +15,21 @@ const PLUME_TUNING := preload("res://resources/vfx/plume_null_choir.tres")
 const PLUME_THROTTLE := 0.9
 
 const MUZZLE_OFFSET := Vector2(0.0, -0.6)
+## Marge de sortie par le BAS. ⚠️ Elle reste petite, et c'est la seule qui le doit : l'écran
+## s'arrête à y = −7,72 et le plan de vol à −8, donc à −9,5 l'ennemi est déjà hors du cadre.
 const DESPAWN_MARGIN := 1.5
 ## Marge de sortie par le HAUT : au-delà, un ennemi qui bat en retraite est perdu.
-const ESCAPE_MARGIN := 3.0
+##
+## ⚠️ ELLE VALAIT 3,0, ET ELLE TUAIT TOUTE NAISSANCE HORS CADRE. L'écran montre le plan
+## jusqu'à y = +12,28 ; à 3,0 le couperet tombait à +11, c'est-à-dire SOUS le bord haut. Un
+## ennemi né hors de l'écran mourait donc à sa première trame, sans un mot — et c'est
+## exactement pourquoi les cent quinze points de naissance du jeu étaient tous DANS le cadre.
+## À 9,0 le couperet est à +17, au-dessus de la ligne de naissance (+15).
+const ESCAPE_MARGIN := 9.0
+## Marge de sortie LATÉRALE, et elle n'a rien à voir avec les deux autres : c'est par les
+## côtés qu'entrent les passes de mitraillage, depuis |x| = 22. À 1,5 (l'ancienne valeur
+## partagée) le couperet tombait à 15,5 et les tuait au premier pas.
+const SIDE_MARGIN := 10.0
 
 signal destroyed(enemy: EnemyController)
 ## Emitted on each shot (audio cue).
@@ -353,7 +365,7 @@ func _physics_process(delta: float) -> void:
 	# entrée du pool.
 	if plane_position.y < GameplayPlane.bounds.position.y - DESPAWN_MARGIN \
 			or plane_position.y > GameplayPlane.bounds.end.y + ESCAPE_MARGIN \
-			or absf(plane_position.x) > GameplayPlane.bounds.end.x + DESPAWN_MARGIN:
+			or absf(plane_position.x) > GameplayPlane.bounds.end.x + SIDE_MARGIN:
 		deactivate()
 		return
 	# Le roulis se déduit du déplacement latéral RÉELLEMENT parcouru, pas de la

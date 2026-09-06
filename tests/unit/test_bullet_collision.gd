@@ -249,9 +249,17 @@ func test_the_broad_phase_never_misses_a_bolt_leaving_the_central_well() -> void
 ## des le premier pas : les balles des plaques du HAUT disparaissaient a l'image de leur
 ## creation. Aucune erreur, aucune trace, et un compteur de projectiles juste. C'est le meme
 ## defaut que celui trouve sur les missiles du meme boss le 2026-08-28.
+##
+## ⚠️ ET LE CAS DU LEVIATHAN N'EN EST PLUS UN DEPUIS LE 2026-09-06 : la coupe est passee de
+## 13,0 a 15,5 pour que les balles franchissent le haut de l'ecran, si bien que ses plaques
+## hautes (y = 14,5) tombent maintenant DEDANS. Le defaut precis qui a motive ce test ne peut
+## plus se produire pour lui — raison de plus pour garder la regle, qui vaut pour la prochaine
+## bouche posee haut. On prend donc un point reellement au-dessus de la coupe courante, calcule
+## et non recopie : un `14.5` en dur aurait rendu ce test VERT ET VIDE, sa premiere assertion
+## etant devenue fausse.
 func test_a_bullet_born_above_the_cull_line_lives_until_it_gets_in() -> void:
 	GameplayPlane.reset_bounds()
-	var muzzle := Vector2(0.0, 14.5)   # une plaque haute du Leviathan, mesuree
+	var muzzle := Vector2(0.0, GameplayPlane.BOUNDS.end.y + BulletManager.CULL_MARGIN + 1.5)
 	assert_false(GameplayPlane.is_inside(muzzle, BulletManager.CULL_MARGIN),
 		"la bouche est bien HORS de la coupe : c'est tout le probleme")
 	_hits.clear()

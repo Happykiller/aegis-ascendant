@@ -6,10 +6,66 @@ class_name GameplayPlane
 ## Logical positions are authoritative for all gameplay collisions; the 3D
 ## scene is only a projection of them.
 
-## Le plan de vol ordinaire, en unités monde. Avec le champ de vision de 62 degrés de la
-## caméra de jeu, il remplit 85 à 90 % du plan visible tout en gardant une marge d'entrée
-## pour les ennemis et les projectiles.
+## Le plan de vol ordinaire, en unités monde — là où le chasseur a le droit d'aller.
+##
+## ⚠️ CE N'EST PAS CE QUE L'ÉCRAN MONTRE, et les confondre a coûté deux défauts le même jour.
+## Mesuré sur la caméra du jeu (identique dans `graybox.tscn` et `cortege.tscn` : origine
+## (0, 14, 5), plongée 70,1°, fov 62° vertical), l'écran montre le plan de **y = −7,72 à
+## y = +12,28**. Le plan de vol s'arrête à ±8 : il reste donc **4,28 unités visibles au-dessus
+## de l'arène**, et c'est le couloir d'entrée. Il existait, il n'était pas utilisé — les cent
+## quinze points de naissance du jeu étaient tous DANS le cadre.
+##
+## `visible_frame()` ci-dessous rend ce cadre, et c'est lui qui tient les gardes.
 const BOUNDS := Rect2(Vector2(-14.0, -8.0), Vector2(28.0, 16.0))
+
+## Le rapport d'image de référence, celui de `project.godot`. ⚠️ Avec `keep_aspect` au défaut
+## (KEEP_HEIGHT), le `fov` est VERTICAL : les bords haut et bas ne dépendent donc pas du format,
+## mais les bords gauche et droit s'écartent sur un écran plus large. Une naissance latérale
+## calée au pixel près sur 16:9 rentrerait dans le cadre d'un ultra-large.
+const REFERENCE_ASPECT := 16.0 / 9.0
+
+## Le rectangle du plan de jeu que la caméra montre, en coordonnées de plan.
+##
+## ⚠️ ELLE EXISTE POUR QUE LA QUESTION « EST-CE QUE ÇA SE VOIT ? » AIT UNE RÉPONSE MESURÉE.
+## Deux défauts rapportés en jouant venaient de la même confusion : des tourelles visibles et
+## intouchables (fenêtre de tir calée sur la taille apparente des pièces, pas sur le cadre) et
+## des ennemis qui apparaissent en plein écran (naissances calées sur `BOUNDS`, pas sur le
+## cadre). Un nombre recopié dans un commentaire meurt au premier déplacement de caméra ; une
+## fonction qui prend la caméra en paramètre ne ment jamais.
+static func visible_frame(camera: Transform3D, fov_deg: float,
+		aspect: float = REFERENCE_ASPECT) -> Rect2:
+	var demi_v := tan(deg_to_rad(fov_deg) * 0.5)
+	var avant := -camera.basis.z
+	var haut := camera.basis.y
+	var cote := camera.basis.x
+	var bas_y := _plane_hit(camera.origin, avant - haut * demi_v)
+	var haut_y := _plane_hit(camera.origin, avant + haut * demi_v)
+	if is_inf(bas_y) or is_inf(haut_y):
+		return Rect2()
+	# ⚠️ LA DEMI-LARGEUR SE MESURE AU BORD LE PLUS LOIN, pas au centre. Le tronc de pyramide
+	# s'évase avec la profondeur : un point né à la hauteur du bord haut est vu de plus loin,
+	# donc le cadre y est plus large. Prendre la largeur du centre laisserait passer une
+	# naissance latérale qui se voit en haut de l'écran.
+	var demi_x := maxf(_half_width(camera, avant, cote, demi_v * aspect, bas_y),
+		_half_width(camera, avant, cote, demi_v * aspect, haut_y))
+	return Rect2(Vector2(-demi_x, bas_y), Vector2(2.0 * demi_x, haut_y - bas_y))
+
+## Où un rayon parti de la caméra traverse le plan, en `y` de plan. INF s'il ne le traverse pas.
+static func _plane_hit(origin: Vector3, direction: Vector3) -> float:
+	var d := direction.normalized()
+	if absf(d.y) < 0.0001:
+		return INF
+	var t := -origin.y / d.y
+	if t <= 0.0:
+		return INF
+	return -(origin.z + d.z * t)
+
+## La demi-largeur du cadre à la hauteur de plan `plane_y`.
+static func _half_width(camera: Transform3D, avant: Vector3, cote: Vector3,
+		demi_h: float, plane_y: float) -> float:
+	var vers := Vector3(0.0, 0.0, -plane_y) - camera.origin
+	var profondeur := vers.dot(avant.normalized())
+	return absf(profondeur) * demi_h * cote.length()
 
 ## Le plan de vol DANS LA CHAMBRE DU RÉACTEUR, et il est plus grand.
 ##
