@@ -1,6 +1,6 @@
 # BRIEF-0101 — Les greffes se sèment AUTOUR d'un affût, jamais dessus
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06

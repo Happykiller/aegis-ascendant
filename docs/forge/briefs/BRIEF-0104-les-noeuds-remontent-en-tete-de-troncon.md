@@ -1,6 +1,6 @@
 # BRIEF-0104 — Les nœuds remontent en tête de leur tronçon
 
-- **Statut** : à faire
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06

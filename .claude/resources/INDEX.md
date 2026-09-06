@@ -145,6 +145,20 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   collision sans lui. ⚠️ Un banc qui **recopie** la boucle ment — `tools/dive_bench.gd` pilote le
   vrai `_slide_to()`. ⚠️ `check.sh | grep && git commit` prend le code de retour de **grep** : un
   commit est passé rouge.
+- [Retourner une règle retourne la narration](pratique-retourner-une-regle-retourne-la-narration.md)
+  — une règle de jeu s'inverse (un nœud éteint SON tronçon, plus le suivant), le code suit, les
+  tests sont verts, et **le jeu continue de dire au joueur le contraire** : deux répliques de
+  Lyra, un objectif de briefing, et un drapeau qui porte encore le nom de la règle d'avant.
+  ⚠️ **Le sous-titre sans la voix est pire que rien** — le lot est indivisible (`.tres` +
+  demande `VOX` + `.ogg` + `hold` recalé sur la durée mesurée), et on resynthétise **au cue**
+  (`forge_voice.py --cue`), jamais le lot : piper n'est pas déterministe. ⚠️ Grepper la
+  **formule**, pas le symbole — et **sans sensibilité à la casse** : le docstring disait
+  « tronçon SUIVANT » en capitales, sur la première ligne du fichier qui implémente la règle.
+- [Ne pas committer sous un sous-agent](pratique-ne-pas-committer-sous-un-sous-agent.md) — un
+  `git add -A` pendant qu'`asset-forge` écrivait a emporté un `.glb` régénéré et une table de
+  35 lignes dans un commit qui parlait de dialogues, sans un mot. **Un sous-agent qui tourne est
+  un second auteur dans l'arbre** : nommer les fichiers, jamais `-A`. Corollaire déjà payé :
+  `git checkout --` efface aussi ce qu'on venait d'écrire soi-même.
 - [Renommer ce que le joueur lit](pratique-renommer-ce-que-le-joueur-lit.md) — un nom de fiction
   change (« Null Choir » rejeté après huit mois). **Nom affiché ≠ identifiant** : les `.tres`,
   `.tscn`, `.glb`, clés et `voice_cue` ne bougent pas, seul ce qui est à l'écran change — 89
