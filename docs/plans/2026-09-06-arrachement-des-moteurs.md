@@ -114,7 +114,15 @@ Deux lectures immédiates :
 
 Aucune n'est un détail d'implémentation : chacune change ce qu'on construit.
 
+> **Quatre d'entre elles sont TRANCHÉES** (opérateur, 2026-09-06) et sont reportées en tête
+> de chaque section. Ce qui reste à faire au LOT 0, c'est de les **écrire** : un ADR pour D1,
+> et les mesures que D2 et D4 renvoient à leur lot.
+
 ### D1 — ⚠️ Le lore dit aujourd'hui le contraire de cette phase
+
+> ✅ **TRANCHÉ : il dérive, échoué.** Ses moteurs partent, il ralentit et continue sur son
+> erre — intact, sans propulsion, et toujours là à l'acte II comme une épave qui glisse vers
+> les zones sensibles, plus lentement. On ne l'a pas tué, on l'a immobilisé.
 
 `docs/lore/NULL_CHOIR.md:447` :
 
@@ -134,6 +142,19 @@ de `cortege_root.gd`, et verse la spec dans `docs/`.
 
 ### D2 — La poupe est plus large que le joueur ne peut aller
 
+> ✅ **TRANCHÉ : on réduit l'échelle des deux assets** — l'espacement de la planche prime sur
+> la simplicité de production. Option (b), pas (a).
+>
+> ⚠️ **ET LE FACTEUR N'EST PAS ENCORE 0,83.** Ce chiffre, proposé à la question, place les
+> trois berceaux **jointifs** dans les 28 m (3 × 9,3 = 27,9) — donc sans les intervalles
+> qu'on voulait justement garder. Avec des écarts de l'ordre du dixième de berceau, il faut
+> descendre vers **0,78** (berceau 8,75 m, ancrage 1,87 m, ~86 px).
+>
+> ⚠️ **MAIS CE SONT LES ANCRAGES QUI DOIVENT TENIR DANS LES 28 M, PAS LE BERCEAU.** Ils sont
+> en retrait de ses bords ; la marge exacte se lit sur le binaire (les quatre repères
+> d'ancrage sont nommés). Le facteur se fixe donc au **LOT 5, sur mesure**, pas ici — et il
+> peut très bien remonter au-dessus de 0,80.
+
 Trois groupes livrés font 33,6 m ; `BOUNDS` en fait 28. Trois issues, à trancher **sur
 capture**, pas sur avis :
 
@@ -148,6 +169,12 @@ l'espace entre eux n'est pas un livrable.
 
 ### D3 — Où passe l'aveu de Lyra
 
+> ✅ **TRANCHÉ : dans le silence, à la fin.** Les moteurs partent, tout s'éteint, et c'est là
+> qu'elle parle — sur trois berceaux morts. L'aveu devient la dernière chose du niveau.
+> Conséquence pour le LOT 8 : la respiration du §17 n'est plus seulement un contraste
+> visuel, c'est **le support d'une réplique**. Sa durée se cale donc sur `survey_end`
+> (5,45 s mesurées) et non sur une estimation.
+
 `survey_end` — « l'instant où Lyra avoue avoir lu le dossier du pilote » — est décrit dans
 `VOX-0005` comme **la réplique qui commande toutes les autres** du niveau. Elle se joue
 aujourd'hui à la fin du survol, c'est-à-dire exactement là où cette phase s'insère.
@@ -159,6 +186,10 @@ Trois places possibles : avant la poupe (l'aveu clôt la traversée, les moteurs
 pour ça — mais c'est une décision d'auteur, pas une déduction.
 
 ### D4 — La texture entre-t-elle au niveau 2 ?
+
+> ✅ **TRANCHÉ : on décide en comparant.** Rien n'est arbitré maintenant. On construit sans
+> texture jusqu'au LOT 4, puis le LOT 5 rend **une capture des deux versions au même
+> cadrage**, et l'arbitrage se fait dessus (`ADR-0006`).
 
 Les deux assets arrivent avec 11 images chacun ; le Long Cortège est à zéro par harnais.
 `ADR-0047` autorise un atlas cuit à **remplacer** la palette. Décider : on garde les atlas
@@ -255,6 +286,12 @@ source).
 2. **Réduction** : cible à fixer par mesure, ordre de grandeur **15 à 25 k triangles par
    groupe** (le Long Cortège entier en fait 49 458). Ce qui disparaît en premier est ce qui
    ne se voit pas à 45,8 px/m.
+2 bis. **Le facteur d'échelle de D2**, mesuré ici et nulle part ailleurs : relever la
+   position des quatre repères d'ancrage **sur le binaire**, en déduire le plus grand facteur
+   qui garde les ancrages extérieurs dans `|x| ≤ 14` avec les intervalles de la planche.
+   ⚠️ Et **rejouer le mariage** : l'auteur pose le moteur à (0 ; 1 ; 3,7) et ses semelles à
+   Z = 0,89 — trois cotes qui ne survivent pas à une mise à l'échelle sans être revérifiées.
+2 ter. **La capture d'arbitrage de D4** : le même cadrage, avec et sans les atlas livrés.
 3. **Contrat de matériaux** : `AA_*`, et surtout `AA_Emissive_Engine` sur ce qui doit
    s'éteindre — sans quoi l'extinction ne prend pas, et **rien ne le dira**.
 4. **Contrat de noms** : marqueurs d'ancrage, sockets VFX, prises de puissance.
@@ -294,6 +331,12 @@ meilleur** — même critère que pour les deux binaires ci-dessus.
 Cinq à huit secondes de respiration (§17), **aucune vague**. Trois berceaux vides, quelques
 arcs, presque plus de magenta, pas de flamme. Le blackout partiel de la poupe (§16).
 
+⚠️ **ET C'EST ICI QUE LYRA AVOUE** (D3). La respiration n'est donc pas seulement un contraste
+visuel : elle porte la réplique la plus importante du niveau. Sa durée se cale sur
+`survey_end` — 5,45 s mesurées, `hold` de 6,5 s — et non sur une estimation. Une respiration
+trop courte couperait l'aveu ; c'est le défaut exact que `REPORT_DELAY` évite déjà au
+rapport de mission.
+
 C'est le lot le plus court et celui qui décide si toute la séquence porte : le contraste
 avant/après est le livrable.
 
@@ -324,8 +367,10 @@ vert ne valide **aucune** géométrie.
   critère §21 : une capture doit suffire à dire *les attaches sont destructibles*.
 - **Le plafond de vol** (D5) : 0,50 m de dépassement mesuré, sur une pièce qu'on ne peut pas
   simplement enfoncer sans casser le mariage moteur/berceau.
-- **La fin actuelle est aussi la fracture Lyra/pilote** (D3) : déplacer l'aveu sans le
-  décider, c'est perdre le seul moment d'acte I qui coûte quelque chose.
+- **L'aveu de Lyra est désormais la dernière chose du niveau** (D3, tranché) : si la
+  respiration du LOT 8 est ratée — trop courte, ou couverte par une explosion résiduelle —
+  c'est le seul moment d'acte I qui coûte quelque chose qui se perd. Ce risque s'est déplacé,
+  il n'a pas disparu.
 - **Deux moitiés qui ne valent rien séparées** : l'arrachement sans la flamme est un cube
   qui glisse ; la flamme sans l'arrachement est un fond d'écran. LOT 3 et LOT 4 se jugent
   ensemble.
