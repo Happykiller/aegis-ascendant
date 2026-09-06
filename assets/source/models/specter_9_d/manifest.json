@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "object": "spectre9-d",
+  "version": "v1",
+  "blender_version": "5.2.1 LTS",
+  "generator": "scripts/build.py",
+  "parameters": "parameters.json",
+  "exporter": "scripts/export_asset.py",
+  "verifier": "scripts/verify.py",
+  "blender_file": "blender/spectre9_d.blend",
+  "glb_file": "exports/spectre9_d.glb",
+  "asset_collection": "S9D | Aircraft",
+  "asset_catalog": "blender_assets.cats.txt",
+  "reference": "assets/references/spectre9_d.png",
+  "units": "meters",
+  "blender_forward": "-Y",
+  "blender_up": "+Z",
+  "gltf_up": "+Y",
+  "clips": ["Flight_Demo", "Maneuver_to_Cruise", "Cruise_to_Intercept", "Intercept_to_Maneuver"],
+  "external_dependencies": [],
+  "python_dependencies": "Blender bpy and Python standard library only",
+  "geometry_origin": "Created from scratch for the supplied Spectre 9-D sheet; no earlier model is an input"
+}

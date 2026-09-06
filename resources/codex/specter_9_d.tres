@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="CodexEntry" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://resources/data/codex_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://scenes/player/hulls/specter_9_d.tscn" id="2_hull"]
+[ext_resource type="Resource" path="res://resources/player/specter9_stats.tres" id="3_stats"]
+[ext_resource type="PackedScene" path="res://scenes/player/hulls/specter_9_d.tscn" id="4_playable"]
+
+;                  LA CELLULE D'INTERVENTION — livrée en état de vol
+;
+; ⚠️ LA FICHE MONTRE LA SCÈNE D'AJUSTEMENT, PAS LE `.glb` — même raison que la coque C : le
+; modèle est livré à l'échelle du monde réel, **nez vers +Z**, et le présentoir cadre sur la
+; boîte englobante sans jamais corriger une orientation. Montré brut, ce chasseur se
+; présenterait de dos.
+;
+; ⚠️ ELLE PORTE QUATRE CLIPS, ET C'EST CE QUI A FAIT CHANGER `ShipFlight`. Il prenait le
+; PREMIER clip par ordre alphabétique — bon tant qu'une coque n'en apportait qu'un, faux ici :
+; il aurait choisi `Cruise_to_Intercept`, une transition de 1,5 s, au lieu de `Flight_Demo`
+; qui fait 8 s et parcourt les trois états. Il prend désormais le plus LONG.
+;
+; Les valeurs de jeu affichées sont celles du Specter-9 (`specter9_stats.tres`) : c'est la même
+; cellule sous une autre carrosserie, et la hitbox ne bouge pas (`ADR-0034`). On compare des
+; FORMES, pas des chiffres.
+;
+; Mesuré sur le fichier : 49 116 triangles, 413 nœuds, 406 maillages, 10 matériaux et 6 textures
+; embarquées. Mise à l'échelle par 0,19501 elle fait 2,4600 × 1,7354 × 0,6903 m — l'envergure
+; tombe à 0,84 % du contrat d'`ADR-0008`, la hauteur reste sous le plafond, sans dérogation.
+
+[resource]
+script = ExtResource("1_entry")
+display_name = "Specter-9 D"
+camp = 0
+designation = "HV-09/D"
+hull_class = "MICROCHASSEUR D'INTERVENTION - AILES ADAPTATIVES, TUYERES A GEOMETRIE VARIABLE"
+builder = "AEGIS ALLIANCE"
+status = "EN SERVICE"
+notice = "Celle qui a fini par sortir des cales. Là où le dossier technique promettait une flèche variable et vingt pétales par tuyère, l'Alliance a livré trois régimes: ailes déployées pour manœuvrer, intermédiaires pour croiser, repliées pour intercepter. La verrière est fixe — on la voulait articulée, on a préféré qu'elle tienne."
+mass_t = 8.2
+crew = 1
+hull_scene = ExtResource("2_hull")
+playable_hull = ExtResource("4_playable")
+frame_distance = 0.0
+player_stats = ExtResource("3_stats")

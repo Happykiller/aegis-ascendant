@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "name": "SPECTRE 9-D",
+  "length_m": 12.6,
+  "span_m": 8.9,
+  "height_m": 3.4,
+  "engine_spacing_m": 2.65,
+  "wing_sweep_cruise_deg": 8,
+  "wing_sweep_intercept_deg": 18,
+  "nozzle_cruise_extension_m": 0.24,
+  "nozzle_intercept_extension_m": 0.58,
+  "surface_seed": 9,
+  "texture_resolution": 512,
+  "paint_white_srgb": [
+    0.83,
+    0.85,
+    0.84
+  ],
+  "paint_blue_srgb": [
+    0.055,
+    0.19,
+    0.32
+  ],
+  "paint_red_srgb": [
+    0.78,
+    0.035,
+    0.025
+  ],
+  "preview_samples": 40
+}

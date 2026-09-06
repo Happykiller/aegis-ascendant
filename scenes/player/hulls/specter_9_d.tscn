@@ -1,0 +1,97 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/imported/models/ships/specter_9_d.glb" id="1_glb"]
+
+; ⚠️ SCÈNE D'AJUSTEMENT D'UNE COQUE ÉTRANGÈRE — même rôle que `specter_9_b.tscn` et
+; `specter_9_v3.tscn`, et pour la même raison : le `.glb` reste EXACTEMENT ce que son auteur a
+; livré. Tout ce que le jeu attend en plus — l'échelle, l'orientation, les points d'accroche —
+; vit ici. Régime `ADR-0048` : la source est versionnée dans `assets/source/models/specter_9_d/`.
+;
+; ⚠️ ET SON RÉGIME N'EST PAS CELUI QU'IL ANNONCE. La livraison porte un vrai générateur
+; (`scripts/build.py`, « created from scratch », Blender 5.2.1 — notre version épinglée), et il
+; se rejoue : trois exécutions rendent **413 nœuds, 406 maillages, 49 116 triangles et la même
+; boîte englobante au 1/10 000**. Mais aucune n'est byte-identique, ni au fichier livré ni entre
+; elles — l'export seul, relancé deux fois sur le MÊME `.blend`, rend deux sha256. Le modèle est
+; donc rejouable, pas reproductible : l'invariant d'`ADR-0008` ne s'applique pas, et c'est le
+; `.blend` qui fait foi. Mesuré le 2026-09-06 ; détail dans `assets/source/models/specter_9_d/`.
+;
+; ÉCHELLE. Le modèle est livré à l'échelle du monde réel : 12,615 × 8,899 × 3,540 m, c'est-à-dire
+; la planche `specter_9_d_concept_sheet_2026-09-06.png` (12,6 × 8,9 × 3,4) modélisée. Le facteur
+; **0,19501** égalise la LONGUEUR sur la cellule en service (2,46 m), qui est l'axe de vol.
+; L'envergure suit à **1,7354 m** contre 1,75 au contrat d'`ADR-0008`, soit **−0,84 %** — dans la
+; tolérance de ±3 %. Hauteur **0,6903 m**, sous le plafond de 0,72.
+;
+; ⚠️ LACET DE 180°, ET IL N'EST PAS DÉCORATIF. Mesuré sur le `.glb` : le repère optique de nez
+; est à Z = +6,145 et les tuyères à Z = −6,260 — le modèle a donc le **nez vers +Z**, quand tout
+; le jeu vole nez vers **−Z** (`ADR-0008`). C'est le même piège que sur la coque C, et il reste le
+; défaut le plus silencieux qu'un modèle importé puisse porter : sans cette rotation le chasseur
+; volerait en marche arrière, les tirs partiraient de la poupe, et rien ne le signalerait.
+;
+; ⚠️ CONSÉQUENCE À NE PAS PERDRE : le lacet inverse aussi X. Les pièces que le modèle nomme « L »
+; atterrissent donc à **tribord** dans notre repère, où L vaut x négatif. Les étiquettes ci-dessous
+; sont celles de NOTRE repère, pas celles du fichier.
+;
+; DÉCALAGE VERTICAL — SUR LA RACINE, PAS SUR LA COQUE. Le centre du maillage est à y = +0,0819
+; une fois mis à l'échelle ; on le ramène à zéro pour que le pivot soit au centre.
+; ⚠️ C'est la leçon payée sur la coque C le 2026-09-05 : le recentrage y était porté par le nœud
+; `Hull`, alors que les points d'accroche sont ses FRÈRES — les plumes sortaient 0,106 unité
+; au-dessus des tuyères, et il a fallu que l'opérateur le voie. Porté sur la racine, coque et
+; accroches le subissent ensemble.
+;
+; ⚠️ L'ÉCHELLE EST SUR LA COQUE, PAS SUR LA RACINE — et c'est délibéré. Les points d'accroche
+; ci-dessous sont en UNITÉS DE JEU FINALES : posés sous une racine mise à l'échelle, ils seraient
+; divisés une seconde fois par 0,19501, et le vaisseau tirerait depuis son propre nombril.
+
+; POINTS D'ACCROCHE — les NEUF que `PlayerFighterController` lit par leur nom.
+;
+; ⚠️ LA LIVRAISON N'EN PORTE QUE DEUX (`MARKER | exhaust L/R`). Les sept autres sont MESURÉS sur
+; les pièces réelles du maillage : `laser muzzle`, `missile pointed nose`, `nose optical sensor`,
+; `nose armor 0`. C'est exactement le défaut qui a coûté une partie entière sur la coque C, où
+; quatre bouches manquaient et où le doublet du niveau 1 se repliait sur l'axe — huit `push_error`
+; par partie, et rien de visible avant le premier tir. `tests/unit/test_player_hulls.gd` le refuse
+; désormais avant le jeu.
+;
+; ⚠️ ET CETTE COQUE A UN VRAI ARMEMENT D'AILE, contrairement à la C. La planche annonce « 2 canons
+; laser (ailes), 2 missiles (sous-ailes) », et le maillage les porte : les bouches d'aile sont donc
+; de VRAIES bouches, et les bouts d'aile de vrais missiles. Seul le doublet d'axe est posé sur le
+; nez faute de canon de nez — même arbitrage que sur la coque C, et pour la même raison : le tir
+; de base doit rester sur l'axe pour que les quatre coques se jouent pareil (`ADR-0034`).
+
+[node name="Specter9D" type="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0819, 0)
+
+[node name="Hull" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-0.19501, 0, 0, 0, 0.19501, 0, 0, 0, -0.19501, 0, 0, 0)
+
+; Le nez : repère optique du modèle, à la pointe.
+[node name="Muzzle_C" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0293, -1.1983)
+
+; Le doublet d'axe, sur la demi-largeur de l'armure de nez (0,215 m modèle).
+[node name="Muzzle_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0419, 0.0076, -1.0725)
+
+[node name="Muzzle_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0419, 0.0076, -1.0725)
+
+; Les canons laser d'aile — bouche réelle du maillage.
+[node name="Muzzle_Wing_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4368, -0.0185, -0.1404)
+
+[node name="Muzzle_Wing_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4368, -0.0185, -0.1404)
+
+; Les missiles sous-ailes — pointe du missile. Ils sont EN RETRAIT (Z positif) : la planche les
+; place sous l'aile, derrière les canons.
+[node name="Muzzle_Tip_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5558, -0.0722, 0.1131)
+
+[node name="Muzzle_Tip_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5558, -0.0722, 0.1131)
+
+; Les tuyères : les DEUX seuls repères que la livraison porte (`MARKER | exhaust L/R`).
+[node name="Engine_L" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2584, 0.0546, 1.2207)
+
+[node name="Engine_R" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2584, 0.0546, 1.2207)

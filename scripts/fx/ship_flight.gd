@@ -315,15 +315,32 @@ func _bind_clip(hull: Node3D) -> void:
 	_clip = _find_player(hull)
 	if _clip == null:
 		return
-	var noms := _clip.get_animation_list()
-	if noms.is_empty():
+	var choisi := _longest_clip(_clip)
+	if choisi.is_empty():
 		_clip = null
 		return
-	var clip: Animation = _clip.get_animation(noms[0])
-	if clip == null or clip.length <= 0.0:
-		_clip = null
-		return
+	var clip: Animation = _clip.get_animation(choisi)
 	_clip_peak = clip.length * CLIP_PEAK_RATIO
-	_clip.play(noms[0])
+	_clip.play(choisi)
 	_clip.pause()
 	_clip.seek(0.0, true)
+
+## Le clip le plus LONG de la coque, et c'est une règle, pas une préférence.
+##
+## ⚠️ CE BLOC PRENAIT `noms[0]`, C'EST-À-DIRE LE PREMIER DANS L'ORDRE ALPHABÉTIQUE. Ça marchait
+## tant qu'une coque étrangère n'apportait qu'un clip. La `specter_9_d` en apporte QUATRE —
+## `Flight_Demo` (8 s) plus trois transitions de 1,5 à 2 s — et l'ordre alphabétique aurait
+## choisi `Cruise_to_Intercept` : le vaisseau aurait balayé une transition de 1,5 s en guise
+## d'états de vol, sans une erreur ni une ligne de journal.
+##
+## Le plus long est celui qui parcourt TOUTE la course — c'est la seule chose qu'on scrube ici.
+## Une liste de noms attendus aurait marché aussi, et serait fausse à la coque suivante.
+static func _longest_clip(player: AnimationPlayer) -> String:
+	var meilleur := ""
+	var duree := 0.0
+	for nom in player.get_animation_list():
+		var clip: Animation = player.get_animation(nom)
+		if clip != null and clip.length > duree:
+			duree = clip.length
+			meilleur = nom
+	return meilleur

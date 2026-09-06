@@ -1,0 +1,30 @@
+{
+  "clips": [
+    {
+      "duration_s": 8.0,
+      "name": "Flight_Demo",
+      "tracks": 4
+    },
+    {
+      "duration_s": 1.5,
+      "name": "Maneuver_to_Cruise",
+      "tracks": 4
+    },
+    {
+      "duration_s": 1.5,
+      "name": "Cruise_to_Intercept",
+      "tracks": 4
+    },
+    {
+      "duration_s": 2.0,
+      "name": "Intercept_to_Maneuver",
+      "tracks": 4
+    }
+  ],
+  "engine": "4.7.2-stable (official)",
+  "glb_import": "OK",
+  "mesh_instances": 406,
+  "scope": "Import et lecture des quatre clips dans un projet Godot vierge ; aucune logique de jeu testée.",
+  "source_glb": "exports/spectre9_d.glb",
+  "glb_sha256": "0fd19cf3657fa4a1c6d562d813c3f351ac0d6a85b2d61dbcc558f37e10aefdaf"
+}

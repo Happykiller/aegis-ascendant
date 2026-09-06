@@ -1,0 +1,49 @@
+{
+  "glb_reimport": "OK",
+  "blender_version": "5.2.1 LTS",
+  "dimensions_xyz_m": {
+    "1": [
+      8.887,
+      12.603,
+      3.392
+    ],
+    "76": [
+      7.289,
+      12.844,
+      3.392
+    ],
+    "151": [
+      5.154,
+      13.187,
+      3.392
+    ]
+  },
+  "triangles": 49116,
+  "mesh_objects": 406,
+  "source_modifiers_preserved": true,
+  "fixed_canopy": true,
+  "rigid_motion_without_scale_keys": true,
+  "embedded_pbr_images": 6,
+  "clips": [
+    "Cruise_to_Intercept",
+    "Flight_Demo",
+    "Intercept_to_Maneuver",
+    "Maneuver_to_Cruise"
+  ],
+  "flight_demo_frames_checked": 241,
+  "max_transform_error": 4.76837158203125e-07,
+  "transition_endpoint_errors": {
+    "Maneuver_to_Cruise": 4.76837158203125e-07,
+    "Cruise_to_Intercept": 4.76837158203125e-07,
+    "Intercept_to_Maneuver": 4.76837158203125e-07
+  },
+  "verified_file_sha256": {
+    "blender/spectre9_d.blend": "4840ca664b5da526894ead326c5b7f5a582805387eb15d6b1b14af4f675361b6",
+    "exports/spectre9_d.glb": "0fd19cf3657fa4a1c6d562d813c3f351ac0d6a85b2d61dbcc558f37e10aefdaf"
+  },
+  "limits": [
+    "No gameplay controller or collision meshes",
+    "No LODs",
+    "Artistic interpretation of hidden surfaces and mechanism"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "source_blend_preserved": true,
+  "clip_names": [
+    "Flight_Demo",
+    "Maneuver_to_Cruise",
+    "Cruise_to_Intercept",
+    "Intercept_to_Maneuver"
+  ],
+  "sampled_source_frames": 241,
+  "mechanism": "Rigid wing sweep and nozzle translation; source drivers baked to node transforms."
+}

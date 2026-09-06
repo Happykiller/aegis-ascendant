@@ -1,0 +1,18 @@
+{
+  "standalone_rebuild": "OK",
+  "blender_version": "5.2.1 LTS",
+  "inputs": [
+    "scripts/",
+    "parameters.json",
+    "manifest.json",
+    "assets/"
+  ],
+  "previous_models_used": false,
+  "preexisting_blend_used": false,
+  "rebuilt_glb_verification": "OK",
+  "triangles": 49116,
+  "dimensions_match_delivery": true,
+  "clips_match_delivery": true,
+  "tested_without_rendering": true,
+  "normalized_clips_start_at_zero": true
+}
