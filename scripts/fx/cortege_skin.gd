@@ -56,6 +56,45 @@ static func _damped(colour: Color) -> Color:
 ## L'émissif est à part : c'est une COULEUR, pas une hauteur. Aucune normale n'en est dérivée
 ## (règle 2 du contrat de texture), et la même image sert d'albédo et d'émission.
 const EMISSIVE_MATERIAL := &"AA_Emissive_Engine"
+
+## Le liseré clair du vaisseau — et LE SEUL MATÉRIAU DU NIVEAU QUE PERSONNE N'HABILLAIT.
+##
+## ⚠️ IL EST LA CAUSE MESURÉE D'UNE BARRE DE BLANC PUR DANS LE CADRE. Sur les huit matériaux
+## du Long Cortège, sept ont un albédo quasi noir (0,018 pour `AA_Hull`, 0,007 pour
+## `AA_Greeble`). `AA_Trim` porte l'ivoire de la charte — 0,723 — avec `metallic 0,85` et
+## `roughness 0,28`. Or le spéculaire d'un métal EST son albédo : ce liseré réfléchit la
+## lumière clé à quarante fois la réflectance de la tôle qui l'entoure, dans un lobe serré.
+## Sur la lèvre d'un coaming de hangar, présentée en rasance à la clé, ça écrête.
+##
+## Mesuré sur une capture du tronçon 2 : **5 595 pixels de (255, 255, 255)** d'un seul tenant,
+## soit 0,28 % du cadre — et 0,32 % sur la capture que l'opérateur a rapportée du tronçon 4.
+const TRIM_MATERIAL := &"AA_Trim"
+
+## ⚠️ ET LA CORRECTION N'EST PAS DANS LA LUMIÈRE, C'EST MESURÉ AUSSI. Quatre essais en jeu,
+## même station, même instant, `light_specular` clé / rim / remplissage :
+##
+##   0,5 / 0,5 / 0,5  (l'état d'avant)  |  5 595 px écrêtés  |  écart de la tôle nue : 224,6
+##   0,5 / 0,0 / 0,0                    |  4 365             |                         214,3
+##   0,25 / 0,0 / 0,0                   |  3 655             |                         171,3
+##   0,0 / 0,0 / 0,0                    |      0             |                          52,7
+##
+## Les deux lumières d'appoint ne pèsent que 22 % du défaut ; la clé le porte, et la descendre
+## assez bas pour l'éteindre **efface le relief de toute la coque** — l'écart de luminance de
+## la tôle nue tombe de 224 à 53, c'est-à-dire exactement le détail de surface que les cartes
+## `cortege_*` sont là pour donner. Une lumière ne sait pas distinguer un liseré d'un pont.
+##
+## ⚠️ ET `metallic` NE DOIT PAS BAISSER, CONTRE L'INTUITION. Un métal n'a presque pas de
+## diffus : à 0,85, l'ivoire ne rayonne qu'à 15 %. Mesuré spéculaire coupé, la zone crête
+## quand même à 224,6 — le diffus seul frôle déjà l'écrêtage. Descendre `metallic` à 0,25
+## quintuplerait ce diffus et remplacerait une barre brillante par une barre laiteuse.
+##
+## On garde donc le métal, on élargit son lobe et on assombrit sa couleur — qui est aussi,
+## sur un métal, sa couleur SPÉCULAIRE. Le pic varie comme l'inverse de la puissance
+## quatrième de la rugosité : 0,28 -> 0,60 le divise par 21, et l'amortissement par 2,2 de
+## plus. Même geste et même chiffre que `PANEL_DAMP`, pour la même raison écrite plus haut :
+## ce n'est pas la teinte de la charte qui est fausse, c'est ce que CE niveau en fait.
+const TRIM_ROUGHNESS := 0.60
+const TRIM_DAMP := PANEL_DAMP
 const EMISSIVE_MAP := "cortege_emissive"
 
 ## ⚠️ Discret. Le relief d'un bordé de 500 m se lit à 23 px/m après le post-traitement rétro :
@@ -102,11 +141,40 @@ static func apply(hull: Node) -> int:
 				tuned = _skin_surface(base, String(SKINS[name]), scale)
 				if tuned != null and name == PANEL_MATERIAL:
 					tuned.albedo_color = _damped(tuned.albedo_color)
+			elif name == TRIM_MATERIAL:
+				tuned = tamed(base)
 			if tuned == null:
 				continue
 			mesh.set_surface_override_material(i, tuned)
 			dressed += 1
 	return dressed
+
+## Le liseré, adouci — ou le matériau tel quel s'il n'en est pas un.
+##
+## ⚠️ UNE SEULE COPIE POUR TOUT LE NIVEAU, ET C'EST VOULU. Contrairement au conduit émissif,
+## que l'on duplique par tronçon parce qu'il doit pouvoir s'éteindre seul, le liseré n'a aucun
+## état : dix-sept tourelles, sept hangars, cinq nœuds et cinq tronçons partagent la même. En
+## dupliquer une par maillage ferait trente-quatre matériaux pour trente-quatre fois le même
+## réglage.
+## ⚠️ LE CACHE EST INDEXÉ SUR LE MATÉRIAU SOURCE, PAS GLOBAL. Une seule copie pour tout le
+## niveau aurait suffi en jeu — les quatre binaires importent le même `AA_Trim` — mais elle
+## rendrait la fonction dépendante de l'ORDRE des appels : le premier venu figerait la valeur
+## pour tous les suivants, y compris dans un test qui en passerait deux différents. Un cache
+## qui ment sur son entrée est un piège, pas une optimisation.
+static var _tamed_trim: Dictionary = {}
+
+static func tamed(base: StandardMaterial3D) -> StandardMaterial3D:
+	if base == null or StringName(base.resource_name) != TRIM_MATERIAL:
+		return base
+	var cle := base.get_instance_id()
+	if not _tamed_trim.has(cle):
+		var doux: StandardMaterial3D = base.duplicate()
+		doux.roughness = TRIM_ROUGHNESS
+		doux.albedo_color = Color(doux.albedo_color.r * TRIM_DAMP,
+			doux.albedo_color.g * TRIM_DAMP, doux.albedo_color.b * TRIM_DAMP,
+			doux.albedo_color.a)
+		_tamed_trim[cle] = doux
+	return _tamed_trim[cle]
 
 ## Une surface de relief : hauteur dérivée en normale, rugosité et AO, plus la carte de
 ## multiplication en albédo.

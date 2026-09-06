@@ -223,6 +223,36 @@ func test_a_node_falls_within_the_window_the_nose_guns_allow() -> void:
 const HardpointsScript := preload("res://scripts/gameplay/cortege_hardpoints.gd")
 const SkinScript := preload("res://scripts/fx/cortege_skin.gd")
 
+## ⚠️ CE TEST GARDE UNE BARRE DE BLANC PUR DANS LE CADRE, PAS UN NOMBRE. `AA_Trim` est le seul
+## materiau du niveau dont l'albedo est clair (0,723 d'ivoire) ET le fini quasi miroir
+## (`metallic 0,85`, `roughness 0,28`) : sur un metal, l'albedo EST la couleur speculaire, donc
+## ce lisere reflechit la lumiere cle a quarante fois la reflectance de la tole voisine. Mesure
+## en jeu au troncon 2 : 5 595 pixels de (255,255,255) d'un seul tenant. Apres, zero.
+##
+## Ce qu'il tient : que le lisere passe par `tamed()` (le laisser brut est SILENCIEUX — le jeu
+## tourne, la porte est verte, et la barre revient), et que rien d'autre n'y passe.
+func test_the_trim_is_tamed_and_nothing_else_is() -> void:
+	var brut := StandardMaterial3D.new()
+	brut.resource_name = String(SkinScript.TRIM_MATERIAL)
+	brut.roughness = 0.28
+	brut.metallic = 0.85
+	brut.albedo_color = Color(0.723, 0.716, 0.644)
+	var doux: StandardMaterial3D = SkinScript.tamed(brut)
+	assert_true(doux != brut, "le lisere recoit une COPIE : muter l'importe toucherait les autres scenes")
+	assert_almost_eq(doux.roughness, SkinScript.TRIM_ROUGHNESS, 0.001,
+		"le lobe s'elargit — c'est lui qui divise le pic")
+	assert_almost_eq(doux.metallic, 0.85, 0.001,
+		"le metal RESTE : a 0,85 l'ivoire ne rayonne qu'a 15 pct en diffus, et baisser cette valeur remplacerait une barre brillante par une barre laiteuse")
+	assert_almost_eq(doux.albedo_color.r, 0.723 * SkinScript.TRIM_DAMP, 0.001,
+		"et sa couleur — qui est aussi sa couleur speculaire — est amortie")
+	assert_true(SkinScript.tamed(brut) == doux, "une seule copie par materiau source")
+	var hull := StandardMaterial3D.new()
+	hull.resource_name = "AA_Hull"
+	hull.roughness = 0.45
+	assert_true(SkinScript.tamed(hull) == hull,
+		"la tole n'est pas touchee : son albedo vaut 0,018, elle n'a jamais ecrete")
+	assert_true(SkinScript.tamed(null) == null, "et un materiau absent ne fait pas tomber le montage")
+
 ## Deux troncons montes a la main, avec les noms de marqueurs du contrat de forge.
 func _two_sections() -> Array[Node3D]:
 	var sections: Array[Node3D] = []

@@ -483,7 +483,7 @@ func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
 		if base == null:
 			continue
 		if not base.emission_enabled:
-			piece.set_surface_override_material(i, base)
+			piece.set_surface_override_material(i, CortegeSkin.tamed(base))
 			continue
 		var mine: StandardMaterial3D = base.duplicate()
 		piece.set_surface_override_material(i, mine)
