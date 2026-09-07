@@ -35,6 +35,9 @@ const ARC_SEGMENTS := 3
 const ARC_REACH := 1.9
 const ARC_HZ := 9.0
 
+## Ce que la boîte grise garde de la boîte englobante du moteur livré : le fût, pas les carénages.
+const BODY_FIT := Vector3(0.78, 0.92, 0.86)
+
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
 ## Le dernier ancrage a cédé : la séquence d'arrachement commence.
@@ -192,23 +195,43 @@ func setup(bullets: BulletManager, vfx: VFXManager) -> void:
 ## arrive.
 func build_greybox() -> void:
 	var k := tuning.scale_of(is_central)
-	var cradle := _box("Cradle", tuning.cradle_size * k, Color(0.11, 0.11, 0.14))
-	cradle.position.y = tuning.cradle_size.y * k * 0.5
-	add_child(cradle)
+	# ⚠️ LE BERCEAU EST UN CADRE OUVERT, PAS UN BLOC — et le LOT 1 en faisait un bloc. L'auteur
+	# le décrit ainsi : « cadre ouvert, quatre pylônes blindés, rails, logements d'ancrage,
+	# cavité centrale 8 m ». La différence n'est pas esthétique : ses quatre sockets d'ancrage
+	# sont À MI-HAUTEUR, donc DANS le volume d'un bloc plein. Posés sur une boîte, les verrous
+	# disparaissaient dedans — le défaut du LOT 1, reproduit à l'identique par une autre cause.
+	var socle := _box("Deck", Vector3(tuning.cradle_size.x, 0.9, tuning.cradle_size.z) * k,
+		Color(0.10, 0.10, 0.13))
+	socle.position.y = 0.45 * k
+	add_child(socle)
+	for cote in [-1.0, 1.0]:
+		for prof in [tuning.socket_z_front, tuning.socket_z_rear]:
+			var pylone := _box("Pylon", Vector3(1.5, tuning.socket_y, 1.7) * k,
+				Color(0.13, 0.13, 0.17))
+			pylone.position = Vector3(cote * tuning.socket_x * k,
+				tuning.socket_y * k * 0.5, prof * k)
+			add_child(pylone)
 
 	_body = Node3D.new()
 	_body.name = "Body"
-	_rest = Vector3(0.0, tuning.cradle_size.y * k + tuning.engine_size.y * k * 0.5, 0.0)
+	# Le contrat de mariage du berceau, converti en Y-up : le moteur s'ENCASTRE, il ne s'empile pas.
+	_rest = tuning.engine_seat * k
 	_body.position = _rest
 	add_child(_body)
-	_body.add_child(_box("Engine", tuning.engine_size * k, Color(0.14, 0.14, 0.18)))
+	# ⚠️ LA BOÎTE EST PLUS ÉTROITE QUE LA BOÎTE ENGLOBANTE, ET C'EST DÉLIBÉRÉ. Le moteur livré est
+	# une nacelle : ses 9,10 m de large sont ceux de ses carénages, pas ceux du fût que le
+	# berceau enserre. Une boîte à la cote pleine avale les quatre sockets d'ancrage — qui sont à
+	# |x| = 3,70 pour une demi-largeur de 3,96 — et les verrous redeviennent invisibles, ce qui
+	# est le défaut du LOT 1 par une autre cause. `BODY_FIT` approche le fût ; il disparaîtra
+	# avec la boîte grise, quand le vrai maillage entrera.
+	_body.add_child(_box("Engine", tuning.engine_size * k * BODY_FIT, Color(0.14, 0.14, 0.18)))
 
 	# ⚠️ LA TUYÈRE EST DANS LE CORPS, PAS DANS LE BERCEAU. C'est elle qui s'éteint en dérivant,
 	# et c'est le seul signal qui dise « cette masse est encore une machine ». Le LOT 4 la
 	# remplacera par une vraie flamme ; ce disque n'est là que pour que l'extinction existe.
-	_nozzle = _box("Nozzle", Vector3(tuning.engine_size.x * k * 0.62, 0.30,
-		tuning.engine_size.z * k * 0.10), Color(0.16, 0.05, 0.12))
-	_nozzle.position.z = -tuning.engine_size.z * k * 0.46
+	_nozzle = _box("Nozzle", Vector3(tuning.engine_size.x * k * BODY_FIT.x * 0.66, 0.30,
+		tuning.engine_size.z * k * 0.09), Color(0.16, 0.05, 0.12))
+	_nozzle.position.z = -tuning.engine_size.z * k * BODY_FIT.z * 0.5
 	_thrust_mat = StandardMaterial3D.new()
 	_thrust_mat.albedo_color = Color(0.20, 0.04, 0.14)
 	_thrust_mat.emission_enabled = true
@@ -231,7 +254,6 @@ func build_greybox() -> void:
 	# ⚠️ LES CONDUITES RENDENT L'ARRACHEMENT LISIBLE AVANT QUE RIEN NE BOUGE. Entre le dernier
 	# verrou et le départ il s'écoule 1,2 s : sans une rupture visible à 0,5 s, cette seconde est
 	# un temps mort où le joueur croit que rien ne s'est passé.
-	var haut := tuning.cradle_size.y * k
 	for i in tuning.conduit_count:
 		var u := (float(i) + 0.5) / float(tuning.conduit_count)
 		var conduit := _box("Conduit_%02d" % (i + 1),
@@ -247,8 +269,8 @@ func build_greybox() -> void:
 		conduit.material_override = vein
 		conduit.position = Vector3(
 			lerpf(-tuning.cradle_size.x * k * 0.30, tuning.cradle_size.x * k * 0.30, u),
-			haut + tuning.engine_size.y * k * 0.17,
-			tuning.anchor_offset_z - 1.4)
+			tuning.socket_y * k * 1.15,
+			tuning.socket_z_front * k - 0.6)
 		add_child(conduit)
 		_conduits.append(conduit)
 		_conduit_veins.append(vein)
@@ -273,23 +295,26 @@ func build_greybox() -> void:
 		add_child(anchor)
 		_anchors.append(anchor)
 
-## Où siège le `i`-ème ancrage, sur DEUX rangées.
+## Où siège le `i`-ème ancrage — SUR LES SOCKETS DU BINAIRE, plus sur des cotes inventées.
 ##
-## ⚠️ LA SPEC LES DESSINE EN TRIANGLE — deux en haut, un en bas — et ce n'est pas décoratif.
-## Alignés, les quatre verrous du central se touchent et se lisent comme une seule barre : le
-## joueur ne voit plus « des attaches », il voit une pièce. Vu en capture le 2026-09-06.
-func _anchor_seat(i: int, total: int, largeur: float, k: float) -> Vector3:
-	var hauts := 2
-	var bas := total - hauts
-	var y := tuning.cradle_size.y * k + tuning.anchor_size.y * k * 0.5
-	if i < hauts:
-		var t := 0.0 if i == 0 else 1.0
-		return Vector3(lerpf(-largeur * 0.34, largeur * 0.34, t), y, tuning.anchor_offset_z)
-	var j := i - hauts
-	var x := 0.0
-	if bas > 1:
-		x = lerpf(-largeur * 0.18, largeur * 0.18, float(j) / float(bas - 1))
-	return Vector3(x, y, tuning.anchor_offset_z + tuning.anchor_row_gap)
+## ⚠️ `berceau_moteur.glb` porte quatre repères `CTRL | Socket ancrage AV/AR D/G`, et c'est le
+## contrat. La pose du LOT 1 était une approximation en deux rangées arbitraires : elle donnait
+## la bonne LECTURE — la spec dessine bien un triangle — mais pas les bonnes places, et le jour
+## où la vraie géométrie entrera, les verrous auraient flotté à côté de leurs logements.
+##
+## ⚠️ ET UN LATÉRAL N'EN PORTE QUE TROIS pour quatre sockets. Le moteur, lui, en déclare
+## exactement trois (`CTRL | Socket ancrage arriere / droit / gauche`) : c'est donc la paire
+## AVANT plus UN arrière centré — le triangle de la spec §7, et cette fois il vient des pièces.
+func _anchor_seat(i: int, total: int, _largeur: float, k: float) -> Vector3:
+	var y := (tuning.socket_y + tuning.anchor_size.y * 0.5) * k
+	# La paire avant (haute à l'écran), puis l'arrière : centré à trois, dédoublé à quatre.
+	if i < 2:
+		var cote := -1.0 if i == 0 else 1.0
+		return Vector3(cote * tuning.socket_x * k, y, tuning.socket_z_front * k)
+	if total <= 3:
+		return Vector3(0.0, y, tuning.socket_z_rear * k)
+	var cote_ar := -1.0 if i == 2 else 1.0
+	return Vector3(cote_ar * tuning.socket_x * k, y, tuning.socket_z_rear * k)
 
 func _mount_flame() -> void:
 	_flame = CortegeFlame.make(tuning.flame_length, tuning.flame_width, side * 1.7 + 0.4)
@@ -446,8 +471,9 @@ func _open_arcs() -> void:
 	var arcs := MeshInstance3D.new()
 	arcs.name = "Arcs"
 	arcs.mesh = _arc_mesh
-	arcs.position.y = tuning.cradle_size.y * tuning.scale_of(is_central)
-	arcs.position.z = tuning.anchor_offset_z - 1.0
+	arcs.position.y = tuning.socket_y * tuning.scale_of(is_central)
+	arcs.position.z = (tuning.socket_z_front + tuning.socket_z_rear) * 0.5 \
+		* tuning.scale_of(is_central)
 	arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Sans marge, l'arc disparaît dès que le centre du berceau sort du cadre : la boîte
 	# englobante d'un `ImmediateMesh` vide est nulle au montage. Même piège que le nœud d'épine.

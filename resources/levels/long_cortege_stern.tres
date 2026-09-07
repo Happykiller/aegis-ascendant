@@ -20,11 +20,11 @@
 
 [resource]
 script = ExtResource("1_stern")
-deck_y = -11.13
-asset_scale = 0.785
+deck_y = -11.85
+asset_scale = 0.87
 central_scale = 1.06
-engine_spacing = 9.3
-hold_plane_y = 10.5
+engine_spacing = 10.28
+hold_plane_y = 6.47
 arrival_time = 3.2
 arrival_rise = 22.0
 lateral_anchors = 3
@@ -34,8 +34,11 @@ anchor_radius = 1.1
 anchor_score = 1400
 anchor_damaged_at = 0.45
 anchor_spark_interval = 0.55
-anchor_offset_z = 5.2
-anchor_row_gap = 2.2
+socket_x = 3.7
+socket_y = 2.55
+socket_z_front = -3.95
+socket_z_rear = 4.48
+engine_seat = Vector3(0, 3.7, -1)
 detach_shake_at = 0.2
 detach_burst_at = 0.5
 detach_tilt_at = 0.8

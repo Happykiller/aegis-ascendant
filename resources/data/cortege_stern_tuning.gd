@@ -68,23 +68,29 @@ extends Resource
 ## battement se voit quand on regarde la pièce, l'étincelle se voit du coin de l'œil.
 @export var anchor_spark_interval: float = 0.55
 
-## Où l'ancrage se pose sur son berceau, en Z local du groupe.
+## --- LES SOCKETS D'ANCRAGE, RELEVÉS DANS LE BINAIRE LIVRÉ (LOT 5) -------------
 ##
-## ⚠️ CETTE COTE DÉCIDE S'IL EST ATTEIGNABLE, ET LA PREMIÈRE VALEUR NE L'ÉTAIT PAS. Le berceau
-## fait 11 m de profondeur : un ancrage posé au tiers arrière tombe à `y` de plan 9,6, quand le
-## joueur ne monte qu'à 8. Il se voyait parfaitement, il était injouable — exactement le défaut
-## des tourelles de coque, retrouvé le jour même où on venait de le fermer, sur la SEULE cible
-## de la phase. Vu en capture, pas en test : d'où l'invariant ajouté dessous.
-@export var anchor_offset_z: float = 5.20
+## ⚠️ CE NE SONT PLUS DES COTES INVENTÉES. `berceau_moteur.glb` porte un contrat de repères en
+## clair — `CTRL | Socket ancrage AV/AR D/G`, des nœuds sans maillage — et ce sont eux qui
+## disent où un verrou se pose. Relevés (glTF, Y-up, mètres à l'échelle 1) :
+##
+##   AV D (+3,700 ; +2,650 ; −3,950)     AR D (+3,700 ; +2,450 ; +4,480)
+##   AV G (−3,700 ; +2,650 ; −3,950)     AR G (−3,700 ; +2,450 ; +4,480)
+##
+## ⚠️ ET LE LATÉRAL DE L'ANCRAGE N'EST PAS CELUI DU BERCEAU : 3,700 contre 5,595 de demi-largeur.
+## Le berceau déborde de deux mètres au-delà de ses propres verrous — toute la contrainte de
+## portée du LOT 1 portait donc sur la mauvaise cote, et c'est ce qui la rendait si serrée.
+@export var socket_x: float = 3.700
+@export var socket_y: float = 2.550
+## Profondeur des deux rangées, en Z glTF. ⚠️ LE SIGNE COMPTE : la sortie du moteur va vers −Z
+## (Blender +Y à l'export), donc la rangée AVANT est plus HAUT à l'écran que la rangée ARRIÈRE.
+@export var socket_z_front: float = -3.950
+@export var socket_z_rear: float = 4.480
 
-## L'écart entre les DEUX RANGÉES d'ancrages, en `y` de plan.
-##
-## ⚠️ ILS NE SONT PAS ALIGNÉS, ET LA SPEC LE DESSINE : deux en haut, un (ou deux) en bas. Ce
-## n'est pas une coquetterie — sur une seule rangée, les quatre verrous du moteur central se
-## touchent (4 × 1,88 m pour un berceau large de 9,31) et se lisent comme UNE barre. Le critère
-## d'acceptation n°5 demande qu'on voie « des attaches destructibles », au pluriel. Vu en
-## capture : la rangée centrale était une seule barre magenta.
-@export var anchor_row_gap: float = 2.20
+## Où le moteur se pose DANS le berceau — le contrat de mariage écrit par l'auteur du berceau :
+## « placer le moteur 01 v2 sans rotation à (0 ; 1 ; 3,7) m », semelles à Z = 0,89.
+## ⚠️ CONVERTI EN Y-UP : Blender (x, y, z) devient glTF (x, z, −y), donc (0 ; 3,7 ; −1,0).
+@export var engine_seat: Vector3 = Vector3(0.0, 3.70, -1.00)
 
 ## La séquence de détachement, en secondes depuis le dernier ancrage abattu (spec §9).
 ## ⚠️ CE SONT DES INSTANTS, PAS DES DURÉES : ils se lisent dans l'ordre et doivent croître.
@@ -197,12 +203,19 @@ func slot_x(side: float) -> float:
 ## Le point le plus haut d'un groupe monté, en Y monde. C'est lui qui doit rester sous le plafond.
 func stack_top_y(central: bool) -> float:
 	var k := scale_of(central)
-	return deck_y + cradle_size.y * k + engine_size.y * k
+	# ⚠️ LE MOTEUR NE SE POSE PAS SUR LE BERCEAU, IL S'Y ENCASTRE. Le contrat de mariage le met
+	# à 3,70 m de hauteur dans un berceau qui en fait 4,64 : empiler les deux hauteurs, comme le
+	# faisait le LOT 1, surestimait la pile d'un mètre entier — et coûtait de l'échelle pour rien.
+	return deck_y + (engine_seat.y + engine_size.y * 0.5) * k
 
-## Le `y` de plan où siègent les ancrages. ⚠️ LE Z LOCAL COMPTE VERS LE BAS DE L'ÉCRAN : un
-## ancrage posé en +z est plus PRÈS du joueur que le centre de son berceau.
-func anchor_plane_y() -> float:
-	return hold_plane_y - anchor_offset_z
+## Le `y` de plan des deux rangées d'ancrages : (basse, haute).
+##
+## ⚠️ LE Z LOCAL COMPTE VERS LE BAS DE L'ÉCRAN : un socket en +z est plus PRÈS du joueur que le
+## centre de son berceau. La rangée ARRIÈRE (+4,480) est donc la BASSE et l'AVANT (−3,950) la
+## HAUTE — contre-intuitif tant qu'on lit « avant » comme « en bas de l'écran ».
+func anchor_rows() -> Vector2:
+	var k := scale_of(false)
+	return Vector2(hold_plane_y - socket_z_rear * k, hold_plane_y - socket_z_front * k)
 
 ## La demi-largeur de la colonne dangereuse d'un moteur, en unités de plan.
 ##
@@ -221,9 +234,15 @@ func anchor_plane_y() -> float:
 func danger_half_width(central: bool) -> float:
 	return flame_width * 0.5 * danger_spread * (central_scale if central else 1.0)
 
-## La demi-largeur occupée par les trois groupes, en unités de plan.
+## La demi-largeur occupée par les trois groupes, en unités de plan. ⚠️ ELLE PEUT DÉPASSER LA
+## ZONE DE VOL : c'est du décor, et le cadre en montre jusqu'à |x| = 20,37. Ce qui doit tenir
+## dans le champ du joueur, c'est l'ANCRAGE — voir `anchor_reach()`.
 func half_span() -> float:
 	return engine_spacing + cradle_size.x * scale_of(false) * 0.5
+
+## Le |x| de l'ancrage le plus au large — la seule cote de la poupe qui doit rester à portée.
+func anchor_reach() -> float:
+	return absf(slot_x(1.0)) + socket_x * scale_of(false)
 
 
 func validate() -> PackedStringArray:
@@ -247,10 +266,9 @@ func validate() -> PackedStringArray:
 	# ⚠️ « Je vois la pièce, je tire, je ne la touche pas » a déjà coûté une session entière le
 	# 2026-09-06 sur les tourelles de coque. Ici le défaut serait pire : les ancrages sont la
 	# SEULE cible de la phase. Un ancrage hors de portée, c'est un moteur indétachable.
-	var bord := absf(slot_x(1.0)) + cradle_size.x * scale_of(false) * 0.5
-	if bord > GameplayPlane.BOUNDS.end.x:
-		errors.append("le bord du groupe latéral atteint |x| = %.2f alors que le joueur ne va qu'à %.2f — ses ancrages extérieurs seraient hors de portée"
-			% [bord, GameplayPlane.BOUNDS.end.x])
+	# ⚠️ LE BERCEAU, LUI, A LE DROIT DE DÉBORDER — et le LOT 1 le lui interdisait. Ce n'est pas
+	# une cible : c'est du décor, et le cadre le montre jusqu'à |x| = 20,37. Contraindre sa
+	# largeur a coûté 10 % d'échelle à toute la poupe pour rien.
 	# ⚠️ ET LE CENTRAL EST PLUS LARGE : sans cette ligne, il entrerait DANS ses voisins. Deux
 	# berceaux qui s'interpénètrent ne produisent aucune erreur — ils produisent une capture où
 	# l'on ne sait plus quelle attache appartient à quel moteur, sur la seule cible de la phase.
@@ -259,29 +277,30 @@ func validate() -> PackedStringArray:
 	if jeu < 0.0:
 		errors.append("le berceau central mord celui du bord de %.2f m — les ancrages des deux moteurs se mélangeraient"
 			% -jeu)
-	# ⚠️ ET C'EST L'ANCRAGE QUI DOIT ÊTRE À PORTÉE, PAS LE BERCEAU. Il est posé en avant de son
-	# centre ; c'est sa station à lui qui compte, et elle se calcule.
-	var y_ancrage := anchor_plane_y()
-	if y_ancrage > GameplayPlane.BOUNDS.end.y:
-		errors.append("les ancrages sont à y = %.2f alors que le joueur ne monte qu'à %.2f — il les verrait sans pouvoir les atteindre, sur la SEULE cible de la phase"
-			% [y_ancrage, GameplayPlane.BOUNDS.end.y])
-	# ⚠️ ET IL DOIT ÊTRE DEVANT LE CORPS DU MOTEUR, SINON IL EST ENTERRÉ DESSOUS. Posé sur le
-	# berceau mais sous les neuf mètres de moteur, il n'apparaît sur aucune capture — et le
-	# joueur cherche une cible qu'il ne peut pas voir. Vu en capture, deux fois de suite.
-	var face_moteur := engine_size.z * scale_of(false) * 0.5
-	if anchor_offset_z < face_moteur:
-		errors.append("l'ancrage est posé à %.2f m du centre alors que le moteur avance jusqu'à %.2f — il serait caché sous sa masse"
-			% [anchor_offset_z, face_moteur])
-	if y_ancrage - anchor_row_gap < 1.0:
+	# ⚠️ ET C'EST L'ANCRAGE QUI DOIT ÊTRE À PORTÉE, PAS LE BERCEAU. Relevé sur le binaire, le
+	# socket est à |x| = 3,700 quand le berceau fait 5,595 de demi-largeur : il déborde de deux
+	# mètres au-delà de ses propres verrous.
+	var x_ancrage := absf(slot_x(1.0)) + socket_x * scale_of(false)
+	if x_ancrage > GameplayPlane.BOUNDS.end.x - 0.4:
+		errors.append("l'ancrage extérieur est à |x| = %.2f alors que le joueur ne va qu'à %.2f — sur la SEULE cible de la phase"
+			% [x_ancrage, GameplayPlane.BOUNDS.end.x])
+	# ⚠️ ET LA BORNE VERTICALE EST LE CADRE, PAS LE PLAN DE VOL — LE LOT 1 SE TROMPAIT. Il
+	# refusait tout ancrage au-dessus de `y = 8` « parce que le joueur ne monte pas plus haut ».
+	# Le chasseur ne monte pas, mais SES BALLES montent jusqu'à 15,5 : un verrou à 9,9 est
+	# parfaitement tirable. Ce qui compte est qu'il soit VU, donc qu'il tienne dans le cadre,
+	# dont le bord haut est à +12,28.
+	var rangees := anchor_rows()
+	if rangees.y > 11.5:
+		errors.append("la rangée haute d'ancrages est à y = %.2f, au bord du cadre (+12,28) — un verrou coupé par le haut de l'écran ne se lit plus comme une cible"
+			% rangees.y)
+	if rangees.x < 1.0:
 		errors.append("la rangée basse d'ancrages tombe à y = %.2f, dans les jambes du joueur — il n'aurait pas de recul pour viser"
-			% (y_ancrage - anchor_row_gap))
-	# ⚠️ ET LES DEUX RANGÉES DOIVENT TENIR EN LARGEUR SANS SE TOUCHER. Quatre verrous alignés sur
-	# un berceau de neuf mètres se lisent comme une seule barre — vu en capture.
-	var par_rangee := int(ceil(float(central_anchors) / 2.0))
-	var place := cradle_size.x * scale_of(true) * 0.76
-	if float(par_rangee) * anchor_size.x * scale_of(true) * 1.6 > place:
-		errors.append("%d ancrages par rangée pour %.2f m utiles : ils se toucheraient et se liraient comme une seule pièce"
-			% [par_rangee, place])
+			% rangees.x)
+	# ⚠️ ET LES DEUX VERROUS D'UNE RANGÉE NE DOIVENT PAS SE TOUCHER : alignés et jointifs, ils se
+	# lisent comme une seule barre. Vu en capture au LOT 1.
+	if socket_x * 2.0 < anchor_size.x * 1.6:
+		errors.append("les deux verrous d'une rangée sont à %.2f m l'un de l'autre pour %.2f m de large : ils se liraient comme une seule pièce"
+			% [socket_x * 2.0, anchor_size.x])
 
 	# --- INVARIANT 3 : LA POUPE EST DANS LE CADRE, ET ELLE Y ENTRE -------
 	if arrival_rise <= 0.0:

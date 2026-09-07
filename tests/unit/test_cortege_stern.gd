@@ -18,35 +18,48 @@ func test_the_shipped_tuning_is_valid() -> void:
 	assert_eq(errors.size(), 0, "le reglage livre passe ses invariants : %s"
 		% ", ".join(errors))
 
-## ⚠️ LES DEUX BINAIRES LIVRES NE TIENNENT PAS SOUS LE PLAFOND DE VOL A PLEINE ECHELLE, et ce
-## test le prouve plutot que de le raconter. Moteur 5,49 m + berceau 4,64 m = 10,13 m empiles ;
-## le plafond de jeu est a -2,40 et la quille a -12,60. C'est la decision D5 du plan.
-func test_a_full_scale_engine_would_cross_the_flight_plane() -> void:
+## ⚠️ CE TEST DISAIT LE CONTRAIRE JUSQU'AU LOT 5, ET IL AVAIT TORT. Il affirmait qu'un groupe a
+## pleine echelle creve le plan de vol : moteur 5,49 m + berceau 4,64 m = 10,13 m « empiles ».
+## Mais le moteur NE S'EMPILE PAS, il S'ENCASTRE — le contrat de mariage ecrit par l'auteur du
+## berceau le pose a 3,70 m de hauteur dans un berceau qui en fait 4,64. La pile reelle fait
+## 6,45 m, pas 10,13 : la decision D5 reposait sur une hypothese de montage, pas sur une mesure.
+##
+## Le plafond reste un invariant — une future echelle peut toujours le crever — mais ce n'est
+## PAS lui qui forçait la reduction. C'est la portee de l'ancrage, et elle seule.
+func test_the_flight_ceiling_was_never_what_forced_the_reduction() -> void:
 	var brut: CortegeSternTuning = TUNING.duplicate()
 	brut.asset_scale = 1.0
 	brut.central_scale = 1.0
-	assert_true(brut.stack_top_y(false) > CortegeFlyby.GAMEPLAY_CEILING_Y,
-		"a pleine echelle le groupe culmine a %.2f pour un plafond a %.2f"
-			% [brut.stack_top_y(false), CortegeFlyby.GAMEPLAY_CEILING_Y])
-	var dits := brut.validate()
-	var trouve := false
-	for d in dits:
-		if d.contains("plafond de vol"):
-			trouve = true
-	assert_true(trouve, "et l'invariant le DIT, au lieu de laisser une capture le decouvrir : %s"
-		% ", ".join(dits))
+	assert_true(brut.stack_top_y(true) < CortegeFlyby.GAMEPLAY_CEILING_Y,
+		"a pleine echelle le groupe culmine a %.2f, SOUS le plafond de %.2f — l'empilement du LOT 1 surestimait la pile d'un metre entier"
+			% [brut.stack_top_y(true), CortegeFlyby.GAMEPLAY_CEILING_Y])
+	# ⚠️ ET L'INVARIANT RESTE ARME : un pont remonte le crevera toujours.
+	var haut: CortegeSternTuning = TUNING.duplicate()
+	haut.deck_y = -4.0
+	assert_true(_says(haut, "plafond de vol"),
+		"un pont pose sur le corridor ferait toujours traverser le plan de jeu")
 
 ## ⚠️ ET « COLLER LES TROIS GROUPES » N'AURAIT PAS SUFFI. Trois berceaux livres JOINTIFS font
 ## 33,6 m pour un joueur qui n'en couvre que 28 : la reduction d'echelle n'etait pas une option
 ## de confort, c'etait la seule issue. Ce test garde le raisonnement, pas seulement le resultat.
-func test_three_full_scale_cradles_do_not_fit_the_players_reach() -> void:
-	var largeur := 3.0 * TUNING.cradle_size.x
-	assert_true(largeur > GameplayPlane.BOUNDS.size.x,
-		"trois berceaux jointifs font %.2f m pour une zone de vol large de %.2f"
-			% [largeur, GameplayPlane.BOUNDS.size.x])
-	assert_true(TUNING.half_span() <= GameplayPlane.BOUNDS.end.x,
-		"reduits, ils tiennent : bord a |x| = %.2f pour une portee de %.2f"
-			% [TUNING.half_span(), GameplayPlane.BOUNDS.end.x])
+## ⚠️ ET LE LOT 5 A CORRIGE CE QUI FORCAIT LA REDUCTION. Le LOT 1 mesurait la largeur du
+## BERCEAU (11,19 m) : il en concluait qu'il fallait descendre a 0,785. Or le berceau est du
+## DECOR — le cadre en montre jusqu'a |x| = 20,37, il a le droit de deborder. Ce qui doit tenir
+## dans le champ du joueur, c'est l'ANCRAGE, et le binaire dit qu'il est a 3,700 du centre, pas
+## a 5,595. La reduction reste necessaire, mais 0,87 suffit au lieu de 0,785 — 11 % de plus.
+func test_the_anchor_reach_is_what_forces_the_reduction() -> void:
+	# A pleine echelle, l'entraxe minimal (berceaux jointifs) met deja l'ancrage hors du champ.
+	var entraxe_plein := TUNING.cradle_size.x * (1.0 + TUNING.central_scale) * 0.5 + 0.25
+	var portee_pleine := entraxe_plein + TUNING.socket_x
+	assert_true(portee_pleine > GameplayPlane.BOUNDS.end.x,
+		"a pleine echelle l'ancrage exterieur serait a |x| = %.2f pour une portee de %.2f"
+			% [portee_pleine, GameplayPlane.BOUNDS.end.x])
+	assert_true(TUNING.anchor_reach() <= GameplayPlane.BOUNDS.end.x - 0.4,
+		"reduit, il tient : |x| = %.2f" % TUNING.anchor_reach())
+	# Et le berceau, lui, a le droit de deborder — il n'est pas une cible.
+	assert_true(TUNING.half_span() > GameplayPlane.BOUNDS.end.x,
+		"le berceau deborde de la zone de vol (%.2f), et c'est normal : c'est du decor"
+			% TUNING.half_span())
 
 ## ⚠️ LE SILENCE FINAL PORTE L'AVEU DE LYRA (decision D3). Le raccourcir couperait la replique
 ## la plus importante du niveau, et rien a l'ecran ne dirait qu'il manque quelque chose.
@@ -83,7 +96,7 @@ func test_a_central_engine_that_bites_its_neighbour_is_refused() -> void:
 func test_anchors_out_of_reach_are_refused() -> void:
 	var tuning: CortegeSternTuning = TUNING.duplicate()
 	tuning.engine_spacing = 13.0
-	assert_true(_says(tuning, "hors de port"),
+	assert_true(_says(tuning, "SEULE cible"),
 		"c'est le defaut des tourelles de coque, et il serait pire ici : l'ancrage est la SEULE cible")
 
 # --- La machine a etats ---------------------------------------------------------
