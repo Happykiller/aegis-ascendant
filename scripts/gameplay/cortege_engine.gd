@@ -29,6 +29,12 @@ const CONDUIT_GLOW := 1.10
 ## dit, sur un berceau vide, que quelque chose a été arraché là.
 const CONDUIT_DEAD := 0.03
 
+## Les arcs d'un berceau vide (spec §16 et §17).
+const ARC_COUNT := 4
+const ARC_SEGMENTS := 3
+const ARC_REACH := 1.9
+const ARC_HZ := 9.0
+
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
 ## Le dernier ancrage a cédé : la séquence d'arrachement commence.
@@ -60,6 +66,9 @@ var _surge_clock: float = 0.0
 var _surge: Surge = Surge.CALM
 ## Le central ouvre son extinction quand les deux latéraux sont partis, jamais avant.
 var _has_vent: bool = false
+var _arc_mesh: ImmediateMesh = null
+var _arc_timer: float = 0.0
+var _arc_rng := RandomNumberGenerator.new()
 
 static func make(p_tuning: CortegeSternTuning, p_side: float) -> CortegeEngine:
 	var engine := CortegeEngine.new()
@@ -331,8 +340,14 @@ func tick(delta: float, world_origin: Vector3, eye: Vector3) -> void:
 		return
 	_detach_clock += delta
 	_advance_detach(_detach_clock)
+	if _arc_mesh != null and _state == State.DETACHED:
+		_arc_timer -= delta
+		if _arc_timer <= 0.0:
+			_arc_timer = 1.0 / ARC_HZ
+			_redraw_arcs()
 	if _state == State.DETACHING and _detach_clock >= tuning.detach_gone_at:
 		_state = State.DETACHED
+		_open_arcs()
 		detached.emit(self)
 
 ## La séquence de la spec §9, dans l'ordre : tremblement, rupture des conduites, bascule, départ,
@@ -421,6 +436,57 @@ func _on_anchor_destroyed(anchor: CortegeAnchor) -> void:
 	set_locked(true)
 	print("[Poupe] moteur %s : dernier ancrage rompu — arrachement" % _slot_name())
 	detaching.emit(self)
+
+## ⚠️ UN BERCEAU VIDE DOIT CRÉPITER, SINON C'EST UN TROU. La spec le demande deux fois — « arcs
+## électriques » au §16 et au §17 — et la raison est de lecture : sans rien qui bouge, la place
+## laissée par un moteur se lit comme une pièce qu'on aurait oublié de poser, pas comme une
+## pièce qu'on a arrachée. C'est le seul mouvement qui reste dans le silence final.
+func _open_arcs() -> void:
+	_arc_mesh = ImmediateMesh.new()
+	var arcs := MeshInstance3D.new()
+	arcs.name = "Arcs"
+	arcs.mesh = _arc_mesh
+	arcs.position.y = tuning.cradle_size.y * tuning.scale_of(is_central)
+	arcs.position.z = tuning.anchor_offset_z - 1.0
+	arcs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Sans marge, l'arc disparaît dès que le centre du berceau sort du cadre : la boîte
+	# englobante d'un `ImmediateMesh` vide est nulle au montage. Même piège que le nœud d'épine.
+	arcs.extra_cull_margin = 6.0
+	var spark := StandardMaterial3D.new()
+	spark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark.vertex_color_use_as_albedo = true
+	spark.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	spark.no_depth_test = true
+	spark.render_priority = 6
+	arcs.material_override = spark
+	add_child(arcs)
+	_arc_rng.seed = hash(name) * 7919
+	_arc_timer = 0.0
+
+## ⚠️ REDESSINÉS, PAS ANIMÉS. Un arc électrique n'a pas de trajectoire : il RECOMMENCE. Même
+## règle que les arcs du nœud d'épine, et pour la même raison — une interpolation lisse se lit
+## comme un tentacule.
+func _redraw_arcs() -> void:
+	if _arc_mesh == null:
+		return
+	var largeur := tuning.cradle_size.x * tuning.scale_of(is_central) * 0.34
+	_arc_mesh.clear_surfaces()
+	_arc_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	for i in ARC_COUNT:
+		var base := Vector3(_arc_rng.randf_range(-largeur, largeur), 0.0,
+			_arc_rng.randf_range(-1.2, 1.2))
+		var precedent := base
+		for step in range(1, ARC_SEGMENTS + 1):
+			var t := float(step) / float(ARC_SEGMENTS)
+			var point := base + Vector3(
+				_arc_rng.randf_range(-0.6, 0.6), ARC_REACH * t,
+				_arc_rng.randf_range(-0.5, 0.5))
+			_arc_mesh.surface_set_color(Color(1.0, 0.9, 1.0, 1.0) * (1.0 - t * 0.4))
+			_arc_mesh.surface_add_vertex(precedent)
+			_arc_mesh.surface_set_color(CortegeAnchor.TINT * (1.0 - t * 0.7))
+			_arc_mesh.surface_add_vertex(point)
+			precedent = point
+	_arc_mesh.surface_end()
 
 func _slot_name() -> String:
 	if is_central:

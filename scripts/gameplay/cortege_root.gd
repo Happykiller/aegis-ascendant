@@ -435,6 +435,15 @@ func _mount_stern() -> void:
 	_stern.core_exposed.connect(_on_core_exposed)
 	_stern.shockwave.connect(_on_stern_shockwave)
 	add_child(_stern)
+	# ⚠️ LES MOTEURS SONT LES PROTAGONISTES (spec §19) : « je réduirais énormément les ennemis,
+	# pas de respawn ». Les deux nuées du survol continuaient de produire pendant toute la phase
+	# finale — la `PatrolSpawner` en a 209 en réserve — et le silence du §17 aurait été peuplé.
+	# ⚠️ ON FREINE, ON NE VIDE PAS : les coques déjà en vol finissent leur trajectoire. Vider le
+	# pool les ferait s'évaporer à l'écran, ce qui se lit comme un défaut, pas comme une fin.
+	for nom in ["ApproachSpawner", "PatrolSpawner"]:
+		var spawner := get_node_or_null(nom)
+		if spawner != null and spawner.has_method("hold"):
+			spawner.hold()
 	if _stern_cut > 0.0:
 		_stern.force_cut(_stern_cut)
 	say(&"stern_seen")
@@ -468,8 +477,25 @@ func _on_stern_finished() -> void:
 	if _finished or _defeated:
 		return
 	_finished = true
+	_blackout()
 	say(&"propulsion_dead")
 	get_tree().create_timer(STERN_TUNING.silence_time).timeout.connect(_on_silence_over)
+
+## ⚠️ LE CONTRASTE EST LE LIVRABLE DU SILENCE (spec §17). Avant : trois panaches, une artère
+## magenta qui court sur 500 m, dix verrous allumés. Après : trois berceaux vides qui crépitent,
+## et presque plus rien. Si la poupe seule s'éteignait, le bas du cadre continuerait de briller
+## de tout le corridor — et la phrase « la propulsion est morte » serait démentie par l'image.
+##
+## ⚠️ ET C'EST COHÉRENT, PAS DÉCORATIF : l'artère alimentait les moteurs. Elle s'éteint parce
+## qu'elle n'a plus rien à alimenter, pas parce que la scène en avait besoin.
+func _blackout() -> void:
+	var eteints := 0
+	for section in _flyby.sections():
+		for mat in CortegeSkin.emissives_of(section):
+			CortegeSkin.extinguish(mat)
+			eteints += 1
+	print("[Poupe] blackout — %d conduit(s) de coque éteint(s), trois berceaux vides"
+		% eteints)
 
 func _on_silence_over() -> void:
 	if _defeated:

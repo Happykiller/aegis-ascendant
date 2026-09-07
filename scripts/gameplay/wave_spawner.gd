@@ -97,6 +97,26 @@ static func build_schedule(wave_data: WaveData) -> Dictionary:
 		entries.append(event[1])
 	return {"times": times, "positions": positions, "entries": entries}
 
+## Cesse de faire apparaître, sans toucher aux unités déjà en vol.
+##
+## ⚠️ « SANS TOUCHER AUX VIVANTES » EST TOUT LE CONTRAT. Désactiver le pool ferait disparaître
+## d'un coup les coques en approche — le joueur verrait des ennemis s'évaporer, ce qui se lit
+## comme un bug et non comme une fin de vague. Elles finissent leur trajectoire et sortent du
+## cadre par le bas, comme d'habitude.
+##
+## Écrit pour la phase finale du niveau 2 : la spec y demande « pas de respawn » (§19) et un
+## silence sans une seule vague (§17). Sans ce frein, la seule façon d'obtenir le silence aurait
+## été de vider le pool, donc de faire disparaître ce qui volait encore.
+func hold() -> void:
+	_next_spawn = _spawn_times.size()
+
+## Combien de coques la vague doit encore faire apparaître. ⚠️ EXPOSÉE POUR QUE `hold()` SOIT
+## VÉRIFIABLE : sans elle, la seule preuve que le silence de la phase finale est vraiment vide
+## serait de regarder une capture au bon instant — c'est-à-dire une preuve qu'on cesse de
+## refaire. Le jeu, lui, ne la lit pas.
+func pending() -> int:
+	return maxi(_spawn_times.size() - _next_spawn, 0)
+
 func _physics_process(delta: float) -> void:
 	_clock += delta
 	_separate()

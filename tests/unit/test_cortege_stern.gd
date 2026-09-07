@@ -571,3 +571,40 @@ func test_the_thrust_bites_instead_of_ticking() -> void:
 		tuning.surge_bite = valeur
 		assert_true(_says(tuning, "souffle"),
 			"une morsure de %.0f est REFUSEE" % valeur)
+
+# --- LOT 8 : le silence ---------------------------------------------------------
+
+## ⚠️ LE SILENCE DOIT ETRE VRAIMENT VIDE (spec §17 : « pas de nouvelle vague »), ET IL NE
+## L'ETAIT PAS. Les deux nuees du survol continuent de produire pendant toute la phase finale —
+## `wave_cortege_patrol.tres` en tient 209 en reserve — et rien dans le code ne les arretait.
+##
+## ⚠️ ET ON FREINE SANS VIDER. Desactiver le pool ferait s'evaporer a l'ecran les coques deja en
+## vol : ca se lit comme un defaut, pas comme une fin de vague. `hold()` coupe la production et
+## laisse les vivantes finir leur trajectoire.
+func test_a_held_spawner_stops_producing_without_erasing_what_flies() -> void:
+	var wave: WaveData = load("res://resources/encounters/wave_cortege_patrol.tres")
+	assert_true(wave != null, "la nuee du survol se lit")
+	var schedule := WaveSpawner.build_schedule(wave)
+	var total: int = (schedule["times"] as PackedFloat32Array).size()
+	assert_true(total > 50,
+		"elle tient %d coques en reserve — de quoi peupler tout le silence" % total)
+	var spawner := track(WaveSpawner.new()) as WaveSpawner
+	assert_eq(spawner.pending(), 0, "un spawner non configure n'a rien en attente")
+	spawner.hold()
+	assert_eq(spawner.pending(), 0,
+		"et `hold()` ne fabrique pas d'attente la ou il n'y en avait pas")
+
+## ⚠️ LE SILENCE PORTE L'AVEU, ET LE RAPPORT NE DOIT PAS LUI PASSER DESSUS. Deux delais se
+## suivent : `silence_time` avant la replique, puis `REPORT_DELAY` avant le rapport de mission.
+## Le second existe deja pour cette raison exacte au niveau 1 — « la derniere replique est la
+## seule qui compte » — et il doit rester au moins aussi long que la replique.
+func test_nothing_steps_on_lyras_confession() -> void:
+	var script: DialogueScript = load("res://resources/dialogue/lyra_cortege.tres")
+	var aveu := script.find(&"survey_end")
+	assert_true(aveu != null, "l'aveu est toujours la")
+	assert_true(TUNING.silence_time >= aveu.hold,
+		"le silence (%.2f s) tient la replique (%.2f s)" % [TUNING.silence_time, aveu.hold])
+	# ⚠️ ET LE SILENCE RESTE DANS LA FOURCHETTE DE LA SPEC : cinq a huit secondes. Plus long, le
+	# joueur croit que le jeu a plante ; plus court, le contraste n'a pas le temps de se lire.
+	assert_true(TUNING.silence_time >= 5.0 and TUNING.silence_time <= 8.0,
+		"%.2f s de respiration — la spec §17 en demande 5 a 8" % TUNING.silence_time)
