@@ -494,8 +494,12 @@ func _blackout() -> void:
 		for mat in CortegeSkin.emissives_of(section):
 			CortegeSkin.extinguish(mat)
 			eteints += 1
-	print("[Poupe] blackout — %d conduit(s) de coque éteint(s), trois berceaux vides"
-		% eteints)
+	# ⚠️ ET LA POUPE AUSSI. Elle est montée à part, donc absente de `_flyby.sections()` : sans
+	# cette ligne elle gardait ses veines allumées sur trois berceaux vides, ce qui est
+	# exactement l'image que le silence doit démentir.
+	var poupe := _stern.blackout() if _stern != null else 0
+	print("[Poupe] blackout — %d conduit(s) de coque + %d surface(s) de poupe éteints, trois berceaux vides"
+		% [eteints, poupe])
 
 func _on_silence_over() -> void:
 	if _defeated:

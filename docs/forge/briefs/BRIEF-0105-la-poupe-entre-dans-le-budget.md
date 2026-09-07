@@ -1,6 +1,6 @@
 # BRIEF-0105 — La poupe entre dans le budget : réduire quatre livraisons tierces
 
-- **Statut** : à faire
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06

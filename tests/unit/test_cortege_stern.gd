@@ -621,3 +621,38 @@ func test_nothing_steps_on_lyras_confession() -> void:
 	# joueur croit que le jeu a plante ; plus court, le contraste n'a pas le temps de se lire.
 	assert_true(TUNING.silence_time >= 5.0 and TUNING.silence_time <= 8.0,
 		"%.2f s de respiration — la spec §17 en demande 5 a 8" % TUNING.silence_time)
+
+## ⚠️ ETEINDRE L'EMISSION NE SUFFIT PAS, ET C'EST MESURE. La forge a compte sur une vignette
+## « berceau vide, emissif coupe » : 4 480 -> 3 605 pixels magenta, **-20 % seulement**.
+## L'albedo d'`AA_Emissive_Engine` EST le magenta de faction (0,694 / 0,047 / 0,332) contre
+## 0,018 pour `AA_Hull` — quarante fois plus clair. Emission coupee, la surface reste PEINTE.
+##
+## Ce test garde la propriete dont depend tout le silence du LOT 8 : `extinguish()` touche les
+## DEUX. Une future version qui se contenterait de baisser l'energie laisserait trois berceaux
+## roses sur un vaisseau mort, et rien ne le dirait.
+func test_extinguishing_touches_the_paint_not_only_the_light() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.resource_name = "AA_Emissive_Engine"
+	mat.emission_enabled = true
+	mat.emission_energy_multiplier = 1.0
+	mat.albedo_color = Color(0.694, 0.047, 0.332)
+	var avant := mat.albedo_color
+	CortegeSkin.extinguish(mat)
+	assert_true(mat.emission_energy_multiplier < 0.05,
+		"la lumiere s'eteint (%.3f)" % mat.emission_energy_multiplier)
+	assert_true(mat.albedo_color.r < avant.r * 0.25,
+		"ET LA PEINTURE S'ASSOMBRIT : %.3f de rouge au lieu de %.3f — sans ça, -20 %% de magenta seulement"
+			% [mat.albedo_color.r, avant.r])
+
+## ⚠️ LA MARGE DE 0,40 M SUR LA PORTEE N'EST PAS DU CONFORT, C'EST LE RAYON DE LA HITBOX. La
+## forge a mesure que `asset_scale` pouvait monter a 0,903 en visant `anchor_reach() <= 14,00`.
+## Mais la zone de touche d'un ancrage fait 1,10 m de rayon : a une portee de 13,50 son BORD est
+## deja a 14,60, au-dela de ce que le joueur peut atteindre. Monter l'echelle pousserait le bord
+## plus loin encore, pour un gain de 0,6 %.
+func test_the_reach_margin_is_the_hitbox_radius() -> void:
+	var bord := TUNING.anchor_reach() + TUNING.anchor_radius
+	assert_true(bord > GameplayPlane.BOUNDS.end.x,
+		"le bord de la zone de touche est deja a |x| = %.2f pour un joueur qui va a %.2f — la marge de portee n'est pas de la place perdue"
+			% [bord, GameplayPlane.BOUNDS.end.x])
+	assert_true(TUNING.anchor_reach() <= GameplayPlane.BOUNDS.end.x - 0.4,
+		"le CENTRE, lui, garde sa marge : %.2f" % TUNING.anchor_reach())

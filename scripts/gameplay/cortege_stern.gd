@@ -181,6 +181,45 @@ func _burn_the_player(_delta: float) -> void:
 			_player.take_contact_damage(tuning.surge_bite)
 			return
 
+## Éteint tout ce que la poupe porte encore d'émissif — le blackout du §16.
+##
+## ⚠️ ELLE EXISTE PARCE QUE LE BLACKOUT NE COUVRAIT QUE LA COQUE. `CortegeRoot._blackout()` ne
+## parcourt que les tronçons du survol : la poupe, montée à part, gardait ses veines allumées
+## sur trois berceaux vides. Invisible en boîtes grises — il n'y restait presque rien d'allumé —
+## et flagrant dès que les pièces réduites entrent, avec leurs 1 824 triangles émissifs.
+##
+## ⚠️ ET ÉTEINDRE L'ÉMISSION NE SUFFIT PAS, C'EST MESURÉ. La forge a compté sur la vignette
+## « berceau vide, émissif coupé » : **4 480 → 3 605 pixels magenta, −20 % seulement**. L'albédo
+## d'`AA_Emissive_Engine` EST le magenta de faction (0,694 / 0,047 / 0,332) contre 0,018 pour
+## `AA_Hull` — quarante fois plus clair. Émission coupée, la surface reste PEINTE. C'est
+## exactement pourquoi `CortegeSkin.extinguish()` touche les deux, et pourquoi on passe par elle
+## plutôt que de baisser une énergie à la main.
+##
+## ⚠️ ET CHAQUE MAILLAGE REÇOIT SA COPIE. Les cinq `.glb` de poupe partagent leurs matériaux
+## entre instances : éteindre le partagé éteindrait les trois moteurs d'un coup, y compris ceux
+## qui tiennent encore. C'est le piège déjà payé sur les relais de la Citadelle, sur les puits et
+## sur les cinq bulbes d'épine.
+func blackout() -> int:
+	var eteints := 0
+	for mesh in _all_meshes(self):
+		for i in mesh.get_surface_override_material_count():
+			var base := mesh.get_active_material(i) as StandardMaterial3D
+			if base == null or not base.emission_enabled:
+				continue
+			var mine: StandardMaterial3D = base.duplicate()
+			CortegeSkin.extinguish(mine)
+			mesh.set_surface_override_material(i, mine)
+			eteints += 1
+	return eteints
+
+static func _all_meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
+	var mesh := node as MeshInstance3D
+	if mesh != null:
+		out.append(mesh)
+	for child in node.get_children():
+		_all_meshes(child, out)
+	return out
+
 ## Ouvre `--stern-cut=<secondes>` : un verrou par intervalle, dans l'ordre où le jeu les ouvre.
 func force_cut(interval: float) -> void:
 	_auto_cut = maxf(interval, 0.05)
