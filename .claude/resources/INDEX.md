@@ -176,6 +176,16 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   (`forge_voice.py --cue`), jamais le lot : piper n'est pas déterministe. ⚠️ Grepper la
   **formule**, pas le symbole — et **sans sensibilité à la casse** : le docstring disait
   « tronçon SUIVANT » en capitales, sur la première ligne du fichier qui implémente la règle.
+- [Une consigne parlée n'est pas une désignation](pratique-designer-une-cible.md) — l'IA dit
+  « coupez leurs ancrages » et **rien à l'écran ne dit lesquels**. Trois défauts indépendants :
+  la réplique tombait **onze secondes avant** que les verrous ne s'ouvrent (donc pendant qu'ils
+  étaient tous fermés et bleus) ; les arcs portés du nœud d'épine se lisaient comme des **rayures**
+  parce qu'un `PRIMITIVE_LINES` fait **un pixel** quoi qu'il arrive — à 32,7 px/m il faut un
+  **ruban** face à la caméra ; et un effet n'est pas un marqueur. ⚠️ Le **marqueur** ignore la
+  profondeur, ne dure **que la réplique** et ne vise **que le vulnérable** ; c'est sa brièveté qui
+  l'autorise à tricher. ⚠️ Un panneau d'affichage bâti à la main sans `CULL_DISABLED` ne rend
+  **rien**, sans un mot. ⚠️ Et un build debug allume `SolidsOverlay` **par défaut** : juger un
+  rendu sans `--hide-solids`, c'est valider une image que le joueur ne verra jamais.
 - [Ne pas committer sous un sous-agent](pratique-ne-pas-committer-sous-un-sous-agent.md) — un
   `git add -A` pendant qu'`asset-forge` écrivait a emporté un `.glb` régénéré et une table de
   35 lignes dans un commit qui parlait de dialogues, sans un mot. **Un sous-agent qui tourne est

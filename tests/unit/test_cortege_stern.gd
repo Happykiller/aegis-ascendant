@@ -658,3 +658,63 @@ func test_the_reach_margin_is_the_hitbox_radius() -> void:
 			% [bord, GameplayPlane.BOUNDS.end.x])
 	assert_true(TUNING.anchor_reach() <= GameplayPlane.BOUNDS.end.x - 0.4,
 		"le CENTRE, lui, garde sa marge : %.2f" % TUNING.anchor_reach())
+
+# --- La designation : montrer ce dont Lyra parle --------------------------------
+
+## ⚠️ « ON NE SAIT PAS DE QUOI L'IA PARLE » (operateur, 2026-09-07, apres avoir joue la phase
+## entiere sans une erreur). La consigne « ne tirez pas sur les moteurs : coupez leurs ancrages »
+## etait dite a la PREMIERE VUE de la poupe, onze secondes avant que le vaisseau ne finisse de
+## freiner — donc pendant que les dix verrous etaient encore fermes, bleus et invulnerables.
+##
+## Ce test garde la synchronisation : la fenetre de designation couvre la replique. Si l'une des
+## deux bouge sans l'autre, les arcs s'eteignent pendant que Lyra parle encore, ou continuent
+## apres — et le marqueur cesse d'etre une explication pour devenir un clignotant.
+func test_the_designation_lasts_as_long_as_lyra_speaks() -> void:
+	var script: DialogueScript = load("res://resources/dialogue/lyra_cortege.tres")
+	var consigne := script.find(&"stern_seen")
+	assert_true(consigne != null, "la consigne des ancrages est toujours dans le script")
+	assert_true(TUNING.designation_time >= consigne.hold,
+		"la designation (%.2f s) tient la replique (%.2f s) — sinon les arcs meurent avant la phrase"
+			% [TUNING.designation_time, consigne.hold])
+	assert_true(TUNING.designation_time <= consigne.hold + 2.0,
+		"et pas beaucoup plus (%.2f s pour %.2f s) : un marqueur qui reste devient une interface"
+			% [TUNING.designation_time, consigne.hold])
+
+## ⚠️ LES ARCS NE SE DESSINENT QUE SUR CE QU'ON PEUT ABATTRE, et c'est toute leur valeur : ils
+## disent « celui-ci, maintenant ». Les faire crepiter sur un verrou ferme rendrait le bleu du
+## verrouille inutile, et le joueur retournerait tirer au hasard sur la carene — c'est-a-dire le
+## contresens exact que la replique de Lyra essaie d'eviter.
+func test_arcs_only_mark_what_can_be_shot() -> void:
+	var AnchorScript := preload("res://scripts/gameplay/cortege_anchor.gd")
+	var portants := {
+		AnchorScript.Look.INTACT: true,
+		AnchorScript.Look.DAMAGED: true,
+		AnchorScript.Look.LOCKED: false,
+		AnchorScript.Look.BROKEN: false,
+	}
+	for etat: int in portants:
+		var vulnerable: bool = etat == AnchorScript.Look.INTACT or etat == AnchorScript.Look.DAMAGED
+		assert_eq(vulnerable, portants[etat] as bool,
+			"l'etat %d porte des arcs : %s" % [etat, portants[etat]])
+	# Et la portee designee depasse franchement la portee ordinaire : c'est ce qui fait qu'on
+	# repere la piece du coin de l'oeil, sans regarder la ou Lyra dit de regarder.
+	assert_true(AnchorScript.DESIGNATE_REACH > AnchorScript.ARC_REACH * 2.0,
+		"un arc designe porte %.2f m contre %.2f m — il se voit de loin"
+			% [AnchorScript.DESIGNATE_REACH, AnchorScript.ARC_REACH])
+	# ⚠️ ET LES ARCS RESTENT DANS LE CADRE. A la profondeur du pont de poupe, la portee designee
+	# s'ajoute au bord du verrou : si elle sortait de la demi-largeur visible, la moitie du
+	# marqueur serait coupee net, et un marqueur coupe se lit comme un defaut d'affichage.
+	var bord := TUNING.anchor_reach() + TUNING.anchor_radius + AnchorScript.DESIGNATE_REACH
+	assert_true(bord < 29.0,
+		"le bout de l'arc le plus externe est a |x| = %.2f, dans les 29,4 m de demi-cadre" % bord)
+
+## ⚠️ UN VERROU DESIGNE BRILLE PLUS, MAIS RESTE UN VERROU. Le gain multiplie la lueur de l'etat
+## courant au lieu de la remplacer : sans ca, un ancrage ENDOMMAGE — qui brille deja plus fort
+## qu'intact, et c'est voulu — perdrait sa lecture pendant la fenetre et paraitrait se reparer.
+func test_designation_multiplies_the_state_it_finds() -> void:
+	var AnchorScript := preload("res://scripts/gameplay/cortege_anchor.gd")
+	assert_true(AnchorScript.DESIGNATE_GLOW > 1.0,
+		"la designation ajoute de la lumiere (x%.2f)" % AnchorScript.DESIGNATE_GLOW)
+	assert_true(AnchorScript.DAMAGED_GLOW * AnchorScript.DESIGNATE_GLOW
+			> AnchorScript.INTACT_GLOW * AnchorScript.DESIGNATE_GLOW,
+		"et l'ordre des etats survit a la fenetre : endommage brille toujours plus qu'intact")

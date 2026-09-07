@@ -433,6 +433,12 @@ func _on_survey_finished() -> void:
 	# arrivée : c'est le vaisseau qui a fini de freiner, donc l'instant où les verrous s'ouvrent.
 	if _stern != null:
 		_stern.begin()
+		# ⚠️ ELLE PARLE ICI, ET C'EST TOUT L'ENJEU. « Coupez leurs ancrages » était dit à la
+		# PREMIÈRE VUE de la poupe, onze secondes avant le freinage — c'est-à-dire pendant que
+		# les dix verrous étaient encore bleus, fermés et invulnérables. Le joueur entendait une
+		# consigne en regardant une carène où rien ne la désignait, et l'oubliait avant qu'elle
+		# ne devienne vraie. Dite ici, elle tombe sur l'image des verrous qui s'allument.
+		say(&"stern_seen")
 
 ## Monte la poupe et lui passe la main.
 func _mount_stern() -> void:
@@ -466,7 +472,6 @@ func _mount_stern() -> void:
 			spawner.hold()
 	if _stern_cut > 0.0:
 		_stern.force_cut(_stern_cut)
-	say(&"stern_seen")
 	print("[Poupe] section terminale — trois groupes propulsifs, %d verrous"
 		% (2 * STERN_TUNING.lateral_anchors + STERN_TUNING.central_anchors))
 

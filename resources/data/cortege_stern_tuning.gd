@@ -85,6 +85,14 @@ extends Resource
 ## Entre deux gerbes d'un ancrage endommagé. ⚠️ C'EST LE SEUL SIGNAL QUI PORTE À DISTANCE : le
 ## battement se voit quand on regarde la pièce, l'étincelle se voit du coin de l'œil.
 @export var anchor_spark_interval: float = 0.55
+## Combien de temps les verrous se DÉSIGNENT quand ils s'ouvrent.
+##
+## ⚠️ « ON NE SAIT PAS DE QUOI L'IA PARLE » (opérateur, 2026-09-07). Lyra dit « coupez leurs
+## ancrages » et rien à l'écran ne montre lesquels. Cette fenêtre est la réponse : pendant sa
+## réplique, les verrous ouverts portent des arcs longs et brûlent — après, ils redeviennent des
+## cibles ordinaires. ⚠️ ELLE VAUT LA DURÉE DE LA RÉPLIQUE (`hold` de `stern_seen`, 6,6 s) et pas
+## davantage : un marqueur qui reste devient une interface, et le jeu n'en a aucune sur ses cibles.
+@export var designation_time: float = 6.60
 
 ## --- LES SOCKETS D'ANCRAGE, RELEVÉS DANS LE BINAIRE LIVRÉ (LOT 5) -------------
 ##
@@ -399,6 +407,10 @@ func validate() -> PackedStringArray:
 			% anchor_damaged_at)
 	if anchor_spark_interval <= 0.0:
 		errors.append("anchor_spark_interval doit être > 0")
+	# ⚠️ UNE DÉSIGNATION QUI SURVIT À LA RÉPLIQUE N'EN EST PLUS UNE. Bornée haut, pas seulement bas.
+	if designation_time < 1.0 or designation_time > 12.0:
+		errors.append("designation_time (%.2f) doit tenir entre 1 et 12 s — c'est la durée d'une réplique"
+			% designation_time)
 	if anchor_health <= 0.0:
 		errors.append("anchor_health doit être > 0")
 	if anchor_radius <= 0.0:

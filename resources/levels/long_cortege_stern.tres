@@ -34,6 +34,7 @@ anchor_size = Vector3(1.4, 1.21, 2.4)
 anchor_score = 1400
 anchor_damaged_at = 0.45
 anchor_spark_interval = 0.55
+designation_time = 6.6
 socket_x = 3.7
 socket_y = 2.55
 socket_z_front = -3.95

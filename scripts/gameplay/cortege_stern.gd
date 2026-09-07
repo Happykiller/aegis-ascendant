@@ -124,7 +124,8 @@ func begin() -> void:
 		return
 	_phase = Phase.FIGHT
 	_open_laterals()
-	print("[Poupe] le survol s'immobilise — les verrous des deux latéraux sont ouverts")
+	print("[Poupe] le survol s'immobilise — les verrous des deux latéraux sont ouverts, %d désigné(s)"
+		% designate_open())
 
 ## La carène de poupe (`BRIEF-0106`) : 2 514 triangles, sa jonction avec le cinquième tronçon
 ## exacte au dix-millionième de mètre.
@@ -271,6 +272,23 @@ func _open_laterals() -> void:
 	for engine in _engines:
 		engine.set_locked(engine.is_central)
 
+## Allume la désignation sur tout verrou qu'on peut abattre à cet instant. Rend leur nombre.
+##
+## ⚠️ APPELÉE AUX DEUX SEULS MOMENTS OÙ LE JOUEUR APPREND QUELQUE CHOSE : l'ouverture des latéraux
+## et celle du central. Une désignation posée ailleurs — à intervalle, à la moindre réplique —
+## cesserait d'être un enseignement pour devenir un clignotant, et le joueur cesserait de la lire.
+##
+## ⚠️ ET ELLE NE DÉSIGNE QUE LE VULNÉRABLE. Marquer un verrou fermé apprendrait au joueur à tirer
+## sur une pièce invincible : c'est exactement le contresens que Lyra essaie d'éviter.
+func designate_open() -> int:
+	var marques := 0
+	for engine in _engines:
+		for anchor in engine.anchors():
+			if anchor.is_alive() and anchor.is_vulnerable():
+				anchor.designate(tuning.designation_time)
+				marques += 1
+	return marques
+
 func _on_engine_weakened(engine: CortegeEngine, lost: int) -> void:
 	print("[Poupe] moteur %s affaibli — %d ancrage(s) perdu(s)"
 		% [engine.name, lost])
@@ -305,7 +323,8 @@ func _on_engine_detached(_engine: CortegeEngine) -> void:
 				# ⚠️ ET SON EXTINCTION S'OUVRE AVEC (spec §15). Elle n'existe qu'ici : tant que
 				# les latéraux poussent, le central n'a aucune raison de s'interrompre.
 				engine.open_vent()
-		print("[Poupe] l'énergie converge vers le moteur central — ses verrous s'ouvrent")
+		print("[Poupe] l'énergie converge vers le moteur central — %d verrou(s) ouvert(s) et désigné(s)"
+			% designate_open())
 		core_exposed.emit()
 	var partis := 0
 	for engine in _engines:
