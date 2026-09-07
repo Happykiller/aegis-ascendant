@@ -385,3 +385,189 @@ func test_the_three_engines_leave_in_three_different_directions() -> void:
 	# ⚠️ ET LE CENTRAL N'EST PAS UN LATERAL SANS COTE : sa rotation propre le distingue.
 	assert_true(TUNING.central_spin_deg > 0.0,
 		"le central tourne sur lui-meme — sans quoi son depart serait le seul a ne rien raconter")
+
+# --- LOT 4 : la flamme et la poussee --------------------------------------------
+
+const FlameScript := preload("res://scripts/fx/cortege_flame.gd")
+
+## ⚠️ LA SPEC CHIFFRE LA VARIATION — longueur ±10 a 15 %, largeur ±5 a 10 % — et ces bornes
+## valent mieux qu'un « ca bouge un peu ». Au-dela, la flamme bat comme un coeur et attire
+## l'oeil hors de la cible ; en deca, elle est morte. Ce test echantillonne dix secondes.
+func test_a_healthy_flame_breathes_within_the_specs_bounds() -> void:
+	var l_min := 9.0
+	var l_max := 0.0
+	var w_min := 9.0
+	var w_max := 0.0
+	var t := 0.0
+	while t < 10.0:
+		var f: Vector2 = FlameScript.shape_at(t, 0.4, FlameScript.Regime.STEADY)
+		l_min = minf(l_min, f.x); l_max = maxf(l_max, f.x)
+		w_min = minf(w_min, f.y); w_max = maxf(w_max, f.y)
+		t += 0.01
+	assert_true(l_max <= 1.16 and l_min >= 0.84,
+		"longueur entre %.3f et %.3f — la spec borne a ±15 %%" % [l_min, l_max])
+	assert_true(w_max <= 1.11 and w_min >= 0.89,
+		"largeur entre %.3f et %.3f — la spec borne a ±10 %%" % [w_min, w_max])
+	# ⚠️ ET ELLE BOUGE VRAIMENT : une flamme constante passerait les deux bornes ci-dessus.
+	assert_true(l_max - l_min > 0.10, "elle respire pour de bon (%.3f d'amplitude)" % (l_max - l_min))
+
+## ⚠️ ABIMEE, ELLE N'EST PAS PLUS PETITE : ELLE EST PLUS IRREGULIERE. Une flamme qui retrecit se
+## lirait comme un moteur qu'on eteint proprement ; ce qu'il faut lire, c'est une machine qui
+## perd sa tenue.
+func test_a_damaged_flame_gets_erratic_not_small() -> void:
+	var regimes: Array = [FlameScript.Regime.STEADY, FlameScript.Regime.ROUGH,
+		FlameScript.Regime.SPUTTER]
+	var precedent := 0.0
+	var moyennes: Array[float] = []
+	for r in regimes:
+		var lo := 9.0
+		var hi := 0.0
+		var somme := 0.0
+		var n := 0
+		var t := 0.0
+		while t < 10.0:
+			var f: Vector2 = FlameScript.shape_at(t, 0.4, r)
+			lo = minf(lo, f.x); hi = maxf(hi, f.x); somme += f.x; n += 1
+			t += 0.01
+		var amplitude := hi - lo
+		assert_true(amplitude > precedent,
+			"chaque palier est plus irregulier que le precedent (%.3f apres %.3f)"
+				% [amplitude, precedent])
+		precedent = amplitude
+		moyennes.append(somme / float(n))
+	assert_true(moyennes[1] > moyennes[0] * 0.85,
+		"et la premiere avarie ne RETRECIT pas la flamme (%.2f contre %.2f)"
+			% [moyennes[1], moyennes[0]])
+
+## ⚠️ « POUSSEE INTERMITTENTE » (spec §8) VEUT DIRE QU'ELLE S'INTERROMPT. Une simple variation
+## d'amplitude, si grande soit-elle, ne se lit jamais comme une coupure : il faut un seuil.
+func test_the_sputtering_flame_actually_cuts_out() -> void:
+	var creux := 0
+	var t := 0.0
+	while t < 10.0:
+		if FlameScript.shape_at(t, 0.4, FlameScript.Regime.SPUTTER).x < 0.45:
+			creux += 1
+		t += 0.01
+	assert_true(creux > 20, "elle s'interrompt vraiment (%d echantillons sous 45 %%)" % creux)
+	var jamais := 0
+	t = 0.0
+	while t < 10.0:
+		if FlameScript.shape_at(t, 0.4, FlameScript.Regime.STEADY).x < 0.45:
+			jamais += 1
+		t += 0.01
+	assert_eq(jamais, 0, "alors qu'une flamme saine ne hoquette jamais")
+
+func test_the_flame_regime_follows_the_engine_state() -> void:
+	assert_eq(FlameScript.regime_for(EngineScript.State.ACTIVE, false),
+		FlameScript.Regime.STEADY, "intact : elle tient")
+	assert_eq(FlameScript.regime_for(EngineScript.State.DAMAGED_1, false),
+		FlameScript.Regime.ROUGH, "un verrou perdu : elle devient irreguliere")
+	assert_eq(FlameScript.regime_for(EngineScript.State.DAMAGED_2, false),
+		FlameScript.Regime.SPUTTER, "deux : elle hoquette")
+	assert_eq(FlameScript.regime_for(EngineScript.State.ACTIVE, true),
+		FlameScript.Regime.DYING, "et l'arrachement prime sur le compte")
+
+## ⚠️ L'ORDRE EST CALME → CHARGE → SOUFFLE, ET LA CHARGE EST DEVANT. Un preavis qui suivrait le
+## souffle ne previendrait rien — evident ecrit ainsi, et c'est pourtant l'inversion la plus
+## facile a commettre en calculant des restes de modulo.
+func test_the_surge_warns_before_it_burns() -> void:
+	var p := TUNING.surge_period
+	var w := TUNING.surge_warning
+	var b := TUNING.surge_blast
+	assert_eq(EngineScript.surge_at(0.0, p, w, b, TUNING.surge_vent, false),
+		EngineScript.Surge.CALM, "le cycle commence au calme")
+	assert_eq(EngineScript.surge_at(p - w - b + 0.01, p, w, b, TUNING.surge_vent, false),
+		EngineScript.Surge.CHARGE, "puis il charge")
+	assert_eq(EngineScript.surge_at(p - b + 0.01, p, w, b, TUNING.surge_vent, false),
+		EngineScript.Surge.BLAST, "puis il souffle")
+	assert_eq(EngineScript.surge_at(p + 0.01, p, w, b, TUNING.surge_vent, false),
+		EngineScript.Surge.CALM, "et sans extinction, il repart au calme")
+	# ⚠️ ET LE PREAVIS PRECEDE TOUJOURS LE SOUFFLE, sur tout un cycle.
+	var vu_charge := false
+	var t := 0.0
+	while t < p:
+		var phase: int = EngineScript.surge_at(t, p, w, b, TUNING.surge_vent, false)
+		if phase == EngineScript.Surge.CHARGE:
+			vu_charge = true
+		if phase == EngineScript.Surge.BLAST:
+			assert_true(vu_charge, "aucun souffle n'arrive sans preavis (t = %.2f)" % t)
+		t += 0.01
+
+## ⚠️ L'EXTINCTION N'APPARTIENT QU'AU CENTRAL, ET SEULEMENT APRES LES DEUX LATERAUX (spec §15).
+## Elle donne « une fenetre tres confortable pour attaquer » — c'est ce qui empeche la derniere
+## etape de la phase de devenir une attente.
+func test_only_the_central_engine_vents_and_only_at_the_end() -> void:
+	var p := TUNING.surge_period
+	var v := TUNING.surge_vent
+	var vus := {}
+	var t := 0.0
+	while t < (p + v) * 2.0:
+		vus[EngineScript.surge_at(t, p, TUNING.surge_warning, TUNING.surge_blast, v, true)] = true
+		t += 0.01
+	assert_true(vus.has(EngineScript.Surge.VENT), "avec extinction, elle arrive")
+	vus.clear()
+	t = 0.0
+	while t < p * 3.0:
+		vus[EngineScript.surge_at(t, p, TUNING.surge_warning, TUNING.surge_blast, v, false)] = true
+		t += 0.01
+	assert_false(vus.has(EngineScript.Surge.VENT), "sans extinction, jamais")
+
+## ⚠️ TROIS COLONNES QUI SE TOUCHERAIENT NE LAISSERAIENT NULLE PART OU ALLER, et la poussee
+## cesserait d'etre une menace pour devenir une taxe. La premiere version prenait la largeur de
+## la NACELLE (7,14 m) au lieu de celle du panache (2,4) : il restait 1,94 m entre deux
+## colonnes, moins que l'envergure du chasseur. L'invariant l'a refuse avant toute capture.
+func test_there_is_always_a_lane_between_two_thrust_columns() -> void:
+	var couloir := TUNING.engine_spacing - TUNING.danger_half_width(false) \
+		- TUNING.danger_half_width(true)
+	assert_true(couloir >= 2.5,
+		"%.2f m entre deux colonnes, pour un chasseur qui en fait 1,75 d'envergure" % couloir)
+	var large: CortegeSternTuning = TUNING.duplicate()
+	large.danger_spread = 4.0
+	assert_true(_says(large, "nulle part où s'écarter"),
+		"et des colonnes qui se toucheraient sont REFUSEES")
+
+## ⚠️ SEULE L'ABSCISSE COMPTE. Une borne en `y` creerait un endroit sur juste sous le moteur —
+## exactement la ou le joueur doit se poster pour travailler ses verrous, donc exactement la ou
+## la poussee doit le chasser.
+func test_the_thrust_column_catches_the_player_at_any_height() -> void:
+	var demi := TUNING.danger_half_width(false)
+	var x := TUNING.slot_x(1.0)
+	assert_true(SternScript.in_thrust_column(x, x, demi), "sous l'axe, il brule")
+	assert_true(SternScript.in_thrust_column(x + demi - 0.01, x, demi), "au bord aussi")
+	assert_false(SternScript.in_thrust_column(x + demi + 0.5, x, demi), "a cote, il est au sec")
+	assert_false(SternScript.in_thrust_column(0.0, x, demi),
+		"et le couloir central reste sur pendant qu'un lateral souffle")
+
+func test_the_warning_window_matches_what_the_spec_asks() -> void:
+	assert_true(TUNING.surge_warning >= 0.30 and TUNING.surge_warning <= 0.50,
+		"%.2f s de preavis : la spec en demande 0,30 a 0,50" % TUNING.surge_warning)
+	for valeur in [0.05, 1.20]:
+		var tuning: CortegeSternTuning = TUNING.duplicate()
+		tuning.surge_warning = valeur
+		assert_true(_says(tuning, "préavis de poussée"),
+			"un preavis de %.2f s est REFUSE" % valeur)
+
+## ⚠️ CE TEST GARDE UN DEFAUT QUI RENDAIT LA ZONE DECORATIVE, ET QUE SEULE UNE CAPTURE A VU.
+##
+## La premiere version infligeait `46 x delta` a chaque image — un taux par seconde, ce qui
+## parait juste. Mais `PlayerShield.take_hit()` accorde **1,2 s d'invulnerabilite** apres tout
+## coup encaisse : sur un souffle de 0,95 s, le joueur prenait EXACTEMENT une image de degats,
+## soit 0,77 point sur 100. Mesure en jeu : le bouclier affichait 99. Le code se lisait comme
+## s'il infligeait cinquante fois plus, et rien ne le contredisait.
+##
+## Le modele est donc une MORSURE par contact, cadencee par le bouclier et non par notre horloge.
+func test_the_thrust_bites_instead_of_ticking() -> void:
+	var stats: PlayerStats = load("res://resources/player/specter9_stats.tres")
+	assert_true(stats != null, "les caracteristiques du chasseur se lisent")
+	assert_true(stats.invuln_time > TUNING.surge_blast * 0.5,
+		"l'invulnerabilite (%.2f s) couvre l'essentiel d'un souffle (%.2f s) — c'est POUR CA qu'un taux par seconde ne marche pas"
+			% [stats.invuln_time, TUNING.surge_blast])
+	assert_true(TUNING.surge_bite >= 10.0 and TUNING.surge_bite <= 34.0,
+		"la morsure vaut %.0f sur %.0f de bouclier" % [TUNING.surge_bite, stats.shield_max])
+	# Une morsure trop faible laisse camper dans une voie ; une morsure trop forte punit une
+	# inattention d'une vie, dans une phase qui n'a aucune vague pour la rendre.
+	for valeur in [2.0, 90.0]:
+		var tuning: CortegeSternTuning = TUNING.duplicate()
+		tuning.surge_bite = valeur
+		assert_true(_says(tuning, "souffle"),
+			"une morsure de %.0f est REFUSEE" % valeur)

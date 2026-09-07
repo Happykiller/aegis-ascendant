@@ -29,11 +29,14 @@ signal shockwave(trauma: float)
 enum Phase { ARRIVAL, FIGHT, DONE }
 
 var tuning: CortegeSternTuning = null
+## Voir `--no-flames` : la bissection de perf de la phase.
+var show_flames: bool = true
 
 var _engines: Array[CortegeEngine] = []
 var _phase: Phase = Phase.ARRIVAL
 var _clock: float = 0.0
 var _bullets: BulletManager = null
+var _player: PlayerFighterController = null
 var _vfx: VFXManager = null
 var _core_open: bool = false
 var _down: int = 0
@@ -68,6 +71,16 @@ static func arrival_y(t: float, rest: float, rise: float, duration: float) -> fl
 	# se pose pas à vitesse constante. Même famille de courbe que le freinage de la Citadelle.
 	return rest + rise * (1.0 - k) * (1.0 - k)
 
+## Le joueur est-il dans la colonne de poussée d'un moteur posé en `x` ?
+##
+## ⚠️ SEULE L'ABSCISSE COMPTE, ET C'EST VOULU. La tuyère pointe vers le haut de l'écran et le
+## joueur est en dessous, sur la même verticale : le prolongement de l'axe passe par lui, quelle
+## que soit sa hauteur. Ajouter une borne en `y` créerait un endroit sûr juste sous le moteur —
+## exactement là où le joueur doit se poster pour travailler ses verrous, donc exactement là où
+## la poussée doit le chasser.
+static func in_thrust_column(player_x: float, engine_x: float, half: float) -> bool:
+	return absf(player_x - engine_x) <= half
+
 ## Le central s'ouvre-t-il ? ⚠️ IL FAUT LES DEUX LATÉRAUX PARTIS, pas seulement abîmés : c'est
 ## la redirection d'énergie de la spec §14 qui l'expose, et elle n'a lieu qu'une fois les deux
 ## groupes détachés.
@@ -76,9 +89,11 @@ static func core_is_exposed(laterals_gone: int) -> bool:
 
 # --- La pièce ------------------------------------------------------------------
 
-func setup(bullets: BulletManager, vfx: VFXManager) -> void:
+func setup(bullets: BulletManager, vfx: VFXManager,
+		player: PlayerFighterController = null) -> void:
 	_bullets = bullets
 	_vfx = vfx
+	_player = player
 	for engine in _engines:
 		engine.setup(bullets, vfx)
 
@@ -104,6 +119,7 @@ func build_greybox() -> void:
 		var engine := CortegeEngine.make(tuning, side)
 		engine.name = "Engine_%s" % ("Center" if is_zero_approx(side) else
 			("Right" if side > 0.0 else "Left"))
+		engine.show_flame = show_flames
 		engine.position = Vector3(tuning.slot_x(side), tuning.deck_y, 0.0)
 		engine.build_greybox()
 		engine.weakened.connect(_on_engine_weakened)
@@ -139,11 +155,31 @@ func tick(delta: float, eye: Vector3) -> void:
 			print("[Poupe] trois groupes propulsifs en place — les verrous sont ouverts")
 	for engine in _engines:
 		engine.tick(delta, global_position + engine.position, eye)
+	_burn_the_player(delta)
 	if _auto_cut > 0.0 and _phase == Phase.FIGHT:
 		_cut_clock -= delta
 		if _cut_clock <= 0.0:
 			_cut_clock = _auto_cut
 			_cut_one()
+
+## ⚠️ ON APPELLE À CHAQUE IMAGE, ET C'EST LE BOUCLIER QUI CADENCE. `PlayerShield.take_hit()`
+## accorde 1,2 s d'invulnérabilité après tout coup : appeler soixante fois par seconde ne fait
+## donc PAS soixante fois plus de dégâts, ça fait une morsure toutes les 1,2 s tant qu'on reste
+## dedans. C'est exactement le comportement voulu — traverser une colonne coûte une morsure, y
+## rester en coûte une par seconde et quelques — mais il fallait le savoir : la première version
+## passait un taux « par seconde » multiplié par `delta`, et le joueur perdait 0,77 point par
+## souffle au lieu de 26.
+func _burn_the_player(_delta: float) -> void:
+	if _player == null or _phase != Phase.FIGHT:
+		return
+	var x := _player.plane_position.x
+	for engine in _engines:
+		if not engine.is_blasting():
+			continue
+		if in_thrust_column(x, tuning.slot_x(engine.side),
+				tuning.danger_half_width(engine.is_central)):
+			_player.take_contact_damage(tuning.surge_bite)
+			return
 
 ## Ouvre `--stern-cut=<secondes>` : un verrou par intervalle, dans l'ordre où le jeu les ouvre.
 func force_cut(interval: float) -> void:
@@ -199,6 +235,9 @@ func _on_engine_detached(_engine: CortegeEngine) -> void:
 		for engine in _engines:
 			if engine.is_central:
 				engine.set_locked(false)
+				# ⚠️ ET SON EXTINCTION S'OUVRE AVEC (spec §15). Elle n'existe qu'ici : tant que
+				# les latéraux poussent, le central n'a aucune raison de s'interrompre.
+				engine.open_vent()
 		print("[Poupe] l'énergie converge vers le moteur central — ses verrous s'ouvrent")
 		core_exposed.emit()
 	var partis := 0

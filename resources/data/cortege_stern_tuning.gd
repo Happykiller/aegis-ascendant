@@ -131,6 +131,54 @@ extends Resource
 ## le niveau. `survey_end` dure 5,45 s mesurées et tient 6,5 s à l'écran — d'où le plancher.
 @export var silence_time: float = 7.00
 
+## --- La flamme et la poussée (spec §5 et §6) ---------------------------------
+
+## La longueur et la largeur du panache au repos, en unités de plan.
+## ⚠️ IL SORT DU CADRE PAR LE HAUT, ET C'EST VOULU — comme sur la planche, où les flammes
+## s'échappent hors champ. Ce que le joueur doit voir, c'est sa BASE : un panache entièrement
+## contenu dans l'écran ferait paraître les moteurs petits.
+@export var flame_length: float = 9.0
+@export var flame_width: float = 2.4
+
+## Le cycle de poussée (spec §6 et §15) : calme, charge annoncée, souffle, puis — pour le
+## central seul — une extinction pendant laquelle le joueur a la voie libre.
+##
+## ⚠️ LE PRÉAVIS N'EST PAS UNE POLITESSE, C'EST LA MÉCANIQUE. Sans lui, une poussée qui blesse
+## est une taxe et non une difficulté (spec §11.2) : le joueur ne peut pas apprendre ce qu'il ne
+## voit pas venir. La spec chiffre 300 à 500 ms — assez pour sortir de la voie, trop peu pour
+## flâner.
+@export var surge_period: float = 4.60
+@export var surge_warning: float = 0.42
+@export var surge_blast: float = 0.95
+## L'extinction du central après la perte des deux latéraux (spec §15) : une fenêtre très
+## confortable pour attaquer. Elle n'appartient qu'à lui.
+@export var surge_vent: float = 1.00
+
+## De combien la flamme enfle pendant la charge, puis pendant le souffle.
+@export var surge_charge_gain: float = 1.35
+@export var surge_blast_gain: float = 2.30
+
+## Ce que coûte UN CONTACT avec le souffle.
+##
+## ⚠️ CE N'EST PAS UN TAUX PAR SECONDE, ET LA PREMIÈRE VERSION EN ÉTAIT UN. Elle infligeait
+## `46 × delta` à chaque image — sauf que `PlayerShield.take_hit()` accorde **1,2 s
+## d'invulnérabilité** après tout coup encaissé. Sur un souffle de 0,95 s, le joueur prenait
+## donc EXACTEMENT une image de dégâts, soit 0,77 point sur 100 : mesuré en jeu, le bouclier
+## affichait 99. La zone était décorative, et rien ne le disait — le code se lisait comme s'il
+## infligeait cinquante fois plus.
+##
+## Le vrai modèle est donc une MORSURE par contact, cadencée par l'invulnérabilité du bouclier
+## et non par notre horloge. À 26 sur 100, tenir dans une voie coûte un quart de réserve par
+## souffle : assez pour ne jamais y rester, pas assez pour qu'une erreur coûte une vie. La spec
+## demande « du mouvement », pas un bullet hell.
+@export var surge_bite: float = 26.0
+
+## De combien le souffle déborde le panache visible. ⚠️ AU-DESSUS DE 1 PARCE QU'UN SOUFFLE
+## CHAUFFE PLUS LARGE QU'IL N'ÉCLAIRE — mais pas de beaucoup : une zone nettement plus large que
+## ce qu'on voit brûler se lit comme une hitbox injuste, et c'est le grief le plus difficile à
+## rattraper une fois qu'un joueur l'a formulé.
+@export var danger_spread: float = 1.60
+
 @export var engine_score: int = 5200
 
 
@@ -155,6 +203,23 @@ func stack_top_y(central: bool) -> float:
 ## ancrage posé en +z est plus PRÈS du joueur que le centre de son berceau.
 func anchor_plane_y() -> float:
 	return hold_plane_y - anchor_offset_z
+
+## La demi-largeur de la colonne dangereuse d'un moteur, en unités de plan.
+##
+## ⚠️ LA COLONNE EST AU-DESSUS DU MOTEUR ET DONC SUR SES PROPRES ANCRAGES — c'est exactement ce
+## qui la rend intéressante. Le joueur doit se poster devant un moteur pour travailler ses
+## verrous ; la poussée l'en chasse périodiquement. C'est le « crée du mouvement sans bullet
+## hell supplémentaire » de la spec §6, obtenu sans une seule balle de plus.
+##
+## ⚠️ ET LE JOUEUR EST BIEN DANS L'AXE : la tuyère pointe vers le haut de l'écran, il est en
+## dessous, sur la même verticale. Le prolongement de l'axe passe par lui.
+## ⚠️ ELLE SUIT LA FLAMME, PAS LA NACELLE — et la première version suivait la nacelle. Un
+## moteur fait 7,14 m de large, son panache 2,4 : prendre la largeur de la coque laissait
+## 1,94 m entre deux colonnes, moins que l'envergure du chasseur. L'invariant 7 l'a refusé
+## avant qu'une seule capture ne soit prise. Et c'est aussi la version HONNÊTE : la zone qui
+## blesse a exactement la forme de ce que le joueur voit brûler.
+func danger_half_width(central: bool) -> float:
+	return flame_width * 0.5 * danger_spread * (central_scale if central else 1.0)
 
 ## La demi-largeur occupée par les trois groupes, en unités de plan.
 func half_span() -> float:
@@ -247,6 +312,31 @@ func validate() -> PackedStringArray:
 	if detach_shake_amplitude > cradle_size.y * scale_of(false) * 0.25:
 		errors.append("le tremblement fait %.2f m pour un berceau haut de %.2f — le moteur en sortirait avant de s'arracher"
 			% [detach_shake_amplitude, cradle_size.y * scale_of(false)])
+	# --- INVARIANT 7 : LE JOUEUR PEUT TOUJOURS SORTIR D'UNE POUSSÉE --------
+	#
+	# ⚠️ TROIS COLONNES QUI SE TOUCHERAIENT NE LAISSERAIENT NULLE PART OÙ ALLER, et la poussée
+	# cesserait d'être une menace pour devenir une taxe. Il doit rester un couloir entre deux
+	# moteurs voisins, au moins aussi large que le chasseur.
+	var couloir := engine_spacing - danger_half_width(false) - danger_half_width(true)
+	if couloir < 2.5:
+		errors.append("il ne reste que %.2f m entre deux colonnes de poussée — le joueur n'aurait nulle part où s'écarter, et le souffle deviendrait une taxe au lieu d'une menace"
+			% couloir)
+	if surge_warning < 0.30 or surge_warning > 0.60:
+		errors.append("le préavis de poussée vaut %.2f s : la spec en demande 0,30 à 0,50 — en dessous le joueur ne peut pas apprendre ce qu'il ne voit pas venir, au-dessus il a le temps de flâner"
+			% surge_warning)
+	# ⚠️ LA MORSURE SE MESURE CONTRE LE BOUCLIER DU JOUEUR (100 par défaut, `player_stats.gd`).
+	# Au-delà du tiers, une seule inattention coûte trop cher pour une phase qui n'a pas de
+	# vagues ; en dessous du dixième, on peut camper dans une voie et le souffle ne chasse plus
+	# personne — ce qui était exactement le cas avant qu'on le mesure.
+	if surge_bite > 34.0:
+		errors.append("le souffle mord %.0f points sur les 100 du bouclier — une inattention coûterait une vie dans une phase sans vagues"
+			% surge_bite)
+	if surge_bite < 10.0:
+		errors.append("le souffle ne mord que %.0f points : le joueur peut camper dans une voie, et la poussée ne chasse plus personne"
+			% surge_bite)
+	if surge_blast <= 0.0 or surge_period <= surge_warning + surge_blast:
+		errors.append("le cycle de poussée ne laisse aucun temps calme : période %.2f pour %.2f de charge et %.2f de souffle"
+			% [surge_period, surge_warning, surge_blast])
 	if conduit_count < 1:
 		errors.append("sans conduite, la seconde qui sépare le dernier verrou du départ est un temps mort : rien ne se rompt")
 

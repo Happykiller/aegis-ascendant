@@ -47,6 +47,8 @@ var _citadel: CortegeCitadel = null
 var _stern: CortegeStern = null
 ## Voir `--stern-cut=` : -1 en jeu normal.
 var _stern_cut: float = -1.0
+## Voir `--no-flames`.
+var _stern_flames: bool = true
 const STERN_TUNING: CortegeSternTuning = preload("res://resources/levels/long_cortege_stern.tres")
 ## La progression musicale due au TRONÇON seul, et la montée que le verrou y ajoute.
 var _section_progress: float = 0.0
@@ -158,6 +160,12 @@ func _ready() -> void:
 		if arg.begins_with("--stern-cut="):
 			_stern_cut = maxf(arg.substr(12).to_float(), 0.05)
 			print("[Cortege] poupe : un verrou toutes les %.2f s (banc)" % _stern_cut)
+		# ⚠️ BISSECTION DE PERF, comme `--no-backdrop` et `--no-glow`. Trois panaches additifs
+		# sans test de profondeur couvrent un tiers de l'écran : c'est le poste le plus cher de
+		# la phase, et il doit pouvoir être isolé sans recompiler.
+		if arg == "--no-flames":
+			_stern_flames = false
+			print("[Cortege] poupe : panaches coupés (bissection de perf)")
 		if arg == "--goto-stern":
 			_flyby.skip_to_end()
 			print("[Cortege] saut direct à la poupe")
@@ -419,8 +427,9 @@ func _on_survey_finished() -> void:
 func _mount_stern() -> void:
 	_stern = CortegeStern.make(STERN_TUNING)
 	_stern.name = "Stern"
+	_stern.show_flames = _stern_flames
 	_stern.build_greybox()
-	_stern.setup(_bullets, _vfx)
+	_stern.setup(_bullets, _vfx, _player as PlayerFighterController)
 	_stern.finished.connect(_on_stern_finished)
 	_stern.engine_lost.connect(_on_engine_lost)
 	_stern.core_exposed.connect(_on_core_exposed)

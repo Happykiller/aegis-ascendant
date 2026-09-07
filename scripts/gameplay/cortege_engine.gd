@@ -18,6 +18,10 @@ extends Node3D
 
 enum State { ACTIVE, DAMAGED_1, DAMAGED_2, DETACHING, DETACHED }
 
+## Le cycle de poussée (spec §6). `VENT` n'appartient qu'au central, et seulement après la perte
+## des deux latéraux (spec §15).
+enum Surge { CALM, CHARGE, BLAST, VENT }
+
 ## La lueur de tuyère d'un moteur qui pousse, et celle d'une conduite alimentée.
 const THRUST_GLOW := 2.20
 const CONDUIT_GLOW := 1.10
@@ -36,6 +40,8 @@ signal detached(engine: CortegeEngine)
 var side: float = 0.0
 var is_central: bool = false
 var tuning: CortegeSternTuning = null
+## Voir `--no-flames`.
+var show_flame: bool = true
 
 var _anchors: Array[CortegeAnchor] = []
 var _lost: int = 0
@@ -49,6 +55,11 @@ var _thrust_mat: StandardMaterial3D = null
 var _conduits: Array[MeshInstance3D] = []
 var _conduit_veins: Array[StandardMaterial3D] = []
 var _burst_done: bool = false
+var _flame: CortegeFlame = null
+var _surge_clock: float = 0.0
+var _surge: Surge = Surge.CALM
+## Le central ouvre son extinction quand les deux latéraux sont partis, jamais avant.
+var _has_vent: bool = false
 
 static func make(p_tuning: CortegeSternTuning, p_side: float) -> CortegeEngine:
 	var engine := CortegeEngine.new()
@@ -118,6 +129,37 @@ static func thrust_at(t: float, leave_at: float, gone_at: float) -> float:
 	var span := maxf(gone_at - leave_at, 0.001)
 	return clampf(1.0 - (t - leave_at) / span, 0.0, 1.0)
 
+## Où en est le cycle de poussée à `t` secondes (spec §6 et §15).
+##
+## ⚠️ L'ORDRE EST CALME → CHARGE → SOUFFLE, ET LA CHARGE EST DEVANT. Un préavis qui suivrait le
+## souffle ne préviendrait rien ; c'est évident écrit ainsi, et c'est pourtant l'inversion la
+## plus facile à commettre en calculant des restes de modulo.
+##
+## ⚠️ ET L'EXTINCTION N'APPARTIENT QU'AU CENTRAL, une fois les deux latéraux partis (spec §15).
+## Elle donne au joueur « une fenêtre très confortable pour attaquer » — c'est ce qui empêche la
+## dernière étape de la phase de devenir une attente.
+static func surge_at(t: float, period: float, warning: float, blast: float,
+		vent: float, has_vent: bool) -> Surge:
+	var cycle := period + (vent if has_vent else 0.0)
+	if cycle <= 0.0:
+		return Surge.CALM
+	var u := fposmod(t, cycle)
+	if u < period - warning - blast:
+		return Surge.CALM
+	if u < period - blast:
+		return Surge.CHARGE
+	if u < period:
+		return Surge.BLAST
+	return Surge.VENT
+
+## De combien la flamme enfle selon la phase.
+static func surge_gain(phase: Surge, charge: float, blast: float) -> float:
+	match phase:
+		Surge.CHARGE: return charge
+		Surge.BLAST: return blast
+		Surge.VENT: return 0.0
+	return 1.0
+
 ## L'angle de bascule, en radians, à `t` secondes.
 static func tilt_at(t: float, tilt_at_s: float, leave_at: float, degrees: float) -> float:
 	if t <= tilt_at_s:
@@ -165,6 +207,17 @@ func build_greybox() -> void:
 	_thrust_mat.emission_energy_multiplier = THRUST_GLOW
 	_nozzle.material_override = _thrust_mat
 	_body.add_child(_nozzle)
+
+	# ⚠️ LA FLAMME EST FILLE DU CORPS, PAS DU BERCEAU. Elle part avec lui : un moteur arraché
+	# qui laisserait son panache accroché au vaisseau serait la pire image de la séquence.
+	# Le déphasage vient de la place du moteur — sans lui, les trois respirent à l'unisson et
+	# la poupe se met à battre comme un seul objet.
+	if show_flame:
+		_mount_flame()
+	# ⚠️ DÉPHASAGE DU CYCLE AUSSI, et pour une raison de jeu cette fois : trois souffles
+	# simultanés fermeraient toute la poupe d'un coup, sans couloir nulle part. Décalés, il y a
+	# toujours au moins un moteur qu'on peut travailler.
+	_surge_clock = (side + 1.0) * tuning.surge_period / 3.0
 
 	# ⚠️ LES CONDUITES RENDENT L'ARRACHEMENT LISIBLE AVANT QUE RIEN NE BOUGE. Entre le dernier
 	# verrou et le départ il s'écoule 1,2 s : sans une rupture visible à 0,5 s, cette seconde est
@@ -229,6 +282,13 @@ func _anchor_seat(i: int, total: int, largeur: float, k: float) -> Vector3:
 		x = lerpf(-largeur * 0.18, largeur * 0.18, float(j) / float(bas - 1))
 	return Vector3(x, y, tuning.anchor_offset_z + tuning.anchor_row_gap)
 
+func _mount_flame() -> void:
+	_flame = CortegeFlame.make(tuning.flame_length, tuning.flame_width, side * 1.7 + 0.4)
+	_flame.name = "Flame"
+	_flame.position = _nozzle.position + Vector3(0.0, 0.0, -0.15)
+	_flame.build()
+	_body.add_child(_flame)
+
 func _box(nom: String, size: Vector3, teinte: Color) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	mesh.name = nom
@@ -266,6 +326,7 @@ func tick(delta: float, world_origin: Vector3, eye: Vector3) -> void:
 		var w := anchor.global_position if anchor.is_inside_tree() \
 			else world_origin + anchor.position
 		anchor.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
+	_advance_thrust(delta)
 	if _detach_clock < 0.0:
 		return
 	_detach_clock += delta
@@ -315,6 +376,37 @@ func _break_conduits() -> void:
 	for conduit in _conduits:
 		var w := conduit.global_position if conduit.is_inside_tree() else global_position
 		_vfx.spawn_explosion(w, VfxExplosion.Category.SMALL, CortegeAnchor.TINT)
+
+## Le cycle de poussée et la flamme qui le rend. ⚠️ IL S'ARRÊTE DÈS L'ARRACHEMENT : un moteur
+## qui s'en va ne « souffle » plus au sens du jeu — sa flamme devient instable et s'éteint, mais
+## elle ne blesse plus personne. Une colonne dangereuse accrochée à une pièce qui dérive
+## frapperait le joueur depuis un endroit qu'il ne peut plus prévoir.
+func _advance_thrust(delta: float) -> void:
+	if _flame == null:
+		return
+	var leaving := _state == State.DETACHING or _state == State.DETACHED
+	if not leaving:
+		_surge_clock += delta
+		_surge = surge_at(_surge_clock, tuning.surge_period, tuning.surge_warning,
+			tuning.surge_blast, tuning.surge_vent, _has_vent)
+	else:
+		_surge = Surge.CALM
+	var puissance := 1.0
+	if _detach_clock >= 0.0:
+		puissance = thrust_at(_detach_clock, tuning.detach_leave_at, tuning.detach_gone_at)
+	_flame.tick(_surge_clock, CortegeFlame.regime_for(_state, leaving), puissance,
+		surge_gain(_surge, tuning.surge_charge_gain, tuning.surge_blast_gain))
+
+func surge() -> Surge:
+	return _surge
+
+## Le souffle blesse-t-il en ce moment ?
+func is_blasting() -> bool:
+	return _surge == Surge.BLAST
+
+## Ouvre l'extinction du central (spec §15). Sans appel, il n'en a pas.
+func open_vent() -> void:
+	_has_vent = true
 
 func _on_anchor_destroyed(anchor: CortegeAnchor) -> void:
 	_lost += 1
