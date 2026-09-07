@@ -18,6 +18,13 @@ extends Node3D
 
 enum State { ACTIVE, DAMAGED_1, DAMAGED_2, DETACHING, DETACHED }
 
+## La lueur de tuyère d'un moteur qui pousse, et celle d'une conduite alimentée.
+const THRUST_GLOW := 2.20
+const CONDUIT_GLOW := 1.10
+## Ce qu'il reste d'une conduite rompue : une gaine noire. Elle ne disparaît PAS — c'est elle qui
+## dit, sur un berceau vide, que quelque chose a été arraché là.
+const CONDUIT_DEAD := 0.03
+
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
 ## Le dernier ancrage a cédé : la séquence d'arrachement commence.
@@ -37,6 +44,11 @@ var _detach_clock: float = -1.0
 var _body: Node3D = null
 var _rest: Vector3 = Vector3.ZERO
 var _vfx: VFXManager = null
+var _nozzle: MeshInstance3D = null
+var _thrust_mat: StandardMaterial3D = null
+var _conduits: Array[MeshInstance3D] = []
+var _conduit_veins: Array[StandardMaterial3D] = []
+var _burst_done: bool = false
 
 static func make(p_tuning: CortegeSternTuning, p_side: float) -> CortegeEngine:
 	var engine := CortegeEngine.new()
@@ -79,6 +91,33 @@ static func drift_offset(t: float, leave_at: float, speed: float, side: float) -
 	var out := speed * 0.45 * age * side
 	return Vector3(out, 0.0, -up)
 
+## De combien le moteur tremble, à `t` secondes. ⚠️ DÉTERMINISTE, ET C'EST CE QUI LE REND
+## TESTABLE. Un tremblement tiré au hasard donnerait une capture différente à chaque lancement —
+## or un arrachement se juge en comparant deux passages. Deux sinusoïdes incommensurables
+## suffisent à ne pas se lire comme un balancier.
+static func shake_at(t: float, from_s: float, to_s: float, amplitude: float,
+		hz: float) -> Vector3:
+	if t <= from_s or t >= to_s:
+		return Vector3.ZERO
+	# ⚠️ IL MONTE, IL N'EST PAS CONSTANT. Une vibration d'intensité fixe se lit comme un moteur
+	# qui ronronne ; ce qu'il faut lire, c'est une pièce dont la tenue se dégrade seconde après
+	# seconde jusqu'à lâcher.
+	var montee := clampf((t - from_s) / maxf(to_s - from_s, 0.001), 0.0, 1.0)
+	var a := amplitude * montee
+	return Vector3(a * sin(t * hz * TAU), a * 0.6 * sin(t * hz * TAU * 1.37), 0.0)
+
+## Ce qu'il reste de la propulsion d'un moteur arraché, de 1 à 0.
+##
+## ⚠️ ELLE NE S'ÉTEINT PAS AU DÉPART, ELLE S'ÉTEINT EN DÉRIVANT (spec §9 : « il dérive tout en
+## continuant à cracher une poussée instable », §16 : « la propulsion s'éteint progressivement »).
+## Couper au moment du départ ferait lire une panne ; ce qu'il faut lire, c'est une machine qui
+## fonctionne encore et que plus rien ne retient.
+static func thrust_at(t: float, leave_at: float, gone_at: float) -> float:
+	if t <= leave_at:
+		return 1.0
+	var span := maxf(gone_at - leave_at, 0.001)
+	return clampf(1.0 - (t - leave_at) / span, 0.0, 1.0)
+
 ## L'angle de bascule, en radians, à `t` secondes.
 static func tilt_at(t: float, tilt_at_s: float, leave_at: float, degrees: float) -> float:
 	if t <= tilt_at_s:
@@ -112,6 +151,45 @@ func build_greybox() -> void:
 	_body.position = _rest
 	add_child(_body)
 	_body.add_child(_box("Engine", tuning.engine_size * k, Color(0.14, 0.14, 0.18)))
+
+	# ⚠️ LA TUYÈRE EST DANS LE CORPS, PAS DANS LE BERCEAU. C'est elle qui s'éteint en dérivant,
+	# et c'est le seul signal qui dise « cette masse est encore une machine ». Le LOT 4 la
+	# remplacera par une vraie flamme ; ce disque n'est là que pour que l'extinction existe.
+	_nozzle = _box("Nozzle", Vector3(tuning.engine_size.x * k * 0.62, 0.30,
+		tuning.engine_size.z * k * 0.10), Color(0.16, 0.05, 0.12))
+	_nozzle.position.z = -tuning.engine_size.z * k * 0.46
+	_thrust_mat = StandardMaterial3D.new()
+	_thrust_mat.albedo_color = Color(0.20, 0.04, 0.14)
+	_thrust_mat.emission_enabled = true
+	_thrust_mat.emission = CortegeAnchor.TINT
+	_thrust_mat.emission_energy_multiplier = THRUST_GLOW
+	_nozzle.material_override = _thrust_mat
+	_body.add_child(_nozzle)
+
+	# ⚠️ LES CONDUITES RENDENT L'ARRACHEMENT LISIBLE AVANT QUE RIEN NE BOUGE. Entre le dernier
+	# verrou et le départ il s'écoule 1,2 s : sans une rupture visible à 0,5 s, cette seconde est
+	# un temps mort où le joueur croit que rien ne s'est passé.
+	var haut := tuning.cradle_size.y * k
+	for i in tuning.conduit_count:
+		var u := (float(i) + 0.5) / float(tuning.conduit_count)
+		var conduit := _box("Conduit_%02d" % (i + 1),
+			Vector3(tuning.conduit_width * k, tuning.engine_size.y * k * 0.34,
+				tuning.conduit_width * k), Color(0.09, 0.09, 0.11))
+		var vein := StandardMaterial3D.new()
+		vein.albedo_color = Color(0.18, 0.04, 0.13)
+		vein.metallic = 0.3
+		vein.roughness = 0.5
+		vein.emission_enabled = true
+		vein.emission = CortegeAnchor.TINT
+		vein.emission_energy_multiplier = CONDUIT_GLOW
+		conduit.material_override = vein
+		conduit.position = Vector3(
+			lerpf(-tuning.cradle_size.x * k * 0.30, tuning.cradle_size.x * k * 0.30, u),
+			haut + tuning.engine_size.y * k * 0.17,
+			tuning.anchor_offset_z - 1.4)
+		add_child(conduit)
+		_conduits.append(conduit)
+		_conduit_veins.append(vein)
 
 	# Les ancrages ceinturent le berceau, au niveau où le joueur les voit : jamais dessous.
 	var total := tuning.anchors_of(is_central)
@@ -191,14 +269,52 @@ func tick(delta: float, world_origin: Vector3, eye: Vector3) -> void:
 	if _detach_clock < 0.0:
 		return
 	_detach_clock += delta
-	if _body != null:
-		_body.position = _rest + drift_offset(_detach_clock, tuning.detach_leave_at,
-			tuning.drift_speed, side if not is_central else 0.0)
-		_body.rotation.z = tilt_at(_detach_clock, tuning.detach_tilt_at,
-			tuning.detach_leave_at, tuning.detach_tilt_degrees) * (side if side != 0.0 else 1.0)
+	_advance_detach(_detach_clock)
 	if _state == State.DETACHING and _detach_clock >= tuning.detach_gone_at:
 		_state = State.DETACHED
 		detached.emit(self)
+
+## La séquence de la spec §9, dans l'ordre : tremblement, rupture des conduites, bascule, départ,
+## dérive. ⚠️ ELLE SE LIT DANS LE TEMPS ÉCOULÉ, JAMAIS DANS UN ÉTAT ACCUMULÉ — sauf la rupture,
+## qui est un événement et porte donc son drapeau. Tout le reste est une fonction de `t` : la
+## pièce peut être avancée d'un bond dans un banc, et elle sera exactement où elle doit être.
+func _advance_detach(t: float) -> void:
+	if _body == null:
+		return
+	var vers := side if not is_central else 0.0
+	_body.position = _rest \
+		+ drift_offset(t, tuning.detach_leave_at, tuning.drift_speed, vers) \
+		+ shake_at(t, tuning.detach_shake_at, tuning.detach_leave_at,
+			tuning.detach_shake_amplitude, tuning.detach_shake_hz)
+	_body.rotation.z = tilt_at(t, tuning.detach_tilt_at, tuning.detach_leave_at,
+		tuning.detach_tilt_degrees) * (side if side != 0.0 else 1.0)
+	# ⚠️ LA ROTATION PROPRE N'APPARTIENT QU'AU CENTRAL (spec §10). Les deux latéraux se
+	# distinguent par leur direction ; le central part droit, et sans elle son départ serait le
+	# seul à ne rien raconter — alors que c'est celui qui clôt la séquence.
+	if is_central and t > tuning.detach_leave_at:
+		_body.rotation.y = deg_to_rad(tuning.central_spin_deg) * (t - tuning.detach_leave_at)
+	# La rupture : un événement, une fois.
+	if not _burst_done and t >= tuning.detach_burst_at:
+		_burst_done = true
+		_break_conduits()
+	if _thrust_mat != null:
+		_thrust_mat.emission_energy_multiplier = THRUST_GLOW \
+			* thrust_at(t, tuning.detach_leave_at, tuning.detach_gone_at)
+
+## Les conduites éclatent : elles s'éteignent, et une gerbe part de chacune.
+##
+## ⚠️ ELLES NE DISPARAISSENT PAS. Une gaine noire sur un berceau vide est ce qui dit, dix
+## secondes plus tard, que quelque chose a été arraché là — c'est la même règle que la carcasse
+## d'un verrou rompu et que le cœur retiré d'un nœud d'épine.
+func _break_conduits() -> void:
+	for vein in _conduit_veins:
+		vein.emission_energy_multiplier = CONDUIT_DEAD
+		vein.albedo_color = Color(0.05, 0.05, 0.06)
+	if _vfx == null:
+		return
+	for conduit in _conduits:
+		var w := conduit.global_position if conduit.is_inside_tree() else global_position
+		_vfx.spawn_explosion(w, VfxExplosion.Category.SMALL, CortegeAnchor.TINT)
 
 func _on_anchor_destroyed(anchor: CortegeAnchor) -> void:
 	_lost += 1

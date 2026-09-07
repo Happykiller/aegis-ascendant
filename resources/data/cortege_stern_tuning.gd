@@ -95,10 +95,36 @@ extends Resource
 ## Quand le moteur cesse d'exister pour le jeu et devient un objet lointain.
 @export var detach_gone_at: float = 4.00
 
+## Les conduites qui relient le moteur à sa coque. ⚠️ ELLES NE SONT PAS DÉCORATIVES : ce sont
+## elles qui rendent l'arrachement lisible AVANT que quoi que ce soit ne bouge. Entre le dernier
+## verrou et le départ il s'écoule 1,2 s ; sans une rupture visible à 0,5 s, cette seconde est un
+## temps mort où le joueur croit que rien ne s'est passé.
+@export var conduit_count: int = 3
+@export var conduit_width: float = 0.34
+
+## De combien le moteur TREMBLE avant de partir, en unités de plan (spec §9, T+0,2 s).
+## ⚠️ IL TREMBLE, IL NE GLISSE PAS. Le tremblement dit « ça cède » ; un glissement dirait
+## « ça tombe », et la pièce ne serait plus arrachée, elle serait lâchée.
+@export var detach_shake_amplitude: float = 0.16
+@export var detach_shake_hz: float = 21.0
+
 ## De combien le moteur bascule en quittant son berceau, en degrés (spec §9, « 5 à 10° »).
 @export var detach_tilt_degrees: float = 8.0
 ## Sa vitesse de dérive, en unités de plan par seconde.
 @export var drift_speed: float = 7.50
+
+## La rotation propre du moteur CENTRAL pendant sa dérive, en degrés par seconde.
+##
+## ⚠️ ELLE N'APPARTIENT QU'À LUI (spec §10). Les deux latéraux partent chacun de leur côté : leur
+## direction suffit à les distinguer l'un de l'autre. Le central part droit vers le haut — sans
+## rotation, il serait le seul dont le départ ne raconte rien de particulier, alors que c'est
+## celui qui clôt la séquence.
+@export var central_spin_deg: float = 34.0
+
+## La secousse rendue au joueur quand un groupe s'arrache (spec §13 : « le vaisseau doit
+## réagir »). ⚠️ ELLE EST PLUS FORTE POUR LE CENTRAL, qui coupe la dernière propulsion.
+@export var detach_trauma: float = 0.42
+@export var detach_trauma_central: float = 0.75
 
 ## Le silence final (spec §17). ⚠️ IL PORTE L'AVEU DE LYRA depuis la décision D3 du plan : ce
 ## n'est plus seulement un contraste visuel, c'est le support de la réplique qui commande tout
@@ -215,6 +241,14 @@ func validate() -> PackedStringArray:
 				% [etapes[i][0], apres, etapes[i - 1][0], avant])
 	if detach_shake_at <= 0.0:
 		errors.append("le tremblement doit commencer après le dernier ancrage, pas avec lui")
+	# ⚠️ LE TREMBLEMENT NE DOIT PAS SORTIR LE MOTEUR DE SON BERCEAU. C'est ce qui distingue « ça
+	# cède » de « ça tombe » : au-delà de son propre débattement, la pièce se lit comme déjà
+	# partie, et la bascule qui suit n'a plus rien à annoncer.
+	if detach_shake_amplitude > cradle_size.y * scale_of(false) * 0.25:
+		errors.append("le tremblement fait %.2f m pour un berceau haut de %.2f — le moteur en sortirait avant de s'arracher"
+			% [detach_shake_amplitude, cradle_size.y * scale_of(false)])
+	if conduit_count < 1:
+		errors.append("sans conduite, la seconde qui sépare le dernier verrou du départ est un temps mort : rien ne se rompt")
 
 	# --- INVARIANT 5 : LES ANCRAGES SONT DES CIBLES, PAS DES CONFETTIS ---
 	if lateral_anchors < 2:

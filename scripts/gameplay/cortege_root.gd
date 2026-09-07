@@ -424,6 +424,7 @@ func _mount_stern() -> void:
 	_stern.finished.connect(_on_stern_finished)
 	_stern.engine_lost.connect(_on_engine_lost)
 	_stern.core_exposed.connect(_on_core_exposed)
+	_stern.shockwave.connect(_on_stern_shockwave)
 	add_child(_stern)
 	if _stern_cut > 0.0:
 		_stern.force_cut(_stern_cut)
@@ -440,6 +441,12 @@ func _on_engine_lost(remaining: int) -> void:
 		say(&"engine_down")
 	elif remaining == 1:
 		say(&"engine_transfer")
+
+## ⚠️ ELLE PASSE PAR `boom()` ET NON PAR LA CAMÉRA DIRECTEMENT. Le runtime sait où est l'œil et
+## sait aussi ne rien faire quand il n'y en a pas — un banc monte la poupe sans caméra.
+func _on_stern_shockwave(trauma: float) -> void:
+	if _runtime != null:
+		_runtime.boom(_stern.global_position, VfxExplosion.Category.HEAVY, trauma)
 
 func _on_core_exposed() -> void:
 	print("[Poupe] verrous centraux ouverts")

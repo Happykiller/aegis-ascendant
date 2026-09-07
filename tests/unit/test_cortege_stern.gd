@@ -280,3 +280,108 @@ func test_the_hitbox_is_never_smaller_than_what_is_drawn() -> void:
 	maigre.anchor_radius = 0.2
 	assert_true(_says(maigre, "passerait à travers"),
 		"et une hitbox rabougrie est REFUSEE, pas seulement regrettee")
+
+# --- LOT 3 : l'arrachement ------------------------------------------------------
+
+## ⚠️ IL TREMBLE, IL NE GLISSE PAS. Le tremblement dit « ca cede » ; un glissement dirait « ca
+## tombe », et la piece ne serait plus arrachee, elle serait lachee. Il MONTE aussi : une
+## vibration d'intensite fixe se lit comme un moteur qui ronronne, pas comme une tenue qui se
+## degrade seconde apres seconde.
+func test_the_engine_shakes_before_it_leaves_and_the_shake_grows() -> void:
+	var a := TUNING.detach_shake_amplitude
+	var hz := TUNING.detach_shake_hz
+	var de := TUNING.detach_shake_at
+	var vers := TUNING.detach_leave_at
+	assert_true(EngineScript.shake_at(de - 0.01, de, vers, a, hz) == Vector3.ZERO,
+		"rien avant l'heure du tremblement")
+	assert_true(EngineScript.shake_at(vers + 0.01, de, vers, a, hz) == Vector3.ZERO,
+		"et rien apres le depart : ce qui bouge alors, c'est la derive")
+	# L'enveloppe monte : on compare deux maxima sur deux fenetres successives.
+	var tot := 0.0
+	var fin := 0.0
+	var t := de
+	while t < vers:
+		var m: float = EngineScript.shake_at(t, de, vers, a, hz).length()
+		assert_true(m <= a * 1.2, "il ne depasse jamais son amplitude (%.3f a t = %.2f)" % [m, t])
+		if t < (de + vers) * 0.5:
+			tot = maxf(tot, m)
+		else:
+			fin = maxf(fin, m)
+		t += 0.01
+	assert_true(fin > tot,
+		"la seconde moitie tremble plus fort que la premiere (%.3f contre %.3f)" % [fin, tot])
+
+## ⚠️ ET IL RESTE DANS SON BERCEAU PENDANT QU'IL TREMBLE. Un tremblement qui l'en sortirait
+## ferait lire « il est deja parti », et la bascule qui suit n'aurait plus rien a annoncer.
+func test_the_shake_never_lifts_the_engine_out_of_its_cradle() -> void:
+	var creux := TUNING.cradle_size.y * TUNING.scale_of(false) * 0.25
+	assert_true(TUNING.detach_shake_amplitude <= creux,
+		"%.2f m de tremblement pour %.2f m de debattement" % [TUNING.detach_shake_amplitude, creux])
+	var large: CortegeSternTuning = TUNING.duplicate()
+	large.detach_shake_amplitude = 5.0
+	assert_true(_says(large, "en sortirait avant de s'arracher"),
+		"et un tremblement demesure est REFUSE")
+
+## ⚠️ LA POUSSEE NE SE COUPE PAS AU DEPART, ELLE S'ETEINT EN DERIVANT (spec §9 et §16). Couper
+## au moment du depart ferait lire une panne ; ce qu'il faut lire, c'est une machine qui
+## fonctionne encore et que plus rien ne retient.
+func test_the_thrust_dies_while_drifting_not_when_it_leaves() -> void:
+	var vers := TUNING.detach_leave_at
+	var fini := TUNING.detach_gone_at
+	assert_almost_eq(EngineScript.thrust_at(0.0, vers, fini), 1.0, 0.001,
+		"a plein regime tant qu'il tient")
+	assert_almost_eq(EngineScript.thrust_at(vers, vers, fini), 1.0, 0.001,
+		"et ENCORE a plein regime a l'instant ou il quitte son berceau")
+	var milieu := EngineScript.thrust_at((vers + fini) * 0.5, vers, fini)
+	assert_true(milieu > 0.2 and milieu < 0.8,
+		"a mi-derive il crache encore, mais moins (%.2f)" % milieu)
+	assert_almost_eq(EngineScript.thrust_at(fini, vers, fini), 0.0, 0.001,
+		"et il s'est tu quand il sort du cadre")
+	assert_almost_eq(EngineScript.thrust_at(fini + 9.0, vers, fini), 0.0, 0.001,
+		"sans jamais repartir")
+
+## ⚠️ LA SEQUENCE DE LA SPEC §9 EST UNE SUITE D'INSTANTS, ET CHACUN DOIT ETRE SEUL A SON HEURE.
+## Ce test lit la phase a chaque etape et verifie que ce qui doit avoir commence a commence, et
+## que ce qui ne doit pas encore bouger ne bouge pas. C'est le seul endroit ou la chronologie
+## complete est verifiee d'un bloc.
+func test_the_detach_sequence_plays_in_the_order_the_spec_writes() -> void:
+	var vers := TUNING.detach_leave_at
+	# T+0 : rien.
+	assert_true(EngineScript.shake_at(0.0, TUNING.detach_shake_at, vers,
+		TUNING.detach_shake_amplitude, TUNING.detach_shake_hz) == Vector3.ZERO,
+		"T+0 : le verrou vient de ceder, la piece est encore intacte")
+	assert_true(EngineScript.drift_offset(0.0, vers, TUNING.drift_speed, 1.0) == Vector3.ZERO,
+		"et il n'a pas commence a partir")
+	# T+0,2 : il tremble, il ne bouge pas.
+	var secousse := EngineScript.shake_at(TUNING.detach_shake_at + 0.05,
+		TUNING.detach_shake_at, vers, TUNING.detach_shake_amplitude, TUNING.detach_shake_hz)
+	assert_true(secousse.length() > 0.0, "T+0,2 : il tremble")
+	assert_true(EngineScript.drift_offset(TUNING.detach_shake_at + 0.05, vers,
+		TUNING.drift_speed, 1.0) == Vector3.ZERO, "mais il n'a pas bouge d'un centimetre")
+	# T+0,8 : il bascule, il ne part pas.
+	var angle := EngineScript.tilt_at(TUNING.detach_tilt_at + 0.1, TUNING.detach_tilt_at,
+		vers, TUNING.detach_tilt_degrees)
+	assert_true(angle > 0.0, "T+0,8 : il bascule")
+	assert_true(EngineScript.drift_offset(TUNING.detach_tilt_at + 0.1, vers,
+		TUNING.drift_speed, 1.0) == Vector3.ZERO, "et il est toujours dans son berceau")
+	# T+1,2 : il part, et sa bascule est finie.
+	assert_almost_eq(EngineScript.tilt_at(vers, TUNING.detach_tilt_at, vers,
+		TUNING.detach_tilt_degrees), deg_to_rad(TUNING.detach_tilt_degrees), 0.001,
+		"T+1,2 : il a fini de basculer quand il part")
+
+## ⚠️ LES TROIS PARTENT DIFFEREMMENT, ET C'EST CE QUI DONNE L'IMPRESSION D'UNE VRAIE PHYSIQUE
+## SANS EN SIMULER UNE (spec §10). Un test qui ne verifierait qu'un moteur laisserait passer
+## trois departs identiques — la faute exacte que la spec prend la peine d'ecarter.
+func test_the_three_engines_leave_in_three_different_directions() -> void:
+	var t := TUNING.detach_gone_at
+	var gauche := EngineScript.drift_offset(t, TUNING.detach_leave_at, TUNING.drift_speed, -1.0)
+	var centre := EngineScript.drift_offset(t, TUNING.detach_leave_at, TUNING.drift_speed, 0.0)
+	var droite := EngineScript.drift_offset(t, TUNING.detach_leave_at, TUNING.drift_speed, 1.0)
+	assert_true(gauche.x < 0.0, "babord derive a babord")
+	assert_true(droite.x > 0.0, "tribord derive a tribord")
+	assert_almost_eq(centre.x, 0.0, 0.001, "le central part droit vers le haut")
+	assert_true(gauche.z < 0.0 and centre.z < 0.0 and droite.z < 0.0,
+		"les trois montent : ils partent par ou sortent leurs flammes")
+	# ⚠️ ET LE CENTRAL N'EST PAS UN LATERAL SANS COTE : sa rotation propre le distingue.
+	assert_true(TUNING.central_spin_deg > 0.0,
+		"le central tourne sur lui-meme — sans quoi son depart serait le seul a ne rien raconter")

@@ -21,6 +21,10 @@ signal finished()
 signal engine_lost(remaining: int)
 ## Les verrous du central viennent de s'ouvrir.
 signal core_exposed()
+## ⚠️ « LE VAISSEAU DOIT RÉAGIR » (spec §13). Un groupe de vingt mètres qui s'arrache sans que
+## rien ne bouge à l'écran se lit comme un objet retiré d'une scène, pas comme une structure qui
+## cède. La secousse est le seul retour que le joueur reçoive du VAISSEAU lui-même.
+signal shockwave(trauma: float)
 
 enum Phase { ARRIVAL, FIGHT, DONE }
 
@@ -176,6 +180,7 @@ func _on_engine_weakened(engine: CortegeEngine, lost: int) -> void:
 func _on_engine_detaching(engine: CortegeEngine) -> void:
 	_down += 1
 	print("[Poupe] arrachement du moteur %s" % engine.name)
+	shockwave.emit(tuning.detach_trauma_central if engine.is_central else tuning.detach_trauma)
 	engine_lost.emit(3 - _down)
 
 ## ⚠️ ET LE CENTRAL S'OUVRE ICI, SUR LE DÉPART ACHEVÉ — pas sur l'arrachement. La redirection
