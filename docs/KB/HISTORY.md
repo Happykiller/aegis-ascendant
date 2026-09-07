@@ -518,4 +518,16 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
   livrés en boîtes grises — trois moteurs, dix verrous à quatre états, l'arrachement, le silence
   et l'aveu de Lyra. Quatre binaires tiers audités : **3,17 millions de triangles** aux quantités
   demandées, contre 49 458 pour tout le niveau.
+- **La phase finale du niveau 2 est disputée** (2026-09-07) : `ADR-0049`, plan
+  `2026-09-07-la-poupe-se-defend`. Elle se jouait **sans perdre un point de bouclier** — le seul
+  danger était une colonne de poussée qu'il suffit de ne pas traverser. Douze tourelles, quatre
+  paliers accrochés aux arrachements, quatre salves évènementielles ; « pas de respawn » et le
+  silence final sont gardés par des tests. Et trois contraintes découvertes en le faisant, aucune
+  déductible d'une cote : une pièce **n'est pas touchable là où elle se voit** (la projection
+  dépend de sa hauteur) ; un volume libre **n'est pas un volume visible** (les nacelles masquent
+  tout le massif arrière) ; une réserve **ne peut pas attendre sur place** — éteinte puis bleue,
+  elle a été signalée deux fois comme un canon en panne, elle **arrive** désormais.
+- **La consigne parlée a enfin une contrepartie à l'écran** (2026-09-07) : Lyra disait « coupez
+  leurs ancrages » **onze secondes avant** que les verrous ne s'ouvrent, et rien ne désignait
+  lesquels. Chevron de désignation, arcs en rubans, et la réplique déplacée sur l'ouverture.
 

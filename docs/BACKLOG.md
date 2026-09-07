@@ -78,6 +78,26 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 
 ---
 
+## ⚠️ Ouvert par les parties du 2026-09-07 (poupe du niveau 2)
+
+- **L'équilibrage de la poupe n'est pas fait, et il demande une partie JOUÉE.** `ADR-0049` a posé
+  la garnison, l'escalade et les salves ; leur calibrage ne peut pas se trancher au banc — un
+  pilote immobile perd deux vies là où un joueur esquive, et un pilote de démonstration tire
+  droit devant. Ce qu'on sait des trois parties du 2026-09-07 : l'opérateur n'a **jamais atteint
+  le palier 1**, donc n'a vu ni l'escalade, ni trois salves sur quatre. Les leviers, dans l'ordre
+  du moins invasif : le nombre de pièces éveillées au palier 0, le retard de la salve A (elle
+  tombe pendant que Lyra explique et que le joueur découvre les chevrons), puis l'échelle
+  `tier_pressure`.
+- **Le porteur de bouclier de la salve B pose son dôme sur le moteur central** et couvre ses
+  quatre verrous. C'est un vrai choix tactique — il faut l'abattre pour rouvrir la cible — ou une
+  frustration. ⚠️ **À observer, pas à corriger** : personne ne l'a encore vécu manette en main.
+- **La carène de poupe n'a aucune plate-forme d'armement.** Ses étagères de rive font 0,40 à
+  1,20 m et son gradin d'épaulement 1,40, quand le socle d'une tourelle moyenne en fait 3,32 :
+  toute pièce moyenne posée dessus **flotte à moitié dans le vide**, mesuré en capture. Les
+  plates-formes volantes rendent ce travail **facultatif** ; un brief de forge pourrait tout de
+  même lui donner deux ou trois assises franches à l'avant, ce qui rendrait la garnison moins
+  dépendante d'un seul dispositif.
+
 ## ⚠️ Ouvert par les parties du 2026-09-05 (niveau 2)
 
 - **Une tourelle abattue n'écrit RIEN au journal.** Les ponts d'envol et les nœuds d'épine
