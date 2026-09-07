@@ -54,27 +54,45 @@ signal turret_destroyed(turret: CortegeTurret)
 # deux pièces distantes de trois mètres sur la coque ne le sont plus à l'écran, où la projection
 # les rapproche. C'est désormais un invariant à part entière (`test_no_two_pieces_overlap`).
 const POSTS: Array = [
-	# --- LE CORPS DU VAISSEAU (`z_local >= 12`) ------------------------------
+	# --- ÉVEILLÉES DÈS L'ARRIVÉE (palier 0) ----------------------------------
 	#
-	# ⚠️ LE GRAND PONT VIDE DEVANT LA POUPE, et il l'était pour rien. « Tu pourrais mettre des
-	# canons sur la fin du corps du vaisseau » (opérateur). La dernière tourelle du corridor est
-	# à `s = 478,8` : les vingt derniers mètres — ceux qui remplissent le bas du cadre pendant
-	# TOUTE la phase — n'avaient pas une seule pièce. Ce sont les deux seules du lot que
-	# l'opérateur n'a pas eu à numéroter : elles se lisent.
+	# ⚠️ LA MAJORITÉ TIRE DÈS LA PREMIÈRE SECONDE, et c'est une correction. « Les tourelles sont
+	# mieux placées mais beaucoup ne bougent pas » (opérateur, 2026-09-07) : avec six dormantes
+	# sur dix, le vaisseau avait l'air en panne à l'instant même où il devait avoir l'air
+	# dangereux.
+	#
+	# Le pont du corps du vaisseau porte les deux canons et leur appoint : la dernière tourelle
+	# du corridor est à `s = 478,8`, ces vingt derniers mètres n'avaient rien, et ce sont les
+	# seules pièces du niveau qui tirent vers le HAUT de l'écran.
 	[CortegeTuning.TurretScale.STANDARD, 4.60, -4.34, 12.50, 0, false],
-	[CortegeTuning.TurretScale.LIGHT, 8.60, -4.94, 13.00, 1, false],
-	# --- LES PLATES-FORMES VOLANTES ------------------------------------------
-	#
-	# ⚠️ ELLES RÉSOLVENT LE PROBLÈME QUE LA CARÈNE POSE. « Pour la profondeur, on pourrait faire
-	# des plates-formes volantes » (opérateur) — et c'est la réponse à ce qui bloquait le lot :
-	# la poupe n'a AUCUNE surface plane de plus de 1,40 m hors du massif arrière, si bien que
-	# toute pièce moyenne posée sur un gradin flottait à moitié dans le vide. Une plate-forme qui
-	# flotte VRAIMENT ne ment plus : assise franche à n'importe quelle hauteur, et elle décolle
-	# les pièces les unes des autres en profondeur.
+	[CortegeTuning.TurretScale.LIGHT, 8.60, -4.94, 13.00, 0, false],
 	[CortegeTuning.TurretScale.LIGHT, 11.50, -4.20, 10.50, 0, true],
-	[CortegeTuning.TurretScale.STANDARD, 17.00, -7.20, 2.00, 2, true],
+	[CortegeTuning.TurretScale.LIGHT, 14.50, -5.60, 9.20, 0, true],
+	# --- LA RÉSERVE : elle n'attend pas sur place, elle ARRIVE ----------------
+	#
+	# ⚠️ UNE PIÈCE QUI ATTEND SUR PLACE SERA LUE COMME UNE ÉPAVE, quoi qu'on fasse de son œil.
+	# La première version l'éteignait, la deuxième la passait au bleu froid des verrous fermés —
+	# et l'opérateur a signalé les deux fois des « canons qui ne bougent pas ». Le défaut n'est
+	# pas dans la couleur : un objet IMMOBILE au milieu d'une fusillade ne peut pas vouloir dire
+	# « plus tard ».
+	#
+	# Une plate-forme VOLANTE, elle, a une façon évidente d'arriver : elle vole. La réserve entre
+	# donc dans le cadre par les côtés au moment où le joueur l'a méritée. Rien ne dort à
+	# l'écran, le palier se VOIT, et ce qui n'est pas là ne peut pas se faire tirer dessus pour
+	# rien.
+	[CortegeTuning.TurretScale.STANDARD, 17.00, -7.20, 2.00, 1, true],
 	[CortegeTuning.TurretScale.HEAVY, 16.80, -5.20, -4.50, 3, true],
 ]
+
+## L'entrée en scène de la réserve : d'où elle vient, et en combien de temps.
+##
+## ⚠️ ELLE VIENT DE HORS CADRE. À la hauteur des plates-formes, le cadre s'arrête vers
+## `plan_x = 20,4` ; une entrée à `x = 33` tombe au-delà quelle que soit leur altitude. Une
+## réserve qui apparaîtrait DANS le cadre se lirait comme un défaut d'affichage — même règle que
+## pour les naissances d'ennemis, payée le 2026-09-06 sur cent quinze points.
+const DEPLOY_ENTRY_X := 33.0
+const DEPLOY_TIME := 1.5
+
 ## La plate-forme volante : une dalle, un liseré, et un ballant.
 ##
 ## ⚠️ LE BALLANT EST DÉTERMINISTE ET LENT. Déterministe parce qu'un survol se juge en comparant
@@ -98,6 +116,12 @@ var _tier: int = 0
 var _camera_eye: Vector3 = Vector3.ZERO
 var _pads: Array[Node3D] = []
 var _pad_rest: PackedFloat32Array = PackedFloat32Array()
+## Le `x` de poste de chaque dalle — là où elle se pose.
+var _pad_post: PackedFloat32Array = PackedFloat32Array()
+## L'avancement de l'entrée en scène : −1 pour une dalle déjà en place, sinon 0 à 1.
+var _pad_deploy: PackedFloat32Array = PackedFloat32Array()
+## L'index de dalle de chaque tourelle, −1 si elle est posée sur la coque.
+var _pad_of: PackedInt32Array = PackedInt32Array()
 var _pad_clock: float = 0.0
 
 static func make(p_tuning: CortegeTuning) -> CortegeSternGarrison:
@@ -218,17 +242,27 @@ func build(bullets: BulletManager, player: PlayerFighterController, vfx: VFXMana
 		# ⚠️ LA PIÈCE VOLANTE EST ENFANT DE SA DALLE, PAS DE LA GARNISON. C'est ce qui la fait
 		# ballotter AVEC elle sans une ligne d'arithmétique — et donc sans aucune façon de
 		# désynchroniser un canon de la plate-forme qui le porte.
+		var poste := Vector3(post.y, post.z, post.w)
 		if volantes[i]:
-			var pad := _build_pad(Vector3(post.y, post.z, post.w), echelle, i)
+			var pad := _build_pad(poste, echelle, i)
 			add_child(pad)
 			pad.add_child(turret)
+			_pad_of.append(_pads.size() - 1)
 		else:
-			turret.position = Vector3(post.y, post.z, post.w)
+			turret.position = poste
 			add_child(turret)
+			_pad_of.append(-1)
 		_turrets.append(turret)
 		_tiers.append(paliers[i])
+		# ⚠️ LA RÉSERVE N'EST PAS LÀ. Ni éteinte, ni bleue : ABSENTE, hors cadre, invisible et
+		# hors d'atteinte. C'est la seule mise en veille qu'un joueur ne peut pas confondre avec
+		# une panne — et elle rend au palier l'instant qui lui manquait.
 		if paliers[i] > 0:
 			turret.sleep_now()
+			var quai := _pad_of[i]
+			_pads[quai].position.x = signf(poste.x) * DEPLOY_ENTRY_X
+			_pads[quai].visible = false
+			_pad_deploy[quai] = 0.0
 	print("[Poupe] garnison — %d tourelles (%d légères, %d moyennes, %d lourdes), %d en réserve"
 		% [_turrets.size(), count_of(CortegeTuning.TurretScale.LIGHT),
 			count_of(CortegeTuning.TurretScale.STANDARD),
@@ -257,7 +291,12 @@ func set_tier(tier: int, pressure: float) -> int:
 			continue
 		turret.pressure = pressure
 		if _tiers[i] <= tier and turret.asleep:
-			turret.wake()
+			var quai := _pad_of[i]
+			if quai >= 0 and _pad_deploy[quai] >= 0.0 and _pad_deploy[quai] < 1.0:
+				# Elle arrive. Le canon ne s'arme qu'une fois posé — voir `_advance_deploy`.
+				_pads[quai].visible = true
+			else:
+				turret.wake()
 			reveilles += 1
 	print("[Poupe] palier %d — %d tourelle(s) réveillée(s), cadence ×%.2f"
 		% [tier, reveilles, pressure])
@@ -290,12 +329,39 @@ func alive_count() -> int:
 func tick(delta: float, eye: Vector3) -> void:
 	_camera_eye = eye
 	_pad_clock += delta
+	_advance_deploy(delta)
 	for i in _pads.size():
 		var pad := _pads[i]
 		pad.position.y = _pad_rest[i] + PAD_BOB * sin((_pad_clock + float(i) * 1.37) * PAD_HZ * TAU)
-	for turret in _turrets:
+	for i in _turrets.size():
+		# ⚠️ CE QUI N'EST PAS ARRIVÉ NE SE FAIT PAS TIRER DESSUS. Ne pas l'avancer laisse sa cible
+		# hors du gestionnaire de balles ; sans ça, une plate-forme encore hors cadre serait une
+		# hitbox invisible posée à vingt mètres du bord de l'écran.
+		var quai := _pad_of[i]
+		if quai >= 0 and not _pads[quai].visible:
+			continue
+		var turret := _turrets[i]
 		var w := turret.global_position + Vector3(0.0, turret.hit_lift(), 0.0)
 		turret.tick(delta, w, GameplayPlane.aim_point_of(w, eye))
+
+## L'entrée en scène : la dalle glisse de hors cadre jusqu'à son poste, puis arme son canon.
+##
+## ⚠️ ELLE FREINE EN ARRIVANT, elle ne s'arrête pas net. Une translation linéaire qui s'achève
+## brutalement se lit comme un objet téléporté à sa dernière image ; c'est le ralentissement
+## final qui fait qu'on la voit SE POSER.
+func _advance_deploy(delta: float) -> void:
+	for quai in _pads.size():
+		if _pad_deploy[quai] < 0.0 or _pad_deploy[quai] >= 1.0 or not _pads[quai].visible:
+			continue
+		_pad_deploy[quai] = minf(_pad_deploy[quai] + delta / DEPLOY_TIME, 1.0)
+		var k: float = ease(_pad_deploy[quai], 0.35)
+		_pads[quai].position.x = lerpf(signf(_pad_post[quai]) * DEPLOY_ENTRY_X,
+			_pad_post[quai], k)
+		if _pad_deploy[quai] < 1.0:
+			continue
+		for i in _turrets.size():
+			if _pad_of[i] == quai:
+				_turrets[i].wake()
 
 ## Bâtit la dalle. Elle porte son canon et rien d'autre.
 func _build_pad(where: Vector3, echelle: CortegeTuning.TurretScale, index: int) -> Node3D:
@@ -342,6 +408,8 @@ func _build_pad(where: Vector3, echelle: CortegeTuning.TurretScale, index: int) 
 	pad.add_child(liseré)
 	_pads.append(pad)
 	_pad_rest.append(where.y)
+	_pad_post.append(where.x)
+	_pad_deploy.append(-1.0)
 	return pad
 
 func _on_turret_destroyed(turret: CortegeTurret) -> void:

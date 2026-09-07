@@ -68,17 +68,25 @@ face de poupe (`z >= 8`) ou **au large** des nacelles (`|x| >= 15,5`).
 été appliquée : plus aucune pièce dans l'emprise, donc plus une assertion exécutée. Le harnais
 l'a signalé (cf. [pratique-un-test-vert-peut-etre-mort](pratique-un-test-vert-peut-etre-mort.md)).
 
-## 5. Une pièce en veille se lit comme une épave
+## 5. Une pièce en veille se lit comme une épave — et la couleur n'y change rien
 
 « Les canons ne tirent pas, ne bougent pas. » Une tourelle dormante dont on s'était contenté
 d'**éteindre l'œil** est indiscernable d'une pièce détruite : le joueur lui tire dessus, rien ne
 change, et il conclut à un bug.
 
-⚠️ **La veille est un troisième état, et un état ne se distingue pas par une absence.** Elle passe
-au **bleu froid** — la couleur que le niveau a déjà apprise au joueur sur les verrous d'ancrage,
-où elle veut dire « pas encore celui-là » — avec un **battement lent** : une lueur fixe reste une
-diode morte. Et le réveil **éclate**, parce qu'un palier d'escalade n'existe, pour le joueur, que
-par cet instant-là.
+Première tentative : la passer au **bleu froid** des verrous d'ancrage, avec un battement lent.
+⚠️ **Rejetée aussi** — « les tourelles sont mieux placées mais beaucoup ne bougent pas ». Le
+défaut n'était pas dans la couleur : **un objet immobile au milieu d'une fusillade ne peut pas
+vouloir dire « plus tard »**. Aucune teinte ne rattrape ça, et deux essais l'ont montré.
+
+⚠️ **La sortie est de ne pas être là.** Une plate-forme volante a une façon évidente d'attendre :
+elle arrive. La réserve entre dans le cadre par les côtés quand le joueur l'a méritée — rien ne
+dort à l'écran, le palier se VOIT, et ce qui n'est pas là ne se fait pas tirer dessus pour rien.
+Le bleu reste comme repli pour une pièce qui devrait dormir sur place, mais **le placement de
+réserve est désormais réservé aux pièces volantes**, et un test le garde.
+
+⚠️ Et la majorité doit tirer dès la première seconde : six pièces dormantes sur dix donnaient
+une poupe **en panne** à l'instant où elle devait paraître dangereuse.
 
 ## Et quand la coque n'a pas d'assise, on ne triche pas : on fait flotter
 

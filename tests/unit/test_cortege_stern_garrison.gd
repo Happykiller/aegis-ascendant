@@ -287,17 +287,31 @@ func test_the_ship_already_fights_on_arrival() -> void:
 	assert_true(eveilles >= 4,
 		"%d pieces tirent des l'arrivee — la poupe n'attend pas d'etre entamee" % eveilles)
 
-## ⚠️ ET CHAQUE PALIER DOIT APPORTER QUELQUE CHOSE. Un palier vide serait une escalade
-## silencieuse : la cadence monterait sans qu'aucune piece ne s'allume, et le joueur ne saurait
-## pas que le vaisseau vient de reagir.
-func test_every_tier_wakes_something() -> void:
+## ⚠️ CHAQUE PALIER DOIT SE VOIR, ET DEUX CHOSES PEUVENT LE MONTRER. Un palier qui ne ferait
+## que monter la cadence serait une escalade SILENCIEUSE : le joueur ne saurait pas que le
+## vaisseau vient de reagir. Il faut donc, a chaque cran, soit une plate-forme qui entre en
+## scene, soit une salve de poupe — et les salves sont accrochees aux memes evenements.
+##
+## ⚠️ ET LE PALIER 2 EST EXACTEMENT CE CAS. Il ne deploie rien : la troisieme salve est ce qui
+## le rend visible. L'ecrire ici evite qu'un futur lot « corrige » un trou qui n'en est pas un —
+## et l'oblige a rester vrai si les salves changeaient.
+const SALVOS_BY_TIER := {1: "SternSalvoB", 2: "SternSalvoC", 3: "SternSalvoD"}
+
+func test_every_tier_shows_itself() -> void:
 	var paliers := Garrison.tiers()
 	for tier in range(1, 4):
 		var compte := 0
 		for palier in paliers:
 			if palier == tier:
 				compte += 1
-		assert_true(compte > 0, "le palier %d reveille au moins une piece" % tier)
+		if compte > 0:
+			continue
+		var salve: String = SALVOS_BY_TIER.get(tier, "")
+		var vague: WaveData = load("res://resources/encounters/wave_cortege_stern_%s.tres"
+			% salve.substr(10).to_lower())
+		assert_true(vague != null and vague.total_enemy_count() > 0,
+			"le palier %d ne deploie rien : c'est donc la salve %s qui le montre, et elle existe"
+				% [tier, salve])
 
 ## ⚠️ LES LOURDES SONT LE DERNIER MOT. 520 PV et une fenetre de tir de 26 : les eveiller tot
 ## ferait de l'arrivee le pic de la phase, et le central — le moment ou tout converge — serait
@@ -456,3 +470,80 @@ func test_a_sleeping_piece_reads_as_standby_not_as_wreckage() -> void:
 	assert_true(CortegeTurret.WAKE_FLASH > CortegeTurret.EYE_SHOT * 2.0,
 		"le reveil eclate (%.2f contre %.2f au repos)"
 			% [CortegeTurret.WAKE_FLASH, CortegeTurret.EYE_SHOT])
+
+# =============================================================================
+# 8. La reserve ARRIVE — elle n'attend pas sur place
+# =============================================================================
+
+## ⚠️ TOUTE PIECE DE RESERVE EST VOLANTE, ET C'EST CE QUI LA REND LISIBLE. « Les tourelles sont
+## mieux placees mais beaucoup ne bougent pas » (operateur, 2026-09-07) : une piece dormante
+## POSEE sur la coque est indiscernable d'une epave, quoi qu'on fasse de son oeil — on a essaye
+## l'extinction puis le bleu froid, et les deux ont ete signales. Une plate-forme, elle, a une
+## facon evidente d'attendre : ne pas etre la encore.
+func test_every_reserve_piece_arrives_instead_of_waiting() -> void:
+	var paliers := Garrison.tiers()
+	var volantes := Garrison.flying()
+	var reserve := 0
+	for i in paliers.size():
+		if paliers[i] == 0:
+			continue
+		reserve += 1
+		assert_true(volantes[i],
+			"la piece du palier %d est portee par une plate-forme : elle entre en scene au lieu de dormir sur la coque"
+				% paliers[i])
+	assert_true(reserve > 0, "la garnison a bien une reserve (%d pieces)" % reserve)
+
+## ⚠️ ET LA MAJORITE TIRE DES L'ARRIVEE. Une poupe ou la moitie des pieces attend se lit comme
+## une poupe en panne — a l'instant meme ou elle doit se lire comme dangereuse.
+func test_most_of_the_garrison_fights_from_the_first_second() -> void:
+	var paliers := Garrison.tiers()
+	var eveillees := 0
+	for palier in paliers:
+		if palier == 0:
+			eveillees += 1
+	assert_true(eveillees * 2 > paliers.size(),
+		"%d pieces sur %d tirent des l'arrivee" % [eveillees, paliers.size()])
+
+## ⚠️ ELLE ENTRE PAR HORS CADRE, comme toute chose qui entre dans ce jeu. Une plate-forme qui
+## apparaitrait DANS le cadre se lirait comme un defaut d'affichage — c'est la regle payee le
+## 2026-09-06 sur les cent quinze points de naissance du bestiaire, et elle vaut aussi pour le
+## decor mobile. Le cadre est relu dans la scene, jamais recopie.
+func test_the_reserve_enters_from_outside_the_frame() -> void:
+	var eye := _camera_eye()
+	var cadre := _frame()
+	var postes := Garrison.posts()
+	var paliers := Garrison.tiers()
+	for i in postes.size():
+		if paliers[i] == 0:
+			continue
+		var post := postes[i]
+		var echelle: CortegeTuning.TurretScale = int(post.x) as CortegeTuning.TurretScale
+		# Le point de depart : meme hauteur, meme profondeur, `x` pousse au large.
+		var depart := Vector4(post.x, signf(post.y) * Garrison.DEPLOY_ENTRY_X, post.z, post.w)
+		var plan := Garrison.plane_post(depart, _lift_of(echelle), _stern_z(), eye)
+		var bord := absf(plan.x) - Garrison.footprint_of(echelle)
+		assert_true(bord > cadre.end.x,
+			"la piece du palier %d nait a |x| = %.2f, hors d'un cadre qui va jusqu'a %.2f"
+				% [paliers[i], bord, cadre.end.x])
+
+## Le cadre visible, LU dans la scene du niveau.
+func _frame() -> Rect2:
+	var packed: PackedScene = load(SCENE_FOR_FRAME)
+	var etat := packed.get_state()
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != "Camera3D":
+			continue
+		var camera := Transform3D.IDENTITY
+		var fov := 0.0
+		for j in etat.get_node_property_count(i):
+			var nom := String(etat.get_node_property_name(i, j))
+			if nom == "transform":
+				camera = etat.get_node_property_value(i, j)
+			elif nom == "fov":
+				fov = etat.get_node_property_value(i, j)
+		if fov > 0.0:
+			return GameplayPlane.visible_frame(camera, fov)
+	assert_true(false, "la camera du niveau se lit")
+	return Rect2()
+
+const SCENE_FOR_FRAME := "res://scenes/gameplay/cortege.tscn"
