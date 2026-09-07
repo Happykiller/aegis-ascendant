@@ -148,6 +148,26 @@ chronométré : `WaveSpawner` sait déjà naître hors cadre depuis le correctif
 ⚠️ **Aucune salve après la coupure de propulsion** (D4). Le `hold()` des deux nuées du corridor
 reste en place : les salves de poupe sont un troisième spawner, à elles.
 
+### LOT 3 bis — Le chevauchement, et les plates-formes volantes *(fait)*
+
+Retour de l'opérateur sur capture : « on a beaucoup de chevauchement ; tu pourrais mettre des
+canons sur la fin du corps du vaisseau, ok sur au bout du mur, et pour la profondeur on pourrait
+faire des plates-formes volantes ».
+
+- Les six légères alignées sur la lèvre du bassin tombent à deux : leurs hitboxes projetées
+  étaient jointives alors que les cotes étaient disjointes de 3,4 m.
+- **Des canons sur la fin du corps du vaisseau** : la dernière tourelle du corridor est à
+  `s = 478,8`, les vingt derniers mètres n'avaient rien. Une moyenne et une légère par bord, à
+  `z_local` 12,5 et 13,0 — la seule menace du niveau qui tire vers le HAUT de l'écran.
+- **Des plates-formes volantes** : elles résolvent ce qui bloquait le lot. La carène n'a aucune
+  surface plane de plus de 1,40 m hors du massif arrière, si bien que toute moyenne posée sur un
+  gradin flottait à moitié. Une dalle qui flotte vraiment donne une assise franche à n'importe
+  quelle hauteur. Elles restent hors de l'emprise des berceaux.
+- Deux invariants neufs : **écart projeté** et **écart dans le monde** entre toutes les paires.
+
+⚠️ Reste ouvert pour la forge : la carène n'a **pas de plates-formes d'armement** à l'avant.
+Un brief pourrait lui en donner ; les plates-formes volantes rendent ce travail facultatif.
+
 ### LOT 4 — L'équilibrage, la revue, la doc
 
 - Jouer, mesurer (temps GPU, pas FPS), capturer les quatre paliers.

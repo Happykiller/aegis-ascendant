@@ -176,6 +176,16 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   (`forge_voice.py --cue`), jamais le lot : piper n'est pas déterministe. ⚠️ Grepper la
   **formule**, pas le symbole — et **sans sensibilité à la casse** : le docstring disait
   « tronçon SUIVANT » en capitales, sur la première ligne du fichier qui implémente la règle.
+- [Poser une pièce sur une coque](pratique-poser-une-piece-sur-une-coque.md) — trois défauts que
+  la cote, prise isolément, ne montre pas. ⚠️ Une pièce n'est **pas touchable là où elle se
+  voit** : `aim_point_of` la projette d'un facteur qui dépend de sa HAUTEUR (0,54 sur le pont,
+  0,81 sur un pylône) — trop au large elle est intouchable, trop en profondeur elle **vise sans
+  jamais tirer**, et ce second défaut ne produit ni erreur ni test rouge. ⚠️ Deux pièces
+  **distantes de 3,4 m sur la coque se chevauchent à l'écran**, parce que la projection
+  rapproche : il faut DEUX tests, l'écart projeté et l'écart dans le monde. ⚠️ Et une caméra qui
+  plonge à 70° **ne voit jamais un dessous** : un liseré sous une dalle est un effet payé que
+  personne ne verra — il faut le faire **déborder**. Quand la coque n'a pas d'assise (aucune
+  surface plane > 1,40 m ici), on ne triche pas sur la cote : on fait **flotter**.
 - [Une consigne parlée n'est pas une désignation](pratique-designer-une-cible.md) — l'IA dit
   « coupez leurs ancrages » et **rien à l'écran ne dit lesquels**. Trois défauts indépendants :
   la réplique tombait **onze secondes avant** que les verrous ne s'ouvrent (donc pendant qu'ils

@@ -195,12 +195,20 @@ func test_only_the_cheapest_calibre_may_stand_in_an_anchor_column() -> void:
 	var kc := STERN.scale_of(true)
 	for dx: float in [STERN.socket_x, -STERN.socket_x]:
 		colonnes.append(_anchor_plane_x(dx * kc, kc))
+	# ⚠️ ET UNE PIECE N'EST UN MUR QUE SI LE JOUEUR NE PEUT PAS PASSER DEVANT ELLE. Les balles
+	# montent : une tourelle plus BASSE que le chasseur n'intercepte rien, il lui suffit
+	# d'avancer. Le plan de vol descend a -8 ; une piece a `plan_y = -5,8` se contourne en
+	# montant de deux unites, et c'est un piquet avant, pas un barrage. La regle ne vaut donc
+	# que pour ce qui siege dans la moitie haute de l'arene, la ou l'on tire vers les verrous.
+	var plancher := GameplayPlane.BOUNDS.position.y + 3.0
 	var barre := 0
 	for post in Garrison.posts():
 		if post.w <= STERN.socket_z_rear * k:
 			continue
 		var echelle: CortegeTuning.TurretScale = int(post.x) as CortegeTuning.TurretScale
 		var plan := Garrison.plane_post(post, _lift_of(echelle), z, eye)
+		if plan.y < plancher:
+			continue
 		var rayon := CortegeTurret.target_radius_of(echelle) + STERN.anchor_radius
 		for colonne in colonnes:
 			if absf(absf(plan.x) - colonne) > rayon:
@@ -325,3 +333,90 @@ func test_a_sleeping_piece_is_a_target_but_not_a_threat() -> void:
 	turret.wake()
 	assert_true(not turret.asleep, "le reveil la rend au jeu")
 	turret.free()
+
+# =============================================================================
+# 6. ⚠️ LE CHEVAUCHEMENT — « on a beaucoup de chevauchement » (operateur)
+# =============================================================================
+
+## ⚠️ DEUX PIECES QUI NE SE TOUCHENT PAS SUR LA COQUE PEUVENT SE TOUCHER A L'ECRAN. C'est le
+## defaut rapporte le 2026-09-07, capture a l'appui : six legeres alignees sur la levre avant du
+## bassin, distantes de 3,4 m — donc parfaitement disjointes en 3D — et jointives une fois
+## projetees, parce que la projection RAPPROCHE (facteur 0,55 sur le pont). Chaque cote passait
+## ses invariants ; c'est leur ENSEMBLE qui ne passait pas, et rien ne le testait.
+##
+## Le rayon projete d'une piece vaut son rayon d'assise fois SON facteur de projection : deux
+## pieces a des hauteurs differentes ne se compriment pas pareil, et prendre un facteur commun
+## laisserait passer exactement les paires qui posent probleme.
+func test_no_two_pieces_overlap_on_screen() -> void:
+	var eye := _camera_eye()
+	var z := _stern_z()
+	var postes := Garrison.posts()
+	for i in postes.size():
+		for j in range(i + 1, postes.size()):
+			var a := postes[i]
+			var b := postes[j]
+			var ea: CortegeTuning.TurretScale = int(a.x) as CortegeTuning.TurretScale
+			var eb: CortegeTuning.TurretScale = int(b.x) as CortegeTuning.TurretScale
+			var pa := Garrison.plane_post(a, _lift_of(ea), z, eye)
+			var pb := Garrison.plane_post(b, _lift_of(eb), z, eye)
+			var ra := Garrison.footprint_of(ea) * _shrink(a.z + _lift_of(ea), eye)
+			var rb := Garrison.footprint_of(eb) * _shrink(b.z + _lift_of(eb), eye)
+			assert_true(pa.distance_to(pb) >= ra + rb,
+				"(%.2f ; %.2f ; %.2f) et (%.2f ; %.2f ; %.2f) ne se chevauchent pas a l'ecran : %.2f d'ecart pour %.2f de rayons cumules"
+					% [a.y, a.z, a.w, b.y, b.z, b.w, pa.distance_to(pb), ra + rb])
+
+## ⚠️ ET ELLES NE S'INTERPENETRENT PAS NON PLUS DANS LE MONDE. Le test d'ecran ne suffit pas : deux
+## pieces exactement l'une au-dessus de l'autre auraient la meme projection et passeraient au
+## vert en etant encastrees.
+func test_no_two_pieces_share_the_same_metal() -> void:
+	var postes := Garrison.posts()
+	for i in postes.size():
+		for j in range(i + 1, postes.size()):
+			var a := postes[i]
+			var b := postes[j]
+			var ea: CortegeTuning.TurretScale = int(a.x) as CortegeTuning.TurretScale
+			var eb: CortegeTuning.TurretScale = int(b.x) as CortegeTuning.TurretScale
+			var ecart := Vector3(a.y, a.z, a.w).distance_to(Vector3(b.y, b.z, b.w))
+			var rayons := Garrison.footprint_of(ea) + Garrison.footprint_of(eb)
+			assert_true(ecart >= rayons,
+				"(%.2f ; %.2f ; %.2f) et (%.2f ; %.2f ; %.2f) ne s'encastrent pas : %.2f m pour %.2f d'assises"
+					% [a.y, a.z, a.w, b.y, b.z, b.w, ecart, rayons])
+
+## Le facteur de compression de la projection a la hauteur `y`. Meme formule que `aim_point_of`.
+func _shrink(y: float, eye: Vector3) -> float:
+	return absf(-eye.y / (y - eye.y))
+
+# =============================================================================
+# 7. Les plates-formes volantes
+# =============================================================================
+
+## ⚠️ FLOTTER NE DISPENSE DE RIEN. Une plate-forme au-dessus du bassin masquerait un verrou
+## exactement comme un pylone : le test d'emprise vaut pour elles aussi, et il est ici pour que
+## ce soit dit a l'endroit ou l'on serait tente de croire le contraire.
+func test_a_flying_platform_still_respects_the_cradle_footprint() -> void:
+	var postes := Garrison.posts()
+	var volantes := Garrison.flying()
+	assert_eq(volantes.size(), postes.size(), "un drapeau de vol par poste")
+	var comptees := 0
+	for i in postes.size():
+		if not volantes[i]:
+			continue
+		comptees += 1
+		var post := postes[i]
+		var dedans := absf(post.y) <= EMPRISE_HALF_X and absf(post.w) <= EMPRISE_HALF_Z
+		assert_false(dedans,
+			"la plate-forme (%.2f ; %.2f ; %.2f) est hors de l'emprise des berceaux"
+				% [post.y, post.z, post.w])
+	assert_true(comptees > 0, "la garnison a bien des pieces volantes")
+
+## ⚠️ ET ELLE FLOTTE AU-DESSUS DU PONT, PAS DEDANS. Une dalle posee sous le niveau de la coque
+## se lirait comme un morceau de coque mal place — c'est-a-dire le defaut qu'elle corrige.
+func test_a_flying_platform_hovers_clear_of_the_deck() -> void:
+	var postes := Garrison.posts()
+	var volantes := Garrison.flying()
+	for i in postes.size():
+		if not volantes[i]:
+			continue
+		assert_true(postes[i].z > STERN.deck_y + 2.0,
+			"la plate-forme (%.2f ; %.2f ; %.2f) est franchement au-dessus du pont (%.2f)"
+				% [postes[i].y, postes[i].z, postes[i].w, STERN.deck_y])
