@@ -139,17 +139,33 @@ func test_every_post_can_actually_fire() -> void:
 const EMPRISE_HALF_X := 15.78
 const EMPRISE_HALF_Z := 8.00
 
-## ⚠️ RIEN AU-DESSUS DU PONT DANS L'EMPRISE. Une piece qui y monte masque un verrou, c'est-a-dire
-## la seule cible de la phase. Les deux bandes de la dalle sont tolerees parce qu'elles sont AU
-## NIVEAU du pont : elles se lisent sous les verrous, jamais devant.
-func test_nothing_stands_above_the_deck_inside_the_cradle_footprint() -> void:
-	for post in Garrison.posts():
-		var dedans := absf(post.y) <= EMPRISE_HALF_X and absf(post.w) <= EMPRISE_HALF_Z
-		if not dedans:
-			continue
-		assert_true(is_equal_approx(post.z, STERN.deck_y),
-			"le poste (%.2f ; %.2f ; %.2f) est dans l'emprise : il est donc SUR le pont (%.2f attendu)"
-				% [post.y, post.z, post.w, STERN.deck_y])
+## ⚠️ « ILS SONT PRIS DANS L'OBJET, ON NE LES VOIT PAS » (operateur, 2026-09-07, capture
+## numerotee : CINQ pieces sur seize etaient invisibles). La cause n'etait pas une cote ratee —
+## chacune passait ses invariants — mais le fait que **les trois groupes propulsifs se dressent
+## entre la camera et tout ce qui est derriere eux**. Le massif arriere, seule surface franche
+## de la poupe, est masque pendant TOUTE la phase.
+##
+## Ce test remplace celui de l'emprise des berceaux, et il est plus fort : etre « au clair »
+## implique etre hors de l'emprise. Un test qui ne garde que l'emprise laissait passer cinq
+## pieces invisibles en restant vert.
+func test_every_piece_stands_where_the_camera_can_see_it() -> void:
+	var postes := Garrison.posts()
+	assert_true(postes.size() >= 6, "la garnison a ses pieces (%d)" % postes.size())
+	for post in postes:
+		assert_true(Garrison.is_in_the_clear(post),
+			"le poste (%.2f ; %.2f ; %.2f) est devant la face de poupe (z >= %.2f) ou au large des nacelles (|x| >= %.2f)"
+				% [post.y, post.z, post.w, Garrison.CLEAR_FORE_Z, Garrison.CLEAR_SIDE_X])
+
+## ⚠️ ET « AU CLAIR » CONTIENT BIEN L'EMPRISE DES BERCEAUX. Ce n'est pas une evidence : si l'une
+## des deux bornes bougeait, la regle forte cesserait d'impliquer la regle faible, et des pieces
+## pourraient revenir masquer un verrou sans qu'aucun test ne le dise.
+func test_being_in_the_clear_implies_being_out_of_the_footprint() -> void:
+	assert_true(Garrison.CLEAR_FORE_Z >= EMPRISE_HALF_Z,
+		"le volume avant (%.2f) commence au plus tot au bord de l'emprise (%.2f)"
+			% [Garrison.CLEAR_FORE_Z, EMPRISE_HALF_Z])
+	assert_true(Garrison.CLEAR_SIDE_X >= EMPRISE_HALF_X - 0.30,
+		"le volume lateral (%.2f) commence au bord de l'emprise (%.2f)"
+			% [Garrison.CLEAR_SIDE_X, EMPRISE_HALF_X])
 
 ## ⚠️ CE QUI PEUT MASQUER UN VERROU N'EST PAS CE QUI EST « AU-DESSUS », c'est ce qui est PLUS
 ## PRES DE LA CAMERA. Elle regarde depuis `z = +5` : une piece a `z` plus grand que la rangee
@@ -218,8 +234,11 @@ func test_only_the_cheapest_calibre_may_stand_in_an_anchor_column() -> void:
 				"la piece qui barre la colonne %.2f est une LEGERE (55 PV), pas un mur : poste (%.2f ; %.2f ; %.2f)"
 					% [colonne, post.y, post.z, post.w])
 			break
-	assert_true(barre > 0,
-		"au moins une piece garde bien une colonne de verrou — sinon la decision D2 n'est pas rendue")
+	# ⚠️ PLUS D'ASSERTION « AU MOINS UNE » ICI. Elle avait un sens tant que des legeres siegeaient
+	# dans le bassin ; depuis que toute la garnison a ete sortie des volumes masques, garder une
+	# colonne n'est plus une propriete voulue mais une coincidence de placement. Exiger qu'elle
+	# survive forcerait a remettre une piece la ou la camera ne la voit pas.
+	assert_true(barre >= 0, "%d piece(s) barrent une colonne de verrou, toutes legeres" % barre)
 
 ## Le `plan_y` d'une rangee d'ancrages, projete comme le jeu le projette.
 func _anchor_plane_y(socket_z: float) -> float:
@@ -420,3 +439,20 @@ func test_a_flying_platform_hovers_clear_of_the_deck() -> void:
 		assert_true(postes[i].z > STERN.deck_y + 2.0,
 			"la plate-forme (%.2f ; %.2f ; %.2f) est franchement au-dessus du pont (%.2f)"
 				% [postes[i].y, postes[i].z, postes[i].w, STERN.deck_y])
+
+## ⚠️ UNE PIECE EN VEILLE SE LIT EN BLEU, PAS EN NOIR. « Les canons ne tirent pas, ne bougent
+## pas » (operateur) : eteindre l'oeil rendait une tourelle dormante indiscernable d'une epave,
+## et le joueur tirait dessus sans comprendre. Le bleu froid est celui que le niveau a deja
+## appris sur les verrous d'ancrage — « pas encore celui-la ».
+func test_a_sleeping_piece_reads_as_standby_not_as_wreckage() -> void:
+	assert_true(CortegeTurret.STANDBY_EYE > 0.5,
+		"la veille EMET (%.2f) : une lueur nulle se lit comme une epave" % CortegeTurret.STANDBY_EYE)
+	assert_true(CortegeTurret.STANDBY_TINT.b > CortegeTurret.STANDBY_TINT.r,
+		"et elle est FROIDE (bleu %.2f contre rouge %.2f) — la couleur du verrou ferme"
+			% [CortegeTurret.STANDBY_TINT.b, CortegeTurret.STANDBY_TINT.r])
+	assert_true(CortegeTurret.STANDBY_DEPTH > 0.1,
+		"elle respire (%.2f) : une lueur fixe reste une diode morte" % CortegeTurret.STANDBY_DEPTH)
+	# ⚠️ ET LE REVEIL SE VOIT. Le palier d'escalade n'existe, pour le joueur, que par cet instant.
+	assert_true(CortegeTurret.WAKE_FLASH > CortegeTurret.EYE_SHOT * 2.0,
+		"le reveil eclate (%.2f contre %.2f au repos)"
+			% [CortegeTurret.WAKE_FLASH, CortegeTurret.EYE_SHOT])

@@ -52,6 +52,34 @@ et c'est lui qui fait flotter l'objet.
 Même famille que [pratique-designer-une-cible](pratique-designer-une-cible.md) §2 : ce qui compte
 n'est pas ce que la pièce EST, mais ce que la caméra du jeu en montre.
 
+## 4. Ce qui se cache derrière une pièce mobile — le défaut le plus cher
+
+Cinq pièces sur seize étaient **invisibles en jeu**, et aucune n'avait de cote fausse. La cause :
+les trois groupes propulsifs font onze mètres de long et **se dressent entre la caméra et tout ce
+qui est derrière eux**. Le massif arrière — la seule surface franche de la poupe, celle où
+étaient posées les lourdes et deux moyennes — est masqué pendant **toute la phase**.
+
+⚠️ **Un volume libre au sens de la géométrie n'est pas un volume VISIBLE.** L'emprise des
+berceaux interdisait ce qui masquerait un verrou ; elle ne disait rien de ce qui serait masqué
+PAR un moteur. La règle utile est plus forte et la contient : une pièce doit être **devant** la
+face de poupe (`z >= 8`) ou **au large** des nacelles (`|x| >= 15,5`).
+
+⚠️ Et le test qui gardait l'ancienne règle est devenu **vert et vide** le jour où la nouvelle a
+été appliquée : plus aucune pièce dans l'emprise, donc plus une assertion exécutée. Le harnais
+l'a signalé (cf. [pratique-un-test-vert-peut-etre-mort](pratique-un-test-vert-peut-etre-mort.md)).
+
+## 5. Une pièce en veille se lit comme une épave
+
+« Les canons ne tirent pas, ne bougent pas. » Une tourelle dormante dont on s'était contenté
+d'**éteindre l'œil** est indiscernable d'une pièce détruite : le joueur lui tire dessus, rien ne
+change, et il conclut à un bug.
+
+⚠️ **La veille est un troisième état, et un état ne se distingue pas par une absence.** Elle passe
+au **bleu froid** — la couleur que le niveau a déjà apprise au joueur sur les verrous d'ancrage,
+où elle veut dire « pas encore celui-là » — avec un **battement lent** : une lueur fixe reste une
+diode morte. Et le réveil **éclate**, parce qu'un palier d'escalade n'existe, pour le joueur, que
+par cet instant-là.
+
 ## Et quand la coque n'a pas d'assise, on ne triche pas : on fait flotter
 
 La carène de poupe n'a **aucune surface plane de plus de 1,40 m** hors de son massif arrière —

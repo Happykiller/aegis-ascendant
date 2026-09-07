@@ -238,6 +238,17 @@ const WRECK_YAW_DEG := 63.0
 const EYE_SHOT := 3.0
 const EYE_WEAK := 0.55
 const EYE_DEAD := 0.0
+## La veille : le bleu froid du verrou fermé (`CortegeAnchor.LOCKED_TINT`), et son battement.
+## ⚠️ ELLE RESPIRE. Une lueur bleue FIXE se lit encore comme une diode morte ; c'est le battement
+## lent qui dit « alimentée, pas encore armée ».
+const STANDBY_TINT := Color(0.30, 0.52, 0.72)
+const STANDBY_EYE := 1.35
+const STANDBY_HZ := 0.55
+const STANDBY_DEPTH := 0.45
+## Le réveil : une décharge blanche, puis la couleur de la pièce. ⚠️ IL FAUT QU'IL SE VOIE — le
+## palier d'escalade n'existe, pour le joueur, que par cet instant-là.
+const WAKE_FLASH := 9.0
+const WAKE_TIME := 0.7
 
 signal destroyed(turret: CortegeTurret)
 
@@ -265,6 +276,7 @@ var _vfx: VFXManager
 var _target: BulletTarget
 ## Les matériaux émissifs PROPRES à cette tourelle — l'œil, au fond du masque.
 var _glow: Array[StandardMaterial3D] = []
+var _glow_tint: Array[Color] = []
 ## Son rang de montage, pour que la famille se tire de la position et non du hasard.
 var serial: int = 0
 
@@ -302,7 +314,15 @@ var pressure: float = 1.0
 ## ⚠️ CE N'EST PAS « PRESSION ZÉRO ». Une tourelle à cadence nulle continuerait de suivre le
 ## joueur du canon — elle annoncerait une menace qui ne vient jamais, et le joueur apprendrait
 ## à ignorer le geste qui, partout ailleurs dans ce niveau, précède un tir.
+##
+## ⚠️ ET ELLE DOIT SE LIRE COMME EN VEILLE, PAS COMME CASSÉE. « Les canons ne tirent pas, ne
+## bougent pas » (opérateur, 2026-09-07) : la première version se contentait d'éteindre l'œil,
+## et une tourelle noire et immobile est indiscernable d'une épave. Elle passe donc au BLEU
+## FROID — la couleur que le niveau a déjà apprise au joueur sur les verrous d'ancrage, où elle
+## veut dire « pas encore celui-là ». Réutiliser ce bleu coûte zéro apprentissage.
 var asleep: bool = false
+var _standby: float = 0.0
+var _wake_flash: float = 0.0
 ## Où le canon pointe À CET INSTANT. ⚠️ IL SUIT LE JOUEUR, MAIS IL A DU RETARD, et ce retard EST
 ## la difficulté : la tourelle ne rate pas parce qu'elle vise mal, elle rate parce qu'elle
 ## n'arrive pas à suivre. C'est une règle qu'on comprend en une seconde de jeu, sans qu'aucun
@@ -500,6 +520,9 @@ func _claim_glow(piece: MeshInstance3D, source: MeshInstance3D) -> void:
 		var mine: StandardMaterial3D = base.duplicate()
 		piece.set_surface_override_material(i, mine)
 		_glow.append(mine)
+		# ⚠️ LA TEINTE D'ORIGINE EST GARDÉE, sans quoi un réveil ne saurait pas à quoi revenir :
+		# la mise en veille repeint l'œil en bleu froid, et rien d'autre ne connaît sa couleur.
+		_glow_tint.append(mine.emission)
 
 
 func is_alive() -> bool:
@@ -543,14 +566,44 @@ func is_engaged() -> bool:
 ## pouvoir lire, en regardant la coque, ce qui va lui tirer dessus et ce qui dort encore.
 func sleep_now() -> void:
 	asleep = true
-	_set_eye(EYE_DEAD)
+	_standby = 0.0
+	_wake_flash = 0.0
+	_paint_eye(STANDBY_TINT, STANDBY_EYE)
 
 ## La réveille. Rendue vraie seulement si elle dormait — le niveau compte les réveils.
 func wake() -> void:
 	if not asleep or not _alive:
 		return
 	asleep = false
-	_set_eye(EYE_SHOT)
+	_wake_flash = WAKE_TIME
+	_paint_eye(Color.WHITE, WAKE_FLASH)
+
+## Repeint l'œil : sa couleur ET son énergie. ⚠️ `_set_eye` ne touchait que l'énergie, ce qui
+## suffisait tant qu'un seul état existait — allumé ou éteint. La veille en ajoute un troisième,
+## et il ne se distingue QUE par la couleur.
+func _paint_eye(tint: Color, energy: float) -> void:
+	for material in _glow:
+		material.emission = tint
+		material.emission_energy_multiplier = energy
+
+## Rend l'œil à la teinte de la pièce.
+func _restore_eye(energy: float) -> void:
+	for i in _glow.size():
+		_glow[i].emission = _glow_tint[i]
+		_glow[i].emission_energy_multiplier = energy
+
+## Le battement de veille et la retombée du réveil. ⚠️ APPELÉ MÊME ENDORMIE : c'est le seul
+## endroit du cycle qui tourne pour une pièce qui ne fait rien d'autre.
+func _tick_standby(delta: float) -> void:
+	if _wake_flash > 0.0:
+		_wake_flash = maxf(_wake_flash - delta, 0.0)
+		var k := _wake_flash / WAKE_TIME
+		_restore_eye(lerpf(EYE_SHOT, WAKE_FLASH, k))
+		return
+	if not asleep:
+		return
+	_standby = fmod(_standby + delta * STANDBY_HZ * TAU, TAU)
+	_paint_eye(STANDBY_TINT, STANDBY_EYE * (1.0 + STANDBY_DEPTH * sin(_standby)))
 
 func weaken() -> void:
 	if _weakened:
@@ -620,6 +673,7 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 		_target.position = here
 	if not _alive:
 		return
+	_tick_standby(delta)
 	# ⚠️ ELLE CHERCHE SON AXE AVANT DE POUVOIR TIRER, et c'est ce qui remplace le télégraphe. Sa
 	# fenêtre de tir fait 20 unités ; elle commence à se tourner vers le joueur sur le DOUBLE.
 	# On voit donc le canon venir bien avant que ça ne compte — une menace qui s'annonce par un

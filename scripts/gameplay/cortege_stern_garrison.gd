@@ -54,42 +54,27 @@ signal turret_destroyed(turret: CortegeTurret)
 # deux pièces distantes de trois mètres sur la coque ne le sont plus à l'écran, où la projection
 # les rapproche. C'est désormais un invariant à part entière (`test_no_two_pieces_overlap`).
 const POSTS: Array = [
-	# --- LA FIN DU CORPS DU VAISSEAU (`z_local >= 11`) ------------------------
+	# --- LE CORPS DU VAISSEAU (`z_local >= 12`) ------------------------------
 	#
 	# ⚠️ LE GRAND PONT VIDE DEVANT LA POUPE, et il l'était pour rien. « Tu pourrais mettre des
 	# canons sur la fin du corps du vaisseau » (opérateur). La dernière tourelle du corridor est
-	# à `s = 478,8` : les vingt derniers mètres de coque — ceux qui remplissent le bas du cadre
-	# pendant TOUTE la phase — n'avaient pas une seule pièce. C'est aussi la seule menace du
-	# niveau qui tire vers le HAUT de l'écran, donc depuis un endroit que le joueur ne surveille
-	# pas.
+	# à `s = 478,8` : les vingt derniers mètres — ceux qui remplissent le bas du cadre pendant
+	# TOUTE la phase — n'avaient pas une seule pièce. Ce sont les deux seules du lot que
+	# l'opérateur n'a pas eu à numéroter : elles se lisent.
 	[CortegeTuning.TurretScale.STANDARD, 4.60, -4.34, 12.50, 0, false],
 	[CortegeTuning.TurretScale.LIGHT, 8.60, -4.94, 13.00, 1, false],
 	# --- LES PLATES-FORMES VOLANTES ------------------------------------------
 	#
 	# ⚠️ ELLES RÉSOLVENT LE PROBLÈME QUE LA CARÈNE POSE. « Pour la profondeur, on pourrait faire
-	# des plateformes volantes » (opérateur) — et c'est la réponse à ce qui bloquait le lot
-	# depuis le début : la poupe n'a AUCUNE surface plane de plus de 1,40 m hors du massif
-	# arrière, si bien que toute pièce moyenne posée sur un gradin flottait à moitié dans le
-	# vide. Une plate-forme qui flotte VRAIMENT ne ment plus : elle donne une assise franche à
-	# n'importe quelle hauteur, et elle décolle les pièces les unes des autres en profondeur.
-	#
-	# ⚠️ ET ELLES RESTENT HORS DE L'EMPRISE. Flotter ne dispense de rien : une plate-forme au-
-	# dessus du bassin masquerait un verrou exactement comme un pylône. Elles vivent donc sur
-	# les flancs (`|x| > 15,78`) ou en avant (`z > 8,00`), comme tout le reste.
-	[CortegeTuning.TurretScale.STANDARD, 17.00, -7.20, 2.00, 1, true],
-	[CortegeTuning.TurretScale.LIGHT, 6.00, -6.00, 9.50, 0, true],
-	# --- LE BASSIN : deux légères qui gardent, et pas six qui se marchent dessus
-	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, 7.00, 0, false],
-	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, -7.10, 2, false],
-	# --- LE BOUT DU MUR : le plateau du massif arrière ------------------------
-	#
-	# ⚠️ LES « GROSSES TOURS » DE LA DEMANDE EXISTENT DÉJÀ : les deux tours d'échange thermique
-	# (`x = ±5,40`, `z = -10,05`) et les quatre pylônes de rive. Les lourdes se posent entre
-	# elles, sur le même plateau — ce lot leur donne des voisines armées, il ne les remplace pas.
-	[CortegeTuning.TurretScale.STANDARD, 17.40, -8.40, -10.20, 0, false],
-	[CortegeTuning.TurretScale.HEAVY, 9.20, -8.40, -10.00, 3, false],
+	# des plates-formes volantes » (opérateur) — et c'est la réponse à ce qui bloquait le lot :
+	# la poupe n'a AUCUNE surface plane de plus de 1,40 m hors du massif arrière, si bien que
+	# toute pièce moyenne posée sur un gradin flottait à moitié dans le vide. Une plate-forme qui
+	# flotte VRAIMENT ne ment plus : assise franche à n'importe quelle hauteur, et elle décolle
+	# les pièces les unes des autres en profondeur.
+	[CortegeTuning.TurretScale.LIGHT, 11.50, -4.20, 10.50, 0, true],
+	[CortegeTuning.TurretScale.STANDARD, 17.00, -7.20, 2.00, 2, true],
+	[CortegeTuning.TurretScale.HEAVY, 16.80, -5.20, -4.50, 3, true],
 ]
-
 ## La plate-forme volante : une dalle, un liseré, et un ballant.
 ##
 ## ⚠️ LE BALLANT EST DÉTERMINISTE ET LENT. Déterministe parce qu'un survol se juge en comparant
@@ -191,6 +176,25 @@ static func footprint_of(echelle: CortegeTuning.TurretScale) -> float:
 static func plane_post(post: Vector4, lift: float, stern_z: float, eye: Vector3) -> Vector2:
 	var world := Vector3(post.y, post.z + lift, stern_z + post.w)
 	return GameplayPlane.aim_point_of(world, eye)
+
+## ⚠️ CE QUI SE CACHE DERRIÈRE UNE NACELLE, ET C'EST LA LEÇON LA PLUS CHÈRE DU LOT. « Ils sont
+## pris dans l'objet, on ne les voit pas. On ne comprend pas ce que c'est » (opérateur,
+## 2026-09-07, capture numérotée à l'appui : CINQ pièces sur seize étaient invisibles).
+##
+## La cause n'est pas une cote ratée : c'est que **les trois groupes propulsifs font onze mètres
+## de long et se dressent entre la caméra et tout ce qui est derrière eux**. Le massif arrière —
+## la seule surface franche de la poupe, celle où j'avais mis les lourdes et les moyennes — est
+## intégralement masqué tant que les moteurs sont là. C'est-à-dire pendant toute la phase.
+##
+## Il ne reste donc que deux volumes où une pièce se voit : **devant** la face de poupe
+## (`z_local >= 8`) et **au large** des nacelles (`|x| >= 15,5`). C'est plus restrictif que
+## l'emprise des berceaux, et ça la contient.
+const CLEAR_FORE_Z := 8.00
+const CLEAR_SIDE_X := 15.50
+
+## Vrai si le poste est dans un volume que la caméra voit vraiment.
+static func is_in_the_clear(post: Vector4) -> bool:
+	return post.w >= CLEAR_FORE_Z or absf(post.y) >= CLEAR_SIDE_X
 
 ## La demi-fenêtre de TIR d'une échelle : au-delà, la pièce vise et ne tire jamais.
 static func fire_half_of(p_tuning: CortegeTuning, echelle: CortegeTuning.TurretScale) -> float:
