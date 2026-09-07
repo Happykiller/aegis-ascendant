@@ -104,23 +104,7 @@ func setup(bullets: BulletManager, vfx: VFXManager,
 ## berceaux et les verrous sont les pièces réduites ; la structure qui les porte attend le
 ## LOT 6. Une dalle grise sous des pièces finies se voit — c'est dit plutôt que caché.
 func build() -> void:
-	# ⚠️ LE PONT DE POUPE EST BIEN PLUS BAS QUE LE CORRIDOR, et c'est ce qui rend la phase
-	# possible : un berceau et un moteur empilés font près de huit mètres, quand le corridor
-	# n'en offre que deux et demi sous le plan de vol. La carène descend à −12,60 ; on s'y pose.
-	var pont := MeshInstance3D.new()
-	pont.name = "SternDeck"
-	var box := BoxMesh.new()
-	box.size = Vector3(tuning.half_span() * 2.0 + 4.0, 1.60, tuning.cradle_size.z * 1.6)
-	pont.mesh = box
-	pont.position = Vector3(0.0, tuning.deck_y - 0.80, 0.0)
-	pont.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.09, 0.09, 0.11)
-	mat.metallic = 0.4
-	mat.roughness = 0.6
-	pont.material_override = mat
-	add_child(pont)
-
+	_mount_hull()
 	for side in [-1.0, 0.0, 1.0]:
 		var engine := CortegeEngine.make(tuning, side)
 		engine.name = "Engine_%s" % ("Center" if is_zero_approx(side) else
@@ -141,6 +125,43 @@ func begin() -> void:
 	_phase = Phase.FIGHT
 	_open_laterals()
 	print("[Poupe] le survol s'immobilise — les verrous des deux latéraux sont ouverts")
+
+## La carène de poupe (`BRIEF-0106`) : 2 514 triangles, sa jonction avec le cinquième tronçon
+## exacte au dix-millionième de mètre.
+const HULL_KIT := "res://assets/imported/models/backgrounds/stern_hull.glb"
+
+## Monte la carène, ou la dalle grise si elle manque.
+##
+## ⚠️ LA DALLE RESTE COMME DOUBLURE, ET ELLE A SERVI QUATRE LOTS. Toute la phase a été conçue,
+## jouée et testée dessus avant qu'une seule pièce finale n'entre — c'est la leçon de la cellule
+## témoin, et c'est ce qui a permis de trouver en boîtes grises des défauts que les vraies pièces
+## auraient masqués.
+func _mount_hull() -> void:
+	var packed: PackedScene = load(HULL_KIT) as PackedScene
+	var carene := packed.instantiate() as Node3D if packed != null else null
+	if carene == null:
+		_greybox_deck()
+		return
+	carene.name = "Hull"
+	add_child(carene)
+
+func _greybox_deck() -> void:
+	var pont := MeshInstance3D.new()
+	pont.name = "SternDeck"
+	var box := BoxMesh.new()
+	box.size = Vector3(half_span() * 2.0 + 4.0, 1.60, tuning.cradle_size.z * 1.6)
+	pont.mesh = box
+	pont.position = Vector3(0.0, tuning.deck_y - 0.80, 0.0)
+	pont.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.09, 0.09, 0.11)
+	mat.metallic = 0.4
+	mat.roughness = 0.6
+	pont.material_override = mat
+	add_child(pont)
+
+func half_span() -> float:
+	return tuning.half_span()
 
 func engines() -> Array[CortegeEngine]:
 	return _engines

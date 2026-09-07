@@ -58,6 +58,16 @@ extends Resource
 ## moteurs à la fin, alors que les moteurs doivent être rattachés au vaisseau » (opérateur, en
 ## regardant). Elle est désormais posée sur la coque, huit mètres après le cinquième tronçon, et
 ## elle défile avec elle. Ce qui s'arrête, c'est le DÉFILEMENT.
+## ⚠️ ELLE NE PEUT PAS BOUGER SANS ROUVRIR LA JONCTION, ET J'AI ESSAYÉ. La carène est modelée
+## AUTOUR de cette valeur : son bord avant est à 8 m de son centre, exactement pour tomber sur
+## l'anneau `s = 500` que le corridor rend. Reculer la poupe à 512 pour régler le débord du
+## collecteur d'artère (1,61 m dans le bordé du tronçon 5) a ouvert un TROU DE QUATRE MÈTRES
+## entre les deux, vu en capture — le vaisseau s'y coupait en deux.
+##
+## Le débord reste, et il est assumé : le collecteur prend son assise sur la peau RÉELLE
+## (`_surface_y`) et n'altère aucun sommet du corridor. Une pièce de raccord qui enjambe un plan
+## de jonction est ce qu'un collecteur fait ; le retirer, comme la forge le proposait, aurait
+## laissé l'artère n'aboutir nulle part de visible — et vidé le blackout du LOT 8 de son sujet.
 @export var station: float = 508.0
 
 ## Les ancrages. ⚠️ TROIS PAR MOTEUR LATÉRAL, QUATRE AU CENTRAL (spec §7).

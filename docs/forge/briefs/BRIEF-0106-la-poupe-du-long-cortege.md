@@ -1,6 +1,6 @@
 # BRIEF-0106 — La poupe du Long Cortège : la structure qui porte les trois moteurs
 
-- **Statut** : à faire
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-06
