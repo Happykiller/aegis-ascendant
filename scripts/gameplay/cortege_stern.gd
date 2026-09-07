@@ -121,7 +121,7 @@ func build_greybox() -> void:
 			("Right" if side > 0.0 else "Left"))
 		engine.show_flame = show_flames
 		engine.position = Vector3(tuning.slot_x(side), tuning.deck_y, 0.0)
-		engine.build_greybox()
+		engine.build()
 		engine.weakened.connect(_on_engine_weakened)
 		engine.detaching.connect(_on_engine_detaching)
 		engine.detached.connect(_on_engine_detached)

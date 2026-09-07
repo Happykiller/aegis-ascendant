@@ -7,10 +7,11 @@ extends Node3D
 ## retient — trois pièces de deux mètres — est tout ce qui compte. La lisibilité de cette règle
 ## est le critère d'acceptation n°5 de la spec, pas un détail de mise en scène.
 ##
-## ⚠️ ET DEUX MÈTRES, C'EST GRAND. Un ancrage fait 1,88 m à l'échelle retenue, soit ~86 px à
-## l'écran (45,8 px/m) : trois quarts de la longueur du chasseur. La spec l'exige — « pas de
-## petit weakpoint de 10 pixels » — et c'est ce qui autorise à ne PAS mettre de marqueur d'aide
-## par-dessus.
+## ⚠️ ET DEUX MÈTRES, C'EST GRAND — MAIS PAS AUTANT QUE JE L'AI ÉCRIT. Un ancrage fait 2,09 m à
+## l'échelle retenue. La densité de la POUPE n'est pas celle du corridor : son pont est à −11,85,
+## le cadre y couvre 58,77 m et la caméra rend **32,7 px/m**, pas 45,8 (mesuré par la forge au
+## `BRIEF-0105`). L'ancrage fait donc **68 pixels**, pas 96. La spec est tenue — « pas de petit
+## weakpoint de 10 pixels » — mais avec un tiers de marge en moins que je ne le croyais.
 ##
 ## ⚠️ IL A QUATRE ÉTATS, ET TROIS SONT DANS LA PLANCHE. `asset3_ancrage_destructible` dessine
 ## *Intact*, *Endommagé* (plaques ouvertes, étincelles) et *Ouvert/rompu* (mâchoire déployée,
@@ -34,13 +35,18 @@ const TINT := Color("d93d9c")
 ## distingue par sa TEINTE avant de se distinguer par son intensité.
 const LOCKED_TINT := Color(0.30, 0.52, 0.72)
 
-const LOCKED_GLOW := 0.12
-const INTACT_GLOW := 0.90
+## ⚠️ CES ÉNERGIES ONT ÉTÉ MULTIPLIÉES PAR QUATRE QUAND LA VRAIE PIÈCE EST ENTRÉE, ET C'EST UNE
+## CORRECTION DE LISIBILITÉ, PAS DE GOÛT. La boîte grise était émissive SUR TOUTE SA SURFACE :
+## 68 pixels de magenta à 32,7 px/m. La pièce réduite ne l'est que sur ses fentes — une dizaine
+## de pixels. À énergie égale, le verrou cessait de se distinguer de la structure du berceau, et
+## le joueur ne pouvait plus dire ce qu'il devait viser. Vu en capture, à 1:1.
+const LOCKED_GLOW := 1.10
+const INTACT_GLOW := 4.00
 ## L'endommagé brille PLUS FORT que l'intact : ses plaques sont ouvertes et son cœur est à nu.
-const DAMAGED_GLOW := 1.60
+const DAMAGED_GLOW := 7.00
 ## Ce qu'il reste de lueur à un ancrage rompu : une carcasse sombre, jamais rien. Même règle
 ## que l'œil d'une tourelle abattue et que la veine d'un tronçon éteint.
-const BROKEN_GLOW := 0.02
+const BROKEN_GLOW := 0.05
 
 ## Le battement de l'endommagé — c'est lui qui dit « celui-ci va céder ».
 const DAMAGED_PULSE_HZ := 5.5
@@ -50,6 +56,12 @@ const DAMAGED_PULSE_DEPTH := 0.45
 ## pièce est invulnérable ».
 const HIT_FLASH_TIME := 0.10
 const HIT_FLASH_GAIN := 2.8
+
+## Ce que vaut le bandeau d'état selon l'état. Additif : au-delà de 1 il sature en blanc et
+## perd sa teinte, donc l'information qu'il porte.
+const HALO_LOCKED := 0.22
+const HALO_INTACT := 0.62
+const HALO_DAMAGED := 0.95
 
 var score: int = 0
 ## Sa place dans le groupe, pour le journal — l'anonymat coûte cher en investigation.
@@ -67,6 +79,12 @@ var _bullets: BulletManager = null
 var _vfx: VFXManager = null
 var _world: Vector3 = Vector3.ZERO
 var _glow: StandardMaterial3D = null
+## TOUS les émissifs de la pièce réduite — elle en a plusieurs surfaces, pas une.
+var _glows: Array[StandardMaterial3D] = []
+var _halo: StandardMaterial3D = null
+var _anim: AnimationPlayer = null
+## Le clip joué, pour ne pas le relancer à chaque image.
+var _clip: String = ""
 var _registered: bool = false
 var _pulse: float = 0.0
 var _flash: float = 0.0
@@ -105,9 +123,103 @@ static func look_for(alive: bool, vulnerable: bool, ratio: float, seuil: float) 
 
 # --- La pièce ------------------------------------------------------------------
 
-## La boîte grise du LOT 1. ⚠️ ELLE SERA REMPLACÉE PAR `asset3_ancrage_destructible`, livré le
-## 2026-09-06 — 54 640 triangles pour 2,4 m, donc pas avant sa réduction (LOT 5). La phase est
-## jouable et finie sans lui, et c'est le point.
+## Le binaire réduit (`BRIEF-0105`) : 900 triangles pour 2,40 m, contre 54 640 livrés.
+const KIT := "res://assets/imported/models/backgrounds/stern_anchor.glb"
+
+## Monte la pièce réduite, ou sa boîte grise si elle manque.
+##
+## ⚠️ LA DOUBLURE RESTE : les bancs montent l'ancrage sans arbre ni import, et c'est ce qui
+## rend ses quatre états vérifiables sans jouer quatre minutes de survol.
+func build(size: Vector3) -> void:
+	var packed: PackedScene = load(KIT) as PackedScene
+	if packed == null:
+		build_greybox(size)
+		return
+	var piece := packed.instantiate() as Node3D
+	if piece == null:
+		build_greybox(size)
+		return
+	piece.name = "Anchor"
+	add_child(piece)
+	_claim_glow(piece)
+	_anim = _player_of(piece)
+	_build_band(size)
+	_apply_look()
+
+## Le bandeau d'état — ⚠️ IL EXISTE PARCE QUE LA VRAIE PIÈCE NE SE DÉSIGNE PAS ELLE-MÊME.
+##
+## La boîte grise était émissive SUR TOUTE SA SURFACE : 68 pixels de magenta, impossible à
+## confondre. La pièce réduite ne l'est que sur ses fentes — 36 triangles sur 900, une dizaine
+## de pixels perdus dans la structure d'un berceau qui en compte des centaines. Multiplier
+## l'énergie a rendu l'ÉTAT lisible — on distingue le bleu verrouillé du magenta actif — mais
+## pas la CIBLE.
+##
+## ⚠️ ET C'EST UN CRITÈRE D'ACCEPTATION, PAS UNE PRÉFÉRENCE. La spec §7 demande un ancrage
+## « gros, identifiable, légèrement lumineux » et le §21 exige qu'une capture communique
+## « les attaches sont destructibles ». Un joueur qui ne sait pas quoi viser tire sur le moteur,
+## qui n'encaisse rien, et toute la phase se lit comme cassée.
+##
+## ⚠️ ET CE N'EST PAS UN HALO. La première version enveloppait la pièce d'une boîte additive sans
+## test de profondeur : elle passait DEVANT les nacelles et se lisait comme un cube de couleur
+## posé sur le vaisseau — le grief exact qu'`ADR-0043` a payé sur l'ambre de signalisation.
+## Un bandeau plaqué sur la face avant, occulté normalement, appartient à la pièce ; un volume
+## flottant appartient à l'interface.
+func _build_band(size: Vector3) -> void:
+	var mesh := MeshInstance3D.new()
+	mesh.name = "Band"
+	var box := BoxMesh.new()
+	# ⚠️ IL REMPLIT LA PIÈCE AU LIEU DE LA SURLIGNER. Trois versions ont échoué avant celle-ci :
+	# une bande sur la face avant (invisible dès que la rangée arrière fait demi-tour), une bande
+	# sur le dessus (trop mince à 32,7 px/m), et un halo débordant sans test de profondeur — qui
+	# passait DEVANT les nacelles et se lisait comme un cube posé sur le vaisseau. Un volume
+	# additif à l'intérieur de la silhouette, occulté normalement, donne à l'ancrage la lueur
+	# que la spec §7 lui demande sans lui ajouter de contour.
+	box.size = Vector3(size.x * 0.88, size.y * 0.62, size.z * 0.88)
+	mesh.mesh = box
+	mesh.position = Vector3(0.0, size.y * 0.30, 0.0)
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_halo = StandardMaterial3D.new()
+	_halo.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_halo.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	# ⚠️ AVEC test de profondeur : le bandeau se fait masquer par ce qui passe devant, comme
+	# toute pièce du vaisseau. C'est ça qui le fait appartenir à l'ancrage.
+	_halo.render_priority = 3
+	_halo.albedo_color = TINT
+	mesh.material_override = _halo
+	add_child(mesh)
+
+## ⚠️ CHAQUE VERROU SA COPIE. Les dix ancrages sont dix instances du MÊME `.glb` : ils partagent
+## leurs matériaux, et en éteindre un les éteindrait tous. C'est le piège déjà payé sur les deux
+## relais de la Citadelle et sur les cinq bulbes d'épine.
+func _claim_glow(root: Node) -> void:
+	for node in _descendants(root):
+		var mesh := node as MeshInstance3D
+		if mesh == null:
+			continue
+		for i in mesh.get_surface_override_material_count():
+			var base := mesh.get_active_material(i) as StandardMaterial3D
+			if base == null or not base.emission_enabled:
+				continue
+			var mine: StandardMaterial3D = base.duplicate()
+			mesh.set_surface_override_material(i, mine)
+			_glows.append(mine)
+			if _glow == null:
+				_glow = mine
+
+static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
+
+static func _player_of(root: Node) -> AnimationPlayer:
+	for node in _descendants(root):
+		var player := node as AnimationPlayer
+		if player != null:
+			return player
+	return null
+
+## La boîte grise, gardée comme doublure.
 func build_greybox(size: Vector3) -> void:
 	var mesh := MeshInstance3D.new()
 	mesh.name = "Greybox"
@@ -121,6 +233,7 @@ func build_greybox(size: Vector3) -> void:
 	_glow.roughness = 0.5
 	_glow.emission_enabled = true
 	mesh.material_override = _glow
+	_glows.append(_glow)
 	add_child(mesh)
 	_apply_look()
 
@@ -208,7 +321,8 @@ func _refresh_look() -> void:
 ## joueur compter ce qui manque au lieu de voir ce qu'il a fait — même règle que le berceau vide
 ## et que le cœur de nœud d'épine.
 func _apply_look() -> void:
-	if _glow == null:
+	_play_clip()
+	if _glows.is_empty():
 		return
 	var teinte := LOCKED_TINT if _look == Look.LOCKED else TINT
 	var energie := INTACT_GLOW
@@ -219,7 +333,35 @@ func _apply_look() -> void:
 	if _flash > 0.0:
 		energie += HIT_FLASH_GAIN * (_flash / HIT_FLASH_TIME)
 		teinte = teinte.lerp(Color.WHITE, 0.6)
-	_glow.emission = teinte
-	_glow.emission_energy_multiplier = energie
-	_glow.albedo_color = Color(0.05, 0.05, 0.06) if _look == Look.BROKEN \
-		else Color(0.10, 0.10, 0.13)
+	# ⚠️ TOUS LES ÉMISSIFS, PAS LE PREMIER. La pièce réduite en porte plusieurs surfaces ; n'en
+	# piloter qu'une laisserait des morceaux de verrou allumés sur une carcasse.
+	for mat in _glows:
+		mat.emission = teinte
+		mat.emission_energy_multiplier = energie
+		mat.albedo_color = Color(0.05, 0.05, 0.06) if _look == Look.BROKEN \
+			else Color(0.10, 0.10, 0.13)
+	if _halo == null:
+		return
+	var force := HALO_INTACT
+	match _look:
+		Look.LOCKED: force = HALO_LOCKED
+		Look.BROKEN: force = 0.0
+		Look.DAMAGED: force = HALO_DAMAGED * (1.0 + DAMAGED_PULSE_DEPTH * sin(_pulse))
+	if _flash > 0.0:
+		force += 0.5 * (_flash / HIT_FLASH_TIME)
+	_halo.albedo_color = Color(teinte.r, teinte.g, teinte.b, 1.0) * force
+
+## ⚠️ LE CLIP SUIT L'ÉTAT, ET IL NE SE RELANCE PAS À CHAQUE IMAGE. `play()` appelé soixante fois
+## par seconde remet l'animation à zéro : la mâchoire tremblerait sur place au lieu de s'ouvrir.
+func _play_clip() -> void:
+	if _anim == null:
+		return
+	var voulu := "Intact"
+	match _look:
+		Look.LOCKED: voulu = "Fermeture"
+		Look.DAMAGED: voulu = "Endommage"
+		Look.BROKEN: voulu = "Rompu"
+	if voulu == _clip or not _anim.has_animation(voulu):
+		return
+	_clip = voulu
+	_anim.play(voulu)

@@ -38,6 +38,15 @@ const ARC_HZ := 9.0
 ## Ce que la boîte grise garde de la boîte englobante du moteur livré : le fût, pas les carénages.
 const BODY_FIT := Vector3(0.78, 0.92, 0.86)
 
+## Les binaires réduits (`BRIEF-0105`). ⚠️ 60 020 TRIANGLES POUR LA POUPE ENTIÈRE, contre les
+## 3,17 millions livrés : la géométrie et les cent repères sont ceux de l'auteur, seul le poids
+## a changé. Les matériaux portent déjà les noms du kit — c'était un critère du brief, parce que
+## `CortegeSkin` reconnaît son émissif PAR SON NOM et que sans lui rien ne peut s'éteindre.
+const CRADLE_KIT := "res://assets/imported/models/backgrounds/stern_cradle.glb"
+const ENGINE_KIT := "res://assets/imported/models/backgrounds/stern_engine.glb"
+## Le préfixe des repères de l'auteur. Le jeu les adresse par leur nom, jamais par leur rang.
+const SOCKET_PREFIX := "CTRL | Socket ancrage"
+
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
 ## Le dernier ancrage a cédé : la séquence d'arrachement commence.
@@ -72,6 +81,13 @@ var _has_vent: bool = false
 var _arc_mesh: ImmediateMesh = null
 var _arc_timer: float = 0.0
 var _arc_rng := RandomNumberGenerator.new()
+var _cradle_anim: AnimationPlayer = null
+var _engine_anim: AnimationPlayer = null
+## Les matériaux émissifs propres à CE groupe : ceux du berceau, ceux de la nacelle.
+var _hull_glow: Array[StandardMaterial3D] = []
+var _thrust_glow: Array[StandardMaterial3D] = []
+var _clip_engine: String = ""
+var _clip_cradle: String = ""
 
 static func make(p_tuning: CortegeSternTuning, p_side: float) -> CortegeEngine:
 	var engine := CortegeEngine.new()
@@ -193,6 +209,145 @@ func setup(bullets: BulletManager, vfx: VFXManager) -> void:
 ## reste quand le moteur part est la PREUVE qu'on est passé par là (spec §21, critère 7) : un
 ## berceau emporté avec son moteur ferait disparaître la récompense en même temps qu'elle
 ## arrive.
+## Monte le groupe : les pièces réduites si elles sont là, les boîtes grises sinon.
+##
+## ⚠️ LA DOUBLURE RESTE, ET CE N'EST PAS DE LA PRUDENCE DE FAÇADE. Les tests montent la poupe
+## sans arbre et sans import ; un banc qui exigerait les `.glb` ne pourrait plus vérifier une
+## seule règle de la phase. Même contrat que `CortegeFlyby.is_stand_in()`.
+func build() -> void:
+	var cradle := _load_kit(CRADLE_KIT)
+	if cradle == null:
+		build_greybox()
+		return
+	var k := tuning.scale_of(is_central)
+	cradle.name = "Cradle"
+	cradle.scale = Vector3.ONE * k
+	add_child(cradle)
+	_claim_emissive(cradle, _hull_glow)
+	_cradle_anim = _player_of(cradle)
+
+	_body = Node3D.new()
+	_body.name = "Body"
+	# Le contrat de mariage de l'auteur, converti en Y-up. ⚠️ LE MOTEUR S'ENCASTRE, il ne
+	# s'empile pas : c'est la correction du LOT 5, et elle vaut un mètre de hauteur.
+	_rest = tuning.engine_seat * k
+	_body.position = _rest
+	add_child(_body)
+	var engine := _load_kit(ENGINE_KIT)
+	if engine != null:
+		engine.name = "Nacelle"
+		engine.scale = Vector3.ONE * k
+		_body.add_child(engine)
+		_claim_emissive(engine, _thrust_glow)
+		_engine_anim = _player_of(engine)
+
+	# ⚠️ LES SIÈGES SE LISENT DANS LE BINAIRE, PAS DANS UNE TABLE. Quatre repères
+	# `CTRL | Socket ancrage AV/AR D/G` portent les places exactes ; les recopier ici, c'est
+	# rouvrir l'écart entre la table et le marqueur que le dépôt a déjà payé sur les tourelles
+	# de coque — jusqu'à 2,30 m.
+	var sieges := _sockets_of(cradle)
+	var total := tuning.anchors_of(is_central)
+	for i in mini(total, sieges.size()):
+		var anchor := _make_anchor(i)
+		anchor.position = sieges[i]
+		# ⚠️ LA RANGÉE ARRIÈRE FAIT DEMI-TOUR. La mâchoire de l'ancrage regarde son +Z local
+		# (`CTRL | Contact moteur` y siège) : il doit donc présenter cette face au MOTEUR, qui
+		# est en amont pour la rangée avant et en aval pour l'arrière. Sans ce yaw, la moitié
+		# des verrous mordent le vide.
+		if sieges[i].z > 0.0:
+			anchor.rotation.y = PI
+		# ⚠️ ENFANT DU BERCEAU, DONC À SON ÉCHELLE. Le poser en frère obligerait à multiplier
+		# chaque cote par `k` à la main, et c'est exactement le genre de multiplication qu'on
+		# oublie une fois sur deux.
+		cradle.add_child(anchor)
+		_anchors.append(anchor)
+	if _anchors.size() < total:
+		push_error("[Poupe] %s : %d sièges d'ancrage pour %d verrous attendus"
+			% [name, sieges.size(), total])
+	_mount_thrust(k)
+	_play_clips()
+
+## Les places d'ancrage, lues sur les repères de l'auteur et triées : d'abord la paire AVANT
+## (haute à l'écran), puis l'ARRIÈRE. ⚠️ L'ORDRE COMPTE : un moteur latéral n'en prend que trois,
+## et ce sont les deux hautes plus une basse — le triangle de la spec §7.
+static func _sockets_of(root: Node) -> Array[Vector3]:
+	var avant: Array[Vector3] = []
+	var arriere: Array[Vector3] = []
+	for node in _descendants(root):
+		var n3 := node as Node3D
+		if n3 == null or not String(node.name).begins_with(SOCKET_PREFIX):
+			continue
+		if n3.position.z < 0.0:
+			avant.append(n3.position)
+		else:
+			arriere.append(n3.position)
+	avant.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.x < b.x)
+	arriere.sort_custom(func(a: Vector3, b: Vector3) -> bool: return a.x < b.x)
+	var out: Array[Vector3] = []
+	out.append_array(avant)
+	out.append_array(arriere)
+	return out
+
+static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
+
+func _load_kit(path: String) -> Node3D:
+	var packed: PackedScene = load(path) as PackedScene
+	if packed == null:
+		return null
+	return packed.instantiate() as Node3D
+
+static func _player_of(root: Node) -> AnimationPlayer:
+	for node in _descendants(root):
+		var player := node as AnimationPlayer
+		if player != null:
+			return player
+	return null
+
+## Donne à CE groupe sa propre copie des matériaux émissifs.
+##
+## ⚠️ SANS CETTE COPIE, ÉTEINDRE UN MOTEUR LES ÉTEINDRAIT TOUS LES TROIS. Les trois nacelles
+## sont trois instances du MÊME `.glb` : elles partagent leurs matériaux. C'est le piège déjà
+## payé sur les deux relais de la Citadelle, sur les puits, et sur les cinq bulbes d'épine.
+static func _claim_emissive(root: Node, out: Array[StandardMaterial3D]) -> void:
+	for node in _descendants(root):
+		var mesh := node as MeshInstance3D
+		if mesh == null:
+			continue
+		for i in mesh.get_surface_override_material_count():
+			var base := mesh.get_active_material(i) as StandardMaterial3D
+			if base == null or not base.emission_enabled:
+				continue
+			var mine: StandardMaterial3D = base.duplicate()
+			mesh.set_surface_override_material(i, mine)
+			out.append(mine)
+
+func _make_anchor(i: int) -> CortegeAnchor:
+	var anchor := CortegeAnchor.make(tuning.anchor_health, tuning.anchor_radius,
+		tuning.anchor_score)
+	anchor.name = "Anchor_%02d" % (i + 1)
+	anchor.serial = i
+	anchor.damaged_at = tuning.anchor_damaged_at
+	anchor.spark_interval = tuning.anchor_spark_interval
+	anchor.build(tuning.anchor_size)
+	anchor.destroyed.connect(_on_anchor_destroyed)
+	return anchor
+
+## La tuyère et la flamme. ⚠️ LA FLAMME EST FILLE DU CORPS : elle part avec lui.
+func _mount_thrust(k: float) -> void:
+	if not show_flame or _body == null:
+		return
+	_flame = CortegeFlame.make(tuning.flame_length, tuning.flame_width, side * 1.7 + 0.4)
+	_flame.name = "Flame"
+	_flame.position = Vector3(0.0, tuning.engine_size.y * k * 0.1,
+		-tuning.engine_size.z * k * 0.5)
+	_flame.build()
+	_body.add_child(_flame)
+	_surge_clock = (side + 1.0) * tuning.surge_period / 3.0
+
 func build_greybox() -> void:
 	var k := tuning.scale_of(is_central)
 	# ⚠️ LE BERCEAU EST UN CADRE OUVERT, PAS UN BLOC — et le LOT 1 en faisait un bloc. L'auteur
@@ -372,6 +527,7 @@ func tick(delta: float, world_origin: Vector3, eye: Vector3) -> void:
 			_redraw_arcs()
 	if _state == State.DETACHING and _detach_clock >= tuning.detach_gone_at:
 		_state = State.DETACHED
+		_play_clips()
 		_open_arcs()
 		detached.emit(self)
 
@@ -448,15 +604,45 @@ func is_blasting() -> bool:
 func open_vent() -> void:
 	_has_vent = true
 
+## ⚠️ LES CLIPS SUIVENT L'ÉTAT, ET ILS NE SE RELANCENT PAS À CHAQUE IMAGE. `play()` appelé
+## soixante fois par seconde remet l'animation à zéro : la libération du berceau tremblerait sur
+## place au lieu de s'ouvrir. Et la continuité `Liberation` → `Berceau_vide` — que la forge a
+## vérifiée à 0,000000 — ne vaut que si les deux se jouent dans cet ordre, une fois chacun.
+func _play_clips() -> void:
+	var moteur := "Fonctionnement"
+	var berceau := "Intact"
+	match _state:
+		State.DAMAGED_1:
+			moteur = "Endommage"
+		State.DAMAGED_2:
+			moteur = "Endommage"
+			berceau = "Sous_contrainte"
+		State.DETACHING:
+			moteur = "Detachement"
+			berceau = "Liberation"
+		State.DETACHED:
+			moteur = "Detachement"
+			berceau = "Berceau_vide"
+	_play(_engine_anim, moteur, "_clip_engine")
+	_play(_cradle_anim, berceau, "_clip_cradle")
+
+func _play(player: AnimationPlayer, clip: String, champ: String) -> void:
+	if player == null or get(champ) == clip or not player.has_animation(clip):
+		return
+	set(champ, clip)
+	player.play(clip)
+
 func _on_anchor_destroyed(anchor: CortegeAnchor) -> void:
 	_lost += 1
 	var total := tuning.anchors_of(is_central)
 	print("[Poupe] ancrage %d/%d du moteur %s abattu" % [_lost, total, _slot_name()])
 	if _lost < total:
 		_state = state_for(_lost, total, false)
+		_play_clips()
 		weakened.emit(self, _lost)
 		return
 	_state = State.DETACHING
+	_play_clips()
 	_detach_clock = 0.0
 	set_locked(true)
 	print("[Poupe] moteur %s : dernier ancrage rompu — arrachement" % _slot_name())

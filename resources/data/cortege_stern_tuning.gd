@@ -25,7 +25,11 @@ extends Resource
 @export var asset_scale: float = 0.785
 @export var engine_size: Vector3 = Vector3(9.10, 5.49, 11.93)
 @export var cradle_size: Vector3 = Vector3(11.19, 4.64, 14.00)
-@export var anchor_size: Vector3 = Vector3(2.40, 1.20, 1.40)
+## ⚠️ L'ORDRE DES AXES VIENT DU BINAIRE, PAS DE LA PLANCHE. La planche cote « 2,40 × 1,40 × 1,20
+## (L × l × h) » ; le `.glb`, en Y-up, mesure 1,40 × 1,21 × 2,40 — la LONGUEUR est en Z. Recopier
+## la planche mettait 2,40 en X : le bandeau d'état sortait de la pièce et sa hitbox se comparait
+## à la mauvaise cote.
+@export var anchor_size: Vector3 = Vector3(1.40, 1.21, 2.40)
 
 ## L'entraxe des trois groupes, en unités de plan.
 ##
