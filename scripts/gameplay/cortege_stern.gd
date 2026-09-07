@@ -26,6 +26,11 @@ signal core_exposed()
 ## cède. La secousse est le seul retour que le joueur reçoive du VAISSEAU lui-même.
 signal shockwave(trauma: float)
 
+## Une pièce de la garnison est tombée. ⚠️ RELAYÉ ET NON RECÂBLÉ DEPUIS LE NIVEAU : la garnison
+## naît dans `setup()`, c'est-à-dire après que le niveau a connecté ses signaux de poupe. Un
+## branchement direct dessus s'écrirait forcément plus tard, dans une méthode qui n'existe pas.
+signal turret_destroyed(turret: CortegeTurret)
+
 ## ⚠️ `APPROACH` N'EST PLUS UNE ANIMATION, C'EST UNE ATTENTE. La poupe existe et défile avec la
 ## coque bien avant d'être jouable ; ses verrous restent fermés tant que le vaisseau n'a pas fini
 ## de freiner. Sans cette attente, le joueur pourrait travailler un ancrage encore à mi-écran.
@@ -53,6 +58,14 @@ var _down: int = 0
 ## `--spine-down=`. Les dégâts partent par le VRAI chemin : le `hit_callback` des balles.
 var _auto_cut: float = -1.0
 var _cut_clock: float = 0.0
+## Le réglage du CORRIDOR, dont la poupe a besoin pour armer ses tourelles.
+##
+## ⚠️ DEUX RESSOURCES, ET C'EST VOULU. `CortegeSternTuning` dit ce qu'est cette phase ;
+## `CortegeTuning` dit ce qu'est une tourelle du Long Cortège — points de vie, cadence, portée,
+## score, aux trois échelles. Recopier ces valeurs dans la Resource de poupe aurait donné une
+## tourelle de poupe qui dérive de celles du corridor sans qu'une ligne ne le dise.
+var corridor_tuning: CortegeTuning = null
+var _garrison: CortegeSternGarrison = null
 
 static func make(p_tuning: CortegeSternTuning) -> CortegeStern:
 	var stern := CortegeStern.new()
@@ -97,6 +110,15 @@ func setup(bullets: BulletManager, vfx: VFXManager,
 	_player = player
 	for engine in _engines:
 		engine.setup(bullets, vfx)
+	# ⚠️ LA GARNISON SE MONTE ICI ET NON DANS `build()`, parce qu'une tourelle a besoin du
+	# gestionnaire de balles pour exister utilement — et que `build()` est appelé avant que le
+	# niveau n'ait passé le sien. Sans réglage de corridor, la poupe reste désarmée : c'est ce
+	# qui permet aux bancs de la monter sans traîner toute la table du niveau.
+	if corridor_tuning != null:
+		_garrison = CortegeSternGarrison.make(corridor_tuning)
+		add_child(_garrison)
+		_garrison.build(bullets, player, vfx)
+		_garrison.turret_destroyed.connect(_on_garrison_kill)
 
 ## Monte la poupe : son pont, puis les trois groupes.
 ##
@@ -164,6 +186,14 @@ func _greybox_deck() -> void:
 func half_span() -> float:
 	return tuning.half_span()
 
+## La garnison, pour le niveau (score) et les bancs. `null` tant qu'aucun réglage de corridor
+## n'a été passé.
+func garrison() -> CortegeSternGarrison:
+	return _garrison
+
+func _on_garrison_kill(turret: CortegeTurret) -> void:
+	turret_destroyed.emit(turret)
+
 func engines() -> Array[CortegeEngine]:
 	return _engines
 
@@ -184,6 +214,8 @@ func tick(delta: float, eye: Vector3) -> void:
 	_clock += delta
 	for engine in _engines:
 		engine.tick(delta, global_position + engine.position, eye)
+	if _garrison != null:
+		_garrison.tick(delta, eye)
 	_burn_the_player(delta)
 	if _auto_cut > 0.0 and _phase == Phase.FIGHT:
 		_cut_clock -= delta

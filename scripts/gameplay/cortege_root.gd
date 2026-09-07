@@ -445,12 +445,15 @@ func _mount_stern() -> void:
 	_stern = CortegeStern.make(STERN_TUNING)
 	_stern.name = "Stern"
 	_stern.show_flames = _stern_flames
+	_stern.corridor_tuning = TUNING
 	_stern.build()
 	_stern.setup(_bullets, _vfx, _player as PlayerFighterController)
 	_stern.finished.connect(_on_stern_finished)
 	_stern.engine_lost.connect(_on_engine_lost)
 	_stern.core_exposed.connect(_on_core_exposed)
 	_stern.shockwave.connect(_on_stern_shockwave)
+	# La même récompense qu'au corridor : la pièce dit ce qu'elle vaut, le niveau ne le déduit pas.
+	_stern.turret_destroyed.connect(_on_turret_destroyed)
 	# ⚠️ ENFANT DU DÉCOR, PAS DU NIVEAU. C'est ce qui la rend solidaire des 500 m qui la précèdent :
 	# elle défile avec eux, à leur vitesse, parce qu'elle EST le même vaisseau. Posée sous le
 	# niveau, elle serait immobile pendant que la coque glisse — exactement l'image d'une
