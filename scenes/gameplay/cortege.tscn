@@ -12,6 +12,10 @@
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="17_spawner"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_cortege_approach.tres" id="18_approach"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_cortege_patrol.tres" id="19_patrol"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_stern_a.tres" id="20_stern_a"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_stern_b.tres" id="21_stern_b"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_stern_c.tres" id="22_stern_c"]
+[ext_resource type="Resource" path="res://resources/encounters/wave_cortege_stern_d.tres" id="23_stern_d"]
 [ext_resource type="Script" path="res://scripts/debug/screen_capture.gd" id="10_capture"]
 [ext_resource type="PackedScene" path="res://scenes/ui/fighter_hud.tscn" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/pickups/pickup_manager.gd" id="12_pickups"]
@@ -121,6 +125,49 @@ player_path = NodePath("../PlayerFighter")
 [node name="PatrolSpawner" type="Node" parent="."]
 script = ExtResource("17_spawner")
 wave = ExtResource("19_patrol")
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+
+; LES QUATRE SALVES DE POUPE — un spawner par salve, tous endormis.
+;
+; ⚠️ QUATRE ET NON UN, PARCE QUE LES SALVES SONT EVENEMENTIELLES. Un seul spawner
+; deroulerait une ligne de temps : la salve du second moteur tomberait a la
+; trente-huitieme seconde que le joueur l'ait arrache ou non. Ici chacune attend
+; SON evenement — ouverture des verrous, chaque arrachement, exposition du
+; central — et `begin()` existe exactement pour ca (« demarre une vague montee en
+; veille », ecrit pour le champ d'asteroides du niveau 1).
+;
+; ⚠️ ET `autostart = false` EST CE QUI LES REND GRATUITES JUSQUE-LA. Le pool est
+; peuple au montage du niveau, comme tous les autres : zero `instantiate()` en
+; cours de partie (spec §26.1), et pas une coque avant l'evenement.
+;
+; ⚠️ AUCUNE APRES LA COUPURE DE PROPULSION. La salve D est la derniere du niveau :
+; le silence de la spec §17 est intouchable (decision D4 de l'operateur).
+[node name="SternSalvoA" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("20_stern_a")
+autostart = false
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+
+[node name="SternSalvoB" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("21_stern_b")
+autostart = false
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+
+[node name="SternSalvoC" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("22_stern_c")
+autostart = false
+bullet_manager_path = NodePath("../BulletManager")
+player_path = NodePath("../PlayerFighter")
+
+[node name="SternSalvoD" type="Node" parent="."]
+script = ExtResource("17_spawner")
+wave = ExtResource("23_stern_d")
+autostart = false
 bullet_manager_path = NodePath("../BulletManager")
 player_path = NodePath("../PlayerFighter")
 

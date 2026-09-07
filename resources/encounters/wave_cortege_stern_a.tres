@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3]
+
+; ============================================================================
+; SALVE A — a l'ouverture des verrous.
+;
+; ⚠️ ELLE APPREND LA PHASE SOUS PRESSION LEGERE. C'est la salve qui accompagne la
+; replique de Lyra et la designation des ancrages : si elle mordait vraiment, le
+; joueur passerait les six secondes ou le niveau lui EXPLIQUE quoi faire a
+; esquiver au lieu d'ecouter. Des eclaireurs et deux arcs, rien qui oblige a
+; quitter le tiers bas de l'ecran.
+;
+; ⚠️ ET ELLE NAIT HORS DU CADRE. Le cadre visible monte a `y = +12,28`
+; (`GameplayPlane.visible_frame`) : une naissance a 8,5 — la valeur par defaut de
+; `WaveEntry` — se ferait EN PLEIN ECRAN. Defaut corrige le 2026-09-06 sur les
+; cent quinze points de naissance du jeu ; il ne se re-introduit pas ici.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout.tscn" id="3_scout"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_arc.tscn" id="4_arc"]
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_entry")
+time_offset = 1.6
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(-7, 15)
+count = 3
+spacing = 1.1
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_entry")
+time_offset = 2.4
+enemy_scene = ExtResource("3_scout")
+spawn_plane_position = Vector2(7, 15)
+count = 3
+spacing = 1.1
+
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_entry")
+time_offset = 7.5
+enemy_scene = ExtResource("4_arc")
+spawn_plane_position = Vector2(0, 15)
+count = 2
+spacing = 1.8
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("s1"), SubResource("s2"), SubResource("s3")]

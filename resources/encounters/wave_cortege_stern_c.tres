@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3]
+
+; ============================================================================
+; SALVE C — au second moteur arrache.
+;
+; ⚠️ LES MINES REFUSENT UNE ZONE, ELLES NE POURSUIVENT PAS. C'est ce qui les rend
+; utiles ici et nulle part ailleurs dans la phase : le joueur a deja une colonne
+; de poussee a eviter, les mines lui en ferment une seconde, et il ne reste plus
+; qu'un couloir pour atteindre les verrous du dernier lateral.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/needle_scout_raider.tscn" id="3_raider"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/choir_mine.tscn" id="4_mine"]
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_entry")
+time_offset = 0.6
+enemy_scene = ExtResource("3_raider")
+spawn_plane_position = Vector2(-5, 15)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_entry")
+time_offset = 1.2
+enemy_scene = ExtResource("3_raider")
+spawn_plane_position = Vector2(5, 15)
+count = 3
+spacing = 0.8
+
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_entry")
+time_offset = 3.6
+enemy_scene = ExtResource("4_mine")
+spawn_plane_position = Vector2(-12, 15)
+count = 2
+spacing = 2.4
+
+[sub_resource type="Resource" id="s4"]
+script = ExtResource("2_entry")
+time_offset = 4.2
+enemy_scene = ExtResource("4_mine")
+spawn_plane_position = Vector2(12, 15)
+count = 2
+spacing = 2.4
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("s1"), SubResource("s2"), SubResource("s3"), SubResource("s4")]

@@ -47,6 +47,10 @@ var _citadel: CortegeCitadel = null
 var _stern: CortegeStern = null
 ## Palier d'escalade forcé par `--stern-tier=N`. Zéro : le jeu le fait monter tout seul.
 var _stern_tier: int = 0
+## Les salves qui n'ont pas encore servi. ⚠️ UNE LISTE QUI SE VIDE, PAS UN COMPTEUR : les quatre
+## évènements ne sont pas garantis de survenir dans l'ordre — un joueur peut arracher les deux
+## latéraux dans la même seconde — et un compteur les lirait comme un seul.
+var _salvos_left: Array[String] = ["SternSalvoA", "SternSalvoB", "SternSalvoC", "SternSalvoD"]
 ## Voir `--stern-cut=` : -1 en jeu normal.
 var _stern_cut: float = -1.0
 ## Voir `--no-flames`.
@@ -444,6 +448,7 @@ func _on_survey_finished() -> void:
 		# consigne en regardant une carène où rien ne la désignait, et l'oubliait avant qu'elle
 		# ne devienne vraie. Dite ici, elle tombe sur l'image des verrous qui s'allument.
 		say(&"stern_seen")
+		_launch_salvo("SternSalvoA")
 
 ## Monte la poupe et lui passe la main.
 func _mount_stern() -> void:
@@ -492,8 +497,10 @@ func _on_engine_lost(remaining: int) -> void:
 	# avant qu'il n'ait lieu.
 	if remaining == 2:
 		say(&"engine_down")
+		_launch_salvo("SternSalvoB")
 	elif remaining == 1:
 		say(&"engine_transfer")
+		_launch_salvo("SternSalvoC")
 
 ## ⚠️ ELLE PASSE PAR `boom()` ET NON PAR LA CAMÉRA DIRECTEMENT. Le runtime sait où est l'œil et
 ## sait aussi ne rien faire quand il n'y en a pas — un banc monte la poupe sans caméra.
@@ -503,6 +510,25 @@ func _on_stern_shockwave(trauma: float) -> void:
 
 func _on_core_exposed() -> void:
 	print("[Poupe] verrous centraux ouverts")
+	_launch_salvo("SternSalvoD")
+
+## Lâche une salve de poupe. ⚠️ ELLE EST ÉVÉNEMENTIELLE, PAS CHRONOMÉTRÉE, et c'est toute la
+## raison des quatre semeurs : une seule ligne de temps ferait tomber la salve du second moteur
+## à la trente-huitième seconde, que le joueur l'ait arraché ou non.
+##
+## ⚠️ ET ELLE NE SE RELANCE PAS. `begin()` sur un semeur déjà parti remettrait son horloge à
+## zéro et le referait cracher son pool entier — c'est-à-dire le respawn que la spec §19
+## interdit, obtenu par accident. Le nom est retiré du jeu dès qu'il a servi.
+func _launch_salvo(nom: String) -> void:
+	if not _salvos_left.has(nom):
+		return
+	_salvos_left.erase(nom)
+	var spawner := get_node_or_null(nom) as WaveSpawner
+	if spawner == null:
+		push_warning("[Poupe] salve %s absente de la scène" % nom)
+		return
+	spawner.begin()
+	print("[Poupe] salve %s — %d coque(s)" % [nom, spawner.pending()])
 
 ## ⚠️ ICI LE NIVEAU SE TAIT, ET C'EST UN LIVRABLE. La spec demande cinq à huit secondes sans une
 ## vague, sur trois berceaux vides — et depuis la décision D3 du plan, c'est ce silence qui porte

@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3]
+
+; ============================================================================
+; SALVE D — quand le central s'expose. Le pic de la phase, et le dernier.
+;
+; ⚠️ RIEN N'ENTRE APRES ELLE. La spec §17 demande un silence quand la propulsion
+; meurt, et l'operateur l'a declare intouchable (decision D4, 2026-09-07). Cette
+; salve est donc la derniere du niveau : ce qui vole encore finit sa trajectoire,
+; et plus une seule coque ne nait.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/crescent_interceptor.tscn" id="3_cres"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/null_maw.tscn" id="4_maw"]
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_entry")
+time_offset = 0.5
+enemy_scene = ExtResource("3_cres")
+spawn_plane_position = Vector2(-8, 15)
+count = 3
+spacing = 0.7
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_entry")
+time_offset = 0.9
+enemy_scene = ExtResource("3_cres")
+spawn_plane_position = Vector2(8, 15)
+count = 3
+spacing = 0.7
+
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_entry")
+time_offset = 3.2
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(-3, 15)
+count = 2
+spacing = 2.0
+
+[sub_resource type="Resource" id="s4"]
+script = ExtResource("2_entry")
+time_offset = 4.0
+enemy_scene = ExtResource("4_maw")
+spawn_plane_position = Vector2(3, 15)
+count = 2
+spacing = 2.0
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("s1"), SubResource("s2"), SubResource("s3"), SubResource("s4")]

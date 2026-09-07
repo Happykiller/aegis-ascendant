@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="WaveData" load_steps=5 format=3]
+
+; ============================================================================
+; SALVE B — au premier moteur arrache.
+;
+; ⚠️ ELLE OBLIGE A CESSER DE TIRER SUR LES VERROUS. Un porteur de bouclier plus
+; des sangsues : ni l'un ni les autres ne meurent d'un tir distrait, et le joueur
+; qui les ignore se retrouve avec une escorte collee au chasseur pendant qu'il
+; vise une piece de deux metres. C'est le premier moment de la phase ou l'ordre
+; des choses compte.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/wave_data.gd" id="1_wave"]
+[ext_resource type="Script" path="res://resources/data/wave_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/leech_drone.tscn" id="3_leech"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/shield_carrier.tscn" id="4_carrier"]
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("2_entry")
+time_offset = 0.8
+enemy_scene = ExtResource("3_leech")
+spawn_plane_position = Vector2(-10, 15)
+count = 3
+spacing = 0.9
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("2_entry")
+time_offset = 1.4
+enemy_scene = ExtResource("3_leech")
+spawn_plane_position = Vector2(10, 15)
+count = 3
+spacing = 0.9
+
+; Le porteur sort par UN : sa presence pese sans qu'il faille le compter comme un
+; eclaireur. Meme regle qu'a la patrouille du corridor.
+[sub_resource type="Resource" id="s3"]
+script = ExtResource("2_entry")
+time_offset = 4.0
+enemy_scene = ExtResource("4_carrier")
+spawn_plane_position = Vector2(0, 15)
+count = 1
+spacing = 1.0
+
+[resource]
+script = ExtResource("1_wave")
+entries = [SubResource("s1"), SubResource("s2"), SubResource("s3")]
