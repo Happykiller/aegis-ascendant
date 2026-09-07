@@ -68,18 +68,41 @@ func test_the_first_section_is_under_the_player_and_the_last_is_far_ahead() -> v
 		"au depart le premier troncon est DEVANT le joueur, pas sous lui — il faut le voir venir")
 	assert_true(FlybyScript.section_z_at(4, 100.0, 0.0) < -300.0, "le dernier, loin devant")
 
-## ⚠️ Le survol ne s'arrete qu'une fois le lead-in ET les cinq troncons parcourus. Sans ça, la
-## traversee se terminerait 25 secondes trop tot, sur le quatrieme.
-func test_the_survey_ends_only_after_the_lead_in_and_every_section() -> void:
+## ⚠️ LE SURVOL NE S'ARRETE PLUS A 500 M, IL FREINE JUSQU'A LA POUPE — et le test disait
+## l'ancienne regle. Avant le 2026-09-06 il se terminait sec une fois le lead-in et les cinq
+## troncons parcourus ; la phase finale montait alors sa PROPRE plateforme, qui glissait dans le
+## cadre et venait se ranger. « Il y a une espece de plateforme qui amene les moteurs a la fin,
+## alors que les moteurs doivent etre rattaches au vaisseau » (operateur, en regardant). Les
+## groupes sont boulonnes a la carene depuis toujours : ce qui doit s'arreter, c'est le
+## DEFILEMENT.
+func test_the_survey_brakes_to_the_stern_instead_of_stopping_at_the_last_section() -> void:
 	var f := _flyby()
 	f.reveal(true)
-	var total := f.section_length * float(f.section_count) + FlybyScript.LEAD_IN
-	f._travelled = total - 1.0
+	var cinq := f.section_length * float(f.section_count) + FlybyScript.LEAD_IN
+	assert_true(f.stop_at() > cinq,
+		"il continue au-dela des cinq troncons (%.1f contre %.1f) — la poupe est plus loin"
+			% [f.stop_at(), cinq])
+	f._travelled = cinq
 	f._process(0.0)
-	assert_false(f._finished, "a une unite de la fin, le survol continue")
-	f._travelled = total + 1.0
+	assert_false(f._finished, "au bout du cinquieme troncon, la traversee n'est pas finie")
+	# ⚠️ ET IL RALENTIT AVANT DE S'ARRETER : un arret net se lit comme un accrochage.
+	# ⚠️ LE TEMOIN DE CROISIERE SE PREND LOIN DE LA FIN. Pris au bout du cinquieme troncon, il
+	# est DEJA dans la zone de freinage — le vaisseau y ralentit depuis vingt-quatre unites — et
+	# la comparaison rendait un rapport de 0,875, c'est-a-dire rien.
+	f._travelled = f.stop_at() - 2.0
+	var avant := f._travelled
+	f._process(1.0)
+	var pas_freine := f._travelled - avant
+	f._travelled = f.stop_at() - FlybyScript.STERN_BRAKE - 40.0
+	avant = f._travelled
+	f._process(1.0)
+	var pas_plein := f._travelled - avant
+	assert_true(pas_freine < pas_plein * 0.6,
+		"a deux unites de l'arret il avance %.2f contre %.2f en croisiere"
+			% [pas_freine, pas_plein])
+	f._travelled = f.stop_at()
 	f._process(0.0)
-	assert_true(f._finished, "au-dela, il est termine")
+	assert_true(f._finished, "et il se termine a la station de la poupe")
 	f.free()
 
 func test_the_section_under_the_player_follows_the_distance_travelled() -> void:

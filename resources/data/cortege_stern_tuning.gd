@@ -51,10 +51,14 @@ extends Resource
 ## c'est l'ANCRAGE, posé sur sa face avant. C'est `anchor_plane_y()` que `validate()` garde.
 @export var hold_plane_y: float = 10.50
 
-## Combien de temps la poupe met à entrer dans le cadre et à s'arrêter.
-@export var arrival_time: float = 3.20
-## De combien plus haut elle part, en `y` de plan, avant de descendre à `hold_plane_y`.
-@export var arrival_rise: float = 22.0
+## La station de la poupe sur la carène, en mètres depuis la pointe de proue.
+##
+## ⚠️ ELLE REMPLACE UNE « ARRIVÉE », ET C'EST TOUTE LA CORRECTION. La poupe se montait à part et
+## glissait dans le cadre pour venir se ranger : « il y a une espèce de plateforme qui amène les
+## moteurs à la fin, alors que les moteurs doivent être rattachés au vaisseau » (opérateur, en
+## regardant). Elle est désormais posée sur la coque, huit mètres après le cinquième tronçon, et
+## elle défile avec elle. Ce qui s'arrête, c'est le DÉFILEMENT.
+@export var station: float = 508.0
 
 ## Les ancrages. ⚠️ TROIS PAR MOTEUR LATÉRAL, QUATRE AU CENTRAL (spec §7).
 @export var lateral_anchors: int = 3
@@ -306,11 +310,17 @@ func validate() -> PackedStringArray:
 		errors.append("les deux verrous d'une rangée sont à %.2f m l'un de l'autre pour %.2f m de large : ils se liraient comme une seule pièce"
 			% [socket_x * 2.0, anchor_size.x])
 
-	# --- INVARIANT 3 : LA POUPE EST DANS LE CADRE, ET ELLE Y ENTRE -------
-	if arrival_rise <= 0.0:
-		errors.append("arrival_rise doit être > 0 : la poupe apparaîtrait d'un coup au lieu d'entrer")
-	if arrival_time <= 0.0:
-		errors.append("arrival_time doit être > 0")
+	# --- INVARIANT 3 : LA POUPE EST SUR LA COQUE, PAS DEVANT ELLE --------
+	#
+	# ⚠️ HUIT MÈTRES APRÈS LE CINQUIÈME TRONÇON, ET PAS AVANT : posée sur les 500 m, elle
+	# entrerait DANS le corridor et ses berceaux traverseraient le bordé. Posée trop loin, un
+	# trou de coque sépare la poupe du vaisseau qu'elle termine.
+	if station < 500.0:
+		errors.append("la poupe est à la station %.1f : elle entrerait dans le corridor, qui court jusqu'à 500"
+			% station)
+	if station > 520.0:
+		errors.append("la poupe est à la station %.1f : un trou de coque la séparerait du vaisseau qu'elle termine"
+			% station)
 
 	# --- INVARIANT 4 : LA SÉQUENCE DE DÉTACHEMENT SE LIT DANS L'ORDRE ----
 	#

@@ -172,25 +172,27 @@ func test_the_central_engine_opens_only_when_both_sides_are_gone() -> void:
 	assert_false(SternScript.core_is_exposed(1), "un seul : toujours verrouille")
 	assert_true(SternScript.core_is_exposed(2), "les deux : l'energie converge, il s'ouvre")
 
-## ⚠️ LA POUPE ENTRE DANS LE CADRE, ELLE N'Y APPARAIT PAS — meme regle que les vagues d'ennemis,
-## et elle vaut d'autant plus pour une masse qui remplit l'ecran.
-func test_the_stern_arrives_from_outside_the_frame() -> void:
-	var debut := SternScript.arrival_y(0.0, TUNING.hold_plane_y, TUNING.arrival_rise,
-		TUNING.arrival_time)
-	assert_true(debut > 12.28,
-		"a t = 0 la poupe est a y = %.2f, au-dela du bord haut de l'ecran (12,28)" % debut)
-	var fin := SternScript.arrival_y(TUNING.arrival_time, TUNING.hold_plane_y,
-		TUNING.arrival_rise, TUNING.arrival_time)
-	assert_almost_eq(fin, TUNING.hold_plane_y, 0.001, "et elle s'arrete a sa station")
-	# Elle DESCEND, sans repartir : une entree qui rebondirait se lirait comme un defaut.
-	var precedent := debut
-	var t := 0.0
-	while t <= TUNING.arrival_time:
-		var y := SternScript.arrival_y(t, TUNING.hold_plane_y, TUNING.arrival_rise,
-			TUNING.arrival_time)
-		assert_true(y <= precedent + 0.0001, "elle ne remonte jamais (t = %.2f)" % t)
-		precedent = y
-		t += 0.1
+## ⚠️ LA POUPE NE « SE POSE » PLUS : ELLE EST SUR LA COQUE. Ce test gardait une entree en scene
+## — la poupe glissait de +28 a +6,5 en trois secondes — et c'etait le defaut : « il y a une
+## espece de plateforme qui amene les moteurs a la fin, alors que les moteurs doivent etre
+## rattaches au vaisseau » (operateur, en regardant). Elle est desormais posee a la station 508,
+## huit metres apres le cinquieme troncon, et c'est le DEFILEMENT qui s'arrete devant elle.
+func test_the_stern_is_bolted_to_the_hull_not_flown_in() -> void:
+	assert_true(TUNING.station >= 500.0,
+		"elle est APRES les cinq troncons (%.1f) — sinon ses berceaux traverseraient le borde"
+			% TUNING.station)
+	assert_true(TUNING.station <= 520.0,
+		"et pas si loin qu'un trou de coque l'en separe (%.1f)" % TUNING.station)
+	for valeur in [420.0, 900.0]:
+		var tuning: CortegeSternTuning = TUNING.duplicate()
+		tuning.station = valeur
+		assert_true(_says(tuning, "station"),
+			"une station a %.0f est REFUSEE" % valeur)
+	# ⚠️ ET ELLE N'A PLUS AUCUN MOYEN DE SE DEPLACER TOUTE SEULE : la fonction qui la faisait
+	# glisser n'existe plus, et son absence est le garde-fou.
+	var poupe := track(SternScript.new()) as CortegeStern
+	assert_false(poupe.has_method("arrival_y"),
+		"aucune trajectoire d'arrivee ne subsiste : ce qui bouge, c'est la coque")
 
 # --- Ce que le moteur NE fait pas ------------------------------------------------
 

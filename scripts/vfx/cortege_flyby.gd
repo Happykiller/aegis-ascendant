@@ -71,11 +71,19 @@ const LEAD_IN := 22.0
 
 signal section_entered(index: int)
 signal survey_finished()
+## La poupe entre dans le cadre : le décor commence à freiner. ⚠️ ÉMIS BIEN AVANT L'ARRÊT — c'est
+## le moment de monter ce qui doit s'y trouver, pas celui de jouer la phase.
+signal stern_in_sight()
 
 ## Vitesse de défilement, en unités/seconde. Posée par le niveau depuis `CortegeTuning` : elle
 ## commande la durée, donc les fenêtres de tir, donc tout l'équilibrage.
 var scroll_speed: float = 2.4
 var section_length: float = 100.0
+## La station des berceaux de poupe, et la hauteur de plan où ils doivent s'immobiliser.
+## ⚠️ POSÉES PAR LE NIVEAU depuis `long_cortege_stern.tres` : le survol ne connaît pas la poupe,
+## il connaît une station où s'arrêter.
+var stern_station: float = 508.0
+var stern_hold: float = 6.47
 var section_count: int = 5
 
 ## Le nœud qui porte les cinq tronçons. ⚠️ C'EST LUI QU'ON DÉPLACE, ET LUI SEUL. La forge a
@@ -83,6 +91,14 @@ var section_count: int = 5
 ## chaque tronçon séparément les emmènerait, mais déplacer le décor entier revient au même en
 ## une seule écriture — et surtout, ça ne peut pas désynchroniser un marqueur de sa section.
 var _decor: Node3D
+## ⚠️ LE SURVOL NE S'ARRÊTE PLUS NET À 500 M, IL FREINE JUSQU'À LA POUPE. Avant le 2026-09-06 il
+## se terminait sec et la phase finale montait sa propre plateforme, qui GLISSAIT dans le cadre
+## et venait se ranger — « il y a une espèce de plateforme qui amène les moteurs à la fin, alors
+## que les moteurs doivent être rattachés au vaisseau » (opérateur, en regardant). Il avait
+## raison, et le défaut était dans la mise en scène, pas dans la géométrie : les groupes sont
+## boulonnés à la carène depuis toujours. Ce qui doit s'arrêter, c'est le DÉFILEMENT — le
+## chasseur se met en station devant la poupe, il n'accueille pas un module qui arrive.
+var _braking: bool = false
 var _sections: Array[Node3D] = []
 var _sky: MeshInstance3D
 var _is_stand_in: bool = false
@@ -119,7 +135,7 @@ func skip_to_section(index: int) -> void:
 ## ce qui monte la poupe. Poser `_travelled` sur la valeur finale sauterait l'émission, et le
 ## drapeau ouvrirait un niveau sans fin — silencieusement.
 func skip_to_end() -> void:
-	_travelled = section_length * float(section_count) + LEAD_IN - 0.5
+	_travelled = stop_at() - STERN_BRAKE - 0.5
 	_entered = section_count - 1
 	_finished = false
 	_place_sections()
@@ -241,15 +257,37 @@ func _place_sections() -> void:
 func _process(delta: float) -> void:
 	if _finished:
 		return
-	_travelled += scroll_speed * delta
+	# ⚠️ LE FREINAGE EST EN RACINE, ET LA DIFFÉRENCE EST QU'UNE DES DEUX N'ARRIVE JAMAIS. Un
+	# facteur linéaire en distance donne une approche exponentielle qui ne touche pas l'arrêt en
+	# temps fini : le vaisseau se traînerait indéfiniment devant ses moteurs. La racine EST la
+	# décélération constante, elle atteint zéro, et elle se lit comme un chasseur qui se met en
+	# station. Même courbe que le verrou de la Citadelle, et pour la même raison.
+	var reste := stop_at() - _travelled
+	var facteur := 1.0
+	if reste <= STERN_BRAKE:
+		if not _braking:
+			_braking = true
+			stern_in_sight.emit()
+		facteur = sqrt(clampf(reste / STERN_BRAKE, 0.0, 1.0))
+	_travelled += scroll_speed * facteur * delta
 	_place_sections()
 	var section := current_section()
 	if section != _entered:
 		_entered = section
 		section_entered.emit(section)
-	if _travelled >= section_length * float(section_count) + LEAD_IN:
+	if _travelled >= stop_at() - 0.02:
+		_travelled = stop_at()
+		_place_sections()
 		_finished = true
 		survey_finished.emit()
+
+## Où le défilement s'immobilise, en distance parcourue. ⚠️ C'EST LA POUPE QUI LA FIXE : la
+## station de ses berceaux, moins la hauteur de plan où on veut les voir, plus l'entrée en scène.
+func stop_at() -> float:
+	return LEAD_IN + stern_station - stern_hold
+
+## À combien de la fin le vaisseau commence à ralentir.
+const STERN_BRAKE := 26.0
 
 ## Le ciel du survol : même shader que le fond spatial, mais sur son chemin `deep_sky`.
 ## ⚠️ CE N'EST PAS UN RÉGLAGE, C'EST UN CHEMIN. Baisser l'intensité de la nébuleuse à zéro

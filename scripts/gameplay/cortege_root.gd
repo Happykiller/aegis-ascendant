@@ -91,6 +91,14 @@ func _ready() -> void:
 	_flyby.section_count = TUNING.section_count
 	_flyby.section_entered.connect(_on_section_entered)
 	_flyby.survey_finished.connect(_on_survey_finished)
+	# ⚠️ LE SURVOL FREINE JUSQU'À LA POUPE, IL NE S'ARRÊTE PLUS À 500 M : il lui faut donc savoir
+	# où elle est. Elle, en retour, ne bouge jamais d'elle-même — c'est la coque qui défile sous
+	# le chasseur, et la poupe en fait partie.
+	_flyby.stern_station = STERN_TUNING.station
+	_flyby.stern_hold = STERN_TUNING.hold_plane_y
+	# Elle se monte quand le vaisseau commence à freiner : encore hors du cadre, donc invisible,
+	# mais déjà solidaire de la carène quand elle y entre.
+	_flyby.stern_in_sight.connect(_mount_stern)
 	# ⚠️ LE SOCLE D'ABORD : il monte les services, le runtime de combat, la pause et les calques
 	# de debug. Il ne s'appelle pas tout seul, et c'est voulu — un `super._ready()` oublié ne se
 	# voit pas à la lecture, une ligne manquante si.
@@ -421,20 +429,32 @@ func _on_pause_toggled(is_paused: bool) -> void:
 func _on_survey_finished() -> void:
 	if _finished or _defeated:
 		return
-	_mount_stern()
+	# ⚠️ ELLE EST DÉJÀ LÀ, ET DEPUIS VINGT-SIX UNITÉS. Ce que le survol annonce ici n'est pas une
+	# arrivée : c'est le vaisseau qui a fini de freiner, donc l'instant où les verrous s'ouvrent.
+	if _stern != null:
+		_stern.begin()
 
 ## Monte la poupe et lui passe la main.
 func _mount_stern() -> void:
 	_stern = CortegeStern.make(STERN_TUNING)
 	_stern.name = "Stern"
 	_stern.show_flames = _stern_flames
-	_stern.build_greybox()
+	_stern.build()
 	_stern.setup(_bullets, _vfx, _player as PlayerFighterController)
 	_stern.finished.connect(_on_stern_finished)
 	_stern.engine_lost.connect(_on_engine_lost)
 	_stern.core_exposed.connect(_on_core_exposed)
 	_stern.shockwave.connect(_on_stern_shockwave)
-	add_child(_stern)
+	# ⚠️ ENFANT DU DÉCOR, PAS DU NIVEAU. C'est ce qui la rend solidaire des 500 m qui la précèdent :
+	# elle défile avec eux, à leur vitesse, parce qu'elle EST le même vaisseau. Posée sous le
+	# niveau, elle serait immobile pendant que la coque glisse — exactement l'image d'une
+	# plateforme qui attend qu'on vienne s'y ranger, et c'est le défaut qu'on corrige.
+	var sections := _flyby.sections()
+	if sections.is_empty() or sections[0].get_parent() == null:
+		add_child(_stern)
+	else:
+		sections[0].get_parent().add_child(_stern)
+		_stern.position = Vector3(0.0, 0.0, -STERN_TUNING.station)
 	# ⚠️ LES MOTEURS SONT LES PROTAGONISTES (spec §19) : « je réduirais énormément les ennemis,
 	# pas de respawn ». Les deux nuées du survol continuaient de produire pendant toute la phase
 	# finale — la `PatrolSpawner` en a 209 en réserve — et le silence du §17 aurait été peuplé.

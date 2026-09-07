@@ -26,14 +26,17 @@ signal core_exposed()
 ## cède. La secousse est le seul retour que le joueur reçoive du VAISSEAU lui-même.
 signal shockwave(trauma: float)
 
-enum Phase { ARRIVAL, FIGHT, DONE }
+## ⚠️ `APPROACH` N'EST PLUS UNE ANIMATION, C'EST UNE ATTENTE. La poupe existe et défile avec la
+## coque bien avant d'être jouable ; ses verrous restent fermés tant que le vaisseau n'a pas fini
+## de freiner. Sans cette attente, le joueur pourrait travailler un ancrage encore à mi-écran.
+enum Phase { APPROACH, FIGHT, DONE }
 
 var tuning: CortegeSternTuning = null
 ## Voir `--no-flames` : la bissection de perf de la phase.
 var show_flames: bool = true
 
 var _engines: Array[CortegeEngine] = []
-var _phase: Phase = Phase.ARRIVAL
+var _phase: Phase = Phase.APPROACH
 var _clock: float = 0.0
 var _bullets: BulletManager = null
 var _player: PlayerFighterController = null
@@ -58,18 +61,16 @@ static func make(p_tuning: CortegeSternTuning) -> CortegeStern:
 
 # --- La règle, pure et testable sans arbre -------------------------------------
 
-## Où la poupe se trouve pendant son entrée, en `y` de plan, à `t` secondes.
+## ⚠️ IL N'Y A PLUS D'« ARRIVÉE », ET C'ÉTAIT LE DÉFAUT. La poupe se montait à part et GLISSAIT
+## dans le cadre pour venir se ranger — « il y a une espèce de plateforme qui amène les moteurs
+## à la fin, alors que les moteurs doivent être rattachés au vaisseau » (opérateur, en
+## regardant). Il avait raison : les trois groupes sont boulonnés à la carène depuis toujours,
+## et une poupe qui se déplace toute seule dit le contraire de ce que le niveau raconte.
 ##
-## ⚠️ ELLE ENTRE, ELLE N'APPARAÎT PAS. C'est la règle qu'on vient de poser sur les vagues
-## d'ennemis le même jour, et elle vaut d'autant plus pour une masse qui remplit l'écran :
-## une poupe qui éclot au milieu du cadre se lit comme un défaut d'affichage.
-static func arrival_y(t: float, rest: float, rise: float, duration: float) -> float:
-	if duration <= 0.0:
-		return rest
-	var k := clampf(t / duration, 0.0, 1.0)
-	# Une décélération, pas une interpolation linéaire : le vaisseau ARRIVE et s'arrête, il ne
-	# se pose pas à vitesse constante. Même famille de courbe que le freinage de la Citadelle.
-	return rest + rise * (1.0 - k) * (1.0 - k)
+## Elle est désormais **enfant du décor**, à la station 508 : elle défile avec les 500 mètres qui
+## la précèdent, à la même vitesse, parce qu'elle est le même vaisseau. Ce qui s'arrête à la fin,
+## c'est le DÉFILEMENT — le chasseur se met en station devant les moteurs (`CortegeFlyby`
+## freine en racine, comme le verrou de la Citadelle). Rien n'accoste.
 
 ## Le joueur est-il dans la colonne de poussée d'un moteur posé en `x` ?
 ##
@@ -97,7 +98,12 @@ func setup(bullets: BulletManager, vfx: VFXManager,
 	for engine in _engines:
 		engine.setup(bullets, vfx)
 
-func build_greybox() -> void:
+## Monte la poupe : son pont, puis les trois groupes.
+##
+## ⚠️ LE PONT EST ENCORE UNE BOÎTE, ET C'EST LE SEUL MORCEAU QUI LE RESTE. Les nacelles, les
+## berceaux et les verrous sont les pièces réduites ; la structure qui les porte attend le
+## LOT 6. Une dalle grise sous des pièces finies se voit — c'est dit plutôt que caché.
+func build() -> void:
 	# ⚠️ LE PONT DE POUPE EST BIEN PLUS BAS QUE LE CORRIDOR, et c'est ce qui rend la phase
 	# possible : un berceau et un moteur empilés font près de huit mètres, quand le corridor
 	# n'en offre que deux et demi sous le plan de vol. La carène descend à −12,60 ; on s'y pose.
@@ -128,6 +134,14 @@ func build_greybox() -> void:
 		add_child(engine)
 		_engines.append(engine)
 
+## Le vaisseau s'est immobilisé : les verrous des deux latéraux s'ouvrent.
+func begin() -> void:
+	if _phase != Phase.APPROACH:
+		return
+	_phase = Phase.FIGHT
+	_open_laterals()
+	print("[Poupe] le survol s'immobilise — les verrous des deux latéraux sont ouverts")
+
 func engines() -> Array[CortegeEngine]:
 	return _engines
 
@@ -146,13 +160,6 @@ func tick(delta: float, eye: Vector3) -> void:
 	if _phase == Phase.DONE:
 		return
 	_clock += delta
-	if _phase == Phase.ARRIVAL:
-		position.z = -arrival_y(_clock, tuning.hold_plane_y, tuning.arrival_rise,
-			tuning.arrival_time)
-		if _clock >= tuning.arrival_time:
-			_phase = Phase.FIGHT
-			_open_laterals()
-			print("[Poupe] trois groupes propulsifs en place — les verrous sont ouverts")
 	for engine in _engines:
 		engine.tick(delta, global_position + engine.position, eye)
 	_burn_the_player(delta)
