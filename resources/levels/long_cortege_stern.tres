@@ -35,6 +35,7 @@ anchor_score = 1400
 anchor_damaged_at = 0.45
 anchor_spark_interval = 0.55
 designation_time = 6.6
+tier_pressure = PackedFloat32Array(1, 1.25, 1.55, 1.9)
 socket_x = 3.7
 socket_y = 2.55
 socket_z_front = -3.95

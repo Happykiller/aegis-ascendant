@@ -94,6 +94,20 @@ extends Resource
 ## davantage : un marqueur qui reste devient une interface, et le jeu n'en a aucune sur ses cibles.
 @export var designation_time: float = 6.60
 
+## --- L'ESCALADE : ce que le vaisseau fait de ce qu'on lui prend ---------------
+##
+## ⚠️ ELLE EST ACCROCHÉE AUX ARRACHEMENTS ET NON À UN MINUTEUR, et c'est la décision D1 de
+## l'opérateur. Un minuteur punirait le joueur qui explore ; l'arrachement punit celui qui
+## avance, et c'est le seul des deux qui raconte quelque chose — « le Cortège se défend de ce
+## qu'on lui fait ».
+##
+## Quatre paliers : 0 à l'arrivée, 1 au premier moteur arraché, 2 au second, 3 quand le central
+## s'expose. La valeur multiplie la cadence de tir et la vitesse de rotation des tourelles.
+##
+## ⚠️ ELLE COMMENCE À 1,0 ET NE REDESCEND JAMAIS. Un palier qui retomberait quand une pièce
+## meurt rendrait la fin plus facile que le début.
+@export var tier_pressure: PackedFloat32Array = PackedFloat32Array([1.00, 1.25, 1.55, 1.90])
+
 ## --- LES SOCKETS D'ANCRAGE, RELEVÉS DANS LE BINAIRE LIVRÉ (LOT 5) -------------
 ##
 ## ⚠️ CE NE SONT PLUS DES COTES INVENTÉES. `berceau_moteur.glb` porte un contrat de repères en
@@ -239,6 +253,12 @@ func stack_top_y(central: bool) -> float:
 ## ⚠️ LE Z LOCAL COMPTE VERS LE BAS DE L'ÉCRAN : un socket en +z est plus PRÈS du joueur que le
 ## centre de son berceau. La rangée ARRIÈRE (+4,480) est donc la BASSE et l'AVANT (−3,950) la
 ## HAUTE — contre-intuitif tant qu'on lit « avant » comme « en bas de l'écran ».
+## La pression du palier `tier`, bornée à la table.
+func pressure_of(tier: int) -> float:
+	if tier_pressure.is_empty():
+		return 1.0
+	return tier_pressure[clampi(tier, 0, tier_pressure.size() - 1)]
+
 func anchor_rows() -> Vector2:
 	var k := scale_of(false)
 	return Vector2(hold_plane_y - socket_z_rear * k, hold_plane_y - socket_z_front * k)
@@ -408,6 +428,21 @@ func validate() -> PackedStringArray:
 	if anchor_spark_interval <= 0.0:
 		errors.append("anchor_spark_interval doit être > 0")
 	# ⚠️ UNE DÉSIGNATION QUI SURVIT À LA RÉPLIQUE N'EN EST PLUS UNE. Bornée haut, pas seulement bas.
+	if tier_pressure.size() != 4:
+		errors.append("tier_pressure doit avoir 4 paliers (0 à 3), pas %d" % tier_pressure.size())
+	elif not is_equal_approx(tier_pressure[0], 1.0):
+		errors.append("le palier 0 vaut 1,0 (la garnison de base), pas %.2f" % tier_pressure[0])
+	else:
+		for i in range(1, tier_pressure.size()):
+			if tier_pressure[i] <= tier_pressure[i - 1]:
+				errors.append("tier_pressure monte à chaque palier : %.2f après %.2f au palier %d"
+					% [tier_pressure[i], tier_pressure[i - 1], i])
+			# ⚠️ BORNÉE HAUT. Au-delà du double, l'intervalle de tir d'une lourde passe sous
+			# 0,15 s : ce n'est plus une tourelle, c'est un mur de balles, et le joueur ne peut
+			# plus lire d'où ça part.
+			if tier_pressure[i] > 2.0:
+				errors.append("tier_pressure[%d] = %.2f dépasse le double — mur de balles"
+					% [i, tier_pressure[i]])
 	if designation_time < 1.0 or designation_time > 12.0:
 		errors.append("designation_time (%.2f) doit tenir entre 1 et 12 s — c'est la durée d'une réplique"
 			% designation_time)

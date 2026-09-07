@@ -239,3 +239,89 @@ func test_the_garrison_is_a_fixed_list() -> void:
 	for i in un.size():
 		assert_true(un[i].is_equal_approx(deux[i]),
 			"le poste %d est le meme d'une lecture a l'autre" % i)
+
+# =============================================================================
+# 5. L'escalade — ce que le vaisseau fait de ce qu'on lui prend
+# =============================================================================
+
+## ⚠️ DEUX TABLEAUX PARALLELES SE DESYNCHRONISENT. `posts()` et `tiers()` sont produits par la
+## meme boucle et doivent avoir la meme taille : une entree qui gagnerait un miroir dans l'une
+## sans l'autre poserait le palier d'une piece sur sa voisine, en silence.
+func test_the_tier_table_matches_the_post_table() -> void:
+	assert_eq(Garrison.tiers().size(), Garrison.posts().size(),
+		"un palier par poste developpe")
+
+## Le palier 0 est une GARNISON, pas un echantillon : la poupe doit se defendre des l'arrivee.
+func test_the_ship_already_fights_on_arrival() -> void:
+	var eveilles := 0
+	for palier in Garrison.tiers():
+		if palier == 0:
+			eveilles += 1
+	assert_true(eveilles >= 4,
+		"%d pieces tirent des l'arrivee — la poupe n'attend pas d'etre entamee" % eveilles)
+
+## ⚠️ ET CHAQUE PALIER DOIT APPORTER QUELQUE CHOSE. Un palier vide serait une escalade
+## silencieuse : la cadence monterait sans qu'aucune piece ne s'allume, et le joueur ne saurait
+## pas que le vaisseau vient de reagir.
+func test_every_tier_wakes_something() -> void:
+	var paliers := Garrison.tiers()
+	for tier in range(1, 4):
+		var compte := 0
+		for palier in paliers:
+			if palier == tier:
+				compte += 1
+		assert_true(compte > 0, "le palier %d reveille au moins une piece" % tier)
+
+## ⚠️ LES LOURDES SONT LE DERNIER MOT. 520 PV et une fenetre de tir de 26 : les eveiller tot
+## ferait de l'arrivee le pic de la phase, et le central — le moment ou tout converge — serait
+## joue en descente.
+func test_the_heaviest_pieces_are_the_last_word() -> void:
+	var paliers := Garrison.tiers()
+	var postes := Garrison.posts()
+	for i in postes.size():
+		if int(postes[i].x) != CortegeTuning.TurretScale.HEAVY:
+			continue
+		assert_eq(paliers[i], 3,
+			"la lourde (%.2f ; %.2f ; %.2f) attend l'exposition du central" 
+				% [postes[i].y, postes[i].z, postes[i].w])
+
+## L'echelle de pression, telle que la Resource la livre.
+func test_the_pressure_ladder_only_climbs() -> void:
+	assert_eq(STERN.tier_pressure.size(), 4, "quatre paliers")
+	assert_true(is_equal_approx(STERN.pressure_of(0), 1.0),
+		"le palier 0 est la reference (%.2f)" % STERN.pressure_of(0))
+	for tier in range(1, 4):
+		assert_true(STERN.pressure_of(tier) > STERN.pressure_of(tier - 1),
+			"le palier %d (%.2f) est plus dur que le %d (%.2f)"
+				% [tier, STERN.pressure_of(tier), tier - 1, STERN.pressure_of(tier - 1)])
+	# ⚠️ ET UN PALIER HORS TABLE NE PLANTE PAS : `force_tier` vient d'un drapeau de banc.
+	assert_true(is_equal_approx(STERN.pressure_of(99), STERN.pressure_of(3)),
+		"un palier hors table se rabat sur le dernier")
+
+## ⚠️ LA PRESSION DIVISE L'INTERVALLE, ELLE NE REMPLACE PAS L'AFFAIBLISSEMENT. Une tourelle
+## eteinte par son noeud d'epine doit rester molle au dernier palier de la poupe — sinon abattre
+## un noeud cesserait de vouloir dire quelque chose la ou ca compte le plus.
+func test_pressure_and_weakening_compose() -> void:
+	var turret := CortegeTurret.make(CORRIDOR, 0, CortegeTuning.TurretScale.STANDARD)
+	var repos := turret.fire_slack()
+	turret.pressure = STERN.pressure_of(3)
+	var sous_pression := turret.fire_slack()
+	assert_true(sous_pression < repos,
+		"sous pression elle tire plus vite : %.3f contre %.3f" % [sous_pression, repos])
+	turret.weaken()
+	assert_true(turret.fire_slack() > sous_pression,
+		"et un noeud abattu la ralentit MEME au dernier palier : %.3f contre %.3f"
+			% [turret.fire_slack(), sous_pression])
+	turret.free()
+
+## ⚠️ UNE PIECE ENDORMIE NE VISE PAS. Ce n'est pas « pression zero » : un canon qui suit le
+## joueur annonce un tir. S'il ne vient jamais, le joueur apprend a ignorer le geste qui,
+## partout ailleurs dans ce niveau, precede un tir — et le telegraphe meurt pour tout le jeu.
+func test_a_sleeping_piece_is_a_target_but_not_a_threat() -> void:
+	var turret := CortegeTurret.make(CORRIDOR, 0, CortegeTuning.TurretScale.HEAVY)
+	turret.sleep_now()
+	assert_true(turret.asleep, "elle dort")
+	assert_true(turret.is_alive(), "et elle reste une cible : le joueur peut la nettoyer avant")
+	turret.wake()
+	assert_true(not turret.asleep, "le reveil la rend au jeu")
+	turret.free()

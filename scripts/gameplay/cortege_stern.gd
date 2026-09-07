@@ -188,6 +188,18 @@ func half_span() -> float:
 
 ## La garnison, pour le niveau (score) et les bancs. `null` tant qu'aucun réglage de corridor
 ## n'a été passé.
+## Monte l'escalade d'un cran. ⚠️ SANS GARNISON, ELLE NE FAIT RIEN ET NE PLANTE PAS : les bancs
+## montent la poupe sans réglage de corridor, et la phase doit rester jouable désarmée.
+func _escalate(tier: int) -> void:
+	if _garrison == null:
+		return
+	_garrison.set_tier(tier, tuning.pressure_of(tier))
+
+## Force un palier — bissection (`--stern-tier=N`). ⚠️ IL EXISTE PARCE QUE LE PALIER 3 ARRIVE
+## APRÈS DEUX ARRACHEMENTS : le juger demandait deux minutes de tir par essai.
+func force_tier(tier: int) -> void:
+	_escalate(tier)
+
 func garrison() -> CortegeSternGarrison:
 	return _garrison
 
@@ -333,6 +345,10 @@ func _on_engine_weakened(engine: CortegeEngine, lost: int) -> void:
 func _on_engine_detaching(engine: CortegeEngine) -> void:
 	_down += 1
 	print("[Poupe] arrachement du moteur %s" % engine.name)
+	# ⚠️ ICI ET NON SUR `detached` : le palier doit monter à l'instant où le joueur a gagné
+	# quelque chose, pas quatre secondes plus tard quand le moteur a fini de dériver. C'est la
+	# même règle que la réplique de Lyra, et elle a déjà été payée une fois sur ce fichier.
+	_escalate(_down)
 	shockwave.emit(tuning.detach_trauma_central if engine.is_central else tuning.detach_trauma)
 	engine_lost.emit(3 - _down)
 
@@ -357,6 +373,8 @@ func _on_engine_detached(_engine: CortegeEngine) -> void:
 				engine.open_vent()
 		print("[Poupe] l'énergie converge vers le moteur central — %d verrou(s) ouvert(s) et désigné(s)"
 			% designate_open())
+		# Le dernier palier : tout ce qui reste debout tire sans répit.
+		_escalate(3)
 		core_exposed.emit()
 	var partis := 0
 	for engine in _engines:

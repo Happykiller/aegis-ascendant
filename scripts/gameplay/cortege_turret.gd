@@ -291,6 +291,18 @@ var _burn_timer: float = 0.0
 var _health: float = 0.0
 var _alive: bool = true
 var _weakened: bool = false
+## La PRESSION : un multiplicateur de dangerosité posé par le niveau, jamais par la pièce.
+##
+## ⚠️ ELLE MULTIPLIE, ELLE NE REMPLACE PAS. L'affaiblissement d'un nœud d'épine reste une
+## division indépendante : une tourelle éteinte par son nœud doit rester molle même au dernier
+## palier de la poupe, sinon abattre un nœud cesserait de vouloir dire quelque chose.
+var pressure: float = 1.0
+## Endormie : la pièce est là, elle se laisse tirer dessus, mais elle ne vise ni ne tire.
+##
+## ⚠️ CE N'EST PAS « PRESSION ZÉRO ». Une tourelle à cadence nulle continuerait de suivre le
+## joueur du canon — elle annoncerait une menace qui ne vient jamais, et le joueur apprendrait
+## à ignorer le geste qui, partout ailleurs dans ce niveau, précède un tir.
+var asleep: bool = false
 ## Où le canon pointe À CET INSTANT. ⚠️ IL SUIT LE JOUEUR, MAIS IL A DU RETARD, et ce retard EST
 ## la difficulté : la tourelle ne rate pas parce qu'elle vise mal, elle rate parce qu'elle
 ## n'arrive pas à suivre. C'est une règle qu'on comprend en une seconde de jeu, sans qu'aucun
@@ -527,6 +539,19 @@ func is_engaged() -> bool:
 ## Une tourelle affaiblie continue donc de pivoter et de tirer — plus lentement, et son œil
 ## reste bas. C'est ce qui rend la récompense LISIBLE : on voit la même pièce, on la voit
 ## traîner, et on comprend d'un coup d'œil que quelque chose l'a abîmée.
+## Endort la pièce. ⚠️ L'ŒIL S'ÉTEINT AVEC, et c'est tout le télégraphe : le joueur doit
+## pouvoir lire, en regardant la coque, ce qui va lui tirer dessus et ce qui dort encore.
+func sleep_now() -> void:
+	asleep = true
+	_set_eye(EYE_DEAD)
+
+## La réveille. Rendue vraie seulement si elle dormait — le niveau compte les réveils.
+func wake() -> void:
+	if not asleep or not _alive:
+		return
+	asleep = false
+	_set_eye(EYE_SHOT)
+
 func weaken() -> void:
 	if _weakened:
 		return
@@ -602,6 +627,10 @@ func tick(delta: float, world: Vector3, here: Vector2) -> void:
 	# vision elles devraient tourner pour chercher à nous mettre dans leur axe de tir ».
 	if absf(here.y) > half * SEEK_SPAN_FACTOR:
 		return
+	# ⚠️ APRÈS le ciblage et AVANT le geste : une pièce endormie reste une CIBLE (le joueur peut
+	# la nettoyer avant qu'elle ne serve), mais elle ne bouge pas d'un degré.
+	if asleep:
+		return
 	_run_fire(delta, here)
 
 ## Le tir continu : tourner vers le joueur, puis lâcher une balle à cadence fixe.
@@ -651,12 +680,13 @@ func _turn_toward(delta: float, here: Vector2) -> void:
 ## `Vector2.DOWN` et ne bouge pas, donc un test « elle pivote encore » passerait au vert pour la
 ## mauvaise raison. Ici il n'y a que l'état et deux nombres.
 func turn_slack() -> float:
-	return tuning.turret_weakened_turn_factor if _weakened else 1.0
+	return (tuning.turret_weakened_turn_factor if _weakened else 1.0) * pressure
 
 ## Ce que l'affaiblissement ajoute au délai entre deux tirs. Un multiplicateur ≥ 1 : la tourelle
 ## tire toujours, elle tire moins.
 func fire_slack() -> float:
-	return tuning.turret_weakened_interval_factor if _weakened else 1.0
+	var base: float = tuning.turret_weakened_interval_factor if _weakened else 1.0
+	return base / maxf(pressure, 0.05)
 
 
 ## Oriente le canon sur l'axe visé. ⚠️ Le canon est enfant du marqueur, qui défile : on lui

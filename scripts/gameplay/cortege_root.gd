@@ -45,6 +45,8 @@ var _citadel: CortegeCitadel = null
 ## Citadelle : elle n'existe qu'APRÈS le survol. La monter au démarrage ferait payer trois
 ## moteurs et dix verrous pendant quatre minutes où personne ne les voit.
 var _stern: CortegeStern = null
+## Palier d'escalade forcé par `--stern-tier=N`. Zéro : le jeu le fait monter tout seul.
+var _stern_tier: int = 0
 ## Voir `--stern-cut=` : -1 en jeu normal.
 var _stern_cut: float = -1.0
 ## Voir `--no-flames`.
@@ -174,6 +176,9 @@ func _ready() -> void:
 		if arg == "--no-flames":
 			_stern_flames = false
 			print("[Cortege] poupe : panaches coupés (bissection de perf)")
+		if arg.begins_with("--stern-tier="):
+			_stern_tier = clampi(arg.substr(13).to_int(), 0, 3)
+			print("[Cortege] poupe : palier d'escalade %d forcé (banc)" % _stern_tier)
 		if arg == "--goto-stern":
 			_flyby.skip_to_end()
 			print("[Cortege] saut direct à la poupe")
@@ -475,6 +480,8 @@ func _mount_stern() -> void:
 			spawner.hold()
 	if _stern_cut > 0.0:
 		_stern.force_cut(_stern_cut)
+	if _stern_tier > 0:
+		_stern.force_tier(_stern_tier)
 	print("[Poupe] section terminale — trois groupes propulsifs, %d verrous"
 		% (2 * STERN_TUNING.lateral_anchors + STERN_TUNING.central_anchors))
 

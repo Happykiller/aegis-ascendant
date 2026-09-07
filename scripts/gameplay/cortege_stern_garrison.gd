@@ -38,8 +38,14 @@ signal turret_destroyed(turret: CortegeTurret)
 # `plan_y = -2,6` quand les verrous sont entre `-0,5` et `+3,8`. Elle se lit sous eux, jamais
 # devant. Vérifié par capture, pas par ce raisonnement.
 #
-# Format : [échelle, x, y, z]. Un `x` non nul pose la pièce des DEUX bords ; `x = 0` la pose une
-# seule fois sur l'axe. Coordonnées LOCALES à la poupe — qui valent le monde en x et y, et
+# Format : [échelle, x, y, z, palier]. Un `x` non nul pose la pièce des DEUX bords ; `x = 0` la
+# pose une seule fois sur l'axe. Le PALIER est le moment où elle s'éveille : 0 dès l'arrivée,
+# 1 au premier moteur arraché, 2 au second, 3 quand le central s'expose.
+#
+# ⚠️ LA RÉSERVE EST POSÉE DÈS LE DÉBUT, ELLE DORT. Elle n'apparaît pas : elle est là, visible,
+# l'œil éteint, et le joueur peut la nettoyer avant qu'elle ne serve — c'est ce qui fait de
+# l'escalade une chose qu'on peut PRÉVENIR plutôt qu'une punition. Les faire naître au palier
+# aurait donné une tourelle qui surgit du vide, et le décalage vaut mieux dépensé en réveil. Coordonnées LOCALES à la poupe — qui valent le monde en x et y, et
 # `z_local = 508 - s` en profondeur.
 const POSTS: Array = [
 	# --- Les légères, dans le bassin : elles gardent les berceaux -------------
@@ -47,10 +53,10 @@ const POSTS: Array = [
 	# légère sur le massif arrière tomberait à `plan_y = 9,2` : visible, tournée vers le joueur,
 	# et muette pour toujours. C'est le défaut symétrique de « elle est visible, pourtant je ne
 	# la touche pas », et il ne se voit sur aucun journal.
-	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, 7.00],
-	[CortegeTuning.TurretScale.LIGHT, 6.60, -11.85, 7.00],
-	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, -7.10],
-	[CortegeTuning.TurretScale.LIGHT, 10.00, -11.85, 7.00],
+	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, 7.00, 0],
+	[CortegeTuning.TurretScale.LIGHT, 6.60, -11.85, 7.00, 0],
+	[CortegeTuning.TurretScale.LIGHT, 13.60, -11.85, -7.10, 2],
+	[CortegeTuning.TurretScale.LIGHT, 10.00, -11.85, 7.00, 1],
 	# --- Les moyennes et les lourdes, sur le plateau du massif arrière --------
 	#
 	# ⚠️ ET ELLES SONT TOUTES LÀ PARCE QUE C'EST LE SEUL ENDROIT QUI PORTE UN SOCLE, mesuré en
@@ -65,12 +71,12 @@ const POSTS: Array = [
 	# font 0,40 à 1,20 m, le gradin 1,40 : aucune ne porte une pièce moyenne. Le plateau du
 	# massif (`y = -8,40`, `z <= -8,60`) est la seule surface franche de la poupe. Y ajouter des
 	# pads à l'avant est un travail de forge, pas de code — noté au plan.
-	[CortegeTuning.TurretScale.STANDARD, 17.40, -8.40, -10.20],
-	[CortegeTuning.TurretScale.STANDARD, 13.60, -8.40, -10.20],
+	[CortegeTuning.TurretScale.STANDARD, 17.40, -8.40, -10.20, 0],
+	[CortegeTuning.TurretScale.STANDARD, 13.60, -8.40, -10.20, 1],
 	# ⚠️ LES « GROSSES TOURS » DE LA DEMANDE EXISTENT DÉJÀ : les deux tours d'échange thermique
 	# (`x = ±5,40`, `z = -10,05`) et les quatre pylônes de rive. Les lourdes se posent entre
 	# elles, sur le même plateau — ce lot leur donne des voisines armées, il ne les remplace pas.
-	[CortegeTuning.TurretScale.HEAVY, 9.20, -8.40, -10.00],
+	[CortegeTuning.TurretScale.HEAVY, 9.20, -8.40, -10.00, 3],
 ]
 
 ## Le plateau du massif arrière, où se posent les pièces de l'escalade (LOT 2).
@@ -79,6 +85,9 @@ const AFT_PLATEAU_Y := -8.40
 var tuning: CortegeTuning = null
 
 var _turrets: Array[CortegeTurret] = []
+## Le palier d'éveil de chaque pièce, indexé comme `_turrets`.
+var _tiers: PackedInt32Array = PackedInt32Array()
+var _tier: int = 0
 var _camera_eye: Vector3 = Vector3.ZERO
 
 static func make(p_tuning: CortegeTuning) -> CortegeSternGarrison:
@@ -108,6 +117,19 @@ static func posts() -> Array[Vector4]:
 		out.append(Vector4(echelle, -x, y, z))
 	return out
 
+## Le palier d'éveil de chaque poste, dans le même ordre que [method posts].
+##
+## ⚠️ RENDU À PART ET NON DANS LE `Vector4`, faute de place : les quatre composantes sont déjà
+## prises par l'échelle et la position. Deux tableaux parallèles se désynchronisent — d'où le
+## test qui compare leurs tailles, et le fait qu'ils soient produits par la MÊME boucle.
+static func tiers() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for entry: Array in POSTS:
+		out.append(int(entry[4]))
+		if not is_zero_approx(float(entry[1])):
+			out.append(int(entry[4]))
+	return out
+
 ## Où la hitbox d'un poste tombe dans le plan de jeu, la poupe étant immobilisée.
 ##
 ## ⚠️ C'EST LA FONCTION QUI GARDE TOUT CE LOT, et elle existe parce que le piège a déjà coûté
@@ -134,7 +156,9 @@ static func fire_half_of(p_tuning: CortegeTuning, echelle: CortegeTuning.TurretS
 ## Monte la garnison. ⚠️ APPELÉE APRÈS QUE LA POUPE EST DANS L'ARBRE : `CortegeTurret._ready()`
 ## construit sa tête, et une tourelle montée hors de l'arbre resterait sans canon.
 func build(bullets: BulletManager, player: PlayerFighterController, vfx: VFXManager) -> void:
-	for post in posts():
+	var paliers := tiers()
+	for i in posts().size():
+		var post := posts()[i]
 		var echelle: CortegeTuning.TurretScale = int(post.x) as CortegeTuning.TurretScale
 		var turret := CortegeTurret.make(tuning, 0, echelle)
 		turret.serial = _turrets.size()
@@ -144,15 +168,50 @@ func build(bullets: BulletManager, player: PlayerFighterController, vfx: VFXMana
 		turret.destroyed.connect(_on_turret_destroyed)
 		add_child(turret)
 		_turrets.append(turret)
-	print("[Poupe] garnison — %d tourelles (%d légères, %d moyennes, %d lourdes)"
+		_tiers.append(paliers[i])
+		if paliers[i] > 0:
+			turret.sleep_now()
+	print("[Poupe] garnison — %d tourelles (%d légères, %d moyennes, %d lourdes), %d en réserve"
 		% [_turrets.size(), count_of(CortegeTuning.TurretScale.LIGHT),
 			count_of(CortegeTuning.TurretScale.STANDARD),
-			count_of(CortegeTuning.TurretScale.HEAVY)])
+			count_of(CortegeTuning.TurretScale.HEAVY), asleep_count()])
 
 func count_of(echelle: CortegeTuning.TurretScale) -> int:
 	var total := 0
 	for turret in _turrets:
 		if turret.turret_scale == echelle:
+			total += 1
+	return total
+
+## Passe au palier `tier` : réveille ce qui l'attendait et durcit tout ce qui vit.
+##
+## ⚠️ ELLE NE REDESCEND JAMAIS. « Le vaisseau réagit à ce qu'on lui prend » : un palier qui
+## retomberait quand une pièce meurt récompenserait le joueur deux fois et rendrait la fin plus
+## facile que le début — l'exact inverse de ce que l'escalade raconte.
+func set_tier(tier: int, pressure: float) -> int:
+	if tier <= _tier:
+		return 0
+	_tier = tier
+	var reveilles := 0
+	for i in _turrets.size():
+		var turret := _turrets[i]
+		if not turret.is_alive():
+			continue
+		turret.pressure = pressure
+		if _tiers[i] <= tier and turret.asleep:
+			turret.wake()
+			reveilles += 1
+	print("[Poupe] palier %d — %d tourelle(s) réveillée(s), cadence ×%.2f"
+		% [tier, reveilles, pressure])
+	return reveilles
+
+func tier() -> int:
+	return _tier
+
+func asleep_count() -> int:
+	var total := 0
+	for turret in _turrets:
+		if turret.asleep and turret.is_alive():
 			total += 1
 	return total
 
