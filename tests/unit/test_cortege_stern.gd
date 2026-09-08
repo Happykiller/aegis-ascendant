@@ -1130,3 +1130,49 @@ func _height_of(piece: Node3D) -> float:
 		bas = minf(bas, boite.position.y)
 		haut = maxf(haut, boite.position.y + boite.size.y)
 	return (haut - bas) if haut > bas else 0.0
+
+
+# =============================================================================
+# L'assise des pièces montées : le bas sur le repère, et rien qui flotte
+# =============================================================================
+
+## ⚠️ CE BANC EXISTE PARCE QU'UN CORRECTIF A ÉTÉ COPIÉ EN COMMENTAIRE ET PAS EN CODE.
+## `CortegeConduit._seat()` a été corrigé le 2026-09-08 — l'opérateur avait vu les conduites du
+## corridor flotter d'un mètre — et `CortegeStern._seat()` a hérité de sa JUSTIFICATION sans
+## hériter de sa méthode : il mesurait `mesh.position`, qui ne voit que le dernier maillon de la
+## chaîne, quand une pièce livrée est un sous-arbre à plusieurs étages.
+##
+## Ce que ça faisait flotter, mesuré : le collecteur **1,000 m** — la cote exacte du défaut
+## signalé sur le corridor, encore vivant sur la poupe — le pylône 0,409, la tour 0,359, le
+## flexible 0,330. Quatre familles sur cinq, aucune erreur, aucun test rouge.
+##
+## Le banc compare les DEUX mesures sur chaque kit de `DRESS` : si elles divergent, `_seat()`
+## doit prendre la bonne. C'est la seule forme qui attrape une régression de ce type, parce que
+## la mauvaise mesure est *plausible* — elle rend un nombre, jamais une erreur.
+func test_no_dressed_piece_floats_above_its_marker() -> void:
+	var vus := 0
+	for cle: String in CortegeStern.DRESS:
+		var packed: PackedScene = load(String(CortegeStern.DRESS[cle]))
+		if packed == null:
+			continue
+		var piece := track(packed.instantiate()) as Node3D
+		# La mesure fautive, gardee pour DIRE de combien elle se trompe.
+		var naif := INF
+		for node in _descendants(piece):
+			var mesh := node as MeshInstance3D
+			if mesh != null and mesh.mesh != null:
+				naif = minf(naif, mesh.position.y + mesh.mesh.get_aabb().position.y)
+		CortegeStern._seat(piece)
+		var bas := INF
+		for node in _descendants(piece):
+			var mesh := node as MeshInstance3D
+			if mesh == null or mesh.mesh == null:
+				continue
+			bas = minf(bas, piece.position.y + CortegeStern._piece_local_aabb(mesh, piece).position.y)
+		if is_inf(bas):
+			continue
+		vus += 1
+		assert_true(absf(bas) < 0.01,
+			"« %s » pose son BAS sur le repere (ecart %.3f m ; la mesure naive se trompait de %.3f)"
+			% [cle, bas, absf(bas - naif)])
+	assert_true(vus >= 4, "les kits de DRESS ont ete mesures (%d)" % vus)

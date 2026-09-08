@@ -308,14 +308,37 @@ static func _seat(piece: Node3D) -> void:
 		var mesh := node as MeshInstance3D
 		if mesh == null or mesh.mesh == null:
 			continue
-		var boite := mesh.mesh.get_aabb()
-		var base := mesh.position
-		mini = mini.min(base + boite.position)
-		maxi = maxi.max(base + boite.position + boite.size)
+		# ⚠️ LA CHAÎNE ENTIÈRE, PAS `mesh.position`, ET L'ÉCART EST MESURABLE. Une pièce livrée est
+		# un SOUS-ARBRE : ses maillages pendent sous des nœuds intermédiaires qui portent leur
+		# propre transformation, et `mesh.position` ne voit que le dernier maillon.
+		# `CortegeConduit._seat()` avait été corrigé le 2026-09-08 — l'opérateur venait de voir
+		# les conduites du corridor flotter d'un mètre ; celui-ci a hérité du COMMENTAIRE et pas
+		# du code. Ce qu'il faisait flotter, mesuré famille par famille : le collecteur
+		# **1,000 m** — la cote exacte de ce défaut-là, encore vivant sur la poupe — le pylône
+		# 0,409, la tour 0,359, le flexible 0,330. Aucune ne produisait la moindre erreur.
+		#
+		# ⚠️ ET ON REMONTE LA CHAÎNE PLUTÔT QUE D'INTERROGER L'ARBRE. La version du conduit lit
+		# `global_position`, donc elle n'est juste QUE montée : hors arbre elle retombe en silence
+		# sur la mesure fautive, et un banc ne peut pas la prendre en défaut. Celle-ci donne le
+		# même résultat dans les deux cas.
+		var boite := _piece_local_aabb(mesh, piece)
+		mini = mini.min(boite.position)
+		maxi = maxi.max(boite.position + boite.size)
 	if mini.x > maxi.x:
 		return
 	var centre := (mini + maxi) * 0.5
 	piece.position -= Vector3(centre.x, mini.y, centre.z)
+
+## La boîte d'un maillage, exprimée dans le repère de la pièce qui le contient.
+static func _piece_local_aabb(mesh: MeshInstance3D, piece: Node3D) -> AABB:
+	var vers_la_piece := Transform3D.IDENTITY
+	var courant: Node = mesh
+	while courant != null and courant != piece:
+		var n3 := courant as Node3D
+		if n3 != null:
+			vers_la_piece = n3.transform * vers_la_piece
+		courant = courant.get_parent()
+	return vers_la_piece * mesh.mesh.get_aabb()
 
 static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
 	for child in node.get_children():
