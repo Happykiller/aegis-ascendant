@@ -718,3 +718,28 @@ func test_designation_multiplies_the_state_it_finds() -> void:
 	assert_true(AnchorScript.DAMAGED_GLOW * AnchorScript.DESIGNATE_GLOW
 			> AnchorScript.INTACT_GLOW * AnchorScript.DESIGNATE_GLOW,
 		"et l'ordre des etats survit a la fenetre : endommage brille toujours plus qu'intact")
+
+## ⚠️ LE NOMBRE DE VERROUS EST CELUI DES SIEGES QUE LE BERCEAU PORTE, et il se LIT sur le binaire.
+##
+## « Par moteur je ne vois que 3 verrous, c'est etrange, pourquoi pas 4 avec la symetrie ? »
+## (operateur, 2026-09-07). Le plan avait retenu trois par lateral ; le berceau livre porte
+## QUATRE reperes `CTRL | Socket ancrage AV/AR D/G`, et `CortegeEngine.build()` en montait
+## `mini(total, sieges.size())` — donc trois, en laissant le quatrieme siege VIDE sur une piece
+## parfaitement symetrique.
+##
+## Ce test ferme la classe entiere du defaut : un nombre de gameplay qui ne coincide pas avec la
+## geometrie se lit comme un bug, pas comme un equilibrage. Il echouera aussi le jour ou une
+## reforge du berceau changera son nombre de sieges — ce que rien ne signalait jusqu'ici, la
+## borne `mini()` avalant l'ecart en silence.
+func test_every_cradle_seat_carries_a_lock() -> void:
+	var packed: PackedScene = load("res://assets/imported/models/backgrounds/stern_cradle.glb")
+	assert_true(packed != null, "le berceau se charge")
+	if packed == null:
+		return
+	var cradle := track(packed.instantiate()) as Node3D
+	var sieges := EngineScript._sockets_of(cradle).size()
+	assert_true(sieges > 0, "le berceau porte des sieges d'ancrage (%d)" % sieges)
+	assert_eq(TUNING.anchors_of(false), sieges,
+		"un moteur lateral occupe TOUS ses sieges (%d)" % sieges)
+	assert_eq(TUNING.anchors_of(true), sieges,
+		"le moteur central aussi (%d)" % sieges)

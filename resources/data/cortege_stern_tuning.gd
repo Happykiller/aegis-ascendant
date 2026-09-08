@@ -70,8 +70,23 @@ extends Resource
 ## laissé l'artère n'aboutir nulle part de visible — et vidé le blackout du LOT 8 de son sujet.
 @export var station: float = 508.0
 
-## Les ancrages. ⚠️ TROIS PAR MOTEUR LATÉRAL, QUATRE AU CENTRAL (spec §7).
-@export var lateral_anchors: int = 3
+## Les ancrages. ⚠️ QUATRE PARTOUT, ET C'EST LE BERCEAU QUI LE DIT.
+##
+## Le plan de la phase avait retenu « trois par latéral, trois ou quatre au central (spec §7) ».
+## En jouant : « par moteur je ne vois que 3 verrous, c'est étrange, pourquoi pas 4 avec la
+## symétrie ? » (opérateur, 2026-09-07). Il a raison, et ce n'était pas une intention : le
+## berceau livré porte **quatre** repères `CTRL | Socket ancrage AV/AR D/G`, une paire avant et
+## une paire arrière. `CortegeEngine.build()` en montait `mini(total, sieges.size())`, donc
+## trois — et **laissait le quatrième siège vide**, visible, sur une pièce parfaitement
+## symétrique.
+##
+## ⚠️ UN NOMBRE DE GAMEPLAY QUI NE COÏNCIDE PAS AVEC LA GÉOMÉTRIE SE LIT COMME UN DÉFAUT, pas
+## comme un équilibrage. C'est la même leçon que les tourelles enterrées du même jour : ce que
+## le joueur voit fait autorité sur ce que la table dit.
+##
+## Conséquence assumée : un latéral coûte désormais quatre verrous au lieu de trois, soit un
+## tiers de tir en plus avant l'arrachement. C'est du réglage, et il vit ici.
+@export var lateral_anchors: int = 4
 @export var central_anchors: int = 4
 @export var anchor_health: float = 260.0
 @export var anchor_radius: float = 1.10
