@@ -137,6 +137,7 @@ func build(bend: bool = false) -> void:
 		return
 	piece.name = "Conduit"
 	add_child(piece)
+	_seat(piece)
 	_claim_glow(piece)
 	_anim = _player_of(piece)
 	_leak = _socket_of(piece, LEAK_SOCKET)
@@ -155,8 +156,39 @@ func _mount_hose() -> void:
 		return
 	brin.name = "Hose"
 	add_child(brin)
+	_seat(brin)
 	_claim_glow(brin)
 	_hose_anim = _player_of(brin)
+
+## Assied la pièce sur son point de montage : son BAS sur le pont, son CENTRE sur la station.
+##
+## ⚠️ L'ORIGINE DE LA PIÈCE N'EST PAS DANS LA PIÈCE, et c'est ce qui les faisait flotter. Les
+## quatre `.glb` de l'artère sont des SOUS-ARBRES extraits d'un assemblage plus grand : la racine
+## d'`artery_conduit` porte encore sa translation dans le module d'origine — `(−0,36 ; 1,00 ;
+## 1,38)`. Montée telle quelle sur un pont à `y = −4,30`, la géométrie se retrouvait à −3,30,
+## c'est-à-dire **un mètre au-dessus de la coque**. « Des tuyaux qui flottent au-dessus, ça
+## ressemble à rien » (opérateur, 2026-09-08, capture à l'appui).
+##
+## ⚠️ ET ON NE COMPENSE PAS LA TRANSLATION DE LA RACINE, ON MESURE LA BOÎTE. Soustraire l'origine
+## marcherait pour ces quatre pièces-ci et casserait à la première dont l'auteur centre autrement.
+## L'enveloppe, elle, dit toujours la vérité — et elle donne aussi le BAS, qu'aucune origine ne
+## garantit.
+func _seat(piece: Node3D) -> void:
+	var mini := Vector3.INF
+	var maxi := -Vector3.INF
+	for node in _descendants(piece):
+		var mesh := node as MeshInstance3D
+		if mesh == null or mesh.mesh == null:
+			continue
+		var boite := mesh.mesh.get_aabb()
+		var origine: Vector3 = piece.to_local(mesh.global_position) if mesh.is_inside_tree() \
+			else mesh.position
+		mini = mini.min(origine + boite.position)
+		maxi = maxi.max(origine + boite.position + boite.size)
+	if mini.x > maxi.x:
+		return
+	var centre := (mini + maxi) * 0.5
+	piece.position -= Vector3(centre.x, mini.y, centre.z)
 
 ## ⚠️ CHAQUE CONDUITE SA COPIE. Dix conduites sont dix instances du MÊME `.glb` : elles partagent
 ## leurs matériaux, et en éteindre une les éteindrait toutes. Piège déjà payé sur les deux relais
