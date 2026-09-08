@@ -73,6 +73,72 @@ Trois gardes existent et doivent le rester :
   passait toujours, mais ne testait plus rien. Le point d'essai se **calcule** depuis la constante
   courante, il ne se recopie pas.
 
+## ⚠️ Et le cadre borne aussi le DÉCOR — deuxième famille, 2026-09-08
+
+Tout ce qui précède parle de la **couche de vol** : où le chasseur va, où les ennemis naissent, où
+les balles meurent. Le décor posé sur une coque obéit à la même caméra et **personne ne l'avait
+écrit**. Coût : deux allers-retours de forge, `BRIEF-0109` et `BRIEF-0112`.
+
+Une pièce de décor a **trois** enveloppes, pas deux, et seules les deux premières étaient
+documentées :
+
+| Enveloppe | Ce qu'elle dit | Où elle est écrite |
+|---|---|---|
+| `BUILD_CEILING_Y = −3,20` | la pièce ne traverse pas la couche de vol | briefs de forge |
+| le plan de vol (`\|x\| ≤ 14`) | au-delà, le chasseur n'ira jamais | `BOUNDS` |
+| **le cadre** | **quelqu'un la regarde-t-il ?** | ⚠️ nulle part, jusqu'à ce jour |
+
+### La contrainte est contre-intuitive : plus une pièce est HAUTE, plus elle sort TÔT
+
+C'est ce qui a piégé deux lots de suite. Le `BRIEF-0112` a raisonné juste : le plan de vol
+s'arrête à `|x| = 14`, donc au-delà une pièce peut monter sans que le joueur la traverse. Il a
+appelé ça « le vrai gain » et il avait tort — les tours posées là avaient leur **sommet à
+−142 px**, au-dessus du bord de l'image.
+
+L'étagère de rive est 3,80 m plus haut que le plateau du massif ; sa fenêtre visible est donc
+**4,7 m plus courte**. La hauteur d'assise que la règle gagne, le cadre la reprend.
+
+```
+   assise −8,40 (plateau du massif)   pièce visible jusqu'à z ≥ −10,38
+   assise −4,60 (étagère de rive)     pièce visible jusqu'à z ≥  −5,69
+```
+
+### La recette, et elle ne se calibre pas
+
+```gdscript
+GameplayPlane.screen_y_of(camera, fov_deg, point_monde, hauteur_px)   # 0 = haut de l'écran
+```
+
+Il reste à savoir **où la pièce se trouve quand on la regarde**. Pour la poupe du niveau 2, c'est
+exact et non empirique : le survol s'arrête à `LEAD_IN + station − hold`, le décor porte
+`parcouru − LEAD_IN`, la poupe est posée à `−station` dessus. **Les trois termes se simplifient :
+la poupe au repos est à `z = −hold_plane_y`.** J'ai d'abord calibré ce nombre sur des pixels lus à
+la main (−7,42, 43 px d'erreur) avant de m'apercevoir qu'il se dérivait (−6,47).
+
+⚠️ **Un `Transform3D` de `.tscn` se sérialise par LIGNES**, pas par colonnes. L'autre lecture
+donne une caméra qui regarde le ciel — et elle ne lève aucune erreur, elle rend juste « hors
+champ » pour tout. Deux d'entre nous s'y sont fait prendre le même jour.
+
+### Le chiffre qui condamne le rendu studio « à la caméra du jeu »
+
+Même paire de rendus avant/après, deux cadrages, mesurée sur les pixels :
+
+- au cadrage que la forge utilisait pour se relire : **22 050 pixels** changent ;
+- au cadrage réel du jeu : **110**, c'est-à-dire du bruit d'échantillonnage.
+
+Les deux tours occupaient un quart de la planche de contrôle et **zéro pixel** dans la partie. Une
+planche studio ne porte pas la STATION de la pièce ; elle montre donc ce que le jeu ne montrera
+pas. `ADR-0006` dit « rendu et regardé » — il faut lire « regardé **là où le joueur regarde** ».
+
+### La sortie n'est pas toujours de déplacer
+
+Quatre voies ont été explorées pour rattraper les deux tours, et **trois se sont fermées par la
+mesure** : la coque ne descend pas assez bas au bord (il aurait fallu creuser un puits de 3,6 m),
+les places libres du plateau *sont* les canaux d'échappement, et avancer la rive coûtait une
+plate-forme de tourelle — un canon échangé contre du décor. La réponse retenue a été **deux
+pièces au lieu de quatre**. Deux pièces qu'on voit valent mieux que quatre dont la moitié est
+au-dessus du cadre.
+
 ## Voir aussi
 
 - [Une cote se lit sur l'asset livré](pratique-la-cote-vient-de-l-asset.md)

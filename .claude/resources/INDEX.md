@@ -78,7 +78,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   n'échoue qu'à l'exécution — `check.sh` reste vert, la fonction s'interrompt AU MILIEU, et
   le symptôme ressemble à un comportement plausible (une unité censée exploser « repart ») ;
   et une **lambda capture par VALEUR**, si bien qu'un test affirme que rien ne s'est passé
-  sur du code parfaitement correct.
+  sur du code parfaitement correct. ⚠️ **UN CLIP DE glTF N'EST PAS BOUCLÉ À L'IMPORT** (08/09) : `loop_mode` vaut `LOOP_NONE` quoi que Blender ait réglé. `play()` fait un cycle et s'arrête net, sans erreur — et une pièce animée figée se lit comme un défaut de gameplay, pas de plomberie.
 
 - [Regarder un asset avant de l'intégrer](pratique-revue-asset.md) — un livrable de la forge n'est
   pas un asset validé tant qu'il n'a pas été **rendu et regardé**. Coût de l'oubli : ADR-0006.
@@ -157,7 +157,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   d'entrée. ⚠️ Un seul `DESPAWN_MARGIN` ne peut pas garder trois bords : le bas est une sortie,
   le haut et les côtés des entrées. La question a désormais une réponse mesurée,
   `GameplayPlane.visible_frame(camera, fov)` — **qui prend la caméra en paramètre exprès** : un
-  nombre recopié en commentaire meurt au premier déplacement de caméra, en silence.
+  nombre recopié en commentaire meurt au premier déplacement de caméra, en silence. ⚠️ **ET LE CADRE BORNE AUSSI LE DÉCOR** (08/09) : une pièce de coque a **trois** enveloppes — le plafond de construction, le plan de vol, et **le cadre**, qui n'était écrit nulle part. Deux allers-retours de forge. La contrainte est contre-intuitive : **plus une pièce est haute, plus elle sort tôt par le haut** — quatre tours légales, sans un m³ de recouvrement, dont deux avaient leur sommet à **−142 px**. `GameplayPlane.screen_y_of()` répond, et la station de la poupe au repos se DÉRIVE (`z = −hold_plane_y`), elle ne se calibre pas. ⚠️ Et le rendu studio « à la caméra du jeu » ment : **22 050 px** changent à son cadrage, **110** à celui du jeu.
 - [Un signal déclaré n'est pas un signal branché](pratique-un-signal-declare-n-est-pas-branche.md)
   — le signal existait, le relais existait, l'abonné existait ; **la connexion manquait**. Aucune
   erreur, aucun test rouge, et au journal l'absence d'une ligne ressemble à une ligne qu'on n'a pas
@@ -193,7 +193,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   rapproche : il faut DEUX tests, l'écart projeté et l'écart dans le monde. ⚠️ Et une caméra qui
   plonge à 70° **ne voit jamais un dessous** : un liseré sous une dalle est un effet payé que
   personne ne verra — il faut le faire **déborder**. Quand la coque n'a pas d'assise (aucune
-  surface plane > 1,40 m ici), on ne triche pas sur la cote : on fait **flotter**.
+  surface plane > 1,40 m ici), on ne triche pas sur la cote : on fait **flotter**. ⚠️ **§6 — L'ASSISE SE MESURE SUR LA CHAÎNE, PAS SUR `mesh.position`** (08/09) : une pièce livrée est un sous-arbre. Six familles flottaient, dont les collecteurs de **1,000 m** — la cote exacte d'un défaut corrigé le matin même dans le fichier voisin, dont celui-ci avait hérité le COMMENTAIRE et pas le code. Un correctif qui se propage en prose ne se propage pas.
 - [Une consigne parlée n'est pas une désignation](pratique-designer-une-cible.md) — l'IA dit
   « coupez leurs ancrages » et **rien à l'écran ne dit lesquels**. Trois défauts indépendants :
   la réplique tombait **onze secondes avant** que les verrous ne s'ouvrent (donc pendant qu'ils
@@ -225,7 +225,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   périme les constantes d'assemblage du moteur (onze d'un coup) ; et un harnais qui compose des
   cotes **sans appliquer le facteur d'échelle** mesure toujours la même pièce — il est resté vert
   pendant qu'une tourelle passait 0,75 m au-dessus du plan de vol. Ce sont des RECOPIES, pas des
-  appels : aucune ne lève d'erreur.
+  appels : aucune ne lève d'erreur. ⚠️ **§4 — UN BANC QUI LIT UNE SOURCE CROIT AVOIR TOUT VU** (08/09, trois fois le même jour) : un décor se construit par **trois** voies — cuit dans le générateur, posé sur un marqueur, instancié par le code — et la troisième est celle qu'on oublie, parce qu'elle ne laisse aucune trace dans les fichiers qu'on lit.
 - [Un test vert peut être mort](pratique-un-test-vert-peut-etre-mort.md) — **GDScript n'a pas
   d'exception** : sur un appel invalide il journalise `SCRIPT ERROR` et **abandonne la méthode**.
   Le tableau des échecs reste vide, et le harnais annonce `[PASS]`. Deux gardes de
@@ -250,7 +250,7 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   ⛔ **Une garde qui RECOPIE le pas d'image ne teste rien** : extraire le pas et l'appeler.
   ⛔ **Mesurer un `.glb` sans parcourir la hiérarchie** donne 1,30 au lieu de 1,752 sur le
   Specter-9 — deux fois la même erreur, 25/08 puis 27/08.
-  ⛔ **Un module monté sans sa coque ne prouve pas sa géométrie** : `setup(null, …)` fait retomber `_measure_plate_layout()` sur des angles de **repli**, plausibles et faux. Un modèle bâti dessus annonçait 100 % là où le jeu instrumenté comptait **zéro** (28/08). Légitime pour la logique, jamais pour les positions.
+  ⛔ **Un module monté sans sa coque ne prouve pas sa géométrie** : `setup(null, …)` fait retomber `_measure_plate_layout()` sur des angles de **repli**, plausibles et faux. Un modèle bâti dessus annonçait 100 % là où le jeu instrumenté comptait **zéro** (28/08). Légitime pour la logique, jamais pour les positions. ⚠️ **UN BANC QUI S'ARRÊTE AU PREMIER DÉNOUEMENT NE VOIT JAMAIS LA SECONDE PARTIE** (08/09) : `invalid transition GAME_OVER -> VICTORY` au milieu d'une partie GAGNÉE, invisible pour 1 021 tests qui s'arrêtaient tous à la fin du niveau 1. L'indice dormait dans la table : **une transition déclarée que personne n'emprunte est un retour au jeu qu'on a oublié de brancher**. ⚠️ Et **mesurer la mauvaise grandeur accuse l'asset à la place du banc** — deux clips de 2,00 s que je comparais par leur durée quand ils diffèrent par leur nombre de tours.
 - [Un seul écrivain dans le dépôt](pratique-ecrivain-unique.md) — deux agents qui écrivent en
   parallèle produisent des commits mélangés et une porte rouge sans coupable. ⚠️ L'autre écrivain
   peut être un **outil tiers sous un autre compte** (Codex/GitKraken sous `faro`) : droits `.git` et

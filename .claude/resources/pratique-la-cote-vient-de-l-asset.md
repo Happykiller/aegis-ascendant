@@ -73,6 +73,30 @@ il ne reste que **1,870 m**. Une cote plausible, tirée d'un raisonnement juste 
 
 ---
 
+## 4. Un banc qui lit UNE source croit avoir tout vu — trois fois le même jour
+
+**2026-09-08.** Trois défauts distincts, trois heures, la même forme : un harnais qui interroge
+**une** source et conclut sur l'ensemble.
+
+1. **La Citadelle est posée par le CODE, pas par un marqueur.** Le banc de pose des conduites
+   lisait les marqueurs de coque ; il n'a donc pas vu l'emprise `239,6..246,0` et a laissé planter
+   une conduite dedans. Pendant les 44 s de la séquence, le joueur aurait tiré sur la mauvaise
+   pièce.
+2. **Un nœud de glTF n'a pas de propriété `position`, il porte un `transform`.** Trois tests
+   cherchaient `position` dans `SceneState` : zéro marqueur trouvé, **trois tests verts et vides**.
+   Seul le harnais du projet l'a dit, en signalant « aucune assertion exécutée ».
+3. **Une pièce peut être CUITE dans la peau.** La forge a mesuré 69 m de coque nue à meubler ; il
+   y en avait 24,5. `Ambry` occupe `s = 444,5..475,5` du même bord — mais elle est dans le loft, pas
+   sur un marqueur, donc la mesure ne la voyait pas.
+
+⚠️ **Le point commun n'est pas la négligence, c'est la confiance dans une source complète.** Un
+décor de ce projet se construit par **trois** voies — cuit dans le générateur, posé sur un
+marqueur, instancié par le code — et un banc qui n'en interroge qu'une rend un chiffre juste sur
+une question fausse.
+
+Corollaire : **la troisième source est presque toujours celle qu'on oublie**, parce qu'elle ne
+laisse aucune trace dans les fichiers qu'on est en train de lire.
+
 ## Ce qui relie les trois
 
 Un nombre juste **à sa source** devient faux dès qu'il traverse une frontière : forge → moteur,

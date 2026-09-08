@@ -88,6 +88,42 @@ réserve est désormais réservé aux pièces volantes**, et un test le garde.
 ⚠️ Et la majorité doit tirer dès la première seconde : six pièces dormantes sur dix donnaient
 une poupe **en panne** à l'instant où elle devait paraître dangereuse.
 
+## 6. L'assise se mesure sur la CHAÎNE, pas sur `mesh.position` — et un correctif se copie en code
+
+**2026-09-08.** Une pièce livrée est un **sous-arbre** : ses maillages pendent sous des nœuds
+intermédiaires qui portent leur propre transformation. Mesurer sa boîte englobante avec
+`mesh.position` ne voit que le **dernier maillon**, donc sous-estime — et une pièce assise sur
+une mesure trop courte **flotte**.
+
+Ce que ça faisait flotter sur la poupe, famille par famille :
+
+| Pièce | Écart |
+|---|---:|
+| `Collecteur` (× 7) | **1,000 m** |
+| `Pylone` (× 2) | 0,409 m |
+| `Tour` (× 2) | 0,359 m |
+| `Liaison` (× 4) | 0,330 m |
+
+⚠️ **UN MÈTRE EXACTEMENT SUR LES COLLECTEURS**, c'est-à-dire la cote du défaut que l'opérateur
+avait signalé sur le corridor le matin même — « des tuyaux qui flottent au-dessus sur ponton, ça
+ressemble à rien ». Il avait été corrigé dans `CortegeConduit._seat()`… et
+`CortegeStern._seat()` a hérité de sa **justification en commentaire** (« on ne compense pas la
+translation de la racine, on mesure la boîte ») **sans hériter de sa méthode**. Quinze pièces sur
+dix-sept, aucune erreur, aucun test rouge, pendant que le commentaire au-dessus affirmait le
+contraire.
+
+> **Un correctif qui se propage en prose ne se propage pas.** Quand une leçon vaut pour deux
+> appelants, c'est la FONCTION qu'on partage, pas le paragraphe.
+
+⚠️ **Et ne pas interroger l'arbre pour ça.** La version du conduit lit
+`piece.to_local(mesh.global_position)` : juste une fois montée, elle retombe **en silence** sur la
+mesure fautive hors arbre — donc aucun banc ne peut la prendre en défaut. Remonter la chaîne
+(`n3.transform * …` jusqu'à la racine de la pièce) rend le même résultat dans les deux cas, et
+c'est ce qui la rend testable.
+
+Le banc qui garde ça compare les **deux** mesures et dit de combien la naïve se trompe : une
+mesure fausse de ce genre est *plausible* — elle rend un nombre, jamais une erreur.
+
 ## Et quand la coque n'a pas d'assise, on ne triche pas : on fait flotter
 
 La carène de poupe n'a **aucune surface plane de plus de 1,40 m** hors de son massif arrière —

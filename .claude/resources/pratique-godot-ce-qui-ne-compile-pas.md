@@ -92,3 +92,22 @@ part corriger le code au lieu du test. Passer par un conteneur :
 var vu := [false]
 signal_quelconque.connect(func() -> void: vu[0] = true)   # ✅
 ```
+
+
+## Un clip de glTF n'est PAS bouclé à l'import (2026-09-08)
+
+`AnimationPlayer.get_animation(nom).loop_mode` vaut **`LOOP_NONE`** sur tout clip importé d'un
+`.glb`, quoi que l'auteur ait réglé dans Blender. `play(nom)` joue donc **un** cycle et s'arrête
+net — sans erreur, sans avertissement, sans une ligne de journal.
+
+```gdscript
+var piste := joueur.get_animation(clip)
+piste.loop_mode = Animation.LOOP_LINEAR   # ⚠️ à poser SOI-MÊME, sur la ressource instanciée
+joueur.play(clip)
+```
+
+⚠️ **Le poser ici et non dans un réglage d'import** : une reforge de l'asset écraserait le
+`.import`, et quatre rotors figés sur un vaisseau en marche se lisent comme une pièce cassée —
+c'est-à-dire comme un défaut de gameplay, pas comme un défaut de plomberie. Un banc garde la
+valeur `LOOP_NONE` à l'import, pour que la ligne ci-dessus ne soit pas supprimée comme inutile le
+jour où quelqu'un la croira redondante.

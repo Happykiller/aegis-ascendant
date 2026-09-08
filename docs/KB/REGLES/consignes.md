@@ -108,3 +108,36 @@ côté sur les deux points, et il a fallu reposer les questions en clair au tour
   la fois**. Ne pas empiler un cinquième correctif sur les quatre premiers.
 - **Un enregistrement de partie vaut plus qu'un banc** : quand l'opérateur dit « ça ne marche
   toujours pas », enregistrer sa commande et sa position (`--dive-trace`) avant de re-raisonner.
+
+
+## Une affirmation de sous-agent sur l'état du dépôt n'est pas une mesure (2026-09-08)
+
+La forge a écrit dans son rapport : « `check.sh` reste **rouge** depuis le `BRIEF-0110` sur un
+conflit préexistant ». La porte était **verte**, et l'avait été trois fois dans l'heure.
+
+Elle ne l'avait pas lancée — son périmètre le lui interdit (aucun `.gd`, `.tscn`, `.tres`) — et
+elle rapportait de bonne foi un état déduit d'un lot précédent.
+
+⚠️ **Relayer ça à l'opérateur aurait été lui rendre une fausse alerte sur son propre dépôt**, avec
+l'autorité d'un rapport chiffré par ailleurs exact. Un sous-agent est fiable sur ce qu'il a
+MESURÉ, pas sur ce qu'il tient d'ailleurs.
+
+**Le réflexe** : toute affirmation d'un sous-agent portant sur l'état global du dépôt — porte,
+branche, ce qui est committé, ce qu'un autre lot a laissé — se **revérifie en une commande** avant
+d'être relayée. Ce qui relève de sa mesure à lui (comptes de triangles, recouvrements,
+déterminisme) se relaie tel quel.
+
+Même famille que le reste de cette page : ne pas prêter à une source une autorité qu'elle n'a pas
+sur la question posée.
+
+## Une demande de l'opérateur peut avoir deux lectures dont une seule est faisable (2026-09-08)
+
+« Il faut ajuster la **hauteur** pour qu'il soit visible correctement. » Deux lectures :
+
+- rapetisser la **pièce** — mesuré : elle ne pourrait faire que **1,13 m**, ce n'est plus une tour ;
+- baisser son **assise** — mesuré : il faut descendre de 3,57 m, et ça marche.
+
+⚠️ **Ne pas suivre la lettre dans une impasse, et ne pas non plus demander de choisir entre deux
+mots.** L'intention était limpide (« qu'on la voie ») ; c'est le MOYEN qui était ambigu, et un
+moyen se tranche par la mesure, pas par une question. Chiffrer les deux lectures, dire laquelle
+tombe et pourquoi, appliquer l'autre.

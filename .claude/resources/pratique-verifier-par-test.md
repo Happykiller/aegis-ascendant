@@ -180,3 +180,39 @@ une erreur de l'autre.
 Il faut composer `translation`/`rotation`/`scale` (ou `matrix`) de chaque nœud en descendant, et
 transformer **les huit coins** de la boîte locale — pas seulement `min` et `max`, qui ne sont plus
 les extrêmes après rotation.
+
+
+## Un banc qui s'arrête au premier dénouement ne voit jamais la seconde partie (2026-09-08)
+
+Une partie du 2026-09-08 a rendu `invalid transition GAME_OVER -> VICTORY` **au milieu d'une
+partie gagnée**. Cause : le bouton REESSAYER/CONTINUER du rapport de mission rechargeait la scène
+sans remettre `GameState` dans un état jouable — son voisin, le bouton TITRE, le faisait, avec le
+commentaire qui dit pourquoi. Le niveau suivant ne pouvait donc plus déclarer sa fin, ni gagnée
+ni perdue.
+
+⚠️ **Aucun des 1 021 tests ne pouvait le voir** : le défaut ne se manifeste qu'au **SECOND**
+dénouement d'une session, et chaque banc s'arrêtait à la fin du premier niveau. Un enchaînement
+`gagner → continuer → gagner` n'était joué nulle part. C'est la même famille que « un module monté
+sans sa coque » : ce qu'on n'assemble pas, on ne l'éprouve pas.
+
+### L'indice était dans la table depuis toujours
+
+`GAME_OVER -> FIGHTER_COMBAT` était **déclaré et appelé de nulle part**. 
+
+> **Une transition déclarée que personne n'emprunte n'est pas une réserve : c'est la trace d'un
+> retour au jeu qu'on a oublié de brancher.**
+
+Le même fichier portait déjà cette leçon à propos de `GAME_OVER` lui-même — « déclaré,
+transitions comprises, et JAMAIS atteint » — et elle n'avait pas été relue comme un motif.
+Chercher les états et les signaux **déclarés mais jamais atteints** est un audit qui se refait en
+un `grep`.
+
+## Mesurer la mauvaise grandeur accuse l'ASSET à la place du banc (2026-09-08)
+
+Deux clips d'animation devaient se distinguer par leur vitesse. Mon banc a comparé leur **durée**
+et a viré au rouge sur une livraison correcte : les deux font 2,00 s, et ce qui les sépare est le
+**nombre de tours** — un contre deux, donc au quart du clip un rotor est à 90° dans l'un et 180°
+dans l'autre. La forge l'avait écrit dans son rapport ; le banc a été écrit sans le lire.
+
+⚠️ Le réflexe : quand une assertion rougit sur une livraison qui vient d'être mesurée et acceptée,
+**suspecter la grandeur mesurée avant l'asset**. Un banc qui accuse est un banc à relire.

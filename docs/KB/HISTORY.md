@@ -542,3 +542,23 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
   lieu de raboter — 88 504 → 2 612 pour le pylône. ⚠️ Et la forge a **contredit le concepteur avec
   des mesures** sur le repli des matériaux : `AA_Panel` est le violet `#452663`, pas un gris.
 
+- **Le cadre devient la troisième enveloppe du décor** (2026-09-08) : `BRIEF-0112`/`0113`,
+  `GameplayPlane.screen_y_of()`. Une pièce de coque était bornée par le plafond de construction et
+  le plan de vol ; personne n'avait écrit qu'elle devait aussi **être regardée**. Quatre tours
+  d'échange légales, sans un m³ de recouvrement, dont deux avaient leur sommet à **−142 px**.
+  ⚠️ La contrainte est contre-intuitive — **plus une pièce est haute, plus elle sort tôt par le
+  haut** : l'étagère de rive est 3,80 m au-dessus du plateau, donc sa fenêtre visible est 4,7 m
+  plus courte. Trois voies de rattrapage fermées par la mesure ; retenu **deux tours au lieu de
+  quatre**. Et le rendu studio « à la caméra du jeu » est disqualifié : **22 050 px** changent à
+  son cadrage, **110** à celui du jeu.
+- **Six familles de pièces flottaient au-dessus de leurs repères** (2026-09-08) : les collecteurs
+  de **1,000 m**, la cote exacte d'un défaut corrigé le matin même dans `CortegeConduit._seat()`
+  — dont `CortegeStern._seat()` avait hérité la **justification en commentaire** et pas la
+  méthode. Une pièce livrée est un sous-arbre : sa boîte se mesure sur la CHAÎNE, jamais sur
+  `mesh.position`. Trouvé en relisant la session pour la capitalisation, pas en cherchant.
+- **Rejouer rendait la machine à états muette** (2026-09-08) : le bouton REESSAYER/CONTINUER du
+  rapport rechargeait la scène sans remettre `GameState` en combat, si bien que le dénouement du
+  niveau **suivant** était refusé — `invalid transition GAME_OVER -> VICTORY` au milieu d'une
+  partie gagnée. ⚠️ L'indice dormait dans la table depuis toujours : `GAME_OVER -> FIGHTER_COMBAT`
+  était déclaré et appelé de nulle part. Aucun des 1 021 tests ne pouvait le voir — ils
+  s'arrêtaient tous à la fin du premier niveau.
