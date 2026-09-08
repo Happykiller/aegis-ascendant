@@ -1214,6 +1214,15 @@ La bible listait **deux** garde-fous anti-spirale de la mort à vérifier. Véri
   Restent hors catalogue : les **bonus** et les **projectiles**. Un bonus n'a ni dimensions ni
   structure : lui donner sa propre famille, comme on l'a fait pour la forteresse, plutôt que de
   lui servir un gabarit de coque — c'est en le forçant qu'on obtient des colonnes de tirets.
+- [ ] ⚠️ **Le pylône de poupe est enterré jusqu'à 2,68 m dans les terrasses B2** — trouvé par
+  `_frame_probe()` au `BRIEF-0113`, préexistant et sans rapport avec ce lot. `_seat_probe()` ne
+  sondait que les tours, donc personne ne l'avait mesuré. C'est **exactement le défaut du
+  `BRIEF-0109`** — la pièce est là, elle ne se lit pas — et il n'a jamais été corrigé, seulement
+  déplacé.
+- [ ] **Deux repères de poupe sont derrière le HUD** : `Liaison 07/08` tombent sous les panneaux
+  de score et de bouclier, et la face haute de `Tour 01/02` passe derrière le bandeau de boss
+  (sommet du centre à +13 px, arête arrière à −21). Mesuré au `BRIEF-0113` ; à arbitrer, pas
+  forcément à corriger — une pièce partiellement masquée n'est pas une pièce invisible.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
 - [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
   vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.

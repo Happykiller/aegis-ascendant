@@ -1,6 +1,6 @@
 # BRIEF-0113 — Les deux tours de rive sont hors cadre : leur trouver un siège que la caméra voit
 
-- **Statut** : assigné
+- **Statut** : livré et intégré — voie C retenue (deux tours)
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08
@@ -136,6 +136,14 @@ tour que le jeu ne montrera pas. Le seul verdict est la projection ci-dessus.
   plateau le permet — leur sommet à 13 px frôle le bord — mais ce n'est pas demandé.
 - **Aucun budget de triangles**, même décision qu'au `BRIEF-0112`.
 - **Aucun `.gd`, `.tscn`, `.tres`.**
+
+## Texture (ADR-0028) / Animation (ADR-0046 §6)
+
+**Aucune, et c'est un refus motivé, pas un oubli.** Ce lot ne crée aucune géométrie : il déplace
+ou retire des sièges déjà construits. Rien de neuf n'a de surface à habiller, donc rien ne se
+peint — la carène garde ses matériaux par facteurs et `CortegeSkin` posera ses cartes dérivées
+comme sur le reste. Même raison pour l'animation : les sièges sont figés, et les seuls clips en jeu
+sont ceux de `stern_tower.glb`, que ce lot ne rouvre pas.
 
 ## Livrables
 

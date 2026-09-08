@@ -40,14 +40,49 @@ qu'une fois.
 CE QUE LE BRIEF-0112 A CHANGE — LES TOURS AUSSI SONT DES PIECES
 ===============================================================
 `build_towers()` est RETIREE (les deux tours procedurales de 796 tri et leurs deux
-blocs de ventilation) : la piece livree est arrivee. A la place, quatre reperes
-`CTRL | Tour 01..04` portent `stern_tower.glb`, et `build_tower_seats()` (168 tri)
-construit les DEUX PLATEAUX DE RIVE qui manquaient a l'arriere du massif.
+blocs de ventilation) : la piece livree est arrivee. A la place, des reperes
+`CTRL | Tour NN` portent `stern_tower.glb`.
 
     towers      1592 -> 0     retiree
-    tower_seats    0 -> 168   deux plateaux, x 16,30..19,15, z -8,60..-11,60
 
-⚠️ LA HAUTEUR EST LA SEULE CONTRAINTE DURE, ET ELLE EST MESUREE. La camera du jeu
+
+CE QUE LE BRIEF-0113 A CHANGE — LA TROISIEME ENVELOPPE : LE CADRE
+=================================================================
+Le `BRIEF-0112` avait pose DEUX TOURS DE PLUS sur deux plateaux construits a
+l'etagere de rive (`x = +/-17,725`, `y = -4,60`, `z = -10,10`). Elles etaient
+legales, bien faites, sans un centimetre cube de recouvrement — et **leur sommet
+tombait a 142 px AU-DESSUS du bord haut de l'image**. Personne ne les voyait.
+
+    tower_seats  168 -> 0     les deux plateaux de rive sont retires
+    reperes       21 -> 19    `CTRL | Tour 03` et `04` avec eux
+
+⚠️ ET LE RENVERSEMENT EST CONTRE-INTUITIF : PLUS UNE PIECE EST HAUTE EN `y`, PLUS
+ELLE SORT TOT PAR LE HAUT. Pour une piece de 4,70 m, le `z` le plus lointain qui
+garde son sommet dans le cadre vaut `-10,38` depuis une assise a -8,40 et `-5,69`
+seulement depuis -4,60. La regle B achete 3,80 m d'assise sur les flancs ; le
+cadre les reprend, et 0,90 m avec. **Sur cette poupe, la regle B ne paie rien.**
+
+⚠️ ET IL N'Y A PAS D'AUTRE SIEGE. Mesure sur le binaire, station par station
+(le detail est dans `docs/forge/output/BRIEF-0113-report.md`) :
+
+  * baisser l'assise SANS bouger la station demanderait d'enlever 3,6 m de
+    massif — a `z = -10,10` la peau est a -4,60 sur tout `x 17,2..19,0`, et un
+    puits n'est pas un piedestal. Ce generateur refuse les booleens ;
+  * le seul autre plat a -8,40 est le dessus du bossage exterieur : la meilleure
+    empreinte legale y demande une assise a -7,79, ce qui creve la regle A de
+    9 cm et reste hors cadre (-13 px) ;
+  * avancer l'etagere de rive marcherait (`z >= -5,5`), mais la rive est pleine
+    de `z = -7,11` a `+7,27` et la seule piece qui libere la bonne fenetre est
+    une plate-forme volante de la garnison — qui n'a nulle part ou aller
+    (il lui faut 4,88 m de rive libre, et le plus grand creneau restant en fait
+    3,49). On ne deplace pas un canon pour poser un decor.
+
+`_frame_probe()` MESURE desormais le cadre a chaque build et ECHOUE si le sommet
+d'une piece posee en sort. Le defaut etait totalement silencieux : ni erreur, ni
+test rouge, ni ligne de journal.
+
+⚠️ LA HAUTEUR N'EST PAS LA SEULE CONTRAINTE DURE (voir le BRIEF-0113 ci-dessous
+pour la troisieme, qui est le CADRE), ET ELLE EST MESUREE. La camera du jeu
 est a `y = 14` : une tour de 26 m posee sur le pont de poupe culmine a `+14,15`,
 c'est-a-dire A LA HAUTEUR DE L'ŒIL. Deux enveloppes sont legales et
 `_marker_ceiling()` les applique :
@@ -1316,22 +1351,37 @@ def build_pylon_seats(bm: bmesh.types.BMesh) -> None:
 
 
 # ==========================================================================
-# 6. LES ASSISES DES QUATRE TOURS D'ECHANGE (BRIEF-0112)
+# 6. LES DEUX ASSISES DE TOUR (BRIEF-0112, ramenees a deux au BRIEF-0113)
 # ==========================================================================
 #  ⚠️ LES DEUX TOURS PROCEDURALES DE CE FICHIER N'EXISTENT PLUS. Le
 #  `BRIEF-0110` les avait REGENEREES (1 592 triangles pour deux) faute de piece
 #  livree ; la piece est arrivee le jour meme. `build_towers()` est donc retiree
-#  — avec ses deux blocs de ventilation, qui etaient son decor de pied — et
-#  quatre reperes `CTRL | Tour NN` portent desormais `stern_tower.glb`.
+#  — avec ses deux blocs de ventilation, qui etaient son decor de pied — et des
+#  reperes `CTRL | Tour NN` portent desormais `stern_tower.glb`.
 #
-#  ⚠️ ET LA SEULE CONTRAINTE DURE EST LA HAUTEUR, MAIS CE N'EST PAS ELLE QUI
-#  BORNE — C'EST L'EMPRISE AU SOL. Voir `TOWER_HEIGHT` ci-dessous : la tour de
-#  l'auteur mesure 14 m de large pour 26 de haut, soit **0,538 m d'empreinte par
-#  metre de hauteur**. La regle B autorise 8,60 m de ciel sur les flancs ; il
-#  faudrait 4,63 m d'empreinte pour les prendre, et la poupe n'a nulle part
-#  4,63 m de plan libre a `|x| >= 16`. Les deux fenetres reelles sont le plateau
-#  du bossage (2,60 m en z) et l'etagere de rive du massif (3,00 m) — ce sont
-#  elles qui decident, et elles sont mesurees sur le binaire (`_seat_probe`).
+#  ⚠️ ET IL Y EN A DEUX, PAS QUATRE (BRIEF-0113). Le `BRIEF-0112` en avait pose
+#  deux de plus sur des plateaux construits a l'etagere de rive (`y = -4,60`,
+#  `z = -10,10`). Elles etaient legales, bien faites, sans un recouvrement — et
+#  leur sommet tombait a **-142 px au-dessus du bord haut de l'image**. Les
+#  plateaux de rive et leurs deux reperes sont retires ; `_frame_probe()` mesure
+#  desormais le cadre a chaque build, et il ECHOUE plutot que de laisser
+#  repartir une piece que personne ne regarde.
+#
+#  ⚠️ ET L'ASSISE QUI MARCHE EST -8,40 : LA POUPE N'EN A QUE DEUX, ET LES VOICI.
+#  Mesure sur le binaire, a la station des tours (`z = -10,10`), profil du
+#  massif de l'axe vers le flanc :
+#
+#      x 12,48..13,46   chanfrein du bossage exterieur
+#      x 13,46..14,60   DESSUS du bossage exterieur, -8,40 — 1,14 m de plat
+#      x 14,96..15,78   la rampe de flanc franchit -8,40 puis monte a -6,20
+#      x 17,20..19,00   l'arete de rive, -4,90 puis -4,60 sur toute la largeur
+#      x 19,90          le point le plus large, -8,30, et la coque rentre
+#
+#  Il n'y a donc que trois plats a -8,40 par bord : le dessus des deux bossages
+#  interieurs (ils portent `Tour 01/02`) et celui du bossage exterieur, trop
+#  etroit — mesure : la meilleure empreinte legale y demande une assise a -7,79,
+#  ce qui creve la regle A de 9 cm ET reste hors cadre (-13 px). Le detail des
+#  trois voies fermees est dans `docs/forge/output/BRIEF-0113-report.md`.
 
 #: Les deux stations du plateau : celles des tours retirees, au centimetre.
 #: ⚠️ Le `z` est ramene de -10,05 a **-9,90** parce que le dessus du bossage est
@@ -1341,75 +1391,16 @@ def build_pylon_seats(bm: bmesh.types.BMesh) -> None:
 TOWER_X = (-5.40, 5.40)
 TOWER_Z = -9.90
 
-#: ⚠️ LES QUATRE TOURS PORTENT LE MEME BINAIRE, DONC LA MEME HAUTEUR — et cette
-#: hauteur est celle que la station la PLUS SERREE autorise.
+#: ⚠️ LA HAUTEUR EST CELLE QUE LA STATION LA PLUS SERREE AUTORISE.
 #:
 #:   plateau du bossage   plat de 2,60 m en z  ->  2,60 / 0,538 = 4,83 m
-#:   etagere de rive      plat de 3,00 m en z  ->  3,00 / 0,538 = 5,57 m
 #:   regle A (plafond -3,20 depuis -8,40)      ->  5,20 m
-#:   regle B (sommet +2 depuis -4,60)          ->  6,60 m
+#:   CADRE (sommet >= 0 px depuis -8,40)       ->  z >= -10,38, et -9,90 y est
 #:
 #: La borne est donc **4,83 m**, et elle vient de l'EMPRISE. On prend 4,70 pour
 #: garder 3,4 cm de marge a chaque bout du plat — une piece qui affleure le bord
 #: de son assise flotte des que la quantification float32 s'en mele.
 TOWER_HEIGHT = 4.70
-
-#: L'assise des deux tours de flanc. ⚠️ ELLE EST CONSTRUITE, comme le socle du
-#: pylone au `BRIEF-0110` : l'epaulement du massif descend de -4,60 (a
-#: `|x| = 18,20`) a -5,63 (a 16,40) et les terrasses redescendent en dehors.
-#: Posee dessus telle quelle, la tour serait enterree de 1,2 m d'un cote et
-#: suspendue de l'autre — le defaut exact que le `BRIEF-0109` a paye. Le plateau
-#: rend le plan PLAT sous toute l'empreinte, et `_seat_probe()` le verifie sur le
-#: binaire, pas sur cette phrase.
-TOWER_SEAT_Z = -10.10
-TOWER_SEAT_TOP = AFT_CREST_Y                       # -4,60
-#: Le centre en x des deux tours de flanc. ⚠️ IL EST BORNE DES DEUX COTES : la
-#: regle B exige la base a `|x| >= 16` (donc `cx - 1,266 >= 16`, soit
-#: `cx >= 17,27`) et l'assise ne depasse pas `19,05` (donc `cx <= 17,78`).
-#: 17,725 laisse 6 cm de marge sur la marche haute des deux cotes.
-TOWER_SEAT_CX = 17.725
-#: (x interieur, x exterieur, demi-longueur en z, sommet) — trois marches.
-#: ⚠️ `x >= 16,30` : la regle B exige la base de la piece a `|x| >= 16`, hors du
-#: plan de vol qui s'arrete a 14. Et `x <= 19,15` : 0,55 m au-dela de l'arete de
-#: rive (18,60), assez pour tenir l'empreinte, trop peu pour elargir la
-#: silhouette (le point le plus large de la poupe reste a 19,90).
-TOWER_SEAT_STAGES = ((16.30, 19.15, 1.50, -5.55),
-                     (16.35, 19.10, 1.42, -5.05),
-                     (16.40, 19.05, 1.35, TOWER_SEAT_TOP))
-TOWER_SEAT_BASE = -7.40
-
-
-def build_tower_seats(bm: bmesh.types.BMesh) -> None:
-    """Les deux plateaux de rive, a l'arriere du massif — et rien d'autre.
-
-    Trois marches franches, un bandeau colore sur la face exterieure, trois
-    nervures sur la face INTERIEURE (celle que la camera du jeu voit). Le dessus
-    est LIBRE sur toute l'empreinte de la piece : tout ce qui monterait au-dessus
-    de `TOWER_SEAT_TOP` y ferait s'enfoncer la tour.
-
-    ⚠️ POURQUOI CETTE STATION ET PAS UNE AUTRE. Les flancs de poupe sont deja
-    pleins, et c'est mesure : les deux socles de pylone tiennent `z -2,50..+1,70`,
-    les quatre flexibles de rebord `z 4,53..7,27` et `-7,11..-4,37`, les deux
-    plates-formes volantes de la garnison `z -0,11..+4,11` et `-6,94..-2,06`. Le
-    seul creneau de plus de 3 m qui reste sur l'etagere de rive est
-    `z -8,60..-11,60`, a l'arriere du massif. Il ne recouvre RIEN (voir le
-    rapport : recouvrement mesure a 0,000 m3, piece par piece).
-    """
-    for side in (-1.0, 1.0):
-        for i, (x0, x1, hz, top) in enumerate(TOWER_SEAT_STAGES):
-            _box(bm, side * x0, side * x1, TOWER_SEAT_BASE, top,
-                 TOWER_SEAT_Z - hz, TOWER_SEAT_Z + hz,
-                 "AA_Greeble" if i == 0 else "AA_Hull", "AA_Hull")
-        x0, x1, hz, _top = TOWER_SEAT_STAGES[0]
-        # Le bandeau de flanc : le seul accent colore du plateau.
-        _box(bm, side * (x1 - 0.18), side * (x1 - 0.02), -6.60, -5.70,
-             TOWER_SEAT_Z - hz + 0.30, TOWER_SEAT_Z + hz - 0.30,
-             "AA_Panel")
-        # Les nervures de la face INTERIEURE, celle que la camera voit.
-        for j in range(3):
-            zc = TOWER_SEAT_Z + (j - 1) * 0.95
-            _box(bm, side * x0, side * (x0 + 0.16), TOWER_SEAT_BASE, -5.66,
-                 zc - 0.22, zc + 0.22, "AA_Greeble", "AA_Panel")
 
 
 # ==========================================================================
@@ -1566,8 +1557,8 @@ def markers() -> list[tuple[str, Vector, float, str]]:
             number += 1
             out.append((f"CTRL | Liaison {number:02d}",
                         Vector((side * crest_x, crest_y, cz)), 0.0, "hose"))
-    # --- Les quatre tours d'echange (BRIEF-0112) ------------------------
-    # ⚠️ LE LACET EST LE MEME POUR LES QUATRE, ET IL EST CHOISI : +90 deg
+    # --- Les deux tours d'echange (BRIEF-0112, ramenees a deux au 0113) -
+    # ⚠️ LE LACET EST LE MEME POUR LES DEUX, ET IL EST CHOISI : +90 deg
     # amene la passerelle de service (auteur : x -6,3..-2,1) vers `+z`,
     # c'est-a-dire VERS LA CAMERA. C'est le seul element de la piece qui donne
     # son echelle ; tourne vers l'arriere il ne rend rien.
@@ -1576,10 +1567,6 @@ def markers() -> list[tuple[str, Vector, float, str]]:
         out.append((f"CTRL | Tour {number:02d}",
                     Vector((side * TOWER_X[1], AFT_PLATEAU_Y, TOWER_Z)),
                     yaw, "tower"))
-    for number, side in enumerate((1.0, -1.0), start=3):
-        out.append((f"CTRL | Tour {number:02d}",
-                    Vector((side * TOWER_SEAT_CX, TOWER_SEAT_TOP,
-                            TOWER_SEAT_Z)), yaw, "tower"))
     return out
 
 
@@ -1735,7 +1722,6 @@ PARTS = (
     ("rim_rails", build_rim_rails, True),
     ("shoulders", build_shoulders, True),
     ("pylon_seats", build_pylon_seats, True),
-    ("tower_seats", build_tower_seats, True),
     # ⚠️ LES BOSSAGES SONT UNE FAMILLE A PART, ET C'EST UNE PRECAUTION. `_orient()`
     # retourne un composant ENTIER au signe de son volume : melanger dans un meme
     # BMesh des lofts et des boites de bobinage oppose donnerait une somme
@@ -2127,6 +2113,238 @@ def _seat_probe(points: list[tuple],
     return out
 
 
+# ==========================================================================
+# 7 ter. LE CADRE — la troisieme enveloppe, et personne ne l'avait ecrite
+# ==========================================================================
+#  (BRIEF-0113) Deux enveloppes bornaient les pieces de cette poupe : le
+#  PLAFOND DE CONSTRUCTION (regles A et B, `_marker_ceiling`) et l'EMPRISE DES
+#  BERCEAUX. Elles disent ou une piece a le DROIT d'etre. Aucune ne dit si
+#  quelqu'un la REGARDE.
+#
+#  ⚠️ ET C'EST LA TROISIEME QUI A COULE DEUX LOTS D'AFFILEE. Le `BRIEF-0109` a
+#  livre un pylone legal et enterre ; le `BRIEF-0112` a livre deux tours
+#  legales, bien faites, correctement mesurees — et posees a `z = -10,10` sur
+#  une etagere a `y = -4,60`, c'est-a-dire 142 px AU-DESSUS du bord haut de
+#  l'image. Aucune erreur, aucun test rouge, aucune ligne de journal : la piece
+#  s'importe et se monte, elle n'est simplement dans le champ de personne.
+#
+#  ⚠️ ET LE RENVERSEMENT EST CONTRE-INTUITIF : PLUS UNE PIECE EST HAUTE EN `y`,
+#  PLUS ELLE SORT TOT PAR LE HAUT. La regle B achete 3,80 m d'assise sur les
+#  flancs ; le cadre les reprend, et 0,90 m avec. Pour une piece de 4,70 m :
+#
+#      assise -8,40 (plateau du bossage)   sommet dans le cadre si z >= -10,38
+#      assise -4,60 (etagere de rive)      sommet dans le cadre si z >=  -5,69
+#
+#  Le creneau libre de l'etagere de rive etait `z -8,60..-11,60`. Les deux
+#  intervalles ne se recouvrent pas : sur cette poupe, la regle B ne paie rien.
+#
+#  Ce qui suit MESURE le cadre, et rien n'y est recopie : la camera vient de la
+#  scene du niveau, la resolution de `project.godot`, le plan de maintien de la
+#  Resource, la hauteur des pieces des binaires, et les panneaux du HUD de leur
+#  propre source. Une cote ecrite deux fois finit toujours par diverger.
+
+#: La scene du niveau 2 — on y LIT la camera, on ne la recopie pas.
+CORTEGE_SCENE = os.path.join(_REPO, "scenes/gameplay/cortege.tscn")
+#: La resolution de sortie.
+PROJECT_FILE = os.path.join(_REPO, "project.godot")
+#: Le HUD du chasseur : ses panneaux mangent les deux coins hauts de l'image.
+HUD_SOURCE = os.path.join(_REPO, "scripts/ui/fighter_hud.gd")
+
+
+def _game_camera() -> tuple[list[Vector], Vector, float]:
+    """(lignes de la base, origine, FOV vertical) de la camera du niveau 2.
+
+    ⚠️ LES DOUZE NOMBRES D'UN `Transform3D` SONT DES LIGNES, PAS DES COLONNES, et
+    l'erreur est silencieuse : les deux lectures donnent une camera valide, l'une
+    plongeante et l'autre qui regarde le ciel. Le constructeur de Godot pose
+    `rows[0] = (xx, xy, xz)` ; l'inverse d'une base orthonormee est sa
+    transposee, donc `local = rows^T . (p - origine)`.
+
+    ⚠️ ET `fov` EST L'ANGLE VERTICAL tant que `keep_aspect` garde son defaut
+    (`KEEP_HEIGHT`) — c'est le cas, la scene ne le pose pas. L'ordonnee ecran ne
+    depend donc pas du rapport d'image ; l'abscisse, elle, en depend.
+    """
+    text = open(CORTEGE_SCENE, encoding="utf-8").read()
+    block = re.search(r'\[node name="Camera3D" type="Camera3D".*?(?=\n\[node |\Z)',
+                      text, re.S)
+    if block is None:
+        raise ak.ContractError(
+            f"{CORTEGE_SCENE} : aucun nœud Camera3D — le cadre du niveau 2 ne "
+            "se mesure plus")
+    body = block.group(0)
+    tr = re.search(r"transform = Transform3D\(([^)]*)\)", body)
+    if tr is None:
+        raise ak.ContractError(f"{CORTEGE_SCENE} : la Camera3D n'a pas de "
+                               "transformation")
+    v = [float(x) for x in tr.group(1).split(",")]
+    fov = re.search(r"^fov = (.+)$", body, re.M)
+    return ([Vector(v[0:3]), Vector(v[3:6]), Vector(v[6:9])], Vector(v[9:12]),
+            float(fov.group(1)) if fov else 75.0)
+
+
+def _viewport() -> tuple[float, float]:
+    text = open(PROJECT_FILE, encoding="utf-8").read()
+    w = re.search(r"^window/size/viewport_width=(\d+)", text, re.M)
+    h = re.search(r"^window/size/viewport_height=(\d+)", text, re.M)
+    if w is None or h is None:
+        raise ak.ContractError(f"{PROJECT_FILE} : resolution de sortie illisible")
+    return float(w.group(1)), float(h.group(1))
+
+
+_CAMERA: tuple[list[Vector], Vector, float] | None = None
+
+
+def _screen(point: Vector) -> tuple[float, float]:
+    """(x, y) en pixels d'un point MONDE, `y` compte depuis le haut du cadre."""
+    global _CAMERA
+    if _CAMERA is None:
+        _CAMERA = _game_camera()
+    rows, origin, fov = _CAMERA
+    d = point - origin
+    local = Vector((rows[0].x * d.x + rows[1].x * d.y + rows[2].x * d.z,
+                    rows[0].y * d.x + rows[1].y * d.y + rows[2].y * d.z,
+                    rows[0].z * d.x + rows[1].z * d.y + rows[2].z * d.z))
+    width, height = _viewport()
+    if local.z >= -1e-4:                       # derriere l'œil : pas d'image
+        return (float("nan"), float("nan"))
+    f = 1.0 / math.tan(math.radians(fov) * 0.5)
+    return ((1.0 + f * (height / width) * local.x / -local.z) * 0.5 * width,
+            (1.0 - f * local.y / -local.z) * 0.5 * height)
+
+
+def _hud_panels() -> list[tuple[str, float, float, float, float]]:
+    """Les panneaux du HUD qui mangent le HAUT du cadre, LUS dans leur source.
+
+    ⚠️ CE N'EST PAS UNE COQUETTERIE : le sommet d'une piece peut etre dans le
+    cadre ET derriere un panneau opaque a 82 %. Les tours de rive du
+    `BRIEF-0112` tombaient a `x = 1601` et `x = 319` px, c'est-a-dire dans la
+    colonne du score et dans celle du bouclier.
+
+    Renvoie `[]` si la source du HUD change de forme — c'est un AVIS, pas un
+    contrat : le harnais qui echoue est celui du cadre, pas celui du HUD.
+    """
+    try:
+        text = open(HUD_SOURCE, encoding="utf-8").read()
+    except OSError:
+        return []
+    symbols: dict[str, object] = {}
+    for name, raw in re.findall(r"^const (\w+) :?=\s*(.+)$", text, re.M):
+        raw = raw.split("#")[0].strip()
+        vec = re.match(r"Vector2\(([^)]*)\)", raw)
+        if vec:
+            a, b = [x.strip() for x in vec.group(1).split(",")]
+            symbols[name] = (a, b)
+        else:
+            try:
+                symbols[name] = float(raw)
+            except ValueError:
+                pass
+
+    def value(token: str) -> float | None:
+        token = token.strip()
+        sign = -1.0 if token.startswith("-") else 1.0
+        token = token.lstrip("-").strip()
+        try:
+            return sign * float(token)
+        except ValueError:
+            pass
+        got = symbols.get(token)
+        return sign * got if isinstance(got, float) else None
+
+    def pair(token: str) -> tuple[float, float] | None:
+        token = token.strip()
+        vec = re.match(r"Vector2\(([^,]+),([^)]+)\)$", token)
+        if vec:
+            a, b = value(vec.group(1)), value(vec.group(2))
+            return None if a is None or b is None else (a, b)
+        got = symbols.get(token)
+        if isinstance(got, tuple):
+            a, b = value(got[0]), value(got[1])
+            return None if a is None or b is None else (a, b)
+        return None
+
+    width, height = _viewport()
+    out: list[tuple[str, float, float, float, float]] = []
+    for call in re.finditer(r"func (_build_\w+)\(", text):
+        start = call.end()
+        end = text.find("\nfunc ", start)
+        body = text[start:end if end > 0 else len(text)]
+        # ⚠️ `Vector2\(...\)` D'ABORD DANS L'ALTERNATIVE. Avec `[\w.]+` en tete,
+        # le moteur d'expressions rationnelles capture le mot « Vector2 » et
+        # s'arrete la : trois panneaux sur quatre passaient inapercus, en
+        # silence, et le seul qui sortait etait celui dont l'argument est une
+        # constante nommee.
+        arg = r"(Vector2\([^)]*\)|[\w.]+)"
+        for args in re.finditer(r"_panel\(%s,\s*%s,\s*%s" % (arg, arg, arg),
+                                body):
+            anchor = pair(args.group(1))
+            offset = pair(args.group(2))
+            size = pair(args.group(3))
+            if anchor is None or offset is None or size is None:
+                continue
+            from_right = abs(anchor[0] - 1.0) < 1e-6
+            from_bottom = abs(anchor[1] - 1.0) < 1e-6
+            x0 = anchor[0] * width + (offset[0] - size[0] if from_right
+                                      else offset[0])
+            y0 = anchor[1] * height + (offset[1] - size[1] if from_bottom
+                                       else offset[1])
+            if y0 > 0.5 * height:              # le bas du cadre ne cache rien
+                continue
+            label = call.group(1).replace("_build_", "")
+            out.append((label, x0, x0 + size[0], y0, y0 + size[1]))
+    return out
+
+
+def _frame_probe(rows: list[dict]) -> list[dict]:
+    """Chaque piece posee, PROJETEE par la camera du jeu au plan de maintien.
+
+    ⚠️ LA POUPE AU REPOS EST A `z = -hold_plane_y`, ET CE N'EST PAS UN
+    CALIBRAGE : le survol s'arrete a `LEAD_IN + station - hold`, le decor porte
+    `parcouru - LEAD_IN` et la poupe est posee a `-station` dessus. Les trois
+    termes se simplifient. Rien a lire sur une capture.
+
+    Le harnais ECHOUE LE BUILD si le sommet d'une piece sort du cadre par le
+    haut : c'est le defaut du `BRIEF-0112`, et il etait totalement silencieux.
+    Le HUD, lui, n'est qu'un AVIS imprime — c'est au concepteur d'arbitrer entre
+    une piece et un panneau.
+    """
+    width, height = _viewport()
+    panels = _hud_panels()
+    out: list[dict] = []
+    for row in rows:
+        box_x, box_y, box_z = row["box"]
+        foot = Vector((row["pos"][0], box_y[0], row["pos"][2] + STERN_WORLD_Z))
+        crown = Vector((row["pos"][0], box_y[1], row["pos"][2] + STERN_WORLD_Z))
+        # ⚠️ LE SOMMET EST UNE FACE, PAS UN POINT. Une piece de 2,53 m de cote
+        # vue a 70 deg de plongee etale sa face haute sur 70 px de hauteur : son
+        # centre peut etre dans le cadre quand ses coins arriere n'y sont plus.
+        corners = [_screen(Vector((box_x[i], box_y[1],
+                                   box_z[j] + STERN_WORLD_Z)))
+                   for i in (0, 1) for j in (0, 1)]
+        y_foot = _screen(foot)[1]
+        x_top, y_top = _screen(crown)
+        hidden = sorted({name for name, x0, x1, p0, p1 in panels
+                         for cx, cy in corners
+                         if x0 <= cx <= x1 and p0 <= cy <= p1})
+        out.append({"name": row["name"], "foot": y_foot, "top": y_top,
+                    "x": x_top,
+                    "corners_top": min(c[1] for c in corners),
+                    "corners_bottom": max(c[1] for c in corners),
+                    "corners_x": (min(c[0] for c in corners),
+                                  max(c[0] for c in corners)),
+                    "hud": hidden})
+        if math.isnan(y_top) or y_top < 0.0 or y_top > height:
+            raise ak.ContractError(
+                f"{row['name']} : le sommet de la piece tombe a {y_top:.0f} px "
+                f"sur {height:.0f} — HORS CADRE. Une piece que la camera ne "
+                "voit pas n'existe pas (BRIEF-0113).")
+        if y_foot > height:
+            raise ak.ContractError(
+                f"{row['name']} : le PIED de la piece tombe a {y_foot:.0f} px "
+                f"sur {height:.0f} — sous le bord bas du cadre.")
+    return out
+
+
 def _glow_in_channels(points: list[tuple], tris: list[tuple[int, int, int]],
                       tri_material: list[str]) -> float:
     """L'aire d'`AA_Emissive_Engine` qui tombe dans un canal — doit valoir zero.
@@ -2339,12 +2557,6 @@ def _built_volumes() -> list[tuple[str, list, list, list]]:
                         [mlo, mhi], [PYLON_SEAT_TOP, PYLON_SEAT_TOP + 0.42],
                         [PYLON_Z - PYLON_SEAT_HZ + 0.42,
                          PYLON_Z + PYLON_SEAT_HZ - 0.42]))
-    sx0, sx1, shz, _stop = TOWER_SEAT_STAGES[0]
-    for side in (1.0, -1.0):
-        lo, hi = sorted((side * sx0, side * sx1))
-        out.append((f"plateau de tour ({side * TOWER_SEAT_CX:+.2f})",
-                    [lo, hi], [TOWER_SEAT_BASE, TOWER_SEAT_TOP],
-                    [TOWER_SEAT_Z - shz, TOWER_SEAT_Z + shz]))
     return out
 
 
@@ -2354,7 +2566,7 @@ def _piece_clash(boxes: list[tuple[str, list, list, list]]) -> list[dict]:
     ⚠️ LE BRIEF LE DEMANDE PAR PIECE, ET C'EST LE SEUL FORMAT QUI SERVE. « Rien
     ne se recouvre » est une phrase ; 0,000 m3 entre `Tour 03` et `Liaison 07`
     est une mesure, et elle survit a la prochaine cote qu'on bougera. Les
-    volumes CONSTRUITS (socles de pylone, plateaux de tour) sont dans la liste :
+    volumes CONSTRUITS (les socles de pylone) sont dans la liste :
     une piece qui traverserait son propre voisin ne se verrait pas autrement.
     """
     every = list(boxes) + _built_volumes()
@@ -2453,13 +2665,13 @@ def _assert_markers(path: str) -> dict:
                      "headroom": limit - box_y[1],
                      "triangles": _piece_triangles(kind)})
         boxes.append((name, box_x, box_y, box_z))
-    # ⚠️ LE PLATEAU DE TOUR EST DANS LA LISTE DES VOLUMES, ET LA TOUR EST POSEE
-    # DESSUS : le recouvrement `Tour NN` x `plateau de tour` est donc NUL par
-    # construction (le repere est SUR le dessus du plateau, jamais dedans) — et
+    # ⚠️ LE SOCLE DE PYLONE EST DANS LA LISTE DES VOLUMES, ET SA PIECE EST POSEE
+    # DESSUS : le recouvrement `Pylone NN` x `socle` est donc NUL par
+    # construction (le repere est SUR le dessus du socle, jamais dedans) — et
     # s'il cesse de l'etre, c'est que la piece s'enterre, ce que `_seat_probe()`
-    # refuse deja de son cote.
+    # refuse deja de son cote pour les tours.
     return {"rows": rows, "garrison": _garrison_clash(boxes),
-            "clash": _piece_clash(boxes)}
+            "clash": _piece_clash(boxes), "frame": _frame_probe(rows)}
 
 
 _PIECE_TRIS: dict[str, int] = {}
@@ -2590,7 +2802,7 @@ def _print(report: dict) -> None:
     print(f"    AA_Emissive_Engine dans les canaux : "
           f"{report['glow_in_channels']:.6f} m2")
     print("")
-    print("  LES QUATRE ASSISES DE TOUR (BRIEF-0112) — peau RELUE sous l'empreinte :")
+    print("  LES ASSISES DE TOUR (BRIEF-0112) — peau RELUE sous l'empreinte :")
     for seat in report["tower_seats"]:
         print(f"    {seat['name']:<16} ({seat['x']:+7.3f} ; {seat['z']:+7.3f})  "
               f"empreinte {seat['footprint'][0]:.3f} x {seat['footprint'][1]:.3f} m  ·  "
@@ -2623,6 +2835,18 @@ def _print(report: dict) -> None:
     # qu'un chiffre qu'on ne compte plus est un chiffre qu'on ne saura plus.
     print(f"    TOTAL POUPE {total} triangles (repere historique : "
           f"{STERN_TOTAL_BUDGET})")
+    print("")
+    print("  LE CADRE (BRIEF-0113) — chaque piece PROJETEE par la camera du jeu")
+    print("  au plan de maintien (poupe a z = %+.2f monde). 0 px = bord HAUT :"
+          % STERN_WORLD_Z)
+    height = _viewport()[1]
+    for f in report["markers"]["frame"]:
+        print(f"    {f['name']:<22} pied {f['foot']:7.1f} px   sommet "
+              f"{f['top']:7.1f} px   (face haute {f['corners_top']:.0f}.."
+              f"{f['corners_bottom']:.0f}, x {f['corners_x'][0]:.0f}.."
+              f"{f['corners_x'][1]:.0f})"
+              + (f"  ⚠️ derriere {'/'.join(f['hud'])}" if f["hud"] else ""))
+    print(f"    cadre {height:.0f} px de haut · le sommet de chaque piece y est")
     clashes = report["markers"]["clash"]
     print("")
     if clashes:
@@ -2632,7 +2856,7 @@ def _print(report: dict) -> None:
                   f"(x {c['x']:.3f} · y {c['y']:.3f} · z {c['z']:.3f})")
     else:
         print("  Recouvrement entre pieces posees et volumes construits : "
-              "AUCUN (21 pieces + 8 volumes, toutes les paires)")
+              "AUCUN (toutes les paires)")
     clashes = report["markers"]["garrison"]
     if clashes:
         print("")
@@ -2946,10 +3170,10 @@ def _mount_plumes(origin: Vector, gain: float = 1.0) -> list:
 def _glb_marker_names(path: str) -> set[str]:
     """Les noms `CTRL | ` presents dans un binaire — pour la vignette « avant ».
 
-    ⚠️ ON LES RELIT, ON NE LES DEDUIT PAS. La carene d'avant ce lot porte 17
-    reperes, celle d'apres en porte 21 : monter la table COURANTE sur l'ancienne
-    coque y poserait quatre tours qui n'y ont pas d'assise, et la comparaison
-    avant/apres ne comparerait plus rien.
+    ⚠️ ON LES RELIT, ON NE LES DEDUIT PAS. La carene d'avant ce lot porte 21
+    reperes, celle d'apres en porte 19 : monter la table COURANTE sur l'ancienne
+    coque perdrait les deux tours de rive que la comparaison doit justement
+    montrer hors cadre.
     """
     gltf, _blob = blc._read_glb(path)
     return {n.get("name", "") for n in gltf.get("nodes", [])
@@ -3001,9 +3225,15 @@ def _mount_corridor(origin: Vector) -> list:
 #: Les vues cadrees sur le massif : la poupe y est avancee pour que le survol
 #: montre ce qu'il montre a ce moment-la (voir `AFT_WORLD_Z`).
 #: ⚠️ « avant » EST DANS LA LISTE DEPUIS LE `BRIEF-0112`. La comparaison porte
-#: sur les quatre tours, et les tours sont sur le massif : cadrer l'avant au
-#: plan de maintien et l'apres au massif ne comparerait pas deux etats, ca
-#: comparerait deux cadrages.
+#: sur les tours, et les tours sont sur le massif : cadrer l'avant au plan de
+#: maintien et l'apres au massif ne comparerait pas deux etats, ca comparerait
+#: deux cadrages.
+#:
+#: ⚠️ ET C'EST EXACTEMENT POURQUOI `hold_avant` / `game` EXISTENT (BRIEF-0113).
+#: Une planche « a la camera du jeu » qui AVANCE la poupe montre une tour que le
+#: jeu ne montre pas : c'est ce cadrage-la qui a fait passer pour bonnes deux
+#: tours a -142 px. Les deux premieres vignettes sont donc AU PLAN DE MAINTIEN,
+#: avant contre apres, et ce sont les seules qui rendent un verdict.
 AFT_VIEWS = ("avant", "aft", "nude", "channel", "top")
 #: La carene D'AVANT ce lot, rendue au meme cadrage pour la comparaison.
 #: Elle est produite par `tools/blender/build_stern_before.py` (extrait de git,
@@ -3043,6 +3273,29 @@ def _dim_scene(gain: float) -> None:
                                             value[2] * gain, value[3])
 
 
+def _frame_caption(source: str) -> str:
+    """« Tour 01 pied 146 px sommet +13 » — LU dans le binaire qu'on rend.
+
+    ⚠️ ELLE RELIT LES REPERES DE CETTE CARENE-LA. La vignette « avant » porte
+    quatre tours et la vignette « apres » deux : une legende ecrite en dur
+    afficherait les chiffres de l'une sous l'image de l'autre.
+    """
+    gltf, _blob = blc._read_glb(source)
+    _hx, height, _hz = _piece_extent("tower", math.pi * 0.5)
+    bits: list[str] = []
+    for node in sorted(gltf.get("nodes", []), key=lambda n: n.get("name", "")):
+        name = node.get("name", "")
+        if not name.startswith("CTRL | Tour"):
+            continue
+        px, py, pz = node.get("translation", (0.0, 0.0, 0.0))
+        foot = _screen(Vector((px, py, pz + STERN_WORLD_Z)))[1]
+        crown = _screen(Vector((px, py + height, pz + STERN_WORLD_Z)))[1]
+        bits.append("%s : pied %.0f px, sommet %.0f%s"
+                    % (name.replace("CTRL | ", ""), foot, crown,
+                       " HORS CADRE" if crown < 0.0 else ""))
+    return ("camera du jeu, cadre 0..%d px  ·  " % TILE_H) + "  |  ".join(bits)
+
+
 def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
           rank: int = 0) -> None:
     blc._plate_reset()
@@ -3053,7 +3306,7 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
     else:
         world_z = STERN_WORLD_Z
     origin = Vector((0.0, 0.0, world_z))
-    before = view == "avant"
+    before = view in ("avant", "hold_avant")
     source = BEFORE_HULL if before else OUTPUT
     hull = blc._import(source, "stern_hull", origin)
     corridor = _mount_corridor(origin)
@@ -3106,15 +3359,16 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
         # porte : le premier tirage ne montrait pas un centimetre du pylone. La
         # camera est donc AU-DESSUS DU BASSIN, la ou la camera du jeu se tient,
         # et elle regarde la face interieure — la seule que le joueur voie.
-        # ⚠️ LE CADRE S'EST ELARGI AU `BRIEF-0112` : la rive porte desormais DEUX
-        # pieces hautes, le pylone a `z = -0,40` et la tour a `z = -10,10`. Vise
-        # sur le seul pylone, la vue coupait la tour hors champ — et la seule
-        # chose que cette vignette doive prouver, c'est qu'on les voit toutes
-        # les deux, l'une derriere l'autre, sur la meme rive.
-        cam_pos = Vector((1.0, 10.5, world_z + 17.0))
-        target = Vector((17.50, -4.30, world_z - 5.20))
+        # ⚠️ ET LE CADRE S'EST RESSERRE AU `BRIEF-0113`. Le `BRIEF-0112` l'avait
+        # elargi pour tenir DEUX pieces hautes, le pylone a `z = -0,40` et la
+        # tour de rive a `z = -10,10` ; la tour de rive est partie (elle sortait
+        # du cadre du jeu par le haut) et la vue gardait son grand angle : un
+        # tiers de l'image etait du vide. On revise sur le pylone et sur
+        # l'etagere, qui est ce que cette vignette doit montrer — NUE.
+        cam_pos = Vector((2.0, 9.5, world_z + 13.0))
+        target = Vector((17.20, -6.20, world_z - 1.20))
         forward, up = _look(cam_pos, target)
-        fov = math.radians(34.0)
+        fov = math.radians(33.0)
     elif view == "joint":
         cam_pos = Vector((0.0, 9.0, 21.0))
         forward = Vector((0.0, -0.500, -0.866))
@@ -3159,29 +3413,34 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
     # troues et DOUBLES (deux vignettes « 7 »). Le rang vient maintenant de
     # l'ordre de rendu, qui est le seul qui existe sur la planche livree.
     heads = {
-        "avant": ("AVANT (BRIEF-0110)  ·  deux tours PROCEDURALES de 796 tri "
-                  "chacune sur le plateau du massif, et rien sur les flancs "
-                  "arriere"),
-        "game": ("LE PLAN DE MAINTIEN  ·  ce que le joueur voit a l'arret : le "
-                 "massif est au bord haut du cadre"),
+        "avant": ("AVANT (BRIEF-0112)  ·  QUATRE tours : 01/02 sur le plateau "
+                  "du massif, 03/04 sur les plateaux de rive — leur sommet "
+                  "tombe a -142 px, c'est-a-dire HORS DU CADRE par le haut"),
+        "hold_avant": ("AVANT, AU PLAN DE MAINTIEN — LE SEUL VERDICT  ·  "
+                       "les quatre tours du BRIEF-0112 sont montees ; on n'en "
+                       "voit que DEUX, celles du plateau. Les deux autres sont "
+                       "au-dessus du bord haut"),
+        "game": ("APRES, MEME CADRAGE  ·  LE PLAN DE MAINTIEN, LE SEUL VERDICT  ·  ce que le joueur "
+                 "voit a l'arret. Sommet de Tour 01/02 : +13 px. Sommet des "
+                 "tours de rive du BRIEF-0112 : -142 px"),
         "collecteur": ("LE COLLECTEUR, pleine face  ·  inchange par ce lot "
                        "(BRIEF-0110) : rail a deux niveaux, coudes de rive"),
         "rive": ("LA RIVE DE TRIBORD  ·  le socle porte le pylone a -8,60 ; "
-                 "derriere lui le plateau de tour (-4,60) porte Tour 03, "
-                 "REGLE B, sommet y = +0,10"),
-        "aft": ("APRES, MEME CADRAGE QUE LA VIGNETTE 1  ·  quatre "
-                "stern_tower.glb INSTANCIES : 01/02 sur le plateau du bossage "
-                "(regle A, sommet -3,70), 03/04 sur les plateaux de rive "
-                "(regle B, sommet +0,10)"),
+                 "derriere lui l'etagere de rive est RENDUE NUE (BRIEF-0113) : "
+                 "son plateau de tour sortait du cadre par le haut"),
+        "aft": ("APRES, MEME CADRAGE QUE LA VIGNETTE 1  ·  DEUX "
+                "stern_tower.glb INSTANCIES sur le plateau des bossages "
+                "(regle A, assise -8,40, sommet -3,70) — les deux plateaux de "
+                "rive et leurs tours hors cadre sont retires (BRIEF-0113)"),
         "nude": ("SANS LES GROUPES PROPULSIFS, SOUS LES TROIS PANACHES  ·  les "
-                 "quatre tours sur leurs assises, et les trois canaux qu'elles "
+                 "deux tours sur leurs assises, et les trois canaux qu'elles "
                  "ne touchent pas (0,000000000 m2)"),
         "channel": ("LE MASSIF DE TROIS-QUARTS, sans les groupes  ·  panaches a "
                     "14 % : demi-largeur libre 2,200 m aux trois stations"),
         "joint": ("LA JONCTION s = 500, vue rasante  ·  elle n'a pas bouge d'un "
                   "micron (ecart mesure 6,6e-07 m sur 48 sommets)"),
-        "top": ("DE DESSUS  ·  les quatre tours, les trois canaux et les deux "
-                "plateaux de rive a |x| >= 16, hors du plan de vol (14)"),
+        "top": ("DE DESSUS  ·  les deux tours sur les bossages interieurs, les "
+                "trois canaux, et la rive rendue nue"),
     }
     head = heads[view]
     tint = (1.0, 0.88, 0.55)
@@ -3203,7 +3462,13 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
         tint = (0.72, 1.0, 0.82)
     blc._label(camera, f"{rank} — {head}" if rank else head,
                -0.96, 0.90, 0.028, TILE_W, TILE_H, tint)
-    if view in ("game", "aft", "nude", "channel", "avant") and not checker:
+    if view in ("hold_avant", "game") and not checker:
+        # ⚠️ LES PIXELS SONT LUS DANS LE BINAIRE QU'ON REND, pas recopies d'un
+        # rapport : la vignette « avant » porte les chiffres de SA carene.
+        blc._label(camera, _frame_caption(source), -0.96, 0.70, 0.022,
+                   TILE_W, TILE_H, (1.0, 0.62, 0.62))
+    if view in ("game", "aft", "nude", "channel", "avant",
+                "hold_avant") and not checker:
         y_axis, z0, z1 = _plume_axis(False)
         blc._label(camera,
                    f"panache (ADR-0017) : axe y = {y_axis:.2f}, de z = {z0:.2f} a "
@@ -3216,7 +3481,8 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False,
                        "levre 1,10 x 0,82 m, +0,45 m au-dessus du plateau  ·  "
                        "marge au socle de tour 1,16 m",
                        -0.96, 0.79, 0.022, TILE_W, TILE_H, (0.72, 0.84, 1.0))
-    if view in ("game", "aft", "nude", "avant", "collecteur") and not checker:
+    if view in ("game", "aft", "nude", "avant", "hold_avant",
+                "collecteur") and not checker:
         blc._label(camera,
                    f"camera du jeu (0 ; 14 ; 5), FOV 62 vertical, pont de poupe "
                    f"y = {DECK_Y:.2f} — cadre {metrics['frame_width']:.2f} m, "
@@ -3239,15 +3505,15 @@ def render_plate(only: tuple[str, ...] | None = None, out: str = PLATE) -> None:
     """
     staging = tempfile.mkdtemp(prefix="aegis-stern-plate-")
     tiles: list[tuple[str, int]] = []
-    order = ("avant", "game", "collecteur", "rive", "aft", "nude", "channel",
-             "joint", "top")
+    order = ("hold_avant", "game", "avant", "collecteur", "rive", "aft",
+             "nude", "channel", "joint", "top")
     wanted = only or order + ("dark", "checker")
     try:
         rank = 0
         for view in order:
             if view not in wanted:
                 continue
-            if view == "avant" and not os.path.exists(BEFORE_HULL):
+            if view in ("avant", "hold_avant") and not os.path.exists(BEFORE_HULL):
                 print("  (vignette « avant » omise : STERN_BEFORE_GLB absent)")
                 continue
             path = os.path.join(staging, f"{view}.png")

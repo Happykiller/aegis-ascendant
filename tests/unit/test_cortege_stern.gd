@@ -910,7 +910,12 @@ func test_every_marker_of_the_hull_has_a_kit() -> void:
 		var nom := String(node.name)
 		if node is Node3D and nom.begins_with("CTRL | "):
 			reperes.append(nom)
-	assert_true(reperes.size() >= 21, "la carene porte ses reperes (%d)" % reperes.size())
+	# ⚠️ UN PLANCHER LARGE, PAS UN RECENSEMENT. Ce que cette ligne garde est le cas « la carene a
+	# ete reforgee sans ses reperes » — un test vert et VIDE. Figer le compte exact la ferait
+	# rougir a chaque lot qui ajoute ou retire une piece, et on prendrait l'habitude de le
+	# remonter sans lire : le `BRIEF-0113` en a retire deux, et c'est une decision, pas un defaut.
+	# Le vrai travail est fait plus bas, famille par famille.
+	assert_true(reperes.size() >= 10, "la carene porte ses reperes (%d)" % reperes.size())
 	for nom in reperes:
 		assert_false(CortegeStern._kit_for(nom).is_empty(),
 			"« %s » a un kit dans DRESS — sans quoi la piece manque EN SILENCE" % nom)
@@ -996,3 +1001,132 @@ func _rotor_tracks(a: Animation) -> Array[int]:
 		if String(a.track_get_path(i)).contains("Rotor ventilateur"):
 			out.append(i)
 	return out
+
+# =============================================================================
+# Une pièce haute n'existe que si la CAMÉRA la voit
+# =============================================================================
+
+## ⚠️ CE BANC EXISTE PARCE QUE LE PROJET S'EST FAIT AVOIR DEUX FOIS SUR LA MÊME QUESTION, ET
+## QU'AUCUNE DES DEUX FOIS LA GÉOMÉTRIE N'ÉTAIT EN CAUSE. Le `BRIEF-0109` a livré un pylône
+## légal, bien fait, et enterré aux trois quarts. Le `BRIEF-0112` a livré quatre tours d'échange
+## légales, bien faites — et posées à `z ≈ −10`, c'est-à-dire dans la partie du vaisseau qui sort
+## du cadre par le haut. Les deux lots avaient mesuré la bonne chose au mauvais endroit : le
+## plafond de construction et le plan de vol disent où une pièce a le DROIT d'être, jamais si
+## quelqu'un la REGARDE.
+##
+## Ce que ce banc ajoute est la troisième contrainte, et elle n'était écrite nulle part : le
+## CADRE. Il ne lit aucune constante — la caméra vient de la scène, la position d'arrêt de la
+## poupe vient de sa Resource, les repères et la hauteur des pièces viennent des binaires. Rien
+## à recopier, donc rien qui puisse diverger.
+const CORTEGE_SCENE := "res://scenes/gameplay/cortege.tscn"
+
+## La caméra du niveau 2, LUE dans la scène. ⚠️ Une `.tscn` porte bien une propriété `transform`
+## (contrairement à un nœud de glTF, qui n'a pas de `position` — la leçon du `BRIEF-0110`).
+func _game_camera() -> Array:
+	var packed: PackedScene = load(CORTEGE_SCENE)
+	if packed == null:
+		return []
+	var etat := packed.get_state()
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != "Camera3D":
+			continue
+		var tr := Transform3D.IDENTITY
+		var fov := 75.0
+		for p in etat.get_node_property_count(i):
+			match String(etat.get_node_property_name(i, p)):
+				"transform": tr = etat.get_node_property_value(i, p) as Transform3D
+				"fov": fov = float(etat.get_node_property_value(i, p))
+		return [tr, fov]
+	return []
+
+## L'ordonnée d'un point du monde à l'écran, en pixels, 0 en haut.
+##
+## ⚠️ `fov` EST L'ANGLE VERTICAL tant que `keep_aspect` reste sur sa valeur par défaut
+## (`KEEP_HEIGHT`) — c'est le cas ici, la scène ne le pose pas. Le calcul n'a donc pas besoin du
+## rapport d'image, et il ne dépend pas de la résolution de sortie.
+static func _screen_y(cam: Transform3D, fov: float, monde: Vector3, hauteur: float) -> float:
+	var local := cam.affine_inverse() * monde
+	if local.z >= -0.0001:
+		return NAN
+	var f := 1.0 / tan(deg_to_rad(fov) * 0.5)
+	return (1.0 - f * local.y / -local.z) * 0.5 * hauteur
+
+## Les quatre tours d'échange sont-elles DANS le cadre, de leur pied à leur sommet ?
+func test_every_exchange_tower_stands_inside_the_frame() -> void:
+	var camera := _game_camera()
+	assert_true(camera.size() == 2, "la camera du niveau 2 se lit dans la scene")
+	if camera.size() != 2:
+		return
+	var cam: Transform3D = camera[0]
+	var fov: float = camera[1]
+	var hauteur := float(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+	# ⚠️ LA POUPE AU REPOS EST À `z = −hold_plane_y`, ET CE N'EST PAS UNE COÏNCIDENCE : le survol
+	# s'arrête à `LEAD_IN + station − hold`, le décor porte `parcouru − LEAD_IN`, et la poupe est
+	# posée à `−station` dessus. Les trois se simplifient. Rien à calibrer sur une capture.
+	var tuning: CortegeSternTuning = load("res://resources/levels/long_cortege_stern.tres")
+	var z0 := -tuning.hold_plane_y
+
+	var packed: PackedScene = load(CortegeStern.HULL_KIT)
+	if packed == null:
+		return
+	var carene := track(packed.instantiate()) as Node3D
+	var tour_packed: PackedScene = load(CortegeStern._kit_for("CTRL | Tour 01"))
+	if tour_packed == null:
+		return
+	var tour := track(tour_packed.instantiate()) as Node3D
+	var haut := _height_of(tour)
+	assert_true(haut > 1.0, "la tour d'echange a une hauteur mesurable (%.2f m)" % haut)
+
+	var vues := 0
+	for node in _descendants(carene):
+		var n3 := node as Node3D
+		if n3 == null or not String(node.name).begins_with("CTRL | Tour"):
+			continue
+		var pied := n3.position + Vector3(0.0, 0.0, z0)
+		var sommet := pied + Vector3(0.0, haut, 0.0)
+		var y_pied := _screen_y(cam, fov, pied, hauteur)
+		var y_sommet := _screen_y(cam, fov, sommet, hauteur)
+		vues += 1
+		assert_false(is_nan(y_pied) or is_nan(y_sommet),
+			"« %s » est devant la camera" % node.name)
+		if is_nan(y_sommet):
+			continue
+		# ⚠️ LE SOMMET, PAS LE PIED. Une tour dont seul le pied entre dans le cadre ne se lit pas
+		# comme une tour : c'est une bosse au bord de l'image. `Tour 03` etait exactement ca —
+		# pied a 37 px, sommet a −142.
+		assert_true(y_sommet >= 0.0,
+			"le sommet de « %s » est dans le cadre (%.0f px ; son pied est a %.0f)"
+			% [node.name, y_sommet, y_pied])
+		assert_true(y_pied <= hauteur,
+			"le pied de « %s » est dans le cadre (%.0f px)" % [node.name, y_pied])
+	# ⚠️ DEUX ET NON QUATRE : le `BRIEF-0113` a retire les tours de rive. La coque n'y descend pas
+	# — il aurait fallu creuser un puits de 3,6 m dans le massif — et les deux autres voies
+	# coutaient soit un canal d'echappement, soit une plate-forme de la garnison. Deux tours qu'on
+	# voit valent mieux que quatre dont la moitie est au-dessus du cadre.
+	assert_true(vues == 2, "les deux tours restantes ont ete mesurees (%d)" % vues)
+
+## La hauteur d'une pièce instanciée, mesurée sur ses boîtes englobantes.
+##
+## ⚠️ ELLE REMONTE TOUTE LA CHAÎNE DE TRANSFORMATIONS, et c'est la différence entre 3,0 m et
+## 4,70. Une pièce livrée est un sous-arbre : ses maillages pendent sous des nœuds intermédiaires
+## qui portent leur propre transformation, et se contenter de `mesh.position` mesure la pièce
+## comme si cette chaîne n'existait pas. Elle sous-estime — donc elle ferait passer pour cadrée
+## une tour qui dépasse.
+func _height_of(piece: Node3D) -> float:
+	var bas := INF
+	var haut := -INF
+	for node in _descendants(piece):
+		var mesh := node as MeshInstance3D
+		if mesh == null or mesh.mesh == null:
+			continue
+		var vers_la_piece := Transform3D.IDENTITY
+		var courant: Node = mesh
+		while courant != null and courant != piece:
+			var n3 := courant as Node3D
+			if n3 != null:
+				vers_la_piece = n3.transform * vers_la_piece
+			courant = courant.get_parent()
+		var boite := vers_la_piece * mesh.mesh.get_aabb()
+		bas = minf(bas, boite.position.y)
+		haut = maxf(haut, boite.position.y + boite.size.y)
+	return (haut - bas) if haut > bas else 0.0
