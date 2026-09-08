@@ -1,13 +1,36 @@
-"""build_stern.py — la carene de poupe du Long Cortege (BRIEF-0106, BRIEF-0107).
+"""build_stern.py — la carene de poupe du Long Cortege (BRIEF-0106, 0107, 0110).
 
     blender-aegis -t 1 -b -noaudio -P tools/blender/build_stern.py
-    blender-aegis -t 1 -b -noaudio -P tools/blender/build_stern.py -- --plate
+    STERN_BEFORE_GLB=/chemin/stern_hull_avant.glb \
+        blender-aegis -t 1 -b -noaudio -P tools/blender/build_stern.py -- --plate
 
 Produit `assets/imported/models/backgrounds/stern_hull.glb` et, avec `--plate`,
-`docs/forge/output/BRIEF-0107-planche.png` — rendue A LA CAMERA DU JEU, avec les
-trois groupes propulsifs REELS montes dessus ET LEURS TROIS PANACHES (`ADR-0006` :
-un asset non rendu et non regarde n'est pas valide ; ici une planche sans panache
-montrerait trois rainures et ne prouverait rien).
+`docs/forge/output/BRIEF-0110-planche.png` — rendue A LA CAMERA DU JEU, avec les
+trois groupes propulsifs REELS montes dessus, LEURS TROIS PANACHES, et LES DIX-SEPT
+PIECES INSTANCIEES SUR LES REPERES (`ADR-0006` : un asset non rendu et non regarde
+n'est pas valide ; ici une planche sans panache montrerait trois rainures, et une
+planche de reperes vides ne prouverait rien du tout).
+
+⚠️ `STERN_BEFORE_GLB` EST FACULTATIF ET LA VIGNETTE 1 EN DEPEND. C'est la carene
+d'AVANT le lot, extraite de git et construite hors depot, rendue au cadrage exact
+de la vignette 2. Sans elle la comparaison avant/apres est simplement OMISE : une
+planche qui inventerait son « avant » ne vaudrait rien.
+
+
+CE QUE LE BRIEF-0110 A CHANGE — LA COQUE DIT OU, ELLE NE FABRIQUE PLUS QUOI
+==========================================================================
+Cinq familles de decor procedural cedent la place aux pieces tierces reduites au
+`BRIEF-0108`, qui ne sont PAS cuites ici : dix-sept nœuds vides `CTRL | ` disent
+au code ou les instancier. Une piece dupliquee dans la carene couterait ses
+triangles autant de fois qu'elle apparait ; instanciee, elle n'est en memoire
+qu'une fois.
+
+    manifold    436 -> 396   le tube devient un PORTIQUE ; 7 pieces dessus
+    rim_clamps  312 -> 384   les brides partent ; les filants restent (voir
+                             `build_rim_rails`) ; 4 flexibles instancies
+    pylons      240 -> 216   deux SOCLES ; 2 `stern_pylon.glb` instancies
+    towers      560 -> 1592  regenerees, a la hauteur que le massif permet
+    shoulders    96 -> 672   regeneres, au premier plan (45,7 px/m)
 
 ⚠️ `-t 1` EST OBLIGATOIRE. Meme raison que `scripts/build-hull.sh` et que
 `assets/source/models/stern/reduce_stern.py` : sans lui, deux executions ne
@@ -195,7 +218,7 @@ import tempfile
 
 import bmesh
 import bpy
-from mathutils import Euler, Matrix, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
@@ -206,7 +229,7 @@ import aegis_kit as ak  # noqa: E402
 import build_long_cortege as blc  # noqa: E402  (l'anneau de jonction vient de la)
 
 OUTPUT = os.path.join(_REPO, "assets/imported/models/backgrounds/stern_hull.glb")
-PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0107-planche.png")
+PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0110-planche.png")
 TUNING = os.path.join(_REPO, "resources/levels/long_cortege_stern.tres")
 #: Le reglage du panache — lu, jamais recopie (BRIEF-0107).
 PLUME_TUNING = os.path.join(_REPO, "resources/vfx/plume_cortege.tres")
@@ -291,8 +314,15 @@ ENGINE_X = (-SPACING, 0.0, SPACING)
 #: L'union des trois emprises : elles se RECOUVRENT (voir l'en-tete).
 KEEPOUT_X = SPACING + KEEPOUT_HALF_X        # 15,78
 
-#: Budget du brief.
+#: Budget du brief pour la CARENE seule.
 TRI_BUDGET = 20_000
+#: Budget de la poupe ENTIERE, pieces instanciees comprises (BRIEF-0110).
+STERN_TOTAL_BUDGET = 80_000
+#: Ce que la poupe consommait avant ce lot, tout compris (brief §Contexte).
+STERN_BEFORE = 64_894
+#: Ce que la carene pesait alors, et ce que les cinq familles retirees valaient.
+HULL_BEFORE = 3_182
+REMOVED_FAMILIES = 1_644
 
 #: La densite de la peau du corridor, LUE dans le module (0,20 tuile/m).
 TEXELS_PER_METER = blc.HULL_TEXELS_PER_METER
@@ -856,109 +886,230 @@ def build_glow_ring(bm: bmesh.types.BMesh) -> None:
             -(GROOVE_X + GLOW_HALF), GROOVE_X + GLOW_HALF, along_z=False)
 
 
-#: Le collecteur : de l'autre cote de la jonction, a cheval sur la fin du canal.
+#: LE COLLECTEUR D'ARTERE — DES PIECES INSTANCIEES, PLUS UN TUBE PROCEDURAL
+#: =========================================================================
+#: (BRIEF-0110 §1) Le tube octogonal de 436 triangles a laisse la place aux
+#: pieces livrees au `BRIEF-0108` : `artery_conduit.glb` et
+#: `artery_conduit_bend.glb` SONT un collecteur, c'est leur planche d'origine.
+#: Ce fichier n'en pose plus la matiere — il pose LE PORTIQUE QUI LES PORTE et
+#: les reperes `CTRL | Collecteur NN` / `CTRL | Liaison NN` ou le code les monte.
+#:
+#: ⚠️ UNE PIECE DUPLIQUEE DANS LA CARENE COUTERAIT SES TRIANGLES AUTANT DE FOIS
+#: QU'ELLE APPARAIT. Cinq conduites cuites ici, c'est 3 260 triangles de plus
+#: dans un maillage de 4 200 ; instanciees, elles ne sont en memoire qu'une fois.
+#:
+#: ⚠️ ET C'EST LE MORCEAU LE PLUS REGARDE DU LOT. Mesure a la camera du jeu :
+#: le collecteur tombe a **724 px sur 1080** — bas de cadre, au centre — et il y
+#: rend a **50,3 px/m**, contre 32,7 sur le pont de poupe. C'est la que le
+#: travail va.
 MANIFOLD_Z0 = JOINT_Z + 0.15                       # 8,15
 MANIFOLD_Z1 = JOINT_Z + 1.45                       # 9,45
-MANIFOLD_CZ = (MANIFOLD_Z0 + MANIFOLD_Z1) * 0.5
-MANIFOLD_CY = -4.05
-MANIFOLD_R = 0.62
-MANIFOLD_HALF_X = 11.60
-#: Les sections vitrees : c'est la seule matiere emissive du fichier avec l'anneau.
-GLASS_SPANS = ((-0.70, 0.70), (-6.05, -5.35), (5.35, 6.05))
+#: La station du rail : le milieu de la bande libre, apres l'emprise (z >= 8,00).
+MANIFOLD_CZ = 8.95
+#: La station des flexibles, en AVANT du rail.
+LIAISON_CZ = 9.55
+
+#: ⚠️ LE RAIL EST A DEUX NIVEAUX PARCE QUE LE PONT L'EST. Mesure sur la peau du
+#: corridor a `s = 499,05` : le pont interieur culmine a **-4,020** (la levre du
+#: canal, a x = 1,0), le pont median a **-4,960**. Un rail d'un seul tenant
+#: aurait flotte de 94 cm au-dessus de l'un ou traverse l'autre. Il est donc
+#: coupe a la chine, et la marche se VOIT — c'est ce qui raconte que l'artere
+#: descend d'un pont a l'autre.
+RAIL_IN_Y = -4.00                                  # 0,02 m au-dessus de la levre
+RAIL_OUT_Y = -4.70                                 # 0,26 m au-dessus du pont median
+#: Les cinq conduites et les deux coudes, du bord babord au bord tribord.
+#: (x, y du BAS de la piece, fichier). Le lacet vaut +90 deg pour tout le rail :
+#: la piece est modelisee le long de son Z, il faut donc la coucher en travers.
+CONDUIT_LEN = 2.78
+MANIFOLD_PIECES = (
+    (-10.10, RAIL_OUT_Y, "bend"),
+    (-7.30, RAIL_OUT_Y, "conduit"),
+    (-2.79, RAIL_IN_Y, "conduit"),
+    (0.00, RAIL_IN_Y, "conduit"),
+    (2.79, RAIL_IN_Y, "conduit"),
+    (7.30, RAIL_OUT_Y, "conduit"),
+    (10.10, RAIL_OUT_Y, "bend"),
+)
+#: Les quatre flexibles du collecteur, aux DEUX LATERAUX DE L'ARTERE DU CORRIDOR
+#: (`blc.ARTERY_CONDUITS` : 3,60 et 4,40). Ce n'est pas un alignement de gout :
+#: c'est la meme ligne qui arrive et qui aboutit, et le joueur l'a suivie sur
+#: 500 m.
+LIAISON_X = (-4.40, -3.60, 3.60, 4.40)
+
+#: Les pieds du portique, et leur demi-section.
+GANTRY_FEET = (5.10, 7.30, 10.30)
+GANTRY_FOOT_HALF = 0.36
+#: La tete du collecteur : elle siege DERRIERE le rail, jamais dedans.
+HEAD_Z0 = MANIFOLD_Z0
+HEAD_Z1 = 8.72
+HEAD_HALF_X = 1.75
+HEAD_TOP = -3.35
+
+
+def _corridor_y(x: float, z: float) -> float:
+    """Le dessus de la peau du corridor sous le point (x, z) LOCAL a la poupe.
+
+    ⚠️ ELLE EST LUE DANS `build_long_cortege`, JAMAIS RECOPIEE — meme regle que
+    l'anneau de jonction et que la bouche de tuyere. Le collecteur est a
+    `z >= 8,15`, donc de l'AUTRE cote de la jonction : le sol qu'il touche
+    appartient au troncon 5 du corridor, pas a cette carene.
+    """
+    return blc._surface_y(STATION - z, x)
 
 
 def build_manifold(bm: bmesh.types.BMesh) -> None:
-    """Le terminus de l'artere : tube octogonal, colliers, section vitree.
+    """Le PORTIQUE du collecteur : tete, pieds, selles, potences.
 
-    ⚠️ IL EST A `z >= 8,15`, DONC HORS DE LA POUPE PROPREMENT DITE, et c'est la
+    Il ne contient plus une seule conduite. Ce qu'il contient, c'est ce sur quoi
+    les conduites se posent — et sans quoi elles flotteraient au-dessus du pont
+    (« des tuyaux qui flottent au-dessus, ca ressemble a rien », operateur,
+    2026-09-08).
+
+    ⚠️ IL EST A `z >= 8,15`, DONC HORS DE L'EMPRISE DES BERCEAUX, et c'est la
     seule position possible. Dans le bassin il mordrait un berceau ; sur la paroi
     avant il serait invisible (voir l'en-tete) ; ici il coiffe la fin du canal
-    magenta, il se lit au-dessus du pont du corridor, et le blackout du LOT 8
-    l'eteint avec tout le reste.
+    magenta et il se lit au-dessus du pont du corridor.
+
+    ⚠️ ET IL NE PORTE PLUS D'EMISSIF. Les trois sections vitrees du tube retire
+    en portaient ; les conduites instanciees ont le leur (`06 | Energie magenta`
+    se replie sur `AA_Emissive_Engine`, `BRIEF-0108`), et `blackout()` les eteint
+    par le meme nom de materiau. Doubler la source aurait double la lumiere au
+    seul endroit du cadre ou le joueur doit encore lire ses balles.
     """
-    cuts = [-MANIFOLD_HALF_X]
-    for a, b in sorted(GLASS_SPANS):
-        cuts += [a, b]
-    cuts.append(MANIFOLD_HALF_X)
-    for i in range(len(cuts) - 1):
-        x0, x1 = cuts[i], cuts[i + 1]
-        glazed = any(abs(x0 - a) < 1e-9 and abs(x1 - b) < 1e-9
-                     for a, b in GLASS_SPANS)
-        material = "AA_Emissive_Engine" if glazed else "AA_Greeble"
-        a0, a1 = _tube_x(bm, x0, x1, MANIFOLD_CY, MANIFOLD_CZ, MANIFOLD_R,
-                         8, material)
-        _face(bm, a0, material)
-        _face(bm, list(reversed(a1)), material)
-    # Les colliers de serrage (planche asset08) : six bagues courtes.
-    for x in (-9.40, -7.60, -3.70, 3.70, 7.60, 9.40):
-        a0, a1 = _tube_x(bm, x - 0.16, x + 0.16, MANIFOLD_CY, MANIFOLD_CZ,
-                         MANIFOLD_R + 0.20, 8, "AA_Panel")
-        _face(bm, a0, "AA_Panel")
-        _face(bm, list(reversed(a1)), "AA_Panel")
-    # Le bloc de jonction en croix, sur l'axe.
-    # ⚠️ SON CHAPEAU N'EST PLUS EN `AA_Trim`. Rendu et regarde : l'ivoire froid
-    # posait un rectangle BLANC de 3,7 x 1,5 m au milieu du cadre, plus clair que
-    # tout le reste de l'image — un accent devenu le sujet. Il ne reste de l'ivoire
-    # qu'un bandeau de 0,18 m sur la face avant.
-    _box(bm, -1.85, 1.85, -4.95, CEILING_Y - 0.10, MANIFOLD_Z0 - 0.10,
-         MANIFOLD_Z1 + 0.10, "AA_Greeble", "AA_Hull")
-    _box(bm, -1.55, 1.55, -3.66, -3.48, MANIFOLD_Z1 + 0.10, MANIFOLD_Z1 + 0.16,
-         "AA_Trim")
-    # Les quatre pieds, poses sur la peau REELLE du corridor.
-    for x in (-9.80, -4.60, 4.60, 9.80):
-        s = STATION - MANIFOLD_CZ
-        base = blc._surface_y(s, x) - 0.35
-        _box(bm, x - 0.42, x + 0.42, base, MANIFOLD_CY + 0.10,
-             MANIFOLD_CZ - 0.38, MANIFOLD_CZ + 0.38, "AA_Greeble")
+    # --- La tete : le bloc de jonction, en arriere du rail --------------------
+    _box(bm, -HEAD_HALF_X, HEAD_HALF_X, -4.95, HEAD_TOP, HEAD_Z0, HEAD_Z1,
+         "AA_Greeble", "AA_Hull")
+    # ⚠️ SON CHAPEAU N'EST PAS EN `AA_Trim`. Rendu et regarde au BRIEF-0106 :
+    # l'ivoire froid posait un rectangle BLANC de 3,7 x 1,5 m au milieu du cadre,
+    # plus clair que tout le reste de l'image. Il n'en reste qu'un bandeau.
+    _box(bm, -1.45, 1.45, -3.62, -3.44, HEAD_Z1, HEAD_Z1 + 0.06, "AA_Trim")
+    for side in (-1.0, 1.0):
+        # Les nervures de la tete.
+        for i in range(2):
+            xc = side * (0.62 + 0.72 * i)
+            _box(bm, xc - 0.14, xc + 0.14, -4.90, HEAD_TOP + 0.10,
+                 HEAD_Z1, HEAD_Z1 + 0.16, "AA_Greeble", "AA_Panel")
+        # Les deux montants qui encadrent le rail, et leur linteau.
+        _box(bm, side * 2.20, side * 2.90, _corridor_y(side * 2.55, HEAD_Z1),
+             -3.55, HEAD_Z0 + 0.06, HEAD_Z1, "AA_Greeble", "AA_Hull")
+    _box(bm, -2.90, 2.90, -3.52, -3.36, HEAD_Z0 + 0.14, HEAD_Z1 - 0.10,
+         "AA_Hull", "AA_Panel")
 
-
-# ==========================================================================
-# 4. LA CHAINE DE BRIDES — le rebord du bassin (planche asset08)
-# ==========================================================================
-
-
-def build_rim_clamps(bm: bmesh.types.BMesh) -> None:
-    """La chaine de brides : des BRACKETS qui chevauchent l'arete de rive.
-
-    C'est la « ceinture d'alveole » de la planche `asset08`, transposee. Aucun
-    collier ne peut faire le tour d'un berceau — l'emprise l'interdit — alors la
-    chaine borde le BASSIN entier : un seul geste au lieu de trois impossibles.
-
-    ⚠️ ELLE DEBORDE VERS L'INTERIEUR, ET C'EST LE POINT. Rendue et regardee, la
-    premiere version (des blocs poses sur l'arete) laissait la paroi du bassin
-    nue : deux grands trapezes gris de 7 m de haut, sans un pli, en plein cadre.
-    Le bracket descend maintenant de 2,60 m le long de cette paroi et avance
-    jusqu'a 0,50 m du pied — ce qui la nervure sans rien mettre au-dessus du pont.
-    Marge a l'emprise des berceaux : `basin_x - 0,50 - 15,78`, soit 0,12 m dans la
-    bande avant et 1,92 m dans la bande arriere.
-    """
-    z = APRON_FORE_Z - 0.20
-    index = 0
-    while z > AFT_Z + 0.70:
-        length = 1.50 if index % 3 == 2 else 1.00
-        band = _band_of(z - length * 0.5)
-        crest_y, basin_x, crest_x = band[3], band[4], band[5]
-        x_in = max(basin_x - 0.50, BASIN_MIN_X - 0.38)
-        x_out = crest_x + 0.26
-        for side in (-1.0, 1.0):
-            _box(bm, side * x_in, side * x_out, crest_y - 2.60, crest_y + 0.46,
-                 z - length, z, "AA_Greeble", "AA_Hull")
-            if index % 3 == 2:
-                _box(bm, side * (x_in + 0.16), side * (x_out - 0.16),
-                     crest_y + 0.46, crest_y + 0.74, z - length + 0.24, z - 0.24,
-                     "AA_Panel", "AA_Panel")
-        z -= length + 0.85
-        index += 1
-    # Le rail de guidage (planche `asset08`) : une ligne horizontale a mi-paroi,
-    # bande par bande. Sans lui, la paroi du bassin reste un trapeze de 7 m sans
-    # une seule arete horizontale — a 32,7 px/m, une surface plate de cette taille
-    # ne rend pas un pli.
-    for _name, z_fore, z_aft, crest_y, basin_x, _crest_x, _wmax in BANDS:
-        for side in (-1.0, 1.0):
-            _box(bm, side * (basin_x - 0.28), side * basin_x,
-                 crest_y - 3.55, crest_y - 3.05,
-                 max(z_aft, AFT_Z + 0.10), min(z_fore, APRON_FORE_Z),
+    # --- Les pieds, poses sur la peau REELLE du corridor ----------------------
+    for side in (-1.0, 1.0):
+        for fx in GANTRY_FEET:
+            x = side * fx
+            rail_y = RAIL_IN_Y if fx < 6.0 else RAIL_OUT_Y
+            base = _corridor_y(x, MANIFOLD_CZ)
+            _box(bm, x - GANTRY_FOOT_HALF, x + GANTRY_FOOT_HALF, base - 0.30,
+                 rail_y + 0.04, MANIFOLD_CZ - 0.44, MANIFOLD_CZ + 0.44,
                  "AA_Greeble", "AA_Hull")
+            _box(bm, x - GANTRY_FOOT_HALF - 0.12, x + GANTRY_FOOT_HALF + 0.12,
+                 rail_y - 0.34, rail_y - 0.16, MANIFOLD_CZ - 0.56,
+                 MANIFOLD_CZ + 0.56, "AA_Panel", "AA_Panel")
+        # La potence exterieure : le rail depasse le pont median de 1,4 m, et
+        # c'est le coude qui s'y termine. Sans elle il pendrait dans le vide.
+        _box(bm, side * 10.10, side * 11.46, RAIL_OUT_Y - 0.62, RAIL_OUT_Y - 0.02,
+             MANIFOLD_CZ - 0.30, MANIFOLD_CZ + 0.30, "AA_Greeble", "AA_Hull")
+        _box(bm, side * 11.10, side * 11.46,
+             _corridor_y(side * 11.28, MANIFOLD_CZ) - 0.20, RAIL_OUT_Y - 0.30,
+             MANIFOLD_CZ - 0.24, MANIFOLD_CZ + 0.24, "AA_Greeble", "AA_Hull")
+        # Les selles : ce sur quoi chaque joint de conduite repose.
+        for sx, rail_y in ((1.40, RAIL_IN_Y), (4.24, RAIL_IN_Y),
+                           (8.72, RAIL_OUT_Y)):
+            x = side * sx
+            _box(bm, x - 0.30, x + 0.30, rail_y - 0.26, rail_y + 0.06,
+                 MANIFOLD_CZ - 0.34, MANIFOLD_CZ + 0.34, "AA_Greeble", "AA_Panel")
+        # La marche de chine : elle rattrape les 0,70 m entre les deux rails et
+        # elle est la RAISON pour laquelle la coupure du rail se lit.
+        _box(bm, side * 4.30, side * 6.10, RAIL_OUT_Y - 0.22, RAIL_IN_Y - 0.06,
+             MANIFOLD_CZ - 0.40, MANIFOLD_CZ + 0.40, "AA_Hull", "AA_Greeble")
+
+
+# ==========================================================================
+# 4. LE REBORD DU BASSIN — des flexibles instancies, et ce qui les tient
+# ==========================================================================
+#  (BRIEF-0110 §2) La chaine de brides — 312 triangles de colliers identiques —
+#  est retiree. `artery_hose.glb` fait le meme geste en mieux : il a ses
+#  colliers, ses brins et ses quatre clips. Les flexibles ne sont pas cuits ici :
+#  ce sont des reperes `CTRL | Liaison NN`.
+#
+#  ⚠️ MAIS PAS UN FLEXIBLE PAR BRIDE, ET PAS UN TAPIS NON PLUS. Vingt instances
+#  sur 40 m de rebord coutent 6 400 triangles pour un tube de 0,28 m qui rend
+#  9 px de large a 32,7 px/m : le rythme se perdrait et le budget avec. Six
+#  suffisent, avec de vrais VIDES entre elles (regle du `BRIEF-0094` : « un
+#  module de relief ne se pose que dans l'emprise d'une installation »).
+#
+#  ⚠️ ET LE RAIL DE GUIDAGE RESTE, CONTRE LA LETTRE DU BRIEF. Il n'etait pas un
+#  collier : c'etait la SEULE arete horizontale de la paroi du bassin, et le
+#  `BRIEF-0106` l'avait ajoutee apres avoir rendu et regarde « deux grands
+#  trapezes gris de 7 m de haut, sans un pli, en plein cadre ». Six flexibles de
+#  0,28 m ne rendent pas ce pli. Le retirer aurait rouvert un defaut deja mesure,
+#  en silence : il est donc CONSERVE et retravaille (deux filants au lieu d'un,
+#  plus une platine d'ancrage sous chaque flexible), et c'est dit ici plutot que
+#  fait sans le dire.
+
+#: Les stations des flexibles de rebord, par bord. Une piece fait 2,74 m et ne
+#: peut pas enjamber une marche de bande : chaque station tient dans SA bande.
+#: La bande B2 n'en porte aucune — le socle de pylone y siege (voir plus bas).
+HOSE_RIM_Z = (5.90, -5.74)
+#: ⚠️ IL N'Y EN A QUE DEUX PAR BORD, ET C'EST MESURE. Une piece de 2,74 m ne
+#: peut pas enjamber une marche de bande (les aretes de rive sont a -6,60,
+#: -5,60 et -4,60) : chaque station doit tenir dans SA bande, qui fait 5,28 a
+#: 5,48 m — donc une seule piece. Et la bande B2 est prise par le socle de
+#: pylone, qui occupe `z -2,50..+1,70` : il y reste 0,90 m d'un cote et 0,38 de
+#: l'autre. Le fond de gorge, lui, est deja occupe par les tirets de l'anneau
+#: d'artere (`GROOVE_X = 16,17`, demi-largeur 0,09) — y poser une platine de
+#: 0,68 m les recouvrirait. Quatre flexibles de rebord, donc, et des vides
+#: assumes : c'est le compte que la geometrie autorise, pas celui qu'on aurait
+#: voulu.
+
+
+def _rim_seat(z: float) -> tuple[float, float]:
+    """(x, y) de l'arete de rive a la station `z` : l'assise d'un flexible."""
+    band = _band_of(z)
+    return band[5], band[3]
+
+
+def build_rim_rails(bm: bmesh.types.BMesh) -> None:
+    """Ce qui NERVURE la paroi du bassin, et les platines qui tiennent les brins.
+
+    Deux filants horizontaux par bande — un a mi-paroi, un sous l'arete — plus
+    une platine d'ancrage a chaque station de flexible. Rien d'autre : les
+    brackets sont partis avec la chaine.
+    """
+    for _name, z_fore, z_aft, crest_y, basin_x, crest_x, _wmax in BANDS:
+        z0 = max(z_aft, AFT_Z + 0.10)
+        z1 = min(z_fore, APRON_FORE_Z)
+        for side in (-1.0, 1.0):
+            # Le filant bas, a mi-paroi : l'arete horizontale qui manquait.
+            _box(bm, side * (basin_x - 0.30), side * basin_x,
+                 crest_y - 3.55, crest_y - 3.05, z0, z1, "AA_Greeble", "AA_Hull")
+            # Le filant haut, juste sous l'arete : il souligne le rebord et il
+            # donne aux flexibles une ligne a suivre.
+            _box(bm, side * (crest_x - 0.34), side * (crest_x + 0.10),
+                 crest_y - 0.92, crest_y - 0.58, z0, z1, "AA_Greeble", "AA_Panel")
+    # Les platines d'ancrage : une sous chaque flexible de rebord.
+    for cz in HOSE_RIM_Z:
+        crest_x, crest_y = _rim_seat(cz)
+        for side in (-1.0, 1.0):
+            _box(bm, side * (crest_x - 0.62), side * (crest_x + 0.34),
+                 crest_y - 0.34, crest_y, cz - 1.55, cz + 1.55,
+                 "AA_Greeble", "AA_Hull")
+            for end in (-1.0, 1.0):
+                _box(bm, side * (crest_x - 0.50), side * (crest_x + 0.22),
+                     crest_y - 0.30, crest_y + 0.26,
+                     cz + end * 1.24, cz + end * 1.52, "AA_Panel", "AA_Panel")
+            # La DESCENTE : le flexible ne s'arrete pas au rebord, il plonge
+            # dans le bassin. Elle habille la paroi PAR L'INSTALLATION, pas par
+            # un tapis de nervures (spec §20) : deux par bord, aux deux seules
+            # stations qui portent un flexible, et rien entre elles.
+            _box(bm, side * (crest_x - 0.52), side * crest_x,
+                 crest_y - 3.40, crest_y - 0.28, cz - 0.34, cz + 0.34,
+                 "AA_Greeble", "AA_Hull")
+            _box(bm, side * (crest_x - 0.66), side * (crest_x - 0.12),
+                 crest_y - 3.72, crest_y - 3.34, cz - 0.46, cz + 0.46,
+                 "AA_Greeble", "AA_Panel")
 
 
 # ==========================================================================
@@ -984,56 +1135,150 @@ SHOULDER_STAGES = (
 
 
 def build_shoulders(bm: bmesh.types.BMesh) -> None:
+    """Les deux epaulements de proue — trois boites, devenues une installation.
+
+    (BRIEF-0110 §4) Ils sont AU PREMIER PLAN : mesure a la camera du jeu, ils
+    tombent a **732 px sur 1080** et rendent a **45,7 px/m**, la plus forte
+    densite de toute la poupe. Trois boites empilees y occupaient une place que
+    leur detail ne justifiait pas.
+
+    ⚠️ CE N'EST PAS UN TAPIS DE GREEBLES (spec §20). Le volume ne change pas d'un
+    centimetre — memes trois gradins, memes emprises — et tout ce qui s'ajoute
+    tient dans QUATRE gestes : la facade se nervure, le gradin bas porte une
+    console de service, le gradin haut porte une bache et son collier, et l'arete
+    de flanc recoit son bandeau. Rien n'est pose au hasard, rien ne depasse.
+
+    ⚠️ ET RIEN N'EST NEUF AU-DESSUS DE `z = 8,00` VERS L'INTERIEUR : la garnison
+    de poupe pose une plate-forme volante a `(14,50 ; -5,60 ; 9,20)`, dont la
+    dalle couvre `x 13,16..15,84`. Les nervures de facade s'arretent donc a
+    l'exterieur de cette bande ou sous son altitude — mesure par
+    `_garrison_clash()`.
+    """
     for side in (-1.0, 1.0):
         for i, (xi, xo, inset, top) in enumerate(SHOULDER_STAGES):
             _box(bm, side * xi, side * xo, -11.60, top,
                  SHOULDER_Z0 + inset, SHOULDER_Z1 - inset,
                  "AA_Greeble" if i == 0 else "AA_Hull", "AA_Hull")
-        # Le bandeau de flanc, seul accent colore de la piece.
+        # --- 1. La facade se nervure -------------------------------------
+        # Six raidisseurs verticaux sur la face avant du gradin bas : c'est
+        # elle que le joueur voit en premier, et elle etait lisse sur 5,60 m.
+        for i in range(6):
+            xc = side * (11.76 + 1.02 * i)
+            _box(bm, xc - 0.19, xc + 0.19, -8.80, -6.05,
+                 SHOULDER_Z1 - 0.02, SHOULDER_Z1 + 0.15, "AA_Greeble", "AA_Hull")
+        # Le bandeau qui les ceinture, et les deux panneaux qu'il encadre.
+        _box(bm, side * 11.44, side * 16.96, -6.02, -5.94,
+             SHOULDER_Z1 - 0.02, SHOULDER_Z1 + 0.19, "AA_Panel", "AA_Panel")
+        _box(bm, side * 11.44, side * 16.96, -8.94, -8.86,
+             SHOULDER_Z1 - 0.02, SHOULDER_Z1 + 0.19, "AA_Panel", "AA_Panel")
+        # --- 2. La console de service du gradin bas -----------------------
+        _box(bm, side * 15.55, side * 16.90, -5.90, -5.62,
+             SHOULDER_Z0 + 0.12, SHOULDER_Z1 - 0.12, "AA_Hull", "AA_Greeble")
+        for i in range(3):
+            zc = SHOULDER_Z0 + 0.34 + 0.36 * i
+            _box(bm, side * 15.70, side * 16.78, -5.62, -5.34,
+                 zc - 0.08, zc + 0.08, "AA_Greeble", "AA_Panel")
+        # --- 3. La bache du gradin haut, et son collier -------------------
+        # ⚠️ LES RAYONS SONT BORNES PAR L'EMPRISE, PAS PAR LE GOUT. La bande
+        # interdite s'arrete a `z = 8,00` et la bache siege a `z = 8,70` : un
+        # rayon de 0,72 m y faisait redescendre le bord a 7,98, soit 0,0058 m2
+        # d'ombre dans le berceau babord — refuse au centimetre carre par
+        # `_keepout_bite()`, invisible a l'œil.
+        _prism(bm, side * 14.50, SHOULDER_Z0 + 0.70, [0.54],
+               -4.40, -3.62, 8, "AA_Hull", "AA_Greeble")
+        _prism(bm, side * 14.50, SHOULDER_Z0 + 0.70, [0.62],
+               -3.62, -3.44, 8, "AA_Panel", "AA_Panel")
+        _cone(bm, side * 14.50, SHOULDER_Z0 + 0.70, 0.62, 0.26,
+              -3.44, CEILING_Y - 0.14, 8, "AA_Greeble", "AA_Panel")
+        # Les quatre contreforts de la bache.
+        for i in range(4):
+            ang = (0.25 + 0.5 * i) * math.pi
+            bx = side * 14.50 + 0.70 * math.cos(ang)
+            bz = SHOULDER_Z0 + 0.70 + 0.70 * math.sin(ang)
+            _box(bm, bx - 0.13, bx + 0.13, -4.40, -3.98,
+                 bz - 0.13, bz + 0.13, "AA_Greeble", "AA_Hull")
+        # --- 4. Le bandeau de flanc, seul accent colore de la piece --------
         _box(bm, side * 17.02, side * 16.86, -8.60, -6.10,
              SHOULDER_Z0 + 0.24, SHOULDER_Z1 - 0.24, "AA_Panel")
+        _box(bm, side * 17.02, side * 16.80, -5.72, -5.52,
+             SHOULDER_Z0 + 0.10, SHOULDER_Z1 - 0.10, "AA_Greeble", "AA_Hull")
 
 
 # ==========================================================================
-# 5. LES PYLONES DE RIVE (planche asset07)
+# 5. LES SOCLES DE PYLONE — l'assise que la rive n'a jamais eue
 # ==========================================================================
-#  ⚠️ ILS SONT SUR LES FLANCS PARCE QU'IL N'Y A PAS D'« ENTRE LES BERCEAUX ».
-#  Le brief demande des masses hautes entre les groupes ; l'union des trois
-#  emprises ne laisse pas un metre carre libre entre eux (en-tete). Les flancs
-#  (|x| >= 16,20) et le massif arriere sont les deux seules zones ou du relief
-#  vertical puisse exister, et c'est la qu'il est.
+#  (BRIEF-0110 §3) Les quatre fuseaux etages de 60 triangles sont retires. A
+#  leur place : DEUX socles, et sur chacun un `stern_pylon.glb` instancie.
+#
+#  ⚠️ LE PYLONE N'A D'ASSISE NULLE PART SUR LA POUPE, ET C'EST ARITHMETIQUE.
+#  Il lui faut 5,30 m de ciel sous `CEILING_Y = -3,20` et 2,06 x 2,89 m de
+#  plancher. Inventaire mesure, emplacement par emplacement :
+#
+#    arete de rive B1  -6,60  ciel 3,40 m   plancher 1,20 m  -> ni l'un ni l'autre
+#    arete de rive B2  -5,60  ciel 2,40 m   plancher 2,60 m  -> pas de ciel
+#    arete de rive B3  -4,60  ciel 1,40 m   plancher 3,00 m  -> pas de ciel
+#    plateau du massif -8,40  ciel 5,20 m   creneau libre 2,54 x 1,78 m
+#                                            -> et il rend a 143 px sur 1080,
+#                                               c'est-a-dire SOUS le panneau de
+#                                               score du HUD
+#    sole du bassin   -12,00  ciel 8,80 m   bande libre 0,62 a 2,42 m hors
+#                                            emprise de berceau -> trop etroite
+#
+#  Le `BRIEF-0109` avait pris la moins mauvaise (la paroi, a -8,61) et le pylone
+#  y etait enterre de 3 m sur 5,30. La troisieme voie, que le brief ne propose
+#  pas, est de LUI CONSTRUIRE SON ASSISE : un socle qui monte de la sole du
+#  bassin jusqu'a `CEILING_Y - 5,40`, exactement la cote ou la piece tient
+#  entiere sous le plafond avec 0,10 m de garde. Le pylone n'est alors enterre
+#  de rien du tout, et le socle n'est pas un decor de plus : c'est la pyramide
+#  de 3,40 m que le fuseau retire etait deja, en mieux.
+#
+#  ⚠️ ET IL RESTE DEUX, PAS QUATRE. Quatre pylones instancies coutent 10 448
+#  triangles sur les 16 750 du lot : le collecteur — le morceau que le joueur
+#  regarde le plus longtemps — n'aurait plus rien. « Concentrer le travail sur
+#  peu de pieces » (spec §20).
 
-#: ⚠️ LES DEUX PAIRES SONT DANS LES BANDES 2 ET 3, PAS DANS LA BANDE 1. L'etagere
-#: de rive n'existe qu'au-dela de l'arete, et la bande avant n'en a que 0,40 m —
-#: un pylone y aurait ete un trait. Les bandes 2 et 3 offrent 0,80 et 1,20 m
-#: d'etagere, et le pylone les enjambe de part et d'autre de l'arete : 1,70 m
-#: d'assise en bande 2, 2,20 en bande 3.
-PYLON_Z = (-0.40, -6.00)
-#: Retrait de chaque etage, de part et d'autre, et son sommet.
-PYLON_STAGES = ((0.00, 1.75, -8.60), (0.22, 1.45, -6.00),
-                (0.45, 1.15, -4.20), (0.68, 0.80, CEILING_Y - 0.10))
+#: La station des deux socles : celle de la paire AVANT des fuseaux retires.
+PYLON_Z = -0.40
+#: Le sommet du socle : le pylone fait 5,30 m, le plafond est a -3,20.
+PYLON_SEAT_TOP = CEILING_Y - 5.40                  # -8,60
+#: L'emprise du socle. `x0` est a 0,12 m de l'union des emprises de berceau
+#: (15,78) et `x1` a 0,00 m du point le plus large de la bande B2 (18,50) :
+#: le socle NE DEPASSE PAS de la silhouette, il la remplit.
+PYLON_SEAT_X = (15.90, 18.50)
+PYLON_SEAT_HZ = 2.10
+#: (retrait de part et d'autre, demi-longueur en z, sommet) — trois marches.
+PYLON_SEAT_STAGES = ((0.00, PYLON_SEAT_HZ, -10.10),
+                     (0.12, PYLON_SEAT_HZ - 0.15, -9.35),
+                     (0.24, PYLON_SEAT_HZ - 0.38, PYLON_SEAT_TOP))
 
 
-def build_pylons(bm: bmesh.types.BMesh) -> None:
-    """Les quatre pylones de rive (planche `asset07`) : fuseau etage, socle
-    debordant, bandeau lateral.
+def build_pylon_seats(bm: bmesh.types.BMesh) -> None:
+    """Les deux socles : trois marches, deux margelles, un bandeau, des nervures.
 
-    ⚠️ ILS SONT SUR LES FLANCS PARCE QU'IL N'Y A PAS D'« ENTRE LES BERCEAUX ». Le
-    brief demande des masses hautes entre les groupes ; l'union des trois emprises
-    ne laisse pas un metre carre libre entre eux (en-tete). Les flancs et le massif
-    arriere sont les deux seules zones ou du relief vertical puisse exister.
+    ⚠️ LES MARGELLES LAISSENT LE CENTRE LIBRE. Le pylone occupe
+    `x 16,17..18,23` et `z -1,85..+1,04` une fois pose sur le repere : tout ce
+    qui monte au-dessus de `PYLON_SEAT_TOP` est donc rejete AUX BORDS, sans quoi
+    la piece s'y enfoncerait — le defaut exact que le `BRIEF-0109` a paye.
     """
-    for cz in PYLON_Z:
-        band = _band_of(cz)
-        x_in = band[4] - 0.50
-        x_out = band[6] - 0.10
-        for side in (-1.0, 1.0):
-            for i, (inset, hz, top) in enumerate(PYLON_STAGES):
-                _box(bm, side * (x_in + inset), side * (x_out - inset),
-                     SOLE_Y, top, cz - hz, cz + hz,
-                     "AA_Greeble" if i == 0 else "AA_Hull", "AA_Hull")
-            _box(bm, side * (x_out - 0.24), side * (x_out - 0.40), -8.20, -5.20,
-                 cz - 0.95, cz + 0.95, "AA_Panel", "AA_Panel")
+    x0, x1 = PYLON_SEAT_X
+    for side in (-1.0, 1.0):
+        for i, (inset, hz, top) in enumerate(PYLON_SEAT_STAGES):
+            _box(bm, side * (x0 + inset), side * (x1 - inset), SOLE_Y, top,
+                 PYLON_Z - hz, PYLON_Z + hz,
+                 "AA_Greeble" if i == 0 else "AA_Hull", "AA_Hull")
+        # Les deux margelles, de part et d'autre de l'emprise de la piece.
+        for a, b in ((x0 + 0.05, x0 + 0.25), (x1 - 0.26, x1 - 0.06)):
+            _box(bm, side * a, side * b, PYLON_SEAT_TOP, PYLON_SEAT_TOP + 0.42,
+                 PYLON_Z - PYLON_SEAT_HZ + 0.42, PYLON_Z + PYLON_SEAT_HZ - 0.42,
+                 "AA_Hull", "AA_Panel")
+        # Le bandeau de flanc : le seul accent colore du socle.
+        _box(bm, side * (x1 - 0.20), side * (x1 - 0.04), -11.20, -9.60,
+             PYLON_Z - 1.30, PYLON_Z + 1.30, "AA_Panel")
+        # Les nervures de la face INTERIEURE, celle que la camera voit.
+        for i in range(3):
+            zc = PYLON_Z + (i - 1) * 1.30
+            _box(bm, side * x0, side * (x0 + 0.18), SOLE_Y, -9.60,
+                 zc - 0.24, zc + 0.24, "AA_Greeble", "AA_Panel")
 
 
 # ==========================================================================
@@ -1045,26 +1290,88 @@ def build_pylons(bm: bmesh.types.BMesh) -> None:
 
 TOWER_X = (-5.40, 5.40)
 TOWER_Z = -10.05
+#: Le ciel au-dessus du plateau du massif : `AFT_PLATEAU_Y` -> `CEILING_Y`.
+#: 5,20 m — le seul volume vraiment haut de la poupe, et la tour le prend en
+#: entier (socle -8,70, couronne -3,30).
+TOWER_SIDES = 16
+TOWER_SOCLE_SIDES = 12
 
 
 def build_towers(bm: bmesh.types.BMesh) -> None:
+    """Les deux tours d'echange thermique — la silhouette que 5,20 m permettent.
+
+    (BRIEF-0110 §4) Elles ne changent pas de nature : elles s'enrichissent. Le
+    plateau du massif offre **5,20 m** de ciel, contre 1,40 a 3,40 sur les
+    aretes de rive — c'est le seul endroit de la poupe ou une masse haute tienne
+    debout sans qu'on lui construise une assise.
+
+    Ce qui s'ajoute, et pourquoi :
+
+      * un socle EVASE en tronc de cone, puis un collier — une tour posee a plat
+        sur un plateau n'a pas de pied ; celle-ci en a un ;
+      * six contreforts au lieu de quatre, au pas de 60 deg : a 31,7 px/m, quatre
+        arretes verticales sur un fut de 2 m se comptent, six font une trame ;
+      * une GALERIE DE SERVICE a mi-hauteur, avec ses quatre potences — c'est
+        elle qui donne l'echelle, et c'est le seul element de la piece dont on
+        deduise qu'un humain (ou ce qui en tient lieu) y monte ;
+      * huit volets d'evacuation sous la galerie, orientes vers le bas ;
+      * un diffuseur en cone, sa grille, et quatre ailerons de couronne.
+
+    ⚠️ ET CE N'EST PAS UN TAPIS DE GREEBLES. Tout tient sur DEUX pieces (spec
+    §20) ; le plateau autour d'elles reste nu, les bossages gardent leurs
+    nervures de canal et rien n'est pose « pour remplir ».
+
+    ⚠️ ATTENTION AU CADRE : mesure a la camera du jeu au plan de maintien, la
+    couronne d'une tour tombe a **-4 px sur 1080**, c'est-a-dire JUSTE HORS DU
+    CADRE. Le massif arriere n'est vu en entier que pendant le survol, quelques
+    secondes plus tot (vignette 2 de la planche). C'est la raison pour laquelle
+    le pylone livre n'y est pas alle.
+    """
     for cx in TOWER_X:
-        # Socle evase, quatre contreforts.
-        _prism(bm, cx, TOWER_Z, [1.52], AFT_PLATEAU_Y - 0.30, -7.55, 8,
-               "AA_Greeble", "AA_Greeble")
-        for a in (0.25, 0.75, 1.25, 1.75):
-            ang = a * math.pi
-            bx, bz = cx + 1.30 * math.cos(ang), TOWER_Z + 1.30 * math.sin(ang)
-            _box(bm, bx - 0.34, bx + 0.34, AFT_PLATEAU_Y - 0.30, -6.40,
-                 bz - 0.34, bz + 0.34, "AA_Greeble", "AA_Hull")
-        # Fut cannele : 16 cotes, deux rayons alternes.
-        _prism(bm, cx, TOWER_Z, [1.02, 0.90], -7.55, -4.55, 16,
+        # Socle evase + collier.
+        _cone(bm, cx, TOWER_Z, 1.78, 1.52, AFT_PLATEAU_Y - 0.30, -7.95,
+              TOWER_SOCLE_SIDES, "AA_Greeble", "AA_Greeble")
+        _prism(bm, cx, TOWER_Z, [1.62], -7.95, -7.66, TOWER_SOCLE_SIDES,
+               "AA_Hull", "AA_Panel")
+        # Six contreforts, au pas de 60 deg.
+        for i in range(6):
+            ang = (i + 0.5) * math.pi / 3.0
+            bx, bz = cx + 1.44 * math.cos(ang), TOWER_Z + 1.44 * math.sin(ang)
+            _box(bm, bx - 0.30, bx + 0.30, AFT_PLATEAU_Y - 0.30, -6.55,
+                 bz - 0.30, bz + 0.30, "AA_Greeble", "AA_Hull")
+        # Fut cannele, en deux courses de part et d'autre de la galerie.
+        _prism(bm, cx, TOWER_Z, [1.02, 0.90], -7.66, -6.28, TOWER_SIDES,
                "AA_Hull", "AA_Greeble")
-        # Diffuseur en cone et sa grille.
-        _cone(bm, cx, TOWER_Z, 1.02, 1.58, -4.55, CEILING_Y - 0.22, 16,
-              "AA_Hull", "AA_Panel")
-        _prism(bm, cx, TOWER_Z, [1.58], CEILING_Y - 0.22, CEILING_Y - 0.10, 16,
-               "AA_Panel", "AA_Panel")
+        # Huit volets d'evacuation, sous la galerie.
+        for i in range(8):
+            ang = (i + 0.5) * math.pi / 4.0
+            bx, bz = cx + 1.02 * math.cos(ang), TOWER_Z + 1.02 * math.sin(ang)
+            _box(bm, bx - 0.22, bx + 0.22, -6.90, -6.42, bz - 0.22, bz + 0.22,
+                 "AA_Greeble", "AA_Panel")
+        # La galerie de service : le seul element qui donne l'echelle.
+        _prism(bm, cx, TOWER_Z, [1.46], -6.28, -6.06, TOWER_SIDES,
+               "AA_Hull", "AA_Panel")
+        _prism(bm, cx, TOWER_Z, [1.30], -6.06, -5.72, TOWER_SIDES,
+               "AA_Panel", "AA_Greeble")
+        for i in range(4):
+            ang = (i + 0.25) * math.pi / 2.0
+            bx, bz = cx + 1.34 * math.cos(ang), TOWER_Z + 1.34 * math.sin(ang)
+            _box(bm, bx - 0.16, bx + 0.16, -6.42, -6.06, bz - 0.16, bz + 0.16,
+                 "AA_Greeble", "AA_Hull")
+        _prism(bm, cx, TOWER_Z, [0.96, 0.84], -5.72, -4.55, TOWER_SIDES,
+               "AA_Hull", "AA_Greeble")
+        # Diffuseur, grille, et quatre ailerons de couronne.
+        _cone(bm, cx, TOWER_Z, 0.96, 1.58, -4.55, CEILING_Y - 0.34,
+              TOWER_SIDES, "AA_Hull", "AA_Panel")
+        _prism(bm, cx, TOWER_Z, [1.58], CEILING_Y - 0.34, CEILING_Y - 0.22,
+               TOWER_SIDES, "AA_Panel", "AA_Panel")
+        _prism(bm, cx, TOWER_Z, [1.34], CEILING_Y - 0.22, CEILING_Y - 0.10,
+               TOWER_SIDES, "AA_Greeble", "AA_Panel")
+        for i in range(4):
+            ang = i * math.pi / 2.0
+            bx, bz = cx + 1.44 * math.cos(ang), TOWER_Z + 1.44 * math.sin(ang)
+            _box(bm, bx - 0.20, bx + 0.20, CEILING_Y - 0.94, CEILING_Y - 0.30,
+                 bz - 0.20, bz + 0.20, "AA_Greeble", "AA_Panel")
     # Les blocs de ventilation. ⚠️ IL Y EN AVAIT UN, AU MILIEU, ET IL ETAIT DANS LE
     # CANAL CENTRAL : `|x| <= 2,10`, `z in [-11,65 ; -8,45]`, sommet a -6,90, soit
     # 4 m de matiere en pleine colonne de poussee du moteur central. Le
@@ -1077,6 +1384,162 @@ def build_towers(bm: bmesh.types.BMesh) -> None:
              "AA_Greeble", "AA_Hull")
         _box(bm, side * (CHANNEL_HALF + 0.55), side * (abs(TOWER_X[0]) - 1.85),
              -7.05, -6.85, TOWER_Z - 0.60, TOWER_Z + 0.60, "AA_Panel", "AA_Panel")
+
+
+# ==========================================================================
+# 6 bis. LES REPERES — la coque dit OU les pieces livrees se posent
+# ==========================================================================
+#  (BRIEF-0110) Vingt-cinq mille triangles de pieces tierces ne sont pas cuits
+#  dans cette carene : ils sont INSTANCIES par le code, sur des nœuds vides que
+#  ce fichier pose. Une piece dupliquee dans la carene couterait ses triangles
+#  autant de fois qu'elle apparait ; instanciee, elle n'est en memoire qu'une
+#  fois — et le concepteur peut en changer sans reforger la coque.
+#
+#  ⚠️ LE REPERE MARQUE LE **BAS** DE LA PIECE, ET SON **CENTRE** EN X ET EN Z.
+#  Ce n'est pas une convention choisie ici : c'est celle que le jeu applique
+#  deja (`CortegeConduit._seat()`), et elle existe parce que L'ORIGINE DES
+#  PIECES N'EST PAS DANS LES PIECES. Les quatre `.glb` de l'artere sont des
+#  sous-arbres extraits d'un assemblage plus grand : la racine
+#  d'`artery_conduit` porte encore `(-0,36 ; 1,00 ; 1,38)`, sa translation dans
+#  le module d'origine. Montee telle quelle sur un pont a -4,30, la geometrie se
+#  retrouvait un metre au-dessus de la coque. Le code ne compense donc pas la
+#  translation : il MESURE la boite englobante, et il pose son bas.
+#
+#  ⚠️ ET LE LACET DOIT ETRE UN LACET PUR. La correction d'assise (« centrer en
+#  x/z, poser le bas ») commute avec une rotation autour de Y et avec elle
+#  seule : un tangage ou un roulis ferait tourner la correction avec la piece et
+#  l'assise partirait de travers, sans qu'aucune erreur ne le dise.
+#  `_assert_markers()` refuse tout quaternion qui n'est pas un lacet — et il lit
+#  le QUATERNION, jamais `to_euler()` : un quart de tour autour de Y tombe
+#  exactement sur le blocage de cardan d'une decomposition XYZ.
+
+#: Les pieces montees sur les reperes, et leur fichier.
+PIECE_FILES = {
+    "pylon": "stern_pylon.glb",
+    "conduit": "artery_conduit.glb",
+    "bend": "artery_conduit_bend.glb",
+    "hose": "artery_hose.glb",
+}
+#: Le clip « au repos » de chaque piece — celui que la planche rend.
+PIECE_REST_CLIP = {"pylon": "Service", "conduit": "Actif", "bend": "Actif",
+                   "hose": "Intact"}
+_PIECE_BOX: dict[str, tuple[Vector, Vector]] = {}
+
+
+def _piece_box(kind: str) -> tuple[Vector, Vector]:
+    """(min, max) de la piece dans SON repere, transformations de nœuds comprises.
+
+    ⚠️ ON NE CROIT PAS LES COTES ANNONCEES. Le `BRIEF-0109` avait recu « le
+    pylone fait 2,75 m en x » : le socle en mesure 2,748, mais les deux
+    passerelles debordent de 7 cm de chaque cote — 14 cm d'erreur d'emprise que
+    rien n'aurait dite. Le binaire, lui, ne se trompe pas.
+    """
+    if kind in _PIECE_BOX:
+        return _PIECE_BOX[kind]
+    gltf, _blob = blc._read_glb(os.path.join(MODELS, PIECE_FILES[kind]))
+    lo = Vector((1e9, 1e9, 1e9))
+    hi = Vector((-1e9, -1e9, -1e9))
+
+    def node_matrix(node: dict) -> Matrix:
+        if "matrix" in node:
+            m = node["matrix"]
+            return Matrix([[m[c * 4 + r] for c in range(4)] for r in range(4)])
+        t = Vector(node.get("translation", (0.0, 0.0, 0.0)))
+        q = node.get("rotation", (0.0, 0.0, 0.0, 1.0))
+        sc = Vector(node.get("scale", (1.0, 1.0, 1.0)))
+        rot = Quaternion((q[3], q[0], q[1], q[2])).to_matrix().to_4x4()
+        return (Matrix.Translation(t) @ rot
+                @ Matrix.Diagonal(sc.to_4d()))
+
+    def walk(index: int, parent: Matrix) -> None:
+        nonlocal lo, hi
+        node = gltf["nodes"][index]
+        world = parent @ node_matrix(node)
+        if "mesh" in node:
+            for prim in gltf["meshes"][node["mesh"]]["primitives"]:
+                acc = gltf["accessors"][prim["attributes"]["POSITION"]]
+                mn, mx = acc["min"], acc["max"]
+                for corner in range(8):
+                    v = Vector((mn[0] if corner & 1 else mx[0],
+                                mn[1] if corner & 2 else mx[1],
+                                mn[2] if corner & 4 else mx[2]))
+                    w = world @ v
+                    lo = Vector((min(lo[i], w[i]) for i in range(3)))
+                    hi = Vector((max(hi[i], w[i]) for i in range(3)))
+        for child in node.get("children", []):
+            walk(child, world)
+
+    scene = gltf["scenes"][gltf.get("scene", 0)]
+    for index in scene["nodes"]:
+        walk(index, Matrix.Identity(4))
+    _PIECE_BOX[kind] = (lo, hi)
+    return lo, hi
+
+
+def _piece_extent(kind: str, yaw: float) -> tuple[float, float, float]:
+    """(demi-emprise x, hauteur, demi-emprise z) de la piece POSEE et pivotee."""
+    lo, hi = _piece_box(kind)
+    cos_y, sin_y = math.cos(yaw), math.sin(yaw)
+    xs, zs = [], []
+    for corner in range(4):
+        x = lo.x if corner & 1 else hi.x
+        z = lo.z if corner & 2 else hi.z
+        xs.append(cos_y * x + sin_y * z)
+        zs.append(-sin_y * x + cos_y * z)
+    return (0.5 * (max(xs) - min(xs)), hi.y - lo.y, 0.5 * (max(zs) - min(zs)))
+
+
+def _deck_seat(x: float, hx: float, z: float, hz: float) -> float:
+    """Le MINIMUM de la peau du corridor sous l'emprise de la piece.
+
+    ⚠️ JAMAIS LA VALEUR AU CENTRE. Sur un bombement, prendre le centre fait
+    s'enfoncer les deux bouts ; sur un creux, la piece flotte. Le minimum est la
+    seule valeur qui garantisse qu'aucun coin ne passe sous la peau.
+    """
+    worst = 1e9
+    for i in range(13):
+        px = x - hx + 2.0 * hx * i / 12.0
+        for j in range(13):
+            pz = z - hz + 2.0 * hz * j / 12.0
+            worst = min(worst, _corridor_y(px, pz))
+    return worst
+
+
+def markers() -> list[tuple[str, Vector, float, str]]:
+    """(nom, position LOCALE, lacet, piece) — la table complete, calculee.
+
+    Aucune cote n'y est ecrite deux fois : les x du collecteur viennent de
+    `MANIFOLD_PIECES`, les y de rebord de `BANDS`, le sommet du socle de
+    `PYLON_SEAT_TOP`, et les y du corridor de `blc._surface_y`.
+    """
+    out: list[tuple[str, Vector, float, str]] = []
+    # --- Les deux pylones, sur leur socle -------------------------------
+    seat_x = 0.5 * (PYLON_SEAT_X[0] + PYLON_SEAT_X[1])
+    for number, side in enumerate((1.0, -1.0), start=1):
+        yaw = -math.pi * 0.5 * side
+        out.append((f"CTRL | Pylone {number:02d}",
+                    Vector((side * seat_x, PYLON_SEAT_TOP, PYLON_Z)),
+                    yaw, "pylon"))
+    # --- Le collecteur : cinq conduites et deux coudes ------------------
+    for number, (x, rail_y, kind) in enumerate(MANIFOLD_PIECES, start=1):
+        yaw = math.pi * 0.5 if x <= 0.0 else -math.pi * 0.5
+        out.append((f"CTRL | Collecteur {number:02d}",
+                    Vector((x, rail_y, MANIFOLD_CZ)), yaw, kind))
+    # --- Les flexibles : quatre au collecteur, quatre au rebord ---------
+    number = 0
+    hx, _h, hz = _piece_extent("hose", 0.0)
+    for x in LIAISON_X:
+        number += 1
+        out.append((f"CTRL | Liaison {number:02d}",
+                    Vector((x, _deck_seat(x, hx, LIAISON_CZ, hz), LIAISON_CZ)),
+                    0.0, "hose"))
+    for cz in HOSE_RIM_Z:
+        crest_x, crest_y = _rim_seat(cz)
+        for side in (1.0, -1.0):
+            number += 1
+            out.append((f"CTRL | Liaison {number:02d}",
+                        Vector((side * crest_x, crest_y, cz)), 0.0, "hose"))
+    return out
 
 
 # ==========================================================================
@@ -1228,9 +1691,9 @@ PARTS = (
     ("skin", build_skin, True),
     ("apron", build_apron, True),
     ("manifold", build_manifold, True),
-    ("rim_clamps", build_rim_clamps, True),
+    ("rim_rails", build_rim_rails, True),
     ("shoulders", build_shoulders, True),
-    ("pylons", build_pylons, True),
+    ("pylon_seats", build_pylon_seats, True),
     ("towers", build_towers, True),
     # ⚠️ LES BOSSAGES SONT UNE FAMILLE A PART, ET C'EST UNE PRECAUTION. `_orient()`
     # retourne un composant ENTIER au signe de son volume : melanger dans un meme
@@ -1302,8 +1765,26 @@ def export(obj: bpy.types.Object, filepath: str) -> dict:
     obj.data.transform(_AUTHOR_FIX)
     obj.data.update()
     obj.location = (0.0, 0.0, 0.0)
+    # ⚠️ PARENTAGE DIRECT (jamais `parent_set`) : Blender appliquerait sinon
+    # l'inverse de la matrice du parent et le repere partirait deux fois.
+    # ⚠️ ET LE LACET EST UNE ROTATION AUTOUR DE **Z BLENDER** : le Z de Blender
+    # est le Y de Godot (`_to_blender` : (x, y, z) -> (x, -z, y)). Ecrire le
+    # lacet autour de Y ici le poserait autour de l'axe de roulis du jeu.
+    empties: list[bpy.types.Object] = []
+    for name, local, yaw, _kind in markers():
+        empty = bpy.data.objects.new(name, None)
+        empty.empty_display_type = "PLAIN_AXES"
+        empty.empty_display_size = 0.6
+        bpy.context.collection.objects.link(empty)
+        empty.parent = obj
+        empty.matrix_parent_inverse = Matrix.Identity(4)
+        empty.location = _author(local)
+        empty.rotation_euler = Euler((0.0, 0.0, yaw), "XYZ")
+        empties.append(empty)
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)
+    for empty in empties:
+        empty.select_set(True)
     bpy.context.view_layer.objects.active = obj
     os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
     staging = tempfile.mkdtemp(prefix="aegis-stern-hull-")
@@ -1316,6 +1797,7 @@ def export(obj: bpy.types.Object, filepath: str) -> dict:
             export_skins=False, export_extras=False, export_tangents=True,
             export_normals=True, export_texcoords=True)
         report = _audit(staged)
+        report["markers"] = _assert_markers(staged)
         os.replace(staged, filepath)
     finally:
         if os.path.isdir(staging):
@@ -1503,26 +1985,42 @@ def _tower_margin(points: list[tuple]) -> list[dict]:
     """Le socle des deux tours d'echange, RELU, et sa marge aux canaux.
 
     ⚠️ « VERIFIEZ-LE SUR LE BINAIRE PLUTOT QUE SUR CETTE PHRASE — c'est la cote la
-    plus serree du lot » (brief §2). On isole le socle par l'altitude de son anneau
-    superieur (`y = -7,55`) : rien d'autre de la piece n'a de sommet a cette
-    hauteur, ni la levre (-9,30 et -7,95), ni les nervures, ni les bossages.
+    plus serree du lot » (brief §2). On isole le socle par l'altitude de son
+    anneau LE PLUS LARGE, `y = AFT_PLATEAU_Y - 0,30` : le pied evase du
+    `BRIEF-0110` y mesure 1,78 m de rayon, contre 1,52 pour le prisme droit qu'il
+    remplace. C'est cette cote-la, et pas celle du fut, qui decide de la marge au
+    canal.
+
+    ⚠️ ET L'ALTITUDE DE MESURE A CHANGE AVEC LA PIECE. Le harnais interrogeait
+    `y = -7,55`, le sommet de l'ancien socle : la tour enrichie n'a plus un seul
+    sommet a cette hauteur, et le harnais a echoue le build — comme il devait. Une
+    cote de controle qui suit la piece sans qu'on y pense n'existe pas ; celle-ci
+    est derivee de `AFT_PLATEAU_Y`, que les deux partagent.
     """
     out: list[dict] = []
+    level = AFT_PLATEAU_Y - 0.30
     for cx in TOWER_X:
         ring = [p for p in points
-                if abs(p[1] + 7.55) < 1e-3
+                if abs(p[1] - level) < 1e-3
                 and abs(p[0] - cx) < 2.0 and abs(p[2] - TOWER_Z) < 2.0]
         if not ring:
             raise ak.ContractError(
-                f"tour x = {cx:+.2f} : plus de socle a y = -7,55 dans le binaire — "
-                "le creusement du massif l'a emportee.")
+                f"tour x = {cx:+.2f} : plus de socle a y = {level:.2f} dans le "
+                "binaire — le creusement du massif l'a emportee.")
         radius = max(abs(p[0] - cx) for p in ring)
-        out.append({
+        margins = {
             "x": cx,
             "radius": radius,
             "to_side": (SPACING - CHANNEL_HALF) - (abs(cx) + radius),
             "to_middle": (abs(cx) - radius) - CHANNEL_HALF,
-        })
+        }
+        if min(margins["to_side"], margins["to_middle"]) < 0.0:
+            raise ak.ContractError(
+                f"tour x = {cx:+.2f} : socle de {radius:.3f} m de rayon — marge "
+                f"au canal lateral {margins['to_side']:+.3f} m, au canal central "
+                f"{margins['to_middle']:+.3f} m ; l'une est NEGATIVE, la tour "
+                "entre dans un panache")
+        out.append(margins)
     return out
 
 
@@ -1663,6 +2161,152 @@ def _audit(path: str) -> dict:
     return report
 
 
+#: L'emprise de la garnison de poupe (`cortege_stern_garrison.gd`), qui n'est
+#: PAS dans ce fichier et n'a pas a y etre : on la relit pour MESURER ce qu'on
+#: lui prend, pas pour s'y plier. (echelle, x, y, z, plate-forme volante)
+GARRISON_POSTS = (
+    ("STANDARD", 4.60, -4.34, 12.50, False),
+    ("LIGHT", 8.60, -4.94, 13.00, False),
+    ("LIGHT", 11.50, -4.20, 10.50, True),
+    ("LIGHT", 14.50, -5.60, 9.20, True),
+    ("STANDARD", 17.00, -7.20, 2.00, True),
+    ("HEAVY", 16.80, -5.20, -4.50, True),
+)
+#: `CortegeTurret.SERVICE_RADIUS` et les deux facteurs d'echelle geometrique.
+GARRISON_RADIUS = {"LIGHT": 1.66 * 0.538, "STANDARD": 1.66, "HEAVY": 1.66 * 1.200}
+#: `CortegeSternGarrison`: la dalle vaut `footprint * 2 + 0,9`, epaisseur 0,52,
+#: et elle ballotte de +/- 0,22.
+GARRISON_PAD_MARGIN = 0.9
+GARRISON_PAD_THICK = 0.52
+GARRISON_PAD_BOB = 0.22
+
+
+def _garrison_clash(boxes: list[tuple[str, list, list, list]]) -> list[dict]:
+    """Ce que les pieces posees prennent aux plates-formes volantes de la garnison.
+
+    ⚠️ CE N'EST PAS UN HARNAIS BLOQUANT, ET C'EST DELIBERE. La garnison de poupe
+    n'appartient pas a ce fichier (`BRIEF-0110` : « le code de jeu est hors
+    perimetre ») et le recouvrement PREEXISTE : les quatre fuseaux retires
+    etaient deja traverses par les deux dalles de la reserve. On le MESURE et on
+    le dit, au lieu de le corriger dans le dos du concepteur ou de le taire.
+    """
+    out: list[dict] = []
+    for scale, px, py, pz, flying in GARRISON_POSTS:
+        if not flying:
+            continue
+        half = GARRISON_RADIUS[scale] + 0.5 * GARRISON_PAD_MARGIN
+        for sign in (1.0, -1.0):
+            cx = sign * px
+            pad = ([cx - half, cx + half],
+                   [py - 0.5 * GARRISON_PAD_THICK - GARRISON_PAD_BOB,
+                    py + 0.5 * GARRISON_PAD_THICK + GARRISON_PAD_BOB],
+                   [pz - half, pz + half])
+            for name, bx, by, bz in boxes:
+                over = [min(a[1], b[1]) - max(a[0], b[0])
+                        for a, b in zip((bx, by, bz), pad)]
+                if min(over) <= 0.0:
+                    continue
+                out.append({"piece": name, "poste": f"{scale} ({cx:+.2f} ; "
+                                                    f"{pz:+.2f}) volante",
+                            "x": over[0], "y": over[1], "z": over[2],
+                            "volume": over[0] * over[1] * over[2]})
+    return out
+
+
+def _assert_markers(path: str) -> dict:
+    """Relit les reperes DANS le binaire et verifie chaque piece POSEE.
+
+    Ce que ce harnais refuse, et pourquoi chaque refus est arrive une fois :
+
+      * un repere absent, en trop, ou dont la pose derive du micron ;
+      * un quaternion qui n'est pas un lacet pur (l'assise ne commuterait plus) ;
+      * une piece qui creve `CEILING_Y` — c'est ce que le `BRIEF-0109` a mesure
+        avant de reculer, et c'est ce qui a fait ecrire `PYLON_SEAT_TOP` ;
+      * une piece qui mord l'emprise des berceaux (`|x| <= 15,78`,
+        `|z| <= 8,00`, au-dessus du pont) ;
+      * une piece qui entre dans un canal d'echappement.
+    """
+    gltf, _blob = blc._read_glb(path)
+    found: dict[str, dict] = {}
+    for node in gltf.get("nodes", []):
+        name = node.get("name", "")
+        if not name.startswith("CTRL | "):
+            continue
+        found[name] = node
+    table = markers()
+    for name, local, yaw, _kind in table:
+        if name not in found:
+            raise ak.ContractError(
+                f"{path} : repere « {name} » absent du binaire — le code n'a "
+                "nulle part ou monter sa piece")
+    for name in found:
+        if name not in {n for n, _p, _y, _k in table}:
+            raise ak.ContractError(f"{path} : repere inattendu « {name} »")
+
+    rows: list[dict] = []
+    boxes: list[tuple[str, list, list, list]] = []
+    for name, local, yaw, kind in table:
+        node = found[name]
+        pose = Vector(node.get("translation", (0.0, 0.0, 0.0)))
+        drift = (pose - local).length
+        if drift > 1e-5:
+            raise ak.ContractError(
+                f"{name} : pose {tuple(round(v, 4) for v in pose)} au lieu de "
+                f"{tuple(round(v, 4) for v in local)} — ecart {drift:.2e} m")
+        q = node.get("rotation", (0.0, 0.0, 0.0, 1.0))
+        quat = Quaternion((q[3], q[0], q[1], q[2]))
+        # ⚠️ LE QUATERNION, JAMAIS `to_euler()` : un quart de tour autour de Y
+        # tombe exactement sur le blocage de cardan d'une decomposition XYZ.
+        want = Quaternion(Vector((0.0, 1.0, 0.0)), yaw)
+        if min((quat - want).magnitude, (quat + want).magnitude) > 1e-5:
+            raise ak.ContractError(
+                f"{name} : la rotation n'est pas le lacet attendu "
+                f"({math.degrees(yaw):+.1f} deg) — l'assise ne commute plus")
+        hx, height, hz = _piece_extent(kind, yaw)
+        box_x = [pose.x - hx, pose.x + hx]
+        box_y = [pose.y, pose.y + height]
+        box_z = [pose.z - hz, pose.z + hz]
+        if box_y[1] > CEILING_Y + 1e-6:
+            raise ak.ContractError(
+                f"{name} : la piece culmine a {box_y[1]:.3f} > plafond "
+                f"{CEILING_Y} — elle ne rentre pas a cet emplacement")
+        if (box_x[0] < KEEPOUT_X - 1e-6 and box_z[0] < KEEPOUT_HALF_Z - 1e-6
+                and box_x[1] > -KEEPOUT_X + 1e-6
+                and box_z[1] > -KEEPOUT_HALF_Z + 1e-6
+                and box_y[1] > DECK_Y + 1e-6):
+            raise ak.ContractError(
+                f"{name} : la piece mord l'emprise des berceaux "
+                f"(x {box_x[0]:.2f}..{box_x[1]:.2f}, z {box_z[0]:.2f}.."
+                f"{box_z[1]:.2f})")
+        for chan_x in CHANNEL_X:
+            if (box_z[0] < CHANNEL_Z0 and box_y[1] > CHANNEL_CLEAR_Y
+                    and abs(pose.x - chan_x) < CHANNEL_HALF + hx):
+                raise ak.ContractError(
+                    f"{name} : la piece entre dans le canal x = {chan_x:+.2f}")
+        rows.append({"name": name, "piece": PIECE_FILES[kind], "yaw": yaw,
+                     "pos": (pose.x, pose.y, pose.z),
+                     "box": (box_x, box_y, box_z),
+                     "headroom": CEILING_Y - box_y[1],
+                     "triangles": _piece_triangles(kind)})
+        boxes.append((name, box_x, box_y, box_z))
+    return {"rows": rows, "garrison": _garrison_clash(boxes)}
+
+
+_PIECE_TRIS: dict[str, int] = {}
+
+
+def _piece_triangles(kind: str) -> int:
+    if kind in _PIECE_TRIS:
+        return _PIECE_TRIS[kind]
+    gltf, _blob = blc._read_glb(os.path.join(MODELS, PIECE_FILES[kind]))
+    total = 0
+    for mesh in gltf.get("meshes", []):
+        for prim in mesh.get("primitives", []):
+            total += gltf["accessors"][prim["indices"]]["count"] // 3
+    _PIECE_TRIS[kind] = total
+    return total
+
+
 def _assert_junction(points: list[tuple]) -> dict:
     """Les 48 sommets du corridor doivent etre LA, au micron, des deux bords."""
     wanted = _joint_ring()
@@ -1780,6 +2424,33 @@ def _print(report: dict) -> None:
     print(f"    AA_Emissive_Engine dans les canaux : "
           f"{report['glow_in_channels']:.6f} m2")
     print("")
+    print("  LES REPERES (BRIEF-0110) — position = BAS de la piece, CENTRE en x/z :")
+    posed = 0
+    for row in report["markers"]["rows"]:
+        bx, by, bz = row["box"]
+        posed += row["triangles"]
+        print(f"    {row['name']:<22} ({row['pos'][0]:+7.3f} ; "
+              f"{row['pos'][1]:+7.3f} ; {row['pos'][2]:+7.3f})  lacet "
+              f"{math.degrees(row['yaw']):+6.1f} deg  {row['piece']:<24}"
+              f"{row['triangles']:>5} tri")
+        print(f"      -> x {bx[0]:+7.3f}..{bx[1]:+7.3f}  y {by[0]:+7.3f}.."
+              f"{by[1]:+7.3f}  z {bz[0]:+7.3f}..{bz[1]:+7.3f}   ciel restant "
+              f"{row['headroom']:+.3f} m")
+    total = STERN_BEFORE + (report["triangles"] - HULL_BEFORE) + posed
+    print(f"    {len(report['markers']['rows'])} reperes · {posed} triangles "
+          f"instancies · carene {report['triangles']} (etait {HULL_BEFORE}, dont "
+          f"{REMOVED_FAMILIES} retires)")
+    print(f"    TOTAL POUPE {total} / {STERN_TOTAL_BUDGET} — il reste "
+          f"{STERN_TOTAL_BUDGET - total}")
+    clashes = report["markers"]["garrison"]
+    if clashes:
+        print("")
+        print("  ⚠️ RECOUVREMENT AVEC LA GARNISON DE POUPE (mesure, NON corrige —")
+        print("     la garnison est hors perimetre du BRIEF-0110) :")
+        for c in clashes:
+            print(f"    {c['piece']:<22} x {c['x']:.3f} · y {c['y']:.3f} · z "
+                  f"{c['z']:.3f} m  ({c['volume']:.3f} m3) avec {c['poste']}")
+    print("")
     uv = report["uv"]
     print(f"  UV — projection en boite {TEXELS_PER_METER:.2f} tuile/m "
           f"({1.0 / TEXELS_PER_METER:.2f} m/tuile), decalage z {UV_SHIFT_Z:+.2f}")
@@ -1844,6 +2515,11 @@ def _frame_centre_z(altitude: float) -> float:
 #: station du milieu du massif.
 AFT_MID_Z = 0.5 * (AFT_Z + TAIL_Z)          # -10,30
 AFT_WORLD_Z = _frame_centre_z(AFT_PLATEAU_Y) - AFT_MID_Z
+#: Meme mecanique pour le collecteur : il siege a `z = +8,95` local, soit 15 m
+#: EN AVANT des berceaux. Au plan de maintien il tombe a 724 px sur 1080 (bas de
+#: cadre, au centre) ; cette origine-la est l'instant du survol ou il est
+#: pleine face.
+COLLECTOR_WORLD_Z = _frame_centre_z(-4.30) - MANIFOLD_CZ
 
 
 def _look(position: Vector, target: Vector) -> tuple[Vector, Vector]:
@@ -2076,6 +2752,39 @@ def _mount_plumes(origin: Vector, gain: float = 1.0) -> list:
     return out
 
 
+def _mount_markers(origin: Vector, only: tuple[str, ...] | None = None) -> list:
+    """Monte sur chaque repere la piece qu'il porte — COMME LE CODE DU JEU.
+
+    ⚠️ UNE PLANCHE DE REPERES VIDES NE PROUVE RIEN (`ADR-0006`, et le critere du
+    brief). La seule chose qui dise si le collecteur se lit, c'est le collecteur
+    monte. La correction d'assise reproduite ici est mot pour mot celle de
+    `CortegeConduit._seat()` : centre en x/z, BAS sur le repere, boite englobante
+    mesuree et non origine de fichier.
+    """
+    fresh: list = []
+    store: dict = {}
+    for name, local, yaw, kind in markers():
+        if only and not name.startswith(only):
+            continue
+        lo, hi = _piece_box(kind)
+        # La correction est ecrite dans le repere LOCAL de la piece : elle
+        # commute avec le lacet, et avec lui seul.
+        seat = Vector((-0.5 * (lo.x + hi.x), -lo.y, -0.5 * (lo.z + hi.z)))
+        cos_y, sin_y = math.cos(yaw), math.sin(yaw)
+        turned = Vector((cos_y * seat.x + sin_y * seat.z, seat.y,
+                         -sin_y * seat.x + cos_y * seat.z))
+        made = _place(os.path.join(MODELS, PIECE_FILES[kind]),
+                      origin + local + turned, 1.0, yaw)
+        # ⚠️ ON FIGE LE CLIP NOMINAL, comme pour les trois groupes propulsifs :
+        # une piece importee sans pose explicite rend la premiere image de
+        # l'action que l'importateur lui laisse, qui n'est pas forcement son
+        # etat au repos.
+        _pose(made, PIECE_REST_CLIP[kind], 1, store)
+        fresh += made
+    _freeze(store)
+    return fresh
+
+
 def _mount_corridor(origin: Vector) -> list:
     """Le troncon 5 du corridor, pour juger la jonction et le contraste."""
     return blc._import(os.path.join(MODELS, "long_cortege.glb"), "corridor",
@@ -2085,6 +2794,12 @@ def _mount_corridor(origin: Vector) -> list:
 #: Les vues cadrees sur le massif : la poupe y est avancee pour que le survol
 #: montre ce qu'il montre a ce moment-la (voir `AFT_WORLD_Z`).
 AFT_VIEWS = ("aft", "nude", "channel", "top")
+#: La carene D'AVANT ce lot, rendue au meme cadrage pour la comparaison.
+#: Elle est produite par `tools/blender/build_stern_before.py` (extrait de git,
+#: hors depot) et son chemin est passe par `--before=`. Sans elle, la vignette
+#: de comparaison est simplement omise : une planche qui inventerait son
+#: « avant » ne vaudrait rien.
+BEFORE_HULL = os.environ.get("STERN_BEFORE_GLB", "")
 #: L'attenuateur de panache, par vue (voir `_mount_plumes`).
 PLUME_PLATE_GAIN = {"channel": 0.14}
 #: Ce qu'il reste d'eclairage sur la vignette de blackout (voir `_dim_scene`).
@@ -2119,13 +2834,25 @@ def _dim_scene(gain: float) -> None:
 
 def _tile(path: str, view: str, dark: bool = False, checker: bool = False) -> None:
     blc._plate_reset()
-    world_z = AFT_WORLD_Z if view in AFT_VIEWS else STERN_WORLD_Z
+    if view in AFT_VIEWS:
+        world_z = AFT_WORLD_Z
+    elif view == "collecteur":
+        world_z = COLLECTOR_WORLD_Z
+    else:
+        world_z = STERN_WORLD_Z
     origin = Vector((0.0, 0.0, world_z))
-    hull = blc._import(OUTPUT, "stern_hull", origin)
+    before = view == "avant"
+    source = BEFORE_HULL if before else OUTPUT
+    hull = blc._import(source, "stern_hull", origin)
     corridor = _mount_corridor(origin)
     groups = view not in ("nude", "channel")
     if groups:
         _mount_groups(origin)
+    # ⚠️ LES PIECES INSTANCIEES SONT LA. Le brief l'exige mot pour mot :
+    # « rendus AVEC les pieces instanciees sur les reperes ». La vignette
+    # « avant » ne les a pas — c'est tout l'objet de la comparaison.
+    if not before:
+        _mount_markers(origin)
     if checker:
         blc._apply_checker([o for o in bpy.context.scene.objects
                             if o.type == "MESH"])
@@ -2150,7 +2877,29 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False) -> No
     if dark:
         _dim_scene(BLACKOUT_LIGHT)
 
-    if view == "joint":
+    if view == "collecteur":
+        # ⚠️ MEME CAMERA, MEME CHAMP, AUTRE INSTANT. Le collecteur est a
+        # `z = +8,95` local, c'est-a-dire 15 m devant les berceaux : au plan de
+        # maintien il tombe en bas de cadre, a 724 px sur 1080. Ici on avance la
+        # poupe de facon a le centrer — c'est ce que le survol montre une
+        # seconde plus tot, rien n'y est truque.
+        cam_pos = blc.CAM_POS
+        forward = blc.CAM_FORWARD
+        up = blc.CAM_UP
+        fov = math.radians(30.0)
+    elif view == "rive":
+        # La rive de tribord, de trois-quarts : le socle, le pylone et les deux
+        # flexibles de rebord, vus comme le survol les voit en s'approchant.
+        # ⚠️ PAS PAR LE FLANC, ET C'EST MESURE. Vue du dehors, la rive presente
+        # sa facette exterieure (|x| = 18,50) et le socle masque tout ce qu'il
+        # porte : le premier tirage ne montrait pas un centimetre du pylone. La
+        # camera est donc AU-DESSUS DU BASSIN, la ou la camera du jeu se tient,
+        # et elle regarde la face interieure — la seule que le joueur voie.
+        cam_pos = Vector((2.0, 8.5, world_z + 15.0))
+        target = Vector((17.20, -6.80, world_z + PYLON_Z))
+        forward, up = _look(cam_pos, target)
+        fov = math.radians(26.0)
+    elif view == "joint":
         cam_pos = Vector((0.0, 9.0, 21.0))
         forward = Vector((0.0, -0.500, -0.866))
         up = Vector((0.0, 0.866, -0.500))
@@ -2190,17 +2939,24 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False) -> No
     metrics = blc._frame_coverage(DECK_Y)
     px = TILE_W / metrics["frame_width"]
     heads = {
-        "game": ("1 — CAMERA DU JEU AU PLAN DE MAINTIEN  ·  trois groupes reels "
-                 "et leurs trois panaches (z = %.2f)" % STERN_WORLD_Z),
-        "aft": ("2 — LA MEME CAMERA, LE MASSIF AU CENTRE DU CADRE  ·  l'instant du "
-                "survol ou les panaches entraient dans la coque"),
-        "nude": ("3 — LA CARENE SEULE, SOUS LES TROIS PANACHES  ·  sans les "
+        "avant": ("1 — AVANT  ·  la poupe du BRIEF-0107 : collecteur en tube, "
+                  "chaine de brides, quatre fuseaux de 60 tri, tours a 280"),
+        "game": ("2 — APRES, MEME CADRAGE  ·  5 conduites + 2 coudes + 8 "
+                 "flexibles + 2 pylones INSTANCIES sur les reperes"),
+        "collecteur": ("3 — LE COLLECTEUR, pleine face  ·  le morceau le plus "
+                       "regarde du lot (50,3 px/m) : rail a deux niveaux, "
+                       "coudes de rive, quatre flexibles dans l'axe de l'artere"),
+        "rive": ("4 — LA RIVE DE TRIBORD  ·  le socle (216 tri) porte le pylone "
+                 "livre (2 612) a -8,60, ou il tient ENTIER sous le plafond"),
+        "aft": ("5 — LE MASSIF AU CENTRE DU CADRE  ·  les deux tours d'echange "
+                "regenerees : socle evase, galerie de service, diffuseur"),
+        "nude": ("6 — LA CARENE SEULE, SOUS LES TROIS PANACHES  ·  sans les "
                  "groupes : les trois canaux et ce qu'ils degagent"),
-        "channel": ("4 — LE MASSIF DE TROIS-QUARTS, sans les groupes  ·  panaches "
+        "channel": ("7 — LE MASSIF DE TROIS-QUARTS, sans les groupes  ·  panaches "
                     "a 14 % : a pleine energie ils remplissent leur canal"),
-        "joint": ("5 — LA JONCTION s = 500, vue rasante  ·  elle n'a pas bouge "
+        "joint": ("8 — LA JONCTION s = 500, vue rasante  ·  elle n'a pas bouge "
                   "d'un micron (ecart mesure 6,6e-07 m sur 48 sommets)"),
-        "top": ("6 — DE DESSUS  ·  les trois canaux alignes sur les trois axes "
+        "top": ("9 — DE DESSUS  ·  les trois canaux alignes sur les trois axes "
                 "moteur (x = 0 et +/-10,28), demi-largeur libre 2,20 m"),
     }
     head = heads[view]
@@ -2216,7 +2972,7 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False) -> No
                 % (TEXELS_PER_METER, 1.0 / TEXELS_PER_METER))
         tint = (0.72, 1.0, 0.82)
     blc._label(camera, head, -0.96, 0.90, 0.028, TILE_W, TILE_H, tint)
-    if view in ("game", "aft", "nude", "channel") and not checker:
+    if view in ("game", "aft", "nude", "channel", "avant") and not checker:
         y_axis, z0, z1 = _plume_axis(False)
         blc._label(camera,
                    f"panache (ADR-0017) : axe y = {y_axis:.2f}, de z = {z0:.2f} a "
@@ -2229,7 +2985,7 @@ def _tile(path: str, view: str, dark: bool = False, checker: bool = False) -> No
                        "levre 1,10 x 0,82 m, +0,45 m au-dessus du plateau  ·  "
                        "marge au socle de tour 1,16 m",
                        -0.96, 0.79, 0.022, TILE_W, TILE_H, (0.72, 0.84, 1.0))
-    if view in ("game", "aft", "nude") and not checker:
+    if view in ("game", "aft", "nude", "avant", "collecteur") and not checker:
         blc._label(camera,
                    f"camera du jeu (0 ; 14 ; 5), FOV 62 vertical, pont de poupe "
                    f"y = {DECK_Y:.2f} — cadre {metrics['frame_width']:.2f} m, "
@@ -2252,11 +3008,15 @@ def render_plate(only: tuple[str, ...] | None = None, out: str = PLATE) -> None:
     """
     staging = tempfile.mkdtemp(prefix="aegis-stern-plate-")
     tiles: list[tuple[str, int]] = []
-    wanted = only or ("game", "aft", "nude", "channel", "joint", "top",
-                      "dark", "checker")
+    order = ("avant", "game", "collecteur", "rive", "aft", "nude", "channel",
+             "joint", "top")
+    wanted = only or order + ("dark", "checker")
     try:
-        for view in ("game", "aft", "nude", "channel", "joint", "top"):
+        for view in order:
             if view not in wanted:
+                continue
+            if view == "avant" and not os.path.exists(BEFORE_HULL):
+                print("  (vignette « avant » omise : STERN_BEFORE_GLB absent)")
                 continue
             path = os.path.join(staging, f"{view}.png")
             _tile(path, view)

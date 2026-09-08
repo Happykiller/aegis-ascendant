@@ -161,6 +161,24 @@ func begin() -> void:
 ## exacte au dix-millionième de mètre.
 const HULL_KIT := "res://assets/imported/models/backgrounds/stern_hull.glb"
 
+## Les pièces que la carène ne fabrique plus elle-même (`BRIEF-0110`). Elle porte dix-sept repères
+## et le code y instancie.
+##
+## ⚠️ INSTANCIÉES, PAS CUITES DANS LA CARÈNE. Une pièce dupliquée dans le `.glb` coûterait ses
+## triangles autant de fois qu'elle apparaît — sept conduites, c'est 4 500 triangles de plus dans
+## un fichier qui en compte 4 822. Instanciée, elle n'est en mémoire qu'une fois.
+##
+## ⚠️ ET LES DEUX BOUTS DU PORTIQUE SONT COUDÉS. `Collecteur 01` et `07` ferment la travée sur les
+## flancs ; les cinq autres la traversent droit. Se tromper ne produit aucune erreur : un tuyau
+## droit là où il faut un coude laisse une jointure ouverte, et personne ne le voit avant capture.
+const DRESS: Dictionary = {
+	"CTRL | Collecteur 01": "res://assets/imported/models/backgrounds/artery_conduit_bend.glb",
+	"CTRL | Collecteur 07": "res://assets/imported/models/backgrounds/artery_conduit_bend.glb",
+	"CTRL | Collecteur": "res://assets/imported/models/backgrounds/artery_conduit.glb",
+	"CTRL | Liaison": "res://assets/imported/models/backgrounds/artery_hose.glb",
+	"CTRL | Pylone": "res://assets/imported/models/backgrounds/stern_pylon.glb",
+}
+
 ## Monte la carène, ou la dalle grise si elle manque.
 ##
 ## ⚠️ LA DALLE RESTE COMME DOUBLURE, ET ELLE A SERVI QUATRE LOTS. Toute la phase a été conçue,
@@ -175,6 +193,70 @@ func _mount_hull() -> void:
 		return
 	carene.name = "Hull"
 	add_child(carene)
+	_dress(carene)
+
+## Instancie les pièces livrées sur les repères de la carène.
+##
+## ⚠️ ENFANTS DU REPÈRE, PAS DE LA POUPE. C'est ce qui les rend solidaires de la coque sans une
+## ligne d'arithmétique — et donc sans aucune façon de désynchroniser une pièce du repère qui la
+## porte, le jour où la carène se reforge.
+##
+## ⚠️ ET L'ORIGINE DES PIÈCES N'EST PAS DANS LES PIÈCES. Les `.glb` de l'artère sont des
+## sous-arbres extraits d'un assemblage : leur racine porte encore sa translation d'origine —
+## `(−0,36 ; 1,00 ; 1,38)` pour la conduite droite. Sans compensation, elles se posent un mètre en
+## l'air ; c'est le défaut que l'opérateur a vu sur le corridor le 2026-09-08.
+func _dress(carene: Node3D) -> void:
+	var poses := 0
+	for node in _descendants(carene):
+		var n3 := node as Node3D
+		if n3 == null:
+			continue
+		var chemin := _kit_for(String(node.name))
+		if chemin.is_empty():
+			continue
+		var packed: PackedScene = load(chemin) as PackedScene
+		var piece := packed.instantiate() as Node3D if packed != null else null
+		if piece == null:
+			continue
+		piece.name = String(node.name).replace("CTRL | ", "")
+		n3.add_child(piece)
+		_seat(piece)
+		poses += 1
+	if poses > 0:
+		print("[Poupe] carène habillée — %d pièce(s) instanciée(s) sur ses repères" % poses)
+
+## Le kit d'un repère : la clé exacte d'abord, le préfixe ensuite.
+static func _kit_for(nom: String) -> String:
+	if DRESS.has(nom):
+		return String(DRESS[nom])
+	for cle: String in DRESS:
+		if nom.begins_with(cle):
+			return String(DRESS[cle])
+	return ""
+
+## Assied la pièce : son BAS sur le repère, son CENTRE sur lui. Même règle et même raison que
+## `CortegeConduit._seat` — on mesure la boîte, on ne soustrait pas l'origine.
+static func _seat(piece: Node3D) -> void:
+	var mini := Vector3.INF
+	var maxi := -Vector3.INF
+	for node in _descendants(piece):
+		var mesh := node as MeshInstance3D
+		if mesh == null or mesh.mesh == null:
+			continue
+		var boite := mesh.mesh.get_aabb()
+		var base := mesh.position
+		mini = mini.min(base + boite.position)
+		maxi = maxi.max(base + boite.position + boite.size)
+	if mini.x > maxi.x:
+		return
+	var centre := (mini + maxi) * 0.5
+	piece.position -= Vector3(centre.x, mini.y, centre.z)
+
+static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
 
 func _greybox_deck() -> void:
 	var pont := MeshInstance3D.new()

@@ -854,6 +854,36 @@ CROSS_BRIDGE_PIER = 0.90        # largeur des deux piles, aux extremites
 #: que la coque paierait en arbitrage.
 SPINES: tuple[float, ...] = (46.0, 103.0, 203.0, 305.0, 406.0)
 
+#: LES DOUZE CONDUITES DE L'ARTERE (BRIEF-0110) — (station, x SIGNE).
+#:
+#: ⚠️ C'EST LA DERNIERE COTE DU CHANTIER DE L'ARTERE QUI NE VENAIT PAS DE
+#: L'ASSET, ET ELLE S'EST VUE A L'ECRAN. `CortegeArtery.CONDUITS` pose ses douze
+#: pieces a `DECK_Y = -4,30` CONSTANT, alors que la peau du corridor respire :
+#: `_scales()` etrangle la coque station par station, si bien que le pont
+#: interieur descend de plusieurs centimetres entre la proue et la poupe. Le
+#: test qui gardait la cote la comparait aux marqueurs VOISINS et laissait
+#: passer l'ecart.
+#:
+#: Ici la coque dit ou les conduites vont, comme elle le fait deja pour les
+#: dix-sept tourelles, les sept ponts et les cinq nœuds. Le `y` du repere est
+#: `_surface_y(s, x)`, c'est-a-dire le DESSUS DE LA PEAU au lateral exact de la
+#: piece — donc le point ou son BAS doit se poser (`CortegeConduit._seat()`
+#: assied la boite englobante, pas l'origine du fichier).
+#:
+#: ⚠️ LE `x` N'EST PAS RAPPORTE A LA LARGEUR LOCALE (`_marker_x`). Les douze
+#: stations sont ECRITES dans le code de jeu en cotes absolues (3,60 / 4,40) et
+#: le moteur les lit telles quelles : leur appliquer `kx` ici deplacerait le
+#: repere sous la piece au lieu de la piece sur le repere. Seul le `y` change.
+ARTERY_CONDUITS: tuple[tuple[float, float], ...] = (
+    (30.0, 3.60), (58.0, -3.60), (95.0, 4.40), (138.0, -3.60),
+    # ⚠️ 232 ET NON 240 : LA CITADELLE OCCUPE 239,6 A 246,0. Elle n'est pas un
+    # marqueur de coque — elle est posee par le code depuis `citadel_station` —
+    # donc le banc de pose de `CortegeArtery` ne la voyait pas, et le conflit a
+    # dormi jusqu'a ce que ce repere le rende visible.
+    (163.0, 4.40), (192.0, -3.60), (232.0, 4.40), (277.0, -3.60),
+    (314.0, 4.40), (358.0, -3.60), (394.0, 4.40), (435.0, -3.60),
+)
+
 #: ⚠️ EMPRISE QUE `spine_kit.glb` POSE DANS LE FOND DU CANAL, berceau compris.
 #: Elle vit ICI parce que c'est ici qu'on echantillonne la peau pour calculer
 #: l'assise du marqueur, et `build_spine_kit.FOOTPRINT_HX/HS` doivent valoir la
@@ -4034,9 +4064,17 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         seat, _ = spine_seat_y(s)
         anchors.append((f"Spine_{number:02d}", Vector((0.0, seat, _z(s)))))
         spines += 1
+    conduites = 0
+    for number, (s, x) in enumerate(ARTERY_CONDUITS, start=1):
+        if not (origin <= s < origin + SECTION_LENGTH):
+            continue
+        anchors.append((f"CTRL | Conduite {number:02d}",
+                        Vector((x, _surface_y(s, x), _z(s)))))
+        conduites += 1
     counts["marqueurs_tourelle"] = pads
     counts["baies"] = bays
     counts["nœuds"] = spines
+    counts["conduites_reperes"] = conduites
 
     hull = _new_object(name, bm)
     _weld(hull)
@@ -4229,6 +4267,8 @@ def _expected_markers() -> list[str]:
     names = [f"Turret_{i:02d}" for i in range(1, len(TURRETS) + 1)]
     names += [f"Bay_{i:02d}" for i in range(1, len(BAYS) + 1)]
     names += [f"Spine_{i:02d}" for i in range(1, len(SPINES) + 1)]
+    names += [f"CTRL | Conduite {i:02d}"
+              for i in range(1, len(ARTERY_CONDUITS) + 1)]
     names.append("Ambry")
     return names
 
@@ -4342,6 +4382,29 @@ def _audit(path: str) -> dict:
     for name in found:
         if name not in _expected_markers():
             problems.append(f"marqueur inattendu : '{name}'")
+
+    # ⚠️ LES DOUZE CONDUITES SONT RELUES DANS LE BINAIRE, ET LEUR `y` DOIT
+    # DIFFERER D'UNE STATION A L'AUTRE. C'est la seule preuve qu'il est
+    # ECHANTILLONNE et non constant : une constante recopiee passerait toutes
+    # les autres verifications sans un mot (c'est exactement ce qui s'est
+    # produit avec `CortegeArtery.DECK_Y = -4,30`).
+    conduit_y: list[float] = []
+    for number, (s, x) in enumerate(ARTERY_CONDUITS, start=1):
+        marker = f"CTRL | Conduite {number:02d}"
+        if marker not in found:
+            continue
+        translation = found[marker][1]
+        want = _surface_y(s, x)
+        conduit_y.append(translation[1])
+        if abs(translation[0] - x) > 1e-4 or abs(translation[1] - want) > 1e-4:
+            problems.append(
+                f"{marker} : ({translation[0]:.4f}, {translation[1]:.4f}) au lieu "
+                f"de ({x:.4f}, {want:.4f}) — le repere ne tombe pas sur la peau")
+    if len(set(round(v, 4) for v in conduit_y)) < 2:
+        problems.append(
+            "les douze CTRL | Conduite portent le MEME y : le repere n'est pas "
+            "echantillonne sur la peau, il est constant — c'est la dette que ce "
+            "lot devait supprimer")
 
     # --- geometrie, budgets, plafond, jonctions --------------------------------
     stats: dict[str, dict] = {}

@@ -1,6 +1,6 @@
 # BRIEF-0110 — La poupe troque ses formes simples contre les pièces livrées
 
-- **Statut** : assigné
+- **Statut** : livré et intégré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08

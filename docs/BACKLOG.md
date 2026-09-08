@@ -78,6 +78,19 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 
 ---
 
+## ⚠️ Restes du BRIEF-0110 (2026-09-08)
+
+- **Le budget de la poupe est à 78 874 sur 80 000.** Il reste **1 126 triangles** : plus rien pour
+  se raviser. La forge propose, si besoin : ramener le collecteur à 3 conduites et 2 coudes
+  (−1 956) ou alléger les tours régénérées.
+- **Deux pylônes, pas quatre.** Quatre coûtaient 10 448 des 16 750 disponibles et auraient vidé le
+  collecteur — qui est la pièce que le joueur regarde le plus.
+- **Le pylône recouvre la plate-forme volante `STANDARD` de 2,28 m³ par bord** (hors périmètre du
+  brief, non corrigé). ⚠️ **Il DIMINUE** : 12,60 m³ avant ce lot, 4,57 après (−64 %). Le créneau
+  libre entre les deux dalles ne fait que 1,95 m — un déplacement de plate-forme le résoudrait.
+- **Quatre flexibles de rebord seulement.** Une pièce rigide de 2,74 m ne peut pas enjamber une
+  marche de bande, et B2 est prise par le socle du pylône.
+
 ## ⚠️ Le pylône livré n'a pas de place (2026-09-08)
 
 - **`stern_pylon.glb` (2 612 tri, 5,30 m) dort sans emplacement.** Mesuré : aucun endroit du

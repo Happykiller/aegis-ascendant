@@ -167,3 +167,18 @@ func test_the_shared_report_stays_untouched_without_a_note() -> void:
 		"et sans note, la trace de comms est exactement celle d'avant")
 	var graybox := FileAccess.get_file_as_string("res://scripts/gameplay/graybox_root.gd")
 	assert_false(graybox.contains("ARTERE"), "le niveau 1 ne parle pas d'artere")
+
+## ⚠️ ET LA CITADELLE N'EST PAS UN MARQUEUR DE COQUE. Elle est posee par le CODE, depuis
+## `citadel_station` — donc les trois tests de degagement ci-dessus, qui lisent les marqueurs du
+## `.glb`, ne la voyaient pas. Une conduite a s = 240 est restee dans son emprise jusqu'a ce que
+## la forge y pose un repere et fasse rougir `test_the_citadel_bites_none_of_its_three_neighbours`.
+##
+## ⚠️ LA LECON EST PLUS LARGE QUE LE CAS : un banc qui lit UNE source croit avoir tout vu. Ici il
+## en faut deux — la coque pour ce qu'elle porte, la Resource pour ce que le code ajoute.
+func test_no_conduit_lands_in_the_citadel_window() -> void:
+	var debut := TUNING.citadel_station - TUNING.citadel_brake_span * 0.08
+	var fin := TUNING.citadel_station + 6.0
+	for station in Artery.stations():
+		assert_false(station >= debut - 6.0 and station <= fin + 6.0,
+			"la conduite a s = %.0f garde ses distances avec la Citadelle (%.1f a %.1f)"
+				% [station, debut, fin])

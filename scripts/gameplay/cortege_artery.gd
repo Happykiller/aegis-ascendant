@@ -39,7 +39,11 @@ const CONDUITS: Array = [
 	[138.0, 3.60, -1.0, false],
 	[163.0, 4.40, 1.0, true],
 	[192.0, 3.60, -1.0, false],
-	[240.0, 4.40, 1.0, false],
+	# ⚠️ 232 ET NON 240 : LA CITADELLE OCCUPE 239,6 À 246,0. Elle n'est pas un marqueur de coque —
+	# elle est posée par le code depuis `citadel_station` — donc le banc de pose ne la voyait pas.
+	# Une conduite plantée dans son emprise se serait lue comme une pièce de la Citadelle, et le
+	# joueur aurait tiré sur la mauvaise pendant les 44 s de sa séquence.
+	[232.0, 4.40, 1.0, false],
 	[277.0, 3.60, -1.0, true],
 	[314.0, 4.40, 1.0, false],
 	[358.0, 3.60, -1.0, false],
@@ -53,6 +57,15 @@ const CONDUITS: Array = [
 ## échantillonné sur la peau ; l'artère n'a pas de marqueur, donc celle-ci est POSÉE — et
 ## `test_cortege_artery.gd` la compare au `y` des marqueurs voisins. Si la peau bouge, le banc le
 ## dit au lieu de laisser douze conduites flotter.
+## Le repère que la coque porte désormais pour chaque conduite (`BRIEF-0110`).
+const MARK := "CTRL | Conduite"
+
+## L'assise de SECOURS, si le repère manque.
+##
+## ⚠️ ELLE ÉTAIT LA COTE, ET ELLE A FAIT FLOTTER DES CONDUITES. Une constante pour douze pièces
+## posées sur une peau qui se rétrécit avec la station : à `s = 30`, dans l'effilure de proue, le
+## pont est à −5,790 et la conduite planait de **1,49 m**. Le banc qui la gardait comparait aux
+## marqueurs VOISINS et laissait passer l'écart — il mesurait la bonne chose au mauvais endroit.
 const DECK_Y := -4.30
 ## La hauteur de masse : où il faut tirer pour toucher, sous une caméra qui plonge à 70°.
 const HIT_LIFT := 0.30
@@ -114,8 +127,8 @@ func build(sections: Array[Node3D], p_tuning: CortegeTuning,
 		conduit.leak_interval = tuning.conduit_leak_interval
 		conduit.sever_time = tuning.conduit_sever_time
 		conduit.setup(bullets, vfx)
-		conduit.position = Vector3(float(entry[1]) * float(entry[2]), DECK_Y,
-			local_z_of(station))
+		conduit.position = Vector3(float(entry[1]) * float(entry[2]),
+			_seat_of(sections[index], i + 1), local_z_of(station))
 		conduit.severed.connect(_on_severed)
 		# ⚠️ ENFANT DU TRONÇON, comme tout ce qui vit sur la coque : le défilement l'emmène sans
 		# une ligne d'arithmétique, et donc sans aucune façon de désynchroniser une conduite de
@@ -136,6 +149,24 @@ func _process(delta: float) -> void:
 		var here := GameplayPlane.aim_point_of(w, eye)
 		conduit.engage(absf(here.y) <= demi)
 		conduit.tick(delta, w, here)
+
+## L'assise d'une conduite, LUE sur le repère que la coque porte. Retombe sur la constante si le
+## repère manque — et le DIT, parce qu'une carène reforgée sans ses repères ferait replaner douze
+## pièces en silence.
+func _seat_of(section: Node3D, numero: int) -> float:
+	var voulu := "%s %02d" % [MARK, numero]
+	for node in _descendants(section):
+		var n3 := node as Node3D
+		if n3 != null and String(node.name) == voulu:
+			return n3.position.y
+	push_warning("[Cortege] pas de « %s » dans la coque — assise de secours" % voulu)
+	return DECK_Y
+
+static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
 
 func _on_severed(conduit: CortegeConduit) -> void:
 	_cut += 1
