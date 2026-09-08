@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/fx/camera_director.gd" id="8_camdir"]
 [ext_resource type="Script" path="res://scripts/fx/vfx_manager.gd" id="9_vfx"]
 [ext_resource type="Script" path="res://scripts/gameplay/cortege_hardpoints.gd" id="16_hardpoints"]
+[ext_resource type="Script" path="res://scripts/gameplay/cortege_artery.gd" id="24_artery"]
 [ext_resource type="Script" path="res://scripts/gameplay/wave_spawner.gd" id="17_spawner"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_cortege_approach.tres" id="18_approach"]
 [ext_resource type="Resource" path="res://resources/encounters/wave_cortege_patrol.tres" id="19_patrol"]
@@ -95,6 +96,16 @@ bullet_manager_path = NodePath("../BulletManager")
 ; lachee serait decalee de tout ce que le decor a parcouru.
 [node name="Hardpoints" type="Node3D" parent="."]
 script = ExtResource("16_hardpoints")
+
+; LES CONDUITES DE L'ARTERE — un placeur separe, et il le faut.
+;
+; ⚠️ ELLES NE SE POSENT PAS SUR DES MARQUEURS. Les dix-sept tourelles, les sept
+; ponts et les cinq nœuds sont enfants d'un repere que la coque livre ; l'artere
+; n'en a aucun. Les conduites se posent par STATION, ce que `CortegeHardpoints`
+; ne sait pas faire — et lui apprendre l'obligerait a connaitre la convention de
+; tronçonnage, qu'il n'a jamais eu a connaitre.
+[node name="Artery" type="Node3D" parent="."]
+script = ExtResource("24_artery")
 
 ; La reception de proue.
 ;

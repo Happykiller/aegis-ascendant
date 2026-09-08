@@ -44,6 +44,7 @@ const CARRIER_SPEED := 9.0
 @onready var _flyby: CortegeFlyby = $CortegeFlyby
 @onready var _backdrop: Node3D = get_node_or_null("SpaceBackdrop") as Node3D
 @onready var _hardpoints: CortegeHardpoints = $Hardpoints
+@onready var _artery: CortegeArtery = $Artery
 
 ## Le verrou de mi-parcours. ⚠️ IL N'EST PAS DANS LA SCÈNE, ET IL NE PEUT PAS L'ÊTRE : il se
 ## monte SOUS UN TRONÇON de la coque livrée, donc après `reveal()`, comme les points d'ancrage.
@@ -141,6 +142,11 @@ func _ready() -> void:
 	_hardpoints.node_destroyed.connect(_on_node_destroyed)
 	_hardpoints.section_weakened.connect(_on_section_weakened)
 	_hardpoints.node_engaged.connect(_on_node_engaged)
+	# ⚠️ APRES LES HARDPOINTS, ET AVEC LES MEMES TRONÇONS. Les conduites sont enfants de la coque
+	# qui defile : montees sous le niveau, elles resteraient immobiles pendant que le vaisseau
+	# glisse — le defaut exact que la poupe a paye le 2026-09-07.
+	_artery.build(_flyby.sections(), TUNING, _bullets, _vfx, _eye)
+	_artery.conduit_severed.connect(_on_conduit_severed)
 	_mount_citadel()
 	# ⚠️ UNE SECONDE ADOPTION, ET ELLE EST NÉCESSAIRE. Le socle a adopté les unités déjà dans
 	# l'arbre — la réception de proue — mais `build()` vient de monter sept pools de ponts
@@ -220,6 +226,12 @@ func _ready() -> void:
 ## d'une installation, et un joueur qui rase une batterie de quatre aurait gagné plus qu'en
 ## abattant la tourelle lourde qu'elle garde — la hiérarchie inversée à l'endroit exact où elle
 ## se mesure.
+## ⚠️ LA PIECE DIT CE QU'ELLE VAUT, comme la tourelle. Et le niveau ne fait rien d'autre pour
+## l'instant : ce que le compte de conduites coupees change a la poupe est le LOT 3, et il se
+## lira dans `_artery.cut_count()` au montage de la phase finale — pas ici, une coupure a la fois.
+func _on_conduit_severed(conduit: CortegeConduit) -> void:
+	_game_state.add_score(conduit.score)
+
 func _on_turret_destroyed(turret: CortegeTurret) -> void:
 	_game_state.add_score(turret.score())
 
