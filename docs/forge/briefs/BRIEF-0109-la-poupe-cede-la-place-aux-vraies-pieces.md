@@ -1,6 +1,6 @@
 # BRIEF-0109 — La poupe cède la place : retirer le procédural, poser des repères
 
-- **Statut** : assigné
+- **Statut** : **livré, NON INTÉGRÉ — mesure négative** (voir « Ce que la mesure a dit » en fin de page)
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08
@@ -112,3 +112,53 @@ flexible, lui, est du décor partout : il ne ment pas.
   aucun `.gd`, `.tscn` ni `.tres`.
 - **Les pièces elles-mêmes** : livrées et réduites au `BRIEF-0108`, elles ne changent pas.
 - **Les deux tours d'échange thermique** et le reste du massif arrière.
+
+---
+
+## ⚠️ Ce que la mesure a dit, et pourquoi rien n'a été intégré (2026-09-08)
+
+La forge a livré exactement ce qui était demandé : quatre pylônes procéduraux retirés (−240 tri),
+huit repères posés au centième, jonction et canaux intacts, déterminisme vérifié. **Le lot a été
+monté en jeu, capturé, comparé — et rendu.**
+
+### La prémisse du brief était fausse
+
+> « Son emplacement sur la poupe — les étagères de rive, entre la coque et le plafond de
+> construction — en offre **5,3** [mètres]. »
+
+C'est faux. J'avais mesuré **coque à plafond**, pas **étagère à plafond**. Le ciel réel :
+
+| Emplacement | Assise | Ciel sous `BUILD_CEILING_Y = −3,20` |
+|---|---:|---:|
+| Étagère de rive B1 | −6,60 | 3,40 m |
+| Étagère de rive B2 | −5,60 | **2,40 m** |
+| Étagère de rive B3 | −4,60 | **1,40 m** |
+| Plateau du massif arrière | −8,40 | 5,20 m — *masqué par les nacelles* |
+| Épaulement de proue | −5,90 | 2,70 m |
+| Ponts du corridor | −4,30 / −4,99 | 1,10 / 1,79 m |
+
+**Aucun emplacement du niveau n'a 5,30 m de ciel dégagé.** La forge l'a dit dans son rapport et a
+fait au mieux : assise prise plus bas, sur la paroi du bassin, avec un encastrement de 3,0 à 4,0 m
+et une émergence de **2,29 m** (bande 2) et **1,28 m** (bande 3).
+
+### Et la comparaison a tranché contre le lot
+
+Capture 1:1 du même cadrage, avant et après : le **fuseau procédural** de 60 triangles donnait une
+silhouette **plus lisible** que le pylône livré enterré aux trois quarts, qui se lit comme un
+treillis mince — et qui tombe en partie derrière le panneau `POWER` du HUD.
+
+Les flexibles du collecteur ne s'en tirent pas mieux : 0,28 m de large, soit **13 pixels** à
+45,8 px/m, sur un pont déjà chargé.
+
+⚠️ **CE N'EST PAS UN ÉCHEC DE LA FORGE.** Elle a livré, mesuré, signalé les quatre points qu'elle
+ne pouvait pas tenir — dont celui-ci, avant même que je regarde. Le défaut est dans le brief, et
+la leçon est : **un ciel se mesure depuis l'assise, pas depuis la coque.**
+
+### Ce qui est conservé
+
+- Ce rapport et la planche, comme preuve — pour qu'on ne repose pas la question dans six mois.
+- Les pièces du `BRIEF-0108` dorment dans `assets/imported/` avec leur source : elles resserviront
+  si un lieu leur convient.
+- La carène et le générateur sont **rendus à leur état d'avant** : les quatre fuseaux procéduraux
+  restent, parce qu'ils font mieux.
+

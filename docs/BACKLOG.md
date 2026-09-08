@@ -78,6 +78,19 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 
 ---
 
+## ⚠️ Le pylône livré n'a pas de place (2026-09-08)
+
+- **`stern_pylon.glb` (2 612 tri, 5,30 m) dort sans emplacement.** Mesuré : aucun endroit du
+  niveau n'a 5,30 m de ciel sous `BUILD_CEILING_Y = −3,20` — les étagères de rive en offrent 2,40
+  et 1,40 m, les ponts du corridor 1,10 et 1,79. Le seul volume assez haut est le plateau du
+  massif arrière (5,20 m), et il est **masqué par les nacelles** pendant toute la phase.
+  Le `BRIEF-0109` l'a monté, capturé et **rendu** : le fuseau procédural de 60 triangles donne une
+  silhouette plus lisible que le vrai pylône enterré aux trois quarts.
+  ⚠️ **Les trois sorties, si on y revient** : le reconstruire à ~2,2 m (mais son détail passerait
+  sous le pixel) ; lui trouver un hôte hors du Long Cortège ; ou relever le plafond de
+  construction — ce qui est une décision de GAMEPLAY, pas d'habillage, puisqu'il protège le plan
+  de vol.
+
 ## ⚠️ Ouvert par le chantier de l'artère (2026-09-08)
 
 - **Douze repères manquent dans la coque.** L'assise des conduites (`CortegeArtery.DECK_Y`,
