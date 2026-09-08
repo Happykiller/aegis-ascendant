@@ -214,11 +214,20 @@ func _unhandled_input(event: InputEvent) -> void:
 ## ⚠️ ELLE FAIT DEUX CHOSES SELON CE QUI SUIT, et le bouton le dit. Enchaîner remet le score
 ## à zéro comme un rechargement : la campagne n'a pas encore de score cumulé, et en inventer un
 ## ici le ferait diverger de celui du HUD.
+##
+## ⚠️ ET ELLE REMET LA MACHINE EN COMBAT, exactement comme le bouton TITRE la remet en BOOT.
+## Elle ne le faisait pas : on rejouait avec `current` figé sur GAME_OVER ou VICTORY, et le
+## dénouement du niveau suivant était REFUSÉ — `invalid transition GAME_OVER -> VICTORY` dans
+## une partie du 2026-09-08, une erreur rouge au milieu d'une partie GAGNÉE. Le chemin
+## `GAME_OVER -> FIGHTER_COMBAT` existait dans la table depuis toujours et n'était appelé de
+## nulle part : une transition déclarée que personne n'emprunte est le signe qu'un retour au jeu
+## a été oublié.
 func _on_replay_pressed() -> void:
 	_audio.play(&"ui_confirm")
 	var suivant: LevelData = _next_level()
 	_leave(func() -> void:
 		_game_state.reset_session()
+		_game_state.transition_to(GameStateScript.State.FIGHTER_COMBAT)
 		if suivant != null:
 			var campaign := get_node_or_null("/root/Campaign")
 			if campaign != null:

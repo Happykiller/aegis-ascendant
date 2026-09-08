@@ -19,7 +19,10 @@ const _ALLOWED: Dictionary = {
 	# _start_graybox ne teste pas le retour de transition_to.
 	State.FIGHTER_COMBAT: [State.GAME_OVER, State.VICTORY, State.BOOT],
 	State.GAME_OVER: [State.FIGHTER_COMBAT, State.BOOT],
-	State.VICTORY: [State.BOOT],
+	# ⚠️ FIGHTER_COMBAT DEPUIS LA VICTOIRE : c'est le bouton CONTINUER du rapport, qui enchaîne
+	# sur le niveau suivant SANS repasser par le titre. Sans lui, `current` restait sur VICTORY
+	# pendant tout le niveau 2, et sa propre fin — gagnée ou perdue — était refusée.
+	State.VICTORY: [State.FIGHTER_COMBAT, State.BOOT],
 	# Le bestiaire est une CONSULTATION : on y entre depuis le titre, on n'en sort
 	# que vers le titre. Pas de raccourci vers le combat — un catalogue ne lance
 	# pas de partie, et l'autoriser rendrait l'état de session ambigu.

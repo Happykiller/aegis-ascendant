@@ -188,3 +188,29 @@ func test_the_score_is_always_padded_to_eight_digits() -> void:
 		var shown := _label(report, "ScoreValue").text
 		assert_eq(shown.length(), 8, "un score de %d s'affiche sur huit chiffres (%s)" % [score, shown])
 		assert_eq(shown, "%08d" % score, "et il vaut bien le score")
+
+
+# =============================================================================
+# 5. Les deux sorties de l'ecran rendent la machine a etats jouable
+# =============================================================================
+
+## ⚠️ CE BANC LIT LA SOURCE, ET C'EST ASSUME. `_on_replay_pressed()` et `_on_title_pressed()`
+## adressent trois autoloads absents en mode `--script` : on ne peut pas les APPELER ici. Mais
+## ce qu'on garde n'est pas un comportement, c'est une SYMETRIE — deux boutons quittent cet
+## ecran, et les deux doivent rendre `GameState` a un etat depuis lequel la suite est legale.
+##
+## Un seul le faisait. REESSAYER / CONTINUER rechargeait la scene en laissant `current` fige sur
+## GAME_OVER ou VICTORY, et le denouement du niveau suivant etait REFUSE : une partie du
+## 2026-09-08 a rendu `invalid transition GAME_OVER -> VICTORY` — une erreur rouge au milieu
+## d'une partie gagnee, sur l'ecran meme qui devait la couronner. Rien ne le voyait : le defaut
+## ne se manifeste qu'au SECOND denouement d'une session, et aucun banc n'en jouait deux.
+func test_both_ways_out_of_the_report_hand_the_state_machine_back() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/ui/mission_report.gd")
+	assert_false(source.is_empty(), "la source du rapport se lit")
+	for nom in ["_on_replay_pressed", "_on_title_pressed"]:
+		var depart := source.find("func %s()" % nom)
+		assert_true(depart >= 0, "%s existe" % nom)
+		var suite := source.find("\nfunc ", depart + 1)
+		var corps := source.substr(depart, (suite - depart) if suite > depart else -1)
+		assert_true(corps.contains("transition_to("),
+			"%s remet GameState dans un etat jouable avant de router" % nom)

@@ -68,6 +68,48 @@ func test_the_codex_has_no_shortcut_into_combat() -> void:
 		"CODEX -> FIGHTER_COMBAT refuse")
 	gs.free()
 
+## LA CAMPAGNE SE JOUE D'UNE TRAITE, sans repasser par le titre. C'est le chemin du bouton
+## CONTINUER du rapport de mission, et il traverse DEUX dénouements : gagner le niveau 1,
+## enchaîner sur le 2, et gagner celui-là aussi.
+##
+## ⚠️ IL ÉTAIT INTERDIT PAR LA TABLE. `VICTORY` ne menait qu'à `BOOT` : la victoire du niveau 2
+## se heurtait à `VICTORY -> VICTORY`, et sa défaite à `VICTORY -> GAME_OVER`. Aucun banc ne
+## suivait un enchaînement de niveaux — chacun s'arrêtait à la fin du premier.
+func test_a_campaign_chains_two_levels_without_the_title() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT), "BOOT -> FIGHTER_COMBAT")
+	assert_true(gs.transition_to(GameStateScript.State.VICTORY), "le niveau 1 est gagne")
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT),
+		"CONTINUER enchaine sur le niveau 2")
+	assert_true(gs.transition_to(GameStateScript.State.VICTORY),
+		"et le niveau 2 peut se gagner a son tour")
+	gs.free()
+
+## Et le meme enchainement apres une DEFAITE : REESSAYER relance, et la partie relancee doit
+## pouvoir se gagner. Le chemin `GAME_OVER -> FIGHTER_COMBAT` existait deja dans la table ;
+## personne ne l'empruntait, donc `current` restait sur GAME_OVER et la victoire etait refusee.
+func test_a_retry_after_defeat_can_be_won() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT), "BOOT -> FIGHTER_COMBAT")
+	assert_true(gs.transition_to(GameStateScript.State.GAME_OVER), "le chasseur est perdu")
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT), "REESSAYER relance")
+	assert_true(gs.transition_to(GameStateScript.State.VICTORY),
+		"et la partie relancee se gagne")
+	gs.free()
+
+## ⚠️ LE TITRE RESTE LE SEUL CHEMIN VERS LE BESTIAIRE. Ouvrir `VICTORY` vers le combat ne doit
+## pas ouvrir le reste : un rapport de mission ne mene pas a un catalogue.
+func test_a_victory_still_leads_nowhere_but_combat_or_title() -> void:
+	var gs := _make_state()
+	assert_true(gs.transition_to(GameStateScript.State.FIGHTER_COMBAT), "BOOT -> FIGHTER_COMBAT")
+	assert_true(gs.transition_to(GameStateScript.State.VICTORY), "gagne")
+	print("[test] expected error below (invalid transition):")
+	assert_false(gs.transition_to(GameStateScript.State.CODEX), "VICTORY -> CODEX refuse")
+	print("[test] expected error below (invalid transition):")
+	assert_false(gs.transition_to(GameStateScript.State.LOADING), "VICTORY -> LOADING refuse")
+	assert_eq(gs.current, GameStateScript.State.VICTORY, "et l'etat n'a pas bouge")
+	gs.free()
+
 func test_score_accumulates() -> void:
 	var gs := _make_state()
 	gs.add_score(100)
