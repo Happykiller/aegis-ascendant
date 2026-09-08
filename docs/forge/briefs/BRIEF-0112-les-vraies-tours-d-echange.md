@@ -1,6 +1,6 @@
 # BRIEF-0112 — Les vraies tours d'échange thermique
 
-- **Statut** : assigné
+- **Statut** : livré — intégré, mais deux tours sur quatre sont hors cadre (`BRIEF-0113`)
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08

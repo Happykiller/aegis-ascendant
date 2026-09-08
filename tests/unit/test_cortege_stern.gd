@@ -876,3 +876,123 @@ func test_the_line_is_conditional_and_exists() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/gameplay/cortege_root.gd")
 	assert_true(source.contains("_stern.charge < 0.999"),
 		"et le niveau la garde derriere une condition")
+
+
+# =============================================================================
+# Les repères de la carène et la table d'habillage ne divergent pas
+# =============================================================================
+
+## ⚠️ UN REPÈRE SANS ENTRÉE DANS `DRESS` NE PRODUIT RIEN — PAS MÊME UN AVERTISSEMENT.
+## `_kit_for()` rend une chaîne vide, `_dress()` passe au repère suivant, et la pièce n'existe
+## simplement pas. La forge a livré quatre `CTRL | Tour NN` au `BRIEF-0112` en signalant elle-même
+## que sans une ligne de plus dans la table, les quatre tours ne s'afficheraient pas : porte verte,
+## journal muet, carène nue. C'est la forme de défaut la plus chère du dépôt, parce que rien ne la
+## dit — il faut REGARDER, et on ne regarde que ce qu'on soupçonne.
+##
+## Ce banc referme la porte dans les deux sens : un repère neuf que personne n'a câblé le fait
+## rougir, et une entrée de table dont le repère a disparu aussi.
+func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
+
+func test_every_marker_of_the_hull_has_a_kit() -> void:
+	var packed: PackedScene = load(CortegeStern.HULL_KIT)
+	assert_true(packed != null, "la carene de poupe se charge")
+	if packed == null:
+		return
+	# ⚠️ ON INSTANCIE : un nœud de glTF porte un `transform`, jamais une propriete `position`, et
+	# `SceneState` rendrait zero marqueur — donc un test vert et VIDE.
+	var carene := track(packed.instantiate()) as Node3D
+	var reperes: Array[String] = []
+	for node in _descendants(carene):
+		var nom := String(node.name)
+		if node is Node3D and nom.begins_with("CTRL | "):
+			reperes.append(nom)
+	assert_true(reperes.size() >= 21, "la carene porte ses reperes (%d)" % reperes.size())
+	for nom in reperes:
+		assert_false(CortegeStern._kit_for(nom).is_empty(),
+			"« %s » a un kit dans DRESS — sans quoi la piece manque EN SILENCE" % nom)
+
+## Et l'inverse : une clé de `DRESS` que la carène ne porte plus est du code mort qui se lit
+## comme une pièce posée. ⚠️ CELLE-CI SE COMPARE PAR PRÉFIXE, parce que la table mêle les deux
+## formes — `"CTRL | Collecteur 01"` vise un repère précis, `"CTRL | Collecteur"` toute sa famille.
+func test_no_dressing_key_points_at_a_marker_that_is_gone() -> void:
+	var packed: PackedScene = load(CortegeStern.HULL_KIT)
+	if packed == null:
+		return
+	var carene := track(packed.instantiate()) as Node3D
+	var reperes: Array[String] = []
+	for node in _descendants(carene):
+		var nom := String(node.name)
+		if node is Node3D and nom.begins_with("CTRL | "):
+			reperes.append(nom)
+	for cle: String in CortegeStern.DRESS:
+		var trouve := false
+		for nom in reperes:
+			if nom.begins_with(cle):
+				trouve = true
+				break
+		assert_true(trouve, "la cle « %s » vise encore un repere de la carene" % cle)
+
+## Les trois clips de la tour d'échange se rejouent après réimport, et les deux que le code
+## nomme existent bien. ⚠️ `_run_towers()` teste `has_animation()` et ne dit rien s'il manque :
+## un clip renommé par une reforge figerait les quatre rotors sans une ligne de journal.
+func test_the_exchange_tower_carries_the_clips_the_code_plays() -> void:
+	# ⚠️ PAR `_kit_for()`, PAS PAR `DRESS[...]`. Indexer la table directement fait echouer ce
+	# fichier au PARSE le jour ou la cle disparait : tout le banc devient illisible, et le message
+	# ne nomme plus le defaut. En passant par la fonction, l'entree manquante rend une chaine vide
+	# et l'assertion DIT ce qui manque.
+	var chemin := CortegeStern._kit_for("CTRL | Tour 01")
+	assert_false(chemin.is_empty(), "« CTRL | Tour » a son kit dans DRESS")
+	var packed: PackedScene = load(chemin) if not chemin.is_empty() else null
+	assert_true(packed != null, "la tour d'echange se charge")
+	if packed == null:
+		return
+	var tour := track(packed.instantiate()) as Node3D
+	var joueur := CortegeStern._player_of(tour)
+	assert_true(joueur != null, "la tour porte une AnimationPlayer")
+	if joueur == null:
+		return
+	for clip in [CortegeStern.TOWER_IDLE, CortegeStern.TOWER_STRAINED]:
+		assert_true(joueur.has_animation(clip), "le clip « %s » survit au reimport" % clip)
+	var repos := joueur.get_animation(CortegeStern.TOWER_IDLE)
+	var force := joueur.get_animation(CortegeStern.TOWER_STRAINED)
+	assert_true(repos != null and force != null, "les deux pistes se lisent")
+	if repos == null or force == null:
+		return
+	# ⚠️ CE QUI LES SEPARE N'EST PAS LEUR DUREE — LES DEUX FONT 2,00 s. C'est le NOMBRE DE TOURS :
+	# un contre deux, donc au quart du clip un rotor est a 90° dans l'un et a 180° dans l'autre.
+	# Une premiere version de ce banc comparait les longueurs et virait au rouge sur une livraison
+	# correcte : mesurer la mauvaise grandeur accuse l'asset a la place du banc.
+	var pistes := _rotor_tracks(repos)
+	assert_true(pistes.size() == 4, "les quatre rotors ont leur piste (%d)" % pistes.size())
+	for i in pistes:
+		var au_repos: Quaternion = repos.rotation_track_interpolate(i, repos.length * 0.25)
+		var sous_effort: Quaternion = force.rotation_track_interpolate(i, force.length * 0.25)
+		assert_true(absf(au_repos.angle_to(sous_effort)) > 0.5,
+			"le rotor de la piste %d a deux vitesses distinctes au quart du clip" % i)
+	# ⚠️ ET LES DEUX SE BOUCLENT AU MICRON. Un rotor qui ne revient pas a sa pose de depart ferait
+	# un a-coup a chaque tour, une fois par seconde, sur quatre pieces a l'ecran.
+	for a in [repos, force]:
+		for i in _rotor_tracks(a):
+			var debut: Quaternion = a.rotation_track_interpolate(i, 0.0)
+			var fin: Quaternion = a.rotation_track_interpolate(i, a.length)
+			assert_true(absf(debut.angle_to(fin)) < 0.001,
+				"la piste %d de « %s » revient sur sa pose de depart" % [i, a.resource_name])
+	# ⚠️ ET AUCUN DES DEUX N'EST BOUCLE A L'IMPORT (`loop_mode` vaut NONE). C'est pourquoi
+	# `_run_towers()` le pose lui-meme : sans lui, les rotors feraient UN tour et s'arreteraient
+	# net — sans erreur, sans journal, et une tour d'echange figee se lit comme une piece cassee.
+	assert_eq(repos.loop_mode, Animation.LOOP_NONE,
+		"le glTF n'apporte pas la boucle : c'est le code qui la pose")
+
+## Les pistes de rotation des quatre rotors dans un clip de la tour.
+func _rotor_tracks(a: Animation) -> Array[int]:
+	var out: Array[int] = []
+	for i in a.get_track_count():
+		if a.track_get_type(i) != Animation.TYPE_ROTATION_3D:
+			continue
+		if String(a.track_get_path(i)).contains("Rotor ventilateur"):
+			out.append(i)
+	return out

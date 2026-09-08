@@ -73,6 +73,9 @@ var charge: float = 1.0
 
 var corridor_tuning: CortegeTuning = null
 var _garrison: CortegeSternGarrison = null
+## Les quatre joueurs d'animation des tours d'échange, ramassés à l'habillage.
+var _tower_anims: Array[AnimationPlayer] = []
+var _tower_clip: String = ""
 
 static func make(p_tuning: CortegeSternTuning) -> CortegeStern:
 	var stern := CortegeStern.new()
@@ -177,7 +180,19 @@ const DRESS: Dictionary = {
 	"CTRL | Collecteur": "res://assets/imported/models/backgrounds/artery_conduit.glb",
 	"CTRL | Liaison": "res://assets/imported/models/backgrounds/artery_hose.glb",
 	"CTRL | Pylone": "res://assets/imported/models/backgrounds/stern_pylon.glb",
+	"CTRL | Tour": "res://assets/imported/models/backgrounds/stern_tower.glb",
 }
+
+## Les clips de la tour d'échange, et ce qui les déclenche.
+##
+## ⚠️ TROIS CLIPS LIVRÉS, TROIS CLIPS JOUÉS. `Service` et `Refroidissement` ont la même amplitude
+## et ne se distinguent QUE par la vitesse — un tour de rotor par boucle contre deux. C'est
+## exactement ce qu'il faut pour que l'escalade s'entende sans qu'un mot soit dit : le vaisseau
+## qu'on démonte chauffe, et ses quatre rotors accélèrent au palier où sa garnison se durcit.
+const TOWER_IDLE := "Service"
+const TOWER_STRAINED := "Refroidissement"
+## À partir de quel palier la poupe passe en refroidissement forcé.
+const TOWER_STRAIN_TIER := 2
 
 ## Monte la carène, ou la dalle grise si elle manque.
 ##
@@ -232,9 +247,48 @@ func _dress(carene: Node3D) -> void:
 		piece.name = String(node.name).replace("CTRL | ", "")
 		n3.add_child(piece)
 		_seat(piece)
+		if String(node.name).begins_with("CTRL | Tour"):
+			var joueur := _player_of(piece)
+			if joueur != null:
+				_tower_anims.append(joueur)
 		poses += 1
+	_run_towers(TOWER_IDLE)
 	if poses > 0:
-		print("[Poupe] carène habillée — %d pièce(s) instanciée(s) sur ses repères" % poses)
+		print("[Poupe] carène habillée — %d pièce(s) instanciée(s) sur ses repères, %d rotor(s) en service"
+			% [poses, _tower_anims.size()])
+
+## Fait tourner les quatre rotors des tours d'échange.
+##
+## ⚠️ LE CLIP D'UN glTF N'EST PAS BOUCLÉ À L'IMPORT, et ça ne produit aucune erreur : les rotors
+## feraient un tour, s'arrêteraient net, et une tour d'échange à l'arrêt sur un vaisseau en marche
+## se lit comme une pièce cassée. La boucle se pose donc ICI, sur la ressource instanciée — pas
+## dans un réglage d'import qu'une reforge écraserait.
+func _run_towers(clip: String) -> void:
+	if clip == _tower_clip:
+		return
+	_tower_clip = clip
+	for joueur in _tower_anims:
+		if not joueur.has_animation(clip):
+			continue
+		var piste := joueur.get_animation(clip)
+		if piste != null:
+			piste.loop_mode = Animation.LOOP_LINEAR
+		joueur.play(clip)
+
+## ⚠️ ARRÊTER, PAS CHANGER DE CLIP. Le troisième clip livré (`Maintenance`) ouvre les carters ; il
+## dirait « on vient réparer » sur une carcasse que personne ne viendra chercher. Le silence des
+## rotors dit l'inverse, et c'est ce que la scène raconte.
+func _still_towers() -> void:
+	_tower_clip = ""
+	for joueur in _tower_anims:
+		joueur.pause()
+
+static func _player_of(root: Node) -> AnimationPlayer:
+	for node in _descendants(root):
+		var joueur := node as AnimationPlayer
+		if joueur != null:
+			return joueur
+	return null
 
 ## Le kit d'un repère : la clé exacte d'abord, le préfixe ensuite.
 static func _kit_for(nom: String) -> String:
@@ -292,6 +346,10 @@ func half_span() -> float:
 ## Monte l'escalade d'un cran. ⚠️ SANS GARNISON, ELLE NE FAIT RIEN ET NE PLANTE PAS : les bancs
 ## montent la poupe sans réglage de corridor, et la phase doit rester jouable désarmée.
 func _escalate(tier: int) -> void:
+	# ⚠️ LES ROTORS D'ABORD, ET SANS GARNISON. L'escalade est muette quand la poupe est montée
+	# désarmée (les bancs le font), mais les tours, elles, sont sur la carène dans TOUS les cas :
+	# les faire dépendre du réglage de corridor les figerait pendant les essais.
+	_run_towers(TOWER_STRAINED if tier >= TOWER_STRAIN_TIER else TOWER_IDLE)
 	if _garrison == null:
 		return
 	_garrison.set_tier(tier, tuning.pressure_of(tier))
@@ -374,6 +432,7 @@ func _burn_the_player(_delta: float) -> void:
 ## qui tiennent encore. C'est le piège déjà payé sur les relais de la Citadelle, sur les puits et
 ## sur les cinq bulbes d'épine.
 func blackout() -> int:
+	_still_towers()
 	var eteints := 0
 	for mesh in _all_meshes(self):
 		for i in mesh.get_surface_override_material_count():

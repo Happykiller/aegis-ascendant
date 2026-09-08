@@ -1,0 +1,60 @@
+{
+  "asset": "Tour d’échange thermique",
+  "asset_number": "08/10",
+  "version": "v1",
+  "blender": "5.2.1 LTS",
+  "units": "meters",
+  "axes": {
+    "up": "+Z",
+    "front": "-Y"
+  },
+  "dimensions_reference_xyz_m": [
+    14,
+    14,
+    26
+  ],
+  "pivot": "base center at world origin",
+  "texture_scale_m": 5,
+  "entrypoints": {
+    "blend": "blender/tour_echange_thermique.blend",
+    "glb": "exports/Stern_CoolingTower_01.glb",
+    "modules": "exports/modules/",
+    "build": "scripts/build.py",
+    "export": "scripts/export_asset.py",
+    "verify": "scripts/verify.py",
+    "render": "scripts/render.py",
+    "runner": "scripts/run.py",
+    "package": "scripts/package.py"
+  },
+  "dependencies": [
+    "Python 3",
+    "Blender 5.2.1 LTS with bundled NumPy",
+    "FFmpeg for videos"
+  ],
+  "references": [
+    "assets/references/asset8_Fiche technique de tour thermique AEGIS.png"
+  ],
+  "texture_source": "assets/references/asset8_Fiche technique de tour thermique AEGIS.png",
+  "clips_seconds": {
+    "Service": 2,
+    "Refroidissement": 2,
+    "Maintenance": 4
+  },
+  "manual_build_steps": [],
+  "integration_material_categories": {
+    "AA_Hull": [
+      "01 | Anthracite blinde",
+      "04 | Cavites graphite",
+      "10 | Carbone technique"
+    ],
+    "AA_Metal": [
+      "02 | Acier gris use",
+      "03 | Tranches acier brosse",
+      "09 | Vis et raccords",
+      "11 | Conduite sombre"
+    ],
+    "AA_Emissive": [
+      "06 | Energie magenta"
+    ]
+  }
+}
