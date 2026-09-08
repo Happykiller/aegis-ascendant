@@ -82,6 +82,9 @@ var _conduit_veins: Array[StandardMaterial3D] = []
 var _burst_done: bool = false
 var _flame: CortegeFlame = null
 var _nacelle: Node3D = null
+## La charge de la poupe, posée par elle avant `build()`. ⚠️ ELLE NE SE LIT NI DANS UN AUTOLOAD NI
+## DANS LA POUPE : le moteur est pilotable sans scène, et c'est ce qui le rend testable.
+var charge: float = 1.0
 var _surge_clock: float = 0.0
 var _surge: Surge = Surge.CALM
 ## Le central ouvre son extinction quand les deux latéraux sont partis, jamais avant.
@@ -189,9 +192,13 @@ static func surge_at(t: float, period: float, warning: float, blast: float,
 	return Surge.VENT
 
 ## De combien la flamme enfle selon la phase.
-static func surge_gain(phase: Surge, charge: float, blast: float) -> float:
+## ⚠️ SON PREMIER GAIN S'APPELAIT `charge`, ET LA CLASSE PORTE MAINTENANT UN MEMBRE DU MEME NOM.
+## Les deux n'ont rien à voir : ici c'est la MONTÉE d'une surintensité, là-bas ce que l'artère a
+## laissé au vaisseau. Le paramètre gagnait, le membre était invisible — et un lecteur pressé
+## aurait branché l'un sur l'autre en croyant corriger un oubli.
+static func surge_gain(phase: Surge, rise: float, blast: float) -> float:
 	match phase:
-		Surge.CHARGE: return charge
+		Surge.CHARGE: return rise
 		Surge.BLAST: return blast
 		Surge.VENT: return 0.0
 	return 1.0
@@ -345,7 +352,7 @@ static func _claim_emissive(root: Node, out: Array[StandardMaterial3D]) -> void:
 			out.append(mine)
 
 func _make_anchor(i: int) -> CortegeAnchor:
-	var anchor := CortegeAnchor.make(tuning.anchor_health, tuning.anchor_radius,
+	var anchor := CortegeAnchor.make(tuning.anchor_health * charge, tuning.anchor_radius,
 		tuning.anchor_score)
 	anchor.name = "Anchor_%02d" % (i + 1)
 	anchor.serial = i
@@ -461,7 +468,7 @@ func build_greybox() -> void:
 	var total := tuning.anchors_of(is_central)
 	var largeur := tuning.cradle_size.x * k
 	for i in total:
-		var anchor := CortegeAnchor.make(tuning.anchor_health, tuning.anchor_radius,
+		var anchor := CortegeAnchor.make(tuning.anchor_health * charge, tuning.anchor_radius,
 			tuning.anchor_score)
 		anchor.name = "Anchor_%02d" % (i + 1)
 		anchor.serial = i

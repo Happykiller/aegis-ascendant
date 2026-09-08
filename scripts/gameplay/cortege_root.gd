@@ -471,6 +471,11 @@ func _on_survey_finished() -> void:
 		# ne devienne vraie. Dite ici, elle tombe sur l'image des verrous qui s'allument.
 		say(&"stern_seen")
 		_launch_salvo("SternSalvoA")
+		# ⚠️ ET SEULEMENT SI ELLE A BAISSÉ. Annoncer « rien n'a changé » à un joueur qui n'a rien
+		# coupé lui apprendrait qu'il a raté quelque chose, sans lui dire quoi — et la réplique
+		# se jouerait à chaque partie, donc ne voudrait plus rien dire.
+		if _stern != null and _stern.charge < 0.999:
+			say(&"artery_cut")
 
 ## Monte la poupe et lui passe la main.
 func _mount_stern() -> void:
@@ -478,6 +483,14 @@ func _mount_stern() -> void:
 	_stern.name = "Stern"
 	_stern.show_flames = _stern_flames
 	_stern.corridor_tuning = TUNING
+	# ⚠️ LA CHARGE SE FIGE ICI, AVANT `build()`, ET PLUS JAMAIS. C'est le montage de la poupe qui
+	# la lit : la recalculer en cours de phase ferait varier la vie d'un verrou pendant qu'on lui
+	# tire dessus — une cible dont la barre bouge sans qu'on l'ait touchée. Et une conduite coupée
+	# APRÈS l'arrivée ne compte pas : le vaisseau a déjà rempli ses moteurs.
+	var coupees := _artery.cut_count() if _artery != null else 0
+	_stern.charge = STERN_TUNING.charge_of(coupees)
+	print("[Poupe] charge %.0f %% — %d conduite(s) coupée(s) sur l'artère"
+		% [_stern.charge * 100.0, coupees])
 	_stern.build()
 	_stern.setup(_bullets, _vfx, _player as PlayerFighterController)
 	_stern.finished.connect(_on_stern_finished)

@@ -1,0 +1,55 @@
+{
+  "id": "VOX-0008",
+  "slug": "lyra-artere-coupee",
+  "schema_version": "1.0",
+  "date": "2026-09-08",
+  "character": "Lyra Vantella",
+  "context": "L'arrivee a la poupe, quand le joueur a coupe des conduites pendant le survol. ⚠️ ELLE NE SE JOUE PAS TOUJOURS : seulement si la charge a reellement baisse. Un joueur qui n'a rien coupe ne l'entend jamais, et c'est ce qui lui donne son poids.",
+  "purpose": {
+    "description": "Constater que le Cortege arrive a ses moteurs avec moins d'energie.",
+    "priority": "⚠️ C'EST LA SEULE PHRASE QUI RELIE LES DEUX MOITIES DU NIVEAU. Quatre minutes de survol n'avaient aucune consequence sur la fin ; celle-ci dit au joueur que ce qu'il a fait a compte. Sans elle, l'effet existe mais personne ne sait qu'il existe."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "⚠️ UN CONSTAT, PAS UNE FELICITATION. Lyra ne recompense pas le pilote : elle lit un etat du vaisseau. « Il arrive a ses moteurs avec moins qu'il n'en voulait » se dit comme on lit un relevé — et c'est ce qui rend la chose vraie plutot que gentille.",
+    "address": "elle dit « Halyard ». ⚠️ « WREN » RESTE DEPENSE (`ADR-0037`) : une seule fois dans tout le jeu, a l'appontage du NIVEAU 1. Le reprendre ici lui oterait ce qui en fait un evenement.",
+    "pace": "posé. ⚠️ Aucune ne se termine sur un ralentissement."
+  },
+  "lines": [
+    {
+      "cue": "lyra_artery_cut",
+      "dialogue_key": "artery_cut",
+      "text": "Ses conduites ont lâché en route, Halyard.\nIl arrive à ses moteurs avec moins qu'il n'en voulait.",
+      "text_lines": [
+        "Ses conduites ont lâché en route, Halyard.",
+        "Il arrive à ses moteurs avec moins qu'il n'en voulait."
+      ],
+      "mood": "CALME",
+      "direction": "Poser la premiere phrase, ne pas appuyer sur « lache ». La seconde porte le sens : marquer la virgule apres « moteurs », et ne pas monter sur « voulait »."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "⚠️ Sans elle, le sous-titre parle seul au moment ou le niveau explique enfin pourquoi le survol comptait.",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique de même `key` dans `resources/dialogue/lyra_cortege.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu : c'est le seul rendu qui compte",
+      "⚠️ MESURER LA DURÉE, PUIS RÉGLER LE `hold` — jamais l'inverse. Le panneau du HUD ne sait rien de la durée de la voix : un `hold` trop court coupe la réplique au milieu d'un mot, et rien ne le signale (le cas s'est présenté sur VOX-0003, deux répliques sur trois)",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0005-lyra-cortege.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0006-lyra-poupe.json,tools/voice/forge_voice.py,\"Replique <cue> de Lyra Vantella, poupe du Long Cortege (VOX-0006). ⚠️ BRUTE : la chaine comms est dans le jeu, sur le bus Voice\""
+  }
+}

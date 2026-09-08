@@ -214,6 +214,25 @@ extends Resource
 ## deux la lisent.
 @export var throat_bite: float = 1.35
 
+## --- LA CHARGE : ce que le survol prend a la poupe ----------------------------
+##
+## ⚠️ ELLE EXISTE PARCE QUE QUATRE MINUTES DE SURVOL N'AVAIENT AUCUNE CONSEQUENCE. Raser dix-sept
+## tourelles, sept ponts et cinq nœuds, ou traverser en ligne droite : la poupe etait exactement
+## la meme (`docs/plans/2026-09-08-couper-l-artere.md`). Chaque conduite coupee lui retire de
+## l'energie, et le Cortege arrive a ses moteurs avec moins qu'il n'en aurait eu.
+##
+## ⚠️ ELLE N'AGIT QUE SUR DEUX CHOSES, et c'est une decision. La morsure du souffle, parce que
+## c'est le seul danger de la phase qui vienne des MOTEURS ; la vie des verrous, parce que ce sont
+## eux que l'artere tient serres. PAS l'escalade, PAS les salves : celles-la sont ce que le
+## vaisseau lache pour se defendre, pas ce que l'artere alimente — les brancher dessus rendrait la
+## fin plus VIDE au lieu de plus courte.
+@export var charge_per_conduit: float = 0.025
+
+## ⚠️ ET IL Y A UN PLANCHER. Tout couper ne doit pas offrir une phase finale gratuite : c'est la
+## recompense d'un survol meticuleux, pas un interrupteur. A douze conduites et 2,5 % chacune, le
+## survol parfait rend exactement ce plancher — et pas moins, quoi qu'on ajoute plus tard.
+@export var charge_floor: float = 0.70
+
 ## Le cycle de poussée (spec §6 et §15) : calme, charge annoncée, souffle, puis — pour le
 ## central seul — une extinction pendant laquelle le joueur a la voie libre.
 ##
@@ -282,6 +301,11 @@ func stack_top_y(central: bool) -> float:
 ## centre de son berceau. La rangée ARRIÈRE (+4,480) est donc la BASSE et l'AVANT (−3,950) la
 ## HAUTE — contre-intuitif tant qu'on lit « avant » comme « en bas de l'écran ».
 ## La pression du palier `tier`, bornée à la table.
+## La charge qu'il reste apres `cut` conduites coupees. ⚠️ PURE ET BORNEE : c'est la seule
+## fonction de tout ce chantier que le banc puisse verifier sans quatre minutes de survol.
+func charge_of(cut: int) -> float:
+	return maxf(1.0 - float(maxi(cut, 0)) * charge_per_conduit, charge_floor)
+
 func pressure_of(tier: int) -> float:
 	if tier_pressure.is_empty():
 		return 1.0
@@ -477,6 +501,14 @@ func validate() -> PackedStringArray:
 	if throat_bite <= 0.0 or throat_bite > engine_size.z * 0.25:
 		errors.append("throat_bite (%.2f) doit tenir entre 0 et %.2f — sinon le panache se pose sur la lèvre, ou naît dans le moteur"
 			% [throat_bite, engine_size.z * 0.25])
+	if charge_per_conduit <= 0.0 or charge_per_conduit > 0.10:
+		errors.append("charge_per_conduit (%.3f) : au-dela de 10 %% par conduite, trois coupures suffiraient a vider la phase"
+			% charge_per_conduit)
+	# ⚠️ LE PLANCHER EST UNE BORNE DE CONCEPTION, PAS UN REGLAGE LIBRE. En dessous de 0,50 la
+	# phase finale devient un couloir : le joueur meticuleux ne joue plus le meme jeu que le
+	# joueur presse, il joue un jeu plus FACILE, ce qui est l'inverse d'une recompense.
+	if charge_floor < 0.50 or charge_floor >= 1.0:
+		errors.append("charge_floor (%.2f) doit tenir entre 0,50 et 1,00" % charge_floor)
 	if designation_time < 1.0 or designation_time > 12.0:
 		errors.append("designation_time (%.2f) doit tenir entre 1 et 12 s — c'est la durée d'une réplique"
 			% designation_time)

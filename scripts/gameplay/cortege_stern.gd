@@ -64,6 +64,13 @@ var _cut_clock: float = 0.0
 ## `CortegeTuning` dit ce qu'est une tourelle du Long Cortège — points de vie, cadence, portée,
 ## score, aux trois échelles. Recopier ces valeurs dans la Resource de poupe aurait donné une
 ## tourelle de poupe qui dérive de celles du corridor sans qu'une ligne ne le dise.
+## Ce qu'il reste d'énergie à la poupe, de `charge_floor` à 1,00.
+##
+## ⚠️ ELLE EST FIGÉE AVANT `build()`, ET C'EST LE CONTRAT. La recalculer en cours de phase ferait
+## varier la vie d'un verrou pendant qu'on lui tire dessus — une cible dont la barre bouge sans
+## qu'on l'ait touchée. Le niveau la pose une fois, au montage, et plus jamais.
+var charge: float = 1.0
+
 var corridor_tuning: CortegeTuning = null
 var _garrison: CortegeSternGarrison = null
 
@@ -132,6 +139,7 @@ func build() -> void:
 		engine.name = "Engine_%s" % ("Center" if is_zero_approx(side) else
 			("Right" if side > 0.0 else "Left"))
 		engine.show_flame = show_flames
+		engine.charge = charge
 		engine.position = Vector3(tuning.slot_x(side), tuning.deck_y, 0.0)
 		engine.build()
 		engine.weakened.connect(_on_engine_weakened)
@@ -251,7 +259,7 @@ func _burn_the_player(_delta: float) -> void:
 			continue
 		if in_thrust_column(x, tuning.slot_x(engine.side),
 				tuning.danger_half_width(engine.is_central)):
-			_player.take_contact_damage(tuning.surge_bite)
+			_player.take_contact_damage(tuning.surge_bite * charge)
 			return
 
 ## Éteint tout ce que la poupe porte encore d'émissif — le blackout du §16.

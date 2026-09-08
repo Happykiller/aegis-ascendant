@@ -793,3 +793,66 @@ func test_the_burning_column_matches_what_is_drawn() -> void:
 	assert_true(absf(vue - TUNING.flame_width) < 0.8,
 		"le panache fait %.2f m de large, la colonne de danger %.2f — elles se correspondent"
 			% [vue, TUNING.flame_width])
+
+# =============================================================================
+# La charge : ce que le survol prend a la poupe
+# =============================================================================
+
+## ⚠️ ELLE EST BORNEE, MONOTONE ET PLANCHEE. Ce sont les trois seules proprietes que le banc peut
+## verifier sans quatre minutes de survol, et ce sont celles qui comptent : une charge qui
+## remonterait, qui depasserait 1 ou qui tomberait a zero casserait la phase sans qu'une partie
+## automatisee ne le voie.
+func test_the_charge_only_falls_and_never_below_the_floor() -> void:
+	var avant := TUNING.charge_of(0)
+	assert_true(is_equal_approx(avant, 1.0), "rien de coupe : la charge est pleine (%.3f)" % avant)
+	for cut in range(1, 40):
+		var maintenant := TUNING.charge_of(cut)
+		assert_true(maintenant <= avant, "elle ne remonte jamais (%d : %.3f)" % [cut, maintenant])
+		assert_true(maintenant >= TUNING.charge_floor,
+			"elle ne passe pas sous son plancher (%d : %.3f pour %.2f)"
+				% [cut, maintenant, TUNING.charge_floor])
+		avant = maintenant
+	# ⚠️ ET UN COMPTE NEGATIF NE LA FAIT PAS MONTER. `cut_count()` ne peut pas etre negatif
+	# aujourd'hui ; un jour ou l'on soustrairait quelque chose, la borne est deja la.
+	assert_true(is_equal_approx(TUNING.charge_of(-5), 1.0), "un compte negatif vaut zero coupure")
+
+## ⚠️ LE SURVOL PARFAIT DOIT ATTEINDRE LE PLANCHER, ET PAS LE DEPASSER DE LOIN. Si douze conduites
+## ne descendaient qu'a 0,90, la mecanique ne se sentirait pas ; si elles descendaient a 0,40, le
+## plancher ferait tout le travail et le reglage par conduite ne voudrait plus rien dire.
+func test_a_perfect_run_lands_on_the_floor() -> void:
+	var Artery := preload("res://scripts/gameplay/cortege_artery.gd")
+	var toutes := Artery.CONDUITS.size()
+	var charge := TUNING.charge_of(toutes)
+	assert_true(is_equal_approx(charge, TUNING.charge_floor),
+		"couper les %d conduites rend exactement le plancher (%.3f pour %.2f)"
+			% [toutes, charge, TUNING.charge_floor])
+	# Et une de moins ne l'atteint PAS : sinon la derniere ne servirait a rien.
+	assert_true(TUNING.charge_of(toutes - 1) > TUNING.charge_floor,
+		"la derniere conduite compte encore (%.3f)" % TUNING.charge_of(toutes - 1))
+
+## ⚠️ ELLE N'AGIT QUE SUR DEUX CHOSES, et c'est une decision de conception que ce test garde. La
+## brancher sur l'escalade ou sur les salves rendrait la fin plus VIDE au lieu de plus courte —
+## et le chantier du 2026-09-07 vient precisement de la remplir.
+func test_the_charge_touches_only_two_things() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/gameplay/cortege_stern.gd")
+	assert_true(source.contains("tuning.surge_bite * charge"),
+		"la morsure du souffle suit la charge")
+	for interdit in ["pressure_of(tier) * charge", "designate_open() * charge",
+			"silence_time * charge"]:
+		assert_false(source.contains(interdit),
+			"la charge ne touche pas « %s »" % interdit)
+
+## ⚠️ ET LA REPLIQUE NE SE JOUE QUE SI ELLE A BAISSE. Annoncer « rien n'a change » a un joueur qui
+## n'a rien coupe lui apprendrait qu'il a rate quelque chose sans lui dire quoi — et la phrase se
+## jouerait a chaque partie, donc ne voudrait plus rien dire.
+func test_the_line_is_conditional_and_exists() -> void:
+	var script: DialogueScript = load("res://resources/dialogue/lyra_cortege.tres")
+	var replique := script.find(&"artery_cut")
+	assert_true(replique != null, "la replique de l'artere coupee est dans le script")
+	if replique == null:
+		return
+	assert_true(replique.hold >= 5.0,
+		"elle tient sa prise (%.2f s)" % replique.hold)
+	var source := FileAccess.get_file_as_string("res://scripts/gameplay/cortege_root.gd")
+	assert_true(source.contains("_stern.charge < 0.999"),
+		"et le niveau la garde derriere une condition")

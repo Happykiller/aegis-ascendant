@@ -161,6 +161,17 @@ mood = 1
 voice_cue = &"lyra_engine_transfer"
 hold = 6.0
 
+[sub_resource type="Resource" id="line_artery"]
+script = ExtResource("2_line")
+key = &"artery_cut"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Ses conduites ont lâché en route, Halyard.
+Il arrive à ses moteurs avec moins qu'il n'en voulait."
+mood = 0
+voice_cue = &"lyra_artery_cut"
+hold = 5.5
+
 [sub_resource type="Resource" id="line_dock"]
 script = ExtResource("2_line")
 key = &"cortege_docking"
@@ -185,4 +196,4 @@ hold = 5.0
 
 [resource]
 script = ExtResource("1_script")
-lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_stern_0"), SubResource("line_stern_1"), SubResource("line_stern_2"), SubResource("line_stern_3"), SubResource("line_dock")]
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_stern_0"), SubResource("line_stern_1"), SubResource("line_stern_2"), SubResource("line_stern_3"), SubResource("line_dock"), SubResource("line_artery")]
