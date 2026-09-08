@@ -14,7 +14,9 @@
 ; ⚠️ LES COTES SONT EN METRES DE JEU, PAS EN FACTEUR D'ECHELLE. `EnginePlume.make`
 ; accepte un `scale_factor` : s'en servir ici multiplierait deux fois la meme
 ; taille et la marge de culling ne suivrait plus. Le groupe fait 11,93 m de long,
-; sa plume en fait neuf a plein regime.
+; sa plume en fait QUATORZE a plein regime.
+; « Je les ferais encore plus gros et long » (operateur, 2026-09-08) : +56 % de longueur
+; et +42 % de diametre sur la premiere version.
 ;
 ; ⚠️ VIOLET, ET PAS LE MAGENTA DE FACTION. Le magenta `d93d9c` court deja sur les
 ; 500 m d'artere, sur les dix verrous et sur les liseres des plates-formes : trois
@@ -27,11 +29,11 @@
 
 [resource]
 script = ExtResource("1_plume")
-length_idle = 3.40
-length_full = 9.00
-throat_radius = 0.98
+length_idle = 0.60
+length_full = 14.00
+throat_radius = 1.133
 throat_idle = 0.82
-belly_flare = 1.45
+belly_flare = 1.5
 shock_count = 4.0
 shock_depth = 0.32
 shock_threshold = 0.42
