@@ -1,0 +1,46 @@
+{
+  "asset": "Conduite énergétique",
+  "asset_number": "05/10",
+  "version": "v1",
+  "blender": "5.2.1 LTS",
+  "units": "meters",
+  "axes": {
+    "up": "+Z",
+    "length": "Y",
+    "hull": "-Y",
+    "engine": "+Y"
+  },
+  "dimensions_reference_xyz_m": [
+    1.6,
+    3.8,
+    1.4
+  ],
+  "entrypoints": {
+    "blend": "blender/conduite_energetique.blend",
+    "glb": "exports/conduite_energetique.glb",
+    "build": "scripts/build.py",
+    "export": "scripts/export_asset.py",
+    "verify": "scripts/verify.py",
+    "render": "scripts/render.py",
+    "runner": "scripts/run.py",
+    "package": "scripts/package.py",
+    "straight_glb": "exports/conduit_droit.glb",
+    "bent_glb": "exports/conduit_coude.glb"
+  },
+  "dependencies": [
+    "Python 3",
+    "Blender 5.2.1 LTS with bundled NumPy",
+    "FFmpeg for videos"
+  ],
+  "references": [
+    "assets/references/asset5_Planche technique de conduite énergétique futuriste.png"
+  ],
+  "texture_source": "assets/references/asset5_Planche technique de conduite énergétique futuriste.png",
+  "clips_seconds": {
+    "Actif": 2,
+    "Endommage": 2,
+    "Rupture": 4,
+    "Rompu": 2
+  },
+  "manual_build_steps": []
+}

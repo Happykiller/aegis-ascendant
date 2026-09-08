@@ -1,6 +1,6 @@
 # BRIEF-0108 — Trois livraisons tierces à faire entrer : pylône, conduite, flexible
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08

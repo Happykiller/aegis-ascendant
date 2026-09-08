@@ -1,0 +1,46 @@
+{
+  "asset": "Flexible technique",
+  "asset_number": "06/10",
+  "version": "v1",
+  "blender": "5.2.1 LTS",
+  "units": "meters",
+  "axes": {
+    "up": "+Z",
+    "length": "Y",
+    "hull": "-Y",
+    "engine": "+Y"
+  },
+  "dimensions_reference_xyz_m": [
+    0.9,
+    2.8,
+    0.7
+  ],
+  "entrypoints": {
+    "blend": "blender/flexible_technique.blend",
+    "glb": "exports/flexible_technique.glb",
+    "build": "scripts/build.py",
+    "export": "scripts/export_asset.py",
+    "verify": "scripts/verify.py",
+    "render": "scripts/render.py",
+    "runner": "scripts/run.py",
+    "package": "scripts/package.py",
+    "straight_glb": "exports/flexible_droit.glb",
+    "bent_glb": "exports/flexible_coude.glb"
+  },
+  "dependencies": [
+    "Python 3",
+    "Blender 5.2.1 LTS with bundled NumPy",
+    "FFmpeg for videos"
+  ],
+  "references": [
+    "assets/references/asset6_Planche technique des flexibles futuristes.png"
+  ],
+  "texture_source": "assets/references/asset6_Planche technique des flexibles futuristes.png",
+  "clips_seconds": {
+    "Intact": 2,
+    "Endommage": 2,
+    "Rupture": 4,
+    "Rompu": 2
+  },
+  "manual_build_steps": []
+}

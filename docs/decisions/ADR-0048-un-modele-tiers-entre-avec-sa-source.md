@@ -112,3 +112,36 @@ retirée.
   premiers sans les seconds aurait produit des canons de travers, sans une erreur ni une
   ligne de journal. **Un modèle livré sans documentation cache ses dépendances internes :
   les lister avant de toucher quoi que ce soit fait partie de la transformation.**
+
+---
+
+## Amendement du 2026-09-08 — ce qui compte, c'est que la source soit une ORIGINE
+
+Le `BRIEF-0108` a fait entrer trois modèles tiers (pylône technique, conduite énergétique,
+flexible) livrés **avec un générateur Python complet** : le `build.py` de l'auteur tourne
+verbatim par-dessus un `geometry.py` dont chaque constante de résolution est un levier. La forge
+n'a donc pas décimé — elle a **régénéré** à basse densité.
+
+Elle a alors soulevé, à raison, que verser les `.blend` coûterait **48 Mo de LFS pour des
+fichiers intégralement redérivables**.
+
+⚠️ **CE QUE CET ADR VOULAIT DIRE, ET QU'IL DISAIT MAL.** Sa motivation n'était pas « un modèle
+tiers apporte un `.blend` » : c'était que le script de `specter_9_v3` **n'était pas une origine**
+— « 241 lignes pour 525 objets : c'est un *diff*, pas une origine », et son premier maillon
+manquait. Le `.blend` était le seul endroit où la pièce existait vraiment.
+
+**Le critère est donc celui-ci, et non la provenance :**
+
+| Ce que la livraison apporte | Ce qu'on verse |
+|---|---|
+| Un **générateur complet** — le binaire se reconstruit de zéro | le **script** seul (`ADR-0008` s'applique tel quel) |
+| Un **diff**, un script d'évolution, ou rien | le **`.blend`**, versionné en LFS (`ADR-0048` d'origine) |
+
+`specter_9_v3` reste dans la seconde ligne. Les trois pièces du `BRIEF-0108` sont dans la
+première : `assets/source/models/artery/` pèse **212 Ko** au lieu de 48 Mo, et le binaire s'en
+reconstruit à l'octet près (trois exécutions, zéro divergence).
+
+⚠️ **ET LA VÉRIFICATION N'EST PAS OPTIONNELLE.** Ce qui autorise à ne pas verser le `.blend`,
+c'est la preuve que le script le remplace — donc un harnais de déterminisme qui tourne, pas une
+promesse. Sans lui, on retombe sur la seconde ligne.
+

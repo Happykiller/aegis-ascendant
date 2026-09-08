@@ -68,6 +68,28 @@ jamais depuis le mesh — `ADR-0034`).
 **Recette** : un test par transition ; une capture par état, `Rompu` compris — c'est celui que le
 joueur verra le plus longtemps.
 
+### LOT 1 bis — ⚠️ CE QUE LES PIÈCES SONT VRAIMENT *(corrigé après livraison)*
+
+Le tableau d'audit du `BRIEF-0108` décrivait les **mauvais fichiers** : les `_droit`/`_coude` du
+dossier tiers sont des **sous-arbres**, pas les assets complets. Les cotes réelles des pièces
+livrées, mesurées sur les binaires :
+
+| Pièce | Cotes | Clips |
+|---|---|---|
+| `artery_conduit.glb` | 0,46 × 0,46 × **2,78** m | 4 |
+| `artery_conduit_bend.glb` | 0,37 × 0,92 × 2,80 m | 4 |
+| `artery_hose.glb` | 0,28 × 0,61 × 2,74 m | 4 |
+| `artery_hose_bend.glb` | 0,50 × 0,55 × 2,74 m | 4 |
+
+⚠️ **`artery_hose.glb` est UNE ligne de flexible, pas le faisceau de cinq.** Poser « un flexible »
+posera donc un brin isolé de 28 cm de large. Si l'intention est le faisceau, c'est cinq
+instances — et cinq fois 320 triangles, ce qui change le budget de la pose.
+
+⚠️ **Et une conduite fait 2,78 m pour 0,46 de section.** À la densité du corridor (45,8 px/m),
+elle rend **21 px de large** : c'est petit pour une cible. Le `LOT 2` doit décider si on
+l'agrandit ou si on l'accepte comme une cible fine — auquel cas son rayon de hitbox devra être
+plus généreux que sa géométrie, comme pour les nœuds d'épine.
+
 ### LOT 2 — La pose le long de l'artère
 
 Une table de placement, comme la garnison de poupe.
