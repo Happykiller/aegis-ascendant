@@ -32,6 +32,29 @@ const REFERENCE_ASPECT := 16.0 / 9.0
 ## des ennemis qui apparaissent en plein écran (naissances calées sur `BOUNDS`, pas sur le
 ## cadre). Un nombre recopié dans un commentaire meurt au premier déplacement de caméra ; une
 ## fonction qui prend la caméra en paramètre ne ment jamais.
+## L'ordonnée d'un point du MONDE à l'écran, en pixels, 0 en haut. NAN s'il est derrière l'œil.
+##
+## ⚠️ `visible_frame()` NE RÉPOND PAS À CETTE QUESTION-LÀ, et les confondre a coûté deux
+## allers-retours de forge. Elle rend ce que la caméra montre **du plan de vol**, à `y = 0` ;
+## le décor, lui, vit hors du plan — une tour d'échange assise à `y = −4,60` n'est bornée par
+## aucun des deux nombres qu'elle rend.
+##
+## ⚠️ ET LA CONTRAINTE EST CONTRE-INTUITIVE : PLUS UNE PIÈCE EST HAUTE, PLUS ELLE SORT TÔT PAR
+## LE HAUT. Le `BRIEF-0112` a posé quatre tours légales — sous le plafond de construction, hors
+## du plan de vol, sans un mètre cube de recouvrement — et deux d'entre elles avaient leur
+## sommet à **−142 px**, au-dessus du bord de l'image. Elles étaient sur l'étagère de rive,
+## 3,80 m plus haut que le plateau du massif : leur fenêtre visible était donc 4,7 m plus
+## COURTE. La hauteur d'assise que gagne une pièce, le cadre la lui reprend.
+##
+## ⚠️ `fov` EST L'ANGLE VERTICAL tant que `keep_aspect` reste au défaut (KEEP_HEIGHT), donc ce
+## calcul ne dépend ni du rapport d'image ni de la largeur de sortie — seulement de sa hauteur.
+static func screen_y_of(camera: Transform3D, fov_deg: float, monde: Vector3,
+		hauteur_px: float) -> float:
+	var local := camera.affine_inverse() * monde
+	if local.z >= -0.0001:
+		return NAN
+	return (1.0 - (1.0 / tan(deg_to_rad(fov_deg) * 0.5)) * local.y / -local.z) * 0.5 * hauteur_px
+
 static func visible_frame(camera: Transform3D, fov_deg: float,
 		aspect: float = REFERENCE_ASPECT) -> Rect2:
 	var demi_v := tan(deg_to_rad(fov_deg) * 0.5)

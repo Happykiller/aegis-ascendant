@@ -1039,18 +1039,6 @@ func _game_camera() -> Array:
 		return [tr, fov]
 	return []
 
-## L'ordonnée d'un point du monde à l'écran, en pixels, 0 en haut.
-##
-## ⚠️ `fov` EST L'ANGLE VERTICAL tant que `keep_aspect` reste sur sa valeur par défaut
-## (`KEEP_HEIGHT`) — c'est le cas ici, la scène ne le pose pas. Le calcul n'a donc pas besoin du
-## rapport d'image, et il ne dépend pas de la résolution de sortie.
-static func _screen_y(cam: Transform3D, fov: float, monde: Vector3, hauteur: float) -> float:
-	var local := cam.affine_inverse() * monde
-	if local.z >= -0.0001:
-		return NAN
-	var f := 1.0 / tan(deg_to_rad(fov) * 0.5)
-	return (1.0 - f * local.y / -local.z) * 0.5 * hauteur
-
 ## Les quatre tours d'échange sont-elles DANS le cadre, de leur pied à leur sommet ?
 func test_every_exchange_tower_stands_inside_the_frame() -> void:
 	var camera := _game_camera()
@@ -1084,8 +1072,8 @@ func test_every_exchange_tower_stands_inside_the_frame() -> void:
 			continue
 		var pied := n3.position + Vector3(0.0, 0.0, z0)
 		var sommet := pied + Vector3(0.0, haut, 0.0)
-		var y_pied := _screen_y(cam, fov, pied, hauteur)
-		var y_sommet := _screen_y(cam, fov, sommet, hauteur)
+		var y_pied := GameplayPlane.screen_y_of(cam, fov, pied, hauteur)
+		var y_sommet := GameplayPlane.screen_y_of(cam, fov, sommet, hauteur)
 		vues += 1
 		assert_false(is_nan(y_pied) or is_nan(y_sommet),
 			"« %s » est devant la camera" % node.name)
