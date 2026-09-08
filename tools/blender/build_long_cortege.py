@@ -4,6 +4,8 @@
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --plate
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --branches
     blender-aegis -b -P tools/blender/build_long_cortege.py -- --nodes
+    blender-aegis -b -t 1 -P tools/blender/build_long_cortege.py -- --complexe \
+        --avant <glb_de_reference>        # ⚠️ -t 1 : la planche REBATIT le .glb
     ./scripts/build-hull.sh --check long_cortege      # + controle de determinisme
 
 Produit `assets/imported/models/backgrounds/long_cortege.glb` et, avec `--plate`,
@@ -135,6 +137,34 @@ verifiees dans le code du kit et deja documentees par `build_moon_flyby.py` :
 Le kit fournit le reste sans modification : `set_faction()`, `material()`,
 `apply_material_slots()`, `mat_index()`, `add_lathe()`, `box_project_uv()`,
 `srgb_hex_to_linear()`, `ContractError`.
+
+
+LE COMPLEXE INDUSTRIEL DU TRONCON 5, ET LE VIDE QU'IL OCCUPE VRAIMENT
+====================================================================
+Le BRIEF-0111 demande de meubler « 69 m de coque nue » a tribord du troncon 5,
+entre les tourelles de s = 410 et s = 478,8. Il y en a **24,5**.
+
+Les 69 m sont mesures sur les MARQUEURS. AMBRY n'en est pas un : c'est une piece
+cuite dans la peau, de s = 444,5 a 475,5 sur le meme bord, et aucune table de
+marqueurs ne la voit. C'est le meme angle mort qui avait plante une conduite
+d'artere dans la Citadelle (`ARTERY_CONDUITS`, station 232) — la Citadelle non
+plus n'est pas un marqueur. `_assert_plant_is_clear()` existe pour que ce
+constat-la soit desormais fait par une machine, et pas par une capture.
+
+Le complexe occupe donc `s in [418 ; 442,5]`, et c'est la bonne taille : le cadre
+de la camera du jeu montre 27 m de pont a la fois, si bien qu'il remplit un ecran
+entier dans le sens du defilement.
+
+Trois choses le font lire comme un LIEU plutot que comme de la matiere :
+une EMPRISE (un plancher de 0,35 m, un longeron de rive, deux traverses de bout),
+deux SEUILS (les portiques, aux deux bouts), et un CŒUR (un bassin de 1,63 m,
+declare dans `BASINS` donc creuse par `build_pits()`, avec ses deux bouts clairs).
+
+⚠️ IL NE PASSE PAS PAR `_installation_spans()`, ET C'EST MESURE. Il y a d'abord ete
+inscrit — c'est une installation. Mais `MARKER_APRONS` fusionne les emprises SANS
+leur x : ouvrir 27,7 m a tribord les ouvre a babord, et le bord d'en face s'est
+couvert de quarante-cinq plaques. Le complexe porte donc son propre appareillage,
+et les cinq troncons gardent leurs modules semes.
 
 
 REPERE DE TRAVAIL
@@ -723,7 +753,7 @@ MOATS: tuple[tuple[float, float, float], ...] = (
 
 
 def _hollows():
-    """Tous les CREUX du borde : les quatre fosses, puis les deux tranchees.
+    """Tous les CREUX du borde : les fosses, les tranchees, puis les bassins.
 
     Rend `(s centre, demi-longueur, bord, abscisses, fond absolu ou None)`.
 
@@ -738,6 +768,13 @@ def _hollows():
         yield sc, hs, side, PIT_X, None
     for sc, hs, side in MOATS:
         yield sc, hs, side, MOAT_X, MOAT_FLOOR_Y
+    # ⚠️ FOND DERIVE (None) ET NON ABSOLU, A LA DIFFERENCE DE LA TRANCHEE DE
+    # BASTION. Le bassin du complexe ne porte l'assise d'AUCUNE piece de kit :
+    # rien dans le moteur n'ecrit sa cote, donc rien n'oblige la peau et lui a
+    # se contredire un jour. Il se creuse sous son propre point le plus bas,
+    # comme une fosse, et suit le bord quoi qu'il arrive.
+    for sc, hs, side in BASINS:
+        yield sc, hs, side, BASIN_X, None
 
 
 # --------------------------------------------------------------------------
@@ -939,6 +976,105 @@ AMBRY_RAFT_THICK = 0.36
 #: l'Unisson traverserait le radeau par en dessous.
 AMBRY_KEEPOUT_X = (6.90, 14.10)
 AMBRY_KEEPOUT_S = (443.5, 476.5)
+
+# --------------------------------------------------------------------------
+# LE COMPLEXE INDUSTRIEL DU TRONCON 5 (BRIEF-0111)
+# --------------------------------------------------------------------------
+# ⚠️ LE BRIEF ANNONCE 69 M DE VIDE TRIBORD ENTRE s = 410 ET s = 479. IL Y EN A 24,5.
+# Les 69 m sont mesures sur les MARQUEURS (dix-sept tourelles, sept ponts, cinq
+# nœuds) ; AMBRY n'en est pas un — c'est une piece CUITE dans la peau du troncon 5,
+# a `s` 446 a 474 et `|x|` 7,60 a 13,60, tribord, colliers de greffe compris de
+# 444,5 a 475,5. Le meme angle mort a deja coute une conduite d'artere plantee dans
+# la Citadelle (voir `ARTERY_CONDUITS`, station 232) : ce qui n'est pas un marqueur
+# ne se voit pas depuis une table de marqueurs.
+#
+# Le vide REEL de ce bord est donc `s in [418 ; 442,5]` — 8 m de garde a
+# `Turret_13` (410,0) d'un cote, 2 m de tole nue avant le premier collier d'Ambry
+# de l'autre. Le compte de calme du build le disait deja avant ce lot : « les cinq
+# plus larges : ... s 419-444 (25 m) ».
+#
+# ⚠️ ET C'EST LE BON CHIFFRE POUR CE QU'ON EN FAIT. Le cadre de la camera du jeu
+# montre 23,6 m de pont a la fois : un complexe de 24,5 m remplit un ecran entier
+# dans le sens du defilement. Meubler 54 m en aurait demande deux et aurait colle
+# le complexe a Ambry, dont tout l'interet est d'arriver seule apres du calme.
+PLANT_S = (418.0, 442.5)
+#: Emprise en x NOMINAL — de la levre de chine (6,80) a la cassure de facette
+#: (12,35). Entre ces deux points la coque est plate a 16 cm pres sur 5,5 m de
+#: large : c'est la seule bande du vaisseau ou une installation peut s'etendre
+#: sans etre coupee par une pente.
+PLANT_XN = (6.85, 12.30)
+#: ⚠️ LE COMPLEXE EST COUPE EN DEUX DANS LE SENS DE LA LONGUEUR, ET C'EST CE QUI
+#: LE REND LISIBLE. Au large, un PLANCHER continu de 2,40 m — la plateforme, ou
+#: vivent les cuves, les cheminees et les portiques. Vers l'axe, une ALLEE de
+#: 2,55 m laissee au pont nu : c'est par la que passe la ligne de conduite, et
+#: c'est le seul endroit du complexe ou l'on voie la coque elle-meme.
+#: Un lieu se lit a ses vides autant qu'a ses volumes.
+PLANT_FLOOR_XN = (9.90, 12.30)
+PLANT_ALLEY_XN = (7.35, 9.90)
+#: Le longeron de rive : c'est lui qui dessine L'EMPRISE, donc le LIEU.
+PLANT_RAIL_XN = (11.80, 12.30)
+#: Le longeron de chine, cote axe.
+PLANT_KERB_XN = (6.85, 7.35)
+#: ⚠️ LA VOIE DE CONDUITE EST EN X ABSOLU, ET C'EST LA SEULE CHOSE QUI L'EST.
+#: Tout le reste du complexe est ecrit en x NOMINAL et suit la largeur locale
+#: (`_side_scale`) : le bord tribord se pince de 15 pct a s = 434 (table
+#: `ASYMMETRY`), soit 1,5 m qui rentrent et ressortent au milieu de l'emprise.
+#: Une conduite, elle, est une piece RIGIDE de 2,78 m que le moteur pose telle
+#: quelle sur le repere : lui appliquer `kx` deplacerait le repere sous la piece
+#: au lieu de la piece sur le repere — exactement ce que dit deja
+#: `ARTERY_CONDUITS`. La voie est donc droite, et c'est le complexe qui s'ecarte.
+#:
+#: ⚠️ ET IL Y EN A DEUX, PARCE QU'UNE SEULE NE TIENT PAS. A l'entree le bord est
+#: a sa largeur nominale et la voie tient a x = 9,20 ; a la sortie il sort a
+#: peine du pincement (`_side_scale` = 0,888 a s = 436,6) et la meme voie
+#: passerait SOUS le plancher, qui s'est resserre de 1,1 m. La ligne ressort donc
+#: un metre plus pres de l'axe — ce qui se lit, du reste, comme un renvoi : le
+#: complexe a devie la conduite qu'il traverse.
+PLANT_LANE_IN_X = 9.20
+PLANT_LANE_OUT_X = 8.20
+PLANT_LANE_HALF = 0.35
+#: ⚠️ HAUTEUR HORS-TOUT DE LA PIECE LA PLUS HAUTE QUE LE CONCEPTEUR PEUT MONTER
+#: SUR CES REPERES, mesuree sur les binaires : `artery_conduit.glb` fait 0,46 m,
+#: `artery_conduit_bend.glb` 0,919. On garde la PIRE, parce que rien ici
+#: n'interdit la coudee et qu'un repere trop haut ne se verrait qu'en vol.
+CONDUIT_PIECE_TOP = 0.92
+#: Longueur et hauteur du berceau d'une conduite (la piece fait 2,78 x 0,46).
+PLANT_CRADLE_S = 1.45
+PLANT_CRADLE_RISE = 0.30
+#: LES CINQ CONDUITES — (station, x ABSOLU). Trois a l'entree, deux a la sortie :
+#: la ligne entre dans le complexe, disparait dans le cœur, et en ressort.
+#:
+#: ⚠️ LE REPERE MARQUE LE BAS DE LA PIECE, et son `y` est le dessus du BERCEAU
+#: qu'on lui construit — lui-meme echantillonne sur la peau (`_surface_box` prend
+#: ses quatre coins dans `_surface_y`). `CortegeConduit._seat()` assied la boite
+#: englobante, pas l'origine du fichier : celle d'`artery_conduit.glb` est a
+#: (-0,36 ; 1,00 ; 1,38), hors de la piece.
+PLANT_CONDUITS: tuple[tuple[float, float], ...] = (
+    (419.6, PLANT_LANE_IN_X), (422.4, PLANT_LANE_IN_X), (425.2, PLANT_LANE_IN_X),
+    (438.0, PLANT_LANE_OUT_X), (440.8, PLANT_LANE_OUT_X),
+)
+#: LE BASSIN — le cœur, et le seul volume d'un metre et demi que le plafond
+#: autorise. Il se creuse VERS LE BAS (8 m jusqu'a la quille) au lieu de monter
+#: dans les 1,79 m de ciel : meme sortie que les fosses et que les puits de pont
+#: d'envol, et pour la meme raison. (s du centre, demi-longueur, bord).
+BASINS: tuple[tuple[float, float, float], ...] = (
+    (431.75, 4.45, 1.0),
+)
+#: Les deux abscisses NOMINALES du bassin : les points 9 et 10 du profil, comme
+#: les tranchees de bastion. Un point neuf aurait coute deux segments d'anneau sur
+#: toute la longueur du vaisseau, a chaque station des cinq troncons.
+BASIN_X = (7.35, 10.30)
+#: Zone interdite aux modules seedes, en x ABSOLU. Elle est plus large que
+#: l'emprise batie : une greffe de 1 m posee au ras du longeron de rive
+#: passerait sous le plancher sans qu'aucune erreur ne le dise.
+PLANT_KEEPOUT_X = (6.20, 12.80)
+PLANT_KEEPOUT_S = (416.8, 443.8)
+#: Emprise de rythme : le complexe EST une installation, et le compte de calme
+#: doit la voir. « Un indicateur qui ne voit pas ce qu'on vient d'ajouter ne
+#: mesure plus rien. » ⚠️ Elle ne passe PAS par `_installation_spans()` : voir
+#: la note qui s'y trouve — les emprises y sont fusionnees sans leur x, et
+#: ouvrir 24 m a tribord les ouvrirait a babord.
+APRON_PLANT = 1.6
 
 #: Distance minimale entre un module et un plan de jonction. En dessous, un module
 #: poserait des sommets sur le plan et `_assert_joints()` ne pourrait plus comparer
@@ -1236,6 +1372,79 @@ def _assert_bastions_are_clear() -> None:
                          + "\n".join(f"  - {p}" for p in problems))
 
 
+def _assert_plant_is_clear() -> None:
+    """Le complexe du BRIEF-0111 tient dans son vide, et sa voie tient sur le pont.
+
+    ⚠️ CE HARNAIS EXISTE PARCE QUE LE BRIEF S'EST TROMPE DE VIDE, ET QU'AUCUNE
+    MACHINE NE LE LUI A DIT. Il annonce « tribord, s = 410 a 479 : 69 m » ; il y
+    en a 24,5, parce qu'AMBRY occupe 444,5 a 475,5 du meme bord sans etre un
+    marqueur. Une emprise ecrite a la main doit donc etre RELUE par une machine,
+    exactement comme `_marker_clashes()` relit les trente marqueurs.
+
+    Quatre choses sont verifiees, et chacune est muette si on ne la verifie pas :
+
+      * les 8 m de garde a chaque tourelle voisine (le brief les demande) ;
+      * la non-intersection avec Ambry, colliers de greffe compris ;
+      * que la VOIE DE CONDUITE — droite, en x absolu — reste entre les deux
+        bornes nominales du mobilier ET sur le pont median ou la facette, a
+        CHAQUE station que couvre une piece de 2,78 m. C'est la seule chose que
+        le pincement de 15 pct du bord peut casser, et il la casserait sans
+        erreur : la conduite se poserait a cheval sur la chine ;
+      * que rien du complexe n'approche l'axe, ou passe le degagement de tir de
+        la conduite d'artere de s = 435.
+    """
+    problems: list[str] = []
+    for number, (ts, tx) in enumerate(TURRETS, start=1):
+        if tx < 0.0:
+            continue
+        gap = min(abs(ts - PLANT_S[0]), abs(ts - PLANT_S[1]))
+        if PLANT_S[0] <= ts <= PLANT_S[1]:
+            problems.append(
+                f"Turret_{number:02d} (s = {ts:.1f}) est DANS l'emprise du complexe")
+        elif gap < 8.0:
+            problems.append(
+                f"Turret_{number:02d} (s = {ts:.1f}) n'a que {gap:.2f} m de garde "
+                "au complexe, 8,00 demandes par le brief")
+    if not (PLANT_S[1] < AMBRY_S[0] - 1.5 or PLANT_S[0] > AMBRY_S[1] + 1.5):
+        problems.append(
+            f"le complexe ({PLANT_S[0]:.1f} a {PLANT_S[1]:.1f}) mord AMBRY "
+            f"({AMBRY_S[0] - 1.5:.1f} a {AMBRY_S[1] + 1.5:.1f}, colliers compris) "
+            "— l'avant-poste humain est CUIT dans la peau, aucun marqueur ne le "
+            "declare")
+    for number, (cs, cx) in enumerate(PLANT_CONDUITS, start=1):
+        if not (PLANT_S[0] <= cs - 1.45 and cs + 1.45 <= PLANT_S[1]):
+            problems.append(
+                f"la conduite {number:02d} (s = {cs:.1f}) deborde l'emprise "
+                f"{PLANT_S[0]:.1f} a {PLANT_S[1]:.1f}")
+        for v in (cs - 1.45, cs, cs + 1.45):
+            lo, hi = cx - PLANT_LANE_HALF, cx + PLANT_LANE_HALF
+            if lo < _pl(v, PLANT_ALLEY_XN[0]) + 0.10:
+                problems.append(
+                    f"la conduite {number:02d} quitte l'allee vers l'axe a "
+                    f"s = {v:.1f} : {lo:.2f} contre une allee qui commence a "
+                    f"{_pl(v, PLANT_ALLEY_XN[0]):.2f} (chine)")
+            if hi > _pl(v, PLANT_ALLEY_XN[1]) - 0.10:
+                problems.append(
+                    f"la conduite {number:02d} passe SOUS le plancher a "
+                    f"s = {v:.1f} : {hi:.2f} contre un plancher qui commence a "
+                    f"{_pl(v, PLANT_FLOOR_XN[0]):.2f}")
+    for sc, hs, side in BASINS:
+        if side <= 0.0 or not (PLANT_S[0] <= sc - hs and sc + hs <= PLANT_S[1]):
+            problems.append(
+                f"le bassin (s = {sc:.2f} +/- {hs:.2f}) sort de l'emprise du "
+                "complexe")
+    inner = min(_pl(v, PLANT_XN[0])
+                for v in _plant_stations(PLANT_S[0], PLANT_S[1]))
+    if inner < CANAL_RIM_X + 3.0:
+        problems.append(
+            f"le complexe descend a x = {inner:.2f}, trop pres du canal "
+            f"(rebord a {CANAL_RIM_X:.2f}) — le degagement de tir de l'artere "
+            "passe par la")
+    if problems:
+        raise SystemExit("[long_cortege] COMPLEXE MAL POSE\n"
+                         + "\n".join(f"  - {p}" for p in problems))
+
+
 def _assert_moats_are_hollow() -> None:
     """La tranchee de bastion creuse VRAIMENT, et son fond est celui que le moteur ecrit.
 
@@ -1517,7 +1726,7 @@ def _turret_clash(s0: float, s1: float, x0: float, x1: float,
                   top_y: float = BUILD_CEILING_Y) -> bool:
     """Le module (s0..s1, x0..x1), dessus a `top_y`, monte-t-il SOUS un affut ?
 
-    ⚠️ LE QUATRIEME GARDE, ET IL MANQUAIT DEPUIS TOUJOURS. `_ambry_clash`,
+    ⚠️ LE QUATRIEME GARDE, ET IL MANQUAIT DEPUIS TOUJOURS. `_posed_clash`,
     `_bay_clash` et `_pit_clash` protegent trois choses que la peau porte ;
     personne ne protegeait la TOURELLE. Le garde existait pourtant, ecrit dans
     `_assert_bastions_are_clear` — « ⚠️ ET AUCUN SOUS UNE TOURELLE :
@@ -1758,6 +1967,20 @@ def _installation_spans() -> tuple[tuple[float, float, str, float], ...]:
                       f"Spine_{number:02d}", 0.0))
     spans.append((AMBRY_S[0] - APRON_AMBRY, AMBRY_S[1] + APRON_AMBRY,
                   "Ambry", 0.5 * (AMBRY_X[0] + AMBRY_X[1])))
+    # ⚠️ LE COMPLEXE N'Y EST PAS, ET C'EST UNE CORRECTION MESUREE. Il y a d'abord
+    # ete inscrit — c'est une installation, et « un module de relief ne se pose
+    # que dans l'emprise d'une installation » (BRIEF-0094). La capture a montre
+    # le prix : `MARKER_APRONS` est la FUSION des emprises et ne garde AUCUN x,
+    # si bien qu'ouvrir 27,7 m a tribord les ouvre aussi a BABORD. Le bord
+    # oppose, vide en face du complexe, s'est couvert de quarante-cinq plaques —
+    # exactement le « detail presque partout » que BRIEF-0094 avait supprime, et
+    # le calme du troncon 5 tombait de 43,8 a 19,2 pct.
+    #
+    # Le complexe porte donc son propre appareillage (longerons, plots, traverses,
+    # berceaux) et ne demande rien au vocabulaire seede. Consequence voulue : les
+    # cinq troncons gardent leurs modules seedes AU BIT PRES, et ce lot est une
+    # pure addition. Son emprise entre quand meme dans le compte de calme —
+    # `build_section()` l'ajoute a `occupied` comme les fosses et la passerelle.
     return tuple(sorted(spans))
 
 
@@ -2487,14 +2710,32 @@ def _clip_lane(s: float, x0: float, x1: float,
     return lo, hi
 
 
-def _ambry_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
-    """Le module (s0..s1, x0..x1) mord-il l'emprise d'Ambry ?
+#: Les emprises des pieces POSEES a la main sur le borde — celles qu'aucun
+#: marqueur ne declare et qu'aucune table de marqueurs ne peut donc voir.
+#: (nom, (x0, x1) absolus, (s0, s1)).
+POSED_FOOTPRINTS: tuple[tuple[str, tuple[float, float], tuple[float, float]], ...] = (
+    ("Ambry", AMBRY_KEEPOUT_X, AMBRY_KEEPOUT_S),
+    ("Complexe", PLANT_KEEPOUT_X, PLANT_KEEPOUT_S),
+)
 
-    Sans ce garde-fou, une greffe seedee du troncon 5 traverserait le radeau par
-    en dessous : Ambry est POSEE sur le borde, elle n'est pas encastree dedans.
+
+def _posed_clash(s0: float, s1: float, x0: float, x1: float) -> bool:
+    """Le module (s0..s1, x0..x1) mord-il une piece POSEE sur le borde ?
+
+    Sans ce garde-fou, une greffe seedee du troncon 5 traverserait le radeau
+    d'Ambry par en dessous : elle est POSEE sur le borde, elle n'est pas
+    encastree dedans. Le complexe industriel du BRIEF-0111 est dans le meme cas.
+
+    ⚠️ ELLE S'APPELAIT `_ambry_clash`, ET LE NOM ETAIT LE PIEGE. Neuf familles de
+    modules l'appellent ; une seconde fonction recopiee a cote pour le complexe
+    aurait ete oubliee par l'une des neuf, et un module qui traverse un volume
+    pose ne produit aucune erreur — il se voit en capture, si l'on capture juste
+    la. Une seule fonction, une seule table.
     """
-    return not (s1 < AMBRY_KEEPOUT_S[0] or s0 > AMBRY_KEEPOUT_S[1]
-                or x1 < AMBRY_KEEPOUT_X[0] or x0 > AMBRY_KEEPOUT_X[1])
+    for _name, xs, ss in POSED_FOOTPRINTS:
+        if not (s1 < ss[0] or s0 > ss[1] or x1 < xs[0] or x0 > xs[1]):
+            return True
+    return False
 
 
 #: Voies de plaques : (x_min, x_max) en absolu, sur les deux bandes plates.
@@ -2541,7 +2782,7 @@ def build_plates(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                     s += cell
                     continue
                 x0, x1 = lane
-                if _ambry_clash(s, s + length, min(x0, x1), max(x0, x1)):
+                if _posed_clash(s, s + length, min(x0, x1), max(x0, x1)):
                     s += cell
                     continue
                 inset = rng.uniform(0.06, 0.20)
@@ -2625,7 +2866,7 @@ def _plate_place(origin: float, side: float, a: float, b: float, s: float,
             continue
         x0, x1 = lane
         lo, hi = min(x0, x1), max(x0, x1)
-        if _ambry_clash(ps, ps + length, lo, hi) \
+        if _posed_clash(ps, ps + length, lo, hi) \
                 or _bay_clash(ps, ps + length, lo, hi) \
                 or _pit_clash(ps, ps + length, lo, hi) \
                 or not _in_apron(ps, ps + length, aprons) \
@@ -2739,7 +2980,7 @@ def build_ribs(bm: bmesh.types.BMesh, index: int, rng: random.Random,
                     lane = _clip_lane(s, min(side * a, side * b),
                                       max(side * a, side * b))
                     if lane is None \
-                            or _ambry_clash(s, s + width, lane[0], lane[1]) \
+                            or _posed_clash(s, s + width, lane[0], lane[1]) \
                             or _bay_clash(s, s + width, lane[0], lane[1]) \
                             or _pit_clash(s, s + width, lane[0], lane[1]):
                         continue
@@ -2934,7 +3175,7 @@ def _graft_place(origin: float, s: float, length: float, side: float,
                           max(side * x0, side * x1))
         if lane is None or ps < origin + JOINT_CLEARANCE \
                 or ps + length > origin + SECTION_LENGTH - JOINT_CLEARANCE \
-                or _ambry_clash(ps, ps + length, lane[0], lane[1]) \
+                or _posed_clash(ps, ps + length, lane[0], lane[1]) \
                 or not _inside_zone(ps, ps + length):
             return None
         # L'empreinte tournee deborde de la voie : on la majore par sa boite,
@@ -2994,7 +3235,7 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
     lane = _clip_lane(s, min(side * x0, side * x1), max(side * x0, side * x1))
     if lane is None or s + length > origin + SECTION_LENGTH - JOINT_CLEARANCE:
         return count
-    if _ambry_clash(s, s + length, lane[0], lane[1]):
+    if _posed_clash(s, s + length, lane[0], lane[1]):
         return count
     # ⚠️ LA GARDE D'AFFUT SE POSE ICI, avec les trois autres — et elle ECARTE au
     # lieu de rejeter (voir `_graft_place`).
@@ -3049,7 +3290,7 @@ def _one_graft(bm: bmesh.types.BMesh, index: int, rng: random.Random,
         if px0 < -(_half_width(centre_s, -1.0) - 0.45) \
                 or px1 > _half_width(centre_s, 1.0) - 0.45:
             break
-        if _ambry_clash(ps0, ps1, px0, px1):
+        if _posed_clash(ps0, ps1, px0, px1):
             break
         if not blocked:
             _surface_poly(
@@ -3118,7 +3359,7 @@ def build_pips(bm: bmesh.types.BMesh, index: int, rng: random.Random,
         band = BAND_INNER if rng.random() < 0.5 else BAND_MID
         x = rng.uniform(*band) * (1.0 if rng.random() < 0.5 else -1.0)
         lane = _clip_lane(s, x - 0.28, x + 0.28, minimum=0.45)
-        if lane is None or _ambry_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
+        if lane is None or _posed_clash(s - 0.5, s + 0.5, lane[0], lane[1]):
             continue
         long_pip = rng.random() < 0.45
         half_x = 0.15 if long_pip else 0.26
@@ -3379,7 +3620,7 @@ def _branch_routes() -> list[dict]:
             route["reason"] = "le couloir traverse l'emprise d'un pont d'envol"
         elif _pit_clash(route["s0"], route["s1"], lo, hi):
             route["reason"] = "le couloir traverse une fosse ou une tranchee"
-        elif _ambry_clash(route["s0"], route["s1"], lo, hi):
+        elif _posed_clash(route["s0"], route["s1"], lo, hi):
             route["reason"] = "le couloir passe sous le radeau d'Ambry"
         elif _turret_clash(route["s0"], route["s1"], lo, hi):
             route["reason"] = "le couloir entre dans le disque d'un autre affut"
@@ -3802,6 +4043,366 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
 
 
 # ==========================================================================
+# LE COMPLEXE INDUSTRIEL DU TRONCON 5 (BRIEF-0111)
+# ==========================================================================
+# Ce n'est pas un tapis de greebles : c'est un LIEU, et un lieu se lit par trois
+# choses que la caméra du jeu voit a 45,8 px/m et 70 deg de plongee —
+#
+#   une EMPRISE      un longeron de rive et deux traverses de bout, fermes : le
+#                    complexe a un bord, donc un dedans et un dehors ;
+#   des SEUILS       deux portiques, un a chaque bout, sous lesquels la ligne de
+#                    conduite passe. On ENTRE et on SORT ;
+#   un CŒUR          un bassin de 1,55 m creuse dans le pont median, enjambe par
+#                    trois passerelles. C'est le seul endroit ou l'on voit
+#                    DEDANS quelque chose.
+#
+# ⚠️ LA HAUTEUR NE PEUT PAS PORTER CE LOT, ET C'EST MESURE. Le pont median est a
+# -4,99 et le plafond de construction a -3,20 : 1,79 m. Le `stern_pylon.glb` en
+# demande 5,30 — il ne rentre pas, et ce n'est pas une affaire de cout, c'est le
+# plafond de vol. De surcroit, a la perspective du jeu, une hauteur ne rend que
+# 34 pct de sa longueur a l'ecran quand un plan horizontal en rend 94 (mesure au
+# BRIEF-0110). Tout le travail va donc au PLAN et aux ARETES, et la profondeur —
+# libre, il y a 8 m jusqu'a la quille — porte le seul vrai volume du lot.
+#
+# ⚠️ ET LE COMPLEXE EPOUSE LA TAILLE DE LA COQUE. `ASYMMETRY` pince le bord
+# tribord de 15 pct a s = 434, en plein milieu de l'emprise : 1,5 m qui rentrent
+# et ressortent sur 16 m. Tout le mobilier est donc ecrit en x NOMINAL et
+# multiplie par `_side_scale`, comme la peau elle-meme — il se resserre avec elle
+# au lieu de sortir dans le vide. La seule exception est la VOIE DE CONDUITE,
+# droite parce que les pieces qu'elle porte sont rigides.
+
+
+def _pl(s: float, xn: float) -> float:
+    """x NOMINAL -> x absolu, a la largeur locale du bord tribord."""
+    return xn * _side_scale(s, 1.0)
+
+
+def _plant_stations(s0: float, s1: float, step: float = 1.25) -> list[float]:
+    """Les stations d'une piece longue du complexe, bornes comprises.
+
+    ⚠️ 1,25 m, LE MEME PAS QUE `_stations()` DANS UNE TRANSITION D'ASYMETRIE. Un
+    longeron de 24,5 m decoupe en deux tronces suivrait la corde du pincement et
+    non le pincement : il flotterait de 60 cm au-dessus du pont a mi-transition,
+    ou s'y enterrerait. La peau tourne en 1,25 m ; ce qui est pose dessus aussi.
+    """
+    values = [s0]
+    v = s0 + step
+    while v < s1 - 1e-6:
+        values.append(v)
+        v += step
+    values.append(s1)
+    return values
+
+
+def _plant_strip(bm: bmesh.types.BMesh, xn0: float, xn1: float,
+                 s0: float, s1: float, rise: float, sink: float,
+                 side_material: str, top_material: str) -> float:
+    """Une bande LONGUE du complexe, qui suit la largeur locale du bord.
+
+    C'est `_surface_box` pour une piece qui traverse un pincement : le plan n'est
+    plus un quadrilatere mais un ruban de `2 x n` sommets, chacun a son x
+    nominal rapporte a la station ou il se trouve. Le dessus reste PLAN — a x
+    nominal constant, la peau garde exactement la meme hauteur d'un bout a
+    l'autre du vaisseau (`ky` vaut 1 au-dela du fuseau de proue), si bien qu'un
+    plan horizontal EST la bonne reponse et non une approximation.
+
+    Rend le Y du dessus.
+    """
+    stations = _plant_stations(s0, s1)
+    plan = [(_pl(s, xn1), s) for s in stations]
+    plan += [(_pl(s, xn0), s) for s in reversed(stations)]
+    return _surface_poly(bm, plan, rise, sink, side_material, top_material)
+
+
+def _plant_prism(bm: bmesh.types.BMesh, cx: float, cs: float,
+                 r_bottom: float, r_top: float, y0: float, y1: float,
+                 sides: int, side_material: str, top_material: str) -> None:
+    """Un volume de REVOLUTION approche — cuve, silo, cheminee.
+
+    ⚠️ C'EST LA SEULE FORME DU COMPLEXE QUI NE SOIT PAS ORTHOGONALE, ET C'EST
+    TOUT SON ROLE. Le borde de l'Unisson est fait de boites alignees sur deux
+    axes sur 500 m ; a 45,8 px/m, une silhouette RONDE vue de dessus est le seul
+    signal qui ne se confond avec rien d'autre du niveau. Six a huit cotes
+    suffisent : au-dela, le contour ne gagne plus un pixel.
+
+    Le bobinage est CALCULE (`_face_towards`, `_quad_facing`) et jamais ecrit a
+    la main : ce fichier n'appelle pas `recalc_face_normals`, et une face
+    retournee ne produit aucune erreur — elle disparait.
+    """
+    angles = [2.0 * math.pi * k / sides for k in range(sides)]
+    bottom = [bm.verts.new(Vector((cx + r_bottom * math.cos(a), y0,
+                                   _z(cs + r_bottom * math.sin(a)))))
+              for a in angles]
+    top = [bm.verts.new(Vector((cx + r_top * math.cos(a), y1,
+                                _z(cs + r_top * math.sin(a)))))
+           for a in angles]
+    _face_towards(bm, top, top_material, Vector((0.0, 1.0, 0.0)))
+    _face_towards(bm, list(bottom), side_material, Vector((0.0, -1.0, 0.0)))
+    for i in range(sides):
+        j = (i + 1) % sides
+        a = 0.5 * (angles[i] + angles[j])
+        _quad_facing(bm, bottom[i], bottom[j], top[j], top[i], side_material,
+                     Vector((math.cos(a), 0.0, -math.sin(a))))
+
+
+def _plant_gate(bm: bmesh.types.BMesh, s_centre: float, xn_in: float,
+                xn_out: float, top: float) -> None:
+    """UN SEUIL — deux pieds, un linteau, deux feux.
+
+    ⚠️ C'EST LA PIECE QUI FAIT « ON ENTRE QUELQUE PART », et elle ne coute que
+    trois boites. Le lot precedent l'a mesure a l'envers : un pylone de 5,30 m ne
+    rentre pas sous un plafond de 1,79. Un portique de 1,50 m rentre, et il dit
+    la meme chose — parce que ce qui se lit n'est pas sa hauteur, c'est le fait
+    qu'il ENJAMBE quelque chose.
+
+    ⚠️ IL ENJAMBE LE PLANCHER, PAS L'ALLEE, ET C'EST UNE CONTRAINTE MESUREE. Le
+    linteau se tient a -3,90 ; une conduite COUDEE assise sur son berceau culmine
+    a -3,76, donc 14 cm PLUS HAUT. Un portique a cheval sur la voie serait
+    traverse par la piece que le concepteur a le droit d'y monter, et rien ne le
+    dirait — ni erreur d'import, ni test rouge. Les deux seuils tiennent donc au
+    large de la voie, et deux bornes leur repondent de l'autre cote de l'allee.
+    """
+    s0, s1 = s_centre - 0.45, s_centre + 0.45
+    x_in0, x_in1 = _pl(s_centre, xn_in), _pl(s_centre, xn_in + 0.85)
+    x_out0, x_out1 = _pl(s_centre, xn_out - 0.85), _pl(s_centre, xn_out)
+    for a, b in ((x_in0, x_in1), (x_out0, x_out1)):
+        foot = min(_surface_y(s_centre, a), _surface_y(s_centre, b)) - 0.45
+        _box_outward(bm, a, b, foot, top - 0.40, s0, s1, "AA_Greeble")
+    _box_outward(bm, x_in0, x_out1, top - 0.40, top, s0 + 0.06, s1 - 0.06,
+                 "AA_Hull")
+    # Les deux feux du seuil. ⚠️ `AA_Emissive_Engine` SEULEMENT ICI ET SUR LES
+    # TROIS BARRES DU BASSIN : c'est le slot que `CortegeSkin.extinguish()`
+    # eteint au blackout de la fin. Une veine peinte sur une piece qui n'a pas de
+    # raison de s'eteindre resterait allumee sur un vaisseau mort.
+    for base in (x_in1 + 0.30, x_out0 - 0.56):
+        _box_outward(bm, base, base + 0.26, top, top + 0.03,
+                     s_centre - 0.26, s_centre + 0.26, "AA_Emissive_Engine")
+
+
+def build_plant(bm: bmesh.types.BMesh, index: int
+                ) -> tuple[list[tuple[str, Vector]], dict]:
+    """Le complexe et ses cinq reperes de conduite. Rend `(ancres, mesures)`."""
+    stats: dict = {}
+    anchors: list[tuple[str, Vector]] = []
+    seats: list[tuple[int, float]] = []
+    origin = index * SECTION_LENGTH
+    if not (origin <= PLANT_S[0] < origin + SECTION_LENGTH):
+        return anchors, stats
+    s0, s1 = PLANT_S
+    fx0, fx1 = PLANT_FLOOR_XN
+    basin_s0 = BASINS[0][0] - BASINS[0][1]
+    basin_s1 = BASINS[0][0] + BASINS[0][1]
+    tops: list[float] = []
+    counts: dict[str, int] = {}
+
+    # ======================================================================
+    # 1. LE PLANCHER — l'emprise au sol, et c'est elle qui fait le LIEU
+    # ======================================================================
+    # ⚠️ C'EST LE PREMIER LIVRABLE, PAS UN CADRE DECORATIF. « Le critere n'est pas
+    # qu'il y ait de la matiere, c'est qu'on voie une installation. » Ce qui
+    # separe les deux, sur 24,5 m de tole nue, est un SOL DIFFERENT du pont : une
+    # marche de 0,35 m qui court sur 24,5 m donne au complexe un dedans et un
+    # dehors avant qu'aucun volume n'y soit pose. Et c'est ce qui paie le mieux
+    # a cette camera : une hauteur ne rend que 34 pct de sa longueur a l'ecran,
+    # un plan horizontal 94 (mesure au BRIEF-0110).
+    #
+    # Trois segments et non un : le bassin coupe le plancher au milieu, et son
+    # bord interieur EST le point 10 du profil (10,30) — donc le bord du bassin.
+    for a, b, inner in ((s0, basin_s0, fx0),
+                        (basin_s0, basin_s1, BASIN_X[1]),
+                        (basin_s1, s1, fx0)):
+        tops.append(_plant_strip(bm, inner, fx1, a, b, 0.35, 1.00,
+                                 "AA_Greeble", "AA_Hull"))
+    floor = tops[0]
+
+    # --- Le longeron de rive, et le longeron de chine ------------------------
+    tops.append(_plant_strip(bm, PLANT_RAIL_XN[0], PLANT_RAIL_XN[1], s0, s1,
+                             0.62, 1.20, "AA_Greeble", "AA_Hull"))
+    rail = tops[-1]
+    tops.append(_plant_strip(bm, PLANT_KERB_XN[0], PLANT_KERB_XN[1], s0, s1,
+                             0.30, 1.00, "AA_Greeble", "AA_Hull"))
+
+    # --- Les deux traverses de bout, EN DEUX PIECES chacune ------------------
+    # La voie de conduite passe entre elles : une traverse d'un seul tenant
+    # serait traversee par la piece du bout de ligne, a 0,3 m pres.
+    for a, b in ((s0, s0 + 0.80), (s1 - 0.80, s1)):
+        tops.append(_plant_strip(bm, PLANT_KERB_XN[0], 7.60, a, b,
+                                 0.55, 1.00, "AA_Greeble", "AA_Hull"))
+        tops.append(_plant_strip(bm, 9.80, PLANT_RAIL_XN[1], a, b,
+                                 0.62, 1.05, "AA_Greeble", "AA_Hull"))
+
+    # ======================================================================
+    # 2. LE RYTHME — plots de rive et traverses de plancher
+    # ======================================================================
+    # A 45,8 px/m, un plot de 0,60 x 0,70 m rend 27 x 32 px EN PLAN ; ses 0,55 m
+    # de haut n'en rendent que 9. C'est sa surface HORIZONTALE qui le fait
+    # exister. Douze plots reguliers donnent au bord une CADENCE, et une cadence
+    # est ce qui distingue une installation d'un tas.
+    plots = ribs = 0
+    ps = s0 + 1.7
+    while ps <= s1 - 1.7 + 1e-6:
+        base = _surface_y(ps, _pl(ps, PLANT_RAIL_XN[1]))
+        _plant_strip(bm, PLANT_RAIL_XN[0] - 0.08, PLANT_RAIL_XN[1] + 0.05,
+                     ps - 0.35, ps + 0.35, rail + 0.52 - base, 0.70,
+                     "AA_Greeble", "AA_Hull")
+        plots += 1
+        ps += 2.0
+    for a, b in ((s0 + 1.2, basin_s0 - 0.9), (basin_s1 + 0.9, s1 - 1.2)):
+        rs = a
+        while rs <= b - 0.35:
+            base = _surface_y(rs, _pl(rs, fx1))
+            _plant_strip(bm, fx0 + 0.10, PLANT_RAIL_XN[0] - 0.05,
+                         rs - 0.14, rs + 0.14, floor + 0.17 - base, 0.55,
+                         "AA_Greeble", "AA_Greeble")
+            ribs += 1
+            rs += 1.55
+    counts["plots"] = plots
+    counts["traverses"] = ribs
+
+    # ======================================================================
+    # 3. LES CINQ CONDUITES, SUR LEUR BERCEAU
+    # ======================================================================
+    # ⚠️ LE REPERE PORTE LE DESSUS DU BERCEAU, ET LE BERCEAU EST ECHANTILLONNE
+    # SUR LA PEAU : `_surface_box` prend ses quatre coins dans `_surface_y` et
+    # rend le Y de son dessus. Une cote ecrite a la main aurait fait replaner les
+    # cinq pieces le jour ou le profil bouge — c'est exactement la dette que le
+    # BRIEF-0110 a payee sur `CortegeArtery.DECK_Y`.
+    for number, (cs, cx) in enumerate(PLANT_CONDUITS, start=1):
+        seat = _surface_box(bm, cx - PLANT_LANE_HALF, cx + PLANT_LANE_HALF,
+                            cs - PLANT_CRADLE_S, cs + PLANT_CRADLE_S,
+                            PLANT_CRADLE_RISE, 0.55, "AA_Greeble", "AA_Hull",
+                            draft=0.06)
+        # Deux selles sombres sous la piece : elles disent qu'elle est POSEE, et
+        # ce sont elles qu'on voit sous le tube a cette plongee.
+        for ds in (-0.95, 0.95):
+            _surface_box(bm, cx - PLANT_LANE_HALF - 0.10,
+                         cx + PLANT_LANE_HALF + 0.10, cs + ds - 0.13,
+                         cs + ds + 0.13, PLANT_CRADLE_RISE + 0.16, 0.45,
+                         "AA_Greeble", "AA_Greeble")
+        tops.append(seat + 0.16)
+        seats.append((number, seat))
+        anchors.append((f"CTRL | Complexe {number:02d}",
+                        Vector((cx, seat, _z(cs)))))
+
+    # ======================================================================
+    # 4. L'ENTREE — le seuil, la ferme de cuves, le massif d'allee
+    # ======================================================================
+    _plant_gate(bm, 419.30, fx0 - 0.05, PLANT_RAIL_XN[1], -3.90)
+    tops.append(-3.90)
+    for cs in (418.9, 441.4):
+        # Les deux bornes qui repondent au seuil de l'autre cote de l'allee.
+        for bx in (7.05, 7.05):
+            _plant_strip(bm, bx, bx + 0.50, cs - 0.30, cs + 0.30,
+                         1.05, 0.80, "AA_Greeble", "AA_Hull")
+    tops.append(_surface_y(418.9, 7.30) + 1.05)
+    tanks = 0
+    for cs in (420.8, 422.4, 424.0, 425.6):
+        _plant_prism(bm, _pl(cs, 10.95), cs, 0.55, 0.50,
+                     _surface_y(cs, _pl(cs, 11.50)) - 0.35, -3.94, 8,
+                     "AA_Hull", "AA_Panel")
+        tanks += 1
+    tops.append(-3.94)
+    _plant_strip(bm, 7.45, 8.55, 420.9, 425.5, 0.78, 0.95,
+                 "AA_Greeble", "AA_Hull")
+    _plant_strip(bm, 7.70, 8.30, 421.7, 424.7,
+                 0.78 + 0.34, 0.60, "AA_Greeble", "AA_Greeble")
+    tops.append(_surface_y(423.2, 8.55) + 1.12)
+
+    # ======================================================================
+    # 5. LE CŒUR — le bassin, son coaming clair, ses passerelles
+    # ======================================================================
+    # Le bassin lui-meme est creuse par `build_pits()` : il est declare dans
+    # `BASINS`, donc dans `_hollows()`, donc la peau saute ses cellules, les
+    # stations pavent son emprise, les modules semes l'evitent et deux harnais le
+    # relisent. « Un creux sans son saut de peau est un plancher SOUS une peau
+    # intacte : invisible, et definitif. »
+    #
+    # ⚠️ ET IL LUI FAUT UNE ARETE CLAIRE, SANS QUOI CE N'EST PAS UN VOLUME MAIS
+    # UNE TACHE. Ce fichier l'a deja paye sur les fosses : « le creux existait
+    # dans le `.glb` — sondee, mesuree, rendue — et restait INVISIBLE en jeu ; le
+    # pont d'envol voisin, lui, se lit d'un coup d'œil : il a un coaming CLAIR ».
+    # Le bassin porte donc son cadre, `AA_Trim`, sur ses quatre bords.
+    # ⚠️ SEULEMENT LES DEUX BOUTS EN IVOIRE, ET NON TOUT LE POURTOUR. C'est
+    # exactement la regle que `build_pits()` a payee : « deux plans accrochent la
+    # lumiere et disent CA DESCEND ; un ruban de douze metres aurait redessine la
+    # coque ». Un cadre entierement clair volait de surcroit la lecture a AMBRY,
+    # qui arrive quatre metres plus loin et dont TOUT l'interet est d'etre la
+    # seule chose claire des 500 m.
+    for a, b in ((basin_s0 - 0.62, basin_s0), (basin_s1, basin_s1 + 0.62)):
+        tops.append(_plant_strip(bm, 6.95, 10.75, a, b, 0.50, 1.10,
+                                 "AA_Greeble", "AA_Trim"))
+    tops.append(_plant_strip(bm, 6.95, 7.35, basin_s0, basin_s1, 0.46, 1.10,
+                             "AA_Greeble", "AA_Hull"))
+    tops.append(_plant_strip(bm, BASIN_X[1], 10.75, basin_s0, basin_s1,
+                             0.46, 1.10, "AA_Greeble", "AA_Hull"))
+    bars = 0
+    for cs in (429.4, 431.75, 434.1):
+        # ⚠️ AU-DESSUS DU COAMING (-4,52) ET NON DEDANS : une passerelle noyee
+        # dans le cadre disparait dans l'ombre du creux, et le bassin redevient
+        # une tache noire au lieu d'un volume enjambe.
+        _box_outward(bm, _pl(cs, 6.95), _pl(cs, 10.75), -5.20, -4.46,
+                     cs - 0.32, cs + 0.32, "AA_Hull")
+        _box_outward(bm, _pl(cs, 7.75), _pl(cs, 9.95), -4.46, -4.425,
+                     cs - 0.05, cs + 0.05, "AA_Emissive_Engine")
+        bars += 1
+    tops.append(-4.425)
+    counts["passerelles"] = bars
+    for cs in (429.0, 434.5):
+        _plant_prism(bm, _pl(cs, 11.35), cs, 0.60, 0.38,
+                     _surface_y(cs, _pl(cs, 11.95)) - 0.30, -3.46, 8,
+                     "AA_Greeble", "AA_Panel")
+    tops.append(-3.46)
+    counts["cuves"] = tanks + 2
+
+    # ======================================================================
+    # 6. LA SORTIE — le massif, la passerelle transversale, le seuil
+    # ======================================================================
+    out_block = _plant_strip(bm, fx0 + 0.15, 11.70, 437.2, 440.4, 0.92, 1.05,
+                             "AA_Greeble", "AA_Hull")
+    tops.append(out_block)
+    _plant_strip(bm, fx0 + 0.45, 11.35, 437.9, 439.7,
+                 0.92 + 0.38, 0.60, "AA_Greeble", "AA_Hull")
+    tops.append(out_block + 0.38)
+    # Deux cuves de sortie, plus petites : la ligne se recompose avant de
+    # quitter le complexe.
+    for cs in (438.6, 440.2):
+        _plant_prism(bm, _pl(cs, 11.05), cs, 0.44, 0.40,
+                     _surface_y(cs, _pl(cs, 11.49)) - 0.35, -4.02, 8,
+                     "AA_Hull", "AA_Hull")
+    tops.append(-4.02)
+    # Trois caisses posees dans l'allee : elles disent qu'on y travaille, et
+    # elles coutent douze triangles chacune.
+    crates = 0
+    for cs, cxn, w in ((437.0, 7.45, 0.85), (439.3, 7.30, 1.00),
+                       (441.0, 7.55, 0.75)):
+        _plant_strip(bm, cxn, cxn + w, cs - 0.42, cs + 0.42, 0.52, 0.60,
+                     "AA_Greeble", "AA_Hull")
+        crates += 1
+    counts["caisses"] = crates
+    # La passerelle qui enjambe l'allee et rejoint le massif : c'est elle qui
+    # relie les deux moities du complexe, et elle passe AU-DESSUS de la voie.
+    _box_outward(bm, _pl(437.6, 7.15), _pl(437.6, 10.30), -4.05, -3.83,
+                 437.35, 437.95, "AA_Hull")
+    tops.append(-3.83)
+    _plant_gate(bm, 441.35, fx0 - 0.05, PLANT_RAIL_XN[1], -3.90)
+
+    top = max(tops)
+    if top > BUILD_CEILING_Y + 1e-6:
+        raise ak.ContractError(
+            f"le complexe culmine a {top:.3f} > plafond de construction "
+            f"{BUILD_CEILING_Y} — c'est le plafond de VOL, le chasseur entrerait "
+            "dedans")
+    stats.update(counts)
+    stats["top"] = top
+    stats["ciel"] = BUILD_CEILING_Y - top
+    stats["plancher"] = floor
+    stats["emprise"] = (PLANT_S, PLANT_XN)
+    stats["conduites"] = len(anchors)
+    stats["sieges"] = seats
+    return anchors, stats
+
+
+# ==========================================================================
 # Assemblage d'un troncon
 # ==========================================================================
 
@@ -4004,6 +4605,10 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
         occupied.append((bc - bh, bc + bh))
     occupied.append((CROSS_BRIDGE_S - CROSS_BRIDGE_HS,
                      CROSS_BRIDGE_S + CROSS_BRIDGE_HS))
+    # ⚠️ ET LE COMPLEXE DU BRIEF-0111, POUR LA MEME RAISON QUE LES DEUX LIGNES
+    # DU DESSUS : il occupe 24,5 m de borde sans etre un marqueur ni un module
+    # seede. Sans cette ligne, le calme annonce surestimerait de 24 m.
+    occupied.append((PLANT_S[0] - APRON_PLANT, PLANT_S[1] + APRON_PLANT))
     for a, b, _n, _x in INSTALLATION_SPANS:
         lo = max(a, origin)
         hi = min(b, origin + SECTION_LENGTH)
@@ -4075,6 +4680,28 @@ def build_section(index: int) -> tuple[bpy.types.Object, list, dict]:
     counts["baies"] = bays
     counts["nœuds"] = spines
     counts["conduites_reperes"] = conduites
+
+    # ⚠️ LE COMPLEXE EST MAILLE DANS LE BMESH DU TRONCON, ET NON A COTE COMME
+    # AMBRY. Ambry a son propre objet parce qu'elle a sa propre ECHELLE D'UV
+    # (0,700 tuile/m contre 0,200) : c'est une greffe humaine vue de plus pres,
+    # avec son propre huitieme slot. Le complexe, lui, est de la matiere de
+    # l'Unisson, aux memes quatre slots que le borde et a la meme distance de
+    # vue : lui donner un depliage a part le ferait recevoir des cartes d'une
+    # autre finesse que la tole sur laquelle il est pose, et la couture se
+    # verrait au premier metre.
+    # ⚠️ ON COMPTE DES TRIANGLES, PAS DES FACES. Le complexe pose des n-gones —
+    # un longeron de 24,5 m est un ruban de 42 sommets — et `ak.triangulate()`
+    # ne passera qu'apres. Un compte de faces annoncerait 688 la ou le `.glb`
+    # en portera 2 060 : le brief demande de RAPPORTER le cout, pas de le
+    # sous-estimer.
+    before = set(bm.faces)
+    plant_anchors, plant_stats = build_plant(bm, index)
+    counts["complexe"] = sum(len(f.verts) - 2 for f in bm.faces
+                             if f not in before)
+    counts["complexe_reperes"] = len(plant_anchors)
+    anchors += plant_anchors
+    if plant_stats:
+        counts["complexe_stats"] = plant_stats
 
     hull = _new_object(name, bm)
     _weld(hull)
@@ -4269,6 +4896,8 @@ def _expected_markers() -> list[str]:
     names += [f"Spine_{i:02d}" for i in range(1, len(SPINES) + 1)]
     names += [f"CTRL | Conduite {i:02d}"
               for i in range(1, len(ARTERY_CONDUITS) + 1)]
+    names += [f"CTRL | Complexe {i:02d}"
+              for i in range(1, len(PLANT_CONDUITS) + 1)]
     names.append("Ambry")
     return names
 
@@ -4405,6 +5034,42 @@ def _audit(path: str) -> dict:
             "les douze CTRL | Conduite portent le MEME y : le repere n'est pas "
             "echantillonne sur la peau, il est constant — c'est la dette que ce "
             "lot devait supprimer")
+
+    # ⚠️ LES CINQ REPERES DU COMPLEXE SONT RELUS DE LA MEME FACON, ET AVEC UNE
+    # VERIFICATION DE PLUS : LE CIEL. Un repere de conduite marque le BAS de la
+    # piece ; ce qui doit tenir sous le plafond de vol, c'est le HAUT. La piece
+    # droite mesure 0,46 m, la coudee 0,92 (mesure sur les `.glb`) — on prend la
+    # pire, parce que le concepteur peut monter l'une ou l'autre et que rien
+    # dans ce fichier ne le lui interdit.
+    plant_y: list[float] = []
+    for number, (s, x) in enumerate(PLANT_CONDUITS, start=1):
+        marker = f"CTRL | Complexe {number:02d}"
+        if marker not in found:
+            continue
+        translation = found[marker][1]
+        plant_y.append(translation[1])
+        if abs(translation[0] - x) > 1e-4:
+            problems.append(
+                f"{marker} : x = {translation[0]:.4f} au lieu de {x:.4f}")
+        local_z = -(s - SECTION_LENGTH * int(s // SECTION_LENGTH))
+        if abs(translation[2] - local_z) > 1e-4:
+            problems.append(
+                f"{marker} : z = {translation[2]:.4f} au lieu de "
+                f"{local_z:.4f}")
+        seat = translation[1]
+        if seat <= _surface_y(s, x) + 1e-4:
+            problems.append(
+                f"{marker} : assise {seat:.4f} au niveau de la peau "
+                f"({_surface_y(s, x):.4f}) — le berceau n'a pas ete pose")
+        if seat + CONDUIT_PIECE_TOP > BUILD_CEILING_Y:
+            problems.append(
+                f"{marker} : une conduite coudee y culminerait a "
+                f"{seat + CONDUIT_PIECE_TOP:.3f} > plafond de construction "
+                f"{BUILD_CEILING_Y}")
+    if plant_y and len(set(round(v, 4) for v in plant_y)) < 2:
+        problems.append(
+            "les cinq CTRL | Complexe portent le MEME y : leur berceau n'est pas "
+            "echantillonne sur la peau")
 
     # --- geometrie, budgets, plafond, jonctions --------------------------------
     stats: dict[str, dict] = {}
@@ -5020,6 +5685,7 @@ def build() -> dict:
     _assert_pits_are_clear()
     _assert_moats_are_hollow()
     _assert_bastions_are_clear()
+    _assert_plant_is_clear()
     ak.reset_scene()
     ak.set_faction(ak.FACTION_NULL_CHOIR)
     sections: list[tuple[bpy.types.Object, list]] = []
@@ -5058,7 +5724,7 @@ def _print_report(report: dict) -> None:
                   "conduits", "travees", "branches",
                   "marqueurs_tourelle", "baies", "nœuds",
                   "fosses", "passerelle", "bastions", "cellules_percees",
-                  "collerettes",
+                  "collerettes", "complexe", "complexe_reperes",
                   # BRIEF-0101 — la garde d'affut, ecartees puis perdues.
                   "greffes_ecartees", "greffes_perdues",
                   "plaques_ecartees", "plaques_perdues",
@@ -5293,6 +5959,39 @@ def _print_report(report: dict) -> None:
     print(f"    densite COMPLETE (mesure Blender, bequilles comprises) : "
           f"{d['tiles_per_m_min']:.3f} a {d['tiles_per_m_max']:.3f}, moyenne "
           f"{d['tiles_per_m_mean']:.3f} tuile/m, anisotropie {d['anisotropy_max']:.2f}")
+    plant = report["counts"][-1].get("complexe_stats")
+    if plant:
+        print(f"\n  COMPLEXE INDUSTRIEL (BRIEF-0111) : "
+              f"{report['counts'][-1]['complexe']} triangles, "
+              f"{plant['conduites']} reperes de conduite, "
+              f"{plant.get('cuves', 0)} cuves, {plant.get('plots', 0)} plots de "
+              f"rive, {plant.get('traverses', 0)} traverses, "
+              f"{plant.get('passerelles', 0)} passerelles, "
+              f"{plant.get('caisses', 0)} caisses")
+        print(f"    emprise s {plant['emprise'][0][0]:.1f} a "
+              f"{plant['emprise'][0][1]:.1f} ({plant['emprise'][0][1] - plant['emprise'][0][0]:.1f} m), "
+              f"x NOMINAL {plant['emprise'][1][0]:.2f} a {plant['emprise'][1][1]:.2f} "
+              f"(absolu {_pl(PLANT_S[0], PLANT_XN[0]):.2f} a "
+              f"{_pl(PLANT_S[0], PLANT_XN[1]):.2f} au large, "
+              f"{_pl(434.0, PLANT_XN[0]):.2f} a {_pl(434.0, PLANT_XN[1]):.2f} au "
+              f"pincement de s = 434)")
+        print(f"    sommet {plant['top']:+.3f}, ciel restant {plant['ciel']:.3f} m "
+              f"sous le plafond de construction {BUILD_CEILING_Y:+.2f} "
+              f"(plafond de vol {CEILING_Y:+.2f})")
+        for number, (cs, cx) in enumerate(PLANT_CONDUITS, start=1):
+            seat = next(a for n, a in plant["sieges"] if n == number)
+            print(f"    CTRL | Complexe {number:02d}  s {cs:7.1f}  x {cx:+6.2f}  "
+                  f"bas {seat:+.4f}  (peau {_surface_y(cs, cx):+.4f}, "
+                  f"berceau +{seat - _surface_y(cs, cx):.3f}, coudee jusqu'a "
+                  f"{seat + CONDUIT_PIECE_TOP:+.3f})")
+        basin = BASINS[0]
+        floor = min(_surface_y(v, BASIN_X[k])
+                    for v in (basin[0] - basin[1], basin[0], basin[0] + basin[1])
+                    for k in (0, 1)) - PIT_DEPTH
+        print(f"    bassin : s {basin[0] - basin[1]:.1f} a {basin[0] + basin[1]:.1f}, "
+              f"x nominal {BASIN_X[0]:.2f} a {BASIN_X[1]:.2f}, fond {floor:+.2f} "
+              f"({-4.99 - floor:.2f} m sous le pont median)")
+
     frame = _frame_coverage(-4.30)
     print(f"\n  cadrage a la camera du jeu (0, 14, 5) / FOV 62 :")
     print(f"    pont a Y = -4.30, profondeur {frame['depth']:.2f} m, "
@@ -5311,6 +6010,8 @@ def main() -> None:
         render_branch_plate(report)
     if "--nodes" in sys.argv:
         render_node_plate(report)
+    if "--complexe" in sys.argv:
+        render_plant_plate(report)
 
 
 # ==========================================================================
@@ -6245,6 +6946,266 @@ def render_node_plate(report: dict) -> None:
                 tiles.append((path, NODE_TILE_H))
         os.makedirs(os.path.dirname(NODE_PLATE), exist_ok=True)
         _compose(tiles, NODE_PLATE, width=NODE_TILE_W)
+    finally:
+        for leftover in os.listdir(staging):
+            os.remove(os.path.join(staging, leftover))
+        os.rmdir(staging)
+
+
+# ==========================================================================
+# Planche du complexe — `--complexe` (BRIEF-0111)
+# ==========================================================================
+# ⚠️ LE CRITERE DU LOT N'EST PAS « IL Y A DE LA MATIERE », C'EST « ON VOIT UNE
+# INSTALLATION ». Un chiffre ne peut pas y repondre : deux vignettes au MEME
+# cadrage, a la camera du jeu, avec les conduites REELLEMENT instanciees, le
+# peuvent. Le BRIEF-0109 a ete rendu parce que la piece posee se lisait moins
+# bien que ce qu'elle remplacait ; ici il n'y a rien a remplacer, donc la seule
+# preuve possible est la comparaison avant / apres.
+
+PLANT_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0111-planche.png")
+CONDUIT_GLB = os.path.join(
+    _REPO, "assets/imported/models/backgrounds/artery_conduit.glb")
+HOSE_GLB = os.path.join(
+    _REPO, "assets/imported/models/backgrounds/artery_hose.glb")
+PLANT_TILE_W = 1920
+PLANT_TILE_H = 1080
+PLANT_TOP_H = 900
+PLANT_ELEV_H = 460
+#: Le chasseur, a sa place de jeu, sur la vignette « apres ».
+PLANT_PLAYER_Z = 3.4
+
+
+def _plant_frame_centre() -> float:
+    """La station que la camera du jeu doit viser pour cadrer tout le complexe.
+
+    Mesure et non estimation : `_visible_deck_span()` intersecte les deux rayons
+    de bord de cadre avec le plan du pont median. Le complexe fait 24,5 m, le
+    cadre en montre 23,6 : il n'y a qu'un centrage possible, et il se calcule.
+    """
+    centre = 0.5 * (PLANT_S[0] + PLANT_S[1])
+    for _ in range(24):
+        near, far = _visible_deck_span(centre, -4.95)
+        centre += 0.5 * (PLANT_S[0] + PLANT_S[1]) - 0.5 * (near + far)
+    return centre
+
+
+def _godot_bounds(objects: list) -> tuple[Vector, Vector]:
+    """Boite englobante d'objets Blender, RENDUE EN REPERE GODOT.
+
+    C'est la mesure que `CortegeConduit._seat()` fait au moteur : elle assied la
+    boite, jamais l'origine du fichier. Les quatre `.glb` de l'artere sont des
+    sous-arbres extraits d'un assemblage plus grand, et leur racine porte encore
+    sa translation d'origine — (-0,36 ; 1,00 ; 1,38) pour la conduite droite.
+    """
+    bpy.context.view_layer.update()
+    lo = Vector((math.inf, math.inf, math.inf))
+    hi = Vector((-math.inf, -math.inf, -math.inf))
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        for corner in obj.bound_box:
+            w = obj.matrix_world @ Vector(corner)
+            g = Vector((w.x, w.z, -w.y))
+            for k in range(3):
+                lo[k] = min(lo[k], g[k])
+                hi[k] = max(hi[k], g[k])
+    return lo, hi
+
+
+def _mount_conduit(path: str, name: str, marker: Vector) -> list:
+    """Une piece d'artere assise sur son repere EXACTEMENT comme le moteur.
+
+    Le repere marque le BAS : `y` du marqueur = `min.y` de la boite, `x` et `z`
+    du marqueur = son CENTRE. Une planche qui poserait l'origine du fichier sur
+    le repere ferait planer la piece d'un metre — c'est le defaut que le
+    BRIEF-0110 a corrige dans le moteur, et une planche qui ne le reproduit pas
+    ne prouve rien de ce que le joueur verra.
+    """
+    fresh = _import(path, name, Vector((0.0, 0.0, 0.0)))
+    lo, hi = _godot_bounds(fresh)
+    seat = Vector((marker.x - 0.5 * (lo.x + hi.x),
+                   marker.y - lo.y,
+                   marker.z - 0.5 * (lo.z + hi.z)))
+    bpy.data.objects[name].location = _to_blender(seat)
+    return fresh
+
+
+def _mount_plant_conduits(centre: float) -> list:
+    """Les cinq conduites du complexe, sur leurs cinq reperes."""
+    out: list = []
+    for number, (s, x) in enumerate(PLANT_CONDUITS, start=1):
+        seat = _plant_seat(s, x)
+        marker = Vector((x, seat, -(s - centre)))
+        out += _mount_conduit(CONDUIT_GLB, f"Conduit_{number:02d}", marker)
+        out += _mount_conduit(HOSE_GLB, f"Hose_{number:02d}", marker)
+    return out
+
+
+def _plant_seat(s: float, x: float) -> float:
+    """Le Y d'assise d'une conduite du complexe, recalcule comme au maillage.
+
+    ⚠️ RECALCULE ET NON RECOPIE : c'est `_surface_box()` qui decide, et elle
+    prend le MINIMUM de ses quatre coins. Reprendre ici une constante ferait
+    diverger la planche du binaire au premier changement de profil — la classe
+    de defaut que ce fichier documente sous `BAY_COAMING_W`.
+    """
+    ys = [_surface_y(v, px)
+          for v in (s - PLANT_CRADLE_S, s + PLANT_CRADLE_S)
+          for px in (x - PLANT_LANE_HALF, x + PLANT_LANE_HALF)]
+    return min(ys) + PLANT_CRADLE_RISE
+
+
+def _tile_plant_game(path: str, glb: str, centre: float, after: bool,
+                     report: dict | None, checker: bool = False) -> None:
+    """La camera du jeu sur le complexe, avant ou apres."""
+    _plate_reset()
+    decor = _import(glb, "Decor", Vector((0.0, 0.0, centre)))
+    pieces: list = []
+    if after:
+        pieces = _mount_plant_conduits(centre)
+        _import(FIGHTER, "Player", Vector((0.0, 0.0, PLANT_PLAYER_Z)))
+    if checker:
+        _apply_checker(decor + pieces)
+    _set_emissive_energy(decor + pieces, EMISSIVE_ENERGY_LIT)
+    _plate_lights()
+    near, far = _visible_deck_span(centre, -4.95)
+    camera = _plate_camera("game", _to_blender(CAM_POS), _to_blender(CAM_FORWARD),
+                           _to_blender(CAM_UP), CAM_FOV_V)
+    tint = (1.0, 0.88, 0.55) if after else (0.72, 0.84, 1.0)
+    head = ("APRES — le complexe industriel, ses cinq conduites REELLEMENT "
+            "instanciees" if after else
+            "AVANT — 24,5 m de tole nue entre Turret_13 et Ambry")
+    if checker:
+        # ⚠️ Sur un damier clair, une legende blanche disparait. Elle passe au
+        # bleu de nuit du fond — la seule valeur qui contraste des deux cotes.
+        tint = (0.05, 0.06, 0.16)
+        head = (f"DAMIER UV sur le complexe — grande case = 1 tuile de "
+                f"{1.0 / HULL_TEXELS_PER_METER:.2f} m, petite = "
+                f"{100.0 / HULL_TEXELS_PER_METER / 8.0:.1f} cm")
+    _label(camera, "CAMERA DU JEU (0 ; 14 ; 5), FOV 62  ·  " + head,
+           -0.96, 0.90, 0.026, PLANT_TILE_W, PLANT_TILE_H, tint)
+    _label(camera, f"cadre sur le pont median : s {near:.1f} a {far:.1f} "
+                   f"({far - near:.1f} m)  ·  emprise du complexe s "
+                   f"{PLANT_S[0]:.1f} a {PLANT_S[1]:.1f}  ·  45,8 px/m",
+           -0.96, 0.845, 0.024, PLANT_TILE_W, PLANT_TILE_H,
+           (0.05, 0.06, 0.16) if checker else (1.0, 1.0, 1.0))
+    if checker and report is not None:
+        d = report["density"]["Section_05"]
+        _label(camera,
+               f"projection en boite a {HULL_TEXELS_PER_METER:.3f} tuile/m, LA "
+               f"MEME QUE LE BORDE  ·  mesure du troncon 5 : "
+               f"{d['tiles_per_m_min']:.3f} a {d['tiles_per_m_max']:.3f} t/m, "
+               f"moyenne {d['tiles_per_m_mean']:.3f}, anisotropie max "
+               f"{d['anisotropy_max']:.2f}  ·  aucune image dans le .glb "
+               f"(ADR-0028)",
+               -0.96, -0.90, 0.022, PLANT_TILE_W, PLANT_TILE_H,
+               (0.05, 0.06, 0.16))
+    elif after and report is not None:
+        plant = report["counts"][-1]
+        _label(camera,
+               f"{plant['complexe']} triangles poses  ·  troncon 5 : "
+               f"{report['sections']['Section_05']['triangles']} tri  ·  "
+               f"corridor : {report['triangles']} tri  ·  sommet du complexe "
+               f"{plant['complexe_stats']['top']:+.2f} pour un plafond de vol "
+               f"{CEILING_Y:+.2f}",
+               -0.96, -0.90, 0.022, PLANT_TILE_W, PLANT_TILE_H, (0.72, 0.84, 1.0))
+    else:
+        _label(camera, "aucune installation : le joueur traverse 10 s de coque "
+                       "sans rien a viser ni a lire",
+               -0.96, -0.90, 0.022, PLANT_TILE_W, PLANT_TILE_H, (0.72, 0.84, 1.0))
+    _render(path, PLANT_TILE_W, PLANT_TILE_H)
+
+
+def _tile_plant_top(path: str, report: dict) -> None:
+    """Le complexe de dessus, orthographique — le PLAN, qui est le livrable."""
+    _plate_reset()
+    centre = 0.5 * (PLANT_S[0] + PLANT_S[1])
+    _import(OUTPUT, "Decor", Vector((0.0, 0.0, centre)))
+    _mount_plant_conduits(centre)
+    _plate_lights()
+    # ⚠️ `sensor_fit` est VERTICAL : `ortho_scale` donne l'etendue en X (la
+    # verticale de cette vue, tribord vers le BAS), et la longueur vue en `s`
+    # vaut `ortho x largeur / hauteur`. 22 m sur 1920 x 900 en montrent 47 —
+    # le complexe, la tourelle qui le precede et le premier collier d'Ambry.
+    ortho = 22.0
+    camera = _plate_camera(
+        "top", _to_blender(Vector((8.0, 60.0, 0.0))),
+        _to_blender(Vector((0.0, -1.0, 0.0))), _to_blender(Vector((-1.0, 0.0, 0.0))),
+        math.radians(30.0), ortho=ortho)
+    plant = report["counts"][-1]["complexe_stats"]
+    _label(camera, f"DE DESSUS ({ortho:.0f} m) — proue a GAUCHE. Entree s "
+                   f"{PLANT_S[0]:.0f}, cœur s {BASINS[0][0] - BASINS[0][1]:.0f}-"
+                   f"{BASINS[0][0] + BASINS[0][1]:.0f}, sortie s {PLANT_S[1]:.0f}",
+           -0.985, 0.91, 0.036, PLANT_TILE_W, PLANT_TOP_H, (1.0, 0.88, 0.55))
+    _label(camera, f"x NOMINAL {PLANT_XN[0]:.2f}-{PLANT_XN[1]:.2f} : absolu "
+                   f"{_pl(418.0, PLANT_XN[0]):.2f}-{_pl(418.0, PLANT_XN[1]):.2f} "
+                   f"au large, {_pl(434.0, PLANT_XN[0]):.2f}-"
+                   f"{_pl(434.0, PLANT_XN[1]):.2f} au pincement de s = 434 "
+                   f"— le complexe SUIT la taille du bord",
+           -0.985, 0.83, 0.030, PLANT_TILE_W, PLANT_TOP_H)
+    _label(camera, f"bassin 1,63 m sous le pont  ·  {plant['plots']} plots  ·  "
+                   f"{plant['traverses']} traverses  ·  {plant['passerelles']} "
+                   f"passerelles  ·  voie DROITE : x {PLANT_LANE_IN_X:+.2f} a "
+                   f"l'entree, {PLANT_LANE_OUT_X:+.2f} a la sortie",
+           -0.985, -0.90, 0.030, PLANT_TILE_W, PLANT_TOP_H, (0.72, 0.84, 1.0))
+    _render(path, PLANT_TILE_W, PLANT_TOP_H)
+
+
+def _tile_plant_elevation(path: str, report: dict) -> None:
+    """Tribord, avec la dalle du plafond de vol. Le seul critere DUR du lot."""
+    _plate_reset()
+    _import(OUTPUT, "Decor", Vector((0.0, 0.0, 0.0)))
+    _mount_plant_conduits(0.0)
+    _ceiling_slab(-460.0, -410.0)
+    _plate_lights()
+    ortho = 5.2
+    centre = -0.5 * (PLANT_S[0] + PLANT_S[1])
+    camera = _plate_camera(
+        "elev", _to_blender(Vector((90.0, -5.05, centre))),
+        _to_blender(Vector((-1.0, 0.0, 0.0))), _to_blender(Vector((0.0, 1.0, 0.0))),
+        math.radians(30.0), ortho=ortho)
+    plant = report["counts"][-1]["complexe_stats"]
+    _label(camera, f"ELEVATION TRIBORD (26 m) — la dalle ambre EST le plafond "
+                   f"de vol Y = {CEILING_Y:.0f}",
+           -0.985, 0.84, 0.050, PLANT_TILE_W, PLANT_ELEV_H, (1.0, 0.88, 0.55))
+    _label(camera, f"sommet du complexe {plant['top']:+.3f} "
+                   f"(plafond de construction {BUILD_CEILING_Y:+.2f}, marge "
+                   f"{plant['ciel']:.3f} m) — conduites comprises, la piece la "
+                   f"plus haute qu'on puisse monter culmine a "
+                   f"{max(a for _n, a in plant['sieges']) + CONDUIT_PIECE_TOP:+.3f}",
+           -0.985, -0.90, 0.042, PLANT_TILE_W, PLANT_ELEV_H)
+    _render(path, PLANT_TILE_W, PLANT_ELEV_H)
+
+
+def render_plant_plate(report: dict) -> None:
+    before = None
+    if "--avant" in sys.argv:
+        before = sys.argv[sys.argv.index("--avant") + 1]
+    centre = _plant_frame_centre()
+    staging = tempfile.mkdtemp(prefix="aegis-cortege-plant-")
+    tiles: list[tuple[str, int]] = []
+    try:
+        if before and os.path.exists(before):
+            path = os.path.join(staging, "avant.png")
+            _tile_plant_game(path, before, centre, False, None)
+            tiles.append((path, PLANT_TILE_H))
+        else:
+            print("  ⚠️ pas de `--avant <glb>` : la planche n'aura pas sa "
+                  "vignette AVANT, et le lot ne prouve alors rien")
+        path = os.path.join(staging, "apres.png")
+        _tile_plant_game(path, OUTPUT, centre, True, report)
+        tiles.append((path, PLANT_TILE_H))
+        path = os.path.join(staging, "uv.png")
+        _tile_plant_game(path, OUTPUT, centre, True, report, checker=True)
+        tiles.append((path, PLANT_TILE_H))
+        path = os.path.join(staging, "top.png")
+        _tile_plant_top(path, report)
+        tiles.append((path, PLANT_TOP_H))
+        path = os.path.join(staging, "elev.png")
+        _tile_plant_elevation(path, report)
+        tiles.append((path, PLANT_ELEV_H))
+        os.makedirs(os.path.dirname(PLANT_PLATE), exist_ok=True)
+        _compose(tiles, PLANT_PLATE, width=PLANT_TILE_W)
     finally:
         for leftover in os.listdir(staging):
             os.remove(os.path.join(staging, leftover))

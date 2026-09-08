@@ -1,6 +1,6 @@
 # BRIEF-0111 — Le complexe industriel du tronçon 5 : meubler 69 m de coque nue
 
-- **Statut** : assigné
+- **Statut** : livré et intégré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08

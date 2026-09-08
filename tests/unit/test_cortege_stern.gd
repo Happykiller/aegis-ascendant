@@ -819,12 +819,32 @@ func test_the_charge_only_falls_and_never_below_the_floor() -> void:
 ## ⚠️ LE SURVOL PARFAIT DOIT ATTEINDRE LE PLANCHER, ET PAS LE DEPASSER DE LOIN. Si douze conduites
 ## ne descendaient qu'a 0,90, la mecanique ne se sentirait pas ; si elles descendaient a 0,40, le
 ## plancher ferait tout le travail et le reglage par conduite ne voudrait plus rien dire.
+## ⚠️ ET « TOUTES » N'EST PLUS LA TABLE SEULE. Le complexe industriel du tronçon 5 apporte ses
+## propres conduites, posées par la COQUE et non par `CortegeArtery.CONDUITS` : les compter dans
+## le binaire est la seule façon de garder cette égalité vraie le jour où la forge en ajoute.
+func _complex_conduits() -> int:
+	var packed: PackedScene = load("res://assets/imported/models/backgrounds/long_cortege.glb")
+	if packed == null:
+		return 0
+	var coque := track(packed.instantiate()) as Node3D
+	var total := 0
+	for node in _all_nodes(coque):
+		if String(node.name).begins_with("CTRL | Complexe"):
+			total += 1
+	return total
+
+func _all_nodes(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_all_nodes(child, out)
+	return out
+
 func test_a_perfect_run_lands_on_the_floor() -> void:
 	var Artery := preload("res://scripts/gameplay/cortege_artery.gd")
-	var toutes := Artery.CONDUITS.size()
+	var toutes := Artery.CONDUITS.size() + _complex_conduits()
 	var charge := TUNING.charge_of(toutes)
-	assert_true(is_equal_approx(charge, TUNING.charge_floor),
-		"couper les %d conduites rend exactement le plancher (%.3f pour %.2f)"
+	assert_true(absf(charge - TUNING.charge_floor) < 0.005,
+		"couper les %d conduites rend le plancher (%.3f pour %.2f)"
 			% [toutes, charge, TUNING.charge_floor])
 	# Et une de moins ne l'atteint PAS : sinon la derniere ne servirait a rien.
 	assert_true(TUNING.charge_of(toutes - 1) > TUNING.charge_floor,

@@ -59,6 +59,13 @@ const CONDUITS: Array = [
 ## dit au lieu de laisser douze conduites flotter.
 ## Le repère que la coque porte désormais pour chaque conduite (`BRIEF-0110`).
 const MARK := "CTRL | Conduite"
+## Les conduites du complexe industriel du tronçon 5 (`BRIEF-0111`).
+##
+## ⚠️ ELLES NE SONT PAS DANS LA TABLE, ET C'EST VOULU. Une conduite d'artère se pose à une station
+## qu'on choisit ; celles-ci appartiennent à une INSTALLATION, et c'est la coque qui sait où elle
+## a mis son emprise. Les recopier ici rouvrirait l'écart entre la table et le marqueur que ce
+## dépôt a déjà payé trois fois aujourd'hui.
+const COMPLEX_MARK := "CTRL | Complexe"
 
 ## L'assise de SECOURS, si le repère manque.
 ##
@@ -136,8 +143,30 @@ func build(sections: Array[Node3D], p_tuning: CortegeTuning,
 		sections[index].add_child(conduit)
 		conduit.build(bool(entry[3]))
 		_conduits.append(conduit)
-	print("[Cortege] artère — %d conduites posées sur %d tronçons"
-		% [_conduits.size(), sections.size()])
+	# Le complexe industriel : ses conduites sont posées par la COQUE, pas par la table.
+	var table := _conduits.size()
+	for index in sections.size():
+		for node in _descendants(sections[index]):
+			var n3 := node as Node3D
+			if n3 == null or not String(node.name).begins_with(COMPLEX_MARK):
+				continue
+			var piece := CortegeConduit.make(tuning.conduit_health, tuning.conduit_radius,
+				tuning.conduit_score)
+			piece.name = "Conduit_C%02d" % (_conduits.size() + 1)
+			piece.serial = _conduits.size()
+			piece.section = index
+			piece.damaged_at = tuning.conduit_damaged_at
+			piece.leak_interval = tuning.conduit_leak_interval
+			piece.sever_time = tuning.conduit_sever_time
+			piece.setup(bullets, vfx)
+			piece.severed.connect(_on_severed)
+			# ⚠️ ENFANT DU REPÈRE : sa position EST celle que la coque a échantillonnée, et le
+			# `y` du complexe n'est pas celui du pont — son berceau est 30 cm plus haut.
+			n3.add_child(piece)
+			piece.build(false)
+			_conduits.append(piece)
+	print("[Cortege] artère — %d conduites (%d le long de l'axe, %d au complexe du tronçon 5)"
+		% [_conduits.size(), table, _conduits.size() - table])
 
 ## ⚠️ L'ORDRE EST CELUI DES HARDPOINTS : la pièce est visée par sa MASSE, pas par son assise, et
 ## la fenêtre de ciblage est `target_span` comme tout le reste du niveau.
