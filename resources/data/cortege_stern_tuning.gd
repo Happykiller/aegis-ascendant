@@ -200,6 +200,19 @@ extends Resource
 ## contenu dans l'écran ferait paraître les moteurs petits.
 @export var flame_length: float = 9.0
 @export var flame_width: float = 2.4
+## De combien le panache entre DANS la tuyère, en mètres non mis à l'échelle.
+##
+## ⚠️ « ILS APPARAISSENT AU-DESSUS DES TUYÈRES AU LIEU D'ÊTRE MIS DEDANS » (opérateur,
+## 2026-09-08). Un panache qui commence exactement au plan de sortie laisse la gorge NOIRE : rien
+## n'éclaire l'intérieur, et l'œil lit deux objets posés l'un sur l'autre au lieu d'un moteur qui
+## souffle. Il faut mordre, et plus que la lèvre.
+##
+## ⚠️ ET ELLE EST ICI PARCE QUE LA FORGE LA LIT. Elle vivait dans `cortege_engine.gd` ; le
+## `BRIEF-0107` a dû la RECOPIER dans `build_stern.py` pour placer les canaux d'échappement —
+## c'est-à-dire créer une seconde écriture d'une même cote, entre un script de jeu et un
+## générateur d'asset, que rien ne rapprocherait le jour où l'une bouge. Dans la Resource, les
+## deux la lisent.
+@export var throat_bite: float = 1.35
 
 ## Le cycle de poussée (spec §6 et §15) : calme, charge annoncée, souffle, puis — pour le
 ## central seul — une extinction pendant laquelle le joueur a la voie libre.
@@ -458,6 +471,12 @@ func validate() -> PackedStringArray:
 			if tier_pressure[i] > 2.0:
 				errors.append("tier_pressure[%d] = %.2f dépasse le double — mur de balles"
 					% [i, tier_pressure[i]])
+	# ⚠️ BORNÉE DES DEUX CÔTÉS. À zéro le panache se pose sur la lèvre et la gorge reste noire —
+	# le défaut qu'elle corrige ; trop grande, il naît au milieu de la nacelle et ressort par le
+	# flanc. Le quart de la longueur du moteur est la limite au-delà de laquelle ça se voit.
+	if throat_bite <= 0.0 or throat_bite > engine_size.z * 0.25:
+		errors.append("throat_bite (%.2f) doit tenir entre 0 et %.2f — sinon le panache se pose sur la lèvre, ou naît dans le moteur"
+			% [throat_bite, engine_size.z * 0.25])
 	if designation_time < 1.0 or designation_time > 12.0:
 		errors.append("designation_time (%.2f) doit tenir entre 1 et 12 s — c'est la durée d'une réplique"
 			% designation_time)

@@ -1,6 +1,6 @@
 # BRIEF-0107 — Creuser le massif arrière : trois canaux d'échappement
 
-- **Statut** : assigné
+- **Statut** : livré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-08

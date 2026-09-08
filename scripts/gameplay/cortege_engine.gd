@@ -53,13 +53,6 @@ const SOCKET_PREFIX := "CTRL | Socket ancrage"
 ## était fausse par principe, et elle plaçait le panache À LA LÈVRE au lieu de le mettre DEDANS.
 ## Même défaut que les tourelles de coque, même parade : la cote se lit sur l'asset.
 const FLAME_SOCKET := "CTRL | Socket VFX flamme"
-## De combien le panache entre DANS la tuyère, en mètres non mis à l'échelle.
-##
-## ⚠️ « ILS APPARAISSENT AU-DESSUS DES TUYÈRES AU LIEU D'ÊTRE MIS DEDANS » (opérateur,
-## 2026-09-08). Un panache qui commence exactement au plan de sortie laisse la gorge NOIRE :
-## rien n'éclaire l'intérieur de la tuyère, et l'œil lit deux objets posés l'un sur l'autre au
-## lieu d'un moteur qui souffle. Il faut mordre, et il faut mordre plus que la lèvre.
-const THROAT_BITE := 1.35
 
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
@@ -377,7 +370,7 @@ func _mount_thrust(k: float) -> void:
 		siege = Vector3(0.0, 0.0, -tuning.engine_size.z * 0.5)
 		push_warning("[Poupe] %s : pas de « %s » dans la nacelle — flamme estimée"
 			% [name, FLAME_SOCKET])
-	_flame.position = (siege + Vector3(0.0, 0.0, THROAT_BITE)) * k
+	_flame.position = (siege + Vector3(0.0, 0.0, tuning.throat_bite)) * k
 	_flame.build()
 	_body.add_child(_flame)
 	_surge_clock = (side + 1.0) * tuning.surge_period / 3.0

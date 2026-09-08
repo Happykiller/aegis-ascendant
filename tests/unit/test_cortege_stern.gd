@@ -772,12 +772,12 @@ func test_the_nozzle_mouth_is_read_from_the_binary() -> void:
 ## mis dedans » : un panache qui commence exactement au plan de sortie laisse l'interieur de la
 ## tuyere NOIR, et l'oeil lit deux objets poses l'un sur l'autre au lieu d'un moteur qui souffle.
 func test_the_plume_starts_inside_the_throat() -> void:
-	assert_true(EngineScript.THROAT_BITE > 0.0,
-		"le panache entre dans la tuyere (%.2f m)" % EngineScript.THROAT_BITE)
+	assert_true(TUNING.throat_bite > 0.0,
+		"le panache entre dans la tuyere (%.2f m)" % TUNING.throat_bite)
 	# Mais pas au point de ressortir par l'autre bout de la nacelle.
-	assert_true(EngineScript.THROAT_BITE < TUNING.engine_size.z * 0.25,
+	assert_true(TUNING.throat_bite < TUNING.engine_size.z * 0.25,
 		"sans traverser le moteur : %.2f m pour une nacelle de %.2f"
-			% [EngineScript.THROAT_BITE, TUNING.engine_size.z])
+			% [TUNING.throat_bite, TUNING.engine_size.z])
 
 ## ⚠️ LA COLONNE DE DANGER ET LE PANACHE DOIVENT AVOIR LA MEME LARGEUR. Depuis que le rendu passe
 ## par `EnginePlume`, la largeur VUE vient de `plume_cortege.tres` (gorge x ventre) et la largeur

@@ -58,6 +58,7 @@ detach_trauma_central = 0.75
 silence_time = 7.0
 flame_length = 14.0
 flame_width = 3.4
+throat_bite = 1.35
 surge_period = 4.6
 surge_warning = 0.42
 surge_blast = 0.95
