@@ -194,6 +194,17 @@ func _mount_hull() -> void:
 	carene.name = "Hull"
 	add_child(carene)
 	_dress(carene)
+	# ⚠️ ET ON L'HABILLE, COMME LE CORRIDOR. `CortegeFlyby` passe `CortegeSkin.apply()` sur les
+	# cinq tronçons ; la poupe est montée à part, donc elle a joué NUE depuis le premier jour —
+	# couleurs de palette du `.glb`, sans une ligne de panneau. « Certaines parties semblent
+	# nues » (opérateur, 2026-09-08), et il regardait le bassin : 12 triangles pour 32 × 16 m.
+	#
+	# ⚠️ APRÈS `_dress()`, PAS AVANT : les dix-sept pièces instanciées portent les mêmes slots
+	# (`AA_Hull`, `AA_Greeble`, `AA_Emissive_Engine`) et doivent recevoir les mêmes cartes. Les
+	# habiller avant les aurait laissées nues au milieu d'une carène habillée.
+	var vetues := CortegeSkin.apply(carene)
+	print("[Poupe] carène %s" % ("habillée — %d surfaces" % vetues if vetues > 0
+		else "NUE — aucune carte trouvée"))
 
 ## Instancie les pièces livrées sur les repères de la carène.
 ##

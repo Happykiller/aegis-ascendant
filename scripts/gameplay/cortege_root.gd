@@ -660,7 +660,14 @@ func _on_player_docked() -> void:
 	if _player != null:
 		_player.stow()
 	print("[Cortege] VICTORY — score %d" % _game_state.score)
-	_game_state.transition_to(GameStateScript.State.VICTORY)
+	# ⚠️ ON DEMANDE, ON NE FORCE PAS. `transition_to` refuse `GAME_OVER -> VICTORY` et le crie en
+	# erreur ; si l'état a basculé sans que ce fichier le sache, mieux vaut le NOMMER que laisser
+	# une erreur rouge dans un journal de partie gagnée.
+	if _game_state.current != GameStateScript.State.FIGHTER_COMBAT:
+		push_warning("[Cortege] victoire demandée depuis %d — transition ignorée"
+			% _game_state.current)
+	else:
+		_game_state.transition_to(GameStateScript.State.VICTORY)
 	get_tree().create_timer(REPORT_DELAY).timeout.connect(
 		show_report.bind(MissionReport.Outcome.VICTORY, _artery_note()))
 
@@ -676,7 +683,15 @@ func _artery_note() -> String:
 	return "ARTERE %d/%d" % [_artery.cut_count(), _artery.conduits().size()]
 
 func _on_game_over() -> void:
-	if _finished or _defeated:
+	if _defeated:
+		return
+	# ⚠️ MOURIR APRÈS LA COUPURE DE PROPULSION NE REND PAS LA MISSION PERDUE — mais ça ne doit
+	# plus être SILENCIEUX. Une partie du 2026-09-08 a rendu
+	# `invalid transition GAME_OVER -> VICTORY` : l'appontage ajouté ce jour-là allonge de vingt
+	# secondes la fenêtre entre « propulsion coupée » et « appontée », pendant lesquelles des
+	# coques sont encore en vol. Le journal ne disait rien de ce moment ; il le dit maintenant.
+	if _finished:
+		print("[Cortege] chasseur perdu APRÈS la coupure — la mission reste gagnée")
 		return
 	_defeated = true
 	print("[Cortege] all fighters lost — DEFEAT, score %d" % _game_state.score)
