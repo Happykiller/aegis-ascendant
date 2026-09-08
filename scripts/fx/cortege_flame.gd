@@ -13,6 +13,17 @@ extends Node3D
 ## longueur ±10 à 15 %, largeur ±5 à 10 % — et ces bornes valent mieux qu'un « ça bouge un peu » :
 ## au-delà, la flamme bat comme un cœur et attire l'œil hors de la cible ; en deçà, elle est morte.
 ##
+## ⚠️ ET C'EST LA PLUME DU CHASSEUR, PAS TROIS BOÎTES. « Faut travailler les jets d'éjection, on
+## pourrait reprendre le travail qu'on a sur notre vaisseau le Specter-9 mais en plus grand et de
+## teinte violette » (opérateur, 2026-09-08). La première version empilait trois boîtes additives
+## — cœur, corps, halo — ce qui donnait un aplat rose à bord franc, sans gorge ni ventre. Le
+## shader d'`ADR-0017` a les trois, plus ses disques de Mach, et c'est ce qui fait lire une
+## TUYÈRE au lieu d'un rectangle lumineux.
+##
+## ⚠️ CE FICHIER GARDE LA RÈGLE, IL CHANGE LE RENDU. `shape_at()` et `regime_for()` ne bougent
+## pas d'une décimale : ce sont elles qui portent la variation de la spec §5 et les quatre
+## régimes, et elles sont testées. Ce qui change est ce qui les affiche.
+##
 ## ⚠️ ET LA VARIATION EST DÉTERMINISTE. Deux sinusoïdes incommensurables, jamais un tirage au
 ## hasard : un survol se juge en comparant deux passages, et une flamme aléatoire rend deux
 ## captures incomparables. Même règle que le tremblement d'arrachement et que les arcs du nœud.
@@ -20,31 +31,20 @@ extends Node3D
 ## Ce que la flamme rend selon ce que fait le moteur.
 enum Regime { STEADY, ROUGH, SPUTTER, DYING }
 
-## Les trois couches de la spec §5 : cœur étroit très lumineux, corps magenta, halo.
-## ⚠️ TROIS ET PAS UNE. Une seule couche additive donne un aplat qui sature au centre et coupe
-## net sur les bords ; c'est la superposition qui fait le dégradé, sans une seule texture.
-const CORE_TINT := Color(1.0, 0.86, 0.98)
-const BODY_TINT := Color("d93d9c")
-const HALO_TINT := Color(0.62, 0.20, 0.72)
-
-const CORE_WIDTH := 0.26
-const BODY_WIDTH := 0.62
-const HALO_WIDTH := 1.00
-const CORE_LENGTH := 0.55
-const BODY_LENGTH := 0.90
-const HALO_LENGTH := 1.15
-
-const CORE_GLOW := 5.4
-const BODY_GLOW := 3.1
-const HALO_GLOW := 1.3
+## Le réglage de la plume — en MÈTRES DE JEU, pas en facteur d'échelle.
+##
+## ⚠️ IL VIT DANS UNE RESOURCE, comme tout paramètre de gameplay (spec §31). Le mettre ici en
+## constantes rendrait la teinte et la taille des trois panaches inaccessibles à l'éditeur, et
+## `flame_length` de `CortegeSternTuning` cesserait de commander quoi que ce soit.
+const PLUME: PlumeTuning = preload("res://resources/vfx/plume_cortege.tres")
 
 ## Les deux fréquences de la respiration. ⚠️ INCOMMENSURABLES : un rapport simple (2, 3, 1,5)
 ## donne un motif qui se répète, et l'œil apprend un motif en quelques secondes.
 const BREATH_A := 0.83
 const BREATH_B := 2.17
 
-var _layers: Array[MeshInstance3D] = []
-var _mats: Array[StandardMaterial3D] = []
+var _plume: EnginePlume = null
+var _pushed := -1.0
 var _base_len := 1.0
 var _base_wide := 1.0
 var _phase := 0.0
@@ -101,53 +101,34 @@ static func regime_for(state: int, leaving: bool) -> Regime:
 
 # --- La pièce ------------------------------------------------------------------
 
+## ⚠️ LE PANACHE POUSSE VERS `-Z`, DONC VERS LE HAUT DE L'ÉCRAN. `EnginePlume.make` oriente sa
+## géométrie selon l'axe qu'on lui donne : `Vector3.BACK` (le défaut, pour un chasseur qui va
+## vers le haut et pousse vers le bas) l'enverrait vers le bas du cadre — c'est-à-dire dans la
+## coque du Cortège.
 func build() -> void:
-	_add_layer("Halo", HALO_WIDTH, HALO_LENGTH, HALO_TINT, HALO_GLOW)
-	_add_layer("Body", BODY_WIDTH, BODY_LENGTH, BODY_TINT, BODY_GLOW)
-	_add_layer("Core", CORE_WIDTH, CORE_LENGTH, CORE_TINT, CORE_GLOW)
-
-func _add_layer(nom: String, width: float, length: float, teinte: Color, glow: float) -> void:
-	var mesh := MeshInstance3D.new()
-	mesh.name = nom
-	var box := BoxMesh.new()
-	box.size = Vector3(_base_wide * width, _base_wide * width * 0.5, _base_len * length)
-	mesh.mesh = box
-	# Le panache part de la tuyère vers le HAUT de l'écran : la boîte est décalée d'une
-	# demi-longueur pour que son ORIGINE soit la bouche, pas son centre.
-	mesh.position.z = -_base_len * length * 0.5
-	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# ⚠️ ADDITIF ET SANS ÉCRITURE DE PROFONDEUR : trois couches qui se découperaient l'une
-	# l'autre donneraient trois silhouettes empilées au lieu d'un dégradé — et le panache
-	# passerait derrière la coque au lieu de devant.
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.no_depth_test = true
-	mat.albedo_color = teinte
-	mat.emission_enabled = true
-	mat.emission = teinte
-	mat.emission_energy_multiplier = glow
-	mat.render_priority = 4
-	mesh.material_override = mat
-	add_child(mesh)
-	_layers.append(mesh)
-	_mats.append(mat)
+	# `flame_length` reste le maître : c'est lui qui est dans la Resource du niveau, et c'est lui
+	# qu'on tourne pour régler la phase. L'échelle rapporte simplement la plume à sa cote.
+	_plume = EnginePlume.make(PLUME, _base_len / PLUME.length_full, Vector3.FORWARD)
+	_plume.name = "Plume"
+	add_child(_plume)
 
 ## Un pas. `power` est ce qu'il reste de poussée (1 en régime, 0 quand la machine s'est tue) ;
 ## `surge` la surintensité d'une poussée annoncée.
+##
+## ⚠️ LA POUSSÉE EST IMPOSÉE, JAMAIS LISSÉE. `set_throttle` amène la plume à sa cible avec la
+## réponse d'un réacteur de chasseur (montée vive, extinction lente) : appliquée à une variation
+## qui bat à 0,83 et 2,17 Hz, elle la moyennerait et le hoquet de l'intermittente disparaîtrait.
+## C'est `shape_at()` qui décide de la forme, et elle décide seule.
+##
+## ⚠️ ET ON NE POUSSE QUE SI ÇA A BOUGÉ. Dix uniformes par image et par moteur pour un panache au
+## régime constant, c'est ce que `EnginePlume` a été écrit pour éviter.
 func tick(t: float, regime: Regime, power: float, surge: float) -> void:
+	if _plume == null:
+		return
 	var forme := shape_at(t, _phase, regime)
-	for i in _layers.size():
-		var mesh := _layers[i]
-		var box := mesh.mesh as BoxMesh
-		if box == null:
-			continue
-		var longueurs: Array[float] = [HALO_LENGTH, BODY_LENGTH, CORE_LENGTH]
-		var largeurs: Array[float] = [HALO_WIDTH, BODY_WIDTH, CORE_WIDTH]
-		var lueurs: Array[float] = [HALO_GLOW, BODY_GLOW, CORE_GLOW]
-		var l: float = _base_len * longueurs[i] * forme.x * power * surge
-		var w: float = _base_wide * largeurs[i] * forme.y * (1.0 + (surge - 1.0) * 0.4)
-		box.size = Vector3(w, w * 0.5, maxf(l, 0.01))
-		mesh.position.z = -maxf(l, 0.01) * 0.5
-		_mats[i].emission_energy_multiplier = lueurs[i] * power * surge
-		mesh.visible = power > 0.01
+	var voulue: float = forme.x * power * surge
+	var ratio := clampf(voulue, 0.0, 1.0)
+	_plume.visible = power > 0.02
+	if absf(ratio - _pushed) > 0.004:
+		_pushed = ratio
+		_plume.snap_throttle(ratio)

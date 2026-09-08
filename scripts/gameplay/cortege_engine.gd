@@ -46,6 +46,20 @@ const CRADLE_KIT := "res://assets/imported/models/backgrounds/stern_cradle.glb"
 const ENGINE_KIT := "res://assets/imported/models/backgrounds/stern_engine.glb"
 ## Le préfixe des repères de l'auteur. Le jeu les adresse par leur nom, jamais par leur rang.
 const SOCKET_PREFIX := "CTRL | Socket ancrage"
+## ⚠️ L'AUTEUR AVAIT LIVRÉ LE REPÈRE, ET LE CODE NE LE LISAIT PAS. `CTRL | Socket VFX flamme` est
+## dans le binaire depuis le premier jour (z = −5,980, la bouche de la tuyère) ; `_mount_thrust`
+## calculait à la place `−engine_size.z × k × 0,5` à partir de la boîte englobante. Les deux
+## tombaient à un centimètre l'un de l'autre, ce qui a fait passer l'approximation — mais elle
+## était fausse par principe, et elle plaçait le panache À LA LÈVRE au lieu de le mettre DEDANS.
+## Même défaut que les tourelles de coque, même parade : la cote se lit sur l'asset.
+const FLAME_SOCKET := "CTRL | Socket VFX flamme"
+## De combien le panache entre DANS la tuyère, en mètres non mis à l'échelle.
+##
+## ⚠️ « ILS APPARAISSENT AU-DESSUS DES TUYÈRES AU LIEU D'ÊTRE MIS DEDANS » (opérateur,
+## 2026-09-08). Un panache qui commence exactement au plan de sortie laisse la gorge NOIRE :
+## rien n'éclaire l'intérieur de la tuyère, et l'œil lit deux objets posés l'un sur l'autre au
+## lieu d'un moteur qui souffle. Il faut mordre, et il faut mordre plus que la lèvre.
+const THROAT_BITE := 1.35
 
 ## Il vient de perdre un ancrage : le niveau le raconte, la flamme s'abîme.
 signal weakened(engine: CortegeEngine, lost: int)
@@ -74,6 +88,7 @@ var _conduits: Array[MeshInstance3D] = []
 var _conduit_veins: Array[StandardMaterial3D] = []
 var _burst_done: bool = false
 var _flame: CortegeFlame = null
+var _nacelle: Node3D = null
 var _surge_clock: float = 0.0
 var _surge: Surge = Surge.CALM
 ## Le central ouvre son extinction quand les deux latéraux sont partis, jamais avant.
@@ -234,6 +249,7 @@ func build() -> void:
 	_body.position = _rest
 	add_child(_body)
 	var engine := _load_kit(ENGINE_KIT)
+	_nacelle = engine
 	if engine != null:
 		engine.name = "Nacelle"
 		engine.scale = Vector3.ONE * k
@@ -270,6 +286,16 @@ func build() -> void:
 ## Les places d'ancrage, lues sur les repères de l'auteur et triées : d'abord la paire AVANT
 ## (haute à l'écran), puis l'ARRIÈRE. ⚠️ L'ORDRE COMPTE : un moteur latéral n'en prend que trois,
 ## et ce sont les deux hautes plus une basse — le triangle de la spec §7.
+## La bouche de la tuyère, telle que l'auteur l'a posée. Vecteur nul si le repère manque.
+static func _flame_socket_of(root: Node) -> Vector3:
+	if root == null:
+		return Vector3.ZERO
+	for node in _descendants(root):
+		var n3 := node as Node3D
+		if n3 != null and String(node.name) == FLAME_SOCKET:
+			return n3.position
+	return Vector3.ZERO
+
 static func _sockets_of(root: Node) -> Array[Vector3]:
 	var avant: Array[Vector3] = []
 	var arriere: Array[Vector3] = []
@@ -342,8 +368,16 @@ func _mount_thrust(k: float) -> void:
 		return
 	_flame = CortegeFlame.make(tuning.flame_length, tuning.flame_width, side * 1.7 + 0.4)
 	_flame.name = "Flame"
-	_flame.position = Vector3(0.0, tuning.engine_size.y * k * 0.1,
-		-tuning.engine_size.z * k * 0.5)
+	# ⚠️ LE SIÈGE EST LU, PUIS ON MORD DEDANS. `+z` va vers l'intérieur du moteur : ajouter
+	# `THROAT_BITE` recule le départ du panache dans la gorge, ce qui l'éclaire au lieu de la
+	# laisser noire. Sans repère dans le binaire, on retombe sur l'estimation d'avant — mais on
+	# le DIT, au lieu de laisser croire que la cote vient du modèle.
+	var siege := _flame_socket_of(_nacelle)
+	if is_zero_approx(siege.z):
+		siege = Vector3(0.0, 0.0, -tuning.engine_size.z * 0.5)
+		push_warning("[Poupe] %s : pas de « %s » dans la nacelle — flamme estimée"
+			% [name, FLAME_SOCKET])
+	_flame.position = (siege + Vector3(0.0, 0.0, THROAT_BITE)) * k
 	_flame.build()
 	_body.add_child(_flame)
 	_surge_clock = (side + 1.0) * tuning.surge_period / 3.0

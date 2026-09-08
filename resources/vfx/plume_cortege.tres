@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="PlumeTuning" load_steps=2 format=3]
+
+; ============================================================================
+; Les trois groupes propulsifs du Long Cortege — la meme plume que le chasseur,
+; en beaucoup plus grand et en violet.
+;
+; ⚠️ ELLE REMPLACE TROIS BOITES ADDITIVES. « Faut travailler les jets d'ejection,
+; on pourrait reprendre le travail qu'on a sur notre vaisseau le Specter-9 mais
+; en plus grand et de teinte violette » (operateur, 2026-09-08). Les trois
+; couches empilees donnaient un aplat rose a bord franc ; le shader d'`ADR-0017`
+; a une gorge, un ventre et des disques de Mach, et c'est ce qui fait lire une
+; TUYERE plutot qu'un rectangle lumineux.
+;
+; ⚠️ LES COTES SONT EN METRES DE JEU, PAS EN FACTEUR D'ECHELLE. `EnginePlume.make`
+; accepte un `scale_factor` : s'en servir ici multiplierait deux fois la meme
+; taille et la marge de culling ne suivrait plus. Le groupe fait 11,93 m de long,
+; sa plume en fait neuf a plein regime.
+;
+; ⚠️ VIOLET, ET PAS LE MAGENTA DE FACTION. Le magenta `d93d9c` court deja sur les
+; 500 m d'artere, sur les dix verrous et sur les liseres des plates-formes : trois
+; panaches de la meme teinte s'y noyaient. Le violet les separe de tout ce qui est
+; a tirer, ce qui est exactement ce que la spec §12 demande — on ne tire PAS sur
+; les moteurs.
+; ============================================================================
+
+[ext_resource type="Script" path="res://resources/data/plume_tuning.gd" id="1_plume"]
+
+[resource]
+script = ExtResource("1_plume")
+length_idle = 3.40
+length_full = 9.00
+throat_radius = 0.98
+throat_idle = 0.82
+belly_flare = 1.45
+shock_count = 4.0
+shock_depth = 0.32
+shock_threshold = 0.42
+core_color = Color(0.965, 0.902, 1, 1)
+plume_color = Color(0.6, 0.278, 0.949, 1)
+tail_color = Color(0.216, 0.098, 0.42, 1)
+energy = 2.6
+energy_idle = 1.1
+flicker = 0.1
+rings = 26
+radial_segments = 16
+idle_throttle = 0.55
+forward_gain = 0.4
+lateral_gain = 0.1
+speed_gain = 0.3
+brake_drop = 0.2
+attack_rate = 9.0
+decay_rate = 3.2

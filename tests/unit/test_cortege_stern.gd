@@ -743,3 +743,53 @@ func test_every_cradle_seat_carries_a_lock() -> void:
 		"un moteur lateral occupe TOUS ses sieges (%d)" % sieges)
 	assert_eq(TUNING.anchors_of(true), sieges,
 		"le moteur central aussi (%d)" % sieges)
+
+## ⚠️ LA BOUCHE DE LA TUYERE SE LIT DANS LE BINAIRE, ELLE NE S'ESTIME PLUS. `CTRL | Socket VFX
+## flamme` est dans `stern_engine.glb` depuis le premier jour ; `_mount_thrust` calculait a la
+## place `-engine_size.z x k x 0,5` a partir de la boite englobante. Les deux tombaient a un
+## centimetre l'un de l'autre — ce qui a fait passer l'approximation pendant tout le chantier —
+## mais elle etait fausse par principe : le jour ou la nacelle se reforge, la boite bouge et le
+## panache reste ou il etait, sans un mot.
+func test_the_nozzle_mouth_is_read_from_the_binary() -> void:
+	var packed: PackedScene = load(EngineScript.ENGINE_KIT)
+	assert_true(packed != null, "la nacelle se charge")
+	if packed == null:
+		return
+	var nacelle := track(packed.instantiate()) as Node3D
+	var siege := EngineScript._flame_socket_of(nacelle)
+	assert_true(not is_zero_approx(siege.z),
+		"la nacelle porte « %s » (z = %.3f)" % [EngineScript.FLAME_SOCKET, siege.z])
+	# Elle pousse vers le HAUT de l'ecran, donc vers -z : la bouche est en amont du centre.
+	assert_true(siege.z < 0.0,
+		"la bouche est du cote de la poussee (z = %.3f)" % siege.z)
+	# ⚠️ ET ELLE EST BIEN AU BOUT DE LA PIECE, pas quelque part au milieu : si un jour le repere
+	# se retrouvait ailleurs, ce test le dirait au lieu de laisser un panache sortir du flanc.
+	var demi := TUNING.engine_size.z * 0.5
+	assert_true(absf(absf(siege.z) - demi) < 0.5,
+		"elle est a l'extremite (%.3f pour une demi-longueur de %.3f)" % [siege.z, demi])
+
+## ⚠️ ET LE PANACHE MORD DANS LA GORGE. « Ils apparaissent au-dessus des tuyeres au lieu d'etre
+## mis dedans » : un panache qui commence exactement au plan de sortie laisse l'interieur de la
+## tuyere NOIR, et l'oeil lit deux objets poses l'un sur l'autre au lieu d'un moteur qui souffle.
+func test_the_plume_starts_inside_the_throat() -> void:
+	assert_true(EngineScript.THROAT_BITE > 0.0,
+		"le panache entre dans la tuyere (%.2f m)" % EngineScript.THROAT_BITE)
+	# Mais pas au point de ressortir par l'autre bout de la nacelle.
+	assert_true(EngineScript.THROAT_BITE < TUNING.engine_size.z * 0.25,
+		"sans traverser le moteur : %.2f m pour une nacelle de %.2f"
+			% [EngineScript.THROAT_BITE, TUNING.engine_size.z])
+
+## ⚠️ LA COLONNE DE DANGER ET LE PANACHE DOIVENT AVOIR LA MEME LARGEUR. Depuis que le rendu passe
+## par `EnginePlume`, la largeur VUE vient de `plume_cortege.tres` (gorge x ventre) et la largeur
+## QUI BRULE vient de `flame_width` dans la Resource du niveau. Deux sources pour une meme cote :
+## si elles derivent, le joueur brule dans du vide ou traverse une flamme sans rien sentir — et
+## c'est le grief le plus difficile a rattraper une fois formule.
+func test_the_burning_column_matches_what_is_drawn() -> void:
+	var plume: PlumeTuning = load("res://resources/vfx/plume_cortege.tres")
+	assert_true(plume != null, "le reglage de plume se charge")
+	if plume == null:
+		return
+	var vue := plume.throat_radius * plume.belly_flare * 2.0
+	assert_true(absf(vue - TUNING.flame_width) < 0.8,
+		"le panache fait %.2f m de large, la colonne de danger %.2f — elles se correspondent"
+			% [vue, TUNING.flame_width])
