@@ -265,6 +265,32 @@ enum TurretScale { LIGHT, STANDARD, HEAVY }
 @export var turret_weakened_turn_factor: float = 0.45
 @export var turret_weakened_interval_factor: float = 2.6
 
+@export_group("Les conduites de l'artère")
+
+## ⚠️ ELLES SONT LA SEULE PRISE DU SURVOL SUR SA PROPRE FIN. Couper une conduite retire de la
+## charge à la poupe (`docs/plans/2026-09-08-couper-l-artere.md`) : c'est la première chose que le
+## joueur fasse pendant les 500 m qui ait une conséquence après.
+
+## ⚠️ ELLE MEURT VITE, ET C'EST VOULU. Une conduite est une cible d'opportunité qu'on voit passer :
+## si elle demandait le tir soutenu d'une tourelle, le joueur choisirait entre elle et ce qui lui
+## tire dessus — et il choisirait toujours ce qui lui tire dessus. Repère : un nœud d'épine coûte
+## bien plus, et il est le sujet de son tronçon.
+@export var conduit_health: float = 120.0
+
+## ⚠️ PLUS GÉNÉREUX QUE SA GÉOMÉTRIE, ET C'EST ASSUMÉ. La pièce fait 0,46 m de section pour 2,78 m
+## de long : à 45,8 px/m elle rend **21 pixels de large**. Une hitbox à sa taille demanderait une
+## précision que le jeu n'exige nulle part ailleurs — même parade que le nœud d'épine, dont la
+## zone de touche déborde franchement le bulbe.
+@export var conduit_radius: float = 1.10
+
+## Sous cette part de vie, la conduite fuit : elle brille PLUS et lâche des gerbes.
+@export var conduit_damaged_at: float = 0.50
+## Entre deux gerbes d'une conduite qui fuit.
+@export var conduit_leak_interval: float = 0.70
+## Ce que dure le geste de rupture avant la pose de repos.
+@export var conduit_sever_time: float = 0.80
+@export var conduit_score: int = 450
+
 @export_group("La Citadelle de Défense")
 ## Le verrou de mi-parcours : une fortification transversale qui FERME LA ROUTE, s'ouvre en
 ## sabotant deux relais puis un noyau, et rend le passage praticable.
@@ -515,6 +541,22 @@ static func brake_factor(remaining: float, span: float) -> float:
 
 func validate() -> PackedStringArray:
 	var errors := PackedStringArray()
+	# ⚠️ UNE CONDUITE QUI COÛTE PLUS QU'UN PASSAGE N'EST PLUS UNE CIBLE D'OPPORTUNITÉ. Le joueur
+	# la voit défiler : si elle demande plus que ce qu'il peut placer en la longeant, il apprendra
+	# à ne plus les viser, et toute la mécanique de charge meurt sans qu'un test ne le dise.
+	if conduit_health <= 0.0 or conduit_health > reachable_damage(target_span, reference_dps, 1.0):
+		errors.append("conduit_health (%.0f) doit tenir dans ce qu'un passage permet de placer (%.0f)"
+			% [conduit_health, reachable_damage(target_span, reference_dps, 1.0)])
+	# ⚠️ ET SA ZONE DE TOUCHE DÉBORDE SA GÉOMÉTRIE, exprès : 0,46 m de section rend 21 px.
+	if conduit_radius < 0.6:
+		errors.append("conduit_radius (%.2f) est plus fin que ce que le joueur peut viser en défilant"
+			% conduit_radius)
+	if conduit_damaged_at <= 0.05 or conduit_damaged_at >= 0.95:
+		errors.append("conduit_damaged_at (%.2f) doit laisser voir les deux états" % conduit_damaged_at)
+	if conduit_leak_interval <= 0.0:
+		errors.append("conduit_leak_interval doit être > 0")
+	if conduit_sever_time <= 0.0:
+		errors.append("conduit_sever_time doit être > 0 — la rupture est un geste, pas un saut")
 
 	# --- Hypothèses ------------------------------------------------------
 	if reference_dps <= 0.0 or node_reference_dps <= 0.0:
