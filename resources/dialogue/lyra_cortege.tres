@@ -161,6 +161,17 @@ mood = 1
 voice_cue = &"lyra_engine_transfer"
 hold = 6.0
 
+[sub_resource type="Resource" id="line_dock"]
+script = ExtResource("2_line")
+key = &"cortege_docking"
+speaker = &"LYRA VANTELLA"
+role = "NAVIGATRICE // IA GUIDE"
+text = "Autopilote engagé, Halyard. Cap sur l’Aurora Spear.
+Lâchez les commandes. On lui a pris du temps, pas sa route."
+mood = 0
+voice_cue = &"lyra_cortege_docking"
+hold = 8.0
+
 [sub_resource type="Resource" id="line_stern_3"]
 script = ExtResource("2_line")
 key = &"propulsion_dead"
@@ -174,4 +185,4 @@ hold = 5.0
 
 [resource]
 script = ExtResource("1_script")
-lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_stern_0"), SubResource("line_stern_1"), SubResource("line_stern_2"), SubResource("line_stern_3")]
+lines = [SubResource("line_0"), SubResource("line_1"), SubResource("line_2"), SubResource("line_3"), SubResource("line_4"), SubResource("line_5"), SubResource("line_6"), SubResource("line_7"), SubResource("line_8"), SubResource("line_stern_0"), SubResource("line_stern_1"), SubResource("line_stern_2"), SubResource("line_stern_3"), SubResource("line_dock")]

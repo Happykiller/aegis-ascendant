@@ -1,0 +1,55 @@
+{
+  "id": "VOX-0007",
+  "slug": "lyra-appontage-cortege",
+  "schema_version": "1.0",
+  "date": "2026-09-07",
+  "character": "Lyra Vantella",
+  "context": "L'appontage qui clot le niveau 2. ⚠️ UNE SEULE REPLIQUE, ET ELLE ARRIVE APRES L'AVEU. `survey_end` — « Le Registre ne l'a pas declare perdu. Il l'a radie. » — est le sommet emotionnel du niveau ; celle-ci vient apres, sur un ciel vide et un porte-chasseur qui entre. Elle ne doit rien ajouter a l'aveu : elle raccroche.",
+  "purpose": {
+    "description": "La derniere replique du niveau 2 : autopilote, cap sur l'Aurora Spear.",
+    "priority": "⚠️ ELLE FERME LE NIVEAU SANS LE CELEBRER. « Il n'y a pas de bataille a gagner contre lui » (NULL_CHOIR.md) : le Cortege derive hors du cadre pendant qu'on rentre. Une replique triomphante ici demenrait l'image, qui est celle d'un vaisseau qu'on laisse."
+  },
+  "technical": {
+    "format": "ogg_vorbis",
+    "channels": "mono",
+    "sample_rate_hz": 48000,
+    "peak_dbfs": -3.0,
+    "leading_silence_ms_max": 100,
+    "trailing_silence_ms_max": 100,
+    "processing": "AUCUN",
+    "processing_note": "⚠️ NI RÉVERBÉRATION, NI FILTRE RADIO. Le jeu applique sa chaîne comms sur le bus `Voice`. Une voix déjà filtrée passerait deux fois et deviendrait inintelligible — et le filtre ne serait plus réglable."
+  },
+  "direction": {
+    "role": "navigatrice, pas hôtesse : elle informe et elle engage",
+    "register": "⚠️ PLUS BAS ENCORE QUE VOX-0006, et sans relachement. C'est la premiere fois du niveau ou elle s'adresse au pilote pour autre chose qu'une consigne de tir. Fatigue, pas soulagee : la deuxieme ligne — « on lui a pris du temps, pas sa route » — est un constat, pas une consolation, et elle se dit a plat.",
+    "address": "elle dit « Halyard ». ⚠️ « WREN » RESTE DEPENSE (`ADR-0037`) : une seule fois dans tout le jeu, a l'appontage du NIVEAU 1. Le reprendre ici lui oterait ce qui en fait un evenement.",
+    "pace": "posé. ⚠️ Aucune ne se termine sur un ralentissement."
+  },
+  "lines": [
+    {
+      "cue": "lyra_cortege_docking",
+      "dialogue_key": "cortege_docking",
+      "text": "Autopilote engagé, Halyard. Cap sur l’Aurora Spear.\nLâchez les commandes. On lui a pris du temps, pas sa route.",
+      "text_lines": [
+        "Autopilote engagé, Halyard. Cap sur l’Aurora Spear.",
+        "Lâchez les commandes. On lui a pris du temps, pas sa route."
+      ],
+      "mood": "CALME",
+      "direction": "⚠️ DEUX PHRASES, DEUX FONCTIONS. La premiere est une manoeuvre — elle s'enonce comme une procedure, sans emphase. La seconde est ce que Lyra pense de la mission : marquer la virgule, ne pas monter sur « pas sa route ». Aucun sourire dans la voix."
+    }
+  ],
+  "x_delivery": {
+    "status": "à commander",
+    "priority": "⚠️ SANS ELLE, LE SOUS-TITRE EST PIRE QUE RIEN. Les huit autres repliques du niveau parlent ; une derniere muette se lirait comme une coupure de son au moment ou le niveau se referme.",
+    "target_dir": "assets/imported/audio/voice/lyra/",
+    "file_pattern": "<cue>.ogg",
+    "wiring": "Reporter chaque `cue` dans le champ `voice_cue` de la réplique de même `key` dans `resources/dialogue/lyra_cortege.tres`, et déclarer la cue dans `resources/audio/sfx_bank.tres` sur le bus `Voice`.",
+    "verify": [
+      "mono, 48 kHz, crête ≤ -3 dBFS, moins de 100 ms de silence en tête",
+      "⚠️ écouter APRÈS le filtre du jeu : c'est le seul rendu qui compte",
+      "⚠️ MESURER LA DURÉE, PUIS RÉGLER LE `hold` — jamais l'inverse. Le panneau du HUD ne sait rien de la durée de la voix : un `hold` trop court coupe la réplique au milieu d'un mot, et rien ne le signale (le cas s'est présenté sur VOX-0003, deux répliques sur trois)",
+      "`python3 tools/voice/forge_voice.py docs/forge/voice/VOX-0005-lyra-cortege.json --preview` pour une version de synthèse"
+    ],
+    "provenance_csv_line": "lyra_voice_<cue>,assets/imported/audio/voice/lyra/<cue>.ogg,voice-line,<outil>,,operateur (Happykiller),proprietary-internal,<date>,docs/forge/voice/VOX-0006-lyra-poupe.json,tools/voice/forge_voice.py,\"Replique <cue> de Lyra Vantella, poupe du Long Cortege (VOX-0006). ⚠️ BRUTE : la chaine comms est dans le jeu, sur le bus Voice\""
+  }
+}

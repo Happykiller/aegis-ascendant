@@ -32,6 +32,15 @@ const SECTION_LINES: Array[StringName] = [
 ## Mesuré, pas estimé : la voix dure 5,45 s et la réplique tient 6,5 s à l'écran.
 const REPORT_DELAY := 7.5
 
+## L'appontage de fin (spec §6.5, `ADR-0010`) : le porte-chasseur, sa course et la bouche de son
+## pont. ⚠️ MÊMES COTES QU'AU NIVEAU 1 — elles ont été réglées en jouant, et deux appontages qui
+## se ressembleraient à quelques unités près se liraient comme un bug de l'un des deux.
+const CarrierScene := preload("res://scenes/fortress/aegis_citadel.tscn")
+const CARRIER_ENTRY_Y := 22.0
+const CARRIER_HOLD_Y := 11.0
+const CARRIER_BAY_Y := 6.3
+const CARRIER_SPEED := 9.0
+
 @onready var _flyby: CortegeFlyby = $CortegeFlyby
 @onready var _backdrop: Node3D = get_node_or_null("SpaceBackdrop") as Node3D
 @onready var _hardpoints: CortegeHardpoints = $Hardpoints
@@ -45,6 +54,7 @@ var _citadel: CortegeCitadel = null
 ## Citadelle : elle n'existe qu'APRÈS le survol. La monter au démarrage ferait payer trois
 ## moteurs et dix verrous pendant quatre minutes où personne ne les voit.
 var _stern: CortegeStern = null
+var _carrier: AegisCitadel = null
 ## Palier d'escalade forcé par `--stern-tier=N`. Zéro : le jeu le fait monter tout seul.
 var _stern_tier: int = 0
 ## Les salves qui n'ont pas encore servi. ⚠️ UNE LISTE QUI SE VIDE, PAS UN COMPTEUR : les quatre
@@ -562,18 +572,69 @@ func _blackout() -> void:
 	print("[Poupe] blackout — %d conduit(s) de coque + %d surface(s) de poupe éteints, trois berceaux vides"
 		% [eteints, poupe])
 
+## ⚠️ ET LE NIVEAU NE S'ARRÊTE PLUS SUR L'AVEU : ON RENTRE. « Après la victoire on pourrait faire
+## comme à la fin du niveau 1, et que notre vaisseau apponte dans notre base » (opérateur,
+## 2026-09-07). La séquence a trois temps, et ils sont dans cet ordre pour une raison :
+##
+## 1. **l'aveu, sur les berceaux vides** — la réplique la plus importante du niveau ;
+## 2. **la dérive** — le Cortège repart et sort du cadre PENDANT qu'elle le dit. Le lore le
+##    répète : « il n'y a pas de bataille à gagner contre lui ». On ne l'a pas détruit, on l'a
+##    échoué ; l'image doit le montrer, sinon la phrase et l'écran se contredisent ;
+## 3. **l'appontage** — l'Aurora Spear arrive dans un ciel VIDE. C'est la raison d'être du temps 2 :
+##    posée par-dessus une carène de quarante mètres, elle se lirait comme une collision.
 func _on_silence_over() -> void:
 	if _defeated:
 		return
-	# ⚠️ LA MUSIQUE DE VICTOIRE ATTEND QUE L'ÉCRAN SE VIDE, comme au niveau 1 : une résolution
-	# qui tomberait par-dessus des tirs encore en vol se lirait comme une erreur de montage.
+	# ⚠️ `DOCKING` ET NON `VICTORY`. La résolution est réservée à l'instant où le grappin prend :
+	# la jouer ici la ferait retomber pendant que le vaisseau dérive encore, c'est-à-dire sur
+	# l'image d'une chose inachevée. Le lit calme de l'appontage (ADR-0010) est fait pour ça.
 	if _runtime != null:
+		_runtime.music.level_phase = MusicContext.LevelPhase.DOCKING
+		_runtime.push_music()
+	say(&"survey_end")
+	_flyby.wreck_gone.connect(_on_wreck_gone, CONNECT_ONE_SHOT)
+	_flyby.drift_away()
+	print("[Cortege] l'épave dérive — le Long Cortège quitte le cadre")
+
+## L'Aurora Spear entre par le haut, dans un ciel vide.
+##
+## ⚠️ L'AURORA SPEAR ET NON L'AEGIS CITADEL, et ce n'est pas un détail d'habillage. Le lore réserve
+## la Citadelle : « elle n'est JAMAIS visitée dans le niveau 1 (`ADR-0010`) — c'est un enjeu de fin
+## de campagne » (`FACTIONS.md`). La dépenser ici retirerait au reste de la campagne sa promesse la
+## plus tenue. C'est donc le porte-chasseur qui vient nous chercher, comme au niveau 1.
+func _on_wreck_gone() -> void:
+	if _defeated:
+		return
+	print("[Cortege] appontage — l'Aurora Spear entre en scène")
+	say(&"cortege_docking")
+	_carrier = CarrierScene.instantiate() as AegisCitadel
+	_carrier.plane_position = Vector2(0.0, CARRIER_ENTRY_Y)
+	add_child(_carrier)
+	_carrier.arrived.connect(_on_carrier_arrived, CONNECT_ONE_SHOT)
+	_carrier.slide_to(Vector2(0.0, CARRIER_HOLD_Y), CARRIER_SPEED)
+
+func _on_carrier_arrived() -> void:
+	if _defeated or _player == null:
+		return
+	_player.autopilot_reached.connect(_on_player_docked, CONNECT_ONE_SHOT)
+	_player.begin_docking(Vector2(0.0, CARRIER_BAY_Y))
+
+## Le grappin prend. ⚠️ C'EST ICI QUE LA VICTOIRE SE DÉCLARE, et nulle part avant : le score, la
+## musique et le rapport tombent sur le même instant que le bruit du verrouillage.
+func _on_player_docked() -> void:
+	if _defeated:
+		return
+	if _runtime != null:
+		_runtime.boom(GameplayPlane.to_world(Vector2(0.0, CARRIER_BAY_Y + 0.3)),
+			VfxExplosion.Category.MEDIUM, 0.5)
+		_runtime.sfx(&"docking_lock")
 		_runtime.music.level_phase = MusicContext.LevelPhase.VICTORY
 		_runtime.music.hostiles_clear = _bullets == null \
 			or _bullets.team_count(BulletManager.Team.ENEMY) == 0
 		_runtime.push_music()
+	if _player != null:
+		_player.stow()
 	print("[Cortege] VICTORY — score %d" % _game_state.score)
-	say(&"survey_end")
 	_game_state.transition_to(GameStateScript.State.VICTORY)
 	get_tree().create_timer(REPORT_DELAY).timeout.connect(
 		show_report.bind(MissionReport.Outcome.VICTORY))

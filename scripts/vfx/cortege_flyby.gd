@@ -71,6 +71,12 @@ const LEAD_IN := 22.0
 
 signal section_entered(index: int)
 signal survey_finished()
+
+## L'épave a fini de quitter le cadre. ⚠️ ÉMIS SUR UNE DISTANCE, PAS SUR UN MINUTEUR : ce qui doit
+## être vrai, c'est que la poupe est SORTIE — pas qu'on a attendu neuf secondes. Un minuteur calé
+## à la main redeviendrait faux le jour où la vitesse de dérive change, et la Citadelle arriverait
+## par-dessus une carène encore à l'écran.
+signal wreck_gone()
 ## La poupe entre dans le cadre : le décor commence à freiner. ⚠️ ÉMIS BIEN AVANT L'ARRÊT — c'est
 ## le moment de monter ce qui doit s'y trouver, pas celui de jouer la phase.
 signal stern_in_sight()
@@ -105,6 +111,9 @@ var _is_stand_in: bool = false
 var _travelled: float = 0.0
 var _entered: int = -1
 var _finished: bool = false
+## Ce qu'il reste à parcourir en dérive, en unités. Négatif tant qu'on ne dérive pas.
+var _drift: float = -1.0
+var _drift_speed: float = 0.0
 
 func _ready() -> void:
 	reveal(false)
@@ -144,6 +153,38 @@ func skip_to_end() -> void:
 ## DEPUIS L'EXTÉRIEUR, et il est délibérément étroit : les mécaniques ont besoin des marqueurs
 ## que porte chaque tronçon, elles n'ont besoin de rien d'autre. Ouvrir le décor entier
 ## laisserait le gameplay dépendre d'une hiérarchie que la forge peut légitimement changer.
+## ⚠️ LE CORTÈGE N'EST PAS DÉTRUIT : ON LE LAISSE. Le lore le dit depuis toujours — « il n'y a
+## pas de bataille à gagner contre lui » — et la fin du niveau doit le MONTRER. La poupe repart
+## donc vers le bas du cadre et sort, pendant que Lyra dit qu'il a été radié. Rien n'explose,
+## rien ne disparaît : le vaisseau continue sans nous, et c'est nous qui rentrons.
+##
+## ⚠️ ET IL REPART DE ZÉRO, PAS À LA VITESSE DU SURVOL. Un vaisseau dont on vient de couper les
+## trois moteurs qui reprendrait sa vitesse de croisière en une image démentirait la phrase qu'on
+## vient de lui appliquer. La dérive s'installe en `DRIFT_RAMP` secondes.
+const DRIFT_RUN := 34.0
+const DRIFT_SPEED := 3.2
+const DRIFT_RAMP := 2.4
+
+func drift_away() -> void:
+	if _drift >= 0.0:
+		return
+	_drift = DRIFT_RUN
+	_drift_speed = 0.0
+
+func is_drifting() -> bool:
+	return _drift >= 0.0
+
+func _advance_drift(delta: float) -> void:
+	_drift_speed = minf(_drift_speed + DRIFT_SPEED / DRIFT_RAMP * delta, DRIFT_SPEED)
+	var pas := _drift_speed * delta
+	_travelled += pas
+	_drift -= pas
+	_place_sections()
+	if _drift > 0.0:
+		return
+	_drift = -1.0
+	wreck_gone.emit()
+
 func sections() -> Array[Node3D]:
 	return _sections
 
@@ -255,6 +296,9 @@ func _place_sections() -> void:
 		_decor.position.z = _travelled - LEAD_IN
 
 func _process(delta: float) -> void:
+	if _drift >= 0.0:
+		_advance_drift(delta)
+		return
 	if _finished:
 		return
 	# ⚠️ LE FREINAGE EST EN RACINE, ET LA DIFFÉRENCE EST QU'UNE DES DEUX N'ARRIVE JAMAIS. Un

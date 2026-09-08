@@ -153,3 +153,60 @@ func test_the_survey_carries_its_own_deep_sky() -> void:
 		assert_true(bool(mat.get_shader_parameter(&"deep_sky")),
 			"et il est sur le chemin deep_sky, pas sur une nebuleuse attenuee")
 	f.free()
+
+# =============================================================================
+# La derive de fin — le Cortege n'est pas detruit, on le LAISSE
+# =============================================================================
+
+const STERN_T: CortegeSternTuning = preload("res://resources/levels/long_cortege_stern.tres")
+const LEVEL_SCENE_FOR_DRIFT := "res://scenes/gameplay/cortege.tscn"
+
+func _drift_camera() -> Array:
+	var packed: PackedScene = load(LEVEL_SCENE_FOR_DRIFT)
+	assert_true(packed != null, "la scene du niveau 2 se charge")
+	var etat := packed.get_state()
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != "Camera3D":
+			continue
+		var camera := Transform3D.IDENTITY
+		var fov := 0.0
+		for j in etat.get_node_property_count(i):
+			var nom := String(etat.get_node_property_name(i, j))
+			if nom == "transform":
+				camera = etat.get_node_property_value(i, j)
+			elif nom == "fov":
+				fov = etat.get_node_property_value(i, j)
+		if fov > 0.0:
+			return [camera, fov]
+	return []
+
+## ⚠️ LA DERIVE DOIT SORTIR LA POUPE, PAS SEULEMENT LA DEPLACER. L'Aurora Spear entre par le haut
+## quand `wreck_gone` tombe : si la carene est encore a l'ecran a cet instant, le porte-chasseur
+## se pose PAR-DESSUS quarante metres de coque, et ca se lit comme une collision.
+##
+## Le cadre est LU dans la scene, jamais recopie : une camera reculee d'une unite rendrait ce
+## test faux en silence, et la faute ne se verrait qu'en jouant la fin du niveau.
+func test_the_drift_takes_the_wreck_out_of_the_frame() -> void:
+	var cam := _drift_camera()
+	assert_eq(cam.size(), 2, "la camera du niveau se lit")
+	if cam.size() != 2:
+		return
+	var oeil: Vector3 = (cam[0] as Transform3D).origin
+	var cadre: Rect2 = GameplayPlane.visible_frame(cam[0], cam[1])
+	# Le point le plus ARRIERE de la poupe : le massif, a `z_local = -12` (BRIEF-0106 §2).
+	var arriere_local := -12.0
+	var apres := CortegeFlyby.DRIFT_RUN
+	var monde := Vector3(0.0, STERN_T.deck_y,
+		-STERN_T.hold_plane_y + apres + arriere_local)
+	var plan := GameplayPlane.aim_point_of(monde, oeil)
+	assert_true(plan.y < cadre.position.y,
+		"apres %.1f u de derive, l'arriere de la poupe est a plan_y = %.2f, sous le bord bas du cadre (%.2f)"
+			% [apres, plan.y, cadre.position.y])
+
+## ⚠️ ET ELLE NE REPART PAS A LA VITESSE DU SURVOL. Un vaisseau dont on vient de couper les trois
+## moteurs qui reprendrait sa vitesse de croisiere en une image demenrait la phrase qu'on vient
+## de lui appliquer. La rampe existe, et elle dure.
+func test_the_wreck_takes_its_time_to_move_again() -> void:
+	assert_true(CortegeFlyby.DRIFT_RAMP > 1.0,
+		"la derive s'installe en %.1f s, elle ne demarre pas d'un coup" % CortegeFlyby.DRIFT_RAMP)
+	assert_true(CortegeFlyby.DRIFT_SPEED > 0.0, "et elle avance vraiment")
