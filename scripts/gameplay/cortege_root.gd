@@ -662,7 +662,18 @@ func _on_player_docked() -> void:
 	print("[Cortege] VICTORY — score %d" % _game_state.score)
 	_game_state.transition_to(GameStateScript.State.VICTORY)
 	get_tree().create_timer(REPORT_DELAY).timeout.connect(
-		show_report.bind(MissionReport.Outcome.VICTORY))
+		show_report.bind(MissionReport.Outcome.VICTORY, _artery_note()))
+
+## Ce que le survol a pris au vaisseau, en une ligne. Vide si le joueur n'a rien coupé.
+##
+## ⚠️ C'EST LA SEULE CHOSE QUI RENDE LA MECANIQUE COMPTABLE. La réplique de Lyra dit que c'est
+## arrivé ; elle ne dit pas COMBIEN, donc elle ne se compare pas d'une partie à l'autre. Un
+## joueur qui en coupe sept ne saura jamais qu'il aurait pu en couper douze — et une récompense
+## qu'on ne peut pas mesurer n'est pas une récompense, c'est une ambiance.
+func _artery_note() -> String:
+	if _artery == null or _artery.cut_count() <= 0:
+		return ""
+	return "ARTERE %d/%d" % [_artery.cut_count(), _artery.conduits().size()]
 
 func _on_game_over() -> void:
 	if _finished or _defeated:

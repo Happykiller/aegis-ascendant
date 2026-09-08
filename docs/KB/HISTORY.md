@@ -530,4 +530,15 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
 - **La consigne parlée a enfin une contrepartie à l'écran** (2026-09-07) : Lyra disait « coupez
   leurs ancrages » **onze secondes avant** que les verrous ne s'ouvrent, et rien ne désignait
   lesquels. Chevron de désignation, arcs en rubans, et la réplique déplacée sur l'ouverture.
+- **Le survol prend enfin quelque chose à la poupe** (2026-09-08) : `ADR-0050`, plan
+  `2026-09-08-couper-l-artere`. Quatre minutes de traversée n'avaient **aucune** conséquence sur
+  la fin — raser dix-sept tourelles ou passer tout droit donnait la même poupe. Douze conduites
+  destructibles sur l'artère, 2,5 % de charge chacune, plancher à 0,70, figée au montage de la
+  phase. ⚠️ L'effet local a été écarté parce que le **nœud d'épine le fait déjà** ; l'escalade et
+  les salves aussi, parce qu'elles sont ce que le vaisseau lâche pour se défendre et non ce que
+  l'artère alimente.
+- **Trois livraisons tierces entrent sans décimation** (2026-09-08) : `BRIEF-0108`, `ADR-0048`
+  amendé. Elles arrivaient avec leur **générateur complet**, donc on régénère à basse densité au
+  lieu de raboter — 88 504 → 2 612 pour le pylône. ⚠️ Et la forge a **contredit le concepteur avec
+  des mesures** sur le repli des matériaux : `AA_Panel` est le violet `#452663`, pas un gris.
 

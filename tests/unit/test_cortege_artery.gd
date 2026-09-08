@@ -141,3 +141,29 @@ func test_the_deck_height_agrees_with_the_skin() -> void:
 			"%s est a y = %.2f, l'assise des conduites a %.2f — elles ne flottent pas"
 				% [entree[0], p.y, Artery.DECK_Y])
 	assert_true(proches > 10, "assez de marqueurs voisins compares (%d)" % proches)
+
+# =============================================================================
+# Ce que le joueur peut COMPTER
+# =============================================================================
+
+## ⚠️ UNE RECOMPENSE QU'ON NE PEUT PAS MESURER N'EST PAS UNE RECOMPENSE, C'EST UNE AMBIANCE. La
+## replique de Lyra dit que c'est arrive ; elle ne dit pas COMBIEN, donc elle ne se compare pas
+## d'une partie a l'autre. Un joueur qui en coupe sept ne saurait jamais qu'il aurait pu en
+## couper douze.
+func test_the_report_can_count_what_the_flyby_took() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/gameplay/cortege_root.gd")
+	assert_true(source.contains("_artery_note()"),
+		"le rapport de victoire recoit la note de l'artere")
+	assert_true(source.contains("cut_count()"), "et elle vient du compteur du placeur")
+
+## ⚠️ ET LE NIVEAU 1 N'EN VOIT RIEN. Le rapport est PARTAGE : une ligne « ARTERE » y serait vide
+## et absurde sur un niveau qui n'a pas d'artere. La note est un COMPLEMENT optionnel de la trace
+## de comms, pas une ligne de plus — ce test garde la valeur par defaut.
+func test_the_shared_report_stays_untouched_without_a_note() -> void:
+	var source := FileAccess.get_file_as_string("res://scripts/ui/mission_report.gd")
+	assert_true(source.contains('note: String = ""'),
+		"la note est optionnelle, donc le niveau 1 ne la passe pas")
+	assert_true(source.contains("if note.is_empty()"),
+		"et sans note, la trace de comms est exactement celle d'avant")
+	var graybox := FileAccess.get_file_as_string("res://scripts/gameplay/graybox_root.gd")
+	assert_false(graybox.contains("ARTERE"), "le niveau 1 ne parle pas d'artere")

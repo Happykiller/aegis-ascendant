@@ -157,9 +157,9 @@ func draw_debug_zones(screens: PlaneShapes = null) -> void:
 		layers.x == 1, layers.y == 1, layers.z == 1)
 
 ## L'écran de fin. Le niveau dit l'issue ; le socle sait comment on la présente.
-func show_report(outcome: MissionReport.Outcome) -> void:
+func show_report(outcome: MissionReport.Outcome, note: String = "") -> void:
 	var screen := MissionReportScene.instantiate()
-	screen.setup(_game_state.score, outcome)
+	screen.setup(_game_state.score, outcome, note)
 	add_child(screen)
 	if _hud != null:
 		_hud.visible = false

@@ -78,6 +78,22 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 
 ---
 
+## ⚠️ Ouvert par le chantier de l'artère (2026-09-08)
+
+- **Douze repères manquent dans la coque.** L'assise des conduites (`CortegeArtery.DECK_Y`,
+  −4,30) est **la seule cote du chantier qui ne vienne pas de l'asset** : l'artère n'a aucun
+  marqueur, contrairement aux dix-sept tourelles, sept ponts et cinq nœuds. Un test la compare au
+  `y` échantillonné des marqueurs voisins, donc une reforge de coque ne passera pas en silence —
+  mais la vraie sortie est un brief de forge pour douze `CTRL | Conduite NN`. ⚠️ **C'est une
+  dette, pas un défaut** : elle est nommée dans le code, à l'endroit exact de la constante.
+- **La mécanique n'a jamais tourné manette en main.** Le banc prouve que la charge est bornée,
+  monotone et figée ; il ne dit rien de ce qu'on RESSENT. Trois questions qu'une partie tranche et
+  qu'aucun test ne tranchera : les conduites se voient-elles en défilant ? valent-elles le
+  détour ? et 30 % de charge en moins se sentent-ils à la poupe ?
+- **Le flexible a perdu ses six demi-colliers** à la réduction (168 tri pour 2,9 px de large,
+  `BRIEF-0108`). Leurs repères `CTRL` restent et sont animés : la mécanique survit, le geste non.
+  À rouvrir si la pièce grandit un jour.
+
 ## ⚠️ Ouvert par les parties du 2026-09-07 (poupe du niveau 2)
 
 - **L'équilibrage de la poupe n'est pas fait, et il demande une partie JOUÉE.** `ADR-0049` a posé

@@ -176,6 +176,14 @@ Si une entrée dépasse l'utile, la scinder plutôt que gonfler le fichier.
   (`forge_voice.py --cue`), jamais le lot : piper n'est pas déterministe. ⚠️ Grepper la
   **formule**, pas le symbole — et **sans sensibilité à la casse** : le docstring disait
   « tronçon SUIVANT » en capitales, sur la première ligne du fichier qui implémente la règle.
+- [Poser une pièce là où la coque n'a pas de repère](pratique-poser-sans-marqueur.md) — toutes
+  les pièces de coque du jeu sont enfants d'un **marqueur livré** ; l'artère n'en a aucun. ⚠️ La
+  convention de station se LIT dans le binaire (`Turret_17` est à `s = 478,8` et porte
+  `z = −78,8`), et le tronçon se lit sur la **hiérarchie**. ⚠️ Comparer des `z` **locaux** entre
+  tronçons différents fait de deux pièces distantes de 200 m des voisines — la station se
+  **recompose**. ⚠️ Un nœud de glTF n'a **pas** de propriété `position` : la chercher dans
+  `SceneState` rend zéro marqueur et des tests **verts et vides**. ⚠️ Et la cote qu'on ne peut pas
+  lire se **déclare** dans le code et se fait garder par ce qui, lui, est lu.
 - [Poser une pièce sur une coque](pratique-poser-une-piece-sur-une-coque.md) — trois défauts que
   la cote, prise isolément, ne montre pas. ⚠️ Une pièce n'est **pas touchable là où elle se
   voit** : `aim_point_of` la projette d'un facteur qui dépend de sa HAUTEUR (0,54 sur le pont,

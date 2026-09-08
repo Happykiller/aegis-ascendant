@@ -96,7 +96,10 @@ var _muting_focus: bool = false
 ## Appelé par le niveau entre instantiate() et add_child() : _ready() n'a pas encore
 ## tourné, donc on n'adresse ici QUE des nœuds (les %-noms sont résolus dès
 ## l'instanciation), jamais un @onready.
-func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
+## ⚠️ LA NOTE S'AJOUTE A LA TRACE DE COMMS, elle n'ouvre pas une ligne. Le rapport est PARTAGE
+## par les deux niveaux : une ligne « ARTERE » y serait vide et absurde au niveau 1, qui n'a pas
+## d'artère. Un complément optionnel, lui, n'existe que quand quelqu'un a quelque chose à dire.
+func setup(score: int, outcome: Outcome = Outcome.VICTORY, note: String = "") -> void:
 	(%ScoreValue as Label).text = "%08d" % score
 	# Le rang note le SCORE, pas l'issue : une défaite tardive vaut mieux qu'une défaite
 	# immédiate, et le rapport doit le dire plutôt que d'afficher un tiret punitif.
@@ -118,7 +121,8 @@ func setup(score: int, outcome: Outcome = Outcome.VICTORY) -> void:
 	(%ReplayButton as Button).text = _REPLAY_LABEL[outcome]
 	# Le canal : dégagé quand la mission est remplie, perdu quand le chasseur l'est.
 	var comms := %CommsText as Label
-	comms.text = _CHANNEL[outcome]
+	comms.text = _CHANNEL[outcome] if note.is_empty() \
+		else "%s   ·   %s" % [_CHANNEL[outcome], note]
 	comms.add_theme_color_override("font_color", CHANNEL_CLEAR if won else CHANNEL_LOST)
 	(%Pip as ColorRect).color = CHANNEL_CLEAR if won else CHANNEL_LOST
 	(%Controls as Label).text = _CONTROLS[outcome]
