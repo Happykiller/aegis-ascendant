@@ -70,8 +70,8 @@ règle B rapporte, le cadre la reprend.
 
 ## Ce qu'il faut faire
 
-**Trouver deux sièges visibles pour `Tour 03` et `Tour 04`.** Vous choisissez comment ; les trois
-voies que je vois, dans l'ordre où je les tenterais :
+**Trouver deux sièges visibles pour `Tour 03` et `Tour 04`.** Vous choisissez comment ; quatre
+voies, et **la D est celle que l'opérateur a nommée** — commencez par elle :
 
 ### A. Les remettre sur le plateau du massif, à côté des deux qui marchent
 
@@ -91,6 +91,38 @@ plates-formes volantes appartiennent au code et je peux les déplacer si vous no
 
 C'est une réponse recevable, et elle vaut mieux que deux pièces invisibles. Si A et B ne donnent
 rien, **retirez `Tour 03/04` et les deux plateaux de rive**, et dites-le.
+
+### D. Baisser l'assise, garder la station — **la voie que l'opérateur a nommée**
+
+> « Il faut ajuster la hauteur pour qu'il soit visible correctement » (opérateur, 2026-09-08).
+
+Lu comme une réduction de la **tour**, ça ne marche pas : à l'assise −4,60 elle ne pourrait faire
+que **1,13 m**, ce qui n'est plus une tour d'échange mais un capot. Lu comme une baisse de
+l'**assise**, ça marche — et c'est la voie la plus économe, puisqu'elle ne touche ni la station ni
+l'empreinte, donc elle ne rouvre aucun recouvrement.
+
+À `z = −10,10` inchangé, avec la tour de 4,70 m :
+
+| Assise | Pied | Sommet | Verdict |
+|---:|---:|---:|---|
+| −4,60 (livrée) | 37 px | **−142 px** | hors cadre |
+| −5,60 | 67 | −98 | hors cadre |
+| −6,60 | 95 | −57 | hors cadre |
+| −7,40 | 116 | −27 | hors cadre |
+| **−8,17** | ~137 | **0** | limite exacte |
+| **−8,40** | 141 | **+8** | dans le cadre |
+| −9,40 | 164 | +40 | plus confortable |
+
+⚠️ **L'assise doit descendre à `−8,17` ou plus bas** — 3,57 m sous l'étagère livrée, soit
+l'altitude du plateau du massif (−8,40), celle qui fait déjà marcher `Tour 01/02`.
+
+Deux vérifications, et ce sont les vôtres : la coque descend-elle jusque-là à `|x| ≈ 17,7`
+(les étagères livrées sont à −6,60 / −5,60 / −4,60) ; et le recouvrement redescend avec le
+plateau, donc à l'altitude des socles de pylône (−8,60) — mesurez-le.
+
+⚠️ **LE CRITÈRE « SOMMET SOUS 240 px » NE S'APPLIQUE PAS AUX TOURS DE RIVE** : il demanderait une
+assise à −17,86. Pour elles, le critère est **sommet ≥ 0**, comme `Tour 01/02` qui frôlent le bord
+à +13 px et se lisent très bien.
 
 ⚠️ **ET CETTE FOIS, MESUREZ LE CADRE AVANT DE DESSINER.** Le rendu de contrôle ne suffit pas : une
 planche studio « à la caméra du jeu » ne porte pas la station de la poupe, donc elle montre une
