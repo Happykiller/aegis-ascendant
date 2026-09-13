@@ -1,6 +1,6 @@
 # BRIEF-0115 — Ambry, sur planche cette fois
 
-- **Statut** : assigné
+- **Statut** : livré et intégré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-13

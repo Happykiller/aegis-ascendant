@@ -221,7 +221,23 @@ SECTION_LENGTH = 100.0
 SHIP_LENGTH = SECTION_LENGTH * SECTION_COUNT      # 500 m
 HALF_WIDTH = 14.0                                  # -> 28 m bord a bord
 
-#: Budgets du brief. 18 000 x 5 = 90 000 : les deux bornes sont coherentes.
+#: Reperes de compte, RAPPORTES et non contraints depuis le 2026-09-13.
+#:
+#: ⚠️ C'ETAIENT DES CLIQUETS BLOQUANTS, ET L'OPERATEUR A PERIME LA REGLE QUI LES A
+#: POSES. Ils viennent du `BRIEF-0089`, ou 90 000 avait ete ESTIME, jamais mesure.
+#: Depuis : « je ne veux pas entendre parler de budget et de restriction, je veux
+#: un jeu beau » (2026-09-08), et tous les briefs suivants disent « rapportez les
+#: comptes, ne les contraignez pas ». La mesure lui donne raison — le corridor
+#: entier rend a 1,5 a 5,1 ms sur les 16,67 d'une image a 60 Hz.
+#:
+#: ⚠️ ET UN CLIQUET QUI RESTE APRES SA REGLE EST UNE MINE. Le `BRIEF-0115` a laisse
+#: `Section_05` a 17 158 pour une borne a 18 000 : le lot suivant sur ce troncon
+#: aurait casse le build « sans raison apparente », et la forge l'a signale au lieu
+#: de lever la borne toute seule — c'etait le bon geste.
+#:
+#: Le seul plafond qui existe desormais est celui que la mesure imposera, et il se
+#: mesure en TEMPS GPU (`.claude/resources/howto-mesurer-la-perf.md`), jamais en
+#: sommets. Ces deux nombres ne servent plus qu'a situer un compte dans le rapport.
 TRI_BUDGET_TOTAL = 90_000
 TRI_BUDGET_SECTION = 18_000
 
@@ -235,7 +251,7 @@ HULL_TEXELS_PER_METER = HULL_TILES_PER_SECTION / SECTION_LENGTH
 AMBRY_TEXELS_PER_METER = 0.70
 
 # --------------------------------------------------------------------------
-# LE HUITIEME SLOT — declare ICI, et pas dans le kit (BRIEF-0090)
+# LES SLOTS PROPRES A AMBRY — declares ICI, et pas dans le kit
 # --------------------------------------------------------------------------
 # Le kit fige SEPT slots (`ak.MATERIAL_ORDER`) et une seule faction par coque :
 # `ak.material()` refuse tout nom hors de sa table et `set_faction()` refuse de
@@ -243,23 +259,108 @@ AMBRY_TEXELS_PER_METER = 0.70
 # `#24252B` : Ambry, l'avant-poste HUMAIN, sortait donc de la matiere meme de ce
 # qui l'a emporte, et son contraste ne tenait qu'a `AA_Trim` (2,29 pct de l'aire).
 #
-# ⚠️ ECART AU KIT, ASSUME ET ECRIT : ce fichier declare LOCALEMENT un huitieme
-# materiau, sur le precedent de `build_moon_flyby.py` qui refait son export sans
+# ⚠️ ECART AU KIT, ASSUME ET ECRIT : ce fichier declare LOCALEMENT ses materiaux
+# d'Ambry, sur le precedent de `build_moon_flyby.py` qui refait son export sans
 # passer par `ak.export_hull()`. Le kit n'est PAS modifie — les sept slots gardent
-# leurs index, le nouveau vient en huitieme position, et rien d'autre au depot ne
-# le voit. La raison de ne pas l'y remonter : « une coque = une faction » est une
-# bonne regle, et Ambry est le seul endroit du jeu ou une greffe humaine vit sur
-# une coque ennemie. Une exception ne fait pas une regle de kit.
+# leurs index, ceux d'Ambry viennent APRES, et rien d'autre au depot ne les voit.
+# La raison de ne pas les y remonter : « une coque = une faction » est une bonne
+# regle, et Ambry est le seul endroit du jeu ou une greffe humaine vit sur une
+# coque ennemie. Une exception ne fait pas une regle de kit.
 #
-# La vraie raison technique du slot separe n'est pas la couleur, c'est L'ECHELLE :
-# Ambry est depliee a 0,700 tuile/m quand le borde est a 0,200. Toute face d'Ambry
-# qui resterait sur un slot du borde recevrait sa carte 3,5 fois trop fine.
-AMBRY_HULL = "AA_Hull_Ambry"
-#: Les 7 slots du kit, PUIS celui d'Ambry : aucun index du kit ne bouge.
-MATERIAL_ORDER: tuple[str, ...] = ak.MATERIAL_ORDER + (AMBRY_HULL,)
+# ⚠️ BRIEF-0090 EN A DECLARE UN ; BRIEF-0115 EN DECLARE DOUZE, ET LA RAISON EST LA
+# MEME, A UNE ECHELLE PRES. Le huitieme (`AA_Hull_Ambry`) n'a jamais ete une
+# affaire de couleur : Ambry est depliee a 0,700 tuile/m quand le borde est a
+# 0,200, et toute face d'Ambry restee sur un slot du borde recevait sa carte
+# 3,5 fois trop fine. La garde ne couvrait qu'un slot sur cinq : au BRIEF-0114,
+# 1 652 des 3 364 triangles d'Ambry etaient encore sur `AA_Greeble`, `AA_Hull`,
+# `AA_Glass` et `AA_Marking_Red`, donc encore a la mauvaise echelle. Ce lot ferme
+# le trou en donnant a CHAQUE NATURE de matiere son slot :
+#
+#     plus une seule face d'Ambry sur un slot du borde — verifie sur le binaire,
+#     triangle par triangle, par `_audit()`, et le controle echoue le build.
+#
+# La table ci-dessous EST le contrat de matieres de la planche
+# `assets/reference/concepts/ambry_texture_atlas_2026-09.png` (TEX-AMB-01..18).
+# ⚠️ Elle ne livre AUCUNE image (ADR-0028) : elle livre les slots et les UV qui
+# accueilleront les cartes de l'operateur, et la densite annoncee de chacun.
+#
+# ⚠️ ET LES COULEURS VIENNENT TOUTES DE LA CHARTE, jamais d'un hex ecrit a la
+# main : elles sont lues dans `ak.PALETTES`. Deux slots peuvent partager une
+# valeur (le fini les separe, et la carte les separera tout a fait) — ce qu'on
+# ne peut pas partager, c'est le SLOT, sans quoi habiller la verriere habillerait
+# aussi les caisses.
+_VANGUARD = ak.PALETTES[ak.FACTION_VANGUARD]
+_UNISON = ak.PALETTES[ak.FACTION_NULL_CHOIR]
+
+AMBRY_HULL = "AA_Hull_Ambry"        # TEX-AMB-01  coque habitation
+AMBRY_TECH = "AA_Tech_Ambry"        # TEX-AMB-02/11/17/18  metal technique
+AMBRY_DECK = "AA_Deck_Ambry"        # TEX-AMB-03/04  passerelle, caillebotis
+AMBRY_PAD = "AA_Pad_Ambry"          # TEX-AMB-05  le pas d'appontage
+AMBRY_WELD = "AA_Weld_Ambry"        # TEX-AMB-06  colliers — A L'UNISSON
+AMBRY_ROCK = "AA_Rock_Ambry"        # TEX-AMB-07  soubassement arrache
+AMBRY_GLASS = "AA_Glass_Ambry"      # TEX-AMB-08  verriere de la serre
+AMBRY_GREEN = "AA_Green_Ambry"      # TEX-AMB-09  vegetation
+AMBRY_WINDOW = "AA_Window_Ambry"    # TEX-AMB-10  fenetres eclairees
+#: ⚠️ L'ECRU, ET LE BLEU A ETE ESSAYE PUIS REJETE AU RENDU (ADR-0006). La planche
+#: de matieres nomme « toile bleue » dans sa palette (TEX-AMB-12) et la planche de
+#: concept en montre une sur la vue gameplay : le `#1C2B5E` d'Helios Vanguard a
+#: donc ete pose, rendu a la camera du jeu, et REGARDE. Verdict : une bache de
+#: 1,36 x 2,08 m en bleu sature devient l'objet le plus visible des 27 m, avant
+#: les fenetres allumees — elle vole la lecture a ce qui est le sujet, et elle
+#: contredit « le vert de la serre est la seule couleur ». L'ecru `#DDDCD2` la
+#: rend a son rang ; le bleu reviendra par la CARTE si l'operateur le veut, ou en
+#: repassant cette entree a `_VANGUARD["panel"]`.
+AMBRY_CLOTH = "AA_Cloth_Ambry"      # TEX-AMB-12/15  baches, toiles, linge
+AMBRY_CRATE = "AA_Crate_Ambry"      # TEX-AMB-13  caisses, conteneurs
+AMBRY_SIGN = "AA_Sign_Ambry"        # TEX-AMB-14/16  portes, trappes, panneaux
+
+#: (cle de palette Vanguard/Unisson, metallic, roughness, alpha, emission).
+#: ⚠️ L'ORDRE DE CE DICTIONNAIRE EST L'ORDRE DES SLOTS, donc l'ordre des index de
+#: materiau : ne rien inserer au milieu sans refaire un build complet.
+AMBRY_MATERIAL_SPECS: dict[str, tuple[str, float, float, float, float]] = {
+    AMBRY_HULL:   (_VANGUARD["hull"],    0.05, 0.45, 1.00, 0.0),
+    AMBRY_TECH:   (_VANGUARD["greeble"], 0.70, 0.50, 1.00, 0.0),
+    AMBRY_DECK:   (_UNISON["trim"],      0.30, 0.65, 1.00, 0.0),
+    AMBRY_PAD:    (_UNISON["greeble"],   0.15, 0.78, 1.00, 0.0),
+    AMBRY_WELD:   (_UNISON["greeble"],   0.88, 0.30, 1.00, 0.0),
+    AMBRY_ROCK:   (_VANGUARD["greeble"], 0.00, 0.92, 1.00, 0.0),
+    AMBRY_GLASS:  (_UNISON["glass"],     0.00, 0.08, 0.86, 0.0),
+    AMBRY_GREEN:  (_UNISON["marking"],   0.00, 0.58, 1.00, 0.0),
+    AMBRY_WINDOW: (_VANGUARD["trim"],    0.00, 0.35, 1.00, 1.2),
+    AMBRY_CLOTH:  (_UNISON["trim"],      0.00, 0.90, 1.00, 0.0),
+    AMBRY_CRATE:  (_VANGUARD["greeble"], 0.25, 0.62, 1.00, 0.0),
+    AMBRY_SIGN:   (_VANGUARD["greeble"], 0.10, 0.65, 1.00, 0.0),
+}
+#: Les slots d'Ambry, dans l'ordre de declaration.
+AMBRY_SLOTS: tuple[str, ...] = tuple(AMBRY_MATERIAL_SPECS)
+#: Les 7 slots du kit, PUIS ceux d'Ambry : aucun index du kit ne bouge.
+MATERIAL_ORDER: tuple[str, ...] = ak.MATERIAL_ORDER + AMBRY_SLOTS
+#: Les slots du kit que ce decor n'emploie PLUS, et c'est voulu (BRIEF-0115).
+#:
+#: ⚠️ `AA_Glass` et `AA_Marking_Red` n'avaient qu'un seul client dans les 500 m :
+#: Ambry — sa verriere et le vert de sa serre. Depuis que chaque nature de matiere
+#: d'Ambry a son slot, plus rien du Long Cortege n'est ni en verre ni en vert. Ils
+#: restent DECLARES sur le maillage (les index de slot ne bougent pas) et
+#: `_audit()` echoue le build si l'un d'eux reprenait une face : ce serait une
+#: face d'Ambry rendue a l'echelle du borde, 3,5 fois trop fine.
+EMPTY_ON_PURPOSE: tuple[str, ...] = ("AA_Glass", "AA_Marking_Red")
 #: Le gris-ivoire des coques Helios Vanguard, lu dans la palette du kit et non
 #: recopie a la main : si la charte change, ce slot change avec elle.
-AMBRY_HULL_HEX = ak.PALETTES[ak.FACTION_VANGUARD]["hull"]      # #EDEAE3
+AMBRY_HULL_HEX = _VANGUARD["hull"]                             # #EDEAE3
+#: L'ambre chaud des fenetres — l'or de la charte Helios Vanguard.
+#:
+#: ⚠️ CE N'EST PAS `AA_Emissive_Engine`, ET C'EST UNE DECISION DE JEU, PAS DE GOUT
+#: (BRIEF-0115). Le magenta appartient a l'Unisson et l'interdit tient ; mais
+#: l'interdit porte sur CETTE COULEUR, pas sur la lumiere. Et comme
+#: `CortegeSkin.emissives_of()` ne ramasse que `AA_Emissive_Engine`, le blackout
+#: de fin de niveau eteindra les 85 conduits du vaisseau et **laissera les
+#: fenetres d'Ambry allumees**. Les gens n'etaient pas alimentes par ce qui les a
+#: pris. Rien a cabler cote moteur : il suffit que le slot soit distinct.
+AMBRY_WINDOW_HEX = _VANGUARD["trim"]                           # #E4B54A
+#: L'energie d'emission des fenetres, POSEE DANS LE `.glb` et jamais retouchee.
+#: `CortegeSkin` ne connait pas ce slot : la valeur du binaire est celle du jeu,
+#: et c'est aussi celle que rend la planche. Un seul chiffre, un seul endroit.
+AMBRY_WINDOW_ENERGY = 1.2
 
 # --------------------------------------------------------------------------
 # La section transversale — moitie tribord, du CANAL a la quille
@@ -1009,13 +1110,14 @@ AMBRY_JOINT = 0.12
 #: la coursive elle-meme : la passerelle reste continue d'un bout a l'autre.
 AMBRY_TRENCH = 0.55
 #: Les QUATRE ZONES, en `s` GLOBAL, dans l'ordre du survol. Le joueur les decouvre
-#: dans cet ordre parce qu'il les survole dans cet ordre — et depuis BRIEF-0114
-#: elles se DISTINGUENT, chacune ayant son vocabulaire propre.
+#: dans cet ordre parce qu'il les survole dans cet ordre, et la planche de concept
+#: (elevation de flanc) donne leurs proportions : greffe courte, habitation longue,
+#: serre, antenne.
 AMBRY_ZONES: tuple[tuple[str, float, float], ...] = (
-    ("greffe", 446.50, 452.30),
-    ("habitation", 452.85, 464.10),
-    ("serre", 464.65, 469.90),
-    ("antenne", 470.45, 473.50),
+    ("greffe", 446.50, 452.20),
+    ("habitation", 452.75, 464.60),
+    ("serre", 465.10, 469.85),
+    ("antenne", 470.30, 473.50),
 )
 #: Les DOUZE TRAVERSES du « re-plombe » : (station, debord inboard).
 #:
@@ -1031,6 +1133,97 @@ AMBRY_BEAMS: tuple[tuple[float, float], ...] = (
     (447.35, 0.40), (449.60, 0.18), (451.90, 0.33), (454.15, 0.25),
     (456.40, 0.44), (458.30, 0.15), (460.55, 0.37), (462.80, 0.28),
     (465.20, 0.21), (467.60, 0.41), (470.10, 0.30), (472.45, 0.17),
+)
+
+# --- BRIEF-0115 : un LIEU, pas un alignement de boites ----------------------
+# ⚠️ LE PANNEAU « A EVITER » DE LA PLANCHE DE CONCEPT EST LA GRILLE D'ACCEPTATION
+# DE CE LOT, et il nomme quatre defauts qui sont exactement ceux de la version
+# livree au BRIEF-0114 : boites identiques, ailettes vertes, tout d'equerre,
+# aucune vie lisible. Les tables ci-dessous sont la reponse, defaut par defaut.
+#
+#   * `AMBRY_MODULES` — SEPT modules, aucun de la meme taille, aucun avec le meme
+#     toit, quatre poses DE TRAVERS. Un relais de quatre-vingts personnes se batit
+#     par ajouts sur quarante ans : un bloc d'origine, des extensions, un module
+#     remonte a l'envers. Ce n'est pas du bruit, c'est une chronologie.
+#   * `AMBRY_ROCKS` — le soubassement arrache. Il DEBORDE du radeau au lieu d'y
+#     pendre : a 70 deg de plongee, rien sous un radeau de 5,5 m n'est visible
+#     (mesure du BRIEF-0113, qui avait deja coute les douze bequilles). C'est lui
+#     qui casse le rectangle : la silhouette de la planche n'a pas de bord droit.
+#
+# ⚠️ ET LE « RE-PLOMBE » EST LE SUJET, PAS UN ORNEMENT. La bible le glose deux
+# fois (an 301, `NULL_CHOIR.md`) : « rien de detruit, rien de vole, tout rebati
+# LEGEREMENT DE TRAVERS ». Le generateur avait lu « remis d'aplomb » et tout
+# aligne au millimetre — Ambry etait la seule chose parfaitement orthogonale d'un
+# vaisseau fait de facettes. Le detail C de la planche donne la valeur : 2 a 3
+# degres. Assez pour qu'on le voie, trop peu pour qu'on croie a une erreur
+# d'assemblage. Le malaise doit demander UNE SECONDE, pas zero.
+
+#: Les SEPT modules d'habitation :
+#: (nom, x0, x1, s0, s1, dessus, devers en degres, toit).
+#:
+#: `toit` decide de ce qui vit dessus, et AUCUN N'EST REPETE :
+#:   "bac"     parapet sur trois cotes, deux lanterneaux ambre, echelle
+#:   "bache"   pas de parapet, une bache tendue de travers qui deborde
+#:   "voute"   cinq pans en berceau — la seule courbe de la zone
+#:   "caisses" toit plat, trois caisses empilees et un touret de cable
+#:   "solaire" quatre panneaux inclines
+#:   "parabole" bac, deux lanterneaux et une parabole orientee
+#:   "cuve"    toit plat, une cuve octogonale et un event
+AMBRY_MODULES: tuple[tuple[str, float, float, float, float, float, float, str], ...] = (
+    # ⚠️ LES SEPT HAUTEURS SONT TOUTES DIFFERENTES, ET AUCUNE N'EST UN GOUT : la
+    # plus haute (M5, 1,00 m au-dessus des dalles) est calee pour que ses panneaux
+    # solaires s'arretent a -3,22, deux centimetres sous le plafond de
+    # construction. Le ciel disponible est de 1,28 m, et il est utilise.
+    ("M1", 9.17, 11.35, 452.90, 455.70, -3.62, 0.0, "bac"),
+    ("M2", 11.68, 12.80, 453.10, 455.00, -4.06, 2.6, "bache"),
+    ("M3", 9.40, 11.50, 456.15, 458.40, -3.52, -2.2, "voute"),
+    ("M4", 9.17, 10.05, 458.95, 460.30, -4.14, 0.0, "caisses"),
+    ("M5", 10.60, 12.80, 458.80, 461.60, -3.48, 1.9, "solaire"),
+    ("M6", 9.17, 10.85, 462.00, 464.10, -3.74, -2.8, "parabole"),
+    ("M7", 11.15, 12.80, 462.25, 463.70, -4.18, 0.0, "cuve"),
+)
+
+#: Le soubassement arrache : (cx, cs, rayon x, rayon s, cotes, phase, dessus).
+#:
+#: ⚠️ IL DEBORDE, ET C'EST TOUT SON INTERET. Les blocs poses SOUS le radeau
+#: seraient invisibles ; ceux-ci sortent de l'emprise des dalles — en avant de
+#: `s = 446,5`, en arriere de `473,5`, en deca de `x = 7,90` et au-dela de
+#: `13,40` — si bien qu'on les voit DE DESSUS, en frange dechiquetee autour d'une
+#: dalle par ailleurs droite. Cinq d'entre eux montent au-dessus du plan des
+#: dalles a l'entree : on n'a pas decoupe proprement, on a pris le morceau.
+#:
+#: ⚠️ Ils restent DANS `AMBRY_KEEPOUT` (x 6,90..14,10 ; s 443,5..476,5) : c'est la
+#: fenetre que `_audit()` reserve a Ambry, et un triangle d'un slot d'Ambry en
+#: dehors echoue le build.
+AMBRY_ROCKS: tuple[tuple[float, float, float, float, int, float, float], ...] = (
+    # --- la grappe de l'entree, autour du collier avant --------------------
+    (7.62, 445.10, 0.62, 0.74, 6, 0.21, -4.33),
+    (8.55, 444.62, 0.78, 0.55, 5, 0.63, -4.52),
+    (9.90, 444.48, 0.95, 0.62, 6, 0.11, -4.41),
+    (11.40, 444.55, 0.82, 0.58, 5, 0.44, -4.58),
+    (12.70, 444.80, 0.74, 0.66, 6, 0.86, -4.36),
+    (13.62, 445.45, 0.58, 0.82, 5, 0.29, -4.62),
+    (7.70, 446.35, 0.55, 0.70, 5, 0.72, -4.30),
+    (13.70, 446.90, 0.52, 0.75, 6, 0.38, -4.44),
+    # --- les dents qui MONTENT au-dessus du plan des dalles ----------------
+    (8.35, 445.85, 0.44, 0.42, 5, 0.95, -4.26),
+    (10.55, 445.55, 0.52, 0.48, 6, 0.17, -4.18),
+    (12.15, 445.72, 0.40, 0.45, 5, 0.55, -4.31),
+    # --- la frange de rive : le radeau EST un morceau de sol arrache -------
+    (7.66, 450.20, 0.42, 0.66, 5, 0.33, -4.60),
+    (13.66, 452.40, 0.38, 0.72, 6, 0.70, -4.66),
+    (7.62, 456.80, 0.36, 0.58, 5, 0.06, -4.71),
+    (13.70, 459.10, 0.44, 0.62, 6, 0.48, -4.63),
+    (7.68, 462.30, 0.40, 0.70, 5, 0.81, -4.68),
+    (13.64, 465.40, 0.34, 0.55, 6, 0.24, -4.72),
+    (7.64, 468.90, 0.38, 0.64, 5, 0.59, -4.65),
+    # --- la grappe de poupe, autour du collier arriere ---------------------
+    (13.68, 472.10, 0.46, 0.74, 6, 0.13, -4.55),
+    (7.70, 473.20, 0.52, 0.68, 5, 0.66, -4.48),
+    (8.90, 474.95, 0.86, 0.62, 6, 0.40, -4.50),
+    (10.60, 475.25, 0.98, 0.58, 5, 0.88, -4.43),
+    (12.30, 475.05, 0.80, 0.64, 6, 0.27, -4.57),
+    (13.55, 474.35, 0.62, 0.70, 5, 0.52, -4.64),
 )
 
 # --------------------------------------------------------------------------
@@ -2111,37 +2304,54 @@ APRON_GRAFT = 2.4
 # ==========================================================================
 
 
-def _ambry_material() -> bpy.types.Material:
-    """Le materiau propre a Ambry — COPIE d'`AA_Hull`, recolorise en Vanguard.
+def _ambry_material(name: str) -> bpy.types.Material:
+    """Un des DOUZE materiaux propres a Ambry — COPIE d'`AA_Hull`, re-reglee.
 
-    Une copie et non une declaration a la main : `AA_Hull` porte deja le rendu
-    d'une coque du kit (metallic 0,05, roughness 0,45 — une tole PEINTE, quand
-    `AA_Trim` est a 0,85/0,28, une carapace POLIE). Ambry doit sortir de la meme
-    famille de surface que les coques d'Helios Vanguard, pas de la carapace de
-    l'Unisson : la difference de speculaire est un quatrieme signal, gratuit et
-    independant de toute texture, apres l'orthogonalite, la valeur et l'absence
-    de magenta.
+    Une copie et non une declaration a la main : `AA_Hull` porte deja l'arbre de
+    nœuds d'une coque du kit, et c'est ce qui garantit que les materiaux d'Ambry
+    sortent de la meme famille de surface que le reste du decor. Seuls la couleur
+    de base, le metallic, la rugosite, l'alpha et l'emission sont re-regles, a
+    partir de `AMBRY_MATERIAL_SPECS` — dont toutes les couleurs viennent de
+    `ak.PALETTES`, donc de la charte.
 
     ⚠️ Memoise par le nom, comme `ak.material()` : deux appels rendent le meme
-    datablock, sans quoi les cinq troncons porteraient cinq materiaux differents
-    et l'exporteur en sortirait cinq copies.
+    datablock, sans quoi les cinq troncons porteraient douze materiaux chacun et
+    l'exporteur en sortirait soixante copies.
     """
-    existing = bpy.data.materials.get(AMBRY_HULL)
+    existing = bpy.data.materials.get(name)
     if existing is not None:
         return existing
+    if name not in AMBRY_MATERIAL_SPECS:
+        raise ak.ContractError(f"slot d'Ambry inconnu : {name!r}")
+    hexa, metallic, roughness, alpha, emission = AMBRY_MATERIAL_SPECS[name]
     mat = ak.material("AA_Hull").copy()
-    mat.name = AMBRY_HULL
-    color = ak.srgb_hex_to_linear(AMBRY_HULL_HEX)
-    mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = color
+    mat.name = name
+    color = ak.srgb_hex_to_linear(hexa)
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Alpha"].default_value = alpha
+    if emission > 0.0:
+        bsdf.inputs["Emission Color"].default_value = color
+        bsdf.inputs["Emission Strength"].default_value = emission
+    else:
+        bsdf.inputs["Emission Strength"].default_value = 0.0
+    if alpha < 1.0:
+        # Meme reglage que `ak.material()` : c'est encore `blend_method` que
+        # l'exporteur glTF lit pour decider `alphaMode`.
+        mat.blend_method = "BLEND"
+        mat.surface_render_method = "BLENDED"
+        bsdf.inputs["Transmission Weight"].default_value = 0.30
     mat.diffuse_color = color
     return mat
 
 
 def _mat_index(name: str) -> int:
-    """Index de slot dans `MATERIAL_ORDER` — les 7 du kit, plus Ambry.
+    """Index de slot dans `MATERIAL_ORDER` — les 7 du kit, plus les 12 d'Ambry.
 
     Remplace `ak.mat_index()`, qui ne connait que les sept. Les sept gardent
-    exactement leur index : seul le huitieme est nouveau.
+    exactement leur index : ceux d'Ambry viennent apres.
     """
     try:
         return MATERIAL_ORDER.index(name)
@@ -2152,7 +2362,7 @@ def _mat_index(name: str) -> int:
 
 
 def _new_object(name: str, bm: bmesh.types.BMesh) -> bpy.types.Object:
-    """Objet a 8 slots (les 7 du kit + celui d'Ambry), SANS `recalc_face_normals`.
+    """Objet a 19 slots (les 7 du kit + les 12 d'Ambry), SANS `recalc_face_normals`.
 
     ⚠️ Difference volontaire avec `ak.new_object()`. Les troncons 2 a 5 sont des
     tubes ouverts aux deux bouts : l'heuristique de bmesh peut y retourner toute la
@@ -2164,10 +2374,15 @@ def _new_object(name: str, bm: bmesh.types.BMesh) -> bpy.types.Object:
     # ⚠️ APRES le kit, jamais avant : `apply_material_slots()` refuse d'ecraser
     # des slots existants, et un `materials.clear()` remettrait a zero le
     # `material_index` de TOUS les polygones, en silence. Les cinq troncons
-    # portent les huit slots meme si quatre d'entre eux n'utilisent pas le
-    # huitieme : ainsi la fusion d'Ambry dans le troncon 5 n'a aucun index a
+    # portent les dix-neuf slots meme si quatre d'entre eux n'utilisent aucun
+    # slot d'Ambry : ainsi la fusion d'Ambry dans le troncon 5 n'a aucun index a
     # remapper, et `_mat_index()` reste vrai partout.
-    mesh.materials.append(_ambry_material())
+    # ⚠️ L'exporteur glTF n'ecrit que les materiaux REELLEMENT references par une
+    # primitive : les troncons 1 a 4 ne portent donc rien d'Ambry dans le `.glb`,
+    # et `_audit()` verifie que les dix-neuf sont presents ET assignes quelque
+    # part dans le fichier.
+    for slot in AMBRY_SLOTS:
+        mesh.materials.append(_ambry_material(slot))
     if [m.name for m in mesh.materials] != list(MATERIAL_ORDER):
         raise ak.ContractError(
             f"{name} : slots {[m.name for m in mesh.materials]} au lieu de "
@@ -2363,6 +2578,91 @@ def _yawed_plan(cx: float, cs: float, half_x: float, half_s: float,
                (half_x, half_s), (-half_x, half_s))
     return [(cx + dx * ca - ds * sa, cs + dx * sa + ds * ca)
             for dx, ds in corners]
+
+
+def _ngon_plan(cx: float, cs: float, rx: float, rs: float, sides: int,
+               phase: float = 0.0) -> list[tuple[float, float]]:
+    """Empreinte a `sides` cotes — cuves, tambours, parabole, blocs de roche.
+
+    ⚠️ ELLE EXISTE PARCE QUE TOUT CE DECOR EST ORTHOGONAL. Le grief de
+    l'operateur sur Ambry — « tout d'equerre », panneau « A EVITER » de la
+    planche — ne se leve pas seulement en TOURNANT des boites : il faut des
+    empreintes qui n'ont pas quatre cotes. Une cuve octogonale de 80 cm se lit a
+    37 px, et rien d'autre du vaisseau n'a cette silhouette.
+
+    L'ordre des sommets est l'angle CROISSANT, donc le meme bobinage que
+    `_yawed_plan` : la face du dessus sort normale +Y.
+    """
+    return [(cx + rx * math.cos(phase + 2.0 * math.pi * k / sides),
+             cs + rs * math.sin(phase + 2.0 * math.pi * k / sides))
+            for k in range(sides)]
+
+
+def _prism(bm: bmesh.types.BMesh, plan: list[tuple[float, float]],
+           y_bottom: float, y_top: float,
+           side_material: str, top_material: str, draft: float = 0.0) -> float:
+    """`_surface_poly` a hauteurs IMPOSEES — la primitive d'Ambry.
+
+    ⚠️ La difference avec `_surface_poly` n'est pas cosmetique : celle-ci prend
+    son assise dans `_surface_y`, c'est-a-dire sur la PEAU DU VAISSEAU, ce qui est
+    juste pour une greffe de l'Unisson et faux pour tout ce qui est pose sur le
+    radeau d'Ambry — lequel est un plan a `AMBRY_RAFT_Y`, en porte-a-faux
+    au-dessus d'une facette inclinee. Une piece d'Ambry ecrite en `_surface_poly`
+    suivrait la pente de la coque : c'est exactement le defaut qui avait enterre
+    les colliers de greffe a deux metres sous le radeau (BRIEF-0114 §2).
+    """
+    cx = sum(x for x, _ in plan) / len(plan)
+    cs = sum(s for _, s in plan) / len(plan)
+    inner: list[tuple[float, float]] = []
+    for x, s in plan:
+        dx, ds = cx - x, cs - s
+        length = math.hypot(dx, ds)
+        step = min(draft, length * 0.45) / length if length > 1e-9 else 0.0
+        inner.append((x + dx * step, s + ds * step))
+    bv = [bm.verts.new(Vector((x, y_bottom, _z(s)))) for x, s in plan]
+    tv = [bm.verts.new(Vector((x, y_top, _z(s)))) for x, s in inner]
+    _face(bm, tv, top_material)
+    _face(bm, list(reversed(bv)), side_material)
+    for i in range(len(plan)):
+        j = (i + 1) % len(plan)
+        _quad(bm, bv[i], bv[j], tv[j], tv[i], side_material)
+    return y_top
+
+
+def _strut(bm: bmesh.types.BMesh, a: Vector, b: Vector, half: float,
+           material: str) -> float:
+    """Un tube a section carree tendu de `a` a `b`, dans N'IMPORTE QUEL sens.
+
+    ⚠️ C'EST CE QUI MANQUAIT AU MAT. La planche montre l'antenne HAUBANEE, et un
+    hauban est la seule piece d'Ambry qui ne soit ni horizontale ni verticale :
+    aucune primitive de ce fichier ne savait l'ecrire. Or c'est lui qui fait la
+    silhouette — a 70 deg de plongee, quatre cables qui rayonnent en PLAN depuis
+    le pied du mat dessinent une etoile de 3,2 m, la seule figure non
+    rectangulaire des 27 m.
+
+    Le bobinage est CALCULE (`_quad_facing`) et non ecrit : l'orientation depend
+    du sens du segment, et une regle ecrite a la main serait fausse la moitie du
+    temps. Rend la longueur du brin.
+    """
+    axis = b - a
+    length = axis.length
+    if length < 1e-9:
+        return 0.0
+    axis = axis / length
+    seed = Vector((0.0, 1.0, 0.0)) if abs(axis.y) < 0.9 else Vector((1.0, 0.0, 0.0))
+    u = axis.cross(seed).normalized()
+    w = axis.cross(u).normalized()
+    offsets = ((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0))
+    av = [bm.verts.new(a + u * (half * i) + w * (half * j)) for i, j in offsets]
+    bv = [bm.verts.new(b + u * (half * i) + w * (half * j)) for i, j in offsets]
+    for k in range(4):
+        m = (k + 1) % 4
+        want = (u * (offsets[k][0] + offsets[m][0])
+                + w * (offsets[k][1] + offsets[m][1])) * 0.5
+        _quad_facing(bm, av[k], av[m], bv[m], bv[k], material, want)
+    _quad_facing(bm, av[0], av[1], av[2], av[3], material, -axis)
+    _quad_facing(bm, bv[0], bv[1], bv[2], bv[3], material, axis)
+    return length
 
 
 def _plan_bounds(plan: list[tuple[float, float]]) -> tuple[float, float,
@@ -3936,72 +4236,95 @@ def turret_seat_y(s: float, x: float) -> tuple[float, float]:
 
 
 def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
-    """Un avant-poste humain de quatre-vingts personnes, greffe sur le borde.
+    """L'avant-poste ou le JOUEUR a grandi — quatre-vingts personnes, tu depuis 379.
 
-    Il doit JURER, et il jure par trois moyens qui ne dependent d'aucune texture :
+    ⚠️ LE MOT EST **INSOUTENABLE**, PAS SPECTACULAIRE. Ce qui doit serrer la gorge,
+    c'est que TOUT VA BIEN : la serre pousse, les fenetres sont allumees, l'antenne
+    est debout, rien n'est casse. Une ruine ne dirait rien de plus qu'une ruine ;
+    un village intact, emporte et remis en service par autre chose, dit tout.
 
-    1. **L'orthogonalite.** Tout est aligne sur deux axes et sur un radeau PLAN,
-       quand la coque dessous est faite de facettes inclinees. Le radeau est en
-       porte-a-faux au-dessus de la facette exterieure, tenu par douze bequilles
-       de longueurs toutes differentes — c'est le « re-plombe » du brief, et c'est
-       ce qui dit qu'on a POSE cela sur un vaisseau qui n'etait pas fait pour le
-       recevoir.
-       ⚠️ DEPUIS BRIEF-0114, CHAQUE BEQUILLE SORT PAR SES DEUX BOUTS. Elle etait
-       sous le radeau, donc invisible : une camera qui plonge a 70 deg ne voit
-       jamais un dessous, et l'operateur n'a jamais vu la meilleure idee de la
-       piece. Les douze sont maintenant des TRAVERSES : au bord interieur une
-       tete recoupee a une longueur differente, posee sur le pont du vaisseau par
-       son sabot ; au bord exterieur une bequille dont le haut passe au large de
-       l'ombre du radeau. Voir `AMBRY_BEAMS`.
-    2. **La valeur, et depuis BRIEF-0090 elle a son propre slot.** Ambry est
-       dominee par `AA_Hull_Ambry`, huitieme materiau declare en tete de ce
-       fichier : le gris-ivoire `#EDEAE3` des coques Helios Vanguard, contre
-       l'anthracite `#24252B` de l'Unisson partout ailleurs — contraste 12,7:1
-       (WCAG), contre 11,1:1 auparavant. AVANT, ces memes faces etaient en
-       `AA_Trim` (l'ivoire froid `#DDDCD2` de l'Unisson) : la valeur y etait
-       deja, mais la MATIERE etait celle de l'ennemi, et une carte propre a
-       Ambry etait impossible.
-       ⚠️ Le gain n'est qu'a un quart une affaire de COULEUR (+16 pct de
-       luminance de base) : le reste vient du FINI. `AA_Trim` est metallic 0,85
-       — une carapace polie, qui rend peu en diffus ; `AA_Hull_Ambry` herite du
-       0,05 des coques Vanguard, une tole PEINTE. Mesure sur la vignette
-       d'elevation, meme eclairage, avant/apres : 0,547 -> 0,720 de luminance
-       a l'ecran.
-       ⚠️ Deux endroits gardent volontairement `AA_Hull` anthracite : les deux
-       colliers de greffe (ils appartiennent au vaisseau, pas a l'avant-poste)
-       et le pas d'appontage (un pont clair de plus effacerait le pas ; c'est sa
-       valeur SOMBRE qui le fait lire comme un pas). Voir le compte-rendu §6.
-       ⚠️ ET LA VALEUR CLAIRE RESTE MAJORITAIRE — decision de l'operateur du
-       2026-09-13, l'amortissement de l'ivoire a ete explicitement ecarte. Tout
-       le relief ajoute par BRIEF-0114 est donc dose : le sombre ne prend le
-       plateau qu'en LIGNES et en CREUX, jamais en aplats.
-    3. **L'absence de magenta.** Aucune face `AA_Emissive_Engine` sur Ambry. La
-       seule couleur y est le vert maladif `#7C9E52` (`AA_Marking_Red` sous cette
-       palette) de la serre — le seul emploi de cette couleur des 500 m.
+    CE QUE CE LOT CORRIGE — LE PANNEAU « A EVITER » DE LA PLANCHE DE CONCEPT
+    =======================================================================
+    Il nomme quatre defauts, et ce sont exactement les quatre de la version livree
+    au BRIEF-0114. Chacun a ici sa reponse, et chacune est mesurable :
 
-    Il est INTACT : modules alignes, passerelle continue d'un bout a l'autre, serre
-    entiere, antenne debout. C'est ce qui doit rendre la decouverte insoutenable ;
-    une ruine ne dirait rien de plus qu'une ruine.
+    1. **BOITES IDENTIQUES** -> `AMBRY_MODULES` pose SEPT volumes dont aucun ne
+       partage ni ses cotes, ni sa hauteur, ni son toit : 0,30 a 1,04 m au-dessus
+       des dalles, de 1,45 x 1,12 m a 2,80 x 2,40 m, et sept traitements de toit
+       differents (bac, bache, voute, caisses, panneaux solaires, parabole, cuve).
+       Ce n'est pas du bruit, c'est une chronologie : un relais de quatre-vingts
+       personnes se batit par ajouts sur quarante ans.
+    2. **AILETTES VERTES** -> la serre etait SEPT ARCEAUX VERTS debout, qui
+       lisaient comme un radiateur. Les arceaux sont maintenant IVOIRE et fins
+       (9 cm), la verriere est un volume translucide continu, et le vert est ce
+       qu'il y a DEDANS : cinq rangs de culture longitudinaux a cinq hauteurs
+       differentes, avec leurs sillons sombres. Le vert ne borde plus, il POUSSE.
+    3. **TOUT D'EQUERRE** -> le « re-plombe » du lore est enfin dans la geometrie.
+       Quatre modules sur sept sont poses de travers de 1,9 a 2,8 deg, la serre
+       entiere de 2,3 deg, la bache de 9,4 deg ; une passerelle tombe a 38 cm a
+       cote de la porte qu'elle dessert ; une main courante continue sur 2,1 m la
+       ou il n'y a plus de vide a border ; les colliers de greffe sont quatre
+       massifs a quatre devers, et le metal a COULE dessus. Rien ne depasse 3 deg
+       — le malaise doit demander une seconde, pas zero.
+    4. **AUCUNE VIE LISIBLE** -> et c'est le point qui decide. A 45,8 px/m, une
+       porte de 60 cm fait 27 px et un montant de garde-corps 9 px : ce qui dit
+       « des gens vivaient la » est parfaitement a portee. Portes, garde-corps
+       continus, echelles, caisses empilees, bache, linge sur un fil, vehicule
+       d'entretien gare de travers, cuves, touret de cable, panneau peint — et
+       SURTOUT les fenetres allumees, qui sont l'element le plus important de
+       toute la piece.
 
-    ⚠️ CONTRAINTE QUI A DECIDE DE TOUT LE PLAN : il reste 1,28 m entre le radeau et
-    le plafond de construction. Ambry est donc un RUBAN de 27 x 5,5 m pose le long
-    du borde, jamais un bourg en hauteur. Les zones se suivent dans l'axe du
-    survol : greffe, habitation, serre, antenne — le joueur les decouvre dans cet
-    ordre parce qu'il les survole dans cet ordre.
+    LES FENETRES — `AA_Window_Ambry`, ET PAS `AA_Emissive_Engine`
+    ============================================================
+    Le magenta appartient a l'Unisson et l'interdit tient ; mais il porte sur la
+    COULEUR, pas sur la lumiere. Les fenetres sont sur leur slot propre, en ambre
+    chaud (l'or `#E4B54A` de la charte Helios Vanguard), a `AMBRY_WINDOW_ENERGY`.
+    Consequence de jeu voulue par le brief : `CortegeSkin.emissives_of()` ne
+    ramasse que `AA_Emissive_Engine`, donc au blackout final les 85 conduits du
+    vaisseau s'eteindront et **les fenetres d'Ambry resteront allumees**. Les gens
+    n'etaient pas alimentes par ce qui les a pris.
 
-    ⚠️ ET C'EST PARCE QU'ON NE PEUT PAS MONTER QU'ON CREUSE (BRIEF-0114). Le
-    plateau `AMBRY_TRAY_Y` est 30 cm sous les dalles : c'est le NEGATIF qui porte
-    tout le relief de la piece — joints de 12 cm, ruelles, fouille d'ancrage,
-    bacs de culture, fosse de machinerie, coursive en contrebas. Rien n'est monte
-    d'un centimetre, et le sommet reste le mat, a `BUILD_CEILING_Y` exactement.
+    ⚠️ Elles sont posees LA OU LA CAMERA LES VOIT. A 70 deg de plongee, une face
+    horizontale rend 94 pct de sa surface a l'ecran, une face verticale 34 : les
+    lanterneaux de toiture pesent donc trois fois ce que pese une fenetre de
+    facade. Les trois orientations sont servies — toitures, faces AVANT (normale
+    +z, tournee vers la camera) et faces INBOARD (tournees vers x = 0, ou est la
+    camera) — mais la toiture d'abord.
 
-    NEUF BANDES LONGITUDINALES, ET AUCUNE NE S'ARRETE
-    -------------------------------------------------
-    Ce qui fait qu'on lit une CONSTRUCTION et non une plaque, c'est qu'elle a une
-    trame. Le radeau est decoupe en neuf bandes qui courent les 27 m entiers —
-    rive interieure, gouttiere, bati, joint, bordure, coursive, bordure, joint,
-    rive exterieure — et les quatre zones s'inscrivent DEDANS. La trame dit
-    « c'est bati » ; les zones disent « il y a quatre lieux ».
+    LA SILHOUETTE — CE QUI CASSE LE RECTANGLE
+    =========================================
+    Le grief de l'operateur etait « pas de forme », et la mesure lui donnait
+    raison : le contour d'Ambry etait un rectangle de 27 x 5,5 m. Deux dispositifs
+    le brisent, et tous deux sont DANS LE PLAN, la seule vue qui paie ici :
+
+      * le **soubassement arrache** (`AMBRY_ROCKS`) DEBORDE de l'emprise des
+        dalles au lieu d'y pendre — en avant, en arriere et sur les deux rives.
+        On n'a pas decoupe proprement : on a pris le morceau. A 70 deg, rien sous
+        un radeau de 5,5 m n'est visible (mesure du BRIEF-0113) : de la roche
+        suspendue sous la dalle aurait ete une idee non livree, une fois de plus ;
+      * les **quatre haubans** de l'antenne, qui rayonnent en plan sur 3,2 m
+        depuis le pied du mat. Le mat est le seul accent VERTICAL autorise (il
+        touche `BUILD_CEILING_Y` au millimetre) ; ses haubans sont ce qui le rend
+        lisible de loin.
+
+    LA CONTRAINTE QUI DECIDE DE TOUT : 1,28 M DE CIEL SUR 27 M
+    =========================================================
+    Le radeau est a -4,48, le plafond de construction a -3,20, et Ambry est DANS
+    le plan de vol (`|x| <= 14`) : la regle B des flancs ne s'applique pas, rien
+    ne peut monter. La lecture vient donc du PLAN — et elle y vient tres bien.
+    Tout le relief est EN CREUX (plateau `AMBRY_TRAY_Y` a 30 cm sous les dalles) :
+    joints de 12 cm, ruelles, fouille d'ancrage, fosse de machinerie, rue en
+    contrebas. Le sommet reste le mat, a `BUILD_CEILING_Y` exactement.
+
+    DOUZE SLOTS, UN PAR NATURE DE MATIERE (BRIEF-0115)
+    ==================================================
+    Toutes les faces d'Ambry sont sur un slot A ELLE (`AMBRY_SLOTS`) : plus une
+    seule ne reste sur `AA_Greeble`, `AA_Hull`, `AA_Glass` ou `AA_Marking_Red`.
+    Ce n'est pas un rangement, c'est ce qui rend la suite POSSIBLE : la piece est
+    depliee a 0,700 tuile/m quand le borde est a 0,200, et `CortegeSkin` choisit
+    l'echelle PAR NOM DE MATERIAU. Au BRIEF-0114, 1 652 des 3 364 triangles
+    d'Ambry recevaient donc les cartes du borde 3,5 fois trop fines. Il n'en reste
+    aucun, et `_audit()` le verifie sur le binaire.
     """
     s0, s1 = AMBRY_S            # ⚠️ en `s` GLOBAL, comme tout le vocabulaire
     x0, x1 = AMBRY_X
@@ -4012,6 +4335,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     stats: dict = {}
     tops: list[float] = []
     ledger: dict[str, int] = {}
+    life: dict[str, int] = {}
     mark = set(bm.faces)
 
     def tally(tag: str) -> None:
@@ -4023,6 +4347,15 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
         ledger[tag] = ledger.get(tag, 0) + sum(len(f.verts) - 2 for f in fresh)
         mark = set(bm.faces)
 
+    def note(kind: str, count: int = 1) -> None:
+        """L'inventaire de la VIE LISIBLE — il part au compte-rendu tel quel.
+
+        ⚠️ Un critere qu'on n'a pas compte est un critere qu'on a affirme. « De la
+        vie lisible » est le quatrieme point du panneau « A EVITER » : il se
+        chiffre, objet par objet, avec sa taille a l'ecran."""
+        life[kind] = life.get(kind, 0) + count
+
+    # ---- les primitives locales -------------------------------------------
     def slab(ax0, ax1, as0, as1, y_bottom, y_top, side_mat, top_mat, draft=0.0):
         plan = ((ax0, as0), (ax1, as0), (ax1, as1), (ax0, as1))
         inner = ((ax0 + draft, as0 + draft), (ax1 - draft, as0 + draft),
@@ -4036,19 +4369,17 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
 
     def plate(bx0, bx1, as0, as1, top=None, mat=AMBRY_HULL, draft=0.03):
         """Une dalle POSEE dans le plateau. ⚠️ Son dessous est a `sink`, 4 cm DANS
-        le fond : une face coplanaire avec le plateau scintillerait, et c'est la
-        meme regle que toutes les pieces empilees d'Ambry."""
+        le fond : une face coplanaire avec le plateau scintillerait."""
         slab(bx0, bx1, as0, as1, sink, raft if top is None else top,
              mat, mat, draft)
 
     def paved(bx0, bx1, as0, as1, pitch, top=None, mat=AMBRY_HULL) -> int:
         """Pave une bande de dalles au pas `pitch`, joints OUVERTS sur le fond.
 
-        C'est la primitive qui porte le lot : elle transforme 27 m de tole en une
-        suite de panneaux separes par des traits sombres de 12 cm, sans monter
-        d'un millimetre et sans qu'aucun booleen ne soit necessaire — le joint
-        n'est pas creuse, il n'est simplement pas couvert.
-        """
+        C'est la primitive qui transforme 27 m de tole en une suite de panneaux
+        separes par des traits sombres de 12 cm, sans monter d'un millimetre et
+        sans qu'aucun booleen ne soit necessaire — le joint n'est pas creuse, il
+        n'est simplement pas couvert."""
         span = as1 - as0
         count = max(1, int(round(span / pitch)))
         step = span / count
@@ -4059,270 +4390,726 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
             plate(bx0, bx1, a, b, top, mat)
         return count
 
+    def turned(cx, cs, yaw, dx0, dx1, ds0, ds1, y_bottom, y_top,
+               side_mat, top_mat, draft=0.0):
+        """Une boite ecrite dans le repere LOCAL d'une piece de travers.
+
+        ⚠️ C'est elle qui rend le « re-plombe » ecrivable. Une porte, un
+        lanterneau, un parapet doivent tourner AVEC leur module : ecrits en
+        coordonnees du vaisseau, ils se decolleraient de la facade a laquelle ils
+        appartiennent. Les coins locaux sont donnes dans l'ordre (x croissant,
+        puis s croissant) — le seul qui rende la face du dessus normale +Y — et
+        une rotation plane le preserve."""
+        ca, sa = math.cos(yaw), math.sin(yaw)
+        plan = [(cx + dx * ca - ds * sa, cs + dx * sa + ds * ca)
+                for dx, ds in ((dx0, ds0), (dx1, ds0), (dx1, ds1), (dx0, ds1))]
+        _prism(bm, plan, y_bottom, y_top, side_mat, top_mat, draft)
+        tops.append(y_top)
+
+    def slanted(plan, y_bottom, corner_tops, side_mat, top_mat, draft=0.0):
+        """Un volume dont le DESSUS est incline — panneau solaire, parabole, bache.
+
+        ⚠️ Aucune primitive de ce fichier ne savait le faire : tout y a un dessus
+        plat. Or un panneau solaire a plat ne se distingue pas d'une trappe, et
+        une bache a plat ne se distingue pas d'un toit. L'inclinaison est ce qui
+        les nomme, et elle ne coute pas un triangle de plus."""
+        cx = sum(x for x, _ in plan) / len(plan)
+        cs = sum(s for _, s in plan) / len(plan)
+        inner: list[tuple[float, float]] = []
+        for x, s in plan:
+            dx, ds = cx - x, cs - s
+            length = math.hypot(dx, ds)
+            step = min(draft, length * 0.45) / length if length > 1e-9 else 0.0
+            inner.append((x + dx * step, s + ds * step))
+        bv = [bm.verts.new(Vector((x, y_bottom, _z(s)))) for x, s in plan]
+        tv = [bm.verts.new(Vector((x, y, _z(s))))
+              for (x, s), y in zip(inner, corner_tops)]
+        _face(bm, tv, top_mat)
+        _face(bm, list(reversed(bv)), side_mat)
+        for i in range(len(plan)):
+            j = (i + 1) % len(plan)
+            _quad(bm, bv[i], bv[j], tv[j], tv[i], side_mat)
+        tops.append(max(corner_tops))
+
     rx0, rx1 = x0 + 0.30, x1 - 0.20           # 7,90 .. 13,40
     rs0, rs1 = s0 + 0.5, s1 - 0.5             # 446,50 .. 473,50
     # ⚠️ `rs0` EST LU PAR LE MOTEUR. `CortegeRoot._slot_front_edge()` cherche le
     # `z` local le plus grand des faces `AA_Hull_Ambry` et en tire la station a
     # laquelle la replique de Lyra part. Le banc
     # `test_the_front_edge_of_ambry_is_read_from_the_hull` exige 446,5 +/- 1 :
-    # AUCUNE face ivoire ne doit se poser en avant de `rs0`. Les colliers, eux,
-    # sont en `AA_Hull` et peuvent deborder — c'est meme leur role.
+    # AUCUNE face `AA_Hull_Ambry` ne doit se poser en avant de `rs0`. La roche, les
+    # colliers et la rue sont sur d'AUTRES slots d'Ambry et debordent librement —
+    # c'est meme leur role : annoncer Ambry avant qu'elle n'entre.
 
-    # --- les neuf bandes longitudinales --------------------------------------
-    b_rive_in = (rx0, rx0 + 0.36)             # 7,90 .. 8,26   dalles
-    b_gutter = (rx0 + 0.36, rx0 + 0.56)       # 8,26 .. 8,46   gouttiere ouverte
-    b_yard = (rx0 + 0.56, rx0 + 3.26)         # 8,46 .. 11,16  le bati
-    b_joint_in = (rx0 + 3.26, rx0 + 3.38)     # 11,16 .. 11,28 joint ouvert
-    b_kerb_in = (rx0 + 3.38, rx0 + 3.56)      # 11,28 .. 11,46 bordure
-    # ⚠️ LA COURSIVE EST FENDUE EN DEUX. D'un seul tenant elle rendait 1,20 m de
-    # blanc plat sur 27 m — la moitie du « il n'y a rien a lire » que l'operateur
-    # signale. Le caniveau central l'ouvre sur le fond du plateau : une ligne
-    # sombre continue d'un bout a l'autre, qui ne coute pas un centimetre de ciel.
-    b_walk_in = (rx0 + 3.58, rx0 + 4.06)      # 11,48 .. 11,96 coursive, babord
-    b_grate = (rx0 + 4.06, rx0 + 4.32)        # 11,96 .. 12,22 caniveau ouvert
-    b_walk_out = (rx0 + 4.32, rx0 + 4.78)     # 12,22 .. 12,68 coursive, tribord
-    b_kerb_out = (rx0 + 4.80, rx0 + 4.98)     # 12,70 .. 12,88 bordure
-    b_joint_out = (rx0 + 4.98, rx0 + 5.10)    # 12,88 .. 13,00 joint ouvert
-    b_rive_out = (rx0 + 5.10, rx1)            # 13,00 .. 13,40 dalles
-    walk_y = raft - 0.14                      # -4,62 : la coursive est EN CREUX
+    # --- LA TRAME : six bandes, et la rue est la plus proche de la camera ----
+    # ⚠️ LA RUE A CHANGE DE BORD, ET C'EST UNE MESURE. La camera est a x = 0 : le
+    # bord INBOARD d'Ambry est celui qu'elle voit de face. Y mettre la coursive,
+    # ses garde-corps et les portes qui donnent dessus met toute l'echelle humaine
+    # du cote ou elle se lit ; au BRIEF-0114 elle etait a tribord, c'est-a-dire du
+    # cote que la perspective ecrase.
+    b_edge = (rx0, rx0 + 0.20)                # 7,90 .. 8,10  bordure, les montants
+    b_street = (rx0 + 0.20, rx0 + 1.15)       # 8,10 .. 9,05  LA RUE, en contrebas
+    b_gutter = (rx0 + 1.15, rx0 + 1.27)       # 9,05 .. 9,17  joint ouvert
+    b_yard = (rx0 + 1.27, rx0 + 4.90)         # 9,17 .. 12,80 LE BATI
+    b_joint = (rx0 + 4.90, rx0 + 5.02)        # 12,80 .. 12,92 joint ouvert
+    b_rim = (rx0 + 5.02, rx1)                 # 12,92 .. 13,40 rive exterieure
+    walk_y = raft - 0.14                      # -4,62 : la rue est EN CREUX
 
     # --- le plateau : le fond sombre sur lequel tout est pose ----------------
-    # ⚠️ Il est RETREINT de 4 cm sur ses quatre bords : ses flancs tomberaient
-    # sinon dans le plan des dalles de rive, et deux faces coplanaires
-    # scintillent. C'est la meme raison que le `sink` des dalles.
+    # ⚠️ Retreint de 4 cm sur ses quatre bords : ses flancs tomberaient sinon dans
+    # le plan des dalles de rive, et deux faces coplanaires scintillent.
     slab(rx0 + 0.04, rx1 - 0.04, rs0 + 0.04, rs1 - 0.04, under, tray,
-         "AA_Greeble", "AA_Greeble")
+         AMBRY_TECH, AMBRY_TECH)
     tally("plateau")
 
-    # --- les deux colliers de greffe : ce qui appartient au VAISSEAU ---------
-    # ⚠️ ILS NE SE VOYAIENT PAS NON PLUS. Ecrits en `_surface_box`, ils prenaient
-    # leur assise au MINIMUM de quatre coins dont l'un tombait sur la facette
-    # exterieure a -6,66 : leur dessus sortait a -6,40, deux metres sous le
-    # radeau, et la « greffe » — la premiere des quatre zones — n'avait
-    # strictement rien a montrer. Ils sont maintenant ecrits en TROIS MASSIFS qui
-    # montent chacun de SA peau jusqu'au ras du radeau : une bride qui pince le
-    # borde, et qu'on voit arriver avant Ambry elle-meme.
+    # --- LE SOUBASSEMENT ARRACHE : ce qui casse le rectangle ----------------
+    # « On n'a pas decoupe proprement : on a pris le morceau. » Chaque bloc est un
+    # penta- ou hexagone irregulier — aucune empreinte a quatre cotes, aucune
+    # arete parallele a une autre — et il DEBORDE de l'emprise des dalles.
+    rocks = 0
+    high_rocks = 0
+    for cx, cs, rrx, rrs, sides, phase, rock_top in AMBRY_ROCKS:
+        plan = _ngon_plan(cx, cs, rrx, rrs, sides, phase * math.tau)
+        _prism(bm, plan, -5.24, rock_top, AMBRY_ROCK, AMBRY_ROCK, draft=0.16)
+        tops.append(rock_top)
+        rocks += 1
+        if rock_top > raft:
+            high_rocks += 1
+    tally("roche")
+    note("blocs de roche arrachee", rocks)
+
+    # --- LES DEUX COLLIERS : la couture, et elle N'EST JAMAIS PROPRE --------
+    # ⚠️ C'EST LE CANON DE L'UNISSON (`NULL_CHOIR.md`) : « la jonction entre la
+    # coque d'origine et ce qui a pousse dessus n'est jamais propre ». La version
+    # du BRIEF-0114 etait trois massifs d'equerre a brides regulieres — une bride
+    # d'usine. Chaque collier est maintenant QUATRE massifs a quatre devers
+    # differents (3 a 11 deg), qui se chevauchent, plus des COULURES : des langues
+    # de metal fondu qui ont coule du collier sur les dalles claires et s'y sont
+    # figees. Elles sont sur `AA_Weld_Ambry` : elles appartiennent au vaisseau.
     collars = 0
-    for cs0, cs1 in ((rs0 - 1.45, rs0 - 0.10), (rs1 + 0.10, rs1 + 1.45)):
-        for cx0, cx1, top in ((7.56, 9.36, raft + 0.06),
-                              (9.40, 11.56, raft + 0.10),
-                              (11.60, 13.36, raft + 0.14)):
+    runs_of_metal = 0
+    #: (devers deg, x0, x1, debord avant, dessus) — rien de repete d'un a l'autre
+    collar_blocks = ((3.4, 7.52, 9.48, 0.00, raft + 0.04),
+                     (-6.8, 9.20, 11.14, 0.22, raft + 0.19),
+                     (8.2, 10.86, 12.62, -0.14, raft - 0.06),
+                     (-4.1, 12.34, 13.58, 0.31, raft + 0.12))
+    #: Les coulures : (fraction en x, largeur, longueur, devers deg, dessus).
+    drips = ((0.06, 0.17, 1.35, 4.0, 0.035), (0.21, 0.11, 0.62, -7.0, 0.020),
+             (0.33, 0.24, 1.85, 2.5, 0.055), (0.47, 0.13, 0.94, -3.5, 0.028),
+             (0.58, 0.19, 1.48, 6.5, 0.045), (0.71, 0.10, 0.55, -5.5, 0.018),
+             (0.84, 0.22, 1.12, 3.0, 0.038), (0.93, 0.14, 0.78, -8.0, 0.024))
+    for side, (cs0, cs1) in ((1.0, (rs0 - 1.55, rs0 - 0.08)),
+                             (-1.0, (rs1 + 0.08, rs1 + 1.55))):
+        for index, (deg, cx0, cx1, reach, top) in enumerate(collar_blocks):
+            centre_s = 0.5 * (cs0 + cs1) - side * reach
+            half_s = 0.5 * (cs1 - cs0) + 0.10 * ((index % 3) - 1)
             base = min(_surface_y(v, px) for v in (cs0, cs1)
                        for px in (cx0, cx1)) - 0.10
-            slab(cx0, cx1, cs0, cs1, base, top, "AA_Hull", "AA_Hull", draft=0.10)
-            # Trois brides sombres en travers du massif : le collier a une
-            # texture de relief, pas seulement une silhouette.
-            for k in range(3):
-                bs = cs0 + (cs1 - cs0) * (0.22 + 0.28 * k)
-                slab(cx0 + 0.12, cx1 - 0.12, bs - 0.07, bs + 0.07,
-                     top - 0.08, top + 0.07, "AA_Greeble", "AA_Greeble")
-            collars += 1
+            turned(0.5 * (cx0 + cx1), centre_s, math.radians(deg * side),
+                   -0.5 * (cx1 - cx0), 0.5 * (cx1 - cx0), -half_s, half_s,
+                   base, top, AMBRY_WELD, AMBRY_WELD, draft=0.09)
+        # Les coulures partent du collier et MORDENT sur la dalle claire.
+        for fraction, width, length, deg, rise in drips:
+            px = rx0 + 0.12 + fraction * (rx1 - rx0 - 0.24)
+            start = cs1 if side > 0.0 else cs0
+            turned(px, start + side * length * 0.5, math.radians(deg),
+                   -width * 0.5, width * 0.5, -length * 0.5, length * 0.5,
+                   raft - 0.22, raft + rise, AMBRY_WELD, AMBRY_WELD, draft=0.02)
+            runs_of_metal += 1
+        collars += 1
     tally("colliers")
+    note("coulures de metal fondu", runs_of_metal)
 
     # --- les douze traverses du « re-plombe », visibles par leurs deux bouts --
     beams = 0
     for index, (bs, reach) in enumerate(AMBRY_BEAMS):
         head_x = rx0 - reach
-        # La tete : elle sort du bord interieur et s'arrete sous les dalles de
-        # rive, ou son dessus (-4,62) est enfoui dans la dalle (-4,80 .. -4,48).
         slab(head_x, rx0 + 0.30, bs - 0.11, bs + 0.11, under - 0.02, tray + 0.16,
-             "AA_Greeble", "AA_Greeble")
-        # Le sabot : la traverse a ete recoupee et CALEE sur le pont du vaisseau.
+             AMBRY_TECH, AMBRY_TECH)
         foot = _surface_y(bs, head_x) - 0.12
         slab(head_x + 0.02, head_x + 0.24, bs - 0.09, bs + 0.09, foot,
-             tray + 0.14, "AA_Greeble", "AA_Greeble")
-        # La bequille : elle descend sur la facette exterieure, et son haut passe
-        # AU LARGE de l'ombre du radeau — c'est ce qui la rend visible.
+             tray + 0.14, AMBRY_TECH, AMBRY_TECH)
         leg_out = 13.50 + 0.012 * index
         slab(rx1 - 0.12, leg_out, bs - 0.13, bs + 0.13,
              _surface_y(bs, leg_out) - 0.10, tray - 0.01,
-             "AA_Greeble", "AA_Greeble", draft=0.03)
+             AMBRY_TECH, AMBRY_TECH, draft=0.03)
         beams += 1
     tally("traverses")
 
-    # --- le pas d'appontage : la seule grande valeur SOMBRE du radeau --------
-    pad = (448.20, 451.60)
-    slab(b_kerb_in[0], rx1, pad[0], pad[1], under - 0.02, raft - 0.06,
-         "AA_Hull", "AA_Hull", draft=0.06)
-    for k in range(4):
-        ps = pad[0] + 0.42 + k * 0.84
-        slab(b_kerb_in[0] + 0.25, rx1 - 0.25, ps - 0.08, ps + 0.08,
-             raft - 0.14, raft - 0.01, "AA_Greeble", "AA_Greeble")
+    # --- LE PAS D'APPONTAGE : vide, et c'est de la que le pilote est parti ---
+    # ⚠️ Il garde sa valeur SOMBRE (`AA_Pad_Ambry`, le plus sombre des douze
+    # slots) : c'est elle qui le fait lire comme un pas et non comme une dalle.
+    pad = (448.30, 451.70)
+    pad_x = (b_yard[0], b_yard[1])
+    slab(pad_x[0], pad_x[1], pad[0], pad[1], under - 0.02, raft - 0.05,
+         AMBRY_PAD, AMBRY_PAD, draft=0.05)
+    # Le « H » d'appontage, en CLAIR sur le pas sombre : 1,45 x 1,05 m, soit
+    # 66 x 48 px a l'ecran. Il est de travers de 2,5 deg, comme le reste.
+    hx_c, hs_c = 0.5 * (pad_x[0] + pad_x[1]), 0.5 * (pad[0] + pad[1])
+    for dx0, dx1, ds0, ds1 in ((-0.72, -0.50, -0.52, 0.52),
+                               (0.50, 0.72, -0.52, 0.52),
+                               (-0.50, 0.50, -0.11, 0.11)):
+        turned(hx_c, hs_c, math.radians(2.5), dx0, dx1, ds0, ds1,
+               raft - 0.14, raft - 0.02, AMBRY_DECK, AMBRY_DECK)
+    # Quatre feux de coin, eteints : ce sont des plots, pas des lampes.
+    for dx in (-1.55, 1.55):
+        for ds in (-1.52, 1.52):
+            turned(hx_c, hs_c, math.radians(2.5), dx - 0.09, dx + 0.09,
+                   ds - 0.09, ds + 0.09, raft - 0.16, raft + 0.06,
+                   AMBRY_TECH, AMBRY_TECH)
+    # Deux bandes de rive hachurees le long du pas : le marquage de sol.
+    for ds in (pad[0] - 0.22, pad[1] + 0.10):
+        for k in range(6):
+            a = pad_x[0] + 0.18 + k * 0.58
+            plate(a, a + 0.34, ds, ds + 0.12, top=raft - 0.01, mat=AMBRY_DECK)
     tally("pas_appontage")
+    note("marquages de sol", 15)
 
-    # --- les bandes qui courent les 27 m : rives, bordures, coursive ---------
-    # Elles sont posees en TROIS courses parce que le pas d'appontage les coupe :
-    # une course avant, le pas, une course apres. Un joint de 6 cm de chaque cote
-    # evite deux faces coplanaires.
-    runs = ((rs0, pad[0] - 0.06), (pad[1] + 0.06, rs1))
-    walk_bays = 0
-    for a, b in runs:
-        paved(*b_kerb_in, a, b, 2.60)
-        paved(*b_kerb_out, a, b, 2.60)
-        paved(*b_rive_out, a, b, 1.90)
-        walk_bays += paved(*b_walk_in, a, b, 1.45, top=walk_y)
-        paved(*b_walk_out, a, b, 1.45, top=walk_y)
-    tally("bandes")
+    # --- LA RUE : elle court les 27 m, sans une interruption -----------------
+    # ⚠️ ELLE EST LA PREUVE QU'AMBRY EST INTACTE. Une passerelle continue d'un
+    # bout a l'autre, en contrebas de 14 cm, avec ses garde-corps : c'est le seul
+    # element qui traverse les quatre zones, et c'est ce qui fait un LIEU plutot
+    # que quatre.
+    walk_bays = paved(*b_street, rs0, rs1, 1.55, top=walk_y, mat=AMBRY_DECK)
+    paved(*b_edge, rs0, rs1, 2.35, mat=AMBRY_DECK)
+    tally("rue")
 
-    # --- les garde-corps de la coursive : la cadence sur 27 m ---------------
+    # --- les garde-corps : la cadence humaine sur 27 m ----------------------
     rails = 0
-    for k in range(12):
-        rs = rs0 + 1.10 + k * 2.32
-        if rs > rs1 - 0.6:
+    post_x = (b_edge[0] + 0.05, b_street[1] - 0.04)
+    for k in range(19):
+        rs = rs0 + 0.70 + k * 1.46
+        if rs > rs1 - 0.35:
             break
-        if pad[0] - 0.2 < rs < pad[1] + 0.2:
-            continue
-        for px in (b_walk_in[0] + 0.05, b_walk_out[1] - 0.05):
+        for px in post_x:
             slab(px - 0.07, px + 0.07, rs - 0.07, rs + 0.07,
-                 walk_y - 0.10, raft + 0.26, AMBRY_HULL, AMBRY_HULL)
+                 walk_y - 0.10, raft + 0.30, AMBRY_DECK, AMBRY_DECK)
             rails += 1
+    # La MAIN COURANTE, continue : 9 cm de large sur 27 m, une ligne claire qui
+    # ne s'interrompt jamais — et c'est ce qui relie les montants entre eux.
+    for px in post_x:
+        slab(px - 0.045, px + 0.045, rs0 + 0.30, rs1 - 0.30,
+             raft + 0.21, raft + 0.30, AMBRY_DECK, AMBRY_DECK)
+    # ⚠️ LA MAIN COURANTE ABSURDE (detail C de la planche). Celle-ci borde le
+    # bati, donc un vide — jusqu'a `absurd_from`, ou le pavage de la zone antenne
+    # reprend a plat. Elle continue pourtant, et finit en l'air.
+    absurd_from = AMBRY_ZONES[3][1]
+    absurd_to = absurd_from + 2.10
+    slab(b_gutter[1] - 0.03, b_gutter[1] + 0.06, AMBRY_ZONES[1][1], absurd_to,
+         raft + 0.19, raft + 0.28, AMBRY_DECK, AMBRY_DECK)
+    for k in range(13):
+        rs = AMBRY_ZONES[1][1] + 0.35 + k * 1.52
+        if rs > absurd_to - 0.20:
+            break
+        slab(b_gutter[1] - 0.04, b_gutter[1] + 0.05, rs - 0.05, rs + 0.05,
+             raft - 0.02, raft + 0.28, AMBRY_DECK, AMBRY_DECK)
+        rails += 1
     tally("garde_corps")
+    note("montants de garde-corps", rails)
+    note("mains courantes continues", 3)
 
-    # --- LES QUATRE ZONES ----------------------------------------------------
-    # La rive interieure et le bati sont interrompus par les TROIS TRANCHEES :
-    # 55 cm de fond sombre en travers de 3,38 m de radeau. C'est le seul dispositif
-    # du lot qui dit « ici finit un lieu et un autre commence », et c'est celui qui
-    # se lit le plus loin — 155 x 25 px a 45,8 px/m.
+    # --- la rive exterieure et ses taquets d'amarrage -----------------------
+    paved(*b_rim, rs0, rs1, 1.85)
+    cleats = 0
+    for k in range(9):
+        ts = rs0 + 1.25 + k * 3.05
+        if ts > rs1 - 0.8:
+            break
+        slab(b_rim[0] + 0.08, b_rim[0] + 0.34, ts - 0.11, ts + 0.11,
+             raft - 0.12, raft + 0.20, AMBRY_DECK, AMBRY_DECK)
+        cleats += 1
+    tally("rive_exterieure")
+    note("taquets d'amarrage", cleats)
+
+    # ======================================================================
+    # LES QUATRE ZONES
+    # ======================================================================
+    # Les modules d'abord, parce que le PAVAGE de la cour se calcule a partir de
+    # leurs empreintes : une dalle qui mordrait sur un module n'est pas posee, et
+    # c'est ce qui creuse les ruelles sans un seul booleen.
+    module_plans: dict[str, list[tuple[float, float]]] = {}
+    obstacles: list[tuple[float, float, float, float]] = []
+
+    def block(bounds: tuple[float, float, float, float], margin: float = 0.07):
+        obstacles.append((bounds[0] - margin, bounds[1] + margin,
+                          bounds[2] - margin, bounds[3] + margin))
+
+    for name, mx0, mx1, ms0, ms1, mtop, deg, roof in AMBRY_MODULES:
+        plan = _yawed_plan(0.5 * (mx0 + mx1), 0.5 * (ms0 + ms1),
+                           0.5 * (mx1 - mx0), 0.5 * (ms1 - ms0),
+                           math.radians(deg))
+        module_plans[name] = plan
+        block(_plan_bounds(plan))
+
+    # La serre, de travers elle aussi — un volume de 3,24 x 4,20 m a 2,3 deg.
+    green_yaw = math.radians(2.3)
+    green_cx, green_cs = 10.98, 467.45
+    green_hx, green_hs = 1.62, 2.10
+    block(_plan_bounds(_yawed_plan(green_cx, green_cs, green_hx, green_hs,
+                                   green_yaw)), 0.20)
+    # Le pas d'appontage, la fouille d'ancrage, la fosse de machinerie et le mat.
+    block((pad_x[0], pad_x[1], pad[0], pad[1]), 0.10)
+    dig = (9.62, 12.38, 446.58, 448.02)
+    block(dig, 0.12)
+    machine_pit = (9.38, 10.72, 470.42, 471.42)
+    block(machine_pit, 0.12)
+    mast_x, mast_s = 10.98, 471.82
+    block((mast_x - 0.82, mast_x + 0.82, mast_s - 0.82, mast_s + 0.82), 0.10)
+    shed = (11.55, 12.72, 470.55, 471.72)
+    block(shed, 0.14)
+    block((11.53, 12.75, 456.17, 457.93), 0.09)     # le vehicule d'entretien
+    # Les trois TRANCHEES : elles barrent la cour d'une zone a l'autre, et elles
+    # n'ont pas la meme largeur — 0,55 / 0,50 / 0,45.
+    trenches = tuple((AMBRY_ZONES[k][2], AMBRY_ZONES[k + 1][1])
+                     for k in range(3))
+    for ta, tb in trenches:
+        block((b_yard[0], b_yard[1], ta, tb), 0.02)
+
+    def pave_yard(as0: float, as1: float, columns: int, pitch: float) -> int:
+        """Pave la cour EN EVITANT ce qui y est deja pose.
+
+        ⚠️ C'est ce qui remplace l'alignement de dalles du BRIEF-0114, et c'est
+        aussi ce qui dessine les ruelles : le joint autour d'un module n'est pas
+        creuse, la dalle n'est simplement pas posee, et le fond du plateau se voit
+        30 cm plus bas. Une cour qui contourne ses batiments ne peut pas rendre un
+        damier regulier — c'est precisement ce qu'on cherche."""
+        laid = 0
+        count = max(1, int(round((as1 - as0) / pitch)))
+        step = (as1 - as0) / count
+        half = AMBRY_JOINT * 0.5
+        for i in range(columns):
+            a = b_yard[0] + (b_yard[1] - b_yard[0]) * i / columns \
+                + (half if i else 0.0)
+            b = b_yard[0] + (b_yard[1] - b_yard[0]) * (i + 1) / columns \
+                - (half if i < columns - 1 else 0.0)
+            for k in range(count):
+                c = as0 + k * step + (half if k else 0.0)
+                d = as0 + (k + 1) * step - (half if k < count - 1 else 0.0)
+                if any(not (b <= ox0 or a >= ox1 or d <= os0 or c >= os1)
+                       for ox0, ox1, os0, os1 in obstacles):
+                    continue
+                plate(a, b, c, d)
+                laid += 1
+        return laid
+
+    # ⚠️ CINQ COLONNES ET UN PAS DE 86 CM, ET LE CHIFFRE A ETE MESURE, PAS CHOISI.
+    # A trois colonnes de 1,21 m, PAS UNE dalle n'etait posee : la moindre
+    # empreinte de module bloquait toute sa colonne sur toute sa hauteur, et la
+    # cour sortait entierement sombre — c'est-a-dire la valeur claire perdue, que
+    # l'operateur a explicitement decide de garder. Un pave de 0,61 x 0,73 m
+    # (26 x 30 px a l'ecran) se faufile entre les batiments et donne ce qu'on
+    # cherche : une cour PAVEE, dont les ruelles sont les dalles manquantes.
+    paving = 0
     for _name, zs0, zs1 in AMBRY_ZONES:
-        paved(*b_rive_in, zs0, zs1, 1.80)
-    tally("rive_interieure")
+        paving += pave_yard(zs0, zs1, 6, 0.74)
+    tally("pavage")
 
-    # ZONE 1 — LA GREFFE : une fouille d'ancrage ouverte, et des taquets.
-    zs0, zs1 = AMBRY_ZONES[0][1], AMBRY_ZONES[0][2]
-    plate(*b_yard, zs0, 447.40)
+    # ---------------------------------------------------------------- ZONE 1
+    # LA GREFFE — la fouille d'ancrage, les taquets, et ce qu'on a laisse la.
+    _, zs0, zs1 = AMBRY_ZONES[0]
     for k in range(3):
-        bs = 448.20 + k * 1.10
-        plate(*b_yard, bs - 0.12, bs + 0.12, top=raft - 0.04)
+        bs = dig[2] + 0.26 + k * 0.46
+        plate(dig[0], dig[1], bs - 0.09, bs + 0.09, top=raft - 0.03)
     for k in range(4):
-        ax = b_yard[0] + 0.42 + (k % 2) * 1.60
-        as_ = 448.70 + (k // 2) * 1.70
-        plate(ax, ax + 0.38, as_, as_ + 0.38, top=raft - 0.02)
-    plate(*b_yard, 451.22, zs1)
-    for k in range(6):
-        ts = zs0 + 0.55 + k * 0.92
-        slab(b_rive_out[0] + 0.08, b_rive_out[0] + 0.30, ts - 0.10, ts + 0.10,
-             raft - 0.12, raft + 0.22, "AA_Greeble", "AA_Greeble")
+        ax = dig[0] + 0.30 + (k % 2) * 1.72
+        as_ = dig[2] + 0.22 + (k // 2) * 0.88
+        plate(ax, ax + 0.34, as_, as_ + 0.30, top=raft - 0.05, mat=AMBRY_TECH)
+    # ⚠️ LE VEHICULE D'ENTRETIEN N'EST PAS ICI, ET C'EST UNE CORRECTION FAITE AU
+    # RENDU : il etait gare AU MILIEU DU PAS D'APPONTAGE, qui doit rester VIDE.
+    # C'est de ce pas que Wren est parti deux semaines avant, et son vide EST le
+    # sujet. Il est donc alle au pied du mat (zone 4), ou un vehicule de service
+    # a toutes ses raisons d'etre.
+    # Le panneau peint a la main, a l'entree de la rue.
+    turned(9.42, 449.55, math.radians(6.0), -0.06, 0.06, -0.48, 0.48,
+           raft + 0.02, raft + 0.46, AMBRY_SIGN, AMBRY_SIGN)
+    turned(9.42, 449.55, math.radians(6.0), -0.10, 0.10, -0.55, 0.55,
+           raft + 0.30, raft + 0.52, AMBRY_SIGN, AMBRY_DECK)
+    note("panneau peint a la main", 1)
+    # Deux cuves octogonales : une silhouette qui n'a pas quatre cotes.
+    tanks = 0
+    for tcx, tcs, radius, height in ((12.30, 446.95, 0.42, 0.46),
+                                     (12.30, 447.92, 0.34, 0.38)):
+        _prism(bm, _ngon_plan(tcx, tcs, radius, radius, 8, 0.3925),
+               raft - 0.04, raft + height, AMBRY_TECH, AMBRY_TECH, draft=0.05)
+        tops.append(raft + height)
+        tanks += 1
+    # ⚠️ `note("cuves", ...)` est APRES la boucle des modules, pas ici : M7 en
+    # porte une troisieme sur son toit, et un inventaire qui compte deux tiers de
+    # ce qu'il y a est un inventaire qui ment.
+    # Une pile de caisses contre la rive, et une bache par-dessus.
+    crates = 0
+    for ccx, ccs, chx, chs, ctop, cdeg in ((9.72, 451.62, 0.28, 0.30, 0.44, 11.0),
+                                           (10.28, 451.70, 0.24, 0.26, 0.38, -6.0),
+                                           (9.76, 452.06, 0.22, 0.22, 0.72, 4.0)):
+        turned(ccx, ccs, math.radians(cdeg), -chx, chx, -chs, chs,
+               raft + (0.34 if ctop > 0.60 else -0.02), raft + ctop,
+               AMBRY_CRATE, AMBRY_CRATE, draft=0.03)
+        crates += 1
     tally("zone_greffe")
 
-    # ZONE 2 — L'HABITATION : quatre modules, trois ruelles EN CREUX.
-    zs0, zs1 = AMBRY_ZONES[1][1], AMBRY_ZONES[1][2]
-    module_top = -3.78
-    parapet_top = -3.62
-    for k in range(4):
-        ms = zs0 + 0.20 + k * 2.85
-        me = ms + 2.30
-        slab(b_yard[0], b_yard[1], ms, me, sink, module_top,
-             AMBRY_HULL, AMBRY_HULL, draft=0.08)
-        # Le parapet : 2 cm EN SAILLIE sur le corps, sinon ses flancs seraient
-        # coplanaires avec les siens. Il fait du toit un BAC, pas une plaque.
-        for px0, px1, ps0, ps1 in (
-                (b_yard[0] - 0.02, b_yard[1] + 0.02, ms - 0.02, ms + 0.16),
-                (b_yard[0] - 0.02, b_yard[1] + 0.02, me - 0.16, me + 0.02),
-                (b_yard[0] - 0.02, b_yard[0] + 0.18, ms + 0.16, me - 0.16),
-                (b_yard[1] - 0.18, b_yard[1] + 0.02, ms + 0.16, me - 0.16)):
-            slab(px0, px1, ps0, ps1, module_top - 0.12, parapet_top,
-                 AMBRY_HULL, AMBRY_HULL)
-        # Ce qui vit DANS le bac : un bloc technique sombre et son capot.
-        slab(b_yard[0] + 0.64, b_yard[1] - 0.66, ms + 0.55, me - 0.55,
-             module_top - 0.08, module_top + 0.10, "AA_Greeble", "AA_Greeble")
-        slab(b_yard[0] + 0.94, b_yard[1] - 0.96, ms + 0.85, me - 0.85,
-             module_top + 0.04, module_top + 0.14, "AA_Greeble", AMBRY_HULL)
-        # La facade BABORD, celle que la camera voit : porte sombre en saillie de
-        # 8 cm, linteau clair, auvent, et deux fenetres.
-        slab(b_yard[0] - 0.08, b_yard[0] + 0.04, ms + 0.85, ms + 1.45,
-             sink, -4.10, "AA_Greeble", "AA_Greeble")
-        slab(b_yard[0] - 0.10, b_yard[0] + 0.04, ms + 0.79, ms + 1.51,
-             -4.08, -4.00, AMBRY_HULL, AMBRY_HULL)
-        slab(b_yard[0] - 0.22, b_yard[0] + 0.04, ms + 0.75, ms + 1.55,
-             -3.98, -3.92, AMBRY_HULL, AMBRY_HULL)
-        for w in (0.25, 1.55):
-            slab(b_yard[0] - 0.06, b_yard[0] + 0.04, ms + w, ms + w + 0.50,
-                 -3.98, -3.84, "AA_Glass", "AA_Glass")
-        # Une passerelle claire qui enjambe la ruelle sombre : trois fois.
-        if k < 3:
-            plate(b_yard[1] - 0.62, b_yard[1], me + 0.10, me + 0.45,
-                  top=raft - 0.02)
-    stats["module_top"] = parapet_top
-    tally("zone_habitation")
+    # ---------------------------------------------------------------- ZONE 2
+    # L'HABITATION — sept modules, et pas deux pareils.
+    #: (fenetres de la face AVANT, fenetres de la face INBOARD, porte inboard)
+    #: Les spans sont des metres le long de la face, depuis son debut.
+    facades = {
+        "M1": (((0.26, 0.74), (0.92, 1.36), (1.58, 1.96)),
+               ((0.20, 0.66), (1.42, 1.90), (2.16, 2.52)), (0.92, 1.52)),
+        "M2": (((0.18, 0.58), (0.70, 0.98)), ((0.30, 0.72), (1.16, 1.52)), None),
+        "M3": (((0.30, 0.88), (1.10, 1.62), (1.86, 2.42)),
+               ((0.24, 0.70), (1.02, 1.48)), (1.48, 2.08)),
+        "M4": (((0.16, 0.52), (0.60, 0.78)), ((0.22, 0.60), (0.82, 1.14)), None),
+        "M5": (((0.34, 0.92), (1.16, 1.74), (1.96, 2.22)),
+               ((0.26, 0.78), (1.06, 1.62), (2.02, 2.58)), (2.66, 2.76)),
+        "M6": (((0.22, 0.66), (0.88, 1.42)),
+               ((0.18, 0.64), (0.90, 1.34), (1.58, 1.94)), (1.28, 1.88)),
+        "M7": (((0.20, 0.62), (0.84, 1.42)), ((0.24, 0.66), (0.92, 1.26)), None),
+    }
+    windows = 0
+    doors = 0
+    ladders = 0
+    for name, mx0, mx1, ms0, ms1, mtop, deg, roof in AMBRY_MODULES:
+        yaw = math.radians(deg)
+        cx, cs = 0.5 * (mx0 + mx1), 0.5 * (ms0 + ms1)
+        hx, hs = 0.5 * (mx1 - mx0), 0.5 * (ms1 - ms0)
+        turned(cx, cs, yaw, -hx, hx, -hs, hs, sink, mtop,
+               AMBRY_HULL, AMBRY_HULL, draft=0.07)
+        # ⚠️ LES COUTURES DE TOITURE, ET C'EST UNE MESURE DE CONTRASTE. Un toit de
+        # 2,8 x 2,2 m en ivoire uni rend 128 x 101 px de blanc plein : c'est la
+        # moitie du grief « c'est moche, pas de forme ». Deux ou trois joints
+        # sombres de 9 cm (4 px) suffisent a dire que la tole est faite de
+        # panneaux, et ils ne coutent aucun centimetre de ciel.
+        seams = 2 + (len(name) + int(abs(deg) * 10)) % 2
+        for k in range(seams):
+            a = -hs + 2.0 * hs * (k + 1) / (seams + 1)
+            turned(cx, cs, yaw, -hx + 0.05, hx - 0.05, a - 0.045, a + 0.045,
+                   mtop - 0.05, mtop + 0.01, AMBRY_TECH, AMBRY_TECH)
 
-    # ZONE 3 — LA SERRE : le seul vert des 500 m, et il est AUSSI au sol.
-    zs0, zs1 = AMBRY_ZONES[2][1], AMBRY_ZONES[2][2]
-    sill_in = (b_yard[0], b_yard[0] + 0.40)
-    sill_out = (b_yard[1] - 0.40, b_yard[1])
-    plate(*sill_in, zs0, zs1, top=raft + 0.04)
-    plate(*sill_out, zs0, zs1, top=raft + 0.04)
-    for k in range(5):
-        bs = zs0 + 0.55 + k * 0.95
-        slab(sill_in[1] + 0.20, sill_out[0] - 0.20, bs, bs + 0.55,
-             sink, tray + 0.18, "AA_Marking_Red", "AA_Marking_Red")
-    cx = (sill_in[1] + sill_out[0]) * 0.5
-    rx = (sill_out[0] - sill_in[1]) * 0.5
-    base_y = raft + 0.04
-    vault = 0.85
+        # --- les fenetres, sur les deux faces que la camera voit ------------
+        band_hi = mtop - 0.10
+        band_lo = max(raft + 0.08, mtop - 0.36)
+        fore, inboard, door = facades[name]
+        for a, b in fore:
+            turned(cx, cs, yaw, -hx + a, -hx + b, -hs - 0.05, -hs + 0.03,
+                   band_lo, band_hi, AMBRY_WINDOW, AMBRY_WINDOW)
+            windows += 1
+        for a, b in inboard:
+            turned(cx, cs, yaw, -hx - 0.05, -hx + 0.03, -hs + a, -hs + b,
+                   band_lo, band_hi, AMBRY_WINDOW, AMBRY_WINDOW)
+            windows += 1
+        # --- la porte : 60 cm de large, soit 27 px ---------------------------
+        if door is not None and mtop - raft > 0.45:
+            a, b = door
+            top_y = min(mtop - 0.06, raft + 0.62)
+            turned(cx, cs, yaw, -hx - 0.02, -hx + 0.10, -hs + a, -hs + b,
+                   raft - 0.04, top_y, AMBRY_SIGN, AMBRY_SIGN)
+            turned(cx, cs, yaw, -hx - 0.06, -hx + 0.02, -hs + a - 0.07,
+                   -hs + b + 0.07, top_y, top_y + 0.09,
+                   AMBRY_HULL, AMBRY_HULL)
+            # Le feu de seuil : une fenetre de 12 cm au-dessus de la porte.
+            turned(cx, cs, yaw, -hx - 0.05, -hx + 0.02,
+                   -hs + 0.5 * (a + b) - 0.11, -hs + 0.5 * (a + b) + 0.11,
+                   top_y + 0.09, top_y + 0.17, AMBRY_WINDOW, AMBRY_WINDOW)
+            doors += 1
+            windows += 1
+        elif door is None:
+            # Une trappe de service, a plat sur la facade basse.
+            turned(cx, cs, yaw, -hx - 0.04, -hx + 0.04, -hs + 0.30, -hs + 0.74,
+                   raft + 0.02, raft + 0.22, AMBRY_SIGN, AMBRY_SIGN)
+
+        # --- le toit, et AUCUN N'EST LE MEME ---------------------------------
+        if roof in ("bac", "parabole"):
+            # Parapet sur TROIS cotes : le quatrieme reste ouvert, ce qui suffit
+            # a distinguer ce toit de celui du voisin.
+            for dx0, dx1, ds0, ds1 in (
+                    (-hx - 0.02, hx + 0.02, -hs - 0.02, -hs + 0.15),
+                    (-hx - 0.02, -hx + 0.16, -hs + 0.15, hs - 0.15),
+                    (-hx - 0.02, hx + 0.02, hs - 0.15, hs + 0.02)):
+                turned(cx, cs, yaw, dx0, dx1, ds0, ds1,
+                       mtop - 0.12, mtop + 0.14, AMBRY_HULL, AMBRY_HULL)
+            for dx0, dx1, ds0, ds1 in ((-hx + 0.32, -hx + 0.86, -hs + 0.42,
+                                        -hs + 0.86),
+                                       (hx - 0.78, hx - 0.30, hs - 0.92,
+                                        hs - 0.44)):
+                turned(cx, cs, yaw, dx0 - 0.05, dx1 + 0.05, ds0 - 0.05,
+                       ds1 + 0.05, mtop - 0.06, mtop + 0.05,
+                       AMBRY_HULL, AMBRY_HULL)
+                turned(cx, cs, yaw, dx0, dx1, ds0, ds1,
+                       mtop + 0.03, mtop + 0.08, AMBRY_WINDOW, AMBRY_WINDOW)
+                windows += 1
+            turned(cx, cs, yaw, -0.22, 0.26, -0.20, 0.34,
+                   mtop - 0.04, mtop + 0.16, AMBRY_TECH, AMBRY_TECH)
+            # Une echelle exterieure, contre la facade inboard.
+            turned(cx, cs, yaw, -hx - 0.14, -hx - 0.02, hs - 0.62, hs - 0.32,
+                   raft - 0.02, mtop + 0.10, AMBRY_TECH, AMBRY_TECH)
+            for k in range(4):
+                turned(cx, cs, yaw, -hx - 0.16, -hx - 0.04,
+                       hs - 0.60 + 0.00, hs - 0.34,
+                       raft + 0.10 + k * 0.16, raft + 0.15 + k * 0.16,
+                       AMBRY_DECK, AMBRY_DECK)
+            ladders += 1
+        if roof == "parabole":
+            dish = _ngon_plan(cx - 0.02, cs + hs - 0.55, 0.36, 0.36, 8, 0.3925)
+            slanted(dish, mtop + 0.14,
+                    [mtop + 0.30 + 0.22 * math.sin(0.3925 + 2.0 * math.pi * k / 8)
+                     for k in range(8)], AMBRY_TECH, AMBRY_TECH, draft=0.04)
+            turned(cx, cs, yaw, -0.06, 0.06, hs - 0.61, hs - 0.49,
+                   mtop, mtop + 0.20, AMBRY_TECH, AMBRY_TECH)
+        elif roof == "bache":
+            # La bache : de travers de 9,4 deg PAR RAPPORT AU MODULE, qui est
+            # deja de travers. Elle deborde de 12 cm sur deux cotes, et elle est
+            # INCLINEE — c'est ce qui la distingue d'un toit.
+            plan = _yawed_plan(cx + 0.06, cs - 0.18, hx * 0.72, hs * 0.62,
+                               yaw + math.radians(9.4))
+            slanted(plan, mtop - 0.04,
+                    [mtop + 0.12, mtop + 0.05, mtop + 0.09, mtop + 0.16],
+                    AMBRY_CLOTH, AMBRY_CLOTH, draft=0.03)
+            for dx, ds in ((-hx * 0.78, -hs * 0.72), (hx * 0.78, -hs * 0.72),
+                           (hx * 0.78, hs * 0.30), (-hx * 0.78, hs * 0.30)):
+                turned(cx, cs, yaw, dx - 0.06, dx + 0.06, ds - 0.06, ds + 0.06,
+                       mtop - 0.06, mtop + 0.03, AMBRY_TECH, AMBRY_TECH)
+            note("baches tendues", 1)
+        elif roof == "voute":
+            # Cinq pans en berceau : la seule courbe de la zone, et elle se lit
+            # en elevation comme en plan (cinq bandes de largeur inegale).
+            for k in range(5):
+                a = -hx + 2.0 * hx * k / 5.0
+                b = -hx + 2.0 * hx * (k + 1) / 5.0
+                rise = 0.24 * math.sin(math.pi * (k + 0.5) / 5.0)
+                turned(cx, cs, yaw, a + 0.02, b - 0.02, -hs + 0.06, hs - 0.06,
+                       mtop - 0.10, mtop + rise, AMBRY_HULL, AMBRY_HULL)
+            turned(cx, cs, yaw, -0.30, 0.30, -0.24, 0.24,
+                   mtop + 0.18, mtop + 0.26, AMBRY_WINDOW, AMBRY_WINDOW)
+            windows += 1
+        elif roof == "caisses":
+            for dx, ds, size, rise, cdeg in ((-0.22, -0.32, 0.24, 0.34, 8.0),
+                                             (0.20, 0.10, 0.20, 0.30, -5.0),
+                                             (-0.18, -0.28, 0.19, 0.62, 14.0)):
+                turned(cx, cs, yaw + math.radians(cdeg), dx - size, dx + size,
+                       ds - size, ds + size,
+                       mtop + (0.30 if rise > 0.50 else -0.04), mtop + rise,
+                       AMBRY_CRATE, AMBRY_CRATE, draft=0.03)
+                crates += 1
+            drum = _ngon_plan(cx + 0.30, cs - 0.40, 0.22, 0.22, 8, 0.0)
+            _prism(bm, drum, mtop - 0.04, mtop + 0.26, AMBRY_TECH, AMBRY_TECH,
+                   draft=0.05)
+            tops.append(mtop + 0.26)
+            note("tourets de cable", 1)
+        elif roof == "solaire":
+            for k in range(4):
+                a = -hs + 0.32 + k * 0.58
+                plan = _yawed_plan(cx - 0.10, cs + a, hx - 0.34, 0.24,
+                                   yaw + math.radians(1.5 * (k - 1.5)))
+                slanted(plan, mtop + 0.02,
+                        [mtop + 0.10, mtop + 0.10, mtop + 0.26, mtop + 0.26],
+                        AMBRY_TECH, AMBRY_TECH, draft=0.02)
+            note("panneaux solaires", 4)
+        elif roof == "cuve":
+            tank = _ngon_plan(cx + 0.10, cs - 0.06, 0.38, 0.38, 8, 0.3925)
+            _prism(bm, tank, mtop - 0.06, mtop + 0.38, AMBRY_TECH, AMBRY_TECH,
+                   draft=0.06)
+            tops.append(mtop + 0.38)
+            tanks += 1
+            turned(cx, cs, yaw, hx - 0.36, hx - 0.14, -hs + 0.14, -hs + 0.40,
+                   mtop - 0.04, mtop + 0.18, AMBRY_TECH, AMBRY_TECH)
+
+    # --- LE VEHICULE D'ENTRETIEN, dans la cour ouverte par le recul de M3 ---
+    # ⚠️ IL N'EST PAS SUR LE PAS D'APPONTAGE, ET C'EST UNE CORRECTION FAITE AU
+    # RENDU. Il y etait gare au premier tirage, en plein milieu : or le pas doit
+    # rester VIDE — c'est de la que Wren est parti deux semaines avant que tout se
+    # taise, et son vide EST le sujet. 1,60 x 0,88 m, de travers de 13 deg :
+    # 73 x 40 px, le plus grand objet « humain » de la piece, et c'est son devers
+    # qui dit qu'une PERSONNE l'a range la et pas un gabarit.
+    car_x, car_s, car_yaw = 12.14, 457.05, math.radians(-13.0)
+    turned(car_x, car_s, car_yaw, -0.44, 0.44, -0.80, 0.80,
+           raft + 0.04, raft + 0.34, AMBRY_HULL, AMBRY_HULL, draft=0.05)
+    turned(car_x, car_s, car_yaw, -0.36, 0.36, -0.74, -0.08,
+           raft + 0.34, raft + 0.52, AMBRY_HULL, AMBRY_GLASS, draft=0.03)
+    for dx in (-0.46, 0.46):
+        for ds in (-0.54, 0.48):
+            turned(car_x, car_s, car_yaw, dx - 0.09, dx + 0.09, ds - 0.15,
+                   ds + 0.15, raft - 0.02, raft + 0.18, AMBRY_TECH, AMBRY_TECH)
+    note("vehicule d'entretien", 1)
+
+    # --- LE LINGE SUR UN FIL, entre M4 et M6 --------------------------------
+    line_x0, line_x1, line_s = 9.30, 10.00, 460.85
+    _strut(bm, Vector((line_x0, raft + 0.62, _z(line_s))),
+           Vector((line_x1, raft + 0.58, _z(line_s + 0.34))), 0.025, AMBRY_TECH)
+    laundry = 0
+    for k in range(6):
+        t = 0.12 + k * 0.15
+        lx = line_x0 + (line_x1 - line_x0) * t
+        ls = line_s + 0.34 * t
+        width = 0.15 + 0.04 * ((k * 7) % 3)
+        turned(lx, ls, math.radians(-9.0 + 7.0 * k), -width, width,
+               -0.06, 0.06, raft + 0.26 + 0.03 * (k % 2), raft + 0.56,
+               AMBRY_CLOTH, AMBRY_CLOTH)
+        laundry += 1
+    note("pieces de linge sur un fil", laundry)
+
+    # --- LA PASSERELLE DECALEE (detail C de la planche) ---------------------
+    # ⚠️ Elle enjambe la ruelle entre M3 et M5 et tombe a 38 cm A COTE de la porte
+    # de M5. Parfaitement fixee, parfaitement inutile : c'est la signature du
+    # « re-plombe ». La cote est mesuree et rapportee.
+    gangway_offset = 0.38
+    turned(11.30, 458.60, math.radians(1.6), -0.42, 0.42, -0.62, 0.62,
+           raft + 0.02, raft + 0.14, AMBRY_DECK, AMBRY_DECK)
+    for ds in (-0.60, 0.60):
+        slab(10.90, 11.70, 458.60 + ds - 0.05, 458.60 + ds + 0.05,
+             raft + 0.14, raft + 0.34, AMBRY_DECK, AMBRY_DECK)
+    # Deux marches, de la rue vers la cour, devant la porte de M1.
+    for k in range(2):
+        plate(b_gutter[0] - 0.34, b_gutter[1], 454.10 + k * 0.16,
+              454.62 - k * 0.10, top=walk_y + 0.05 + k * 0.09, mat=AMBRY_DECK)
+    tally("zone_habitation")
+    note("portes", doors)
+    note("echelles exterieures", ladders)
+    note("caisses et conteneurs", crates)
+    note("cuves", tanks)
+    stats["module_top"] = max(m[5] for m in AMBRY_MODULES) + 0.14
+
+    # ---------------------------------------------------------------- ZONE 3
+    # LA SERRE — le seul vert des 500 m, et c'est ce qu'il y a DEDANS.
+    #
+    # ⚠️ LE DEFAUT NOMME PAR LA PLANCHE ETAIT « AILETTES VERTES », ET IL ETAIT
+    # EXACT : la version precedente posait sept arceaux VERTS de 97 cm de haut,
+    # qui lisaient comme le radiateur d'une machine. Ici les arceaux sont IVOIRE
+    # et fins (9 cm), la verriere est un volume translucide continu sur son slot
+    # propre, et le vert est la CULTURE : cinq rangs longitudinaux a cinq
+    # hauteurs differentes, separes par leurs sillons sombres. On ne lit plus des
+    # ailettes, on lit que ca pousse.
+    #
+    # ⚠️ Et elle est DE TRAVERS de 2,3 deg, comme tout le reste — 8,4 cm d'ecart
+    # d'un bout a l'autre, assez pour qu'on le voie en plan contre la trame des
+    # dalles, trop peu pour qu'on croie a autre chose qu'un remontage rate.
+    def green_frame(dx: float, ds: float) -> tuple[float, float]:
+        ca, sa = math.cos(green_yaw), math.sin(green_yaw)
+        return (green_cx + dx * ca - ds * sa, green_cs + dx * sa + ds * ca)
+
+    # Les deux longrines : l'assise de la verriere.
+    for dx in (-green_hx, green_hx):
+        turned(green_cx, green_cs, green_yaw, dx - 0.16, dx + 0.16,
+               -green_hs, green_hs, sink, raft + 0.10,
+               AMBRY_HULL, AMBRY_HULL, draft=0.03)
+    # Les rangs de culture : cinq, a cinq hauteurs, avec leurs sillons.
+    rows = 0
+    for k, height in enumerate((0.30, 0.46, 0.38, 0.52, 0.34)):
+        a = -green_hx + 0.30 + k * 0.50
+        turned(green_cx, green_cs, green_yaw, a, a + 0.40,
+               -green_hs + 0.22, green_hs - 0.22,
+               raft + 0.02, raft + height, AMBRY_GREEN, AMBRY_GREEN, draft=0.03)
+        rows += 1
+    # Deux bacs transversaux au fond, pour que le vert ne soit pas QUE des rayures.
+    for ds, height in ((-green_hs + 0.52, 0.42), (green_hs - 0.62, 0.36)):
+        turned(green_cx, green_cs, green_yaw, -green_hx + 0.26, green_hx - 0.26,
+               ds - 0.20, ds + 0.20, raft + 0.02, raft + height,
+               AMBRY_GREEN, AMBRY_GREEN, draft=0.03)
+    # La verriere : sept travees, six pans d'arc par travee.
+    vault = 0.78
     ribs = 7
-    arc = [(math.cos(math.pi * k / 6), math.sin(math.pi * k / 6)) for k in range(7)]
+    arc = [(math.cos(math.pi * k / 6.0), math.sin(math.pi * k / 6.0))
+           for k in range(7)]
+    base_y = raft + 0.10
     for k in range(ribs - 1):
-        ga = zs0 + (zs1 - zs0) * k / (ribs - 1)
-        gb = zs0 + (zs1 - zs0) * (k + 1) / (ribs - 1)
+        ga = -green_hs + 2.0 * green_hs * k / (ribs - 1)
+        gb = -green_hs + 2.0 * green_hs * (k + 1) / (ribs - 1)
         for i in range(len(arc) - 1):
             c0, v0 = arc[i]
             c1, v1 = arc[i + 1]
-            a = bm.verts.new(Vector((cx + rx * c0, base_y + vault * v0, _z(ga))))
-            b = bm.verts.new(Vector((cx + rx * c1, base_y + vault * v1, _z(ga))))
-            c = bm.verts.new(Vector((cx + rx * c1, base_y + vault * v1, _z(gb))))
-            d = bm.verts.new(Vector((cx + rx * c0, base_y + vault * v0, _z(gb))))
+            pa = green_frame(green_hx * c0, ga)
+            pb = green_frame(green_hx * c1, ga)
+            pc = green_frame(green_hx * c1, gb)
+            pd = green_frame(green_hx * c0, gb)
+            a = bm.verts.new(Vector((pa[0], base_y + vault * v0, _z(pa[1]))))
+            b = bm.verts.new(Vector((pb[0], base_y + vault * v1, _z(pb[1]))))
+            c = bm.verts.new(Vector((pc[0], base_y + vault * v1, _z(pc[1]))))
+            d = bm.verts.new(Vector((pd[0], base_y + vault * v0, _z(pd[1]))))
             # ⚠️ (a, d, c, b) et non (a, b, c, d) : l'arc parcourt les angles
             # CROISSANTS, donc x DECROISSANT, et l'ordre naif rentre la voute a
-            # l'envers. Verifie par `_assert_outward()`.
-            _quad(bm, a, d, c, b, "AA_Glass")
+            # l'envers.
+            _quad(bm, a, d, c, b, AMBRY_GLASS)
+    # Les arceaux, IVOIRE et fins : 9 cm, contre 16 cm de vert avant.
     for k in range(ribs):
-        gs = zs0 + (zs1 - zs0) * k / (ribs - 1)
-        slab(cx - rx * 1.03, cx + rx * 1.03, gs - 0.08, gs + 0.08,
-             base_y - 0.12, base_y + vault + 0.06,
-             "AA_Marking_Red", "AA_Marking_Red")
-    # Les deux pignons, calibres pour rester SOUS l'arc : demi-largeur 0,85 pour
-    # un arc qui en offre 0,94 a cette hauteur. Ils ferment la serre — elle est
-    # ENTIERE, c'est ce que le lot ne doit pas perdre.
-    for gs in (zs0 + 0.10, zs1 - 0.34):
-        slab(cx - 0.85, cx + 0.85, gs, gs + 0.24, sink, base_y + 0.49,
-             AMBRY_HULL, AMBRY_HULL, draft=0.05)
-    slab(cx - 0.30, cx - 0.06, zs0 + 0.02, zs0 + 0.14, sink, base_y + 0.20,
-         "AA_Greeble", "AA_Greeble")
-    stats["greenhouse_top"] = base_y + vault + 0.06
+        gs = -green_hs + 2.0 * green_hs * k / (ribs - 1)
+        turned(green_cx, green_cs, green_yaw,
+               -green_hx * 1.02, green_hx * 1.02, gs - 0.045, gs + 0.045,
+               base_y - 0.10, base_y + vault + 0.05,
+               AMBRY_HULL, AMBRY_HULL)
+    # Les deux pignons, calibres pour rester SOUS l'arc — la serre est ENTIERE.
+    for gs in (-green_hs + 0.08, green_hs - 0.26):
+        turned(green_cx, green_cs, green_yaw, -0.86, 0.86, gs, gs + 0.18,
+               sink, base_y + 0.46, AMBRY_HULL, AMBRY_HULL, draft=0.04)
+    # Le sas d'entree, avec sa porte et son hublot allume.
+    turned(green_cx, green_cs, green_yaw, -0.52, 0.52,
+           -green_hs - 0.52, -green_hs + 0.06, sink, raft + 0.56,
+           AMBRY_HULL, AMBRY_HULL, draft=0.05)
+    turned(green_cx, green_cs, green_yaw, -0.50, -0.42,
+           -green_hs - 0.48, -green_hs - 0.06, raft - 0.02, raft + 0.48,
+           AMBRY_SIGN, AMBRY_SIGN)
+    doors += 1
+    turned(green_cx, green_cs, green_yaw, -0.22, 0.24,
+           -green_hs - 0.56, -green_hs - 0.48, raft + 0.22, raft + 0.42,
+           AMBRY_WINDOW, AMBRY_WINDOW)
+    windows += 1
+    stats["greenhouse_top"] = base_y + vault + 0.05
     tally("zone_serre")
+    note("rangs de culture", rows + 2)
 
-    # ZONE 4 — L'ANTENNE : une fosse de machinerie, et le mat dans sa fosse.
-    zs0, zs1 = AMBRY_ZONES[3][1], AMBRY_ZONES[3][2]
-    ax = (b_yard[0] + b_yard[1]) * 0.5
-    asx = 471.65
-    slab(ax - 0.75, ax + 0.75, asx - 0.75, asx + 0.75, sink, raft + 0.22,
-         AMBRY_HULL, AMBRY_HULL, draft=0.08)
-    for k in range(2):
-        slab(b_yard[0] + 0.10, b_yard[0] + 0.50, 470.95 + k * 0.90,
-             471.65 + k * 0.90, sink, raft - 0.04, "AA_Greeble", "AA_Greeble")
-    for k in range(2):
-        slab(b_yard[1] - 0.50, b_yard[1] - 0.10, 470.80 + k * 1.05,
-             471.55 + k * 1.05, sink, raft - 0.02, "AA_Greeble", "AA_Greeble")
-    plate(*b_yard, 472.60, zs1)
-    # Exactement le plafond que le script s'impose : le mat est, par
-    # construction, la chose la plus haute des 500 m — 2 cm au-dessus
-    # des bulbes de l'arete dorsale, et 20 cm sous le plafond du jeu.
-    mast_top = BUILD_CEILING_Y
-    slab(ax - 0.17, ax + 0.17, asx - 0.17, asx + 0.17, raft + 0.10, mast_top,
-         "AA_Greeble", "AA_Greeble")
+    # ---------------------------------------------------------------- ZONE 4
+    # L'ANTENNE — elle est intacte, elle est orientee, et elle se tait.
+    _, zs0, zs1 = AMBRY_ZONES[3]
+    # La fosse de machinerie, ouverte sur le fond du plateau, et ses tourets.
+    for k in range(3):
+        a = machine_pit[0] + 0.14 + k * 0.42
+        plate(a, a + 0.26, machine_pit[2] + 0.16, machine_pit[3] - 0.16,
+              top=raft - 0.06, mat=AMBRY_TECH)
+    drum = _ngon_plan(10.10, 471.02, 0.26, 0.26, 8, 0.0)
+    _prism(bm, drum, tray + 0.02, raft + 0.14, AMBRY_TECH, AMBRY_TECH, draft=0.05)
+    tops.append(raft + 0.14)
+    note("tourets de cable", 1)
+    # Le local technique : une porte, une fenetre allumee, un toit a bac.
+    turned(0.5 * (shed[0] + shed[1]), 0.5 * (shed[2] + shed[3]),
+           math.radians(-1.8), -0.585, 0.585, -0.585, 0.585,
+           sink, raft + 0.72, AMBRY_HULL, AMBRY_HULL, draft=0.06)
+    turned(0.5 * (shed[0] + shed[1]), 0.5 * (shed[2] + shed[3]),
+           math.radians(-1.8), -0.62, -0.52, -0.32, 0.28,
+           raft - 0.02, raft + 0.62, AMBRY_SIGN, AMBRY_SIGN)
+    doors += 1
+    for ds0, ds1 in ((-0.44, -0.06), (0.10, 0.46)):
+        turned(0.5 * (shed[0] + shed[1]), 0.5 * (shed[2] + shed[3]),
+               math.radians(-1.8), -0.10, 0.46, ds0, ds1,
+               raft + 0.62, raft + 0.68, AMBRY_WINDOW, AMBRY_WINDOW)
+        windows += 1
+    # Le socle du mat, de travers de 2,9 deg.
+    turned(mast_x, mast_s, math.radians(2.9), -0.62, 0.62, -0.62, 0.62,
+           sink, raft + 0.20, AMBRY_HULL, AMBRY_HULL, draft=0.07)
     # ⚠️ LE MAT EST SOMBRE, ET C'EST UNE MESURE, PAS UN GOUT. Ivoire sur un socle
-    # ivoire, vu a 70 deg de plongee, il ne rendait AUCUN contour : la vignette du
-    # premier tirage montre une etoile blanche sur du blanc. En `AA_Greeble` sur le
-    # socle clair, sa croix se lit d'un bout a l'autre du cadre — et c'est la seule
-    # chose qui distingue la quatrieme zone de la troisieme.
-    for span, y in ((1.05, mast_top - 1.02), (0.76, mast_top - 0.72),
-                    (0.48, mast_top - 0.46)):
-        slab(ax - span, ax + span, asx - 0.08, asx + 0.08, y, y + 0.11,
-             "AA_Greeble", "AA_Greeble")
-        slab(ax - 0.08, ax + 0.08, asx - span, asx + span, y, y + 0.11,
-             "AA_Greeble", "AA_Greeble")
-    stats["mast_top"] = mast_top
+    # ivoire, vu a 70 deg de plongee, il ne rendait AUCUN contour (BRIEF-0114).
+    mast_top = BUILD_CEILING_Y
+    slab(mast_x - 0.15, mast_x + 0.15, mast_s - 0.15, mast_s + 0.15,
+         raft + 0.10, mast_top, AMBRY_TECH, AMBRY_TECH)
+    for span, y in ((1.02, mast_top - 1.00), (0.74, mast_top - 0.70),
+                    (0.46, mast_top - 0.44)):
+        slab(mast_x - span, mast_x + span, mast_s - 0.07, mast_s + 0.07,
+             y, y + 0.10, AMBRY_TECH, AMBRY_TECH)
+        slab(mast_x - 0.07, mast_x + 0.07, mast_s - span, mast_s + span,
+             y, y + 0.10, AMBRY_TECH, AMBRY_TECH)
+    # --- LES QUATRE HAUBANS : la seule figure non rectangulaire des 27 m -----
+    stays = 0
+    stay_head = Vector((mast_x, mast_top - 0.34, _z(mast_s)))
+    for ax, as_ in ((9.42, 470.52), (12.62, 470.62), (9.52, 473.12),
+                    (12.66, 473.02)):
+        _strut(bm, stay_head, Vector((ax, raft + 0.06, _z(as_))), 0.035,
+               AMBRY_TECH)
+        slab(ax - 0.11, ax + 0.11, as_ - 0.11, as_ + 0.11,
+             raft - 0.04, raft + 0.14, AMBRY_TECH, AMBRY_TECH)
+        stays += 1
+    note("haubans", stays)
     tally("zone_antenne")
+    stats["mast_top"] = mast_top
+
+    note("fenetres eclairees", windows)
+    note("portes", 0)          # deja comptees, on ne veut que la mise a jour
+    life["portes"] = doors
 
     top = max(tops)
     if top > BUILD_CEILING_Y + 1e-6:
@@ -4332,12 +5119,22 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     stats["footprint"] = (AMBRY_X, AMBRY_S)
     stats["tray"] = tray
     stats["zones"] = tuple((n, a, b) for n, a, b in AMBRY_ZONES)
-    stats["trenches"] = tuple(
-        (AMBRY_ZONES[k][2], AMBRY_ZONES[k + 1][1]) for k in range(3))
+    stats["trenches"] = trenches
     stats["beams"] = beams
     stats["collars"] = collars
     stats["rails"] = rails
     stats["walk_bays"] = walk_bays
+    stats["paving"] = paving
+    stats["rocks"] = rocks
+    stats["high_rocks"] = high_rocks
+    stats["drips"] = runs_of_metal
+    stats["windows"] = windows
+    stats["doors"] = doors
+    stats["life"] = dict(sorted(life.items()))
+    stats["gangway_offset"] = gangway_offset
+    stats["absurd_rail"] = absurd_to - absurd_from
+    stats["yaws"] = tuple((m[0], m[6]) for m in AMBRY_MODULES if abs(m[6]) > 1e-9) \
+        + (("serre", 2.3), ("pas d'appontage", 2.5), ("socle du mat", 2.9))
     stats["ledger"] = ledger
     anchor = Vector(((rx0 + rx1) * 0.5, raft + 0.28, _z((rs0 + rs1) * 0.5)))
     return anchor, stats
@@ -5274,6 +6071,11 @@ def _audit(path: str) -> dict:
     """
     gltf, blob = _read_glb(path)
     problems: list[str] = []
+    #: Ce qui se RAPPORTE sans refuser la livraison. ⚠️ La difference avec `problems`
+    #: n'est pas la gravite, c'est QUI DECIDE : un contrat rompu est une erreur du
+    #: generateur, un repere depasse est un arbitrage qui appartient a l'operateur.
+    #: Confondre les deux, c'est ce qui transforme une regle perimee en mine.
+    notices: list[str] = []
     materials = [m.get("name", f"#{i}") for i, m in enumerate(gltf.get("materials", []))]
     nodes = gltf.get("nodes", [])
     roots = gltf.get("scenes", [{}])[0].get("nodes", list(range(len(nodes))))
@@ -5386,8 +6188,10 @@ def _audit(path: str) -> dict:
     total_seen = 0.0
     area_by_material: dict[str, float] = {}
     seen_area: dict[str, float] = {}
-    ambry_slot_strays = 0
-    ambry_slot_tris = 0
+    ambry_slot_strays: dict[str, int] = {}
+    ambry_slot_tris: dict[str, int] = {}
+    ambry_slot_density: dict[str, list] = {}
+    borrowed_by_ambry: dict[str, int] = {}
 
     # --- LE DEGAGEMENT DES AFFUTS, MESURE SUR LE BINAIRE (BRIEF-0101) --------
     # ⚠️ « LE REJET EST EN PLACE » N'EST PAS UNE REPONSE. C'est exactement ce que
@@ -5486,8 +6290,9 @@ def _audit(path: str) -> dict:
         boundary[name] = {"front": sorted(set(front)), "back": sorted(set(back))}
         triangles_total += triangles
         if triangles > TRI_BUDGET_SECTION:
-            problems.append(
-                f"{name} : {triangles} triangles > budget {TRI_BUDGET_SECTION}")
+            notices.append(
+                f"{name} : {triangles} triangles, au-dela du repere "
+                f"{TRI_BUDGET_SECTION} — rapporte, pas refuse")
         top_of_decor = max(top_of_decor, hi[1])
         if hi[1] > CEILING_Y:
             problems.append(
@@ -5501,8 +6306,9 @@ def _audit(path: str) -> dict:
         }
 
     if triangles_total > TRI_BUDGET_TOTAL:
-        problems.append(
-            f"{triangles_total} triangles au total > budget {TRI_BUDGET_TOTAL}")
+        notices.append(
+            f"{triangles_total} triangles au total, au-dela du repere "
+            f"{TRI_BUDGET_TOTAL} — rapporte, pas refuse")
     # ⚠️ LA LARGEUR N'EST PLUS CONSTANTE, ET CE CONTRAT A DU APPRENDRE A LIRE
     # `TAPER`. Il comparait la demi-largeur mesuree a `HALF_WIDTH` : une coque de
     # 28 m au micron, ce qui etait vrai tant que 412 m de bordes etaient
@@ -5551,13 +6357,34 @@ def _audit(path: str) -> dict:
         problems.append(
             f"{prims_total - prims_tan} primitive(s) sur {prims_total} sans TANGENT")
 
-    # --- materiaux : les 8 AA_*, aucune couleur de tir, aucune texture ---------
-    # ⚠️ HUIT depuis BRIEF-0090 : les sept du kit plus `AA_Hull_Ambry`, declare
-    # localement (voir la tete du fichier). Ce harnais est ce qui empeche le
-    # huitieme de disparaitre en silence le jour ou l'on retouchera Ambry.
+    # --- materiaux : aucune couleur de tir, aucune texture, aucun slot perdu --
+    # ⚠️ HUIT au BRIEF-0090, DIX-NEUF au BRIEF-0115 : les sept du kit plus les
+    # douze d'Ambry, tous declares localement (voir la tete du fichier). Ce
+    # harnais est ce qui empeche un slot de disparaitre en silence le jour ou
+    # l'on retouchera Ambry — et un slot perdu ne se voit sur aucune autre
+    # mesure : ni la bbox, ni le compte de triangles, ni l'import Godot.
+    #
+    # ⚠️ ET DEUX SLOTS DU KIT SONT DESORMAIS VIDES, DELIBEREMENT. `AA_Glass` et
+    # `AA_Marking_Red` n'avaient qu'un seul client dans les 500 m : Ambry — sa
+    # verriere et son vert de serre. Depuis que chaque nature de matiere d'Ambry
+    # a son slot (`AA_Glass_Ambry`, `AA_Green_Ambry`), plus rien du Long Cortege
+    # n'est ni en verre ni en vert. C'est EXACTEMENT le resultat cherche : une
+    # face d'Ambry restee sur un slot du borde aurait recu sa carte a 0,200
+    # tuile/m quand Ambry est depliee a 0,700. Les deux noms restent declares sur
+    # le maillage (index de slot stables) ; l'exporteur glTF n'ecrit que ce qui
+    # porte une face, donc ils ne sortent plus dans le binaire.
     for name in MATERIAL_ORDER:
+        if name in EMPTY_ON_PURPOSE:
+            if name in used_materials:
+                problems.append(
+                    f"materiau '{name}' a repris des faces : c'est un slot du "
+                    "BORDE, et toute face d'Ambry qui s'y pose recevra sa carte "
+                    "3,5 fois trop fine (voir EMPTY_ON_PURPOSE)")
+            continue
         if name not in materials:
-            problems.append(f"materiau '{name}' absent du .glb (les 8 sont requis)")
+            problems.append(
+                f"materiau '{name}' absent du .glb "
+                f"({len(MATERIAL_ORDER) - len(EMPTY_ON_PURPOSE)} sont requis)")
         elif name not in used_materials:
             problems.append(f"materiau '{name}' present mais assigne a aucune face")
     forbidden = [ak.srgb_hex_to_linear(h)[:3] for h in FORBIDDEN_HEX]
@@ -5661,6 +6488,9 @@ def _audit(path: str) -> dict:
                 if in_keepout:
                     if cy >= ambry_floor and ambry_x[0] <= cx <= ambry_x[1]:
                         ambry_tris.append((abase + ia, abase + ib, abase + ic))
+                        if material not in AMBRY_SLOTS:
+                            borrowed_by_ambry[material] = \
+                                borrowed_by_ambry.get(material, 0) + 1
                 else:
                     tris.append((base + ia, base + ib, base + ic))
                 pa = Vector(points[ia])
@@ -5727,10 +6557,25 @@ def _audit(path: str) -> dict:
                 # CONTINUE occupe plus de pixels qu'une piece entiere. Le
                 # controle est triangle par triangle, sur le binaire, et il
                 # echoue le build.
-                if material == AMBRY_HULL:
-                    ambry_slot_tris += 1
+                # ⚠️ LE COMPTE EST PAR SLOT, ET C'EST UN LIVRABLE (BRIEF-0115).
+                # Le concepteur doit savoir, slot par slot, combien de triangles
+                # et a quelle densite, pour decider ce qu'il peut habiller — et
+                # aucun slot d'Ambry ne doit sortir de l'emprise d'Ambry, sans
+                # quoi il volerait la lecture au borde de l'Unisson (la lecon
+                # mesuree du BRIEF-0090 : sur 500 m, un materiau pose sur une
+                # arete CONTINUE occupe plus de pixels qu'une piece entiere).
+                if material in AMBRY_SLOTS:
+                    ambry_slot_tris[material] = \
+                        ambry_slot_tris.get(material, 0) + 1
                     if not in_keepout:
-                        ambry_slot_strays += 1
+                        ambry_slot_strays[material] = \
+                            ambry_slot_strays.get(material, 0) + 1
+                    pack = ambry_slot_density.setdefault(material, [[], [], []])
+                    sbase = len(pack[0])
+                    for index in (ia, ib, ic):
+                        pack[0].append(points[index])
+                        pack[1].append(uv[index])
+                    pack[2].append((sbase, sbase + 1, sbase + 2))
         density[name] = _texel_density(pts, uvs, tris)
         if ambry_tris:
             density["Ambry"] = _texel_density(ambry_pts, ambry_uvs, ambry_tris)
@@ -5832,10 +6677,22 @@ def _audit(path: str) -> dict:
                 f"pas dans le fond plat du canal "
                 f"({2 * CANAL_FLOOR_HALF * scale:.2f} m) a cette station")
 
-    if ambry_slot_strays:
+    for slot, strays in sorted(ambry_slot_strays.items()):
         problems.append(
-            f"{ambry_slot_strays} triangle(s) en '{AMBRY_HULL}' hors de l'emprise "
-            "d'Ambry — ce slot lui est reserve (BRIEF-0090)")
+            f"{strays} triangle(s) en '{slot}' hors de l'emprise d'Ambry — les "
+            "douze slots lui sont reserves (BRIEF-0090, elargi par BRIEF-0115)")
+    # ⚠️ ET LE CONTROLE INVERSE, QUI EST LE VRAI SUJET DU LOT. Une face d'Ambry
+    # restee sur un slot du BORDE recevrait sa carte 3,5 fois trop fine, parce
+    # que `CortegeSkin` choisit l'echelle par nom de materiau et qu'Ambry est
+    # depliee a 0,700 tuile/m contre 0,200. C'etait le defaut ouvert du
+    # BRIEF-0114 — 1 652 triangles sur 3 364 — et il est totalement silencieux :
+    # ni erreur d'import, ni test rouge, il ne se verrait qu'une fois les images
+    # generees, donc trop tard. Ce harnais le rend impossible a reintroduire.
+    for slot, count in sorted(borrowed_by_ambry.items()):
+        problems.append(
+            f"{count} triangle(s) d'Ambry sur le slot de borde '{slot}' — ils "
+            "recevront la carte du borde a 0,200 tuile/m quand Ambry est "
+            "depliee a 0,700, soit 3,5 fois trop fine (BRIEF-0115)")
 
     # --- LA PALETTE ET LES ZONES CALMES : deux cliquets, pas deux opinions ---
     # ⚠️ Ce sont des LIVRABLES du brief (« aire par materiau en pourcentage »,
@@ -5865,9 +6722,10 @@ def _audit(path: str) -> dict:
             f"violet + magenta = {100 * seen_ratio:.2f} pct de l'aire VUE : le "
             "brief pose 5 pct, le cliquet 9. C'est la hierarchie du niveau qui "
             "se joue la (joueur > ennemi > decor)")
-    if ambry_slot_tris == 0:
-        problems.append(f"aucun triangle en '{AMBRY_HULL}' : le slot propre a "
-                        "Ambry a disparu")
+    for slot in AMBRY_SLOTS:
+        if ambry_slot_tris.get(slot, 0) == 0:
+            problems.append(f"aucun triangle en '{slot}' : un slot declare et "
+                            "vide n'est pas un slot, c'est une promesse")
 
     # ⚠️ Le plancher n'est pas la cible : une projection EN BOITE etire par
     # 1/cos(angle a l'axe dominant), et le pire cas geometrique est la normale
@@ -5895,12 +6753,17 @@ def _audit(path: str) -> dict:
                 f"{name} : densite moyenne {measure['tiles_per_m_mean']:.4f} "
                 f"tuile/m, a plus de 14 pct de la cible {target:.4f}")
 
+    if notices:
+        for n in notices:
+            print(f"[long_cortege] ⚠️ {n}")
+
     if problems:
         raise ak.ContractError(
             "CONTRAT ROMPU — long_cortege\n" + "\n".join(f"  - {p}" for p in problems))
 
     return {
         "sections": stats,
+        "notices": notices,
         "markers": found,
         "density": density,
         "primitives": (prims_uv, prims_tan, prims_total),
@@ -5911,6 +6774,13 @@ def _audit(path: str) -> dict:
         "total_area": total_area,
         "total_seen": total_seen,
         "ambry_slot_triangles": ambry_slot_tris,
+        # ⚠️ LA DENSITE PAR SLOT EST UN LIVRABLE (BRIEF-0115), et elle est MESUREE
+        # sur le binaire, jamais deduite du chiffre annonce : c'est la seule
+        # facon de savoir ce qu'une carte tuilee rendra sur chaque matiere.
+        "ambry_slot_density": {
+            slot: _texel_density(pack[0], pack[1], pack[2])
+            for slot, pack in sorted(ambry_slot_density.items())},
+        "ambry_borrowed": borrowed_by_ambry,
         "bays": [(f"Bay_{n:02d}", bs, bx, *bay_mouth_y(bs, bx))
                  for n, (bs, bx) in enumerate(BAYS, start=1)],
         "pad_clearances": _pad_bay_clearances(),
@@ -6171,15 +7041,16 @@ def _print_report(report: dict) -> None:
     for name, area in sorted(report["area_by_material"].items(),
                              key=lambda kv: -kv[1]):
         seen = report["seen_by_material"].get(name, 0.0)
-        flag = "   <- propre a Ambry" if name == AMBRY_HULL else ""
+        flag = "   <- propre a Ambry" if name in AMBRY_SLOTS else ""
         print(f"    {name:<20} {area:9.1f} m2 {100.0 * area / total:6.2f} %   "
               f"{seen:7.1f} m2 {100.0 * seen / seen_total:6.2f} %{flag}")
     print(f"    {'TOTAL':<20} {total:9.1f} m2            "
           f"{seen_total:7.1f} m2")
     structure = sum(report["seen_by_material"].get(n, 0.0)
-                    for n in ("AA_Hull", "AA_Hull_Ambry"))
+                    for n in ("AA_Hull", AMBRY_HULL))
     gear = sum(report["seen_by_material"].get(n, 0.0)
-               for n in ("AA_Greeble", "AA_Trim", "AA_Glass", "AA_Marking_Red"))
+               for n in ("AA_Greeble", "AA_Trim", "AA_Glass", "AA_Marking_Red")
+               + tuple(s for s in AMBRY_SLOTS if s != AMBRY_HULL))
     accent = sum(report["seen_by_material"].get(n, 0.0)
                  for n in ("AA_Panel", "AA_Emissive_Engine"))
     print(f"\n  contre la cible 80 / 15 / 5 du brief, sur l'aire VUE :")
@@ -6276,6 +7147,42 @@ def _print_report(report: dict) -> None:
         print(f"      {tag:<20} {count:6d} tri  ({100.0 * count / total:4.1f} %)")
     print(f"      {'TOTAL':<20} {total:6d} tri sur 27,0 x 5,5 m de radeau "
           f"({total / 148.5:.1f} tri/m2)")
+    # --- LE DECOUPAGE EN SLOTS PAR NATURE (BRIEF-0115) ----------------------
+    # ⚠️ C'EST LE LIVRABLE QUI DECIDE DE LA SUITE. Tant qu'une face d'Ambry vit
+    # sur un slot du borde, elle recevra la carte du borde a 0,200 tuile/m quand
+    # Ambry est depliee a 0,700 — 3,5 fois trop fine — et le defaut est
+    # totalement silencieux jusqu'a ce que les images existent.
+    slot_tris = report["ambry_slot_triangles"]
+    slot_density = report["ambry_slot_density"]
+    print(f"\n  LES {len(AMBRY_SLOTS)} SLOTS PROPRES A AMBRY "
+          f"(planche ambry_texture_atlas_2026-09.png)")
+    print(f"    {'slot':<20} {'hex':<9} {'tri':>6} {'part':>7} "
+          f"{'tuile/m min':>12} {'moy':>7} {'max':>7} {'aniso':>7}")
+    slot_total = sum(slot_tris.values()) or 1
+    for slot in AMBRY_SLOTS:
+        count = slot_tris.get(slot, 0)
+        measure = slot_density.get(slot) or {}
+        hexa = AMBRY_MATERIAL_SPECS[slot][0]
+        print(f"    {slot:<20} {hexa:<9} {count:6d} "
+              f"{100.0 * count / slot_total:6.2f} % "
+              f"{measure.get('tiles_per_m_min', float('nan')):12.3f} "
+              f"{measure.get('tiles_per_m_mean', float('nan')):7.3f} "
+              f"{measure.get('tiles_per_m_max', float('nan')):7.3f} "
+              f"{measure.get('anisotropy_max', float('nan')):7.2f}")
+    print(f"    {'TOTAL':<20} {'':<9} {slot_total:6d}   (cible annoncee "
+          f"{AMBRY_TEXELS_PER_METER:.3f} tuile/m, "
+          f"{1.0 / AMBRY_TEXELS_PER_METER:.2f} m par tuile)")
+    borrowed = report["ambry_borrowed"]
+    print(f"    triangles d'Ambry encore sur un slot du BORDE : "
+          f"{sum(borrowed.values())}"
+          + ("" if not borrowed else "  -> " + ", ".join(
+              f"{k} {v}" for k, v in sorted(borrowed.items()))))
+    print(f"    devers du « re-plombe » : " + ", ".join(
+        f"{n} {d:+.1f} deg" for n, d in marks["yaws"]))
+    print(f"    passerelle decalee de {marks['gangway_offset']:.2f} m ; main "
+          f"courante absurde sur {marks['absurd_rail']:.2f} m")
+    print(f"    VIE LISIBLE : " + ", ".join(
+        f"{v} {k}" for k, v in marks["life"].items() if v))
     plant = report["counts"][-1].get("complexe_stats")
     if plant:
         print(f"\n  COMPLEXE INDUSTRIEL (BRIEF-0111) : "
@@ -7554,10 +8461,10 @@ def render_plant_plate(report: dict) -> None:
 # fenetre qui soit strictement la meme avant et apres — elle ne depend d'aucune
 # geometrie qui a change.
 
-AMBRY_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0114-planche.png")
+AMBRY_PLATE = os.path.join(_REPO, "docs/forge/output/BRIEF-0115-planche.png")
 AMBRY_TILE_W = 1920
 AMBRY_TILE_H = 1080
-AMBRY_TOP_H = 560
+AMBRY_TOP_H = 640
 AMBRY_ELEV_H = 340
 #: Les deux cadrages : (etiquette, s vise a mi-cadre).
 AMBRY_FRAMES = (("proue", 446.5, 459.0), ("poupe", 461.0, 473.5))
@@ -7709,10 +8616,16 @@ def _tile_ambry_top(path: str, marks: dict, triangles: int) -> None:
                    f"du plateau ({marks['tray']:+.2f}, soit 30 cm sous les dalles) "
                    f"— ce sont elles qui separent les quatre lieux",
            -0.985, 0.81, 0.034, AMBRY_TILE_W, AMBRY_TOP_H)
-    _label(camera, f"{marks['beams']} traverses (tetes debordantes de 0,15 a 0,44 m "
-                   f"a babord, bequilles a tribord)  ·  {marks['rails']} montants "
-                   f"de garde-corps  ·  {marks['walk_bays']} travees de coursive  ·  "
-                   f"{triangles} triangles poses (1 024 avant, borde compris)",
+    _label(camera, f"A COMPARER A LA SILHOUETTE DE LA PLANCHE : le contour n'est "
+                   f"plus un rectangle — {marks['rocks']} blocs de soubassement "
+                   f"arrache debordent des dalles ({marks['high_rocks']} montent "
+                   f"au-dessus de leur plan), {marks['drips']} coulures de metal "
+                   f"fondu mordent dessus, et le mat rayonne ses 4 haubans",
+           -0.985, 0.73, 0.034, AMBRY_TILE_W, AMBRY_TOP_H, (1.0, 0.88, 0.55))
+    _label(camera, f"{marks['beams']} traverses  ·  {marks['rails']} montants de "
+                   f"garde-corps  ·  {marks['windows']} fenetres allumees  ·  "
+                   f"{marks['doors']} portes  ·  {marks['paving']} paves de cour  "
+                   f"·  {triangles} triangles poses (3 168 au BRIEF-0114)",
            -0.985, -0.90, 0.034, AMBRY_TILE_W, AMBRY_TOP_H, (0.72, 0.84, 1.0))
     _render(path, AMBRY_TILE_W, AMBRY_TOP_H)
 
@@ -7734,9 +8647,10 @@ def _tile_ambry_elevation(path: str, marks: dict) -> None:
            -0.985, 0.86, 0.052, AMBRY_TILE_W, AMBRY_ELEV_H, (1.0, 0.88, 0.55))
     _label(camera, f"sommet d'Ambry {marks['top']:+.3f} = le plafond de "
                    f"CONSTRUCTION {BUILD_CEILING_Y:+.2f} au millimetre (le mat) "
-                   f"— RIEN n'a ete monte : modules {marks['module_top']:+.2f}, "
-                   f"serre {marks['greenhouse_top']:+.2f}, radeau "
-                   f"{AMBRY_RAFT_Y:+.2f}, fond du plateau {marks['tray']:+.2f}",
+                   f"— modules {marks['module_top']:+.2f}, serre "
+                   f"{marks['greenhouse_top']:+.2f}, radeau {AMBRY_RAFT_Y:+.2f}, "
+                   f"fond du plateau {marks['tray']:+.2f}  ·  les sept modules "
+                   f"font 0,30 a 1,00 m au-dessus des dalles",
            -0.985, -0.90, 0.044, AMBRY_TILE_W, AMBRY_ELEV_H)
     _render(path, AMBRY_TILE_W, AMBRY_ELEV_H)
 
@@ -7758,10 +8672,11 @@ def render_ambry_plate(report: dict) -> None:
                 path = os.path.join(staging, f"avant_{tag}.png")
                 _tile_ambry_game(
                     path, before, centre, False,
-                    f"AVANT — « une zone claire, non texturee, non travaillee » "
-                    f"(operateur, 2026-09-05 et 2026-09-13)",
-                    "126 triangles ivoire sur 27 m — 4,7 par metre lineaire : une "
-                    "tole sans une interruption ne peut se lire que comme une plaque")
+                    "AVANT — « je comprends toujours pas visuel ce que c'est, "
+                    "c'est moche, pas de forme » (operateur, 2026-09-13)",
+                    "les quatre defauts du panneau « A EVITER » de la planche : "
+                    "boites identiques, ailettes vertes, tout d'equerre, aucune "
+                    "vie lisible — et pas une fenetre allumee")
                 tiles.append((path, AMBRY_TILE_H))
                 measures[f"avant_{tag}"] = _tile_measure(path, mask)
             else:
@@ -7773,13 +8688,12 @@ def render_ambry_plate(report: dict) -> None:
             _tile_ambry_game(
                 path, OUTPUT, centre, True,
                 f"APRES — on survole {zones}",
-                f"{marks['ledger'].get('zone_greffe', 0)} + "
-                f"{marks['ledger'].get('zone_habitation', 0)} + "
-                f"{marks['ledger'].get('zone_serre', 0)} + "
-                f"{marks['ledger'].get('zone_antenne', 0)} triangles de zone, "
-                f"{triangles} en tout  ·  tout le relief est EN CREUX : rien n'a "
-                f"monte d'un millimetre (sommet {marks['top']:+.2f}, plafond "
-                f"{BUILD_CEILING_Y:+.2f})")
+                f"{marks['windows']} fenetres allumees sur AA_Window_Ambry (pas "
+                f"AA_Emissive_Engine)  ·  {marks['doors']} portes de 60 cm = 27 px "
+                f"·  {marks['rocks']} blocs de roche arrachee qui DEBORDENT  ·  "
+                f"sept modules de sept hauteurs, quatre de travers de 1,9 a 2,8 "
+                f"deg  ·  sommet {marks['top']:+.2f} pour un plafond "
+                f"{BUILD_CEILING_Y:+.2f}")
             tiles.append((path, AMBRY_TILE_H))
             measures[f"apres_{tag}"] = _tile_measure(path, mask)
         path = os.path.join(staging, "uv.png")
