@@ -29,7 +29,12 @@ const SKINS: Dictionary = {
 	# du bordé aurait reçu sa carte 3,5 fois trop fine — un défaut latent qu'on n'aurait
 	# découvert qu'une fois les images générées, et qui aurait demandé une reforge.
 	&"AA_Hull_Ambry": "ambry_hull",
-	# ⚠️ LES ONZE AUTRES NATURES D'AMBRY N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
+	# Les matières d'Ambry dont les cartes sont entrées au dépôt (`TEX-0020` à `0022`, `0024`).
+	&"AA_Deck_Ambry": "ambry_deck",
+	&"AA_Tech_Ambry": "ambry_tech",
+	&"AA_Rock_Ambry": "ambry_rock",
+	&"AA_Glass_Ambry": "ambry_glass",
+	# ⚠️ LES SEPT AUTRES N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
 	# `BRIEF-0115` a livré douze slots ; je les avais tous déclarés d'avance, et
 	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze. Sa règle est juste :
 	# une peau déclarée sans ses images est une promesse que rien ne tient — on ne le verrait
