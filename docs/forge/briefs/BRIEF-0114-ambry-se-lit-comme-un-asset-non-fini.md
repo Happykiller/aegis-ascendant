@@ -1,6 +1,6 @@
 # BRIEF-0114 — Ambry se lit comme un asset non fini : la faire exister comme une construction
 
-- **Statut** : assigné
+- **Statut** : livré et intégré
 - **Assigné à** : asset-forge
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-13
