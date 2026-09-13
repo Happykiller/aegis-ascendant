@@ -143,6 +143,10 @@ const EMISSIVE_MAP := "cortege_emissive"
 ## au-delà, la coque prend l'aspect martelé qu'`ADR-0011` a déjà payé sur le Specter-9 à 1,5.
 const NORMAL_SCALE := 0.45
 
+## Le relief d'Ambry. Voir `_skin_surface()` pour la raison — son dépliage est 3,5 fois plus
+## serré que celui du bordé, donc à carte égale elle montre 3,5 fois moins de pente.
+const AMBRY_NORMAL_SCALE := 1.60
+
 ## Agrandissement des tuiles du bordé de l'Unisson. **< 1 agrandit** : `uv1_scale` multiplie les
 ## coordonnées, donc 0,5 fait couvrir DEUX FOIS plus de monde à la même image.
 ##
@@ -249,7 +253,17 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 	tuned.albedo_texture = mul
 	tuned.normal_enabled = true
 	tuned.normal_texture = nrm
-	tuned.normal_scale = NORMAL_SCALE
+	# ⚠️ AMBRY PREND 3,5 FOIS PLUS DE RELIEF QUE LA COQUE, ET CE N'EST PAS UN CAPRICE DE STYLE.
+	# `NORMAL_SCALE` vaut 0,45 parce qu'un bordé de 500 m prend l'aspect martelé au-delà — c'est
+	# la leçon d'`ADR-0011`, payée sur le Specter-9. Mais ce bordé est déplié à 5,00 m par tuile
+	# et Ambry à 1,43 : à relief égal dans la carte, Ambry en montre 3,5 fois moins à l'écran.
+	#
+	# ⚠️ ET J'AVAIS REJETÉ CETTE VALEUR POUR UNE MAUVAISE RAISON. Essayée une première fois le
+	# 2026-09-13, elle produisait un scintillement que j'ai mis sur son compte — c'étaient les
+	# MIPMAPS MANQUANTES des quarante-quatre cartes. Une fois celles-ci posées, la même valeur
+	# rend des divisions de panneau nettes et des boulons d'angle, sans un pixel qui papillote.
+	# Un essai fait sur une chaîne d'échantillonnage cassée ne prouve rien, et j'ai conclu dessus.
+	tuned.normal_scale = AMBRY_NORMAL_SCALE if stem.begins_with("ambry") else NORMAL_SCALE
 	var rough := _map(stem, "rough")
 	if rough != null:
 		tuned.roughness_texture = rough
