@@ -1,0 +1,206 @@
+{
+  "id": "TEX-0023",
+  "slug": "ambry-collier-de-soudure",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du collier de soudure — la couture par laquelle l'Unisson a pris Ambry",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Weld_Ambry` — 5,4 pct de la surface d'Ambry, et reprend TEX-AMB-06 de la planche de matieres.",
+    "priority": "⚠️ CETTE SURFACE N'APPARTIENT PAS A AMBRY. C'est la seule des douze qui soit de l'UNISSON : les deux colliers qui tiennent l'avant-poste sur le borde, et le metal qui a coule en les posant. Elle doit donc se lire comme l'ennemi, pas comme le village — et c'est ce contraste, sur quelques metres carres, qui fait lire la GREFFE comme une greffe. ⚠️ ET LE CANON DU PROJET EST FORMEL : « la jonction entre la coque d'origine et ce qui a pousse dessus N'EST JAMAIS PROPRE » (NULL_CHOIR.md). L'Unisson se degrade par RECOPIE — il refait les gestes sans les comprendre. Ce cordon doit donc etre celui de quelque chose qui a IMITE une soudure : le bon geste, repete de travers."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des cordons de soudure larges de 6 a 12 cm, SUPERPOSES et desalignes",
+      "des reprises : un cordon qui en recoupe un autre sans le suivre",
+      "des bourrelets de metal refondu, epais et irreguliers",
+      "des coulures figees qui pendent hors du cordon",
+      "des zones ou le metal a bulle en refroidissant",
+      "de la tole mere fondue et boursouflee au ras du cordon"
+    ],
+    "density": "high",
+    "distribution": "organic",
+    "edge_behavior": "Les cordons traversent les quatre bords sans regularite. ⚠️ Facile a raccorder — mais attention a ne pas produire un cordon RECTILIGNE qui traverserait toute la tuile : un cordon droit lit comme une soudure industrielle, et c'est exactement l'inverse du sujet.",
+    "empty_space": "Aucun. Le cordon et ses coulures couvrent toute la tuile. La tole mere ne doit apparaitre qu'en fragments, et deja deformee par la chaleur."
+  },
+  "visual": {
+    "subject": "Cordon de soudure grossier et repris plusieurs fois, vu de dessus : bourrelets superposes, coulures figees, metal refondu et bulle",
+    "materials": [
+      "metal refondu",
+      "bourrelet de soudure",
+      "coulure figee",
+      "tole mere boursouflee"
+    ],
+    "details": [
+      "cordons superposes et desalignes",
+      "reprises qui se recoupent",
+      "coulures qui pendent",
+      "bulles figees dans le metal",
+      "bords de cordon irreguliers",
+      "tole boursouflee par la chaleur"
+    ],
+    "style": "le geste d'une soudure, IMITE sans etre compris : la bonne forme, la mauvaise main. Ni industriel, ni artisanal — recopie.",
+    "color_palette": {
+      "dominant": [
+        "gris sombre"
+      ],
+      "secondary": [
+        "gris clair sur le sommet des bourrelets",
+        "noir dans les creux entre deux cordons"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "vegetation",
+        "propre",
+        "regulier",
+        "poli"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "⚠️ Les creux entre deux cordons superposes : vers 25/255. C'est la ou la reprise n'a pas rempli, et c'est ce qui dit que le geste a ete refait. Jamais 0.",
+    "gray": "tole mere boursouflee, ~100/255 — deja deformee, jamais plane",
+    "white": "sommet des bourrelets et des coulures, 215 a 250"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ AUCUN CORDON RECTILIGNE OU REGULIER : c'est le seul critere qui separe ce sujet d'une soudure industrielle, et c'est tout le lore de l'Unisson",
+      "des cordons SUPERPOSES et desalignes : la preuve d'une reprise, d'un geste refait",
+      "des coulures qui PENDENT hors du cordon, figees en pleine chute",
+      "un relief tres irregulier en hauteur : un cordon plus epais ici, presque absent la",
+      "⚠️ de la tole mere deja DEFORMEE au ras du cordon : la chaleur a travaille au-dela de la soudure"
+    ],
+    "must_not_have": [
+      "cordon regulier",
+      "soudure industrielle",
+      "cordon machine",
+      "point de soudure aligne",
+      "rivet",
+      "boulon",
+      "bride",
+      "assemblage propre",
+      "ruine",
+      "breche",
+      "trou traversant",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "vegetation",
+      "propre",
+      "regulier",
+      "poli"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Weld_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 288 triangles, 5,4 pct de la surface, densite mesuree 0,699 tuile/m, anisotropie 1,01. Porte les deux colliers de greffe et leurs seize coulures de metal fondu, repartis sur huit massifs a quatre devers. ⚠️ C'est la SEULE matiere d'Ambry qui appartienne au vaisseau et non a l'avant-poste, et elle garde l'anthracite le plus sombre de la palette pour cette raison.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #141419 (anthracite le plus sombre, Unisson) pose par la forge, avec metallic/roughness 0,88 / 0,30. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_collier_de_soudure_height_1024.png --out assets/imported/textures/cortege --name ambry_collier_de_soudure --mul --check-tiling --preview /tmp/ambry_collier_de_soudure.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Weld_Ambry\": \"ambry_collier_de_soudure\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "moyenne",
+    "source_path": "assets/source/textures/cortege/ambry_collier_de_soudure_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_collier_de_soudure_nrm.png",
+      "ambry_collier_de_soudure_rough.png",
+      "ambry_collier_de_soudure_ao.png",
+      "ambry_collier_de_soudure_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST QUI TRANCHE : la capture doit montrer que le collier N'A PAS ETE POSE PAR LES MEMES MAINS que le reste. Si la couture se lit comme un assemblage propre, la demande a echoue.",
+      "verifier a 45,8 px/m que les coulures se lisent encore : elles font 6 a 12 cm, soit 3 a 5 px a l'ecran — c'est juste au-dessus du seuil de forme, et c'est le CONTRASTE qui les sauvera, pas leur taille"
+    ],
+    "provenance_csv_line": "ambry_collier_de_soudure_height,assets/source/textures/cortege/ambry_collier_de_soudure_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0023-ambry-collier-de-soudure.json,,\"Carte de hauteur d'Ambry — Hauteur du collier de soudure — la couture par laquelle l'Unisson a pris Ambry. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Weld_Ambry, 5,4 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris d'un CORDON DE SOUDURE GROSSIER, REPRIS PLUSIEURS FOIS, vu de dessus.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre. Les cordons y font donc 6 a 12 cm de large.\n\n⚠️ CE N'EST PAS UNE SOUDURE INDUSTRIELLE, ET C'EST TOUT LE SUJET. C'est le geste d'une soudure IMITE par quelque chose qui ne l'a pas compris : la bonne forme, la mauvaise main. Des cordons superposes et DESALIGNES ; des reprises ou un cordon en recoupe un autre sans le suivre ; des bourrelets de metal refondu epais et irreguliers ; des coulures figees qui pendent hors du cordon, arretees en pleine chute ; des zones ou le metal a bulle en refroidissant.\n\nAutour du cordon, la tole mere elle-meme est FONDUE ET BOURSOUFLEE : la chaleur a travaille au-dela de la soudure. Elle n'est jamais plane.\n\nAUCUN cordon rectiligne, aucun cordon regulier, aucun point de soudure aligne, aucun rivet, aucun boulon. Rien qui ressemble a un assemblage propre.\n\nLe relief est tres inegal : un cordon epais ici, presque absent la. Les creux entre deux cordons superposes sont les seules zones vraiment sombres — c'est la que la reprise n'a pas rempli.\n\nRien de casse et rien de perce : la soudure TIENT. Elle est sale, pas defaillante.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}

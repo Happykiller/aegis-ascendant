@@ -1,0 +1,199 @@
+{
+  "id": "TEX-0021",
+  "slug": "ambry-machinerie",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur de la machinerie d'Ambry — ce qui fait tenir un village dans le vide",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Tech_Ambry` — 25,1 pct de la surface d'Ambry, et reprend TEX-AMB-02, 11, 17 et 18 de la planche de matieres.",
+    "priority": "⚠️ DEUXIEME SURFACE D'AMBRY, ET LA PLUS SOMBRE : c'est elle qui doit porter son relief par la FORME, pas par la valeur. Un anthracite a 0,70 de metallique rend peu en diffus ; si la carte ne module pas franchement, la machinerie deviendra une masse noire au milieu des dalles ivoire. ⚠️ ET C'EST CE QUI DIT QUE L'AVANT-POSTE FONCTIONNE ENCORE. Les fenetres sont allumees : quelque chose les alimente, et ce quelque chose se voit ici. Des conduits ranges, des vannes fermees, des carters en place — l'entretien d'un lieu ou l'on tenait a rester."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des tuyaux de 8 a 15 cm de diametre, courant en faisceaux paralleles",
+      "des brides boulonnees tous les 60 a 90 cm",
+      "des colliers de fixation et leurs pattes",
+      "des carters de machinerie a angles francs, de 30 a 60 cm",
+      "des grilles de ventilation a lames serrees",
+      "des chemins de cables a couvercle, plus plats que les tuyaux"
+    ],
+    "density": "high",
+    "distribution": "structured",
+    "edge_behavior": "Les faisceaux de tuyaux et les chemins de cables traversent les quatre bords dans le sens de leur course et s'y raccordent au diametre pres. ⚠️ Un tuyau coupe au bord est la faute la plus visible de cette tuile : l'oeil suit une conduite.",
+    "empty_space": "Tres peu. Une machinerie d'avant-poste est dense — mais il faut de la TOLE NUE entre les faisceaux, sinon rien ne se detache et tout devient du grain."
+  },
+  "visual": {
+    "subject": "Machinerie exterieure d'un avant-poste spatial, vue de dessus : faisceaux de tuyaux, brides, carters, grilles de ventilation, chemins de cables",
+    "materials": [
+      "tuyauterie metallique",
+      "carters de tole pliee",
+      "grilles de ventilation",
+      "chemins de cables a couvercle"
+    ],
+    "details": [
+      "brides boulonnees",
+      "colliers et pattes de fixation",
+      "lames de grille de ventilation",
+      "couvercles de chemin de cables",
+      "angles francs des carters",
+      "ombres propres des faisceaux"
+    ],
+    "style": "mecanique humaine entretenue : range, boulonne, accessible. L'exact contraire de l'excroissance de l'Unisson, qui pousse au lieu d'etre montee.",
+    "color_palette": {
+      "dominant": [
+        "gris moyen"
+      ],
+      "secondary": [
+        "gris clair sur le dessus des tuyaux et des brides",
+        "gris sombre dans les vides de grille et entre les faisceaux"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "vegetation",
+        "fuite",
+        "givre"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "⚠️ Les vides de grille de ventilation et les creux entre deux faisceaux : vers 35/255. Jamais 0.",
+    "gray": "tole nue de fond, ~120/255 — volontairement bas, c'est une surface sombre",
+    "white": "dessus des tuyaux, brides, couvercles de chemin de cables — 200 a 235. ⚠️ C'EST L'AMPLITUDE QUI SAUVE CETTE TUILE : il faut au moins 100 niveaux entre le fond et le sommet d'un tuyau, sinon le relief ne se lira pas sur un materiau aussi sombre."
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ UNE AMPLITUDE FRANCHE : au moins 100 niveaux entre la tole de fond et le dessus d'un tuyau. C'est la seule chose qui rende un relief lisible sur un anthracite metallique",
+      "des tuyaux d'au moins 47 px dans l'image (6,5 cm de monde) pour qu'on voie leur orientation",
+      "des faisceaux PARALLELES et suivis : l'oeil suit une conduite, c'est ce qui fait lire l'ordre",
+      "de la tole nue entre les faisceaux, sinon tout devient du grain"
+    ],
+    "must_not_have": [
+      "ruine",
+      "breche",
+      "carbonisation",
+      "tuyau arrache",
+      "cable pendant",
+      "desordre organique",
+      "excroissance",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "vegetation",
+      "fuite",
+      "givre"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Tech_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 1 332 triangles, 25,1 pct de la surface, densite mesuree 0,699 tuile/m, anisotropie 1,57 — la plus forte des douze, portee par les quatre haubans du mat (tubes obliques, minimum local 0,445 tuile/m). Porte le plateau, les traverses, la machinerie, les conduits, le mat, les vergues, les haubans, la parabole et les panneaux solaires.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #24252B (anthracite Vanguard) pose par la forge, avec metallic/roughness 0,70 / 0,50. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_machinerie_height_1024.png --out assets/imported/textures/cortege --name ambry_machinerie --mul --check-tiling --preview /tmp/ambry_machinerie.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Tech_Ambry\": \"ambry_machinerie\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "haute",
+    "source_path": "assets/source/textures/cortege/ambry_machinerie_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_machinerie_nrm.png",
+      "ambry_machinerie_rough.png",
+      "ambry_machinerie_ao.png",
+      "ambry_machinerie_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ CETTE TUILE SE JUGE A COTE DES DALLES IVOIRE, PAS SEULE : sa valeur est basse par construction. La question n'est pas « est-elle belle » mais « voit-on ses tuyaux quand elle est posee contre AA_Deck_Ambry ».",
+      "⚠️ L'anisotropie de 1,57 sur les haubans etire la carte sur ces quatre tubes : verifier en capture qu'elle n'y bave pas — si elle bave, c'est la geometrie du mat qu'il faudra reprendre, pas l'image."
+    ],
+    "provenance_csv_line": "ambry_machinerie_height,assets/source/textures/cortege/ambry_machinerie_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0021-ambry-machinerie.json,,\"Carte de hauteur d'Ambry — Hauteur de la machinerie d'Ambry — ce qui fait tenir un village dans le vide. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Tech_Ambry, 25,1 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris de la MACHINERIE EXTERIEURE d'un avant-poste spatial habite.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre.\n\nOn y voit : des faisceaux de tuyaux paralleles de 8 a 15 cm de diametre, qui courent d'un bord a l'autre ; des brides boulonnees tous les 60 a 90 cm ; des colliers de fixation avec leurs pattes ; des carters de machinerie a angles francs de 30 a 60 cm ; des grilles de ventilation a lames serrees ; des chemins de cables a couvercle, plus plats que les tuyaux.\n\n⚠️ LE RELIEF DOIT ETRE TRES FRANC. Le dessus d'un tuyau doit etre BEAUCOUP plus clair que la tole de fond — au moins cent niveaux de gris d'ecart. Sans cette amplitude, rien ne se verra : cette surface est tres sombre et tres metallique dans le jeu, et seul un relief marque y survit.\n\nLaisser de la tole nue entre les faisceaux. Sans vide, tout devient du grain indistinct.\n\nTout est RANGE : boulonne, aligne, accessible. C'est de la mecanique montee par des gens qui l'entretenaient — rien ne pend, rien n'est arrache, rien ne fuit.\n\nLes vides de grille et les creux entre deux faisceaux sont les seules zones vraiment sombres.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}

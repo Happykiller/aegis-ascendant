@@ -1,0 +1,200 @@
+{
+  "id": "TEX-0020",
+  "slug": "ambry-rue-et-passerelles",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur de la rue d'Ambry — le sol que quatre-vingts personnes ont use",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Deck_Ambry` — 26,5 pct de la surface d'Ambry, et reprend TEX-AMB-03 et 04 de la planche de matieres.",
+    "priority": "⚠️ C'EST LA PLUS GRANDE SURFACE D'AMBRY, ET LA CAMERA NE REGARDE QUE CA. Elle plonge a 70 degres : elle voit les faces HORIZONTALES et presque jamais les facades. Le sol d'Ambry est donc ce que le joueur regarde pendant les vingt-deux secondes ou elle traverse le cadre. ⚠️ ET C'EST LA SEULE TUILE QUI PORTE L'USAGE. Un bardage dit « c'est construit » ; un sol dit « on a marche dessus ». C'est ce qui separe un decor d'un lieu habite, et c'est le reproche exact que l'operateur a fait trois fois : « je ne comprends pas ce que je regarde »."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des dalles de caillebotis de 60 a 90 cm, a barreaux de 3 a 5 cm",
+      "des plaques de tole larmee a losanges de 4 a 6 cm",
+      "des seuils et des nez de marche en relief franc",
+      "des taquets d'amarrage et des points d'ancrage de longe, scelles",
+      "des bandes antiderapantes en travers des passages",
+      "des chemins d'usure : la ou l'on passe, le relief est EMOUSSE et la tole polie"
+    ],
+    "density": "high",
+    "distribution": "structured",
+    "edge_behavior": "Dalles, caillebotis et bandes antiderapantes traversent les quatre bords et s'y raccordent. ⚠️ La trame de dalle etant reguliere, elle doit tomber JUSTE au bord : c'est la contrainte la plus dure de cette tuile.",
+    "empty_space": "Peu. Un sol d'avant-poste est couvert de servitudes — mais il garde des plages LISSES, et ce sont elles qui portent l'usure. Alterner grille et plage pleine."
+  },
+  "visual": {
+    "subject": "Sol exterieur d'un avant-poste spatial habite, vu de dessus : caillebotis, tole larmee, seuils, taquets d'amarrage, bandes antiderapantes, chemins d'usure",
+    "materials": [
+      "caillebotis a barreaux",
+      "tole larmee a losanges",
+      "bande antiderapante collee",
+      "taquet d'amarrage scelle"
+    ],
+    "details": [
+      "barreaux de caillebotis reguliers",
+      "losanges de tole larmee",
+      "nez de marche en relief",
+      "pattes de scellement des taquets",
+      "arretes de bande antiderapante",
+      "⚠️ chemins d'usure : relief EMOUSSE et losanges effaces la ou l'on marche"
+    ],
+    "style": "construction humaine normalisee, a l'echelle du pas — et USEE PAR L'USAGE, pas par le temps. L'exact contraire de l'ouvrage a l'echelle de la tonne qui l'emporte.",
+    "color_palette": {
+      "dominant": [
+        "gris clair"
+      ],
+      "secondary": [
+        "gris moyen dans les vides de caillebotis",
+        "blanc sur les aretes et les losanges",
+        "gris plus uni et plus clair sur les chemins d'usure"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "vegetation",
+        "trou traversant",
+        "flaque"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "⚠️ Les VIDES de caillebotis, et eux seuls, descendent bas — vers 40/255. Ce sont de vrais trous entre les barreaux, c'est la seule chose de cette tuile qui doive trancher. Jamais 0.",
+    "gray": "plage de tole pleine, ~150/255 ; chemin d'usure ~165, plus clair parce que poli",
+    "white": "barreaux de caillebotis, losanges, nez de marche, taquets — 210 a 240"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ des vides de caillebotis qui TRANCHENT : c'est le seul element de la tuile qui module assez pour se lire a 45,8 px/m",
+      "des barreaux d'au moins 47 px dans l'image (6,5 cm de monde), sinon ils ne rendront qu'un grain",
+      "⚠️ DES CHEMINS D'USURE : la preuve qu'on a marche la, et la seule chose qui distingue ce sol d'un sol neuf",
+      "une alternance franche entre grille et plage pleine, a l'echelle de 60-90 cm"
+    ],
+    "must_not_have": [
+      "ruine",
+      "breche",
+      "carbonisation",
+      "sol naturel",
+      "terre",
+      "sable",
+      "graviers",
+      "marquage peint",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "vegetation",
+      "trou traversant",
+      "flaque"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Deck_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 1 406 triangles, 26,5 pct de la surface d'Ambry, densite de depliage mesuree 0,699 tuile/m, anisotropie 1,01 — la plus reguliere des douze. Porte la rue, les caillebotis, les passerelles, les garde-corps, les echelles, les taquets et les marquages de sol.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #DDDCD2 (ivoire froid) pose par la forge, avec metallic/roughness 0,30 / 0,65. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_rue_et_passerelles_height_1024.png --out assets/imported/textures/cortege --name ambry_rue_et_passerelles --mul --check-tiling --preview /tmp/ambry_rue_et_passerelles.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Deck_Ambry\": \"ambry_rue_et_passerelles\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "haute",
+    "source_path": "assets/source/textures/cortege/ambry_rue_et_passerelles_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_rue_et_passerelles_nrm.png",
+      "ambry_rue_et_passerelles_rough.png",
+      "ambry_rue_et_passerelles_ao.png",
+      "ambry_rue_et_passerelles_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST QUI TRANCHE : poser la capture a cote de celle d'avant, au meme cadrage. Si l'on ne voit pas qu'on a MARCHE sur ce sol, la demande a echoue — quelle que soit la qualite de l'image."
+    ],
+    "provenance_csv_line": "ambry_rue_et_passerelles_height,assets/source/textures/cortege/ambry_rue_et_passerelles_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0020-ambry-rue-et-passerelles.json,,\"Carte de hauteur d'Ambry — Hauteur de la rue d'Ambry — le sol que quatre-vingts personnes ont use. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Deck_Ambry, 26,5 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris du SOL EXTERIEUR d'un avant-poste spatial habite par quatre-vingts personnes.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre. C'est une surface a l'echelle du PAS, pas de la tonne.\n\nOn y voit : des dalles de caillebotis de 60 a 90 cm, a barreaux reguliers de 3 a 5 cm separes par de vrais vides ; des plaques de tole larmee a losanges de 4 a 6 cm ; des seuils et des nez de marche en relief franc ; des taquets d'amarrage scelles par des pattes ; des bandes antiderapantes collees en travers des passages.\n\n⚠️ ET SURTOUT DES CHEMINS D'USURE : la ou les gens passaient, le relief est emousse, les losanges sont effaces et la tole est polie et plus lisse. C'est l'element le plus important de l'image — c'est lui qui dit qu'on a vecu ici. Il doit se voir comme des trainees douces, larges de 40 a 60 cm, qui traversent la tuile.\n\nAlterner franchement les zones de grille et les plages de tole pleine : ce sont les plages pleines qui portent l'usure.\n\nLes vides entre les barreaux de caillebotis sont la seule chose qui descende vraiment bas dans les gris — ce sont de vrais trous. Tout le reste module doucement autour d'un gris moyen.\n\nRien de casse, rien d'arrache, rien de rouille : l'avant-poste est INTACT.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}
