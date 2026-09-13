@@ -172,6 +172,26 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 
   ⚠️ **La valeur claire, elle, est DÉCIDÉE et ne bouge pas** (opérateur, 2026-09-13) :
   l'amortissement a été proposé et explicitement écarté.
+
+  **Les deux sont faits** (2026-09-13, `b2cd87d` et `6153b81`). Mesuré en jeu, même cadrage :
+  contraste local d'Ambry **18,2 → 40,8**, luminance 165,6 → 144,1 (le bordé voisin est à 46).
+- ⚠️ **La moitié d'Ambry reçoit ses cartes 3,5 fois trop fines**, et c'est vérifié aux deux
+  sources. Le générateur déplie **tout l'objet** à `AMBRY_TEXELS_PER_METER = 0,700`
+  (`box_project_uv(ambry, …)`, une seule couche UV), mais `cortege_skin.gd:140` choisit
+  l'échelle **par nom de matériau** : seul `AA_Hull_Ambry` reçoit `AMBRY_UV_SCALE = 1,0`, tout
+  le reste retombe sur `HULL_UV_SCALE = 0,5`. Densité effective : 0,700 × 0,5 = **0,350** contre
+  0,200 × 0,5 = 0,100 pour le même matériau ailleurs.
+  Cela touche **1 652 des 3 364 triangles** d'Ambry — `AA_Greeble` 1 103, `AA_Hull` 237,
+  `AA_Glass` 168, `AA_Marking_Red` 144. Défaut **préexistant**, signalé par la forge, et que le
+  `BRIEF-0114` amplifie (la greeble a doublé). Le symptôme est celui que ce dépôt a déjà mesuré :
+  un détail que les mipmaps moyennent jusqu'à le faire disparaître, en payant son coût.
+  Deux voies : **un neuvième slot** `AA_Greeble_Ambry` et son entrée dans `SKINS` (c'est ce que
+  `BRIEF-0090` a fait pour le huitième), ou une **échelle dérivée de la densité de dépliage**
+  mesurée par surface, qui supprimerait le cas particulier au lieu d'en ajouter un.
+  ⚠️ Une échelle par MAILLAGE ne marcherait pas : Ambry est cuite dans `Section_05`.
+- **Ambry n'a plus de faces `AA_Panel`** (8 avant, 0 après) — décision de la forge, hors brief,
+  et acceptée : le violet est la couleur de faction de l'Unisson, donc même raison que l'interdit
+  de magenta. Une ligne suffit à les rétablir si on juge autrement.
 - **Trois tourelles balaient au-delà d'un coaming voisin** (Turret_05/06/10, de 1,2 à 1,8 m) :
   le garde de `BRIEF-0092` arbitre sur des socles, pas sur des tubes. Signalé par la forge.
 - **La lisibilité de l'ÉTAT d'une tourelle est à revérifier** : après `BRIEF-0100`, l'émissif ne
