@@ -562,3 +562,21 @@ Deux leçons, et la seconde n'est que la première vue d'un autre angle :
   partie gagnée. ⚠️ L'indice dormait dans la table depuis toujours : `GAME_OVER -> FIGHTER_COMBAT`
   était déclaré et appelé de nulle part. Aucun des 1 021 tests ne pouvait le voir — ils
   s'arrêtaient tous à la fin du premier niveau.
+- **Ambry devient un lieu, et les mipmaps nous coûtent une soirée** (2026-09-13) :
+  `BRIEF-0114`/`0115`, planche de concept et planche de matières versées, douze slots par nature,
+  onze textures livrées et intégrées. Ambry est l'avant-poste où le **joueur** a grandi et personne
+  ne l'avait jamais décrit : tout ce que la forge avait reçu tenait en une ligne du `BRIEF-0089`.
+  ⚠️ Et le jeu contredisait son propre lore — « re-plombé » veut dire **rebâti de travers**, et le
+  générateur l'avait lu « remis d'aplomb », faisant d'Ambry la seule chose parfaitement orthogonale
+  d'un vaisseau fait de facettes.
+- **La révélation partait cinquante et un mètres trop tôt** (2026-09-13) : la réplique qui nomme
+  Ambry était dite à l'ouverture du tronçon, vingt et une secondes avant son premier pixel — elle
+  avait disparu quinze secondes avant la chose qu'elle désigne. C'est la cause des deux
+  signalements de l'opérateur, à huit jours d'écart, sur « un truc blanc dont je ne sais pas ce que
+  c'est ».
+- **⛔ Vérifier la chaîne d'échantillonnage avant de régler ce qui la traverse** (2026-09-13) :
+  quarante-quatre cartes importées **sans mipmaps** — Godot met `false` par défaut et `detect_3d`
+  ne tourne pas sans éditeur. Trois décisions prises et écrites sur ce signal cassé, **toutes
+  inversées** une fois la chaîne saine. ⚠️ La leçon existait déjà dans le ghost et n'a rien
+  empêché : elle est devenue une **règle dure**, avec les trente-neuf fichiers de dette gelés dans
+  `MIPMAPS_DETTE.txt`.

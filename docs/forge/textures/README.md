@@ -80,6 +80,44 @@ Deux corrections, appliquées à tous les `x_prompt_fr` :
 **Le contrôle** : les quatre coins doivent être à **0-2 sur 255**. Au-dessus, le générateur a ajouté
 un fond — **le renvoyer plutôt que de le rattraper**.
 
+#### ⚠️ Et le CADRAGE se demande avant le sujet, pour la même raison (2026-09-13)
+
+La consigne de fond ouvre le prompt parce qu'un générateur pondère ce qu'il lit en premier. **La
+même règle vaut pour le cadrage, et l'oublier a coûté une génération entière.**
+
+`TEX-0023` demandait un cordon de soudure grossier. Le prompt le décrivait très bien — cordons
+superposés, coulures figées, métal boursouflé — mais ne disait **nulle part que le cordon devait
+remplir l'image**. Le générateur était donc libre de dessiner ce qui l'entoure : il a rendu de la
+**tôlerie**, posé le cordon dessus, et le cordon a fini par disparaître. Le tirage était un
+quasi-doublon de la texture de sol livrée à côté.
+
+⚠️ **Pire : la liste « éviter » lui soufflait le vocabulaire du défaut.** Elle nommait *rivets,
+boulons, brides* — des mots de tôlerie. Les interdire, c'est encore les mettre en tête.
+
+Le prompt réécrit ouvre sur : *« GROS PLAN EXTRÊME SUR DU MÉTAL FONDU. Le cordon occupe toute
+l'image. Il n'y a rien d'autre dans le cadre : aucune tôle plane, aucun panneau, aucune plaque,
+aucun caillebotis. »* Le tirage suivant était juste du premier coup.
+
+**La règle** : nommer, **dans l'ouverture**, ce que le cadre contient et ce qu'il ne contient pas.
+Et compter — *« les cordons font 6 à 12 cm, il y en a donc une douzaine dans l'image, pas un
+seul »* — parce qu'un sujet sans nombre se dessine une fois, au centre, avec un décor autour.
+
+#### ⛔ On ne texture pas ce que la géométrie modélise déjà (2026-09-13)
+
+`TEX-0026` a livré une façade impeccable : châssis, meneaux, embrasures, vitrage plat — exactement
+la demande. Mesurée en jeu sur les seuls pixels ambre : **écart-type interne 18,4 → 6,7**, et l'aire
+ambre **+27 %**. Elle **uniformisait** les fenêtres au lieu de les détailler. Retirée, on retombe à
+18,46 : c'était bien elle.
+
+Deux causes, et **la demande est en cause, pas le tirage** :
+
+- l'émissif du slot est à 1,2 : il **noie l'albédo**, et une normale ne modèle pas une émission ;
+- surtout, **la géométrie portait déjà ses quarante-six fenêtres en quads séparés**. Une tuile qui
+  dessine des fenêtres en superpose une **seconde série, désalignée**, qui empâte les bords.
+
+⚠️ Avant d'écrire une demande, regarder ce que la géométrie modélise. Ce slot-là voulait un dégradé
+de verre presque plat, pas une façade.
+
 #### ⛔ Et ne JAMAIS demander un détourage pour un élément volumétrique
 
 Le rattrapage courant (« supprimez l'arrière-plan, contours nets et lisses, fond transparent ») est

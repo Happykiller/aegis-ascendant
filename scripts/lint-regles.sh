@@ -156,6 +156,31 @@ if ! python3 tools/lint-textures.py; then
   bad "demandes de texture non conformes — voir docs/forge/textures/README.md"
 fi
 
+# ⚠️ UNE CARTE 3D SANS MIPMAPS, ET LA LECON ETAIT DEJA ECRITE.
+#
+# Godot importe `mipmaps/generate=false` par DEFAUT, et `detect_3d` — qui devrait le
+# basculer des que la texture sert en 3D — ne tourne pas sans editeur. Tout PNG entre par
+# la chaine headless part donc avec ce defaut, et RIEN ne le signale : ni erreur, ni
+# avertissement, ni test rouge.
+#
+# Le symptome, lui, est spectaculaire. Sans mipmaps, une carte de 1254 px affichee sur 65
+# est echantillonnee POINT PAR POINT : « ca pixellise, ca fait comme du bruit sur une tele
+# qui ne capte rien » (operateur, 2026-09-13, en decrivant Ambry).
+#
+# ⚠️ ET CE QUI JUSTIFIE UNE REGLE DURE PLUTOT QU'UNE PAGE, C'EST QUE LA PAGE EXISTAIT.
+# `howto-assets-image-genere.md` nomme ce piege et son symptome depuis le 26/08. Elle n'a
+# pas empeche quarante-quatre cartes d'entrer avec le defaut, ni une soiree entiere de faux
+# diagnostics par-dessus : j'ai regle une echelle de tuile, puis un relief, puis l'echelle
+# de nouveau, SUR UN SIGNAL CASSE EN AMONT — et j'ai ecrit des conclusions que la mesure
+# propre a ensuite inversees. Une procedure deterministe s'encode, elle ne se raconte pas.
+DETTE="assets/imported/textures/MIPMAPS_DETTE.txt"
+while IFS= read -r imp; do
+  rel="${imp#assets/imported/textures/}"
+  if ! grep -qxF "$rel" "$DETTE" 2>/dev/null; then
+    bad "$imp est importe SANS MIPMAPS — il scintillera en 3D. Poser mipmaps/generate=true, ou l'inscrire dans $DETTE s'il n'est pas une surface 3D"
+  fi
+done < <(grep -rl --include="*.import" "mipmaps/generate=false" assets/imported/textures/ 2>/dev/null || true)
+
 if [[ "$FAILURES" -gt 0 ]]; then
   say "$FAILURES règle(s) dure(s) violée(s) — voir CLAUDE.md § Règles de code"
   exit 1

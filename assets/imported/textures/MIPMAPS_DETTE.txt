@@ -1,0 +1,53 @@
+# Les cartes 3D importees SANS mipmaps, au 2026-09-13.
+#
+# ⚠️ CE FICHIER EST UNE DETTE, PAS UNE EXEMPTION. `scripts/lint-regles.sh` refuse tout
+# NOUVEAU `.import` de `assets/imported/textures/` qui porte `mipmaps/generate=false` ;
+# celles-ci sont tolerees parce qu'elles etaient deja la, et qu'activer les mipmaps CHANGE
+# le rendu d'une surface — chacune doit etre regardee en capture avant d'etre retiree d'ici.
+#
+# Pourquoi la regle existe : Godot importe a `false` par defaut, et `detect_3d`, qui devrait
+# le basculer, NE TOURNE PAS SANS EDITEUR. Tout PNG entre par la chaine headless part donc
+# avec ce defaut, et rien ne le signale. Sans mipmaps, une carte de 1254 px affichee sur 65
+# est echantillonnee point par point : « du bruit sur une tele qui ne capte rien »
+# (operateur, 2026-09-13, en decrivant Ambry — apres une soiree de faux diagnostics).
+#
+# Retirer une ligne d'ici = poser les mipmaps ET regarder la surface en capture.
+backgrounds/asteroid_rock_albedo_1024_mask.png.import
+backgrounds/asteroid_rock_height_1024_ao.png.import
+backgrounds/asteroid_rock_height_1024_glow.png.import
+backgrounds/asteroid_rock_height_1024_mul.png.import
+backgrounds/asteroid_rock_height_1024_nrm.png.import
+backgrounds/asteroid_rock_height_1024_rough.png.import
+backgrounds/moon_regolith_albedo_1024_mask.png.import
+backgrounds/moon_regolith_height_1024_ao.png.import
+backgrounds/moon_regolith_height_1024_mul.png.import
+backgrounds/moon_regolith_height_1024_nrm.png.import
+backgrounds/moon_regolith_height_1024_rough.png.import
+citadel/citadel_deck_markings_mask.png.import
+citadel/citadel_greebles_ao.png.import
+citadel/citadel_greebles_nrm.png.import
+citadel/citadel_greebles_rough.png.import
+citadel/citadel_panels_ao.png.import
+citadel/citadel_panels_mul.png.import
+citadel/citadel_panels_nrm.png.import
+citadel/citadel_panels_rough.png.import
+citadel/citadel_wear_mask.png.import
+citadel/crystal_facets_ao.png.import
+citadel/crystal_facets_mul.png.import
+citadel/crystal_facets_nrm.png.import
+citadel/crystal_facets_rough.png.import
+hull/hull_detail_mul.png.import
+hull/hull_panels_ao.png.import
+hull/hull_panels_nrm.png.import
+hull/hull_panels_rough.png.import
+hull/specter_9_d_albedo.png.import
+hull/specter_9_d_albedo_worn.png.import
+hull/specter_9_d_ao.png.import
+hull/specter_9_d_cover.png.import
+hull/specter_9_d_curv.png.import
+hull/specter_9_d_height_padded.png.import
+hull/specter_9_d_height.png.import
+hull/specter_9_d_nrm.png.import
+hull/specter_9_d_rough.png.import
+hull/specter_9_d_wnrm.png.import
+hull/specter_9_d_wpos.png.import

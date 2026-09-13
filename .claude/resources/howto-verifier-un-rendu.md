@@ -352,3 +352,57 @@ entre deux lancements non synchronisés à l'image près.
 migration de moteur ou de templates se voit en premier : ressource dépréciée, format d'import qui
 change, option de preset disparue. Le script les compte et les affiche désormais, **sans faire
 échouer l'export** : un garde qui rougit sur un avertissement bénin finit contourné.
+
+
+## ⛔ VÉRIFIER LA CHAÎNE D'ÉCHANTILLONNAGE AVANT DE RÉGLER CE QUI LA TRAVERSE (2026-09-13)
+
+**Coût : une soirée entière, trois décisions écrites puis inversées, et la patience de
+l'opérateur** — « en fait, j'en ai marre ».
+
+Onze textures venaient d'entrer sur Ambry. L'opérateur : *« je ne vois rien, les textures sont
+moches, ça pixellise, ça fait comme du bruit sur une télé qui ne capte rien »*. J'ai diagnostiqué,
+mesuré, conclu — **trois fois de suite, et trois fois faux** :
+
+1. « la tuile est trop fine » → je l'ai portée de 1,43 m à 3,57 ;
+2. « un relief plus fort ne fabrique pas du détail, ça fabrique du scintillement » → j'ai **rejeté**
+   la bonne valeur, en l'écrivant noir sur blanc dans un commentaire de code ;
+3. « la métrique ne bouge pas, donc le changement ne sert à rien ».
+
+La cause réelle : **les quarante-quatre cartes étaient importées sans mipmaps.** Sans elles, une
+carte de 1254 px affichée sur 65 est échantillonnée **point par point** — le « bruit de télé »,
+littéralement. Une fois les mipmaps posées, les trois conclusions se sont inversées : le relief
+fort est le bon, et la taille de tuile optimale n'était ni celle d'avant ni celle que j'avais
+choisie.
+
+> **Un essai fait sur une chaîne d'échantillonnage cassée ne prouve rien.** Tant que le signal est
+> faux en amont, aucun réglage de ce qui le traverse n'est jugeable — et les mesures prises
+> pendant ce temps ne mesurent que le bruit.
+
+**Le réflexe** : devant un défaut de rendu qui ressemble à du grain, du scintillement ou du bruit,
+vérifier **d'abord** la chaîne — mipmaps, filtrage, compression, résolution de la source — et ne
+toucher à aucun paramètre de cadrage, d'échelle ou d'intensité avant qu'elle soit saine.
+
+⚠️ **ET LA LEÇON ÉTAIT DÉJÀ ÉCRITE.** `howto-assets-image-genere.md` nomme ce piège et son symptôme
+exact depuis le 26/08. Elle n'a empêché ni l'entrée des quarante-quatre cartes, ni la soirée de
+faux diagnostics. C'est pourquoi elle est devenue une **règle dure** : `lint-regles.sh` refuse
+désormais tout `.import` de `assets/imported/textures/` sans mipmaps, et la dette existante est
+gelée dans `assets/imported/textures/MIPMAPS_DETTE.txt`. Une procédure déterministe s'encode ;
+une page ne suffit pas quand le défaut est muet.
+
+## ⚠️ Le contraste local ne voit pas la texture — trois fois le même mensonge (2026-09-13)
+
+L'écart-type par fenêtres de 8, 16 ou 32 px a été utilisé trois fois dans la même journée pour
+juger un changement de texture, et il a menti **trois fois dans le même sens** :
+
+| Ce qu'on jugeait | Ce que la métrique disait | Ce que l'œil disait |
+|---|---|---|
+| le relief du `BRIEF-0115` | 24,7 → 23,3 : ça **baisse** | Ambry devient un lieu |
+| quatre cartes posées | 31,9 → 32,6 : rien | les dalles cessent d'être des plans nus |
+| la tuile de 1,43 à 3,57 m | 25,30/36,54/51,17 → 25,02/36,43/51,14 : **identique** | les dalles se lisent |
+
+La raison est mécanique : sur une pièce qui mêle de **grands toits blancs** et des **vides noirs**,
+l'écart-type est dominé par ces contrastes **géométriques**, qui ne bougent pas. La texture module
+dix fois moins fort et disparaît dans la moyenne.
+
+> Cette métrique sait dire si une **silhouette** a gagné du relief. Elle ne sait rien dire d'une
+> **surface**. Pour une surface, c'est le zoom 1:1 sur une zone homogène qui tranche.
