@@ -157,11 +157,21 @@ poupe (LOT 6), les pièces manquantes (LOT 7) et le silence (LOT 8).
 - **La séquence de citadelle dure 26,4 s** chronométrée sur un joueur réel, contre les 30 à 45 s
   visées par son brief. La mesure automatisée donnait 19,5 s : le plancher est plus près qu'il
   n'y paraissait, mais toujours pas atteint.
-- **Ambry ne se lit pas comme une arrivée.** « *il y a un truc à droite sans texture blanc, je ne
-  sais pas ce que c'est* » (opérateur, en jouant). Son blanc cassé est pourtant délibéré — la
-  palette Helios Vanguard, pour trancher avec l'anthracite de l'Unisson — mais c'est la seule
-  grande surface claire du niveau et elle est plate, faute de toute texture au niveau 2. La
-  destination du niveau se lit comme un asset non fini.
+- **Ambry ne se lit pas comme une arrivée.** ⚠️ **DIAGNOSTIC REFAIT LE 2026-09-13, et l'ancien
+  était faux.** Deuxième signalement de l'opérateur : « cette zone claire, non texturée, non
+  travaillée, qui ne s'intègre pas du tout au design ». Ce n'est **pas** un défaut de texture —
+  les quatre cartes `ambry_hull_*` sont posées et mesurables, et Ambry porte **plus** de détail
+  de surface que la tôle voisine (contraste local 17,4 contre 6,7). Deux vraies causes :
+  - **le relief**, et « non travaillée » est littéralement exact : **1 024 triangles pour
+    27 × 5,7 m**, dont **126** pour les faces ivoire qu'on regarde — 4,7 par mètre linéaire,
+    quand le complexe industriel voisin en met 2,7 fois plus au m². Parti en `BRIEF-0114` ;
+  - **la révélation partait 51 m trop tôt** — corrigé le 2026-09-13 (commit `b2cd87d`) : la
+    réplique de Lyra était dite à l'ouverture du tronçon 5 quand Ambry n'entre dans le cadre que
+    21 secondes plus tard. Elle avait disparu quinze secondes avant l'objet qu'elle désigne, et
+    c'est pourquoi l'opérateur ne l'a jamais reliée à la dalle blanche.
+
+  ⚠️ **La valeur claire, elle, est DÉCIDÉE et ne bouge pas** (opérateur, 2026-09-13) :
+  l'amortissement a été proposé et explicitement écarté.
 - **Trois tourelles balaient au-delà d'un coaming voisin** (Turret_05/06/10, de 1,2 à 1,8 m) :
   le garde de `BRIEF-0092` arbitre sur des socles, pas sur des tubes. Signalé par la forge.
 - **La lisibilité de l'ÉTAT d'une tourelle est à revérifier** : après `BRIEF-0100`, l'émissif ne
