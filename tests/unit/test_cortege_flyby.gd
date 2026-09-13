@@ -210,3 +210,104 @@ func test_the_wreck_takes_its_time_to_move_again() -> void:
 	assert_true(CortegeFlyby.DRIFT_RAMP > 1.0,
 		"la derive s'installe en %.1f s, elle ne demarre pas d'un coup" % CortegeFlyby.DRIFT_RAMP)
 	assert_true(CortegeFlyby.DRIFT_SPEED > 0.0, "et elle avance vraiment")
+
+
+# =============================================================================
+# Quand une pièce de coque entre dans le cadre — la révélation d'Ambry
+# =============================================================================
+
+const RootScript := preload("res://scripts/gameplay/cortege_root.gd")
+const CORTEGE_SCENE := "res://scenes/gameplay/cortege.tscn"
+const HULL_GLB := "res://assets/imported/models/backgrounds/long_cortege.glb"
+
+## La relation station → `z` monde, vérifiée sur le SEUL point fixe connu du niveau.
+##
+## ⚠️ ELLE N'EST PAS EMPIRIQUE, ET C'EST ÇA QU'ON GARDE. Le survol s'arrête à
+## `LEAD_IN + station − hold`, le décor porte `parcouru − LEAD_IN`, la poupe siège à `−station`.
+## Les trois se simplifient : à l'arrêt, la poupe est à `z = −hold_plane_y`. Une version
+## calibrée sur des pixels lus à la main donnait 7,42 au lieu de 6,47.
+func test_the_stern_comes_to_rest_exactly_at_minus_its_hold() -> void:
+	var arret := FlybyScript.LEAD_IN + STERN_T.station - STERN_T.hold_plane_y
+	assert_almost_eq(FlybyScript.world_z_of(STERN_T.station, arret), -STERN_T.hold_plane_y, 0.001,
+		"la poupe au repos est a z = -hold_plane_y")
+
+## ⚠️ CE BANC GARDE TROIS DÉFAUTS RENCONTRÉS EN TROIS LANCEMENTS, et aucun ne levait d'erreur.
+## La station d'Ambry doit valoir **446,5** :
+##   — 400, si le parcours des nœuds oublie que le TRONÇON EST LE MAILLAGE (`Section_05` n'est
+##     pas un nœud qui porte une coque : il EST la coque) ;
+##   — 846,5, si l'on ajoute `mesh.position.z` alors qu'il porte déjà le décalage du tronçon ;
+##   — introuvable, si l'on interroge `ArrayMesh.surface_get_material()` au lieu du matériau
+##     ACTIF : un glTF importé porte ses matériaux en surcharge sur le `MeshInstance3D`.
+func test_the_front_edge_of_ambry_is_read_from_the_hull() -> void:
+	var packed: PackedScene = load(HULL_GLB)
+	assert_true(packed != null, "la coque du corridor se charge")
+	if packed == null:
+		return
+	var coque := track(packed.instantiate()) as Node3D
+	var trouve := -INF
+	var rang := -1
+	for enfant in coque.get_children():
+		var section := enfant as Node3D
+		if section == null:
+			continue
+		rang += 1
+		var bord := RootScript._slot_front_edge(section, RootScript.AMBRY_SLOT)
+		if is_inf(bord):
+			continue
+		trouve = float(rang) * 100.0 - bord
+		break
+	assert_false(is_inf(trouve), "le slot propre a Ambry est trouve dans la coque")
+	if is_inf(trouve):
+		return
+	assert_almost_eq(trouve, 446.5, 1.0,
+		"le bord avant d'Ambry est a s = 446,5 (lu : %.1f)" % trouve)
+
+## La réplique part quand on la VOIT, pas à l'ouverture du tronçon.
+##
+## ⚠️ ELLE PARTAIT CINQUANTE ET UN MÈTRES TROP TÔT. « Regardez à tribord, c'est Ambry » était
+## dite à l'entrée du tronçon 5 — parcouru 400 — quand le premier pixel d'Ambry n'arrive qu'à
+## 451. Vingt et une secondes d'avance pour une réplique qui tient 6,5 s : elle avait disparu
+## quinze secondes avant la chose qu'elle désigne. L'opérateur l'a rapporté deux fois sans
+## jamais pouvoir relier les deux.
+func test_the_ambry_line_waits_until_ambry_is_in_the_frame() -> void:
+	var packed: PackedScene = load(CORTEGE_SCENE)
+	assert_true(packed != null, "la scene du niveau 2 se charge")
+	if packed == null:
+		return
+	var etat := packed.get_state()
+	var cam := Transform3D.IDENTITY
+	var fov := 0.0
+	for i in etat.get_node_count():
+		if String(etat.get_node_name(i)) != "Camera3D":
+			continue
+		for p in etat.get_node_property_count(i):
+			match String(etat.get_node_property_name(i, p)):
+				"transform": cam = etat.get_node_property_value(i, p) as Transform3D
+				"fov": fov = float(etat.get_node_property_value(i, p))
+	assert_true(fov > 0.0, "la camera du niveau se lit dans la scene")
+	if fov <= 0.0:
+		return
+	var h := float(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+	var station := 446.5
+	var signal_a := FlybyScript.travelled_when_on_screen(station, -4.20, 10.75, cam, fov, h)
+	assert_true(signal_a > 0.0, "Ambry entre bien dans le cadre un jour")
+	# ⚠️ LE SEUIL EST L'OUVERTURE DU TRONÇON, ET C'EST LUI QUI ÉTAIT UTILISÉ. Tout ce qui compte
+	# est que le signal tombe APRÈS, et de loin.
+	assert_true(signal_a > 440.0,
+		"la replique part bien apres l'ouverture du troncon 5 (parcouru %.0f contre 400)"
+		% signal_a)
+	# Un cran avant, la piece n'est pas encore dans l'image ; un cran apres, elle y est.
+	var avant := FlybyScript._screen_y(station, signal_a - 2.0, -4.20, 10.75, cam, fov, h)
+	var apres := FlybyScript._screen_y(station, signal_a + 2.0, -4.20, 10.75, cam, fov, h)
+	assert_true(avant < 0.0, "deux metres plus tot, Ambry est encore au-dessus du cadre")
+	assert_true(apres > 0.0, "deux metres plus tard, elle y est entree")
+
+## ⚠️ ET LE TRONÇON 5 NE DIT PLUS RIEN À SON SEUIL. L'entrée vide de `SECTION_LINES` est un
+## tronçon qui se tait, pas une clé manquante : sans garde, `say()` cherchait la chaîne vide et
+## chaque partie rendait « [Lyra] cle inconnue : ».
+func test_the_fifth_section_says_nothing_at_its_threshold() -> void:
+	var lignes: Array[StringName] = RootScript.SECTION_LINES
+	assert_eq(lignes.size(), 5, "une entree par troncon")
+	assert_eq(String(lignes[4]), "", "le troncon 5 se tait a son seuil")
+	for i in 4:
+		assert_false(String(lignes[i]).is_empty(), "le troncon %d garde sa replique" % (i + 1))

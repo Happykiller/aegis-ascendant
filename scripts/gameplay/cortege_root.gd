@@ -21,8 +21,32 @@ const BRIEFINGS := preload("res://resources/dialogue/cortege_briefings.tres")
 ## joueur comprend. La progression du RÉCIT est donc la seule progression qu'il ait, et elle est
 ## portée par la seule chose qui avance — la coque sous lui.
 const SECTION_LINES: Array[StringName] = [
-	&"survey_start", &"hull_guns", &"bay_first", &"spine_seen", &"ambry",
+	&"survey_start", &"hull_guns", &"bay_first", &"spine_seen", &"",
 ]
+
+## La révélation d'Ambry ne part PLUS à l'entrée du tronçon : elle part quand on la VOIT.
+##
+## ⚠️ ELLE TOMBAIT CINQUANTE ET UN MÈTRES TROP TÔT, ET C'EST CE QUI L'A RENDUE ININTELLIGIBLE.
+## « Regardez à tribord. C'est Ambry. » était dite à l'entrée du tronçon 5 — parcouru 400 — quand
+## le premier pixel d'Ambry n'entre dans le cadre qu'à **451**. À 2,4 u/s c'est **21 secondes**
+## d'avance ; la réplique tient 6,5 s, elle avait donc disparu **quinze secondes** avant que la
+## chose qu'elle désigne ne se montre. L'opérateur l'a signalé deux fois, dans les deux sens :
+## « il y a un truc à droite sans texture blanc, je ne sais pas ce que c'est », puis « cette zone
+## claire qui ne s'intègre pas du tout au design ». Il ne l'avait jamais reliée à la réplique,
+## et il n'avait aucun moyen de le faire.
+##
+## ⚠️ ET LA STATION SE LIT SUR LA COQUE, ELLE NE SE RECOPIE PAS. `AMBRY_S` vit dans le générateur
+## Blender ; la recopier ici rouvrirait l'écart entre la table et l'asset que ce dépôt a déjà
+## payé trois fois. On mesure la boîte englobante du slot qui n'appartient qu'à Ambry.
+const AMBRY_SLOT := &"AA_Hull_Ambry"
+## Où l'on vise sur Ambry pour décider qu'elle « entre » : le milieu de son radeau, à mi-largeur.
+## ⚠️ SON `y` COMPTE. Une pièce haute sort du cadre par le haut plus tôt qu'une pièce basse —
+## la leçon du `BRIEF-0112`, payée deux fois. Le radeau est à −4,48 : c'est de lui qu'on parle.
+const AMBRY_CUE_Y := -4.20
+const AMBRY_CUE_X := 10.75
+## Le tronçon qui la porte — lu, lui aussi, en cherchant le slot.
+var _ambry_cue_at: float = -1.0
+var _ambry_said: bool = false
 
 ## Combien de temps le rapport attend après la dernière réplique.
 ##
@@ -147,6 +171,7 @@ func _ready() -> void:
 	# glisse — le defaut exact que la poupe a paye le 2026-09-07.
 	_artery.build(_flyby.sections(), TUNING, _bullets, _vfx, _eye)
 	_artery.conduit_severed.connect(_on_conduit_severed)
+	_arm_ambry()
 	_mount_citadel()
 	# ⚠️ UNE SECONDE ADOPTION, ET ELLE EST NÉCESSAIRE. Le socle a adopté les unités déjà dans
 	# l'arbre — la réception de proue — mais `build()` vient de monter sept pools de ponts
@@ -332,9 +357,104 @@ func _process(_delta: float) -> void:
 			_stern.tick(_delta, _eye.global_position if is_instance_valid(_eye) else Vector3.ZERO)
 	if _hud != null and not (_finished or _defeated):
 		_hud.set_survey(_flyby.progress(), _flyby.current_section())
+	_tick_ambry()
 	_draw_debug_zones()
 
+## Dit la révélation d'Ambry à l'instant où son bord avant entre dans le cadre.
+func _tick_ambry() -> void:
+	if _ambry_said or _ambry_cue_at < 0.0 or _finished or _defeated:
+		return
+	if _flyby.travelled() < _ambry_cue_at:
+		return
+	_ambry_said = true
+	print("[Cortege] Ambry entre dans le cadre — parcouru %.0f" % _flyby.travelled())
+	say(&"ambry")
+
 # --- LE VERROU DE MI-PARCOURS -------------------------------------------------
+
+## Arme la révélation d'Ambry : on cherche OÙ elle est, puis QUAND on la verra.
+##
+## ⚠️ SA STATION SE MESURE SUR LE BINAIRE. Elle vit dans `build_long_cortege.py` sous le nom
+## `AMBRY_S` ; la recopier ici rouvrirait l'écart entre la table et l'asset — trois fois payé
+## dans ce dépôt en une seule journée. Le slot `AA_Hull_Ambry` n'appartient qu'à elle, et sa
+## boîte englobante donne son bord avant sans qu'aucun nombre ne soit saisi deux fois.
+func _arm_ambry() -> void:
+	if _eye == null:
+		return
+	var camera := _eye as Camera3D
+	if camera == null:
+		return
+	var sections := _flyby.sections()
+	var station := -1.0
+	for index in sections.size():
+		var bord := _slot_front_edge(sections[index], AMBRY_SLOT)
+		if is_inf(bord):
+			continue
+		# Le `z` local d'un tronçon vaut `−(s − 100 × rang)` : on remonte à la station.
+		station = float(index) * TUNING.section_length - bord
+		break
+	if station < 0.0:
+		push_warning("[Cortege] slot « %s » introuvable — la révélation d'Ambry reste muette"
+			% AMBRY_SLOT)
+		return
+	var hauteur := float(ProjectSettings.get_setting("display/window/size/viewport_height", 1080))
+	_ambry_cue_at = CortegeFlyby.travelled_when_on_screen(station, AMBRY_CUE_Y, AMBRY_CUE_X,
+		camera.global_transform, camera.fov, hauteur)
+	print("[Cortege] Ambry — bord avant à s = %.1f, elle entre dans le cadre à parcouru %.0f (le tronçon 5 s'ouvre à %.0f)"
+		% [station, _ambry_cue_at, 4.0 * TUNING.section_length])
+
+## Le `z` local le plus GRAND (donc le plus proche de la proue, le bord qu'on voit arriver)
+## parmi les surfaces d'un slot donné. `-INF` si le slot n'est pas dans ce tronçon.
+static func _slot_front_edge(section: Node3D, slot: StringName) -> float:
+	var avant := -INF
+	# ⚠️ LE TRONÇON LUI-MÊME EST LE MAILLAGE, et c'est ce qui a fait rendre « slot introuvable »
+	# deux lancements de suite. `Section_05` n'est pas un nœud qui PORTE une coque : il EST la
+	# coque. Un parcours qui ne rend que les descendants saute donc la seule surface qui compte.
+	var noeuds: Array[Node] = [section]
+	noeuds.append_array(_descendants(section))
+	for node in noeuds:
+		var mesh := node as MeshInstance3D
+		if mesh == null:
+			continue
+		var forme := mesh.mesh as ArrayMesh
+		if forme == null:
+			continue
+		for s in forme.get_surface_count():
+			# ⚠️ `get_active_material()` ET NON `ArrayMesh.surface_get_material()`. Un glTF
+			# importé porte ses matériaux en SURCHARGE sur le `MeshInstance3D` : interroger
+			# l'`ArrayMesh` rend `null` pour les six slots du tronçon, et la révélation d'Ambry
+			# reste muette. Attrapé au premier lancement parce que l'absence est CRIÉE ; elle
+			# serait passée inaperçue si la fonction s'était contentée de ne rien dire.
+			var mat := mesh.get_active_material(s)
+			if mat == null or StringName(mat.resource_name) != slot:
+				continue
+			# ⚠️ LES SOMMETS DE CETTE SURFACE, PAS `get_aabb()`. La boîte d'un `ArrayMesh`
+			# couvre TOUTES ses surfaces : sur un tronçon de 100 m elle rendrait le bord du
+			# tronçon, donc la station 400 — c'est-à-dire exactement le défaut qu'on corrige,
+			# rétabli en silence par une méthode qui a l'air de répondre à la question.
+			# ⚠️ LA CHAÎNE JUSQU'AU TRONÇON, ET SURTOUT PAS `mesh.position`. Quand le maillage EST
+			# le tronçon, sa position porte le décalage du tronçon lui-même (−400 pour le
+			# cinquième) : l'ajouter rendait une station de 846,5 au lieu de 446,5. La
+			# transformation qu'il faut est celle qui va du maillage AU tronçon, identité
+			# comprise quand les deux sont le même nœud.
+			var vers_le_troncon := Transform3D.IDENTITY
+			var courant: Node = mesh
+			while courant != null and courant != section:
+				var n3 := courant as Node3D
+				if n3 != null:
+					vers_le_troncon = n3.transform * vers_le_troncon
+				courant = courant.get_parent()
+			var arrays := forme.surface_get_arrays(s)
+			var sommets: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			for v in sommets:
+				avant = maxf(avant, (vers_le_troncon * v).z)
+	return avant
+
+static func _descendants(node: Node, out: Array[Node] = []) -> Array[Node]:
+	for child in node.get_children():
+		out.append(child)
+		_descendants(child, out)
+	return out
 
 ## Monte la Citadelle de Défense sous son tronçon.
 ##
@@ -424,7 +544,11 @@ func _on_section_entered(index: int) -> void:
 	_push_music(index)
 	if _hud != null and _hud.has_method("show_banner"):
 		_hud.show_banner("SECTION %02d" % (index + 1), Color("d93d9c"), 1.4)
-	if index >= 0 and index < SECTION_LINES.size():
+	# ⚠️ UNE ENTRÉE VIDE EST UN TRONÇON QUI NE DIT RIEN À SON SEUIL, pas une clé manquante : le
+	# tronçon 5 garde sa réplique, mais elle part quand Ambry ENTRE DANS LE CADRE, cinquante et
+	# un mètres plus loin. Sans ce garde, `say()` cherchait la clé vide et le journal rendait
+	# « [Lyra] cle inconnue : » à chaque partie.
+	if index >= 0 and index < SECTION_LINES.size() and SECTION_LINES[index] != &"":
 		say(SECTION_LINES[index])
 
 func dialogue() -> DialogueScript:

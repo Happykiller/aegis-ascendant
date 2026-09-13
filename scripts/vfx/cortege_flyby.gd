@@ -185,6 +185,52 @@ func _advance_drift(delta: float) -> void:
 	_drift = -1.0
 	wreck_gone.emit()
 
+## Le `z` MONDE d'une station de coque, pour une distance parcourue donnée.
+##
+## ⚠️ LES TROIS TERMES SE SIMPLIFIENT, et c'est ce qui rend cette relation exacte au lieu
+## d'empirique : le décor porte `parcouru − LEAD_IN`, une pièce y siège à `−station`, donc
+## `z = parcouru − LEAD_IN − station`. Contrôle sur la poupe, qui est le seul point fixe connu :
+## à l'arrêt `parcouru = LEAD_IN + station − hold`, d'où `z = −hold`. C'est bien ce qu'on mesure.
+static func world_z_of(station: float, travelled: float) -> float:
+	return travelled - LEAD_IN - station
+
+## À quelle distance parcourue une station entre dans le cadre par le haut.
+##
+## ⚠️ ELLE EXISTE PARCE QU'UNE RÉPLIQUE PARTAIT CINQUANTE ET UN MÈTRES TROP TÔT. « Regardez à
+## tribord, c'est Ambry » était dite à l'entrée du tronçon, pas à l'arrivée d'Ambry — vingt et
+## une secondes d'avance sur une réplique qui tient six secondes et demie. Rien ne reliait plus
+## la phrase à l'objet, et deux fois l'opérateur a rapporté la même chose : une dalle blanche
+## dont il ne savait pas ce que c'était.
+##
+## Rend `-1` si la station n'entre jamais dans le cadre — ce qui est un fait à signaler, pas un
+## défaut à taire.
+static func travelled_when_on_screen(station: float, y: float, x: float,
+		camera: Transform3D, fov_deg: float, hauteur_px: float) -> float:
+	# ⚠️ MONOTONE, DONC DICHOTOMIQUE SANS PIÈGE : quand `parcouru` croît, la pièce se rapproche
+	# de la caméra et descend dans l'image. Une seule traversée de zéro.
+	var lo := 0.0
+	# ⚠️ LA BORNE HAUTE EST `world_z = 0`, ET PAS PLUS LOIN. Au-delà, la pièce passe DERRIÈRE
+	# l'œil et la projection n'a plus de sens : la sentinelle repasse au négatif, la fonction
+	# cesse d'être monotone, et la dichotomie rend « jamais visible » pour une pièce qu'on voit
+	# très bien. Premier lancement : `parcouru = -1` sur une Ambry qui occupe un quart du cadre.
+	var hi := station + LEAD_IN
+	if _screen_y(station, hi, y, x, camera, fov_deg, hauteur_px) < 0.0:
+		return -1.0
+	for _i in 60:
+		var mid := (lo + hi) * 0.5
+		if _screen_y(station, mid, y, x, camera, fov_deg, hauteur_px) < 0.0:
+			lo = mid
+		else:
+			hi = mid
+	return hi
+
+static func _screen_y(station: float, travelled: float, y: float, x: float,
+		camera: Transform3D, fov_deg: float, hauteur_px: float) -> float:
+	var monde := Vector3(x, y, world_z_of(station, travelled))
+	var ecran := GameplayPlane.screen_y_of(camera, fov_deg, monde, hauteur_px)
+	# Derrière l'œil : la pièce n'est pas encore entrée, donc « très au-dessus du cadre ».
+	return -1.0e9 if is_nan(ecran) else ecran
+
 func sections() -> Array[Node3D]:
 	return _sections
 
