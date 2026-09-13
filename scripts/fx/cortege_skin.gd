@@ -34,7 +34,10 @@ const SKINS: Dictionary = {
 	&"AA_Tech_Ambry": "ambry_tech",
 	&"AA_Rock_Ambry": "ambry_rock",
 	&"AA_Glass_Ambry": "ambry_glass",
-	# ⚠️ LES SEPT AUTRES N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
+	&"AA_Green_Ambry": "ambry_green",
+	&"AA_Window_Ambry": "ambry_window",
+	&"AA_Cloth_Ambry": "ambry_cloth",
+	# ⚠️ LES QUATRE AUTRES N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
 	# `BRIEF-0115` a livré douze slots ; je les avais tous déclarés d'avance, et
 	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze. Sa règle est juste :
 	# une peau déclarée sans ses images est une promesse que rien ne tient — on ne le verrait

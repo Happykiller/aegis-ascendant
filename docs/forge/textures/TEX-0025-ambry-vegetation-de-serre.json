@@ -174,7 +174,7 @@
     "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Green_Ambry\": \"ambry_vegetation_de_serre\"` dans le meme commit que les quatre PNG."
   },
   "x_delivery": {
-    "status": "a generer",
+    "status": "livree et integree le 2026-09-13",
     "priority": "moyenne",
     "source_path": "assets/source/textures/cortege/ambry_vegetation_de_serre_height_1024.png",
     "derived_dir": "assets/imported/textures/cortege",
