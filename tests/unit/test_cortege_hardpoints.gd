@@ -890,3 +890,48 @@ func test_extinguishing_a_section_leaves_its_mounted_pieces_alone() -> void:
 
 	assert_eq(CortegeSkin.emissives_of(section).size(), avant,
 		"la piece accrochee au marqueur n'entre PAS dans les conduits du troncon")
+
+
+## ⚠️ TOUTE MATIÈRE D'AMBRY EST DÉPLIÉE À SON ÉCHELLE, ET LA RÈGLE VIENT DU NOM.
+##
+## Le corridor est déplié à 0,200 tuile/m, Ambry à 0,700 : une carte d'Ambry posée à l'échelle du
+## bordé rend **3,5 fois trop fine**. Tant qu'Ambry n'avait qu'un slot, l'égalité
+## `name == &"AA_Hull_Ambry"` suffisait. Le `BRIEF-0115` en a livré **douze**, et onze seraient
+## retombés sur l'échelle du bordé à l'instant où on leur aurait donné une image — un défaut qui
+## ne se serait vu qu'APRÈS la génération, et qui aurait fait accuser les images.
+func test_every_ambry_material_keeps_its_own_unwrap_scale() -> void:
+	var packed: PackedScene = load("res://assets/imported/models/backgrounds/long_cortege.glb")
+	assert_true(packed != null, "la coque du corridor se charge")
+	if packed == null:
+		return
+	var coque := track(packed.instantiate()) as Node3D
+	var ambry := 0
+	var borde := 0
+	for mesh in _all_meshes(coque):
+		for i in mesh.get_surface_override_material_count():
+			var mat := mesh.get_active_material(i) as StandardMaterial3D
+			if mat == null:
+				continue
+			var nom := String(mat.resource_name)
+			if nom.ends_with(CortegeSkin.AMBRY_SUFFIX):
+				ambry += 1
+			else:
+				borde += 1
+	# ⚠️ LE COMPTE SE LIT DANS LE BINAIRE : si une reforge renomme les slots, ce banc le dit au
+	# lieu de laisser la règle s'appliquer à rien.
+	assert_true(ambry >= 10,
+		"la coque porte bien les matieres d'Ambry a leur suffixe (%d)" % ambry)
+	assert_true(borde > 0, "et le borde garde les siennes (%d)" % borde)
+	# La règle elle-même, sur des noms qui n'ont pas besoin d'exister.
+	assert_true(String(&"AA_Glass_Ambry").ends_with(CortegeSkin.AMBRY_SUFFIX),
+		"une matiere d'Ambry est reconnue par son suffixe")
+	assert_false(String(&"AA_Glass").ends_with(CortegeSkin.AMBRY_SUFFIX),
+		"et celle du borde ne l'est pas")
+
+func _all_meshes(node: Node, out: Array[MeshInstance3D] = []) -> Array[MeshInstance3D]:
+	var mesh := node as MeshInstance3D
+	if mesh != null:
+		out.append(mesh)
+	for child in node.get_children():
+		_all_meshes(child, out)
+	return out

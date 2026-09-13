@@ -29,7 +29,25 @@ const SKINS: Dictionary = {
 	# du bordé aurait reçu sa carte 3,5 fois trop fine — un défaut latent qu'on n'aurait
 	# découvert qu'une fois les images générées, et qui aurait demandé une reforge.
 	&"AA_Hull_Ambry": "ambry_hull",
+	# ⚠️ LES ONZE AUTRES NATURES D'AMBRY N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
+	# `BRIEF-0115` a livré douze slots ; je les avais tous déclarés d'avance, et
+	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze. Sa règle est juste :
+	# une peau déclarée sans ses images est une promesse que rien ne tient — on ne le verrait
+	# qu'à l'écran, sur une surface restée nue au milieu d'une coque habillée.
+	# Chaque nature prend son entrée le jour où ses cartes entrent au dépôt, pas avant.
 }
+
+## Le suffixe qui dit « cette matière est dépliée à l'échelle d'Ambry ».
+##
+## ⚠️ C'ÉTAIT UNE ÉGALITÉ SUR UN SEUL NOM, ET ÇA N'ALLAIT PLUS TENIR. Tant qu'Ambry n'avait qu'un
+## slot, `name == &"AA_Hull_Ambry"` suffisait. Le `BRIEF-0115` en a livré DOUZE, tous dépliés à
+## 0,700 tuile/m — et onze seraient retombés sur l'échelle du bordé, c'est-à-dire 3,5 fois trop
+## fine, à l'instant où on leur aurait donné une image. Le défaut ne se serait vu qu'APRÈS la
+## génération, et il aurait fait accuser les images.
+##
+## La règle vient donc du NOM et non d'une liste : toute matière d'Ambry porte son suffixe, et
+## une treizième héritera de l'échelle sans que personne n'ait à y penser.
+const AMBRY_SUFFIX := "_Ambry"
 
 ## Les greffes. ⚠️ ELLES SONT ASSOMBRIES ICI, ET PAS REPEINTES À LA FORGE. Deux raisons : le
 ## violet de `AA_Panel` est la teinte de faction de l'Unisson, partagée par tous les assets du
@@ -137,7 +155,8 @@ static func apply(hull: Node) -> int:
 			if name == EMISSIVE_MATERIAL:
 				tuned = _skin_emissive(base)
 			elif SKINS.has(name):
-				var scale := AMBRY_UV_SCALE if name == &"AA_Hull_Ambry" else HULL_UV_SCALE
+				var scale := AMBRY_UV_SCALE if String(name).ends_with(AMBRY_SUFFIX) \
+					else HULL_UV_SCALE
 				tuned = _skin_surface(base, String(SKINS[name]), scale)
 				if tuned != null and name == PANEL_MATERIAL:
 					tuned.albedo_color = _damped(tuned.albedo_color)
