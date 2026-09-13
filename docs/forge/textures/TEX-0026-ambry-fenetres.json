@@ -169,7 +169,7 @@
     "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Window_Ambry\": \"ambry_fenetres\"` dans le meme commit que les quatre PNG."
   },
   "x_delivery": {
-    "status": "livree et integree le 2026-09-13",
+    "status": "livree et versionnee le 2026-09-13, mais NON APPLIQUEE — mesuree contre-productive",
     "priority": "moyenne",
     "source_path": "assets/source/textures/cortege/ambry_fenetres_height_1024.png",
     "derived_dir": "assets/imported/textures/cortege",
@@ -189,7 +189,16 @@
       "⚠️ VERIFIER QUE L'EMISSIF NE PAPILLOTE PAS : si le vitrage porte du relief, la normale derivee fera vibrer la lumiere d'une fenetre. C'est le defaut a chercher en capture, pas la beaute du chassis.",
       "⚠️ ET VERIFIER LE BLACKOUT : jouer jusqu'a l'arrachement des trois moteurs et regarder Ambry. Si ses fenetres s'eteignent avec le vaisseau, le slot a ete ramasse par erreur et tout le sens tombe."
     ],
-    "provenance_csv_line": "ambry_fenetres_height,assets/source/textures/cortege/ambry_fenetres_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0026-ambry-fenetres.json,,\"Carte de hauteur d'Ambry — Hauteur des fenetres eclairees d'Ambry — les quarante-six lumieres qui resteront allumees. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Window_Ambry, 10,4 pct de la surface d'Ambry\""
+    "provenance_csv_line": "ambry_fenetres_height,assets/source/textures/cortege/ambry_fenetres_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0026-ambry-fenetres.json,,\"Carte de hauteur d'Ambry — Hauteur des fenetres eclairees d'Ambry — les quarante-six lumieres qui resteront allumees. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Window_Ambry, 10,4 pct de la surface d'Ambry\"",
+    "rejections": [
+      {
+        "date": "2026-09-13",
+        "recu": "une facade d'habitation impeccable — chassis, meneaux, embrasures, appuis, vitrage PLAT : conforme a la demande",
+        "mesure": "sur les seuls pixels ambre de la capture, ecart-type interne 18,4 -> 6,7 et aire ambre +27 pct : les fenetres deviennent plus UNIFORMES",
+        "cause": "⚠️ LA DEMANDE ETAIT FAUSSE, PAS LE TIRAGE. Deux raisons : l'emissif du slot est a 1,2 et noie l'albedo — une normale ne modele pas une emission ; et surtout LA GEOMETRIE PORTE DEJA SES 46 FENETRES en quads separes, donc une tuile qui dessine des fenetres en superpose une SECONDE serie, desalignee, qui empate les bords.",
+        "lecon": "on ne texture pas ce que la geometrie modelise deja. Ce slot voudrait un degrade de verre presque plat, pas une facade."
+      }
+    ]
   },
   "x_prompt_fr": {
     "derived_from": [

@@ -35,14 +35,30 @@ const SKINS: Dictionary = {
 	&"AA_Rock_Ambry": "ambry_rock",
 	&"AA_Glass_Ambry": "ambry_glass",
 	&"AA_Green_Ambry": "ambry_green",
-	&"AA_Window_Ambry": "ambry_window",
+	# ⚠️ `AA_Window_Ambry` N'EST PAS ICI, ET SES CARTES EXISTENT POURTANT (`TEX-0026`, livrée et
+	# versionnée). Mesuré avant/après sur la même capture, sur les seuls pixels ambre : l'écart-type
+	# interne tombe de **18,4 à 6,7** et l'aire ambre grossit de 27 %. La carte rend les fenêtres
+	# plus UNIFORMES, pas plus détaillées — exactement l'inverse de ce qu'on lui demandait.
+	#
+	# Deux causes, et aucune n'est un défaut de l'image. L'émissif est à 1,2 sur tout le slot :
+	# il noie l'albédo, et une normale ne modèle pas une émission. Et surtout la géométrie porte
+	# DÉJÀ ses quarante-six fenêtres en quads séparés : une tuile qui dessine des fenêtres en
+	# superpose donc une seconde série, désalignée, qui empâte les bords.
+	#
+	# ⚠️ LA LEÇON EST SUR LA DEMANDE, PAS SUR LE TIRAGE : on ne texture pas ce que la géométrie
+	# modélise déjà. Ce slot voudrait un dégradé de verre presque plat, pas une façade.
 	&"AA_Cloth_Ambry": "ambry_cloth",
-	# ⚠️ LES QUATRE AUTRES N'ONT PAS D'ENTRÉE, ET C'EST LE DÉPÔT QUI L'EXIGE.
-	# `BRIEF-0115` a livré douze slots ; je les avais tous déclarés d'avance, et
-	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze. Sa règle est juste :
-	# une peau déclarée sans ses images est une promesse que rien ne tient — on ne le verrait
-	# qu'à l'écran, sur une surface restée nue au milieu d'une coque habillée.
-	# Chaque nature prend son entrée le jour où ses cartes entrent au dépôt, pas avant.
+	&"AA_Weld_Ambry": "ambry_weld",
+	&"AA_Crate_Ambry": "ambry_crate",
+	&"AA_Sign_Ambry": "ambry_sign",
+	&"AA_Pad_Ambry": "ambry_pad",
+	# ⚠️ LES DOUZE MATIÈRES D'AMBRY Y SONT, et aucune n'y est entrée avant ses images.
+	# `BRIEF-0115` a livré les douze slots d'un coup ; je les avais tous déclarés d'avance, et
+	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze qui n'avaient pas
+	# encore de cartes. Sa règle est juste : une peau déclarée sans ses images est une promesse
+	# que rien ne tient — et on ne le verrait qu'à l'écran, sur une surface restée nue au milieu
+	# d'une coque habillée. Chaque nature a donc pris son entrée le jour où ses cartes sont
+	# arrivées, en trois lots.
 }
 
 ## Le suffixe qui dit « cette matière est dépliée à l'échelle d'Ambry ».
