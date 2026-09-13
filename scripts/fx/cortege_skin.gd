@@ -160,28 +160,21 @@ const NORMAL_SCALE := 0.45
 ## refaire ce calcul : 0,5 et 0,25 passent, 0,4 (densité 0,08, produit 8) passe aussi, 0,3 non.
 const HULL_UV_SCALE := 0.5
 
-## ⚠️ ELLE A ÉTÉ DIVISÉE PAR 2,5 LE 2026-09-13, ET C'EST UNE DÉCISION DE L'OPÉRATEUR APRÈS MESURE.
+## ⚠️ AMBRY GARDE LA SIENNE — 1,43 m par tuile contre 5,00 pour le bordé. Elle est un objet
+## unique, sans jonction à assurer, et son dépliage serré EST la révélation du niveau : c'est lui
+## qui la fait lire construite à l'échelle de la main.
 ##
-## Elle valait 1,0 — soit le dépliage livré, 1,43 m par tuile — et la justification écrite en août
-## était qu'un avant-poste habité « se construit à l'échelle de la main ». Cette justification a été
-## calée sur la chaîne de rendu rétro, à **23 px/m**. On rend aujourd'hui à 45,8 px/m, et Ambry
-## n'occupe que **261 px de large** à l'écran : une tuile de 1,43 m y faisait **65 px** pour une
-## carte de 1254 — une réduction de **19×**. Tout ce qui est plus fin que 10 cm de monde tombait
-## sous le seuil de forme et se faisait moyenner par les mipmaps. « Les textures, je ne les vois
-## pas » (opérateur, 2026-09-13, troisième passage sur Ambry).
+## ⚠️ ET ELLE A ÉTÉ CHANGÉE PUIS REMISE, LE MÊME JOUR, POUR UNE RAISON QUI VAUT D'ÊTRE ÉCRITE.
+## « Les textures, je ne les vois pas » (opérateur) — j'ai conclu que la tuile était trop fine et
+## je l'ai portée à 3,57 m. Le vrai défaut était ailleurs : les quarante-quatre cartes neuves
+## étaient importées **sans mipmaps**, donc échantillonnées point par point à 19× de réduction —
+## « du bruit sur une télé qui ne capte rien », mot pour mot. Une fois les mipmaps posées, c'est
+## le dépliage D'ORIGINE qui rend le mieux : 3,57 m nettoie aussi, mais en jetant du détail.
 ##
-## ⚠️ ET DEUX CORRECTIFS PLUS ÉVIDENTS ONT ÉTÉ ESSAYÉS ET MESURÉS AVANT CELUI-CI, tous deux en
-## échec. Monter `normal_scale` de 0,45 à 1,60 ne fabrique pas du détail mais du SCINTILLEMENT :
-## le grain reste sous le seuil de présence et papillote. Et doubler seulement la tuile (2,86 m)
-## ne gagnait que 0,08 de contraste local.
-##
-## 0,40 donne **3,57 m par tuile**, soit 164 px à l'écran — une réduction de 7,6× au lieu de 19.
-## Testé aussi à 0,30 (4,76 m) : les motifs s'y étirent et redeviennent flous. C'est bien un
-## optimum, pas une pente.
-##
-## Ce qu'on y perd est réel et assumé : un caillebotis dessiné pour 40 cm en mesure désormais 1 m.
-## Ambry se lit moins « à l'échelle de la main » — mais elle se lit.
-const AMBRY_UV_SCALE := 0.40
+## La leçon n'est pas sur la valeur, elle est sur l'ordre : j'ai réglé une échelle sur des images
+## qui aliasaient. Tant que la chaîne d'échantillonnage est fausse, aucun réglage de cadrage n'est
+## jugeable.
+const AMBRY_UV_SCALE := 1.0
 
 ## Habille la coque. Renvoie le nombre de surfaces effectivement retexturées — zéro quand
 ## l'opérateur n'a pas encore fourni les images, et c'est un état normal, pas une panne.

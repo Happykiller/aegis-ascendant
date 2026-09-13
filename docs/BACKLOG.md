@@ -1253,6 +1253,17 @@ La bible listait **deux** garde-fous anti-spirale de la mort à vérifier. Véri
   de score et de bouclier, et la face haute de `Tour 01/02` passe derrière le bandeau de boss
   (sommet du centre à +13 px, arête arrière à −21). Mesuré au `BRIEF-0113` ; à arbitrer, pas
   forcément à corriger — une pièce partiellement masquée n'est pas une pièce invisible.
+- [ ] ⚠️ **Cinquante-huit fichiers du dépôt sont importés SANS MIPMAPS**, et le symptôme est
+  spectaculaire : sans elles, une carte de 1254 px affichée sur 164 est échantillonnée point par
+  point — « du bruit sur une télé qui ne capte rien » (opérateur, 2026-09-13, en décrivant Ambry).
+  Les quarante-quatre cartes d'Ambry ont été corrigées ce jour-là ; il en reste **cinquante-huit**.
+  ⚠️ **Toutes ne sont pas concernées** : une image d'interface, un portrait, un emblème n'ont rien
+  à gagner aux mipmaps. Celles qui comptent sont les surfaces 3D — `citadel_panels`,
+  `citadel_greebles`, `citadel_wear`, `citadel_deck_markings`, `hull_detail`, `hull_panels`,
+  `asteroid_rock_*`, `moon_regolith_*`, `crystal_facets`. ⚠️ **Et ça ne se corrige pas au `sed`** :
+  activer les mipmaps CHANGE le rendu d'une surface, il faut donc regarder chacune en capture.
+  Cause racine : Godot importe à `false` par défaut, et `detect_3d` — qui devrait le basculer —
+  ne tourne pas sans éditeur. Tout PNG entré en headless part donc avec ce défaut.
 - [ ] **BRIEF-0019 (frégates)** : prompt prêt, planche raster à générer.
 - [ ] ⚠️ Les **SVG picturaux de la forge sont écartés** (projectiles, explosions, parallaxe) : aplats
   vectoriels, inutilisables face au bloom (**ADR-0006**). Le SVG reste bon pour l'**UI et les icônes**.
