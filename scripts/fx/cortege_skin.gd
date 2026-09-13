@@ -164,21 +164,19 @@ const AMBRY_NORMAL_SCALE := 1.60
 ## refaire ce calcul : 0,5 et 0,25 passent, 0,4 (densité 0,08, produit 8) passe aussi, 0,3 non.
 const HULL_UV_SCALE := 0.5
 
-## ⚠️ AMBRY GARDE LA SIENNE — 1,43 m par tuile contre 5,00 pour le bordé. Elle est un objet
-## unique, sans jonction à assurer, et son dépliage serré EST la révélation du niveau : c'est lui
-## qui la fait lire construite à l'échelle de la main.
+## Le dépliage d'Ambry vaut 0,700 tuile/m à la livraison — 1,43 m par tuile. Cette échelle le
+## divise : **4,08 m par tuile**, soit 187 px à l'écran au lieu de 65.
 ##
-## ⚠️ ET ELLE A ÉTÉ CHANGÉE PUIS REMISE, LE MÊME JOUR, POUR UNE RAISON QUI VAUT D'ÊTRE ÉCRITE.
-## « Les textures, je ne les vois pas » (opérateur) — j'ai conclu que la tuile était trop fine et
-## je l'ai portée à 3,57 m. Le vrai défaut était ailleurs : les quarante-quatre cartes neuves
-## étaient importées **sans mipmaps**, donc échantillonnées point par point à 19× de réduction —
-## « du bruit sur une télé qui ne capte rien », mot pour mot. Une fois les mipmaps posées, c'est
-## le dépliage D'ORIGINE qui rend le mieux : 3,57 m nettoie aussi, mais en jetant du détail.
+## ⚠️ ELLE A ÉTÉ CHANGÉE TROIS FOIS DANS LA MÊME SOIRÉE, ET SEULE LA DERNIÈRE VAUT. Les deux
+## premières ont été décidées sur des images qui ALIASAIENT — les quarante-quatre cartes étaient
+## importées sans mipmaps, et le bruit d'échantillonnage rendait tout jugement faux. Une fois les
+## mipmaps posées, l'essai refait proprement tranche dans l'autre sens : 1,43 m disparaît sous la
+## réduction (19×), 4,76 m étire les motifs, 4,08 est le point où les dalles du pont, les panneaux
+## du pas d'appontage et le grain de la roche se lisent tous.
 ##
-## La leçon n'est pas sur la valeur, elle est sur l'ordre : j'ai réglé une échelle sur des images
-## qui aliasaient. Tant que la chaîne d'échantillonnage est fausse, aucun réglage de cadrage n'est
-## jugeable.
-const AMBRY_UV_SCALE := 1.0
+## Ce qu'on y perd est réel : un caillebotis dessiné pour 40 cm en mesure 1,14. Ambry se lit moins
+## « à l'échelle de la main » qu'en août — mais elle se lit, et c'était la demande.
+const AMBRY_UV_SCALE := 0.35
 
 ## Habille la coque. Renvoie le nombre de surfaces effectivement retexturées — zéro quand
 ## l'opérateur n'a pas encore fourni les images, et c'est un état normal, pas une panne.
