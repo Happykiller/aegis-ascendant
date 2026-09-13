@@ -154,6 +154,11 @@
       "fissure",
       "eclat",
       "givre"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ La trame de barres de vitrage doit tomber AU MILLIMETRE sur les quatre bords : sur une grille reguliere, un demi-pas de decalage se voit d'un bout a l'autre de la serre."
     ]
   },
   "integration_notes": {

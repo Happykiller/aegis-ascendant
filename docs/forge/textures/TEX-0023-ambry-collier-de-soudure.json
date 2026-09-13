@@ -160,6 +160,11 @@
       "propre",
       "regulier",
       "poli"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Facile a raccorder, MAIS : ne pas produire un cordon rectiligne qui traverserait toute la tuile pour faciliter le raccord. Un cordon droit lit comme une soudure industrielle, et c'est l'inverse du sujet."
     ]
   },
   "integration_notes": {

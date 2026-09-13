@@ -155,6 +155,11 @@
       "volet",
       "rideau",
       "givre"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Une fenetre coupee par un bord doit se reconstituer exactement de l'autre cote. C'est la forme la plus reconnaissable de la piece : une demi-fenetre se verrait immediatement."
     ]
   },
   "integration_notes": {

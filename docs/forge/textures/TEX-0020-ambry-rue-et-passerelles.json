@@ -155,6 +155,11 @@
       "vegetation",
       "trou traversant",
       "flaque"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ La trame de dalles est REGULIERE : un decalage d'un demi-caillebotis se lit immediatement. C'est la contrainte la plus dure de cette tuile, et elle doit etre verifiee deux fois."
     ]
   },
   "integration_notes": {

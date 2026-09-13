@@ -153,6 +153,11 @@
       "caisse eventree",
       "caisse renversee",
       "contenu repandu"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Une caisse est un objet a bord FRANC : coupee par le bord, elle doit se reconstituer entiere de l'autre cote, sinon on lit une demi-caisse."
     ]
   },
   "integration_notes": {

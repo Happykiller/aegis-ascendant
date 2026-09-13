@@ -157,6 +157,11 @@
       "porte forcee",
       "porte arrachee",
       "planche clouee"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Une porte entiere doit tenir DANS la tuile, jamais a cheval sur un bord : c'est le seul repere d'echelle d'Ambry, et une porte coupee le detruirait."
     ]
   },
   "integration_notes": {

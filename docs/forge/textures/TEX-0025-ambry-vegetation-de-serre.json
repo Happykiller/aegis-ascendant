@@ -160,6 +160,11 @@
       "sec",
       "fane",
       "brule"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Le piege ici n'est pas la couture mais la REPETITION : une feuille reconnaissable qui revient tous les 1,43 m se lit comme un papier peint. Varier les tailles et les orientations."
     ]
   },
   "integration_notes": {

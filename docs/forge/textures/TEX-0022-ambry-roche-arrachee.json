@@ -177,6 +177,11 @@
       "erosion",
       "usure",
       "arrondi"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ La plus FACILE a raccorder des douze — une cassure n'a pas de trame — et il faut en profiter : aucune repetition ne doit se voir, car une cassure qui se repete n'est plus une cassure."
     ]
   },
   "integration_notes": {

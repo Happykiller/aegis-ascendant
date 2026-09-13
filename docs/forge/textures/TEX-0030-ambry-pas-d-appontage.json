@@ -157,6 +157,11 @@
       "vaisseau",
       "vehicule",
       "caisse"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ La plus indulgente des douze : le grain antiderapant est fin et sans trame. Les rainures de drainage sont la seule chose a raccorder."
     ]
   },
   "integration_notes": {

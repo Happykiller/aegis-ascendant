@@ -156,6 +156,11 @@
       "tache",
       "moisissure",
       "rouille"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ Un pli est DIRECTIONNEL : une direction dominante qui se repete tous les 1,43 m se verra meme si la couture est parfaite. Varier les orientations dans la tuile."
     ]
   },
   "integration_notes": {

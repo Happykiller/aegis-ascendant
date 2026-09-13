@@ -153,6 +153,11 @@
       "vegetation",
       "fuite",
       "givre"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ L'OEIL SUIT UNE CONDUITE : un tuyau qui ne se raccorde pas au diametre pres, de l'autre cote du bord, est la faute la plus visible de cette tuile. Les faisceaux doivent traverser, pas s'arreter."
     ]
   },
   "integration_notes": {
