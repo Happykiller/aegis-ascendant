@@ -1,0 +1,199 @@
+{
+  "id": "TEX-0024",
+  "slug": "ambry-verriere-de-serre",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur de la verriere de la serre — le vitrage qui tient la seule chose vivante des cinq cents metres",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Glass_Ambry` — 1,4 pct de la surface d'Ambry, et reprend TEX-AMB-08 de la planche de matieres.",
+    "priority": "⚠️ PETITE SURFACE, ROLE ENORME. 1,4 pct de l'aire — mais c'est le toit de la serre, et la serre est la seule preuve que quelque chose POUSSE ENCORE a bord. Le joueur doit voir a travers : le vert est DEDANS, en sept rangs, et c'est le vitrage qui doit le laisser passer sans le brouiller. ⚠️ ET C'EST UNE SURFACE TRANSLUCIDE : transmission 0,30, alpha 0,86. Une carte trop chargee la rendrait opaque et tuerait le seul vert du niveau. Ici, moins est mieux — c'est la seule des douze ou cette phrase soit vraie."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des barres de vitrage de 4 a 6 cm, en trame reguliere",
+      "des panneaux de verre de 40 a 60 cm entre les barres",
+      "des joints d'etancheite en creux le long des barres",
+      "de la condensation en trainees douces sur le verre",
+      "quelques panneaux legerement plus troubles que les autres"
+    ],
+    "density": "low",
+    "distribution": "structured",
+    "edge_behavior": "La trame de barres traverse les quatre bords et s'y raccorde AU MILLIMETRE : c'est une grille reguliere, et une trame qui ne tombe pas juste se verra immediatement sur un vitrage.",
+    "empty_space": "Beaucoup, et c'est voulu : le verre est PLAT. Seules les barres et les joints portent du relief. ⚠️ Une verriere chargee de detail devient un toit opaque."
+  },
+  "visual": {
+    "subject": "Verriere de serre vue de dessus : trame de barres de vitrage, panneaux de verre plats, joints d'etancheite, condensation",
+    "materials": [
+      "barres de vitrage metalliques",
+      "verre plat",
+      "joint d'etancheite souple"
+    ],
+    "details": [
+      "trame reguliere de barres",
+      "joints en creux le long des barres",
+      "trainees douces de condensation",
+      "leger trouble sur quelques panneaux"
+    ],
+    "style": "vitrage d'horticulture humain, simple et entretenu — une serre, pas une verriere d'architecte",
+    "color_palette": {
+      "dominant": [
+        "gris tres clair"
+      ],
+      "secondary": [
+        "gris moyen sur les barres",
+        "blanc sur les aretes de barre"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "verre brise",
+        "fissure",
+        "eclat",
+        "givre"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "⚠️ Les joints d'etancheite, en creux le long des barres : vers 90/255 seulement. RIEN ne doit descendre plus bas — un creux profond sur un vitrage se lirait comme une casse.",
+    "gray": "⚠️ LE VERRE, ET IL OCCUPE LA MAJEURE PARTIE DE L'IMAGE : 185/255, PLAT et presque sans variation. La condensation ne module que de 5 a 10 niveaux autour.",
+    "white": "sommet des barres de vitrage, 230 a 245"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ UN VERRE PLAT : la majeure partie de l'image doit etre une valeur PRESQUE CONSTANTE. C'est la seule des douze tuiles ou le vide est le sujet",
+      "une trame de barres qui tombe JUSTE sur les quatre bords",
+      "de la condensation, mais douce : 5 a 10 niveaux, jamais plus",
+      "⚠️ L'INTEGRITE : pas un carreau casse. La serre est ENTIERE, et c'est ce qui rend la decouverte insoutenable"
+    ],
+    "must_not_have": [
+      "verre brise",
+      "fissure",
+      "eclat",
+      "trou",
+      "plante",
+      "feuillage",
+      "vegetation",
+      "ruine",
+      "givre",
+      "neige",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "verre brise",
+      "fissure",
+      "eclat",
+      "givre"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Glass_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 74 triangles, 1,4 pct de la surface, densite mesuree 0,677 tuile/m, anisotropie 1,15. Porte la verriere continue de la serre — sept arceaux — et le pare-brise du vehicule d'entretien. ⚠️ Materiau TRANSLUCIDE : alpha 0,86, transmission 0,30. La vegetation de `AA_Green_Ambry` se voit AU TRAVERS, et c'est le but.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #0A0910, alpha 0,86, transmission 0,30 pose par la forge, avec metallic/roughness 0,00 / 0,08. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_verriere_de_serre_height_1024.png --out assets/imported/textures/cortege --name ambry_verriere_de_serre --mul --check-tiling --preview /tmp/ambry_verriere_de_serre.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Glass_Ambry\": \"ambry_verriere_de_serre\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "moyenne",
+    "source_path": "assets/source/textures/cortege/ambry_verriere_de_serre_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_verriere_de_serre_nrm.png",
+      "ambry_verriere_de_serre_rough.png",
+      "ambry_verriere_de_serre_ao.png",
+      "ambry_verriere_de_serre_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST QUI TRANCHE : en capture, on doit VOIR LE VERT A TRAVERS LE VITRAGE, et voir qu'il est en rangs. Si la verriere opacifie, la carte est trop chargee — la reduire, pas l'embellir."
+    ],
+    "provenance_csv_line": "ambry_verriere_de_serre_height,assets/source/textures/cortege/ambry_verriere_de_serre_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0024-ambry-verriere-de-serre.json,,\"Carte de hauteur d'Ambry — Hauteur de la verriere de la serre — le vitrage qui tient la seule chose vivante des cinq cents metres. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Glass_Ambry, 1,4 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris d'une VERRIERE DE SERRE, vue de dessus.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre.\n\n⚠️ LA MAJEURE PARTIE DE L'IMAGE DOIT ETRE PRESQUE UNIFORME. C'est du VERRE : plat, lisse, sans relief. Seules les barres de vitrage et leurs joints portent du dessin.\n\nOn y voit : une trame reguliere de barres de vitrage de 4 a 6 cm de large ; entre elles, des panneaux de verre de 40 a 60 cm, PLATS ; le long des barres, des joints d'etancheite en leger creux ; et sur le verre, des trainees douces de condensation, a peine plus claires ou plus sombres que le verre lui-meme.\n\nLa trame des barres doit tomber exactement juste sur les quatre bords.\n\nRien n'est casse : pas un carreau fendu, pas un eclat, pas un trou. La serre est entiere et elle fonctionne.\n\nAucune plante, aucun feuillage, aucune vegetation dans cette image : le vert est une autre texture, qui se verra a travers celle-ci.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}

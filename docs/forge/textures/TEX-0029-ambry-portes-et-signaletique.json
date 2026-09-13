@@ -1,0 +1,202 @@
+{
+  "id": "TEX-0029",
+  "slug": "ambry-portes-et-signaletique",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur des portes d'Ambry — les six ouvertures par lesquelles on entrait chez soi",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Sign_Ambry` — 2,5 pct de la surface d'Ambry, et reprend TEX-AMB-14 et 16 de la planche de matieres.",
+    "priority": "⚠️ UNE PORTE FAIT 27 PIXELS A L'ECRAN, ET C'EST L'OBJET QUI DONNE SON ECHELLE A TOUT LE RESTE. Sans elle, Ambry pourrait faire 27 metres ou 270 : c'est la porte qui dit qu'un humain y passait. Elle est le seul repere de taille de toute la piece. ⚠️ ET LA SIGNALETIQUE NE PORTERA AUCUN TEXTE, POUR UNE RAISON MESUREE, PAS PAR PRUDENCE. Sur une porte de 60 cm vue a 45,8 px/m, une lettre ferait moins de 5 px : illisible, et elle rendrait du bruit. La planche de matieres montre un panneau peint « AMBRY » — il vit sur la PLANCHE, pas dans le jeu. Ce qui se lira ici est le CADRE d'un panneau, pas ce qui y est ecrit."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des portes de 60 a 70 cm, a cadre saillant et panneau plein",
+      "des charnieres a trois paumelles, en relief",
+      "des poignees a beauquille et des barres anti-panique",
+      "des trappes de visite plus petites, de 25 a 35 cm",
+      "des cadres de panneau vides, sans aucune inscription",
+      "des joints d'etancheite en peripherie de porte"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "Portes et trappes traversent les bords et se reconstituent. ⚠️ Une porte coupee en deux par le bord detruirait le seul repere d'echelle de la piece.",
+    "empty_space": "Du bardage nu autour des portes : une porte se detache de ce qui l'entoure, sinon elle n'est plus une porte."
+  },
+  "visual": {
+    "subject": "Portes et trappes de visite d'un habitat spatial, vues de face : cadres, charnieres, poignees, joints",
+    "materials": [
+      "porte metallique a cadre",
+      "charnieres a paumelles",
+      "quincaillerie de poignee",
+      "joint d'etancheite"
+    ],
+    "details": [
+      "cadres saillants",
+      "paumelles de charniere",
+      "poignees et barres",
+      "joints peripheriques",
+      "cadres de panneau VIDES",
+      "seuils de porte"
+    ],
+    "style": "quincaillerie d'habitat : robuste, simple, faite pour etre ouverte tous les jours par quelqu'un qui rentre chez lui.",
+    "color_palette": {
+      "dominant": [
+        "gris moyen sombre"
+      ],
+      "secondary": [
+        "gris clair sur les cadres et la quincaillerie",
+        "gris sombre dans les joints"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "porte forcee",
+        "porte arrachee",
+        "planche clouee"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "Les joints peripheriques de porte : vers 45/255. Ce sont eux qui DESSINENT la porte — c'est le contour qui la fait lire, pas son panneau.",
+    "gray": "panneau de porte et bardage, 125 a 145/255",
+    "white": "cadres, paumelles, poignees, 205 a 240"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ LE CONTOUR AVANT TOUT : c'est le JOINT peripherique qui fait lire une porte, pas son panneau. Il doit trancher franchement",
+      "une porte entiere reconnaissable dans la tuile, jamais coupee au bord",
+      "de la quincaillerie a l'echelle de la main : poignees, paumelles — ce sont elles qui disent qu'un humain ouvrait ca",
+      "⚠️ DES CADRES DE PANNEAU VIDES : la forme d'un panneau signaletique, sans une seule lettre"
+    ],
+    "must_not_have": [
+      "texte peint",
+      "inscription",
+      "numero de porte",
+      "plaque gravee",
+      "affiche",
+      "etiquette",
+      "porte forcee",
+      "porte arrachee",
+      "planche clouee",
+      "ruine",
+      "rouille",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "porte forcee",
+      "porte arrachee",
+      "planche clouee"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Sign_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 130 triangles, 2,5 pct de la surface, densite mesuree 0,700 tuile/m, anisotropie 1,01. Porte les six portes de 60 cm, les trappes et le panneau peint a la main. ⚠️ Les six portes sont le SEUL repere d'echelle humaine d'Ambry — 27 px a l'ecran chacune, juste au-dessus du seuil de forme.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #24252B (anthracite Vanguard) pose par la forge, avec metallic/roughness 0,10 / 0,65. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_portes_et_signaletique_height_1024.png --out assets/imported/textures/cortege --name ambry_portes_et_signaletique --mul --check-tiling --preview /tmp/ambry_portes_et_signaletique.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Sign_Ambry\": \"ambry_portes_et_signaletique\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "moyenne",
+    "source_path": "assets/source/textures/cortege/ambry_portes_et_signaletique_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_portes_et_signaletique_nrm.png",
+      "ambry_portes_et_signaletique_rough.png",
+      "ambry_portes_et_signaletique_ao.png",
+      "ambry_portes_et_signaletique_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST QUI TRANCHE, ET C'EST CELUI DE TOUTE LA PIECE : en capture, on doit pouvoir dire de quelle taille est Ambry. Si la porte ne se lit pas comme une porte, l'avant-poste n'a plus d'echelle et redevient un bloc."
+    ],
+    "provenance_csv_line": "ambry_portes_et_signaletique_height,assets/source/textures/cortege/ambry_portes_et_signaletique_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0029-ambry-portes-et-signaletique.json,,\"Carte de hauteur d'Ambry — Hauteur des portes d'Ambry — les six ouvertures par lesquelles on entrait chez soi. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Sign_Ambry, 2,5 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris de PORTES ET DE TRAPPES d'habitat, vues de face et a plat.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre. Une porte y fait donc 60 a 70 cm — elle tient largement dans la tuile.\n\nOn y voit : des portes a cadre saillant et panneau plein ; des charnieres a trois paumelles en relief ; des poignees a bequille et des barres ; des trappes de visite plus petites ; des joints d'etancheite qui courent tout autour de chaque porte ; et du bardage nu entre elles.\n\n⚠️ C'EST LE JOINT PERIPHERIQUE QUI FAIT LIRE UNE PORTE, pas son panneau. Il doit trancher franchement dans les gris sombres, et dessiner un contour net et complet.\n\nUne porte entiere doit etre reconnaissable dans la tuile, jamais coupee par un bord.\n\n⚠️ AUCUN TEXTE, AUCUNE LETTRE, AUCUN CHIFFRE, AUCUNE INSCRIPTION, nulle part. Les cadres de panneau signaletique sont VIDES : on veut la forme du panneau, pas ce qui pourrait y etre ecrit.\n\nTout est intact : aucune porte forcee, aucune porte arrachee, aucune planche clouee.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}

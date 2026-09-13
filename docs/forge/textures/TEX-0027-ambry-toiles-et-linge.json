@@ -1,0 +1,201 @@
+{
+  "id": "TEX-0027",
+  "slug": "ambry-toiles-et-linge",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur des toiles et du linge d'Ambry — ce que les gens laissent dehors",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Cloth_Ambry` — 1,6 pct de la surface d'Ambry, et reprend TEX-AMB-12 et 15 de la planche de matieres.",
+    "priority": "⚠️ MINUSCULE ET IRREMPLACABLE. 1,6 pct de la surface, et c'est le seul MOU de tout le niveau. Cinq cents metres de coque, douze verrous d'acier, trois moteurs de vingt metres — et six pieces de linge sur un fil. Rien d'autre dans ce jeu ne PEND. ⚠️ C'EST AUSSI LE SEUL OBJET D'AMBRY QUI N'AIT AUCUNE FONCTION TECHNIQUE. Une bache protege, du linge seche : ce sont des gestes de vie quotidienne, et ils disent ce qu'aucune machinerie ne dira."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "des plis souples et irreguliers, de 8 a 20 cm de creux a creux",
+      "des ondulations larges la ou la toile est tendue",
+      "des plis serres la ou elle retombe",
+      "des ourlets et des coutures en leger relief",
+      "des oeillets et des points d'attache aux angles"
+    ],
+    "density": "medium",
+    "distribution": "organic",
+    "edge_behavior": "Les plis traversent les bords sans trame. ⚠️ Facile a raccorder, MAIS : un pli est directionnel, et une direction qui se repete tous les 1,43 m se verra. Varier les orientations dans la tuile.",
+    "empty_space": "Des plages de toile presque lisse entre les plis — c'est le contraste entre tendu et retombant qui fait lire du tissu."
+  },
+  "visual": {
+    "subject": "Toile tendue et retombante vue de dessus : plis souples, ondulations, ourlets, oeillets",
+    "materials": [
+      "toile epaisse de bache",
+      "tissu de linge",
+      "ourlets cousus"
+    ],
+    "details": [
+      "plis souples sans arete vive",
+      "ondulations de toile tendue",
+      "ourlets en relief",
+      "oeillets metalliques aux angles",
+      "coutures droites"
+    ],
+    "style": "du TISSU, et rien d'autre dans ce jeu n'en est. Souple, retombant, sans une seule arete dure — l'exact contraire des onze autres matieres d'Ambry.",
+    "color_palette": {
+      "dominant": [
+        "gris clair"
+      ],
+      "secondary": [
+        "gris moyen dans les creux de pli",
+        "blanc sur les cretes"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "dechirure",
+        "trou",
+        "tache",
+        "moisissure",
+        "rouille"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "Le fond des plis les plus serres : vers 70/255. ⚠️ Jamais plus bas — un pli n'est pas une entaille.",
+    "gray": "toile tendue, 160/255, avec des ondulations douces de 20 a 30 niveaux",
+    "white": "cretes des plis et ourlets, 200 a 235"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ AUCUNE ARETE VIVE : c'est le seul critere. Un pli de tissu est ROND. La moindre arete dure et ce n'est plus du tissu, c'est de la tole froissee",
+      "un contraste franc entre zones tendues et zones retombantes",
+      "des plis d'au moins 47 px dans l'image pour que leur direction se lise",
+      "varier l'orientation des plis dans la tuile, pour qu'aucune direction ne se repete"
+    ],
+    "must_not_have": [
+      "dechirure",
+      "trou",
+      "effiloche",
+      "tache",
+      "moisissure",
+      "toile pourrie",
+      "drapeau",
+      "voile de bateau",
+      "arete vive",
+      "pli casse",
+      "tole froissee",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "dechirure",
+      "trou",
+      "tache",
+      "moisissure",
+      "rouille"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Cloth_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 84 triangles, 1,6 pct de la surface, densite mesuree 0,694 tuile/m, anisotropie 1,11. Porte la bache tendue sur un module — inclinee de 9,4 degres par rapport a son module, lui-meme deja de travers — et les six pieces de linge sur un fil. ⚠️ La bache est ECRUE et non bleue : la teinte bleue de la planche a ete posee, rendue et regardee, et elle devenait l'objet le plus visible des vingt-sept metres, avant les fenetres.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #DDDCD2 (ivoire froid) pose par la forge, avec metallic/roughness 0,00 / 0,90. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_toiles_et_linge_height_1024.png --out assets/imported/textures/cortege --name ambry_toiles_et_linge --mul --check-tiling --preview /tmp/ambry_toiles_et_linge.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Cloth_Ambry\": \"ambry_toiles_et_linge\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "moyenne",
+    "source_path": "assets/source/textures/cortege/ambry_toiles_et_linge_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_toiles_et_linge_nrm.png",
+      "ambry_toiles_et_linge_rough.png",
+      "ambry_toiles_et_linge_ao.png",
+      "ambry_toiles_et_linge_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST : a taille d'ecran, ca doit se lire comme du TISSU au milieu de onze matieres dures. Si on hesite avec de la tole, la carte a des aretes de trop."
+    ],
+    "provenance_csv_line": "ambry_toiles_et_linge_height,assets/source/textures/cortege/ambry_toiles_et_linge_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0027-ambry-toiles-et-linge.json,,\"Carte de hauteur d'Ambry — Hauteur des toiles et du linge d'Ambry — ce que les gens laissent dehors. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Cloth_Ambry, 1,6 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris de TOILE — une bache tendue et du linge qui seche, vus de dessus.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre.\n\n⚠️ TOUT DOIT ETRE ROND. C'est du tissu : les plis sont souples, les cretes sont arrondies, les creux sont doux. Pas une seule arete vive dans toute l'image — la moindre arete dure et ce n'est plus du tissu, c'est de la tole froissee.\n\nOn y voit : des plis souples de 8 a 20 cm de creux a creux ; des ondulations larges la ou la toile est tendue ; des plis plus serres la ou elle retombe ; des ourlets et des coutures en leger relief ; des oeillets aux angles.\n\nAlterner franchement les zones TENDUES, presque lisses, et les zones RETOMBANTES, plissees. C'est ce contraste qui fait lire du tissu.\n\nVarier l'orientation des plis : aucune direction ne doit dominer, sinon la repetition se verra.\n\nLa toile est SAINE : pas une dechirure, pas un trou, pas une tache, rien d'effiloche.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}

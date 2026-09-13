@@ -1,0 +1,202 @@
+{
+  "id": "TEX-0030",
+  "slug": "ambry-pas-d-appontage",
+  "schema_version": "1.0",
+  "date": "2026-09-13",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur du pas d'appontage d'Ambry — la plateforme vide d'ou le pilote est parti",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu — et retrouve soude, debout et intact, sur le flanc du vaisseau qui l'a emporte. Il y apprend au meme instant que sa navigatrice le savait depuis le debut de la mission. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. La serre pousse, les fenetres sont allumees, l'antenne est debout. Une ruine ne dirait rien de plus qu'une ruine. Cette tuile habille `AA_Pad_Ambry` — 0,2 pct de la surface d'Ambry, et reprend TEX-AMB-05 de la planche de matieres.",
+    "priority": "⚠️ DOUZE TRIANGLES, ET C'EST LA PLUS CHARGEE DE TOUTES. C'est la plateforme ou les cargos de ravitaillement se posaient — et c'est de la que Wren, le joueur, est parti deux semaines avant qu'Ambry ne se taise. Il avait seize ans, il faisait une rotation. Il n'etait pas la. ⚠️ ET ELLE DOIT ETRE VIDE. Un vaisseau pose dessus raconterait une autre histoire. Sa valeur SOMBRE est ce qui la fait lire comme un pas au milieu des dalles ivoire — la forge a volontairement garde l'anthracite ici, parce qu'un pont clair de plus effacerait le pas."
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 1.4286,
+    "texture_height_m": 1.4286,
+    "reference_element": "Depliage propre d'Ambry, projection en boite a 0,700 tuile/m, mesure slot par slot dans long_cortege.glb.",
+    "confidence": "measured",
+    "rationale": "Echelle MESUREE dans le binaire par la forge (BRIEF-0115, rapport §3.1) : 0,700 tuile/m sur les douze slots d'Ambry, moyenne d'ensemble 0,697 pour un ecart de 0,4 pct a la cible, soit 1,4286 m par tuile. C'est 3,5 fois plus serre que le borde du Cortege (5,00 m par tuile) — douze fois en AIRE de tuile, ce que l'oeil percoit — et ce rapport EST la revelation du niveau, avant que Lyra ne dise un mot : un avant-poste habite se construit a l'echelle de la main, le vaisseau qui l'emporte a l'echelle de la tonne. ⚠️ SEUILS MESURES SUR CAPTURE 1920x1080 LE 2026-09-05, ET ILS BORNENT TOUT CE QUE CETTE TUILE PEUT PORTER. Le corridor rend a 45,8 px/m en travers et 40,0 dans l'axe — la densite N'EST PAS ISOTROPE, un carre n'est pas carre a l'ecran. Seuil de FORME (on voit l'orientation d'un detail) : 3 px a l'ecran = 6,5 cm de monde = **47 px dans cette image**. Seuil de PRESENCE : 2 px = 4,4 cm = **32 px**. En dessous, sans TAA, une ligne fine s'echantillonne en POINTILLES. ⚠️ ET LE CONTRASTE JUGE AUTANT QUE LA TAILLE : sur la meme capture, un contour de trappe de 27 px se lit MOINS bien qu'une gorge de refend de 5,9 px, parce que la trappe ne module que 4 niveaux quand la gorge tranche en noir franc. Plancher mesure : ~10 niveaux d'ecart au fond local. Une carte peut donc etre a la bonne echelle et rester invisible."
+  },
+  "composition": {
+    "main_elements": [
+      "une surface de pose continue, a grain antiderapant fin",
+      "des rainures de drainage peu profondes, en trame large",
+      "des ancrages de bridage encastres, de 15 a 25 cm",
+      "des bordures en relief franc sur le pourtour",
+      "des traces d'usure circulaires aux points de pose"
+    ],
+    "density": "low",
+    "distribution": "structured",
+    "edge_behavior": "Le grain et les rainures traversent les bords. ⚠️ Tuile facile — elle est volontairement pauvre en motif, parce que c'est le VIDE qui est le sujet.",
+    "empty_space": "Beaucoup, et c'est le sujet. Un pas d'appontage est une surface DEGAGEE : tout ce qu'on y pose de detail lui retire ce qu'elle doit dire."
+  },
+  "visual": {
+    "subject": "Plateforme d'appontage vue de dessus : surface antiderapante, rainures de drainage, ancrages encastres, bordures",
+    "materials": [
+      "revetement antiderapant",
+      "ancrages de bridage encastres",
+      "bordure de pas"
+    ],
+    "details": [
+      "grain antiderapant fin et regulier",
+      "rainures de drainage peu profondes",
+      "ancrages encastres a plat",
+      "bordures en relief",
+      "usure circulaire aux points de pose"
+    ],
+    "style": "infrastructure de servitude : plate, degagee, entretenue. Faite pour qu'on s'y pose, et personne ne s'y pose plus.",
+    "color_palette": {
+      "dominant": [
+        "gris sombre"
+      ],
+      "secondary": [
+        "gris un peu plus clair sur les bordures",
+        "noir dans les rainures"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "marquage peint",
+        "vaisseau",
+        "vehicule",
+        "caisse"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "Les rainures de drainage : vers 55/255. Jamais 0 — ce sont des rainures, pas des fentes.",
+    "gray": "⚠️ LA SURFACE DE POSE, ET ELLE OCCUPE PRESQUE TOUTE L'IMAGE : 110/255, avec un grain antiderapant fin qui ne module que 10 a 15 niveaux. C'est une surface QUI DOIT RESTER PLATE.",
+    "white": "bordures et ancrages, 180 a 210 — discrets, jamais eclatants"
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ DU VIDE : la plus grande partie de l'image est une surface plate et degagee. C'est le sujet, pas un manque",
+      "un grain antiderapant FIN et regulier, qui ne module que 10 a 15 niveaux",
+      "des rainures de drainage larges et peu profondes",
+      "⚠️ AUCUN MARQUAGE PEINT : la geometrie d'Ambry porte deja son marquage de sol en relief, et un marquage dans la carte ferait doublon a un autre endroit"
+    ],
+    "must_not_have": [
+      "vaisseau",
+      "vehicule",
+      "caisse",
+      "objet pose",
+      "marquage peint",
+      "lettre",
+      "chiffre",
+      "cercle peint",
+      "croix peinte",
+      "ruine",
+      "impact",
+      "brulure",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche",
+      "rouille",
+      "marquage peint",
+      "vaisseau",
+      "vehicule",
+      "caisse"
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Pad_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 12 triangles, 0,2 pct de la surface, densite mesuree 0,699 tuile/m, anisotropie 1,01. Porte le seul pas d'appontage, incline de 2,5 degres — le re-plombe de travers de l'Unisson. ⚠️ Le vehicule d'entretien y etait gare au premier tirage du BRIEF-0115 ; la forge l'a deplace, parce que LE PAS DOIT RESTER VIDE.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #141419 (anthracite le plus sombre) pose par la forge, avec metallic/roughness 0,15 / 0,78. ⚠️ L'echelle d'UV est choisie par le SUFFIXE `_Ambry` du nom de materiau (`CortegeSkin.AMBRY_SUFFIX`) : sans lui cette carte serait posee a l'echelle du borde, soit 3,5 fois trop fine — corrige le 2026-09-13, et un banc le garde.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_pas_d_appontage_height_1024.png --out assets/imported/textures/cortege --name ambry_pas_d_appontage --mul --check-tiling --preview /tmp/ambry_pas_d_appontage.png",
+    "additional_notes": "⚠️ L'ENTREE DANS `CortegeSkin.SKINS` SE POSE QUAND LES CARTES ARRIVENT, JAMAIS AVANT. Le banc `test_every_declared_skin_finds_its_maps_on_disk` refuse une peau declaree sans ses images : une promesse que rien ne tient ne se verrait qu'a l'ecran, sur une surface restee nue au milieu d'une coque habillee. Ajouter `&\"AA_Pad_Ambry\": \"ambry_pas_d_appontage\"` dans le meme commit que les quatre PNG."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "moyenne",
+    "source_path": "assets/source/textures/cortege/ambry_pas_d_appontage_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_pas_d_appontage_nrm.png",
+      "ambry_pas_d_appontage_rough.png",
+      "ambry_pas_d_appontage_ao.png",
+      "ambry_pas_d_appontage_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, donc ses quatre coins doivent porter de la MATIERE. Un coin plus sombre que la moyenne = vignettage ajoute par le generateur — le RENVOYER plutot que le rattraper.",
+      "la ligne « tuilage » de `derive-maps.py --check-tiling` doit dire OK — jamais l'oeil : un `hull_greebles` du depot mesurait 16 pct d'ecart au bord et a du etre ecarte APRES coup",
+      "ouvrir la preview : son quart haut-gauche montre 2x2 tuiles, la couture s'y voit",
+      "mesurer le point le plus sombre : il doit rester au-dessus du seuil de `data_semantics.black`, jamais 0",
+      "⚠️ verifier que l'image est bien MONOCHROME : `derive-maps.py` avertit si elle est coloree, et c'est le symptome d'un generateur qui a rendu une jolie image au lieu de la carte demandee",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) — `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en 1:1. Le rendu studio flatte ; c'est la capture qui tranche.",
+      "⚠️ LE TEST : le pas doit se detacher en SOMBRE au milieu des dalles ivoire, et rester vide. Si on hesite sur ce que c'est, c'est que la bordure ne le cerne pas assez."
+    ],
+    "provenance_csv_line": "ambry_pas_d_appontage_height,assets/source/textures/cortege/ambry_pas_d_appontage_height_1024.png,raster_texture,generateur d'image (operateur),,tiers (genere IA),proprietary-internal,,docs/forge/textures/TEX-0030-ambry-pas-d-appontage.json,,\"Carte de hauteur d'Ambry — Hauteur du pas d'appontage d'Ambry — la plateforme vide d'ou le pilote est parti. 1024x1024, niveaux de gris, tuilable, 1,43 m par tuile (0,700 tuile/m mesure). Slot AA_Pad_Ambry, 0,2 pct de la surface d'Ambry\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas de nebuleuse, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene — RIEN que la surface elle-meme, vue a plat et de dessus.\n\nCarte de hauteur en niveaux de gris d'une PLATEFORME D'APPONTAGE, vue de dessus.\n\nEchelle reelle : la tuile ne couvre que 1,43 metre sur 1,43 metre.\n\n⚠️ LA PLUS GRANDE PARTIE DE L'IMAGE DOIT ETRE UNE SURFACE PLATE ET DEGAGEE. C'est un pas d'appontage : sa raison d'etre est d'etre libre. Tout detail qu'on y ajoute lui retire ce qu'il doit dire.\n\nOn y voit : un revetement antiderapant a grain fin et regulier, qui module tres peu ; des rainures de drainage larges et peu profondes, en trame espacee ; des ancrages de bridage encastres a plat, de 15 a 25 cm ; des bordures en relief franc ; et, aux endroits ou l'on se posait, une usure circulaire douce qui a poli le grain.\n\nAucun marquage peint, aucune lettre, aucun chiffre, aucun cercle ni croix peints : le marquage de sol existe deja en relief dans la geometrie, et le repeter ici ferait doublon.\n\nRien de pose dessus : aucun vaisseau, aucun vehicule, aucune caisse. La plateforme est VIDE, et c'est tout le sujet.\n\nLe revetement est sain : pas d'impact, pas de brulure, pas de rouille.\n\nMotif repetable sans couture sur les quatre bords : chaque element traverse naturellement les bords et s'y raccorde, et aucun element ne doit trahir la taille de la tuile.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, nom de marque, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}
