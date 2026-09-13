@@ -5,6 +5,9 @@
 - **Rédigé par** : concepteur principal
 - **Date** : 2026-09-13
 - **Planche** : `assets/reference/concepts/ambry_concept_sheet_2026-09.png` ⚠️ **à ouvrir en premier**
+- **Planche des matières** : `assets/reference/concepts/ambry_texture_atlas_2026-09.png` — dix-huit
+  natures nommées `TEX-AMB-01..18`. ⚠️ **Planche de RÉFÉRENCE, pas des assets** : chaque vignette
+  annoncée 1024² y fait 248 px. Elle sert de **contrat de matières** pour le découpage en slots.
 - **Spécification écrite** : `docs/forge/concepts/AMBRY-ce-qu-on-doit-voir.md`
 - **Suite de** : `BRIEF-0114` (livré — le relief est venu, la LECTURE n'est pas venue)
 
@@ -124,6 +127,43 @@ ramasse que `AA_Emissive_Engine`, donc **le blackout de fin n'éteindra pas Ambr
 moteurs sont arrachés et que le vaisseau meurt, ses veines magenta s'éteignent sur 85 conduits —
 et **les fenêtres d'Ambry restent allumées**. Les gens n'étaient pas alimentés par ce qui les a
 pris. Je ne câble rien : il suffit que le slot soit distinct.
+
+## ⚠️ Découper Ambry en SLOTS PAR NATURE — ajouté le 2026-09-13
+
+L'opérateur a livré une **planche de matières** en cours de lot. Les images utilisables restent à
+produire et **ne sont pas de ce lot**, mais le DÉCOUPAGE, lui, se décide pendant que la géométrie
+est ouverte — sinon il faudra reforger une troisième fois.
+
+**Groupez les faces d'Ambry par nature, chacune sur son slot local**, au lieu de les répartir sur
+les cinq slots partagés d'aujourd'hui. Sans ça, on ne pourra pas habiller la verrière sans habiller
+aussi les caisses.
+
+| Slot proposé | Ce qu'il porte | Réf. planche |
+|---|---|---|
+| `AA_Hull_Ambry` *(existe)* | le bordé clair des modules d'habitation | 01 |
+| `AA_Tech_Ambry` | métal technique sombre, machinerie, conduits, câbles | 02, 11 |
+| `AA_Deck_Ambry` | passerelles, caillebotis, sol métallique, garde-corps | 03, 04 |
+| `AA_Pad_Ambry` | le pas d'appontage et son marquage | 05 |
+| `AA_Weld_Ambry` | les deux colliers — ⚠️ ils appartiennent à l'UNISSON, pas à Ambry | 06 |
+| `AA_Rock_Ambry` | la roche arrachée du soubassement | 07 |
+| `AA_Glass_Ambry` | la verrière de la serre | 08 |
+| `AA_Green_Ambry` | la végétation — le seul vert vivant | 09 |
+| `AA_Window_Ambry` | les fenêtres éclairées, ambre chaud | 10 |
+| `AA_Cloth_Ambry` | bâches, toiles, linge | 12, 15 |
+| `AA_Crate_Ambry` | caisses et conteneurs | 13 |
+| `AA_Sign_Ambry` | signalétique, portes numérotées, décals | 14, 16 |
+
+**La forge choisit lesquels sa géométrie justifie** — aucun slot qui ne porterait rien, et un
+regroupement si deux natures se ressemblent trop pour mériter deux entrées.
+
+⚠️ **CELA NE CHANGE RIEN À LA RÈGLE DE TEXTURE : aucune image livrée dans ce lot.** Slots et UV
+seulement, avec la **densité de dépliage annoncée slot par slot** — exactement le procédé du
+`BRIEF-0090` pour le huitième, en plus large.
+
+⚠️ **ET UN VRAI ATLAS EST IMPOSSIBLE AUJOURD'HUI** : `box_project_uv` produit des îlots qui se
+recouvrent, ce qui interdit une image unique à îlots packés. Avec des slots par nature, chaque
+matière devient une carte **tuilée** sur son slot — compatible avec la projection en place. À
+confirmer dans le rapport.
 
 ## Ce qui ne change pas
 
