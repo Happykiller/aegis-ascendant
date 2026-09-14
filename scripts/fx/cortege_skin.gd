@@ -147,6 +147,39 @@ const NORMAL_SCALE := 0.45
 ## serré que celui du bordé, donc à carte égale elle montre 3,5 fois moins de pente.
 const AMBRY_NORMAL_SCALE := 1.60
 
+## ⚠️ AMBRY ÉTAIT SUREXPOSÉE, ET C'EST CE QUI RENDAIT SES TEXTURES INVISIBLES.
+##
+## Mesuré le 2026-09-14, en comparant la bande d'Ambry en jeu à la **vue gameplay de sa propre
+## planche de concept** (`assets/reference/concepts/ambry_concept_sheet_2026-09.png`) :
+##
+##                          planche      jeu
+##   luminance médiane          51       135
+##   tons moyens (60–160)     29,8 %    10,7 %
+##   quasi-blanc (> 200)       7,0 %    41,6 %
+##   saturation               26,7 %    13,5 %
+##   surfaces claires    (206,188,170)  (214,216,213)
+##
+## ⚠️ UNE TEXTURE NE PEUT RIEN MODULER DANS UNE ZONE DÉJÀ AU PLAFOND. Quarante et un pour cent de
+## la surface était quasi-blanche : c'est pourquoi les murs restaient plats quoi qu'on leur fasse,
+## pendant que le pont et la roche — plus sombres — se lisaient très bien. Une soirée entière a
+## été passée à chercher dans la TEXTURE un défaut qui était dans la VALEUR.
+##
+## Le plafond ne s'applique qu'aux matières CLAIRES : les sombres (machinerie, roche, pas,
+## colliers, caisses) sont déjà en dessous et ne bougent pas. La règle se dérive de la couleur,
+## elle ne cite aucun slot — un treizième héritera du bon comportement.
+const AMBRY_VALUE_CEILING := 0.58
+## La même planche donne des surfaces claires en ivoire CHAUD (206, 188, 170) quand les nôtres
+## rendent en gris neutre (214, 216, 213). On réchauffe l'albédo pour retrouver ce rapport.
+const AMBRY_WARM := Vector3(1.0, 0.955, 0.885)
+
+## Ramène une matière d'Ambry sous le plafond de valeur, et la réchauffe. Les matières déjà
+## sombres ressortent inchangées.
+static func _ambry_value(colour: Color) -> Color:
+	var lum := colour.r * 0.2126 + colour.g * 0.7152 + colour.b * 0.0722
+	var k := 1.0 if lum <= AMBRY_VALUE_CEILING else AMBRY_VALUE_CEILING / lum
+	return Color(colour.r * k * AMBRY_WARM.x, colour.g * k * AMBRY_WARM.y,
+		colour.b * k * AMBRY_WARM.z, colour.a)
+
 ## Agrandissement des tuiles du bordé de l'Unisson. **< 1 agrandit** : `uv1_scale` multiplie les
 ## coordonnées, donc 0,5 fait couvrir DEUX FOIS plus de monde à la même image.
 ##
@@ -247,6 +280,8 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 	# On DUPLIQUE : le matériau importé appartient au `.glb`, et l'écrire en place mute une
 	# ressource partagée que rien ne remettra en état.
 	var tuned: StandardMaterial3D = base.duplicate()
+	if stem.begins_with("ambry"):
+		tuned.albedo_color = _ambry_value(tuned.albedo_color)
 	tuned.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
 	tuned.albedo_texture = mul
 	tuned.normal_enabled = true
