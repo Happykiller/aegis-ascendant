@@ -1,0 +1,212 @@
+{
+  "id": "TEX-0031",
+  "slug": "ambry-murs-et-toits",
+  "schema_version": "1.0",
+  "date": "2026-09-14",
+  "texture_type": "surface_tile",
+  "purpose": {
+    "description": "Hauteur des murs et toits d'Ambry — la derniere matiere de l'avant-poste qui ne se lise pas",
+    "game_context": "Cinquieme et dernier troncon du survol du Long Cortege. Ambry est l'avant-poste ou le JOUEUR a grandi : quatre-vingts personnes, tu depuis 379, RADIE du Registre plutot que declare perdu, et retrouve soude debout et intact sur le flanc du vaisseau qui l'a emporte. ⚠️ Le mot est INSOUTENABLE, pas spectaculaire : ce qui doit serrer la gorge, c'est que TOUT VA BIEN. Cette tuile habille `AA_Hull_Ambry` — murs, toits, parapets, dalles de rive, pignons, socles : **289 m² dont 147 REELLEMENT VUS** par la camera, la deuxieme surface de la piece.",
+    "priority": "⚠️ ONZE MATIERES SUR DOUZE SE LISENT DEJA ; CELLE-CI EST LA DERNIERE, ET C'EST CELLE QUE L'OPERATEUR MONTRE DU DOIGT DEPUIS TROIS PASSAGES — « les textures sont indiscernables », « je ne vois rien ». Sa carte est la seule qui n'ait jamais ete refaite : elle vient de TEX-0014, ecrite en aout pour la chaine de rendu RETRO a 23 px/m, et son sujet est un bardage FIN — panneaux de 40 a 70 cm, mains courantes de 5 a 8. Le contraste y est reparti en FILETS, et un filet de 4 px d'image fait 0,6 px d'ecran : il disparait.\n\n⚠️ ET LE DIAGNOSTIC EST FERME, PAS SUPPOSE. Un damier de 0,51 m pose a la place de cette carte apparait NET sur tous les murs, toits et parapets en capture 1:1. La chaine est saine, le materiau est bien branche, l'orientation des faces n'est pas en cause. **Ce qui manque est la TAILLE DES MOTIFS, et rien d'autre.**"
+  },
+  "technical": {
+    "resolution": "1024x1024",
+    "aspect_ratio": "1:1",
+    "tileable": true,
+    "transparent_background": false,
+    "background": "opaque",
+    "view": "orthographic_top",
+    "lighting": "none",
+    "color_mode": "grayscale",
+    "alpha_usage": "none",
+    "output_usage": "source_for_normal"
+  },
+  "world_scale": {
+    "texture_width_m": 4.0817,
+    "texture_height_m": 4.0817,
+    "reference_element": "Depliage d'Ambry (0,700 tuile/m, mesure dans le binaire au BRIEF-0115) multiplie par `CortegeSkin.AMBRY_UV_SCALE = 0,35` : 1,4286 / 0,35 = 4,0817 m par tuile.",
+    "confidence": "measured",
+    "rationale": "⚠️ CETTE TUILE COUVRE 4,08 M, PAS 1,43 — ET C'EST TOUT L'ECART AVEC TEX-0014, QU'ELLE REMPLACE. `CortegeSkin.AMBRY_UV_SCALE` est passe a 0,35 le 2026-09-13 apres mesure : le depliage livre (0,700 tuile/m) donnait 65 px a l'ecran par tuile, et rien n'y survivait. A 4,08 m, une tuile occupe 187 px. La conversion, une fois pour toutes :\n    1 px d'image = 3,25 mm de monde = 0,149 px d'ecran\n    13 cm de monde =  40 px d'image =  6,0 px d'ecran   <- le PLANCHER de ce lot\n    40 cm de monde = 123 px d'image = 18,3 px d'ecran\n    80 cm de monde = 246 px d'image = 36,6 px d'ecran\n   150 cm de monde = 461 px d'image = 68,7 px d'ecran\n⚠️ RIEN SOUS 13 CM DE MONDE. En dessous, un detail ne rend que du grain — c'est mesure, pas estime : seuil de FORME a 3 px d'ecran, de PRESENCE a 2."
+  },
+  "composition": {
+    "main_elements": [
+      "des panneaux de bardage de 0,8 a 1,5 m, a joints LARGES et francs (au moins 13 cm de creux)",
+      "des decrochements de plan de 20 a 40 cm, qui portent leur propre ombre",
+      "des trappes et panneaux d'acces de 40 a 60 cm, en creux NET",
+      "des bandes de renfort horizontales de 20 a 30 cm de large",
+      "quelques grandes plages lisses, pour que le reste se detache"
+    ],
+    "density": "medium",
+    "distribution": "structured",
+    "edge_behavior": "La trame de panneaux traverse les quatre bords et s'y raccorde. ⚠️ A 4,08 m par tuile, Ambry n'en montre que 6,6 sur ses 27 m : une couture s'y verra SIX FOIS PLUS qu'avant, et une repetition reconnaissable aussi. La trame doit tomber juste, et le motif ne doit avoir aucun accident memorable.",
+    "empty_space": "⚠️ BEAUCOUP, ET C'EST NOUVEAU. TEX-0014 couvrait toute la tuile de servitudes fines ; c'est exactement ce qui l'a rendue invisible. Ici, de grandes plages lisses entre des accidents RARES et GROS. Moins d'elements, plus gros : c'est le sujet du lot."
+  },
+  "visual": {
+    "subject": "Bardage exterieur d'un module d'habitation spatial, vu de dessus : grands panneaux, joints larges, decrochements, trappes d'acces",
+    "materials": [
+      "bardage de grands panneaux",
+      "bandes de renfort",
+      "trappes d'acces"
+    ],
+    "details": [
+      "joints de panneau larges et nets",
+      "aretes de decrochement",
+      "cadres de trappe en creux",
+      "bandes de renfort saillantes",
+      "plages de tole lisse"
+    ],
+    "style": "construction humaine soignee et normalisee, vue de LOIN : ce qui doit se lire est l'appareillage, pas la quincaillerie. L'exact contraire de l'ouvrage a l'echelle de la tonne qui l'emporte, mais dit avec de GRANDES pieces.",
+    "color_palette": {
+      "dominant": [
+        "gris clair"
+      ],
+      "secondary": [
+        "gris moyen dans les joints et les creux",
+        "blanc sur les aretes de decrochement"
+      ],
+      "forbidden": [
+        "cyan #3FD9E8",
+        "corail #FF5A3D",
+        "perspective",
+        "ombre portee",
+        "vignettage",
+        "bords assombris",
+        "cadre",
+        "bordure",
+        "objet isole au centre",
+        "reflet speculaire",
+        "eclairage directionnel",
+        "texte",
+        "lettres",
+        "chiffres",
+        "logo",
+        "filigrane",
+        "signature",
+        "nom de marque",
+        "pictogramme",
+        "insigne",
+        "embleme",
+        "symbole",
+        "fleche",
+        "rouille",
+        "vegetation",
+        "breche",
+        "impact"
+      ]
+    }
+  },
+  "data_semantics": {
+    "enabled": true,
+    "meaning": "Hauteur de la surface. Clair = saillant. Normale, rugosite et AO DERIVEES (regle 2).",
+    "black": "⚠️ Les joints de panneau et les cadres de trappe, et ils doivent etre LARGES : au moins 40 px dans l'image. Vers 60/255. Jamais 0 — c'est un joint, pas une entaille.",
+    "gray": "face de panneau, ~170/255, avec de grandes plages presque unies",
+    "white": "aretes de decrochement et bandes de renfort, 215 a 245. ⚠️ AU MOINS CENT NIVEAUX entre le fond d'un joint et le sommet d'une arete : c'est la seule amplitude qui survive a une reduction de sept fois."
+  },
+  "lighting": {
+    "enabled": false,
+    "direction": "",
+    "character": "Aucun eclairage cuit : Ambry defile avec la coque, et la lumiere du niveau est la seule qui doive jouer dessus.",
+    "shadows": "none"
+  },
+  "constraints": {
+    "must_have": [
+      "⚠️ AUCUN MOTIF SOUS 40 PX D'IMAGE (13 cm de monde, 6 px d'ecran). C'est LE critere de ce lot, et c'est ce qui a manque a TEX-0014",
+      "⚠️ AU MOINS CENT NIVEAUX de gris entre le fond d'un joint et le sommet d'une arete",
+      "des panneaux de 0,8 a 1,5 m — soit 246 a 461 px dans l'image : quelques-uns par tuile, pas une trame serree",
+      "de grandes plages lisses, pour que les accidents se detachent",
+      "l'integrite : rien de casse, rien d'arrache, rien de rouille — l'avant-poste est INTACT"
+    ],
+    "must_not_have": [
+      "bardage fin",
+      "trame serree",
+      "main courante",
+      "echelon",
+      "rivet",
+      "boulon",
+      "chemin de cables",
+      "tuyau",
+      "grille de ventilation",
+      "caillebotis",
+      "tole larmee",
+      "filet",
+      "hairline",
+      "breche",
+      "dechirure",
+      "trou traversant",
+      "impact",
+      "carbonisation",
+      "ruine",
+      "rouille",
+      "vegetation",
+      "soudure",
+      "cordon de soudure",
+      "cyan #3FD9E8",
+      "corail #FF5A3D",
+      "perspective",
+      "ombre portee",
+      "vignettage",
+      "bords assombris",
+      "cadre",
+      "bordure",
+      "objet isole au centre",
+      "reflet speculaire",
+      "eclairage directionnel",
+      "texte",
+      "lettres",
+      "chiffres",
+      "logo",
+      "filigrane",
+      "signature",
+      "nom de marque",
+      "pictogramme",
+      "insigne",
+      "embleme",
+      "symbole",
+      "fleche"
+    ],
+    "seamless_requirements": [
+      "continuite parfaite sur les quatre bords",
+      "verifie par tools/derive-maps.py --check-tiling, jamais par l'oeil",
+      "⚠️ LA TUILE LA PLUS EXIGEANTE DES DOUZE SUR CE POINT. A 4,08 m, Ambry n'en montre que 6,6 sur ses 27 m — contre 19 avant. Une couture s'y verra six fois plus, et le fondu miroir de secours (`--fix-tiling`) imposerait une symetrie visible a cette taille. Viser un seamless qui passe SANS rattrapage."
+    ]
+  },
+  "integration_notes": {
+    "engine_usage": "Materiau `AA_Hull_Ambry` de la geometrie d'Ambry, dans `Section_05` de long_cortege.glb : 838 triangles, 289 m² dont 147 vus par la camera (mesure par projection des normales sur l'axe de vue). Porte les murs, toits, parapets, dalles de rive, pignons et socles. ⚠️ REMPLACE TEX-0014 : meme slot, meme chemin de derivees, aucun changement de code.",
+    "shader_usage": "Normale, rugosite et AO DERIVEES par `tools/derive-maps.py` ; la carte `--mul` sert d'`albedo_texture` par-dessus l'`albedo_color` #EDEAE3 (ivoire Helios Vanguard), metallic 0,05 / roughness 0,45. L'echelle d'UV vient du suffixe `_Ambry` (`CortegeSkin.AMBRY_SUFFIX`), le relief de `AMBRY_NORMAL_SCALE = 1,60`.",
+    "post_processing": "python3 tools/derive-maps.py assets/source/textures/cortege/ambry_hull_height_1024.png --out assets/imported/textures/cortege --name ambry_hull --mul --mul-floor 0.30 --strength 10 --check-tiling   # PUIS la meme commande SANS --check-tiling, qui est un MODE et sort avant d'ecrire",
+    "additional_notes": "⚠️ VERIFIER `mipmaps/generate=true` SUR LES QUATRE `.import`. Godot importe a `false` par defaut et `detect_3d` ne tourne pas sans editeur ; sans mipmaps, une carte de 1254 px affichee sur 187 est echantillonnee point par point — « du bruit sur une tele qui ne capte rien ». `scripts/lint-regles.sh` le refuse desormais, mais le defaut se pose a l'import, pas au commit."
+  },
+  "x_delivery": {
+    "status": "a generer",
+    "priority": "haute",
+    "source_path": "assets/source/textures/cortege/ambry_hull_height_1024.png",
+    "derived_dir": "assets/imported/textures/cortege",
+    "derived_files": [
+      "ambry_hull_nrm.png",
+      "ambry_hull_rough.png",
+      "ambry_hull_ao.png",
+      "ambry_hull_mul.png"
+    ],
+    "verify": [
+      "⚠️ LE TEST DES QUATRE COINS S'INVERSE POUR UNE TUILE : elle est PLEINE CADRE, ses quatre coins doivent porter de la MATIERE. Un coin plus sombre = vignettage ajoute — le RENVOYER.",
+      "⚠️ `--check-tiling` doit dire OK SANS `--fix-tiling`. A 4,08 m par tuile, le fondu miroir imposerait une symetrie visible.",
+      "verifier `mipmaps/generate=true` sur les quatre derivees AVANT de juger quoi que ce soit",
+      "⚠️ MESURER LA TAILLE DES MOTIFS SUR L'IMAGE REÇUE : reduire la carte a 187 px (ce que l'ecran voit) et verifier qu'on distingue encore les panneaux. Si la reduction les efface, la demande a echoue meme si l'image est belle.",
+      "⚠️ PUIS EN JEU, EN CAPTURE REGARDEE (ADR-0006) : `scripts/shot.sh --at=26 -- --goto-level=long_cortege --cortege-from=5`, puis `tools/inspect-capture.py` en zoom 3 sur les modules.",
+      "⚠️ LA MESURE QUI VAUT : l'ecart-type local dans une boite de 40 px posee A L'INTERIEUR d'un mur, loin de toute arete. Il est de 10 a 24 aujourd'hui. Le contraste local sur toute la bande NE SAIT PAS TRANCHER ceci — il a menti trois fois dans le meme sens le 2026-09-13."
+    ],
+    "provenance_csv_line": "ambry_hull_height,assets/source/textures/cortege/ambry_hull_height_1024.png,raster_texture,generation IA (operateur),,operateur (Happykiller),proprietary-internal,2026-09-14,docs/forge/textures/TEX-0031-ambry-murs-et-toits.json,,\"Carte de HAUTEUR des murs et toits d Ambry — grands panneaux, joints larges, decrochements. REMPLACE la carte de TEX-0014 (aout), dont les motifs fins disparaissaient a la reduction. 4,08 m par tuile. Slot AA_Hull_Ambry, 289 m2 dont 147 vus\""
+  },
+  "x_prompt_fr": {
+    "derived_from": [
+      "purpose",
+      "technical",
+      "world_scale",
+      "composition",
+      "visual",
+      "data_semantics",
+      "constraints"
+    ],
+    "text": "⚠️ FOND : IL N'Y A PAS DE FOND. La matiere remplit le cadre entierement, d'un bord a l'autre et jusque dans les quatre coins. Pas de degrade, pas de vignettage, pas de coin assombri, pas de halo, pas d'etoiles, pas d'atmosphere, pas de sol, pas de decor, pas de cadre, pas de bordure, pas d'objet isole au centre, pas de mise en scene.\n\n⚠️ CADRAGE : VUE DE TRES PRES SUR DE GRANDS PANNEAUX. Il ne doit y avoir que QUELQUES elements dans l'image — quatre a huit panneaux, pas davantage. Chacun est GROS et occupe un quart a un tiers de la largeur du cadre.\n\nCarte de hauteur en niveaux de gris du bardage exterieur d'un module d'habitation spatial.\n\nEchelle reelle : la tuile couvre 4,08 metres sur 4,08 metres. Les panneaux y font donc 0,8 a 1,5 m, c'est-a-dire un quart a un tiers de l'image chacun.\n\nOn y voit, et rien d'autre : de grands panneaux de bardage separes par des joints LARGES et francs ; des decrochements de plan de 20 a 40 cm, qui portent leur propre ombre ; quelques trappes et panneaux d'acces de 40 a 60 cm, en creux net ; des bandes de renfort horizontales larges ; et de GRANDES PLAGES LISSES entre tout cela.\n\n⚠️ RIEN DE FIN. Aucun bardage serre, aucune trame dense, aucune main courante, aucun echelon, aucun rivet, aucun boulon, aucun chemin de cables, aucun tuyau, aucune grille, aucun caillebotis, aucune tole larmee, aucun filet. Le plus petit accident de l'image doit faire au moins UN TRENTIEME de sa largeur. Tout ce qui est plus fin disparaitra.\n\n⚠️ LE RELIEF DOIT ETRE TRES FRANC : au moins cent niveaux de gris entre le fond d'un joint et le sommet d'une arete de decrochement. Les joints sont les seules zones vraiment sombres, les aretes les seules vraiment claires, et entre les deux de larges surfaces presque unies.\n\nMoins d'elements, plus gros : c'est tout le sujet de cette image.\n\nLe bardage est SAIN : rien de casse, rien d'arrache, rien de rouille, aucune breche.\n\nMotif repetable sans couture sur les quatre bords : les panneaux traversent naturellement les bords et s'y raccordent. ⚠️ Et aucun accident memorable — pas de tache, pas de marque unique : le motif se repetera visiblement, et tout ce qui se reconnait se comptera.\n\nImage strictement monochrome, en niveaux de gris : c'est une carte de HAUTEUR, pas une image de la matiere. Clair = saillant, sombre = creux. Vue orthogonale strictement de dessus, eclairage neutre et parfaitement plat, aucune ombre portee, aucune perspective, aucun reflet.\n\nFormat natif 1024 x 1024.\n\nEVITER ABSOLUMENT : bardage fin, trame serree, main courante, echelon, rivet, boulon, chemin de cables, tuyau, grille, caillebotis, tole larmee, filet, rouille, vegetation, breche, impact, ruine, perspective, ombre portee, vignettage, bords assombris, cadre, bordure, objet isole au centre, reflet speculaire, eclairage directionnel, couleur, teinte, texte, lettres, chiffres, logo, filigrane, signature, pictogramme, insigne, embleme, symbole, fleche."
+  }
+}
