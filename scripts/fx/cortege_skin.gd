@@ -52,6 +52,12 @@ const SKINS: Dictionary = {
 	&"AA_Crate_Ambry": "ambry_crate",
 	&"AA_Sign_Ambry": "ambry_sign",
 	&"AA_Pad_Ambry": "ambry_pad",
+	# Les trois slots du `BRIEF-0116` : deux paliers de valeur des modules, et les marquages d'or
+	# du pas d'appontage. Ils partagent les cartes de leurs aînés — deux tôles de la même famille
+	# posées à dix ans d'écart ont le même appareillage et pas la même valeur.
+	&"AA_HullB_Ambry": "ambry_hull",
+	&"AA_HullC_Ambry": "ambry_hull",
+	&"AA_Mark_Ambry": "ambry_pad",
 	# ⚠️ LES DOUZE MATIÈRES D'AMBRY Y SONT, et aucune n'y est entrée avant ses images.
 	# `BRIEF-0115` a livré les douze slots d'un coup ; je les avais tous déclarés d'avance, et
 	# `test_every_declared_skin_finds_its_maps_on_disk` a rougi sur les onze qui n'avaient pas
@@ -174,9 +180,45 @@ const AMBRY_WARM := Vector3(1.0, 0.955, 0.885)
 
 ## Ramène une matière d'Ambry sous le plafond de valeur, et la réchauffe. Les matières déjà
 ## sombres ressortent inchangées.
-static func _ambry_value(colour: Color) -> Color:
-	var lum := colour.r * 0.2126 + colour.g * 0.7152 + colour.b * 0.0722
-	var k := 1.0 if lum <= AMBRY_VALUE_CEILING else AMBRY_VALUE_CEILING / lum
+## ⚠️ UN ACCENT SATURÉ N'EST PAS UNE SURFACE : il est exempté du plafond et du réchauffement.
+## Les fenêtres ambre, les marquages d'or et la végétation sont des DÉCISIONS, pas de la structure
+## — les rabattre sous 0,58 éteindrait précisément ce que la pièce doit montrer. La règle se lit
+## sur la couleur et ne cite aucun slot : l'ivoire du bordé sature à 9 %, une fenêtre à 91 %.
+const AMBRY_ACCENT_SAT := 0.25
+
+## Une matière d'Ambry est-elle un ACCENT ? Alors le plafond ne la touche pas.
+static func _is_ambry_accent(colour: Color) -> bool:
+	var haut := maxf(colour.r, maxf(colour.g, colour.b))
+	var bas := minf(colour.r, minf(colour.g, colour.b))
+	return haut > 0.0001 and (haut - bas) / haut > AMBRY_ACCENT_SAT
+
+## Le facteur unique qui ramène la matière la plus claire d'Ambry sous le plafond.
+##
+## ⚠️ UN PLAFOND QUI ÉCRÊTE DÉTRUIT LES ÉCARTS ; UN PLAFOND QUI MET À L'ÉCHELLE LES GARDE.
+## Première version : chaque matière était rabattue individuellement à 0,58. Le `BRIEF-0116` a
+## livré trois paliers de valeur pour que les sept modules cessent de se lire comme une masse —
+## et le palier le plus clair siégeait à 0,578, donc juste sous le plafond : il ressortait
+## **identique** à celui qu'on rabattait sur lui. Les deux se confondaient à l'écran, et tout le
+## lot était annulé par quatre lignes de code.
+##
+## ⚠️ LA FORGE L'AVAIT ÉCRIT DANS SON RAPPORT — « un palier défini sur la charte est annulé par
+## le plafond » — et j'ai posé le plafond avant de le lire.
+static func _ambry_scale(hull: Node) -> float:
+	var haut := 0.0
+	for mesh in _meshes(hull):
+		for i in mesh.get_surface_override_material_count():
+			var base := mesh.get_active_material(i) as StandardMaterial3D
+			if base == null or not String(base.resource_name).ends_with(AMBRY_SUFFIX):
+				continue
+			if _is_ambry_accent(base.albedo_color):
+				continue
+			var c := base.albedo_color
+			haut = maxf(haut, c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722)
+	return 1.0 if haut <= AMBRY_VALUE_CEILING else AMBRY_VALUE_CEILING / haut
+
+static func _ambry_value(colour: Color, k: float) -> Color:
+	if _is_ambry_accent(colour):
+		return colour
 	return Color(colour.r * k * AMBRY_WARM.x, colour.g * k * AMBRY_WARM.y,
 		colour.b * k * AMBRY_WARM.z, colour.a)
 
@@ -215,6 +257,9 @@ const AMBRY_UV_SCALE := 0.35
 ## l'opérateur n'a pas encore fourni les images, et c'est un état normal, pas une panne.
 static func apply(hull: Node) -> int:
 	var dressed := 0
+	# ⚠️ UN SEUL FACTEUR POUR TOUTE LA PIÈCE, CALCULÉ AVANT DE TOUCHER QUOI QUE CE SOIT. C'est ce
+	# qui fait qu'un plafond de valeur préserve les paliers au lieu de les aplatir.
+	var echelle := _ambry_scale(hull)
 	for mesh in _meshes(hull):
 		for i in mesh.get_surface_override_material_count():
 			var base := mesh.get_active_material(i) as StandardMaterial3D
@@ -232,6 +277,15 @@ static func apply(hull: Node) -> int:
 					tuned.albedo_color = _damped(tuned.albedo_color)
 			elif name == TRIM_MATERIAL:
 				tuned = tamed(base)
+			# ⚠️ LE PLAFOND DE VALEUR S'APPLIQUE À TOUTE MATIÈRE D'AMBRY, HABILLÉE OU NON.
+			# Il vivait dans `_skin_surface()`, donc il ne touchait que les slots présents dans
+			# `SKINS` — une matière sans carte y échappait EN SILENCE, et c'est exactement ce
+			# qu'allait produire le `BRIEF-0116` avec ses trois slots neufs. La forge l'a vu avant
+			# moi. Le plafond n'est pas une option d'habillage : c'est une propriété d'Ambry.
+			if String(name).ends_with(AMBRY_SUFFIX):
+				if tuned == null:
+					tuned = base.duplicate()
+				tuned.albedo_color = _ambry_value(tuned.albedo_color, echelle)
 			if tuned == null:
 				continue
 			mesh.set_surface_override_material(i, tuned)
@@ -280,8 +334,6 @@ static func _skin_surface(base: StandardMaterial3D, stem: String,
 	# On DUPLIQUE : le matériau importé appartient au `.glb`, et l'écrire en place mute une
 	# ressource partagée que rien ne remettra en état.
 	var tuned: StandardMaterial3D = base.duplicate()
-	if stem.begins_with("ambry"):
-		tuned.albedo_color = _ambry_value(tuned.albedo_color)
 	tuned.uv1_scale = Vector3(uv_scale, uv_scale, uv_scale)
 	tuned.albedo_texture = mul
 	tuned.normal_enabled = true

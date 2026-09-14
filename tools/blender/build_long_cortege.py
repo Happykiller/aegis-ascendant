@@ -301,18 +301,155 @@ AMBRY_ROCK = "AA_Rock_Ambry"        # TEX-AMB-07  soubassement arrache
 AMBRY_GLASS = "AA_Glass_Ambry"      # TEX-AMB-08  verriere de la serre
 AMBRY_GREEN = "AA_Green_Ambry"      # TEX-AMB-09  vegetation
 AMBRY_WINDOW = "AA_Window_Ambry"    # TEX-AMB-10  fenetres eclairees
-#: ⚠️ L'ECRU, ET LE BLEU A ETE ESSAYE PUIS REJETE AU RENDU (ADR-0006). La planche
-#: de matieres nomme « toile bleue » dans sa palette (TEX-AMB-12) et la planche de
-#: concept en montre une sur la vue gameplay : le `#1C2B5E` d'Helios Vanguard a
-#: donc ete pose, rendu a la camera du jeu, et REGARDE. Verdict : une bache de
-#: 1,36 x 2,08 m en bleu sature devient l'objet le plus visible des 27 m, avant
-#: les fenetres allumees — elle vole la lecture a ce qui est le sujet, et elle
-#: contredit « le vert de la serre est la seule couleur ». L'ecru `#DDDCD2` la
-#: rend a son rang ; le bleu reviendra par la CARTE si l'operateur le veut, ou en
-#: repassant cette entree a `_VANGUARD["panel"]`.
+#: ⚠️ LE BLEU EST REVENU, ET LE VERDICT DE 2026-09-13 ETAIT VRAI CONTRE DU BLANC.
+#: Il avait ete pose au `#1C2B5E`, rendu, regarde, puis ramene a l'ecru : « la
+#: bache devient l'objet le plus visible des 27 m ». Elle l'etait — parce que
+#: 41,6 pct d'Ambry etait alors quasi-blanc, et qu'un bleu profond sur du blanc
+#: pur est un TROU. Le plafond de valeur (`CortegeSkin.AMBRY_VALUE_CEILING`,
+#: commit e55bba3) a change ce rapport, et le verdict se reprend sur la nouvelle
+#: valeur (BRIEF-0116).
+#:
+#: ⚠️ MAIS CE N'EST PAS LE `#1C2B5E`, ET LA PLANCHE LE DIT. Mesure sur la vue
+#: gameplay de `ambry_concept_sheet_2026-09.png` : sa bache rend (83, 93, 114) —
+#: luminance 92 pour un ivoire voisin a 187, soit LA MOITIE de l'ivoire, a 26,5
+#: pct de saturation. Le bleu profond de la charte rend, lui, une luminance de 40
+#: pour 202 : cinq fois plus sombre que ce que la planche montre. La bache de la
+#: planche n'est pas un bleu de panneau, c'est une TOILE DELAVEE — quarante ans
+#: sous la lampe. On la construit donc comme telle, par un melange trace des deux
+#: hex de la charte, et non par un hex invente (`_AMBRY_TARP_HEX`).
 AMBRY_CLOTH = "AA_Cloth_Ambry"      # TEX-AMB-12/15  baches, toiles, linge
 AMBRY_CRATE = "AA_Crate_Ambry"      # TEX-AMB-13  caisses, conteneurs
 AMBRY_SIGN = "AA_Sign_Ambry"        # TEX-AMB-14/16  portes, trappes, panneaux
+#: ⚠️ TROIS SLOTS DE PLUS (BRIEF-0116), ET ILS SE RANGENT EN FIN DE TABLE : les
+#: index des dix-neuf precedents ne bougent pas.
+#:
+#: ⚠️ ET LEUR SUFFIXE EST `_Ambry`, PAS `_Ambry_B`. Le brief proposait
+#: `AA_Hull_Ambry_B` ; `CortegeSkin` choisit l'echelle d'UV par
+#: `name.ends_with("_Ambry")`, si bien qu'un slot nomme ainsi serait retombe sur
+#: l'echelle du BORDE — 2,86 m par tuile au lieu de 4,08 — le jour ou on lui
+#: aurait donne une carte. Le defaut est exactement celui que `BRIEF-0115` a
+#: ferme, et il est tout aussi silencieux. Le suffixe reste donc EN DERNIER.
+AMBRY_HULL_B = "AA_HullB_Ambry"     # TEX-AMB-01  coque habitation, 2e palier
+AMBRY_HULL_C = "AA_HullC_Ambry"     # TEX-AMB-01  coque habitation, 3e palier
+AMBRY_MARK = "AA_Mark_Ambry"        # TEX-AMB-05  peinture de sol du pas
+
+
+#: --- LES PALIERS DE VALEUR DES MODULES -------------------------------------
+#:
+#: ⚠️ ILS SE CALCULENT SOUS LE PLAFOND, ET C'EST TOUT LE PIEGE. `CortegeSkin`
+#: rabat toute matiere claire d'Ambry a une luminance LINEAIRE de 0,58 : deux
+#: albedos differents situes AU-DESSUS du plafond en ressortent donc EXACTEMENT
+#: EGAUX. Mesure : l'ivoire `#EDEAE3` vaut 0,824 et un « ivoire 15 pct plus
+#: sombre » vaut 0,571 — l'un est rabattu a 0,58, l'autre passe a 0,571, et les
+#: deux modules sortent a 1,5 pct l'un de l'autre. Le palier serait ANEANTI par
+#: le correctif meme qui rend les textures visibles.
+#:
+#: On part donc de la couleur DEJA RABATTUE, et on l'assombrit en valeur PERCUE
+#: (espace sRGB) : « 15 pct plus sombre » veut dire 15 pct pour l'œil, pas 15 pct
+#: d'une grandeur lineaire que personne ne voit.
+_AMBRY_VALUE_CEILING = 0.58         # recopie de CortegeSkin.AMBRY_VALUE_CEILING
+
+
+def _srgb_of(value: float) -> float:
+    value = min(1.0, max(0.0, value))
+    if value <= 0.0031308:
+        return value * 12.92
+    return 1.055 * value ** (1.0 / 2.4) - 0.055
+
+
+def _hex_of(linear: tuple[float, float, float]) -> str:
+    return "#%02X%02X%02X" % tuple(round(_srgb_of(c) * 255.0) for c in linear)
+
+
+def _luminance(linear) -> float:
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _ambry_tier_hex(hexa: str, factor: float) -> str:
+    """Un palier de valeur d'Ambry : la couleur RABATTUE, assombrie pour l'œil."""
+    linear = ak.srgb_hex_to_linear(hexa)[:3]
+    capped = min(1.0, _AMBRY_VALUE_CEILING / _luminance(linear))
+    seen = [_srgb_of(c * capped) * factor for c in linear]
+    return "#%02X%02X%02X" % tuple(round(min(1.0, c) * 255.0) for c in seen)
+
+
+def _mix_hex(a: str, b: str, ratio: float) -> str:
+    """Melange de deux hex de la charte, en valeur PERCUE (sRGB)."""
+    ca = [int(a.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+    cb = [int(b.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+    return "#%02X%02X%02X" % tuple(
+        round(ca[i] * (1.0 - ratio) + cb[i] * ratio) for i in range(3))
+
+
+def _at_luminance(hexa: str, target: float) -> str:
+    """La meme teinte, ramenee a une luminance lineaire donnee."""
+    linear = ak.srgb_hex_to_linear(hexa)[:3]
+    k = target / _luminance(linear)
+    return _hex_of(tuple(c * k for c in linear))
+
+
+#: Les deux paliers. La cible est -15 et -30 pct A L'ECRAN ; les facteurs
+#: d'albedo qui les produisent sont 0,75 et 0,50, et ce n'est pas la meme chose.
+#:
+#: ⚠️ UN ALBEDO N'ARRIVE PAS ENTIER A L'ECRAN. Mesure sur le premier tirage de ce
+#: lot, pixel par pixel, sur les surfaces qui ont change : un albedo assombri de
+#: 15 pct ne rend que 9 pct plus sombre. Le reste de la lumiere ne vient pas de
+#: l'albedo — speculaire d'une ambiante a 0,8, rebonds des quarante-six fenetres,
+#: dielectrique a `roughness` 0,45 — et cette part-la ne s'assombrit pas avec lui.
+#: Le modele se cale en une ligne sur la mesure : rendu = 0,60 x albedo + 0,40,
+#: verifie sur les DEUX paliers du premier tirage (0,85 -> 0,91 mesure, 0,70 ->
+#: 0,82 mesure). D'ou 0,75 et 0,50 pour obtenir 0,85 et 0,70 a l'ecran — releve
+#: apres coup, slot par slot : 158,4 et 118,4 pour une coque a 180,2, soit -12 et
+#: -34 pct. Le modele vise juste a deux points pres.
+_AMBRY_HULL_B_HEX = _ambry_tier_hex(_VANGUARD["hull"], 0.75)
+_AMBRY_HULL_C_HEX = _ambry_tier_hex(_VANGUARD["hull"], 0.50)
+#: La toile delavee : le bleu profond de la charte, tire de 30 pct vers son
+#: ivoire. Rend a la moitie de la valeur de l'ivoire, comme sur la planche.
+_AMBRY_TARP_HEX = _mix_hex(_VANGUARD["panel"], _VANGUARD["hull"], 0.30)   # #5B6486
+#: ⚠️ LE PAS RESTE SOMBRE — LE VERDICT DU BRIEF-0115 TIENT, ET IL EST MESURE.
+#: Releve SLOT PAR SLOT (passe d'identifiants, pas une estimation) sur le rendu a
+#: la camera du jeu : le pas ressort a 67,5 de luminance pour une coque a 181,4,
+#: soit 0,37 de l'ivoire, quand la planche donne 0,26. Il est deja RELATIVEMENT
+#: PLUS CLAIR que sur la planche — l'eclaircir l'eloignerait d'elle.
+#:
+#: Ce qui est faux, c'est sa TEINTE : il rend (63, 68, 75), bleu, quand la planche
+#: donne (50, 48, 48), neutre-chaud. La cause est le pendant exact du defaut que
+#: le plafond vient de corriger : a albedo 0,007, une surface ne montre plus sa
+#: propre couleur, elle montre celle de l'ambiante — qui est bleue (0,55 ; 0,62 ;
+#: 0,78). On ne peut rien moduler au plafond ; on ne peut rien montrer au plancher.
+#: On tire donc l'anthracite tres sombre de l'Unisson vers l'or de la charte, A
+#: LUMINANCE CONSTANTE : la valeur ne bouge pas d'un millieme, la teinte cesse
+#: d'etre bleue.
+_AMBRY_PAD_HEX = _at_luminance(
+    _mix_hex(_UNISON["greeble"], _VANGUARD["trim"], 0.10),
+    _luminance(ak.srgb_hex_to_linear(_UNISON["greeble"])[:3]))       # #171410
+#: ⚠️ LA RUE DESCEND, ET C'EST LE MEME DEFAUT QUE LES SEPT MODULES, D'UN CRAN AU-
+#: DESSUS. Le plafond de valeur rabat TOUTE matiere claire d'Ambry a 0,58 : il ne
+#: rabat pas seulement l'ivoire des modules, il rabat aussi l'ivoire du pont
+#: (`#DDDCD2`, 0,712) — deux couleurs qui differaient de 16 pct en lineaire en
+#: ressortent EGALES. Mesure par slot sur le rendu a la camera du jeu : coque 181,0
+#: de luminance, pont 173,5 — 4 pct d'ecart sur 45 pct des pixels d'Ambry. Sept
+#: modules re-separes poses sur un sol de leur propre valeur restent une masse.
+#:
+#: La planche tranche dans l'autre sens, et largement : ses coursives rendent 28 a
+#: 98 de luminance quand ses toits rendent 147 a 186, soit 0,2 a 0,55. C'est
+#: normal — un CAILLEBOTIS (TEX-AMB-03/04) est surtout du vide, il ne peut pas
+#: avoir la valeur d'une tole pleine. Releve AVANT sur le rendu : coque 181,4,
+#: pont 173,7 — 4 pct d'ecart sur 45 pct des pixels d'Ambry.
+#:
+#: ⚠️ ET LA VALEUR SE CALE ENTRE DEUX MURS, PAS SUR UN GOUT. La rue doit passer
+#: SOUS le plus sombre des trois paliers de bati (coque C, 118) et rester AU-DESSUS
+#: du pas d'appontage (67), que le brief exige distinct de ce qui l'entoure. Le
+#: premier essai a 0,30 d'albedo percu a rendu 70,7 — la rue et le pas confondus,
+#: le critere casse. A 0,45 elle rend 94,4 : 20 pct sous la coque C, 29 pct au-dessus
+#: du pas. La hierarchie complete tient alors en une ligne, des fenetres au metal :
+#:
+#:     fenetres 221 > coque A 180 > or du pas 165 > coque B 158 > bache 132
+#:              > coque C 118 > la rue 94 > le pas 67 > machinerie 42
+#:
+#: ⚠️ C'est le seul changement de ce lot que le brief ne demande pas. Il se defait
+#: en remettant `_UNISON["trim"]` a cette entree.
+_AMBRY_DECK_HEX = _ambry_tier_hex(_UNISON["trim"], 0.45)
 
 #: (cle de palette Vanguard/Unisson, metallic, roughness, alpha, emission).
 #: ⚠️ L'ORDRE DE CE DICTIONNAIRE EST L'ORDRE DES SLOTS, donc l'ordre des index de
@@ -320,16 +457,20 @@ AMBRY_SIGN = "AA_Sign_Ambry"        # TEX-AMB-14/16  portes, trappes, panneaux
 AMBRY_MATERIAL_SPECS: dict[str, tuple[str, float, float, float, float]] = {
     AMBRY_HULL:   (_VANGUARD["hull"],    0.05, 0.45, 1.00, 0.0),
     AMBRY_TECH:   (_VANGUARD["greeble"], 0.70, 0.50, 1.00, 0.0),
-    AMBRY_DECK:   (_UNISON["trim"],      0.30, 0.65, 1.00, 0.0),
-    AMBRY_PAD:    (_UNISON["greeble"],   0.15, 0.78, 1.00, 0.0),
+    AMBRY_DECK:   (_AMBRY_DECK_HEX,      0.30, 0.65, 1.00, 0.0),
+    AMBRY_PAD:    (_AMBRY_PAD_HEX,       0.15, 0.78, 1.00, 0.0),
     AMBRY_WELD:   (_UNISON["greeble"],   0.88, 0.30, 1.00, 0.0),
     AMBRY_ROCK:   (_VANGUARD["greeble"], 0.00, 0.92, 1.00, 0.0),
     AMBRY_GLASS:  (_UNISON["glass"],     0.00, 0.08, 0.86, 0.0),
     AMBRY_GREEN:  (_UNISON["marking"],   0.00, 0.58, 1.00, 0.0),
     AMBRY_WINDOW: (_VANGUARD["trim"],    0.00, 0.35, 1.00, 1.2),
-    AMBRY_CLOTH:  (_UNISON["trim"],      0.00, 0.90, 1.00, 0.0),
+    AMBRY_CLOTH:  (_AMBRY_TARP_HEX,      0.00, 0.90, 1.00, 0.0),
     AMBRY_CRATE:  (_VANGUARD["greeble"], 0.25, 0.62, 1.00, 0.0),
     AMBRY_SIGN:   (_VANGUARD["greeble"], 0.10, 0.65, 1.00, 0.0),
+    # --- BRIEF-0116 : en fin de table, les index precedents ne bougent pas ---
+    AMBRY_HULL_B: (_AMBRY_HULL_B_HEX,    0.05, 0.47, 1.00, 0.0),
+    AMBRY_HULL_C: (_AMBRY_HULL_C_HEX,    0.05, 0.52, 1.00, 0.0),
+    AMBRY_MARK:   (_VANGUARD["trim"],    0.00, 0.72, 1.00, 0.0),
 }
 #: Les slots d'Ambry, dans l'ordre de declaration.
 AMBRY_SLOTS: tuple[str, ...] = tuple(AMBRY_MATERIAL_SPECS)
@@ -1182,6 +1323,55 @@ AMBRY_MODULES: tuple[tuple[str, float, float, float, float, float, float, str], 
     ("M6", 9.17, 10.85, 462.00, 464.10, -3.74, -2.8, "parabole"),
     ("M7", 11.15, 12.80, 462.25, 463.70, -4.18, 0.0, "cuve"),
 )
+
+#: A quel palier de valeur chaque module est batî (BRIEF-0116).
+#:
+#: ⚠️ LA GEOMETRIE AVAIT LEVE « BOITES IDENTIQUES », LA VALEUR LES AVAIT
+#: RE-UNIFORMISEES. Les sept modules du `BRIEF-0115` n'ont pas une cote commune —
+#: et ils partageaient pourtant `AA_Hull_Ambry`, donc un seul albedo, donc une
+#: seule valeur. A 45,8 px/m et 70 deg de plongee, sept volumes de meme valeur
+#: poses cote a cote se relisent comme UNE MASSE : c'est le defaut du panneau
+#: « A EVITER » qui revient par la porte de derriere. Le code ne peut rien y
+#: faire — un slot, un albedo.
+#:
+#: ⚠️ ET LA REPARTITION N'EST PAS UN DAMIER : c'est une chronologie. Un relais de
+#: quatre-vingts personnes se batit par ajouts sur quarante ans, et la tole d'un
+#: ajout n'a ni l'age ni la provenance de celle du bloc d'origine.
+#:
+#: TROIS GENERATIONS DE TOLE, ET CHACUNE A SA RAISON :
+#:
+#:   palier A, ivoire plein   M1, M5  la paire d'origine — les deux seuls modules
+#:                                    qui aient jamais porte de la peinture Helios
+#:   palier B, -15 pct        M2, M4, M6  la deuxieme generation, dix ans plus
+#:                                    tard : tole re-roulee sur place, jamais peinte
+#:   palier C, -30 pct        M3, M7  les deux derniers, et ce ne sont plus des
+#:                                    toles : M3 est un BERCEAU — une coque
+#:                                    cintree ne sort pas du meme rouleau que des
+#:                                    panneaux plats — et M7 est l'appentis de
+#:                                    cuve, soude avec ce qui restait
+#:
+#: ⚠️ ET LA REPARTITION EST CONTRAINTE PAR L'ŒIL, PAS PAR LE RECIT SEUL : aucun
+#: couple de modules VOISINS ne partage un palier. Les huit adjacences (M1-M2,
+#: M1-M3, M3-M4, M3-M5, M4-M5, M5-M6, M5-M7, M6-M7) portent toutes un ecart, et
+#: les deux plus grandes surfaces contigues du village — M1 (ivoire) et la voute
+#: de M3 (-30 pct) — portent le plus grand. C'est ce qui empeche l'alternance
+#: reguliere : ni damier, ni degrade monotone de la proue vers la poupe.
+#:
+#: ⚠️ LE PALIER NE VA PAS AU PLUS PETIT : il va au plus VU. M3 (voute, 5 560 px a
+#: l'ecran) et M1 (parapet, 9 072 px) sont les deux plus grandes surfaces de tole
+#: d'Ambry ; les mettre au meme palier revenait a ne rien faire. Les trois
+#: modules bas (M2, M4, M7) ont leur toit encombre — une bache, trois caisses, une
+#: cuve — et n'offrent presque pas de tole a l'œil : un palier pose la ne se
+#: serait vu sur aucune capture.
+AMBRY_MODULE_TIER: dict[str, str] = {
+    "M1": AMBRY_HULL,
+    "M2": AMBRY_HULL_B,
+    "M3": AMBRY_HULL_C,
+    "M4": AMBRY_HULL_B,
+    "M5": AMBRY_HULL,
+    "M6": AMBRY_HULL_B,
+    "M7": AMBRY_HULL_C,
+}
 
 #: Le soubassement arrache : (cx, cs, rayon x, rayon s, cotes, phase, dessus).
 #:
@@ -4537,20 +4727,35 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     tally("traverses")
 
     # --- LE PAS D'APPONTAGE : vide, et c'est de la que le pilote est parti ---
-    # ⚠️ Il garde sa valeur SOMBRE (`AA_Pad_Ambry`, le plus sombre des douze
-    # slots) : c'est elle qui le fait lire comme un pas et non comme une dalle.
+    # ⚠️ IL GARDE SA VALEUR SOMBRE, ET CETTE FOIS C'EST MESURE (BRIEF-0116). Releve
+    # slot par slot sur le rendu a la camera du jeu, plafond de valeur compris : le
+    # pas ressort a 67,5 de luminance pour une coque a 181,4, soit 0,37 de l'ivoire,
+    # la ou la planche donne 0,26. Il est deja RELATIVEMENT PLUS CLAIR que sur la
+    # planche — un pas jaune-ocre l'en eloignerait encore.
+    #
+    # ⚠️ ET LA PLANCHE DIT L'INVERSE DE « pas jaune-ocre a H sombre » : mesure sur sa
+    # vue gameplay, l'interieur du pas rend (50, 48, 48), neutre a 4,1 pct de
+    # saturation, et ce sont le « H », son cercle et les bandes de rive qui sont OR.
+    #
+    # ⚠️ CE QUI MANQUAIT N'ETAIT PAS LA VALEUR DU PAS, C'ETAIT LA COULEUR DE SA
+    # PEINTURE. Sur la planche, le « H », son cercle et les bandes de rive sont
+    # OR ; ici ils etaient sur `AA_Deck_Ambry`, c'est-a-dire en ivoire — du blanc
+    # sur du gris, la seule chose non coloree d'un endroit qui est le plus charge
+    # de sens des 27 m. Ils passent a `AA_Mark_Ambry` : l'or de la charte, mat,
+    # non emissif. L'echange BAISSE la luminance (or 183 contre ivoire 202) et
+    # MONTE la saturation — les deux criteres du lot vont dans le meme sens.
     pad = (448.30, 451.70)
     pad_x = (b_yard[0], b_yard[1])
     slab(pad_x[0], pad_x[1], pad[0], pad[1], under - 0.02, raft - 0.05,
          AMBRY_PAD, AMBRY_PAD, draft=0.05)
-    # Le « H » d'appontage, en CLAIR sur le pas sombre : 1,45 x 1,05 m, soit
+    # Le « H » d'appontage, en OR sur le pas sombre : 1,45 x 1,05 m, soit
     # 66 x 48 px a l'ecran. Il est de travers de 2,5 deg, comme le reste.
     hx_c, hs_c = 0.5 * (pad_x[0] + pad_x[1]), 0.5 * (pad[0] + pad[1])
     for dx0, dx1, ds0, ds1 in ((-0.72, -0.50, -0.52, 0.52),
                                (0.50, 0.72, -0.52, 0.52),
                                (-0.50, 0.50, -0.11, 0.11)):
         turned(hx_c, hs_c, math.radians(2.5), dx0, dx1, ds0, ds1,
-               raft - 0.14, raft - 0.02, AMBRY_DECK, AMBRY_DECK)
+               raft - 0.14, raft - 0.02, AMBRY_MARK, AMBRY_MARK)
     # Quatre feux de coin, eteints : ce sont des plots, pas des lampes.
     for dx in (-1.55, 1.55):
         for ds in (-1.52, 1.52):
@@ -4561,7 +4766,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
     for ds in (pad[0] - 0.22, pad[1] + 0.10):
         for k in range(6):
             a = pad_x[0] + 0.18 + k * 0.58
-            plate(a, a + 0.34, ds, ds + 0.12, top=raft - 0.01, mat=AMBRY_DECK)
+            plate(a, a + 0.34, ds, ds + 0.12, top=raft - 0.01, mat=AMBRY_MARK)
     tally("pas_appontage")
     note("marquages de sol", 15)
 
@@ -4771,8 +4976,14 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
         yaw = math.radians(deg)
         cx, cs = 0.5 * (mx0 + mx1), 0.5 * (ms0 + ms1)
         hx, hs = 0.5 * (mx1 - mx0), 0.5 * (ms1 - ms0)
+        # ⚠️ LA TOLE DE CE MODULE-LA, ET PAS CELLE DU VOISIN (BRIEF-0116). Tout ce
+        # qui est BATI — corps, parapets, berceau, linteau de porte — prend le
+        # palier du module ; ce qui est POSE DESSUS (machinerie, panneaux, cuve,
+        # caisses, fenetres) garde son slot de nature, sans quoi la parabole de
+        # M6 changerait de matiere avec l'age de son toit.
+        hull = AMBRY_MODULE_TIER[name]
         turned(cx, cs, yaw, -hx, hx, -hs, hs, sink, mtop,
-               AMBRY_HULL, AMBRY_HULL, draft=0.07)
+               hull, hull, draft=0.07)
         # ⚠️ LES COUTURES DE TOITURE, ET C'EST UNE MESURE DE CONTRASTE. Un toit de
         # 2,8 x 2,2 m en ivoire uni rend 128 x 101 px de blanc plein : c'est la
         # moitie du grief « c'est moche, pas de forme ». Deux ou trois joints
@@ -4804,7 +5015,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
                    raft - 0.04, top_y, AMBRY_SIGN, AMBRY_SIGN)
             turned(cx, cs, yaw, -hx - 0.06, -hx + 0.02, -hs + a - 0.07,
                    -hs + b + 0.07, top_y, top_y + 0.09,
-                   AMBRY_HULL, AMBRY_HULL)
+                   hull, hull)
             # Le feu de seuil : une fenetre de 12 cm au-dessus de la porte.
             turned(cx, cs, yaw, -hx - 0.05, -hx + 0.02,
                    -hs + 0.5 * (a + b) - 0.11, -hs + 0.5 * (a + b) + 0.11,
@@ -4825,14 +5036,14 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
                     (-hx - 0.02, -hx + 0.16, -hs + 0.15, hs - 0.15),
                     (-hx - 0.02, hx + 0.02, hs - 0.15, hs + 0.02)):
                 turned(cx, cs, yaw, dx0, dx1, ds0, ds1,
-                       mtop - 0.12, mtop + 0.14, AMBRY_HULL, AMBRY_HULL)
+                       mtop - 0.12, mtop + 0.14, hull, hull)
             for dx0, dx1, ds0, ds1 in ((-hx + 0.32, -hx + 0.86, -hs + 0.42,
                                         -hs + 0.86),
                                        (hx - 0.78, hx - 0.30, hs - 0.92,
                                         hs - 0.44)):
                 turned(cx, cs, yaw, dx0 - 0.05, dx1 + 0.05, ds0 - 0.05,
                        ds1 + 0.05, mtop - 0.06, mtop + 0.05,
-                       AMBRY_HULL, AMBRY_HULL)
+                       hull, hull)
                 turned(cx, cs, yaw, dx0, dx1, ds0, ds1,
                        mtop + 0.03, mtop + 0.08, AMBRY_WINDOW, AMBRY_WINDOW)
                 windows += 1
@@ -4876,7 +5087,7 @@ def build_ambry(bm: bmesh.types.BMesh) -> tuple[Vector, dict]:
                 b = -hx + 2.0 * hx * (k + 1) / 5.0
                 rise = 0.24 * math.sin(math.pi * (k + 0.5) / 5.0)
                 turned(cx, cs, yaw, a + 0.02, b - 0.02, -hs + 0.06, hs - 0.06,
-                       mtop - 0.10, mtop + rise, AMBRY_HULL, AMBRY_HULL)
+                       mtop - 0.10, mtop + rise, hull, hull)
             turned(cx, cs, yaw, -0.30, 0.30, -0.24, 0.24,
                    mtop + 0.18, mtop + 0.26, AMBRY_WINDOW, AMBRY_WINDOW)
             windows += 1
@@ -7046,11 +7257,14 @@ def _print_report(report: dict) -> None:
               f"{seen:7.1f} m2 {100.0 * seen / seen_total:6.2f} %{flag}")
     print(f"    {'TOTAL':<20} {total:9.1f} m2            "
           f"{seen_total:7.1f} m2")
+    # Les trois paliers de coque d'Ambry sont de la STRUCTURE : ce sont les murs
+    # des memes modules, a trois ages de tole (BRIEF-0116).
+    _ambry_structure = (AMBRY_HULL, AMBRY_HULL_B, AMBRY_HULL_C)
     structure = sum(report["seen_by_material"].get(n, 0.0)
-                    for n in ("AA_Hull", AMBRY_HULL))
+                    for n in ("AA_Hull",) + _ambry_structure)
     gear = sum(report["seen_by_material"].get(n, 0.0)
                for n in ("AA_Greeble", "AA_Trim", "AA_Glass", "AA_Marking_Red")
-               + tuple(s for s in AMBRY_SLOTS if s != AMBRY_HULL))
+               + tuple(s for s in AMBRY_SLOTS if s not in _ambry_structure))
     accent = sum(report["seen_by_material"].get(n, 0.0)
                  for n in ("AA_Panel", "AA_Emissive_Engine"))
     print(f"\n  contre la cible 80 / 15 / 5 du brief, sur l'aire VUE :")
@@ -8656,6 +8870,26 @@ def _tile_ambry_elevation(path: str, marks: dict) -> None:
 
 
 def render_ambry_plate(report: dict) -> None:
+    """La planche d'Ambry — ⚠️ ELLE REND LE `.glb` NU, PAS CE QUE LE JEU MONTRE.
+
+    ⚠️ CE MODE NE MENT PAS SUR LA GEOMETRIE, IL MENT SUR LA COULEUR, ET LE PIEGE
+    EST TOTALEMENT SILENCIEUX. Depuis le commit e55bba3, `CortegeSkin` retouche
+    chaque matiere d'Ambry a l'import : plafond de valeur (`AMBRY_VALUE_CEILING`
+    = 0,58 de luminance lineaire), rechauffement (`AMBRY_WARM`), douze cartes,
+    `uv1_scale` 0,35 et `normal_scale` 1,60. Aucune de ces quatre choses n'est
+    dans le binaire — le binaire porte l'albedo BRUT.
+
+    Juger Ambry sur cette planche, c'est juger un ivoire a 0,824 de luminance
+    quand le joueur en voit un a 0,58. C'est exactement l'erreur qui a coute une
+    soiree au `BRIEF-0115` : la bache bleue y a ete refusee parce qu'elle faisait
+    un trou dans un blanc qui, en jeu, n'existait deja plus.
+
+    Le `BRIEF-0116` a donc rendu ses vignettes avec un rejeu de `CortegeSkin`
+    (plafond, rechauffement, cartes, echelles) par-dessus l'import glTF ; la
+    recette complete est dans `docs/forge/output/BRIEF-0116-report.md`, section
+    « l'instrument ». Tant que ce mode-ci ne le fait pas, N'EN TIRER AUCUN
+    VERDICT DE COULEUR — seulement des verdicts de forme.
+    """
     before = None
     if "--avant" in sys.argv:
         before = sys.argv[sys.argv.index("--avant") + 1]
